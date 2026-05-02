@@ -27,7 +27,7 @@ class TestMCPHandshake:
     def gateway_with_upstream(self, upstream_server):
         """Create gateway configured with upstream server."""
         # This is a simplified fixture - real implementation would wire to actual gateway
-        from shared.mcp_gateway import MCPGateway
+        from value_fabric.shared.mcp_gateway import MCPGateway
         
         gateway = MCPGateway(
             auth_handler=None,
@@ -226,7 +226,7 @@ class TestMCPHandshakeCapabilities:
         """Server capabilities indicate resources support."""
         server = MockMCPServer(name="resources-server")
         
-        from shared.mcp_gateway.tests.contract.fixtures.mock_mcp_server import MockResource
+        from value_fabric.shared.mcp_gateway.tests.contract.fixtures.mock_mcp_server import MockResource
         server.add_resource(MockResource(
             uri="file:///test.txt",
             name="test",
@@ -258,7 +258,7 @@ class TestMCPHandshakeCapabilities:
 
 # Helper to create mock tools for capability tests
 def _create_mock_tool(name: str) -> Any:
-    from shared.mcp_gateway.tests.contract.fixtures.mock_mcp_server import MockTool
+    from value_fabric.shared.mcp_gateway.tests.contract.fixtures.mock_mcp_server import MockTool
     return MockTool(
         name=name,
         description=f"Tool {name}",

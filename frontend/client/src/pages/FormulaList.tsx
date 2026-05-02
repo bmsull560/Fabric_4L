@@ -127,7 +127,7 @@ function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={() => navigateTo(`/model/value-studio/formulas/${formula.formula_id ?? formula.id}`)}
+          onClick={() => formula.formula_id && navigateTo('formula-builder', { formulaId: formula.formula_id })}
           className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
           title="Edit"
         >
@@ -223,7 +223,8 @@ export default function FormulaList() {
 
         {/* Status Filter */}
         <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-1">
-          {(["all", "active", "draft", "pending"] as const).map((status) => (
+          {/* All valid statuses from STATUS_CONFIG are filterable. Excluded statuses would require product justification. */}
+          {(["all", "active", "draft", "pending", "deprecated", "archived"] as const).map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -298,12 +299,12 @@ export default function FormulaList() {
             {filteredFormulas.map((formula) => (
               <div
                 key={formula.formula_id}
-                onClick={() => navigateTo(`/model/value-studio/formulas/${formula.formula_id}`)}
+                onClick={() => formula.formula_id && navigateTo('formula-builder', { formulaId: formula.formula_id })}
                 className="cursor-pointer"
               >
                 <FormulaRow
                   formula={formula}
-                  onEdit={(id) => navigateTo(`/model/value-studio/formulas/${id}`)}
+                  onEdit={(id) => navigateTo('formula-builder', { formulaId: id })}
                   onDelete={(id) => setShowDeleteConfirm(id)}
                   isDeleting={isDeleting && showDeleteConfirm === formula.formula_id}
                 />

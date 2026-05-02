@@ -6,7 +6,7 @@ Provides comprehensive audit logging for secret access, rotation, and configurat
 Integrates with the shared audit system for compliance and security monitoring.
 
 Usage:
-    from shared.secrets.audit_logger import SecretAuditLogger
+    from value_fabric.shared.secrets.audit_logger import SecretAuditLogger
     
     logger = SecretAuditLogger()
     logger.log_secret_access(
@@ -29,7 +29,7 @@ from dataclasses import dataclass, asdict
 
 # Try to import shared audit components
 try:
-    from shared.audit import AuditEvent, AuditLogger
+    from value_fabric.shared.audit import AuditEvent, AuditLogger
     SHARED_AUDIT_AVAILABLE = True
 except ImportError:
     SHARED_AUDIT_AVAILABLE = False

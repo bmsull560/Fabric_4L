@@ -7,7 +7,7 @@ This package implements the security layer for the Model Context Protocol (MCP)
 gateway, ensuring tools authenticate with proper tenant context and audit trails.
 
 Example:
-    >>> from shared.mcp_gateway import MCPGateway
+    >>> from value_fabric.shared.mcp_gateway import MCPGateway
     >>> gateway = MCPGateway()
     >>> result = await gateway.invoke_tool(
     ...     tool_name="search",

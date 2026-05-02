@@ -8,8 +8,9 @@
  * - Search and pagination
  */
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
+import { useNavigation } from "@/hooks";
 import AccountIntakeModal from "@/components/workspace/AccountIntakeModal";
 import {
   Table,
@@ -449,7 +450,7 @@ interface FilterOptions {
 }
 
 function Accounts() {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const params = useParams<{ id: string }>();
   const urlAccountId = params.id ?? null;
   const setGlobalAccountId = useAccountContextStore((s) => s.setSelectedAccountId);
@@ -514,7 +515,7 @@ function Accounts() {
 
   const handleIntakeSubmit = (accountId: string) => {
     setIntakeOpen(false);
-    navigate(`/intelligence/${accountId}/signals`);
+    navigateTo('intelligence-signals', { accountId });
   };
 
   const updateFilters = (updates: Partial<AccountFilters>) => {
@@ -693,7 +694,7 @@ function Accounts() {
                 <AccountDetailPanel
                   accountId={selectedAccountId}
                   onClose={() => handleSelectAccount(null)}
-                  onLaunchIntelligence={(id) => navigate(`/intelligence/${id}/signals`)}
+                  onLaunchIntelligence={(id) => navigateTo('intelligence-signals', { accountId: id })}
                 />
               </div>
             </div>

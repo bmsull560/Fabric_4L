@@ -4,14 +4,15 @@
  */
 import { useState } from "react";
 import { Download, Share2, AlertCircle, Loader2, Sparkles } from "lucide-react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport, downloadExport } from "@/hooks/useDocuments";
+import { useNavigation } from "@/hooks";
 
 export default function BusinessCase() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const businessCaseId = searchParams.get("id");
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -55,14 +56,14 @@ export default function BusinessCase() {
   const handleViewTrace = () => {
     // Navigate to DecisionTrace
     if (businessCaseId) {
-      navigate(`/decision-trace?caseId=${encodeURIComponent(businessCaseId)}`);
+      navigateTo('decision-trace', undefined, { query: { caseId: businessCaseId } });
     }
   };
 
   const handleExploreInteractive = () => {
     // Navigate to Interactive Business Case explorer
     if (businessCaseId) {
-      navigate(`/agents/business-cases/explore?id=${encodeURIComponent(businessCaseId)}`);
+      navigateTo('business-case-interactive', undefined, { query: { id: businessCaseId } });
     }
   };
 

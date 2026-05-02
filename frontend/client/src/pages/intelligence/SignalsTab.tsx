@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Filter } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { Filter, Activity } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
-import { CenteredLoader } from "@/components/CenteredLoader";
+import { LoadingState, EmptyState, ErrorState } from "@/components/states";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Signal {
   id: string;
@@ -30,11 +31,12 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function SignalsTab() {
+  const queryClient = useQueryClient();
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
   const { data: account, isLoading: accountLoading, error: accountError } = useAccount(accountId);
-  const { data: caseId } = useCanonicalCaseId(accountId);
-  const { data, isLoading, error } = useWorkspaceTabQuery<{ signals: Signal[] }>(caseId ?? null, "signals");
+  const { data: caseId, isLoading: caseIdLoading, error: caseIdError, refetch: refetchCaseId } = useCanonicalCaseId(accountId);
+  const { data, isLoading, error, refetch: refetchSignals } = useWorkspaceTabQuery<{ signals: Signal[] }>(caseId ?? null, "signals");
   const persistTab = usePersistWorkspaceTab("signals");
 
   const signals = useMemo(() => data?.signals ?? [], [data]);
@@ -44,7 +46,7 @@ export default function SignalsTab() {
   useEffect(() => {
     if (!caseId || !data) return;
     persistTab.mutate({ caseId, payload: data });
-  }, [caseId, data]);
+  }, [caseId, data, persistTab.mutate]);
 
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "signals",
@@ -60,14 +62,19 @@ export default function SignalsTab() {
     }
   }, [caseId, signals.length, isLoading]);
 
+  const handleRetry = () => {
+    if (caseIdError) refetchCaseId();
+    if (error) refetchSignals();
+    queryClient.invalidateQueries({ queryKey: ['workspace', 'tab', caseId, 'signals'] });
+  };
+
+  const hasError = accountError || error || caseIdError || generateMutation.isError;
+  const isDataLoading = accountLoading || isLoading || caseIdLoading;
+  const isGenerating = generateMutation.isPending;
+
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;
   }
-
-  if (accountLoading || isLoading || generateMutation.isPending) {
-    return <CenteredLoader message={generateMutation.isPending ? "Generating intelligence..." : "Loading signals…"} />;
-  }
-  if (accountError || error || generateMutation.isError) return <div className="p-6 text-sm text-destructive">Failed to load signal data.</div>;
 
   const detailContent = selectedSignal ? (
     <div className="space-y-4">
@@ -89,8 +96,32 @@ export default function SignalsTab() {
       }}
       rightRail={<RightRail mode={railMode} onModeChange={setRailMode} detailContent={detailContent} activeTab="signals" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}
     >
-      {signals.length === 0 ? (
-        <SectionCard title="Pain Signal List"><div className="text-sm text-muted-foreground">No signals returned for this account case yet.</div></SectionCard>
+      {isDataLoading ? (
+        <LoadingState message={isGenerating ? "Generating intelligence..." : "Loading signals..."} />
+      ) : hasError ? (
+        <ErrorState
+          title="Signals could not be loaded"
+          description="The app could not retrieve intelligence signals for the current account. Check that the backend API is running."
+          error={error || accountError || caseIdError}
+          onRetry={handleRetry}
+          retryLabel="Retry"
+          fallbackAction={
+            <Link to="/accounts">
+              <Btn variant="outline">Go to Accounts</Btn>
+            </Link>
+          }
+        />
+      ) : signals.length === 0 ? (
+        <EmptyState
+          title="No signals yet"
+          description="Select an account or run intelligence gathering to generate market, account, and pain signals."
+          icon={Activity}
+          action={
+            <Btn onClick={() => caseId && generateMutation.mutate(caseId)} disabled={generateMutation.isPending}>
+              Generate Signals
+            </Btn>
+          }
+        />
       ) : (
         <>
           <div className="grid grid-cols-3 gap-4 mb-6">

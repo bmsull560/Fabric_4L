@@ -21,6 +21,7 @@ export type RouteState =
   | 'signup'
   | 'login-callback'
   // Home
+  | 'root'
   | 'home'
   | 'command-center'
   // Accounts
@@ -133,6 +134,7 @@ const ROUTE_MAP: Record<RouteState, RouteConfig> = {
   'login-callback': { path: '/login/callback' },
 
   // Home
+  'root': { path: '/' },
   'home': { path: '/home' },
   'command-center': { path: '/command-center' },
 
@@ -177,7 +179,9 @@ const ROUTE_MAP: Record<RouteState, RouteConfig> = {
   'business-cases': { path: '/deliverables/cases' },
   'business-case-detail': { path: '/deliverables/cases/:caseId', params: ['caseId'] },
   'business-case-new': { path: '/deliverables/cases/new' },
+  'business-case-interactive': { path: '/agents/business-cases/explore' },
   'interactive-calculator': { path: '/deliverables/calculators' },
+  'decision-trace': { path: '/decision-trace' },
   'cfo-view': { path: '/deliverables/views/cfo' },
   'executive-view': { path: '/deliverables/views/executive' },
   'technical-view': { path: '/deliverables/views/technical' },

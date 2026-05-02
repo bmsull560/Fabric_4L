@@ -489,70 +489,39 @@ This contract is versioned. Changes require:
 
 ### One-liners for developers
 
-
----
-
-## 7. Adding a New Canonical Contract (Quick Guide)
-
-When you add a new canonical contract, treat it as **code + enforcement + docs** in one change set.
-
-1. Add or update canonical source files under:
-   - `packages/platform-contract/src/python/canonical/` for Python signatures/patterns.
-   - `packages/platform-contract/src/typescript/` for frontend/public TS contract types.
-2. Add invariant and negative tests adjacent to canonical sources:
-   - Python: `packages/platform-contract/src/python/canonical/test_contract_invariants.py`.
-   - TypeScript compile-time assertions: `packages/platform-contract/src/typescript/contract-tests.ts`.
-3. Ensure negative tests check error messaging (or static type errors) so enforcement failures are actionable.
-4. Wire the checks into contract CI stages (Make + workflow jobs), not only local scripts.
-5. Run verification before PR:
-   - `make contract-tests`
-   - `make verify`
-6. If the new contract deprecates an older pattern, update `docs/platform-contract/DEPRECATION_MAP.md` in the same PR.
-
-**Definition of done:** if the canonical rule is violated, CI fails with a clear, contract-specific failure.
-`python
+```python
 # Get tenant context in an endpoint
 ctx: RequestContext = Depends(get_request_context)
 
 # Get DB session with RLS
 db: AsyncSession = Depends(get_db_from_context)
 
-# Get trace_id for logging
-trace_id = ctx.request_id  # or from OTel span
-
 # Build agent response
-return AgentResultEnvelope(status='success', data=..., metadata=...)
-`
+return AgentResultEnvelope(status="success", data=payload, metadata=metadata)
+```
 
-`	ypescript
+```typescript
 // Navigate
 const [, navigate] = useLocation();
-navigate('/home');
+navigate("/home");
 
 // Read global state
-const accountId = useAccountContextStore((s) => s.selectedAccountId);
+const accountId = useAccountContextStore((state) => state.selectedAccountId);
 
 // Read server state
-const { data } = useQuery({ queryKey: ['key'], queryFn: fetchFn });
-`
+const { data } = useQuery({ queryKey: ["key"], queryFn: fetchFn });
+```
 
 ---
 
-## 7. Adding a New Canonical Contract (Quick Guide)
+## 9. Adding a New Canonical Contract
 
-When you add a new canonical contract, treat it as **code + enforcement + docs** in one change set.
+Treat every new canonical contract as one change set that includes code, enforcement, and docs.
 
-1. Add or update canonical source files under:
-   - `packages/platform-contract/src/python/canonical/` for Python signatures/patterns.
-   - `packages/platform-contract/src/typescript/` for frontend/public TS contract types.
-2. Add invariant and negative tests adjacent to canonical sources:
-   - Python: `packages/platform-contract/src/python/canonical/test_contract_invariants.py`.
-   - TypeScript compile-time assertions: `packages/platform-contract/src/typescript/contract-tests.ts`.
-3. Ensure negative tests check error messaging (or static type errors) so enforcement failures are actionable.
-4. Wire the checks into contract CI stages (Make + workflow jobs), not only local scripts.
-5. Run verification before PR:
-   - `make contract-tests`
-   - `make verify`
-6. If the new contract deprecates an older pattern, update `docs/platform-contract/DEPRECATION_MAP.md` in the same PR.
+1. Add or update the canonical source under `packages/platform-contract/src/python/canonical/` or `packages/platform-contract/src/typescript/`.
+2. Add adjacent positive and negative tests. Negative coverage must assert actionable error text or TypeScript diagnostics.
+3. Update the package export map or `docs/platform-contract/DEPRECATION_MAP.md` if the public surface or migration path changes.
+4. Wire the checks into CI through the existing contract stages rather than relying on local-only scripts.
+5. Run `npm run contract:test` in `packages/platform-contract/`, then run `make contract-tests`.
 
-**Definition of done:** if the canonical rule is violated, CI fails with a clear, contract-specific failure.
+Definition of done: a violation of the new canonical rule fails CI with a contract-specific message that tells the next engineer what to fix.

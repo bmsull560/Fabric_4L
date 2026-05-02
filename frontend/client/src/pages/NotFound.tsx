@@ -1,15 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Home } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigation } from "@/hooks";
 import { useI18n } from "@/i18n";
 
 export default function NotFound() {
   const { t } = useI18n();
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
 
   const handleGoHome = () => {
-    navigate("/");
+    navigateTo('root');
   };
 
   return (

@@ -244,7 +244,7 @@ class TestTenantIsolation:
         
         Delegated token should have same tenant as original.
         """
-        from shared.mcp_gateway.mcp_types import DelegatedToken
+        from value_fabric.shared.mcp_gateway.mcp_types import DelegatedToken
         
         original_tenant = "tenant-abc-123"
         
@@ -385,7 +385,7 @@ class TestConfusedDeputyPrevention:
     @pytest.mark.asyncio
     async def test_token_exchange_produces_tool_scoped_token(self):
         """S-003: Token exchange produces tool-scoped delegated token."""
-        from shared.mcp_gateway.mcp_types import DelegatedToken
+        from value_fabric.shared.mcp_gateway.mcp_types import DelegatedToken
         
         delegated = DelegatedToken(
             access_token="delegated-xyz",

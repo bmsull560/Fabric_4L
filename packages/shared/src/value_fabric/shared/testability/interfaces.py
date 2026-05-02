@@ -9,7 +9,7 @@ between layers.  Depending on a protocol rather than a concrete class:
 
 Usage::
 
-    from shared.testability import HTTPClientProtocol
+    from value_fabric.shared.testability import HTTPClientProtocol
 
     class Layer3Client:
         def __init__(self, http: HTTPClientProtocol) -> None:

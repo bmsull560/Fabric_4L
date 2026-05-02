@@ -296,7 +296,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     """Register all exception handlers with a FastAPI application.
 
     Usage:
-        from shared.error_handling import register_exception_handlers
+        from value_fabric.shared.error_handling import register_exception_handlers
         app = FastAPI()
         register_exception_handlers(app)
     """

@@ -9,7 +9,7 @@ matching difficult.
 
 Example — production::
 
-    from shared.testability import IDGenerator, UUIDGenerator
+    from value_fabric.shared.testability import IDGenerator, UUIDGenerator
 
     class EventStore:
         def __init__(self, id_gen: IDGenerator = UUIDGenerator()) -> None:
@@ -20,7 +20,7 @@ Example — production::
 
 Example — test::
 
-    from shared.testability import SequentialIDGenerator
+    from value_fabric.shared.testability import SequentialIDGenerator
 
     gen = SequentialIDGenerator(prefix="evt")
     store = EventStore(id_gen=gen)

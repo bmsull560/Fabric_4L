@@ -10,7 +10,8 @@
  * - useEntities (for related entities list)
  */
 import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { useNavigation } from "@/hooks";
 import {
   ArrowLeft, Zap, ExternalLink, Clock, Shield, GitBranch,
   AlertCircle, ChevronRight
@@ -56,7 +57,7 @@ function formatDate(iso?: string) {
 // ── Main Component ───────────────────────────────────────────────────────────────────────
 export default function EntityDetail() {
   const params = useParams<{ entityId: string }>();
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const entityId = params.entityId || null;
   const [activeTab, setActiveTab] = useState("details");
 
@@ -92,7 +93,7 @@ export default function EntityDetail() {
   if (error || !entity) {
     return (
       <div className="p-6 max-w-4xl">
-        <Btn variant="ghost" onClick={() => navigate("/context/ontology/entities")}>
+        <Btn variant="ghost" onClick={() => navigateTo('entity-browser')}>
           <ArrowLeft size={14} className="mr-1" /> Back to Entity Browser
         </Btn>
         <div className="mt-8 text-center">
@@ -141,7 +142,7 @@ export default function EntityDetail() {
             </div>
           </div>
         </div>
-        <Btn variant="ghost" onClick={() => navigate("/context/ontology/entities")}>
+        <Btn variant="ghost" onClick={() => navigateTo('entity-browser')}>
           <ArrowLeft size={14} className="mr-1" /> Back
         </Btn>
       </div>

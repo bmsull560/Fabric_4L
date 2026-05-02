@@ -36,7 +36,7 @@ def _build_test_app() -> FastAPI:
     test_app = FastAPI()
     test_app.add_middleware(RequestIDMiddleware)
 
-    from shared.error_handling.handlers import register_exception_handlers
+    from value_fabric.shared.error_handling.handlers import register_exception_handlers
 
     register_exception_handlers(test_app)
 

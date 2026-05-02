@@ -49,7 +49,7 @@ class TestXTenantIDMutualAuth:
         self, no_service_auth_secret
     ):
         """X-Tenant-ID without SERVICE_AUTH_SECRET configured should return None."""
-        from shared.identity.middleware import GovernanceMiddleware
+        from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
         middleware = GovernanceMiddleware(
             app=None,  # type: ignore
@@ -71,7 +71,7 @@ class TestXTenantIDMutualAuth:
         self, service_auth_secret
     ):
         """X-Tenant-ID without X-Service-Auth header should return None."""
-        from shared.identity.middleware import GovernanceMiddleware
+        from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
         middleware = GovernanceMiddleware(
             app=None,  # type: ignore
@@ -92,7 +92,7 @@ class TestXTenantIDMutualAuth:
         self, service_auth_secret
     ):
         """X-Tenant-ID with wrong X-Service-Auth should return None."""
-        from shared.identity.middleware import GovernanceMiddleware
+        from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
         middleware = GovernanceMiddleware(
             app=None,  # type: ignore
@@ -118,8 +118,8 @@ class TestXTenantIDMutualAuth:
         self, service_auth_secret
     ):
         """X-Tenant-ID with valid X-Service-Auth should grant SYSTEM role."""
-        from shared.identity.middleware import GovernanceMiddleware
-        from shared.identity.permissions import Role
+        from value_fabric.shared.identity.middleware import GovernanceMiddleware
+        from value_fabric.shared.identity.permissions import Role
 
         middleware = GovernanceMiddleware(
             app=None,  # type: ignore
@@ -332,7 +332,7 @@ class TestAuthFlowIntegration:
     @pytest.mark.asyncio
     async def test_malformed_jwt_does_not_fallthrough_to_header(self):
         """F-16: Malformed JWT should return 401, not fall through to X-Tenant-ID."""
-        from shared.identity.middleware import GovernanceMiddleware
+        from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
         middleware = GovernanceMiddleware(
             app=None,  # type: ignore

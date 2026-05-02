@@ -11,10 +11,10 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { sessionService } from '../services/sessionService';
+import { useNavigation } from '@/hooks';
 import { SignupForm } from '../components/login-form';
 import { getSSOTenantSlug } from '../config/auth';
 import { registerWithEmailPassword } from '../api/auth';
@@ -61,7 +61,7 @@ function getSignupErrorMessage(err: unknown): string {
 }
 
 export default function Signup() {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const { isAuthenticated, isLoading, initiateLogin } = useAuthContext();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,9 +70,9 @@ export default function Signup() {
   // Skip signup if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      navigate('/home');
+      navigateTo('home');
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigateTo]);
 
   const handleSignup = useCallback(async (data: { email: string; password: string }) => {
     setIsSubmitting(true);
@@ -97,18 +97,18 @@ export default function Signup() {
           response.tenant_id || tenantSlug
         );
 
-        navigate('/home');
+        navigateTo('home');
         return;
       }
 
       // Deterministic fallback: send users to login with success state
-      navigate('/login?signup=success');
+      navigateTo('login', undefined, { query: { signup: 'success' } });
     } catch (err) {
       setError(getSignupErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
-  }, [navigate]);
+  }, [navigateTo]);
 
   /**
    * SSO provider → OIDC flow (same as Login page).

@@ -101,7 +101,7 @@ class GovernanceMiddlewareSync:
     features as the async version but for synchronous layers (1, 2).
 
     Usage (Flask/FastAPI with sync SQLAlchemy):
-        from shared.identity.middleware_sync import GovernanceMiddlewareSync
+        from value_fabric.shared.identity.middleware_sync import GovernanceMiddlewareSync
 
         app = Flask(__name__)
         middleware = GovernanceMiddlewareSync(app, api_key_resolver=lookup_key)

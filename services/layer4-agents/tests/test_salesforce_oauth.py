@@ -166,7 +166,7 @@ class TestSchedulerTenantIsolation:
     async def test_scheduler_uses_request_context_for_sync(self, mock_db):
         """Verify _execute_sync_for_tenant builds proper RequestContext and uses db_session_for_context."""
         from src.services.crm_sync_scheduler import CRMSyncScheduler
-        from shared.identity.context import RequestContext
+        from value_fabric.shared.identity.context import RequestContext
 
         scheduler = CRMSyncScheduler()
 

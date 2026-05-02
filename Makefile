@@ -159,8 +159,7 @@ test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
 	$(PYTEST) tests/contract/ -v --tb=short
-	$(PYTEST) packages/platform-contract/src/python/canonical/test_contract_invariants.py -v --tb=short
-	cd packages/platform-contract && npm run check
+	cd packages/platform-contract && npm run contract:test
 	@echo "→ Running architecture tests (tenant isolation guards)..."
 	$(PYTEST) tests/arch/ -v --tb=short
 	@echo "✅  Contract and architecture tests passed"

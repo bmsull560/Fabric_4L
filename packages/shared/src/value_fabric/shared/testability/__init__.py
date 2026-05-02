@@ -14,7 +14,7 @@ Quick-start
 
 Production code::
 
-    from shared.testability import Clock, SystemClock
+    from value_fabric.shared.testability import Clock, SystemClock
 
     class MyService:
         def __init__(self, clock: Clock = SystemClock()) -> None:
@@ -25,7 +25,7 @@ Production code::
 
 Test code::
 
-    from shared.testability import FixedClock
+    from value_fabric.shared.testability import FixedClock
 
     clock = FixedClock()
     svc = MyService(clock=clock)

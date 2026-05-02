@@ -92,7 +92,7 @@ def emit_audit_event(
 
     Example::
 
-        from shared.audit import emit_audit_event, AuditAction
+        from value_fabric.shared.audit import emit_audit_event, AuditAction
 
         event = emit_audit_event(
             AuditAction.TENANT_CREATED,

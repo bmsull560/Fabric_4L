@@ -159,6 +159,41 @@ jobs:
             --format compact
 
   # ==========================================================================
+  # Platform Contract Package Tests
+  # ==========================================================================
+  platform-contract-tests:
+    name: Platform Contract Package Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: packages/platform-contract/package-lock.json
+
+      - name: Install Python contract test dependencies
+        run: pip install -r packages/platform-contract/requirements-test.txt
+
+      - name: Install platform contract package dependencies
+        working-directory: packages/platform-contract
+        run: npm ci
+
+      - name: Run platform contract package tests
+        working-directory: packages/platform-contract
+        run: npm run contract:test
+
+  # ==========================================================================
   # Python Backend Contract Lint (merged from platform-contract-gate.yml)
   # ==========================================================================
   python-lint:
@@ -403,7 +438,7 @@ jobs:
   validate-deprecations:
     name: Validate Deprecation Register
     runs-on: ubuntu-latest
-    needs: [plugin-tests, lint-frontend, validate-canonical, python-lint]
+    needs: [plugin-tests, lint-frontend, validate-canonical, platform-contract-tests, python-lint]
 
     steps:
       - name: Checkout code
@@ -480,7 +515,7 @@ jobs:
   summary:
     name: Contract Compliance Summary
     runs-on: ubuntu-latest
-    needs: [plugin-tests, lint-frontend, validate-canonical, python-lint, generate-openapi, detect-drift, openapi-contract-tests, validate-deprecations]
+    needs: [plugin-tests, lint-frontend, validate-canonical, platform-contract-tests, python-lint, generate-openapi, detect-drift, openapi-contract-tests, validate-deprecations]
     if: always()
 
     steps:
@@ -497,6 +532,7 @@ jobs:
           echo "| Plugin Tests | ${{ needs.plugin-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Lint Frontend | ${{ needs.lint-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Validate Canonical | ${{ needs.validate-canonical.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform Contract Tests | ${{ needs.platform-contract-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Python Lint | ${{ needs.python-lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Deprecation Register | ${{ needs.validate-deprecations.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

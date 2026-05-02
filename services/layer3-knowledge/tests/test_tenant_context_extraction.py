@@ -105,7 +105,7 @@ class TestExtractTenantId:
     def test_integration_with_real_request_context(self):
         """Integration test with actual RequestContext from shared.identity."""
         try:
-            from shared.identity.context import RequestContext
+            from value_fabric.shared.identity.context import RequestContext
             
             # Arrange
             tenant_id = uuid.uuid4()

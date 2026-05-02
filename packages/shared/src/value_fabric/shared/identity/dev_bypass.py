@@ -10,7 +10,7 @@ exports a no-op passthrough so the production middleware runs normally.
 
 Usage in Layer 4 ``main.py``::
 
-    from shared.identity.dev_bypass import maybe_install_dev_bypass
+    from value_fabric.shared.identity.dev_bypass import maybe_install_dev_bypass
     maybe_install_dev_bypass(app)   # no-op unless DEV_AUTH_BYPASS=true
 """
 
@@ -51,7 +51,7 @@ class DevAuthBypassMiddleware(BaseHTTPMiddleware):
     """Injects a fully-populated RequestContext without authentication."""
 
     async def dispatch(self, request: Request, call_next):
-        from shared.identity.context import RequestContext
+        from value_fabric.shared.identity.context import RequestContext
 
         ctx = RequestContext()
         ctx.tenant_id = DEV_TENANT_ID

@@ -2,8 +2,8 @@
 
 Import these in route files instead of writing per-endpoint auth logic:
 
-    from shared.identity.dependencies import require_role, require_permission
-    from shared.identity.permissions import Role, Permission
+    from value_fabric.shared.identity.dependencies import require_role, require_permission
+    from value_fabric.shared.identity.permissions import Role, Permission
 
     @router.post("/v1/tenants")
     async def create_tenant(ctx = Depends(require_role(Role.SUPER_ADMIN))):

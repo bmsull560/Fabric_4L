@@ -658,15 +658,23 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: packages/platform-contract/package-lock.json
+
       - name: Install dependencies
         run: |
-          pip install pytest
+          pip install -r tests/requirements.txt -r packages/platform-contract/requirements-test.txt
+
+      - name: Install platform contract package dependencies
+        working-directory: packages/platform-contract
+        run: npm ci
 
       - name: Run contract and architecture tests
-        run: |
-          pytest tests/contract/ tests/arch/ -v --tb=short
-          pytest packages/platform-contract/src/python/canonical/test_contract_invariants.py -v --tb=short
-          cd packages/platform-contract && npm run check
+        run: make contract-tests
 
       - name: Run tool contract validation
         run: |

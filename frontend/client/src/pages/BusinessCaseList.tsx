@@ -14,11 +14,11 @@
  */
 
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Plus, Search, Filter, Archive, ArrowUpRight, Clock,
   CheckCircle2, TrendingUp, Users, Building2, Loader2, AlertCircle
 } from "lucide-react";
+import { useNavigation } from "@/hooks";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -83,7 +83,7 @@ function CaseCard({
   onArchive: (id: string) => void;
   isArchiving: boolean;
 }) {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const status = STATUS_CONFIG[caseItem.status];
 
   return (
@@ -111,7 +111,7 @@ function CaseCard({
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={() => navigate(`/deliver/cases/${caseItem.id}`)}
+            onClick={() => navigateTo('business-case-detail', { caseId: caseItem.id })}
             className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/60 hover:text-muted-foreground"
             title="View details"
           >
@@ -176,7 +176,7 @@ function CaseListSkeleton() {
 // ── Main Component ─────────────────────────────────────────────────────────
 
 function BusinessCaseListContent() {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<BusinessCaseFilters['status']>('all');
   const [sortField, setSortField] = useState<SortField>('updatedAt');
@@ -238,7 +238,7 @@ function BusinessCaseListContent() {
           setShowNewCaseModal(false);
           setNewCaseName("");
           setNewCaseCompany("");
-          navigate(`/deliver/cases/${data.workflow_id}`);
+          navigateTo('business-case-detail', { caseId: data.workflow_id });
         },
       }
     );

@@ -14,7 +14,7 @@ from prometheus_client import (
 )
 
 try:
-    from shared.observability import PathNormalizer
+    from value_fabric.shared.observability import PathNormalizer
 except ImportError:  # pragma: no cover - shared package not on path in some test envs
     PathNormalizer = None  # type: ignore[assignment]
 

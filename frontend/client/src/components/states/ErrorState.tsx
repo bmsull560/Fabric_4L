@@ -63,7 +63,7 @@ export function ErrorState({
         {fallbackAction}
       </div>
 
-      {error && (
+      {!!error && (
         <div className="pt-2">
           <button
             onClick={() => setShowDetails(!showDetails)}

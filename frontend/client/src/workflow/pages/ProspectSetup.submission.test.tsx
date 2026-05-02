@@ -27,7 +27,7 @@ describe('ProspectSetup example prompt submission', () => {
     await user.click(medtronicActivity);
 
     // 3. Verify the prompt textarea is populated with the Medtronic example
-    const promptTextarea = screen.getByLabelText(/new value case prompt/i);
+    const promptTextarea = screen.getByLabelText(/new value case prompt/i) as HTMLTextAreaElement;
     expect(promptTextarea.value).toContain('Company: Medtronic');
     expect(promptTextarea.value).toContain('medtronic.com');
     expect(promptTextarea.value).toContain('Medical Devices');

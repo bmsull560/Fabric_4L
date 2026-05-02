@@ -9,7 +9,7 @@
  * lifecycle management (draft → validated → converted).
  */
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   Lightbulb,
   Sparkles,
@@ -25,9 +25,10 @@ import RightRail, { type RightRailMode } from "@/components/workspace/RightRail"
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
-import { CenteredLoader } from "@/components/CenteredLoader";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { LoadingState, EmptyState, ErrorState } from "@/components/states";
+import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useAccountHypotheses,
   useGenerateHypotheses,
@@ -137,12 +138,14 @@ function HypothesisCard({
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function HypothesesTab() {
+  const queryClient = useQueryClient();
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading, error: accountError, refetch: refetchAccount } = useAccount(accountId ?? null);
   const {
     data: hypothesesData,
     isLoading,
     error,
+    refetch: refetchHypotheses,
   } = useAccountHypotheses(accountId ?? null);
   const generateHypotheses = useGenerateHypotheses();
   const validateHypothesis = useValidateHypothesis();
@@ -171,20 +174,17 @@ export default function HypothesesTab() {
     ? hypotheses.reduce((sum, h) => sum + h.confidence, 0) / hypotheses.length
     : 0;
 
+  const handleRetry = () => {
+    if (accountError) refetchAccount();
+    if (error) refetchHypotheses();
+    queryClient.invalidateQueries({ queryKey: ['hypotheses', 'account', accountId] });
+  };
+
+  const hasError = accountError || error;
+  const isDataLoading = accountLoading || isLoading;
+
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;
-  }
-
-  if (accountLoading || isLoading) {
-    return <CenteredLoader message="Loading value hypotheses…" />;
-  }
-
-  if (error) {
-    return <div className="p-6 text-sm text-destructive">Failed to load hypotheses.</div>;
-  }
-
-  if (!account) {
-    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (
@@ -310,20 +310,71 @@ export default function HypothesesTab() {
         </div>
       </div>
 
-      {/* Hypothesis list */}
-      {filtered.length === 0 ? (
+      {/* Content states */}
+      {isDataLoading ? (
+        <LoadingState message="Loading value hypotheses..." />
+      ) : hasError ? (
+        <ErrorState
+          title="Hypotheses could not be loaded"
+          description="The app could not retrieve value hypotheses for the current account. Check that the backend API is running."
+          error={error || accountError}
+          onRetry={handleRetry}
+          retryLabel="Retry"
+          fallbackAction={
+            <Link to="/accounts">
+              <Btn variant="outline">Go to Accounts</Btn>
+            </Link>
+          }
+        />
+      ) : !account ? (
+        <EmptyState
+          title="Select an account to generate hypotheses"
+          description="Hypotheses are generated from account intelligence, pain signals, and business objectives."
+          icon={Lightbulb}
+          action={
+            <Link to="/accounts">
+              <Btn variant="outline">Go to Accounts</Btn>
+            </Link>
+          }
+        />
+      ) : filtered.length === 0 ? (
         <SectionCard title="Value Hypotheses">
           <div className="text-center py-8">
             <Lightbulb size={32} className="mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-2">
               {hypotheses.length === 0
-                ? "No hypotheses generated yet."
+                ? "No value hypotheses yet"
                 : "No hypotheses match the current filter."}
             </p>
             {hypotheses.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Click "Generate Hypotheses" to discover value opportunities from signals.
+              <p className="text-xs text-muted-foreground mb-4">
+                Generate intelligence signals first, then create AI-backed value hypotheses for this account.
               </p>
+            )}
+            {hypotheses.length === 0 && (
+              <button
+                onClick={() => {
+                  if (accountId) {
+                    generateHypotheses.mutate({
+                      account_id: accountId,
+                      max_hypotheses: 20,
+                    });
+                  }
+                }}
+                disabled={generateHypotheses.isPending}
+                className={cn(
+                  "inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors",
+                  "bg-primary text-primary-foreground hover:bg-primary/90",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                {generateHypotheses.isPending ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Sparkles size={14} />
+                )}
+                {generateHypotheses.isPending ? "Generating…" : "Generate Hypotheses"}
+              </button>
             )}
           </div>
         </SectionCard>

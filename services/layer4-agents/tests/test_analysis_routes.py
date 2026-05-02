@@ -186,7 +186,7 @@ async def test_get_workspace_tab_returns_dynamic_data(analysis_app: FastAPI) -> 
 
     # Mock authentication context
     async def mock_require_authenticated():
-        from shared.identity.context import RequestContext
+        from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",
@@ -231,7 +231,7 @@ async def test_get_workspace_tab_returns_dynamic_data(analysis_app: FastAPI) -> 
 async def test_get_workspace_tab_unknown_case_returns_empty(analysis_app: FastAPI) -> None:
     """GET /cases/{case_id}/workspace/{tab_key} should return empty data for unknown case."""
     async def mock_require_authenticated():
-        from shared.identity.context import RequestContext
+        from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",
@@ -253,7 +253,7 @@ async def test_get_workspace_tab_unknown_case_returns_empty(analysis_app: FastAP
 async def test_get_workspace_tab_invalid_tab_key(analysis_app: FastAPI) -> None:
     """GET /cases/{case_id}/workspace/{tab_key} should reject invalid tab keys."""
     async def mock_require_authenticated():
-        from shared.identity.context import RequestContext
+        from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",
@@ -272,7 +272,7 @@ async def test_get_workspace_tab_invalid_tab_key(analysis_app: FastAPI) -> None:
 async def test_get_workspace_tab_all_valid_tabs(analysis_app: FastAPI) -> None:
     """GET /cases/{case_id}/workspace/{tab_key} should accept all valid tab keys."""
     async def mock_require_authenticated():
-        from shared.identity.context import RequestContext
+        from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",
@@ -296,7 +296,7 @@ async def test_get_workspace_tab_all_valid_tabs(analysis_app: FastAPI) -> None:
 async def test_update_workspace_tab_persists_data(analysis_app: FastAPI) -> None:
     """PUT /cases/{case_id}/workspace/{tab_key} should persist tab data and make it retrievable."""
     async def mock_require_authenticated():
-        from shared.identity.context import RequestContext
+        from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",

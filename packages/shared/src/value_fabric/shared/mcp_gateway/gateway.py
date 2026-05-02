@@ -389,7 +389,11 @@ class MCPGateway:
         """
         try:
             # Import audit emitter if available
-            from shared.audit import emit_audit_event, AuditAction, AuditOutcome
+            from value_fabric.shared.audit import (
+                AuditAction,
+                AuditOutcome,
+                emit_audit_event,
+            )
             
             await emit_audit_event(
                 action=AuditAction.TOOL_INVOCATION,

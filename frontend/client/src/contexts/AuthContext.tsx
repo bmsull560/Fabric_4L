@@ -13,6 +13,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useUserTierStore } from '@/stores/userTierStore';
+import { useAccountContextStore } from '@/stores/accountContextStore';
 import { createFeatureLogger } from '@/lib/telemetry';
 import { authClient } from '../services/authClient';
 import { sessionService } from '../services/sessionService';
@@ -300,23 +301,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Development bypass — allows instant authentication for testing
-   * Only available in development environment
+   * Development bypass — allows instant authentication for testing.
+   * ONLY available in local/dev/demo mode. Fail-closed in production.
    */
   const devBypass = useCallback(() => {
-    if (process.env.NODE_ENV !== 'development') {
-      log.warn('devBypass is only available in development mode', {
+    const nodeEnv = process.env.NODE_ENV;
+    const appEnv = (import.meta.env?.VITE_APP_ENV ?? import.meta.env?.APP_ENV ?? nodeEnv) as string | undefined;
+    const bypassFlag = (import.meta.env?.VITE_AUTH_BYPASS ?? 'false') as string;
+
+    const isProductionLike =
+      nodeEnv === 'production' ||
+      appEnv === 'production' ||
+      appEnv === 'prod';
+
+    const isBypassExplicitlyEnabled = bypassFlag === 'true' || bypassFlag === '1';
+
+    if (isProductionLike) {
+      log.error('Auth bypass blocked in production environment', {
         authPhase: 'dev-bypass',
+        nodeEnv,
+        appEnv,
+        bypassFlag,
+      });
+      throw new AuthError(
+        'Auth bypass is disabled in production.',
+        AuthErrorCategory.AUTHENTICATION
+      );
+    }
+
+    if (nodeEnv !== 'development' && !isBypassExplicitlyEnabled) {
+      log.warn('devBypass is only available in development mode unless VITE_AUTH_BYPASS is explicitly enabled', {
+        authPhase: 'dev-bypass',
+        nodeEnv,
+        bypassFlag,
       });
       return;
     }
     // Set mock authenticated state for development testing
     const mockUser: UserInfo = {
-      id: 'dev-user-123',
-      email: 'dev@example.com',
+      id: 'sarah-chen-001',
+      email: 'sarah.chen@axiomrobotics.com',
       role: 'admin',
-      tenantId: 'dev-tenant',
-      tenantSlug: 'dev',
+      tenantId: 'demo-acme',
+      tenantSlug: 'acme',
     };
     // Generate a valid JWT-format token so refreshToken() doesn't clear it
     const payload = {
@@ -326,7 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenant_id: mockUser.tenantId,
     };
     const mockToken = `header.${btoa(JSON.stringify(payload))}.signature`;
-    sessionService.persistSession(mockToken, mockUser, 'dev-tenant');
+    sessionService.persistSession(mockToken, mockUser, 'demo-acme');
     setAuthState({
       state: 'authenticated',
       user: mockUser,
@@ -335,6 +362,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     // Synchronize role with userTierStore
     useUserTierStore.getState().setUserRole('admin');
+    // Set demo account context for account-scoped routes
+    useAccountContextStore.getState().setSelectedAccountId('axiom-robotics');
   }, []);
 
   const value: AuthContextType = {

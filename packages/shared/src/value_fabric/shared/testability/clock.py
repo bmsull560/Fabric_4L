@@ -9,7 +9,7 @@ production or ``FixedClock`` / ``SteppingClock`` in tests.
 
 Example — production wiring::
 
-    from shared.testability import Clock, SystemClock
+    from value_fabric.shared.testability import Clock, SystemClock
 
     class AuditLogger:
         def __init__(self, clock: Clock = SystemClock()) -> None:
@@ -20,7 +20,7 @@ Example — production wiring::
 
 Example — test with frozen time::
 
-    from shared.testability import FixedClock
+    from value_fabric.shared.testability import FixedClock
 
     frozen = FixedClock(datetime(2025, 1, 1, tzinfo=timezone.utc))
     logger = AuditLogger(clock=frozen)

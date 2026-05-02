@@ -10,11 +10,14 @@
     "./routing": "./src/typescript/routing.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit",
-    "contract:test": "pytest src/python/canonical/test_contract_invariants.py -v --tb=short && npm run check"
+    "check": "npm run contract:test:ts",
+    "contract:test:python": "pytest src/python/canonical -v --tb=short",
+    "contract:test:ts": "tsc -p tsconfig.json --noEmit",
+    "contract:test:diagnostics": "node ./scripts/run-diagnostic-contract-tests.mjs",
+    "contract:test": "npm run contract:test:python && npm run contract:test:ts && npm run contract:test:diagnostics"
   },
   "devDependencies": {
-    "typescript": "^5.6.0"
+    "typescript": "5.6.3"
   },
   "license": "MIT"
 }

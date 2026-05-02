@@ -64,7 +64,10 @@ export function PageState<T>({
     );
   }
 
-  const emptyCheck = isEmpty ? isEmpty(data!) : !data || (Array.isArray(data) && data.length === 0);
+  const hasData = data !== undefined && data !== null;
+  const emptyCheck = isEmpty
+    ? hasData ? isEmpty(data) : true
+    : !hasData || (Array.isArray(data) && data.length === 0);
   
   if (emptyCheck) {
     return (

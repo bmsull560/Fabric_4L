@@ -226,7 +226,7 @@ class TestManifestVerifier:
     @pytest.fixture
     def manifest_signer(self, sample_rsa_keypair):
         """Create manifest signer with test private key."""
-        from shared.mcp_gateway.manifest import ManifestSigner
+        from value_fabric.shared.mcp_gateway.manifest import ManifestSigner
         return ManifestSigner(sample_rsa_keypair["private"])
     
     def test_verify_manifest_succeeds_with_valid_signature(self, manifest_signer, manifest_verifier, sample_tool_manifest):
@@ -287,7 +287,7 @@ class TestManifestVerifier:
 
     def test_verify_manifest_supports_kid_key_lookup(self, sample_rsa_keypair, manifest_verifier_with_kid, sample_tool_manifest):
         """Verification resolves public key by kid from trusted key map."""
-        from shared.mcp_gateway.manifest import ManifestSigner
+        from value_fabric.shared.mcp_gateway.manifest import ManifestSigner
 
         signer = ManifestSigner(sample_rsa_keypair["private"], key_id="primary")
         signed_manifest = signer.sign_manifest(sample_tool_manifest)
@@ -296,7 +296,7 @@ class TestManifestVerifier:
 
     def test_verify_manifest_fails_when_kid_missing_in_trust_store(self, sample_rsa_keypair, sample_tool_manifest):
         """Verification fails closed when token kid is unknown."""
-        from shared.mcp_gateway.manifest import ManifestSigner
+        from value_fabric.shared.mcp_gateway.manifest import ManifestSigner
 
         signer = ManifestSigner(sample_rsa_keypair["private"], key_id="old-key")
         signed_manifest = signer.sign_manifest(sample_tool_manifest)
@@ -418,7 +418,7 @@ class TestMCPGatewayIntegration:
     @pytest.mark.skip(reason="Requires full integration setup - run in integration environment")
     async def test_invoke_tool_full_security_flow_success(self, gateway, tenant_id, sample_rsa_keypair):
         """Complete security flow: auth → authorize → verify → exchange → execute → audit."""
-        from shared.mcp_gateway.manifest import ManifestSigner
+        from value_fabric.shared.mcp_gateway.manifest import ManifestSigner
         
         # Setup: Register and sign a tool
         manifest = ToolManifest(
@@ -500,7 +500,7 @@ class TestMCPGatewayIntegration:
     @pytest.mark.skip(reason="Requires full integration setup - run in integration environment")
     async def test_invoke_tool_emits_audit_event(self, gateway, tenant_id, sample_rsa_keypair):
         """Tool invocation emits audit event for security trail."""
-        from shared.mcp_gateway.manifest import ManifestSigner
+        from value_fabric.shared.mcp_gateway.manifest import ManifestSigner
         
         manifest = ToolManifest(
             tool_name="audited_tool",
