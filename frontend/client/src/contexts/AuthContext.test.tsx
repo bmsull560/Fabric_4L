@@ -89,7 +89,7 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('token')).toHaveTextContent('no-token');
     });
 
-    it.skip('restores auth state from localStorage on mount', async () => {
+    it('restores auth state from localStorage on mount', async () => {
       const userInfo: UserInfo = {
         id: 'user-123',
         email: 'restored@example.com',
@@ -482,7 +482,7 @@ describe('AuthProvider', () => {
   });
 
   describe('devBypass', () => {
-    it.skip('creates mock auth state in development mode', async () => {
+    it('creates mock auth state in development mode', async () => {
       // Component that exposes devBypass for testing
       function DevBypassTrigger() {
         const auth = useAuthContext();

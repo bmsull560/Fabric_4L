@@ -142,8 +142,8 @@ run_target "lint"
 
 # ── Step 3: Remaining gates from policy profile ──────────────────────────────
 for gate in $GATES; do
-    if [ "$gate" = "policy" ] || [ "$gate" = "lint" ] || [ "$gate" = "summary" ]; then
-        continue  # Already run, or summary rendered at the end
+    if [ "$gate" = "policy" ] || [ "$gate" = "lint" ]; then
+        continue  # Already run
     fi
     run_target "$gate"
 done
@@ -349,15 +349,5 @@ cat > "$ARTIFACT_DIR/gate-result.json" <<EOF
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
-
-# ── Step 6: Render summary (after gate-result.json is written) ────────────────
-echo "→ [summary] gates-render-summary ..." | tee -a "$LOG_DIR/release-gate.log"
-if bash "$ROOT/scripts/render-release-summary.sh" > "${LOG_DIR}/gates-render-summary.log" 2>&1; then
-    echo "   ✅ summary" | tee -a "$LOG_DIR/release-gate.log"
-    GATE_STATUS[summary]="PASS"
-else
-    echo "   ❌ summary (see ${LOG_DIR}/gates-render-summary.log)" | tee -a "$LOG_DIR/release-gate.log"
-    GATE_STATUS[summary]="FAIL"
-fi
 
 exit $HARD_FAIL

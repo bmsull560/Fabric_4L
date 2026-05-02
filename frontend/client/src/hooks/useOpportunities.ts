@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiClient, ApiError } from '@/api/client';
 
 export type OpportunityStatus = 'new' | 'investigating' | 'qualified' | 'converted' | 'dismissed';
 export type ImpactLevel = 'high' | 'medium' | 'low';
@@ -50,20 +50,37 @@ export class OpportunitiesApiError extends Error {
   }
 }
 
+function isApiError(error: unknown): error is ApiError {
+  return error instanceof Error && error.name === 'ApiError' && 'statusCode' in error;
+}
+
 async function fetchOpportunities(): Promise<OpportunitiesResponse> {
-  const response = await apiClient.get('l4', API_ENDPOINT);
+  try {
+    const response = await apiClient.get('l4', API_ENDPOINT);
 
-  if (!response.data || typeof response.data !== 'object') {
-    throw new OpportunitiesApiError('Invalid response format from API');
+    if (!response.data || typeof response.data !== 'object') {
+      throw new OpportunitiesApiError('Invalid response format from API');
+    }
+
+    // Validate required fields
+    const data = response.data as OpportunitiesResponse;
+    if (!Array.isArray(data.opportunities)) {
+      throw new OpportunitiesApiError('Missing or invalid opportunities array');
+    }
+
+    return data;
+  } catch (error) {
+    // Wrap ApiError in OpportunitiesApiError for consistent error handling
+    if (isApiError(error)) {
+      throw new OpportunitiesApiError(
+        error.message,
+        error.statusCode,
+        { traceId: error.traceId, errorCode: error.errorCode }
+      );
+    }
+    // Re-throw OpportunitiesApiError or other errors
+    throw error;
   }
-
-  // Validate required fields
-  const data = response.data as OpportunitiesResponse;
-  if (!Array.isArray(data.opportunities)) {
-    throw new OpportunitiesApiError('Missing or invalid opportunities array');
-  }
-
-  return data;
 }
 
 export function useOpportunities() {

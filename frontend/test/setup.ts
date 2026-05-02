@@ -57,6 +57,7 @@ Object.defineProperty(window, 'location', {
     pathname: '/',
     search: '',
     hash: '',
+    replace: vi.fn(),
   },
 });
 

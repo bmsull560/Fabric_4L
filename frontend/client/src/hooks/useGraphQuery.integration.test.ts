@@ -153,7 +153,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
     });
   });
 
-  describe.skip('authentication/authorization matrix', () => {
+  describe('authentication/authorization matrix', () => {
     it.each([
       ['admin', true],
       ['analyst', true],

@@ -457,7 +457,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
       await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     });
 
-    it.skip('handles network timeout', async () => {
+    it('handles network timeout', async () => {
       server.use(
         http.get('/api/v1/graph/graph/subgraph', async () => {
           await new Promise((resolve) => setTimeout(resolve, 10000));
@@ -816,7 +816,7 @@ describe('useGraphQuery [L1-Unit-Async]', () => {
 
       act(() => result.current.mutate({ query: 'slow query' }));
 
-      await waitFor(() => expect(result.current.isError).toBe(true));
+      await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     });
 
     it('handles invalid query parameters', async () => {

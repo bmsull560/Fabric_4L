@@ -43,7 +43,7 @@ describe('useGraphQuery', () => {
     expect(result.current.data?.confidence_score).toBeGreaterThan(0);
   });
 
-  it.skip('handles query errors', async () => {
+  it('handles query errors', async () => {
     // Skipped: apiClient throws ApiError on HTTP errors before mutation error state is set.
     // Override handler for this test
     server.use(

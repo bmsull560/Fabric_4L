@@ -345,7 +345,7 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     expect(settingsResult.current.data?.tenant_name).toBe('Acme Corp');
   });
 
-  it.skip('retry path works after transient failure', async () => {
+  it('retry path works after transient failure', async () => {
     let failCount = 1; // First call fails, second succeeds
     server.use(
       http.patch('/api/v1/agents/tenant/settings', () => {

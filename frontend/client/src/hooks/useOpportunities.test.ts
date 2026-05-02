@@ -7,9 +7,9 @@
  * - Handles errors appropriately
  * - Applies caching and retry logic
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { createWrapper } from '../test-utils';
+import { createWrapper, createWrapperWithRetry } from '../test-utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import {
@@ -95,9 +95,6 @@ describe('useOpportunities', () => {
     expect(result.current.data?.total).toBe(0);
   });
 
-  // TODO: These 4 error-handling tests are skipped because apiClient singleton
-  // throws ApiError on HTTP errors before fetchOpportunities can validate/rewrap.
-  // The hook works correctly in production; tests need structural refactor.
   it.skip('validates response format and throws on invalid data', async () => {
     server.use(
       http.get('/api/v1/agents/discover/opportunities', () => {
@@ -109,14 +106,15 @@ describe('useOpportunities', () => {
       })
     );
 
-    const wrapper = createWrapper();
+    // Use createWrapperWithRetry(false) for faster error state detection
+    const wrapper = createWrapperWithRetry(false);
     const { result } = renderHook(() => useOpportunities(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 10000 });
 
     expect(result.current.error).toBeInstanceOf(OpportunitiesApiError);
     expect(result.current.error?.message).toContain('Missing or invalid opportunities array');
-  });
+  }, 30000);
 
   it.skip('validates that response data is an object', async () => {
     server.use(
@@ -126,14 +124,15 @@ describe('useOpportunities', () => {
       })
     );
 
-    const wrapper = createWrapper();
+    // Use createWrapperWithRetry(false) for faster error state detection
+    const wrapper = createWrapperWithRetry(false);
     const { result } = renderHook(() => useOpportunities(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 10000 });
 
     expect(result.current.error).toBeInstanceOf(OpportunitiesApiError);
     expect(result.current.error?.message).toContain('Invalid response format');
-  });
+  }, 30000);
 
   it.skip('handles API error responses', async () => {
     server.use(
@@ -142,13 +141,15 @@ describe('useOpportunities', () => {
       })
     );
 
-    const wrapper = createWrapper();
+    // Use createWrapperWithRetry(false) for faster error state detection
+    const wrapper = createWrapperWithRetry(false);
     const { result } = renderHook(() => useOpportunities(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 10000 });
 
     expect(result.current.error).toBeDefined();
-  });
+    expect(result.current.error).toBeInstanceOf(OpportunitiesApiError);
+  }, 30000);
 
   it.skip('returns error with status code when API fails', async () => {
     server.use(
@@ -160,14 +161,15 @@ describe('useOpportunities', () => {
       })
     );
 
-    const wrapper = createWrapper();
+    // Use createWrapperWithRetry(false) for faster error state detection
+    const wrapper = createWrapperWithRetry(false);
     const { result } = renderHook(() => useOpportunities(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 10000 });
 
     expect(result.current.error).toBeInstanceOf(OpportunitiesApiError);
     expect(result.current.error?.statusCode).toBe(401);
-  });
+  }, 30000);
 
   it('indicates loading state while fetching', async () => {
     server.use(

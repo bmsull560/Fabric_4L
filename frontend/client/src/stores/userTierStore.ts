@@ -317,6 +317,25 @@ const ROUTE_TIER_MAP: Record<string, UserTier> = {
   '/settings/system/billing/payments': 'admin',
 
   // ═══════════════════════════════════════════════════════════════
+  // MAIN NAVIGATION — 7-Domain Workspace Routes
+  // ═══════════════════════════════════════════════════════════════
+
+  '/intelligence': 'standard',
+  '/hypothesis': 'standard',
+  '/drivers': 'standard',
+  '/calculator': 'standard',
+  '/value-case': 'standard',
+  '/realization': 'standard',
+
+  // Account-scoped workspace routes (for prefix matching)
+  '/intelligence/:accountId': 'standard',
+  '/hypothesis/:accountId': 'standard',
+  '/drivers/:accountId': 'standard',
+  '/calculator/:accountId': 'standard',
+  '/value-case/:accountId': 'standard',
+  '/realization/:accountId': 'standard',
+
+  // ═══════════════════════════════════════════════════════════════
   // LEGACY REDIRECTS (maintain for backward compatibility)
   // ═══════════════════════════════════════════════════════════════
   '/library': 'standard',

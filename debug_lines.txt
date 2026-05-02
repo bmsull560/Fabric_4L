@@ -1,0 +1,20 @@
+141: run_target "lint"
+142: 
+143: # ── Step 3: Remaining gates from policy profile ──────────────────────────────
+144: for gate in $GATES; do
+145:     if [ "$gate" = "policy" ] || [ "$gate" = "lint" ] || [ "$gate" = "summary" ]; then
+146:         continue  # Already run, or summary rendered at the end
+147:     fi
+148:     run_target "$gate"
+149: done
+150: 
+151: # ── Step 4: Negative validation checks ───────────────────────────────────────
+152: echo ""
+153: echo "→ Running negative validation checks ..."
+154: NEGATIVE_PASS=0
+155: NEGATIVE_TOTAL=0
+156: 
+157: # 4a: Broken lint must fail
+158: NEGATIVE_TOTAL=$((NEGATIVE_TOTAL + 1))
+159: if [ "${GATE_STATUS[lint]}" = "FAIL" ]; then
+160:     echo "   ✅ Negative: Broken lint correctly fails gate"

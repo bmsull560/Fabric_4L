@@ -114,7 +114,7 @@ describe('ValuePacks', () => {
       });
     });
 
-    it.skip('displays error state with retry button when API fails [FIXME: error state not rendering - implementation issue]', async () => {
+    it('displays error state with retry button when API fails [FIXME: error state not rendering - implementation issue]', async () => {
       server.use(
         http.get('/api/v1/graph/packs', () => {
           return HttpResponse.json({ error: 'Database connection failed' }, { status: 500 });
@@ -303,7 +303,7 @@ describe('ValuePacks', () => {
       expect(deployBtn.closest('button')).toBeDisabled();
     });
 
-    it.skip('displays deploy error in pack actions panel when API returns 400 [FIXME: unhandled rejection in MSW error handler]', async () => {
+    it('displays deploy error in pack actions panel when API returns 400 [FIXME: unhandled rejection in MSW error handler]', async () => {
       // Setup error response for apply endpoint
       server.use(
         http.post('/api/v1/graph/packs/:id/apply', () => {

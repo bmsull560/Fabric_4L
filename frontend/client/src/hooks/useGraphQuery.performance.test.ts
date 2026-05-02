@@ -97,7 +97,7 @@ describe('useSubgraph Performance [L4-Performance]', () => {
    * PERFORMANCE TEST 1: Small graph (< 50 nodes) should load in < 100ms
    * Target: 95th percentile < 100ms
    */
-  it.skip('loads small graph (<50 nodes) in < 100ms', async () => {
+  it('loads small graph (<50 nodes) in < 100ms', async () => {
     server.use(
       http.get('/api/v1/graph/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(25))
@@ -178,7 +178,7 @@ describe('useSubgraph Performance [L4-Performance]', () => {
   /**
    * PERFORMANCE TEST 4: Standard deviation < 10% of mean (flakiness guard)
    */
-  it.skip('has consistent timing (stdDev < 10% of mean)', async () => {
+  it('has consistent timing (stdDev < 10% of mean)', async () => {
     server.use(
       http.get('/api/v1/graph/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(100))
@@ -405,7 +405,7 @@ describe('useGraphQuery Mutation Performance [L4-Performance]', () => {
 // ============================================================================
 
 describe('Performance Baseline Summary [L4-Performance]', () => {
-  it.skip('generates baseline report', async () => {
+  it('generates baseline report', async () => {
     const benchmarks: Record<string, { mean: number; p95: number; target: number }> = {};
 
     // Small graph

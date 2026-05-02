@@ -123,7 +123,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
    * PROPERTY 1: "For any valid subgraph response, useSubgraph returns
    * data with all required fields present and properly typed"
    */
-  it.skip('property: response always contains required fields', async () => {
+  it('property: response always contains required fields', async () => {
     await propertyTest('required fields present', 50, async () => {
       const mockResponse = generateSubgraphResponse();
 
@@ -224,7 +224,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
   /**
    * PROPERTY 4: "Density calculation is always in valid range [0, 1]"
    */
-  it.skip('property: density is always valid [0, 1]', async () => {
+  it('property: density is always valid [0, 1]', async () => {
     await propertyTest('density range', 50, async () => {
       const response = generateSubgraphResponse(randomInt(1, 100));
 
@@ -249,7 +249,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
   /**
    * PROPERTY 5: "Empty result is handled gracefully"
    */
-  it.skip('property: empty result is valid', async () => {
+  it('property: empty result is valid', async () => {
     await propertyTest('empty result handling', 10, async () => {
       server.use(
         http.get('/api/v1/graph/graph/subgraph', () =>

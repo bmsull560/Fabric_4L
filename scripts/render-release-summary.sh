@@ -44,17 +44,17 @@ NEGATIVE_TOTAL=0
 
 GATE_RESULT_REL="artifacts/release/gate-result.json"
 if [ -s "$GATE_RESULT_REL" ]; then
-    FINAL_DECISION="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('decision','INCONCLUSIVE'))" 2>/dev/null || echo 'INCONCLUSIVE')"
-    FAIL_REASONS="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('fail_reasons',''))" 2>/dev/null || echo '')"
-    BLOCKING_PASS="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('blocking_pass',0))" 2>/dev/null || echo 0)"
-    BLOCKING_TOTAL="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('blocking_total',0))" 2>/dev/null || echo 0)"
-    ADVISORY_PASS="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('advisory_pass',0))" 2>/dev/null || echo 0)"
-    ADVISORY_TOTAL="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('advisory_total',0))" 2>/dev/null || echo 0)"
-    ARTIFACT_PASS="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('artifact_pass',0))" 2>/dev/null || echo 0)"
-    ARTIFACT_TOTAL="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('artifact_total',0))" 2>/dev/null || echo 0)"
-    PLACEHOLDER_FAIL="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('placeholder_fail',0))" 2>/dev/null || echo 0)"
-    NEGATIVE_PASS="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('negative_pass',0))" 2>/dev/null || echo 0)"
-    NEGATIVE_TOTAL="$( -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('negative_total',0))" 2>/dev/null || echo 0)"
+    FINAL_DECISION="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('decision','INCONCLUSIVE'))" 2>/dev/null || echo 'INCONCLUSIVE')"
+    FAIL_REASONS="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('fail_reasons',''))" 2>/dev/null || echo '')"
+    BLOCKING_PASS="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('blocking_pass',0))" 2>/dev/null || echo 0)"
+    BLOCKING_TOTAL="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('blocking_total',0))" 2>/dev/null || echo 0)"
+    ADVISORY_PASS="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('advisory_pass',0))" 2>/dev/null || echo 0)"
+    ADVISORY_TOTAL="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('advisory_total',0))" 2>/dev/null || echo 0)"
+    ARTIFACT_PASS="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('artifact_pass',0))" 2>/dev/null || echo 0)"
+    ARTIFACT_TOTAL="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('artifact_total',0))" 2>/dev/null || echo 0)"
+    PLACEHOLDER_FAIL="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('placeholder_fail',0))" 2>/dev/null || echo 0)"
+    NEGATIVE_PASS="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('negative_pass',0))" 2>/dev/null || echo 0)"
+    NEGATIVE_TOTAL="$($_PYTHON -c "import json,sys; d=json.load(open('$GATE_RESULT_REL')); print(d.get('negative_total',0))" 2>/dev/null || echo 0)"
 elif [ -s "$LOG_DIR/release-gate.log" ]; then
     if grep -q "PASS — All blocking gates passed" "$LOG_DIR/release-gate.log"; then
         FINAL_DECISION="PASS"
