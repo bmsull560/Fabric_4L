@@ -233,6 +233,65 @@ class PrometheusMetrics:
             registry=self.config.registry,
         )
 
+        # CRM Salesforce metrics
+        # SECURITY: Uses tenant_tier instead of tenant_id to prevent cardinality explosion
+        self._metrics["crm_salesforce_connections_total"] = Gauge(
+            f"{prefix}crm_salesforce_connections_total",
+            "Total active Salesforce connections",
+            ["tenant_tier"],
+            registry=self.config.registry,
+        )
+
+        self._metrics["crm_salesforce_sync_started_total"] = Counter(
+            f"{prefix}crm_salesforce_sync_started_total",
+            "Total Salesforce sync jobs started",
+            ["tenant_tier", "sync_type"],
+            registry=self.config.registry,
+        )
+
+        self._metrics["crm_salesforce_sync_completed_total"] = Counter(
+            f"{prefix}crm_salesforce_sync_completed_total",
+            "Total Salesforce sync jobs completed",
+            ["tenant_tier", "sync_type"],
+            registry=self.config.registry,
+        )
+
+        self._metrics["crm_salesforce_sync_failed_total"] = Counter(
+            f"{prefix}crm_salesforce_sync_failed_total",
+            "Total Salesforce sync jobs failed",
+            ["tenant_tier", "error_type"],
+            registry=self.config.registry,
+        )
+
+        self._metrics["crm_salesforce_sync_duration_seconds"] = Histogram(
+            f"{prefix}crm_salesforce_sync_duration_seconds",
+            "Salesforce sync job duration",
+            ["tenant_tier", "sync_type"],
+            buckets=self.config.default_buckets,
+            registry=self.config.registry,
+        )
+
+        self._metrics["crm_salesforce_records_synced_total"] = Counter(
+            f"{prefix}crm_salesforce_records_synced_total",
+            "Total Salesforce records synced",
+            ["tenant_tier", "record_type"],
+            registry=self.config.registry,
+        )
+
+        self._metrics["crm_salesforce_token_refresh_failed_total"] = Counter(
+            f"{prefix}crm_salesforce_token_refresh_failed_total",
+            "Total Salesforce token refresh failures",
+            ["tenant_tier"],
+            registry=self.config.registry,
+        )
+
+        self._metrics["crm_salesforce_rate_limit_total"] = Counter(
+            f"{prefix}crm_salesforce_rate_limit_total",
+            "Total Salesforce API rate limit hits",
+            ["tenant_tier"],
+            registry=self.config.registry,
+        )
+
     def increment_requests_total(self, method: str, endpoint: str, status_code: int) -> None:
         if self.config.enabled:
             self._metrics["requests_total"].labels(
@@ -342,6 +401,72 @@ class PrometheusMetrics:
         if self.config.enabled:
             tenant_tier = _derive_tenant_tier(tenant_id)
             self._metrics["formula_approval_pending"].labels(tenant_tier=tenant_tier).dec()
+
+    # ------------------------------------------------------------------
+    # CRM Salesforce metrics helpers
+    # ------------------------------------------------------------------
+
+    def set_crm_salesforce_connections(self, tenant_id: str, count: int) -> None:
+        """Set active Salesforce connection count with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_connections_total"].labels(tenant_tier=tenant_tier).set(count)
+
+    def increment_crm_salesforce_sync_started(self, tenant_id: str, sync_type: str = "incremental") -> None:
+        """Record Salesforce sync start with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_sync_started_total"].labels(
+                tenant_tier=tenant_tier, sync_type=sync_type
+            ).inc()
+
+    def increment_crm_salesforce_sync_completed(self, tenant_id: str, sync_type: str = "incremental") -> None:
+        """Record Salesforce sync completion with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_sync_completed_total"].labels(
+                tenant_tier=tenant_tier, sync_type=sync_type
+            ).inc()
+
+    def increment_crm_salesforce_sync_failed(self, tenant_id: str, error_type: str = "unknown") -> None:
+        """Record Salesforce sync failure with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_sync_failed_total"].labels(
+                tenant_tier=tenant_tier, error_type=error_type
+            ).inc()
+
+    def observe_crm_salesforce_sync_duration(self, tenant_id: str, duration: float, sync_type: str = "incremental") -> None:
+        """Record Salesforce sync duration with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_sync_duration_seconds"].labels(
+                tenant_tier=tenant_tier, sync_type=sync_type
+            ).observe(duration)
+
+    def increment_crm_salesforce_records_synced(self, tenant_id: str, record_type: str = "account", count: int = 1) -> None:
+        """Record Salesforce records synced with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_records_synced_total"].labels(
+                tenant_tier=tenant_tier, record_type=record_type
+            ).inc(count)
+
+    def increment_crm_salesforce_token_refresh_failed(self, tenant_id: str) -> None:
+        """Record Salesforce token refresh failure with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_token_refresh_failed_total"].labels(
+                tenant_tier=tenant_tier
+            ).inc()
+
+    def increment_crm_salesforce_rate_limit(self, tenant_id: str) -> None:
+        """Record Salesforce API rate limit hit with cardinality-limited tenant_tier."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["crm_salesforce_rate_limit_total"].labels(
+                tenant_tier=tenant_tier
+            ).inc()
 
     def get_metrics(self) -> str:
         """Get Prometheus metrics output."""

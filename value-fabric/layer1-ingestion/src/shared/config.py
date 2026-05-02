@@ -1,13 +1,13 @@
 """Configuration management for Layer 1 Ingestion Service."""
 
 import os
-from typing import List
 
 from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from shared.secrets import load_infisical_secrets
+
 try:
     load_infisical_secrets()
 except Exception:
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # JWT and Security
     jwt_secret: str = Field(default="changeme", description="JWT signing secret")
-    cors_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
+    cors_origins: list[str] = Field(default=["*"], description="CORS allowed origins")
 
     @field_validator("jwt_secret")
     @classmethod
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins")
     @classmethod
-    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
         """Validate CORS origins are secure."""
         if os.getenv("ENVIRONMENT") == "production":
             if "*" in v:

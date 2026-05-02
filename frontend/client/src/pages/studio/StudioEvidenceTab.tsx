@@ -20,6 +20,8 @@ import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import {
   useCaseStudies,
   useEvidenceSearch,
@@ -113,10 +115,13 @@ export default function StudioEvidenceTab() {
     new Set(studies.map((s: CaseStudy) => s.industry).filter(Boolean))
   ) as string[];
 
-  if (!account)
-    return (
-      <div className="p-6 text-sm text-muted-foreground">Loading account…</div>
-    );
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (!account) {
+    return <CenteredLoader message="Loading account…" />;
+  }
 
   return (
     <ValueStudioShellComponent

@@ -23,6 +23,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException,
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
+from shared.identity.api_key_stub import reject_api_key_unsupported
+from shared.identity.middleware import GovernanceMiddleware
+from shared.identity.rate_limiter import RedisRateLimiter
+from shared.identity.vault_check import is_vault_healthy
+from shared.models.typed_dict import TypedDictModel
+
+# Hard imports - fail fast if security components unavailable
+from shared.security import SecurityConfig, add_security_middleware
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -56,14 +64,6 @@ from ..shared.models import (
     create_scraping_target,
 )
 from ..shared.tasks import cleanup_old_content, process_scraping_job
-from shared.models.typed_dict import TypedDictModel
-
-# Hard imports - fail fast if security components unavailable
-from shared.security import add_security_middleware, SecurityConfig
-from shared.identity.api_key_stub import reject_api_key_unsupported
-from shared.identity.middleware import GovernanceMiddleware
-from shared.identity.rate_limiter import RedisRateLimiter
-from shared.identity.vault_check import is_vault_healthy
 
 # Configure logging
 structlog.configure(
@@ -1493,6 +1493,7 @@ async def get_domain_fallback_stats(
     domain, helping identify SPA-heavy sites or routing issues.
     """
     from datetime import timedelta
+
     from ..crawler.decision_store import CrawlDecisionRepository
 
     # Verify org has crawled this domain (basic authorization check)

@@ -5,6 +5,8 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
@@ -24,7 +26,11 @@ export default function StakeholdersTab() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "stakeholders", accountName: account?.name ?? "Account" });
   const stakeholders = data?.stakeholders ?? [];
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading stakeholders…</div>;
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (isLoading) return <CenteredLoader message="Loading stakeholders…" />;
   if (error) return <div className="p-6 text-sm text-destructive">Failed to load stakeholders.</div>;
 
   return <IntelligenceShell account={{ accountName: account?.name ?? "Account", industry: account?.industry ?? "Unknown", revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="stakeholders" detailContent={selectedStakeholder ? <div><h3 className="text-sm font-bold">{selectedStakeholder.name}</h3><p className="text-xs text-muted-foreground">{selectedStakeholder.title}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}>

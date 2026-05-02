@@ -11,19 +11,19 @@ Tracked: Risk #13 in correctness hardening protocol.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
-import json
 
 import structlog
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..shared.database import get_db_session
 from ..shared.models import CrawlDecision as CrawlDecisionModel
-from shared.models.typed_dict import TypedDictModel
 
 
 class CrawlDecisionRecord_to_dictResult(TypedDictModel):

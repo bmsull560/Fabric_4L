@@ -21,6 +21,8 @@ import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import {
   useCanonicalCaseId,
   usePersistWorkspaceTab,
@@ -196,20 +198,28 @@ export default function NarrativeTab() {
     );
   };
 
-  if (isLoading || generateMutation.isPending)
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (isLoading || generateMutation.isPending) {
     return (
-      <div className="p-6 text-sm text-muted-foreground">
-        {generateMutation.isPending
-          ? "Generating narratives..."
-          : "Loading narratives…"}
-      </div>
+      <CenteredLoader
+        message={
+          generateMutation.isPending
+            ? "Generating narratives..."
+            : "Loading narratives…"
+        }
+      />
     );
-  if (error || generateMutation.isError)
+  }
+  if (error || generateMutation.isError) {
     return (
       <div className="p-6 text-sm text-destructive">
         Failed to load narratives.
       </div>
     );
+  }
 
   const readyCount = narratives.filter((n) => n.status === "ready").length;
   const selectedStatus = selectedNarrative

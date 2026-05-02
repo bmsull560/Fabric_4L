@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 import structlog
+from shared.models.typed_dict import TypedDictModel
 
 from .base import (
     AdapterConfig,
@@ -25,7 +26,6 @@ from .base import (
     FilingType,
     SearchResult,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class SECEdgarAdapter__fetch_xbrl_dataResult(TypedDictModel):

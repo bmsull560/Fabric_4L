@@ -19,8 +19,9 @@ try:
 except ImportError:
     PRESIDIO_AVAILABLE = False
 
-from ..shared.config import settings
 from shared.models.typed_dict import TypedDictModel
+
+from ..shared.config import settings
 
 
 class PIIEntity_to_dictResult(TypedDictModel):

@@ -8,6 +8,7 @@ with rate limiting, deduplication, and error handling.
 import asyncio
 import logging
 import os
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -40,6 +41,51 @@ logger = logging.getLogger(__name__)
 # Module-level constants for configuration
 DEFAULT_SYNC_BATCH_SIZE = int(os.getenv("CRM_SYNC_BATCH_SIZE", "100"))
 DEFAULT_SYNC_INTERVAL_MINUTES = int(os.getenv("CRM_SYNC_INTERVAL_MINUTES", "60"))
+
+# Simple in-memory metrics counters (replace with Prometheus in production)
+_metrics: dict[str, int] = {
+    "crm_salesforce_sync_started_total": 0,
+    "crm_salesforce_sync_completed_total": 0,
+    "crm_salesforce_sync_failed_total": 0,
+    "crm_salesforce_records_synced_total": 0,
+    "crm_salesforce_token_refresh_failed_total": 0,
+    "crm_salesforce_rate_limit_total": 0,
+}
+
+
+def _increment_metric(name: str, value: int = 1) -> None:
+    """Increment an internal metric counter."""
+    _metrics[name] = _metrics.get(name, 0) + value
+
+
+def _log_sync_event(
+    event: str,
+    tenant_id: str,
+    provider: str,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    """Emit a structured log entry for CRM sync observability.
+
+    Secrets are never logged. Only metadata, counts, and status.
+    """
+    payload = {
+        "event": event,
+        "tenant_id": tenant_id,
+        "provider": provider,
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+    if extra:
+        payload.update(extra)
+    logger.info("crm_sync_event: %s", payload)
+
+
+def _redacted_error(error: str) -> str:
+    """Remove potential secrets from error strings before logging."""
+    redacted = error
+    for pattern in ["Bearer ", "access_token", "refresh_token", "api_key"]:
+        if pattern in redacted.lower():
+            redacted = f"[REDACTED: contains {pattern}]"
+    return redacted
 
 
 class CRMSyncService:
@@ -389,39 +435,41 @@ class CRMSyncService:
     async def _get_crm_config(self, provider: CRMProvider, tenant_id: str) -> dict[str, Any] | None:
         """Get CRM configuration from tenant integration table.
 
-        Optional fallback to environment credentials can be enabled for local dev by
-        setting ALLOW_ENV_CRM_FALLBACK=true.
+        SECURITY: Never falls back to environment variables in production.
+        Per-tenant integration config is the only authorized source.
         """
         integration_service = IntegrationService(self.db)
         integration: Integration | None = await integration_service.get_integration(
             tenant_id, provider
         )
 
-        if integration and integration.enabled:
-            decrypted = await integration_service.decrypt_credentials(integration)
-            return CRMSyncService__get_crm_configResult.model_validate({
-                "crm_type": provider.value,
-                "api_key": decrypted.get("api_key"),
-                "crm_api_key": decrypted.get("api_key"),
-                "crm_api_secret": decrypted.get("api_secret"),
-                "crm_instance_url": integration.instance_url or decrypted.get("instance_url"),
-            })
+        if not integration:
+            logger.warning("No integration configured for tenant=%s provider=%s", tenant_id, provider.value)
+            return None
 
+        if not integration.enabled:
+            logger.debug("Integration disabled for tenant=%s provider=%s", tenant_id, provider.value)
+            return None
 
-        if os.getenv("ALLOW_ENV_CRM_FALLBACK", "").lower() == "true":
-            crm_type = os.getenv("CRM_TYPE", "").lower()
-            if crm_type and crm_type != provider.value:
-                return None
-            return CRMSyncService__get_crm_configResult.model_validate({
-                "crm_type": provider.value,
-                "api_key": os.getenv("CRM_API_KEY"),
-                "crm_api_key": os.getenv("CRM_API_KEY"),
-                "crm_api_secret": os.getenv("CRM_API_SECRET"),
-                "crm_instance_url": os.getenv("CRM_INSTANCE_URL"),
-            })
+        # Attempt token refresh for Salesforce if refresh token is available
+        if provider == CRMProvider.SALESFORCE and integration.refresh_token_encrypted:
+            try:
+                await integration_service.refresh_salesforce_token(integration)
+            except Exception as e:
+                logger.warning(
+                    "Token refresh failed for tenant=%s provider=%s: %s",
+                    tenant_id, provider.value, e,
+                )
+                # Continue with potentially expired token; downstream will handle 401
 
-
-        return None
+        decrypted = await integration_service.decrypt_credentials(integration)
+        return CRMSyncService__get_crm_configResult.model_validate({
+            "crm_type": provider.value,
+            "api_key": decrypted.get("api_key"),
+            "crm_api_key": decrypted.get("api_key"),
+            "crm_api_secret": decrypted.get("api_secret"),
+            "crm_instance_url": integration.instance_url or decrypted.get("instance_url"),
+        })
 
     async def get_sync_status(
         self, provider: CRMProvider, tenant_id: str = "default"

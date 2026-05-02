@@ -5,7 +5,6 @@ reporting to the SEC. This module parses XBRL instance documents and extracts
 key financial metrics.
 """
 
-from defusedxml.ElementTree import fromstring, parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -13,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 import structlog
+from defusedxml.ElementTree import fromstring
 
 logger = structlog.get_logger()
 

@@ -11,6 +11,8 @@ import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import {
   useCanonicalCaseId,
   usePersistWorkspaceTab,
@@ -133,14 +135,20 @@ export default function ActionPlanTab() {
     }
   }, [caseId, recommendations.length, isLoading]);
 
-  if (isLoading || generateMutation.isPending)
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (isLoading || generateMutation.isPending) {
     return (
-      <div className="p-6 text-sm text-muted-foreground">
-        {generateMutation.isPending ? "Generating action plan..." : "Loading action plan…"}
-      </div>
+      <CenteredLoader
+        message={generateMutation.isPending ? "Generating action plan..." : "Loading action plan…"}
+      />
     );
-  if (error || generateMutation.isError)
+  }
+  if (error || generateMutation.isError) {
     return <div className="p-6 text-sm text-destructive">Failed to load action plan.</div>;
+  }
 
   return (
     <ValueStudioShellComponent

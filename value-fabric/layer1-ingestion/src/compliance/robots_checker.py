@@ -11,11 +11,11 @@ from urllib.parse import urljoin, urlparse
 import httpx
 import structlog
 from protego import Protego
+from shared.models.typed_dict import TypedDictModel
 
 from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import RobotsTxtCache
-from shared.models.typed_dict import TypedDictModel
 
 
 class RobotsChecker__get_robots_txtResult(TypedDictModel):

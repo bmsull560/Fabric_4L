@@ -6,16 +6,17 @@ and performance monitoring without full cost tracking implementation.
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
-import json
+
 import structlog
+from shared.models.typed_dict import TypedDictModel
 
 from .httpx_crawler import FastPathResult
 from .smart_router import QualityDecision, RoutingDecision
-from shared.models.typed_dict import TypedDictModel
 
 
 class ExecutionLogger_get_stats_for_jobResult(TypedDictModel):

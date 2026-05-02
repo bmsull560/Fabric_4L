@@ -32,6 +32,7 @@ class IntegrationStatus(str, PyEnum):
     RUNNING = "running"
     FAILED = "failed"
     PENDING = "pending"
+    DEGRADED = "degraded"  # Token expired but refreshable, or partial sync failure
 
 
 class Integration(Base):
@@ -72,8 +73,16 @@ class Integration(Base):
         LargeBinary, nullable=False
     )
 
+    # OAuth refresh token (encrypted separately for rotation/audit)
+    refresh_token_encrypted: Mapped[bytes | None] = mapped_column(
+        LargeBinary, nullable=True
+    )
+
     # Encryption key reference for credential rotation
     encryption_key_id: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # Salesforce-specific metadata
+    salesforce_org_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Configuration
     instance_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

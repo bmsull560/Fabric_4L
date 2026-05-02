@@ -5,6 +5,8 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
@@ -25,7 +27,11 @@ export default function DriversTab() {
   const drivers = data?.drivers ?? [];
   const grouped = useMemo(() => drivers.reduce<Record<string, Driver[]>>((acc, d) => { (acc[d.parentSignal] ??= []).push(d); return acc; }, {}), [drivers]);
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading drivers…</div>;
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (isLoading) return <CenteredLoader message="Loading drivers…" />;
   if (error) return <div className="p-6 text-sm text-destructive">Failed to load drivers.</div>;
 
   return <IntelligenceShell account={{ accountName: account?.name ?? "Account", industry: account?.industry ?? "Unknown", revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="drivers" detailContent={selectedDriver ? <div className="space-y-3"><h3 className="text-sm font-bold">{selectedDriver.name}</h3><p className="text-xs text-muted-foreground">{selectedDriver.parentSignal}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}>

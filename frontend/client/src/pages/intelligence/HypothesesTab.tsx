@@ -24,6 +24,8 @@ import HypothesisShell from "@/components/workspace/HypothesisShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import {
@@ -136,7 +138,7 @@ function HypothesisCard({
 
 export default function HypothesesTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const {
     data: hypothesesData,
     isLoading,
@@ -169,13 +171,12 @@ export default function HypothesesTab() {
     ? hypotheses.reduce((sum, h) => sum + h.confidence, 0) / hypotheses.length
     : 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64 gap-2 text-sm text-muted-foreground">
-        <Loader2 size={16} className="animate-spin" />
-        Loading value hypotheses…
-      </div>
-    );
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (accountLoading || isLoading) {
+    return <CenteredLoader message="Loading value hypotheses…" />;
   }
 
   if (error) {

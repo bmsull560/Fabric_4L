@@ -6,11 +6,12 @@ SPA detection and quality-gated fallback support.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
-import re
+
 from shared.models.typed_dict import TypedDictModel
 
 

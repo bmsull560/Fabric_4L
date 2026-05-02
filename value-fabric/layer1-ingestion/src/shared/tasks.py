@@ -6,8 +6,8 @@ Manages ScrapingJob lifecycle through 11 PipelineStages.
 
 import asyncio
 import hashlib
-from datetime import datetime, timedelta, timezone
-from typing import Any, TYPE_CHECKING
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import structlog
@@ -15,14 +15,16 @@ from celery import Celery, chain
 
 from ..compliance.pii_scanner import PIIScanner
 from ..compliance.robots_checker import RobotsChecker
+from ..crawler.httpx_crawler import HttpxCrawler
 from ..crawler.playwright_crawler import PlaywrightCrawler
 from ..crawler.smart_router import RouteType, SmartRouter
-from ..crawler.httpx_crawler import HttpxCrawler
 
 if TYPE_CHECKING:
     from ..crawler.httpx_crawler import FastPathResult
-from ..crawler.quality_gate import QualityGate
+from shared.models.typed_dict import TypedDictModel
+
 from ..crawler.decision_store import CrawlDecisionRecord, CrawlDecisionRepository
+from ..crawler.quality_gate import QualityGate
 from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import (
@@ -38,7 +40,6 @@ from ..shared.models import (
     ScrapingJob,
     ScrapingTarget,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class _execute_browser_pathResult(TypedDictModel):
@@ -162,7 +163,7 @@ def process_scraping_job(self, job_id: str):
 
             # Start job
             job.status = JobStatus.VALIDATING.value
-            job.started_at = datetime.now(timezone.utc)
+            job.started_at = datetime.now(UTC)
             session.commit()
 
         # Execute pipeline chain
@@ -715,7 +716,7 @@ def storage_stage(self, prev_result: dict):
             if raw_content_id:
                 raw_content = session.query(RawContent).get(UUID(raw_content_id))
                 if raw_content:
-                    extraction_started_at = datetime.now(timezone.utc)
+                    extraction_started_at = datetime.now(UTC)
                     # Create ExtractedData record
                     extracted = ExtractedData(
                         job_id=job_id,
@@ -736,7 +737,7 @@ def storage_stage(self, prev_result: dict):
                         format="JSON",
                     )
                     extracted.extraction_time_ms = int(
-                        (datetime.now(timezone.utc) - extraction_started_at).total_seconds() * 1000
+                        (datetime.now(UTC) - extraction_started_at).total_seconds() * 1000
                     )
                     session.add(extracted)
                     session.flush()
@@ -779,7 +780,7 @@ def notification_stage(prev_result: dict):
 
             # Complete job
             job.status = JobStatus.COMPLETED.value
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             job.progress_percent_complete = 100
             job.progress_stage = PipelineStage.NOTIFICATION.value
 
@@ -790,7 +791,7 @@ def notification_stage(prev_result: dict):
             target = session.query(ScrapingTarget).get(job.target_id)
             if target:
                 target.success_count += 1
-                target.last_success_at = datetime.now(timezone.utc)
+                target.last_success_at = datetime.now(UTC)
                 # Calculate average execution time
                 if job.started_at and job.completed_at:
                     duration = (job.completed_at - job.started_at).total_seconds() * 1000
@@ -827,9 +828,9 @@ def _update_stage(
     if stage_detail:
         stage_detail.status = status
         if status == "RUNNING" and not stage_detail.started_at:
-            stage_detail.started_at = datetime.now(timezone.utc)
+            stage_detail.started_at = datetime.now(UTC)
         if status in ("COMPLETED", "FAILED"):
-            stage_detail.completed_at = datetime.now(timezone.utc)
+            stage_detail.completed_at = datetime.now(UTC)
             if stage_detail.started_at:
                 stage_detail.duration_ms = int(
                     (stage_detail.completed_at - stage_detail.started_at).total_seconds() * 1000
@@ -844,7 +845,7 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
         job = session.query(ScrapingJob).get(job_id)
         if job:
             job.status = JobStatus.FAILED.value
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             session.commit()
 
         # Update stage
@@ -870,7 +871,7 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
                     target.error_count += 1
                 except TypeError:
                     target.error_count = 1
-                target.last_error_at = datetime.now(timezone.utc)
+                target.last_error_at = datetime.now(UTC)
                 session.commit()
 
 
@@ -1203,7 +1204,7 @@ def _should_fail_closed(
 @celery_app.task
 def cleanup_old_content(days: int = 30):
     """Clean up raw content older than specified days."""
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
     logger.info("Starting content cleanup", cutoff_date=cutoff_date.isoformat())
 

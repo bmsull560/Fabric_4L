@@ -149,6 +149,8 @@ class IntegrationService:
         sync_interval_minutes: int = 60,
         sync_batch_size: int = 100,
         user_id: str | None = None,
+        refresh_token: str | None = None,
+        salesforce_org_id: str | None = None,
     ) -> tuple[Integration, bool]:
         """Create or update an integration configuration.
 
@@ -161,6 +163,8 @@ class IntegrationService:
             sync_interval_minutes: Sync frequency (5-1440)
             sync_batch_size: Records per batch (10-500)
             user_id: User making the change (for audit)
+            refresh_token: OAuth refresh token (Salesforce only)
+            salesforce_org_id: Salesforce organization ID
 
         Returns:
             Tuple of (Integration, is_created) where is_created is True for new integrations
@@ -177,6 +181,13 @@ class IntegrationService:
         credentials_json = json.dumps(credentials)
         encrypted_creds = await EncryptionService.encrypt(credentials_json, key_id=DEFAULT_KEY_ID)
 
+        # Encrypt refresh token if provided
+        encrypted_refresh_token = None
+        if refresh_token:
+            encrypted_refresh_token = await EncryptionService.encrypt(
+                refresh_token, key_id=DEFAULT_KEY_ID
+            )
+
         # Check if integration exists
         existing = await self.get_integration(tenant_id, provider)
         is_update = existing is not None
@@ -190,6 +201,10 @@ class IntegrationService:
             existing.sync_interval_minutes = sync_interval_minutes
             existing.sync_batch_size = sync_batch_size
             existing.updated_by = user_id
+            if encrypted_refresh_token:
+                existing.refresh_token_encrypted = encrypted_refresh_token
+            if salesforce_org_id:
+                existing.salesforce_org_id = salesforce_org_id
             # Reset status on config change
             if not enabled:
                 existing.sync_status = IntegrationStatus.IDLE
@@ -200,8 +215,10 @@ class IntegrationService:
                 provider=provider,
                 enabled=enabled,
                 credentials_encrypted=encrypted_creds,
+                refresh_token_encrypted=encrypted_refresh_token,
                 encryption_key_id=DEFAULT_KEY_ID,
                 instance_url=instance_url,
+                salesforce_org_id=salesforce_org_id,
                 sync_interval_minutes=sync_interval_minutes,
                 sync_batch_size=sync_batch_size,
                 sync_status=IntegrationStatus.IDLE if not enabled else IntegrationStatus.PENDING,
@@ -658,3 +675,96 @@ class IntegrationService:
             integration.credentials_encrypted, integration.encryption_key_id
         )
         return json.loads(creds_json)
+
+    async def refresh_salesforce_token(self, integration: Integration) -> dict[str, str]:
+        """Refresh Salesforce OAuth access token using refresh token.
+
+        Args:
+            integration: Integration with refresh_token_encrypted
+
+        Returns:
+            Updated credentials dict with new access token
+
+        Raises:
+            IntegrationValidationError: If refresh fails
+        """
+        if not integration.refresh_token_encrypted:
+            raise IntegrationValidationError("No refresh token available for Salesforce")
+
+        try:
+            refresh_token = await EncryptionService.decrypt(
+                integration.refresh_token_encrypted, integration.encryption_key_id
+            )
+        except Exception as e:
+            raise IntegrationValidationError(f"Failed to decrypt refresh token: {e}") from e
+
+        # Salesforce OAuth token endpoint
+        instance_url = integration.instance_url or "https://login.salesforce.com"
+        token_url = f"{instance_url}/services/oauth2/token"
+
+        client_id = os.getenv("SALESFORCE_CLIENT_ID")
+        client_secret = os.getenv("SALESFORCE_CLIENT_SECRET")
+
+        if not client_id or not client_secret:
+            raise IntegrationValidationError(
+                "SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET must be configured"
+            )
+
+        import httpx
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                token_url,
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                },
+            )
+
+        if response.status_code != 200:
+            integration.sync_status = IntegrationStatus.DEGRADED
+            integration.last_error_message = f"Token refresh failed: HTTP {response.status_code}"
+            await self.db.commit()
+            raise IntegrationValidationError(
+                f"Token refresh failed: HTTP {response.status_code} - {response.text}"
+            )
+
+        token_data = response.json()
+        new_access_token = token_data.get("access_token")
+        new_instance_url = token_data.get("instance_url")
+
+        if not new_access_token:
+            raise IntegrationValidationError("Token refresh response missing access_token")
+
+        # Update credentials with new access token
+        credentials = await self.decrypt_credentials(integration)
+        credentials["api_key"] = new_access_token
+        if new_instance_url:
+            credentials["instance_url"] = new_instance_url
+            integration.instance_url = new_instance_url
+
+        credentials_json = json.dumps(credentials)
+        integration.credentials_encrypted = await EncryptionService.encrypt(
+            credentials_json, key_id=integration.encryption_key_id
+        )
+
+        # Update refresh token if rotated
+        new_refresh_token = token_data.get("refresh_token")
+        if new_refresh_token:
+            integration.refresh_token_encrypted = await EncryptionService.encrypt(
+                new_refresh_token, key_id=integration.encryption_key_id
+            )
+
+        integration.sync_status = IntegrationStatus.IDLE
+        integration.last_error_message = None
+        await self.db.commit()
+
+        logger.info(
+            "Salesforce token refreshed for tenant=%s org=%s",
+            integration.tenant_id,
+            integration.salesforce_org_id or "unknown",
+        )
+
+        return credentials

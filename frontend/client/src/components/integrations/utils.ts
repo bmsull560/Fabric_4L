@@ -1,6 +1,6 @@
 import type { Integration } from '@/hooks/useIntegrations';
 
-export type StatusType = 'idle' | 'running' | 'failed' | 'pending';
+export type StatusType = 'idle' | 'running' | 'failed' | 'pending' | 'degraded';
 
 export function getStatusBadgeClasses(status: StatusType, isConnected: boolean): string {
   if (!isConnected) {
@@ -12,6 +12,8 @@ export function getStatusBadgeClasses(status: StatusType, isConnected: boolean):
       return 'bg-red-100 text-red-700 border border-red-200';
     case 'running':
       return 'bg-amber-100 text-amber-700 border border-amber-200';
+    case 'degraded':
+      return 'bg-yellow-100 text-yellow-700 border border-yellow-200';
     default:
       return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
   }
@@ -25,6 +27,8 @@ export function getStatusText(status: StatusType, isConnected: boolean): string 
       return 'Error';
     case 'running':
       return 'Syncing...';
+    case 'degraded':
+      return 'Degraded';
     default:
       return 'Connected';
   }
@@ -38,6 +42,8 @@ export function getStatusTextColor(status: StatusType, isConnected: boolean): st
       return 'text-red-600';
     case 'running':
       return 'text-amber-600';
+    case 'degraded':
+      return 'text-yellow-600';
     default:
       return 'text-emerald-600';
   }

@@ -8,6 +8,8 @@
 import { useParams } from "react-router-dom";
 import DriverTreeShell from "@/components/workspace/DriverTreeShell";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { EvidenceTabContent } from "@/pages/intelligence/EvidenceTab";
 import AlternativesTab from "@/pages/evidence/AlternativesTab";
 import SolutionCostTab from "@/pages/evidence/SolutionCostTab";
@@ -15,7 +17,15 @@ import SolutionCostTab from "@/pages/evidence/SolutionCostTab";
 export default function DriverTreePage() {
   const params = useParams<{ accountId: string; tab?: string }>();
   const { accountId, tab = "evidence" } = params;
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
+
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (accountLoading) {
+    return <CenteredLoader message="Loading driver tree…" />;
+  }
 
   const accountName = account?.name ?? "Account";
   const industry = account?.industry ?? "Unknown";

@@ -8,9 +8,10 @@ triggering immediate sync to keep Account records fresh.
 import hashlib
 import hmac
 import logging
+import os
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, TypeAdapter
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ...database import get_db_from_context
 from ...models.account import CRMProvider
 from ...services.crm_sync_service import CRMSyncService
+from ...services.integration_service import IntegrationService
 from shared.models.typed_dict import TypedDictModel
 
 
@@ -57,6 +59,14 @@ HUBSPOT_SIGNATURE_V3_HEADER = "X-HubSpot-Signature-v3"
 # App state attribute names for webhook secrets
 SALESFORCE_WEBHOOK_SECRET_ATTR = "salesforce_webhook_secret"
 HUBSPOT_WEBHOOK_SECRET_ATTR = "hubspot_webhook_secret"
+
+# Production safety: require explicit tenant_id in webhook URLs to prevent
+# cross-tenant sync leakage. Set CRM_WEBHOOKS_REQUIRE_TENANT_ID=false only
+# for single-tenant deployments.
+_CRM_WEBHOOKS_REQUIRE_TENANT_ID = os.getenv(
+    "CRM_WEBHOOKS_REQUIRE_TENANT_ID",
+    "true" if os.getenv("ENVIRONMENT", "development").lower() == "production" else "false",
+).lower() in ("true", "1", "yes")
 
 
 # CONTRACT §2.5: Pydantic schemas for webhook payload validation
@@ -122,6 +132,7 @@ class HubSpotWebhookEvent(BaseModel):
 async def salesforce_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
+    tenant_id: str | None = Query(None, description="Tenant identifier for multi-tenant webhook routing"),
     x_salesforce_signature: str | None = Header(None, alias=SALESFORCE_SIGNATURE_HEADER),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
@@ -130,12 +141,57 @@ async def salesforce_webhook(
     Salesforce sends notifications when Accounts, Opportunities, or Contacts
     are created/updated. We trigger incremental sync for affected records.
 
+    **Production Multi-Tenancy:**
+    The `tenant_id` query parameter is required in production. Configure your
+    Salesforce outbound message URL with `?tenant_id=<your-tenant-id>`.
+    The handler verifies the tenant has an active Salesforce integration before
+    syncing to prevent cross-tenant data leakage.
+
     Headers:
         X-Salesforce-Signature: HMAC signature for verification (optional)
 
     Request Body:
         Salesforce platform event or outbound message payload
     """
+    # ------------------------------------------------------------------
+    # Tenant isolation: fail closed in production if tenant_id is missing
+    # ------------------------------------------------------------------
+    if _CRM_WEBHOOKS_REQUIRE_TENANT_ID and not tenant_id:
+        logger.warning(
+            "Salesforce webhook rejected: tenant_id query parameter is required in production. "
+            "Configure your Salesforce outbound message URL with ?tenant_id=<tenant-id>"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="tenant_id query parameter is required",
+        )
+
+    # If tenant_id provided, verify the tenant has an active Salesforce integration
+    effective_tenant_id = tenant_id or "default"
+    if tenant_id:
+        integration_service = IntegrationService(db)
+        integration = await integration_service.get_integration(
+            tenant_id, CRMProvider.SALESFORCE
+        )
+        if not integration:
+            logger.warning(
+                "Salesforce webhook rejected: no Salesforce integration for tenant=%s",
+                tenant_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No Salesforce integration configured for tenant {tenant_id}",
+            )
+        if not integration.enabled:
+            logger.warning(
+                "Salesforce webhook rejected: Salesforce integration disabled for tenant=%s",
+                tenant_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Salesforce integration is disabled for this tenant",
+            )
+
     # Read body once and cache for both signature verification and JSON parsing
     body = await request.body()
 
@@ -166,7 +222,12 @@ async def salesforce_webhook(
     record_id = _extract_salesforce_record_id(data)
     event_type = _extract_salesforce_event_type(data)
 
-    logger.info(f"Salesforce webhook: {event_type} for record {record_id}")
+    logger.info(
+        "Salesforce webhook: %s for record %s tenant=%s",
+        event_type,
+        record_id,
+        effective_tenant_id,
+    )
 
     # Trigger sync for the affected record
     sync_service = CRMSyncService(db)
@@ -175,25 +236,41 @@ async def salesforce_webhook(
         if record_id:
             # Sync specific account
             await sync_service.sync_provider(
-                CRMProvider.SALESFORCE, incremental=True, account_ids=[record_id]
+                CRMProvider.SALESFORCE,
+                tenant_id=effective_tenant_id,
+                incremental=True,
+                account_ids=[record_id],
             )
-            logger.info(f"Triggered sync for Salesforce account {record_id}")
+            logger.info(
+                "Triggered sync for Salesforce account %s tenant=%s",
+                record_id,
+                effective_tenant_id,
+            )
         else:
             # No specific record - trigger general incremental sync
-            await sync_service.sync_provider(CRMProvider.SALESFORCE, incremental=True)
-            logger.info("Triggered general Salesforce incremental sync")
+            await sync_service.sync_provider(
+                CRMProvider.SALESFORCE,
+                tenant_id=effective_tenant_id,
+                incremental=True,
+            )
+            logger.info(
+                "Triggered general Salesforce incremental sync tenant=%s",
+                effective_tenant_id,
+            )
 
         return salesforce_webhookResult.model_validate({
             "status": "accepted",
             "provider": "salesforce",
             "event_type": event_type,
             "record_id": record_id,
+            "tenant_id": effective_tenant_id,
         })
 
 
     except Exception as e:
         return _handle_webhook_error(
-            logger, e, "salesforce", record_id=record_id, event_type=event_type
+            logger, e, "salesforce", record_id=record_id, event_type=event_type,
+            request_id=getattr(request.state, "request_id", None),
         )
 
 
@@ -304,6 +381,7 @@ def _handle_webhook_error(
 async def hubspot_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
+    tenant_id: str | None = Query(None, description="Tenant identifier for multi-tenant webhook routing"),
     x_hubspot_signature: str | None = Header(None, alias=HUBSPOT_SIGNATURE_HEADER),
     x_hubspot_signature_v3: str | None = Header(None, alias=HUBSPOT_SIGNATURE_V3_HEADER),
     db: AsyncSession = Depends(get_db_from_context),
@@ -312,6 +390,12 @@ async def hubspot_webhook(
 
     HubSpot sends notifications when objects are created, updated, or deleted.
     We trigger incremental sync for affected company (account) records.
+
+    **Production Multi-Tenancy:**
+    The `tenant_id` query parameter is required in production. Configure your
+    HubSpot webhook URL with `?tenant_id=<your-tenant-id>`.
+    The handler verifies the tenant has an active HubSpot integration before
+    syncing to prevent cross-tenant data leakage.
 
     Headers:
         X-HubSpot-Signature: Legacy signature (optional)
@@ -332,6 +416,45 @@ async def hubspot_webhook(
             }
         ]
     """
+    # ------------------------------------------------------------------
+    # Tenant isolation: fail closed in production if tenant_id is missing
+    # ------------------------------------------------------------------
+    if _CRM_WEBHOOKS_REQUIRE_TENANT_ID and not tenant_id:
+        logger.warning(
+            "HubSpot webhook rejected: tenant_id query parameter is required in production. "
+            "Configure your HubSpot webhook URL with ?tenant_id=<tenant-id>"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="tenant_id query parameter is required",
+        )
+
+    # If tenant_id provided, verify the tenant has an active HubSpot integration
+    effective_tenant_id = tenant_id or "default"
+    if tenant_id:
+        integration_service = IntegrationService(db)
+        integration = await integration_service.get_integration(
+            tenant_id, CRMProvider.HUBSPOT
+        )
+        if not integration:
+            logger.warning(
+                "HubSpot webhook rejected: no HubSpot integration for tenant=%s",
+                tenant_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No HubSpot integration configured for tenant {tenant_id}",
+            )
+        if not integration.enabled:
+            logger.warning(
+                "HubSpot webhook rejected: HubSpot integration disabled for tenant=%s",
+                tenant_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="HubSpot integration is disabled for this tenant",
+            )
+
     # Read body once and cache for both signature verification and JSON parsing
     body = await request.body()
 
@@ -388,7 +511,12 @@ async def hubspot_webhook(
             # We'll trigger a general sync to pick up deal changes
             pass
 
-    logger.info(f"HubSpot webhook: {event_count} events, {len(company_ids)} unique companies")
+    logger.info(
+        "HubSpot webhook: %s events, %s unique companies tenant=%s",
+        event_count,
+        len(company_ids),
+        effective_tenant_id,
+    )
 
     # Trigger sync
     sync_service = CRMSyncService(db)
@@ -397,19 +525,34 @@ async def hubspot_webhook(
         if company_ids:
             # Sync specific companies
             await sync_service.sync_provider(
-                CRMProvider.HUBSPOT, incremental=True, account_ids=list(company_ids)
+                CRMProvider.HUBSPOT,
+                tenant_id=effective_tenant_id,
+                incremental=True,
+                account_ids=list(company_ids),
             )
-            logger.info(f"Triggered sync for {len(company_ids)} HubSpot companies")
+            logger.info(
+                "Triggered sync for %s HubSpot companies tenant=%s",
+                len(company_ids),
+                effective_tenant_id,
+            )
         else:
             # No specific companies - trigger general incremental sync
-            await sync_service.sync_provider(CRMProvider.HUBSPOT, incremental=True)
-            logger.info("Triggered general HubSpot incremental sync")
+            await sync_service.sync_provider(
+                CRMProvider.HUBSPOT,
+                tenant_id=effective_tenant_id,
+                incremental=True,
+            )
+            logger.info(
+                "Triggered general HubSpot incremental sync tenant=%s",
+                effective_tenant_id,
+            )
 
         return hubspot_webhookResult.model_validate({
             "status": "accepted",
             "provider": "hubspot",
             "events_processed": event_count,
             "companies_to_sync": len(company_ids),
+            "tenant_id": effective_tenant_id,
         })
 
 
@@ -420,6 +563,7 @@ async def hubspot_webhook(
             "hubspot",
             event_count=event_count,
             companies_to_sync=len(company_ids),
+            request_id=getattr(request.state, "request_id", None),
         )
 
 

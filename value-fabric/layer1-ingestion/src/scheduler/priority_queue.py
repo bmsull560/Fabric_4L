@@ -10,10 +10,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
+from shared.models.typed_dict import TypedDictModel
 from shared.testability import Clock, SystemClock
 
 from ..shared.config import settings
-from shared.models.typed_dict import TypedDictModel
 
 
 class PriorityScheduler_get_queue_statsResult(TypedDictModel):

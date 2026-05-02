@@ -10,6 +10,8 @@ import RealizationShell from "@/components/workspace/RealizationShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 
 export default function RealizationPage() {
@@ -23,8 +25,12 @@ export default function RealizationPage() {
     accountName: account?.name ?? "Account",
   });
 
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
   if (accountLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading account…</div>;
+    return <CenteredLoader message="Loading account…" />;
   }
 
   return (

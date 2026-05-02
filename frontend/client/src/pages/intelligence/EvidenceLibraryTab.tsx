@@ -26,6 +26,8 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import {
@@ -259,8 +261,12 @@ export default function EvidenceLibraryTab() {
       : 0;
   }, [filteredStudies]);
 
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
   if (!account) {
-    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+    return <CenteredLoader message="Loading account…" />;
   }
 
   return (

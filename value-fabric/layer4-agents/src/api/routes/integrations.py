@@ -66,6 +66,8 @@ class IntegrationCreateRequest(BaseModel):
     instance_url: str | None = Field(None, description="CRM instance URL")
     sync_interval_minutes: int = Field(60)
     sync_batch_size: int = Field(100)
+    refresh_token: str | None = Field(None, description="OAuth refresh token (Salesforce only)")
+    salesforce_org_id: str | None = Field(None, description="Salesforce organization ID")
 
     @field_validator("sync_interval_minutes")
     @classmethod
@@ -204,6 +206,8 @@ async def create_or_update_integration(
             sync_interval_minutes=request.sync_interval_minutes,
             sync_batch_size=request.sync_batch_size,
             user_id=x_user_id,
+            refresh_token=request.refresh_token,
+            salesforce_org_id=request.salesforce_org_id,
         )
 
         # Emit audit event (best-effort, log failure but don't fail request)

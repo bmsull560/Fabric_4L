@@ -18,7 +18,7 @@ export interface Integration {
   records_synced: number;
   records_updated: number;
   records_failed: number;
-  status: 'idle' | 'running' | 'failed' | 'pending';
+  status: 'idle' | 'running' | 'failed' | 'pending' | 'degraded';
   last_error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -39,6 +39,8 @@ export interface IntegrationCreateRequest {
   instance_url?: string;
   sync_interval_minutes: number;
   sync_batch_size: number;
+  refresh_token?: string;
+  salesforce_org_id?: string;
 }
 
 export interface ConnectionTestResult {

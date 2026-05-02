@@ -5,6 +5,8 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
@@ -58,7 +60,13 @@ export default function SignalsTab() {
     }
   }, [caseId, signals.length, isLoading]);
 
-  if (accountLoading || isLoading || generateMutation.isPending) return <div className="p-6 text-sm text-muted-foreground">{generateMutation.isPending ? "Generating intelligence..." : "Loading signals…"}</div>;
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (accountLoading || isLoading || generateMutation.isPending) {
+    return <CenteredLoader message={generateMutation.isPending ? "Generating intelligence..." : "Loading signals…"} />;
+  }
   if (accountError || error || generateMutation.isError) return <div className="p-6 text-sm text-destructive">Failed to load signal data.</div>;
 
   const detailContent = selectedSignal ? (

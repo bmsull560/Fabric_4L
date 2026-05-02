@@ -22,6 +22,8 @@ import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import {
   useEnrichAccount,
   useEnrichmentStatus,
@@ -138,10 +140,13 @@ export default function StudioEnrichmentTab() {
     enrichMutation.mutate({ accountId, params: force ? { force: true } : undefined });
   };
 
-  if (!account)
-    return (
-      <div className="p-6 text-sm text-muted-foreground">Loading account…</div>
-    );
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (!account) {
+    return <CenteredLoader message="Loading account…" />;
+  }
 
   return (
     <ValueStudioShellComponent

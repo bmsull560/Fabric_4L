@@ -5,6 +5,8 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
@@ -40,12 +42,17 @@ function useEvidenceTabState() {
 }
 
 export function EvidenceTabContent() {
+  const { accountId } = useParams<{ accountId: string }>();
   const {
     evidence, isLoading, error, verified, avgMatch,
     selectedEvidence, setSelectedEvidence,
   } = useEvidenceTabState();
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading evidence…</div>;
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (isLoading) return <CenteredLoader message="Loading evidence…" />;
   if (error) return <div className="p-6 text-sm text-destructive">Failed to load evidence.</div>;
 
   return (

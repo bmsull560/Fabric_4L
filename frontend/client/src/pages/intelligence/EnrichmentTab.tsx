@@ -26,6 +26,8 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+import { CenteredLoader } from "@/components/CenteredLoader";
 import { SectionCard, MetricCard, StatusBadge } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import {
@@ -192,17 +194,12 @@ export default function EnrichmentTab() {
   const techStack = enrichment?.tech_stack ?? [];
   const sourcesUsed = enrichment?.sources_used ?? [];
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64 gap-2 text-sm text-muted-foreground">
-        <Loader2 size={16} className="animate-spin" />
-        Loading account intelligence…
-      </div>
-    );
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (!account) {
-    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  if (isLoading) {
+    return <CenteredLoader message="Loading account intelligence…" />;
   }
 
   return (

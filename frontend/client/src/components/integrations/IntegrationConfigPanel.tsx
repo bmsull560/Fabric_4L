@@ -144,6 +144,11 @@ export function IntegrationConfigPanel({
                 <Loader2 size={12} className="animate-spin" />
                 Syncing...
               </>
+            ) : status === "degraded" ? (
+              <span className="flex items-center gap-1">
+                <AlertCircle size={12} />
+                Degraded
+              </span>
             ) : (
               <span className="flex items-center gap-1">
                 <CheckCircle2 size={12} />
