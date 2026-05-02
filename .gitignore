@@ -98,3 +98,19 @@ artifacts/zero-trust/
 artifacts/backup-drill/
 artifacts/performance/
 .env.dev
+
+# Additional cache directories (cleanup Phase 2)
+.ruff_cache/
+.vite/
+test-results/
+
+# Generated files directory (generated output should not be tracked)
+generated/
+
+# Root-level generated outputs (conservative cleanup)
+valuepacks_output.txt
+audit_violations.txt
+audit-output/
+
+# Windows shortcuts
+*.lnk

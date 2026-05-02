@@ -1,3 +1,5 @@
+import { getStatePath, type RouteState } from './navigationService';
+
 export type AccountWorkspace = "intelligence" | "studio";
 
 const WORKSPACE_TABS = {
@@ -45,14 +47,23 @@ export function getWorkspaceTabOrDefault(
 
 export function resolveWorkspaceRoutePath(path: string, accountId: string | null): string {
   if (!accountId) return path;
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
-  if (path.startsWith("/intelligence/")) {
-    return path.replace("/intelligence/", `/intelligence/${accountId}/`);
+
+  // Map path prefixes to route states
+  const pathMap: Record<string, RouteState> = {
+    '/intelligence': 'intelligence',
+    '/studio': 'studio',
+  };
+
+  for (const [prefix, state] of Object.entries(pathMap)) {
+    if (path === prefix) {
+      return getStatePath(state, { accountId });
+    }
+    if (path.startsWith(`${prefix}/`)) {
+      const suffix = path.slice(prefix.length + 1);
+      return getStatePath(state, { accountId }) + `/${suffix}`;
+    }
   }
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) {
-    return path.replace("/studio/", `/studio/${accountId}/`);
-  }
+
   return path;
 }
 
@@ -63,9 +74,10 @@ export function resolveAccountScopedWorkspacePath(options: {
 }): string {
   const { workspace, accountId, tab } = options;
   if (!accountId) return "/accounts";
+
   const resolvedTab = getWorkspaceTabOrDefault(workspace, tab);
-  if (workspace === "intelligence") {
-    return `/intelligence/${accountId}/${resolvedTab}`;
-  }
-  return `/${workspace}/${accountId}/${resolvedTab}`;
+  const state: RouteState = workspace === 'intelligence' ? 'intelligence' : 'studio';
+  const basePath = getStatePath(state, { accountId });
+
+  return `${basePath}/${resolvedTab}`;
 }

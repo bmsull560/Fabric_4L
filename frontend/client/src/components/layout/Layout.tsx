@@ -33,6 +33,7 @@ import { useUserTierStore, type UserTier } from "@/hooks";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { resolveWorkspaceRoutePath } from "@/navigation/accountRouting";
 import { resolveBreadcrumbs } from "@/navigation/navSchema";
+import { resolveWorkspacePath } from "@/navigation/navigationService";
 
 /* ─── Nav Data ─── */
 interface NavItem {
@@ -157,30 +158,6 @@ function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
   if (userTier === "admin") return true;
   if (userTier === "advanced") return tier !== "admin";
   return tier === "standard";
-}
-
-function resolveWorkspacePath(path: string, accountId: string | null): string {
-  if (!accountId) return path;
-  // Account-scoped workspace routes
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
-  if (path.startsWith("/intelligence/")) {
-    const tab = path.replace("/intelligence/", "");
-    return `/intelligence/${accountId}/${tab}`;
-  }
-  if (path === "/hypothesis") return `/hypothesis/${accountId}`;
-  if (path.startsWith("/hypothesis/")) return path.replace("/hypothesis/", `/hypothesis/${accountId}/`);
-  if (path === "/drivers") return `/drivers/${accountId}`;
-  if (path.startsWith("/drivers/")) return path.replace("/drivers/", `/drivers/${accountId}/`);
-  if (path === "/calculator") return `/calculator/${accountId}`;
-  if (path.startsWith("/calculator/")) return path.replace("/calculator/", `/calculator/${accountId}/`);
-  if (path === "/value-case") return `/value-case/${accountId}`;
-  if (path.startsWith("/value-case/")) return path.replace("/value-case/", `/value-case/${accountId}/`);
-  if (path === "/realization") return `/realization/${accountId}`;
-  if (path.startsWith("/realization/")) return path.replace("/realization/", `/realization/${accountId}/`);
-  // Legacy studio routes (backward compat)
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) return path.replace("/studio/", `/studio/${accountId}/`);
-  return path;
 }
 
 function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {

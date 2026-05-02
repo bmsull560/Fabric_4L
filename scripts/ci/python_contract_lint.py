@@ -39,8 +39,8 @@ CONTRACT_CHECKS = {
         "severity": "critical",
         "patterns": [
             (r"def\s+\w+.*\(\s*[^)]*tenant_id\s*:", "tenant_id function parameter"),
-            (r'request\.headers\[[\'"]x-tenant-id[\'"]\]', "direct header access for tenant"),
-            (r"request\.headers\.get\([\'"]x-tenant-id[\'"]", "direct header get for tenant"),
+            (r'request\.headers\[[\x27\x22]x-tenant-id[\x27\x22]\]', "direct header access for tenant"),
+            (r"request\.headers\.get\([\x27\x22]x-tenant-id[\x27\x22]", "direct header get for tenant"),
         ],
         "ast_patterns": [
             ("tenant_id", "Arg", "tenant_id parameter in function definition"),

@@ -30,8 +30,17 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency verify-structure ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + structure) — required before PR
 	@echo "✅  All checks passed"
+
+verify-structure: ## Run structural preflight and Python contract lint checks
+	@echo "→ Running structural preflight..."
+	@python scripts/ci/structural_preflight.py --strict
+	@echo "→ Running Python contract lint..."
+	@python scripts/ci/python_contract_lint.py --strict
+	@echo "→ Running import topology tests..."
+	@python -m pytest tests/contract/test_import_topology.py -q
+	@echo "✅  Structure verification passed"
 
 check-ui-duplicates: ## Block new duplicate UI component filenames between prototype and production trees
 	@python3 scripts/check_ui_duplicate_filenames.py

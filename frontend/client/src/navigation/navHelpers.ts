@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { resolveWorkspacePath } from "./navigationService";
 
 export type UserTier = "standard" | "advanced" | "admin";
 
@@ -13,22 +14,8 @@ export interface NavItem {
   description?: string;
 }
 
-export function resolveWorkspacePath(path: string, accountId: string | null): string {
-  if (!accountId) return path;
-
-  const ACCOUNT_PREFIXES = ["/intelligence", "/hypothesis", "/drivers", "/calculator", "/value-case", "/realization"];
-  for (const prefix of ACCOUNT_PREFIXES) {
-    if (path === prefix) return `${prefix}/${accountId}`;
-    if (path.startsWith(prefix + "/")) return path.replace(prefix + "/", `${prefix}/${accountId}/`);
-  }
-
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) {
-    return path.replace("/studio/", `/studio/${accountId}/`);
-  }
-
-  return path;
-}
+// Re-export from navigationService for backward compatibility during migration
+export { resolveWorkspacePath };
 
 export function isItemVisible(item: NavItem, userTier: UserTier): boolean {
   if (userTier === "admin") return true;

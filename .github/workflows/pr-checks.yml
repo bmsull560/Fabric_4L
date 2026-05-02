@@ -11,6 +11,45 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # Phase 6-7: Structural and contract verification (must pass before layer-specific checks)
+  structural-preflight:
+    name: Structural Preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run structural preflight
+        run: |
+          python scripts/ci/structural_preflight.py --strict --json | tee artifacts/structural-preflight.json
+          exit ${PIPESTATUS[0]}
+
+      - name: Run Python contract lint
+        run: |
+          python scripts/ci/python_contract_lint.py --strict --json | tee artifacts/python-contract-lint.json
+          exit ${PIPESTATUS[0]}
+
+      - name: Run import topology tests
+        run: |
+          pip install pytest
+          pytest tests/contract/test_import_topology.py -v --tb=short
+
+      - name: Upload structural reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: structural-check-reports
+          path: |
+            artifacts/structural-preflight.json
+            artifacts/python-contract-lint.json
+          retention-days: 14
+
   governance-docs-check:
     name: Governance Docs Guard
     runs-on: ubuntu-latest
