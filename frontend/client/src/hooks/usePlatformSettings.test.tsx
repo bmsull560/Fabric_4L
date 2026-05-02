@@ -308,7 +308,7 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     expect(fetchCount).toBe(2); // Refetch occurred after invalidation
   });
 
-  it.skip('failed update preserves previous usable state', async () => {
+  it('failed update preserves previous usable state', async () => {
     server.use(
       http.get('/api/v1/agents/tenant/settings', () => {
         return HttpResponse.json(mockTenantSettings);
@@ -338,7 +338,7 @@ describe('usePlatformSettings - mutation and invalidation', () => {
 
     // Failed update
     updateResult.current.mutate({ tenant_name: 'Should Fail' });
-    await waitFor(() => expect(updateResult.current.isError).toBe(true));
+    await waitFor(() => expect(updateResult.current.isError).toBe(true), { timeout: 5000 });
 
     // Original data should still be available
     expect(settingsResult.current.data).toEqual(originalData);

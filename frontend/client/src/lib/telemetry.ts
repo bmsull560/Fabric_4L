@@ -73,27 +73,32 @@ export function logDebug(message: string, context?: LogContext): void {
 
 /**
  * Send error report to backend telemetry endpoint.
- * Used in production for centralized error tracking.
+ * Uses navigator.sendBeacon for reliable delivery during page unload.
  */
-async function sendToTelemetryBackend(
+function sendToTelemetryBackend(
   type: 'exception' | 'message',
   payload: { message: string; stack?: string; name?: string; level?: LogLevel; context?: LogContext }
-): Promise<void> {
+): void {
   try {
     const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
-    await fetch(`${API_BASE}/telemetry/error`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type,
-        timestamp: new Date().toISOString(),
-        url: typeof window !== 'undefined' ? window.location.href : undefined,
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-        ...payload,
-      }),
-      // Use keepalive to ensure the request completes even if page unloads
-      keepalive: true,
+    const data = JSON.stringify({
+      type,
+      timestamp: new Date().toISOString(),
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      ...payload,
     });
+
+    // Use sendBeacon for reliable delivery even during page unload
+    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+      navigator.sendBeacon(`${API_BASE}/telemetry/error`, new Blob([data], { type: 'application/json' }));
+    } else {
+      // Fallback: synchronous XHR for critical error reporting
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/telemetry/error`, false);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(data);
+    }
   } catch {
     // Silently fail - don't cause errors while reporting errors
   }
@@ -102,16 +107,21 @@ async function sendToTelemetryBackend(
 /**
  * Capture an exception for telemetry.
  * In development: logs to console with stack trace.
- * In production: sends to backend telemetry endpoint.
+ * In production: sends to backend telemetry endpoint via sendBeacon.
  */
 export function captureException(error: Error, context?: LogContext): void {
+  // Validate error is an actual Error instance
+  if (!(error instanceof Error)) {
+    logError('captureException called with non-Error value', { type: typeof error });
+    return;
+  }
+
   logError(error.message, {
     stack: error.stack,
     name: error.name,
     ...context,
   });
 
-  // P2 FIX: Send to backend in production
   if (import.meta.env.PROD) {
     sendToTelemetryBackend('exception', {
       message: error.message,
@@ -125,7 +135,7 @@ export function captureException(error: Error, context?: LogContext): void {
 /**
  * Capture a structured message for telemetry.
  * In development: logs to console.
- * In production: sends to backend telemetry endpoint.
+ * In production: sends to backend telemetry endpoint via sendBeacon.
  */
 export function captureMessage(
   message: string,
@@ -134,7 +144,6 @@ export function captureMessage(
 ): void {
   log(level, message, context);
 
-  // P2 FIX: Send to backend in production
   if (import.meta.env.PROD) {
     sendToTelemetryBackend('message', {
       message,

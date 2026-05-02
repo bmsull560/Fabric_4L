@@ -14,37 +14,11 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..shared.database import get_db_session
 from ..shared.models import CrawlDecision as CrawlDecisionModel
-
-
-class CrawlDecisionRecord_to_dictResult(TypedDictModel):
-    browser_duration_ms: Any
-    bytes_transferred: Any
-    created_at: Any
-    decision_id: Any
-    domain: Any
-    error_message: Any
-    error_type: Any
-    fallback_reason: Any
-    fast_duration_ms: Any
-    fetch_time_ms: Any
-    final_path: Any
-    job_id: Any
-    quality_checks: Any
-    quality_passed: Any
-    requested_path: Any
-    router_decision: Any
-    router_rule: Any
-    spa_detected: Any
-    status_code: Any
-    tenant_id: Any
-    text_length: Any
-    url: Any
 
 logger = structlog.get_logger()
 
@@ -99,7 +73,7 @@ class CrawlDecisionRecord:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        return CrawlDecisionRecord_to_dictResult.model_validate({
+        return {
             "decision_id": self.decision_id,
             "job_id": self.job_id,
             "tenant_id": self.tenant_id,
@@ -122,7 +96,7 @@ class CrawlDecisionRecord:
             "error_type": self.error_type,
             "error_message": self.error_message,
             "created_at": self.created_at.isoformat(),
-        })
+        }
 
 
 @dataclass

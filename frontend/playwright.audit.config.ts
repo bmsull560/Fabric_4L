@@ -25,7 +25,7 @@ export default defineConfig({
   projects: [
     {
       name: 'audit',
-      testMatch: 'ui-audit.spec.ts',
+      testMatch: '*.spec.ts',
       use: { ...devices['Desktop Chrome'] },
     },
   ],

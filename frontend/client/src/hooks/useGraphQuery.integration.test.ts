@@ -132,7 +132,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
       });
     });
 
-    it.skip('handles database connectivity issues gracefully', async () => {
+    it('handles database connectivity issues gracefully', async () => {
       server.use(
         http.get('/api/v1/graph/graph/subgraph', () =>
           HttpResponse.json(
@@ -148,7 +148,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
         { wrapper }
       );
 
-      await waitFor(() => expect(result.current.isError).toBe(true));
+      await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
       expect(result.current.error).toBeDefined();
     });
   });

@@ -31,9 +31,10 @@ FLOATING_POINT_EPSILON = 1e-10  # Threshold for considering a value as zero
 # Note: period (.) intentionally excluded to prevent attribute access attempts
 _VALID_EXPRESSION_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z0-9_+\-*/()\s]+$")
 # Dangerous Python keywords/patterns that should not appear in formula expressions
-_DANGEROUS_PATTERNS: list[str] = [
+# Using set for O(1) membership testing
+_DANGEROUS_PATTERNS: frozenset[str] = frozenset([
     "import", "exec", "eval", "compile", "__", "lambda", "class", "def"
-]
+])
 
 
 def _validate_expression(v: str) -> None:

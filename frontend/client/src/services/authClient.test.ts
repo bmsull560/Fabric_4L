@@ -15,11 +15,12 @@ import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, t
 
 // Mock window.fetch directly to bypass MSW for AuthClient unit tests
 const fetchMock = vi.fn();
+const originalFetch = window.fetch;
 beforeAll(() => {
   window.fetch = fetchMock as unknown as typeof window.fetch;
 });
 afterAll(() => {
-  // MSW will restore its patched fetch on next test setup
+  window.fetch = originalFetch;
 });
 
 // Mock localStorage and sessionStorage

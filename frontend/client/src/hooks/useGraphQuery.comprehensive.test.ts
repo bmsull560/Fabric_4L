@@ -441,7 +441,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
       expect(result.current.error).toBeDefined();
     });
 
-    it.skip('handles 500 server error', async () => {
+    it('handles 500 server error', async () => {
       server.use(
         http.get('/api/v1/graph/graph/subgraph', () =>
           HttpResponse.json({ error: 'Internal error' }, { status: 500 })
@@ -454,7 +454,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
         { wrapper }
       );
 
-      await waitFor(() => expect(result.current.isError).toBe(true));
+      await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     });
 
     it.skip('handles network timeout', async () => {
@@ -804,7 +804,7 @@ describe('useGraphQuery [L1-Unit-Async]', () => {
   });
 
   describe('error cases', () => {
-    it.skip('handles query timeout', async () => {
+    it('handles query timeout', async () => {
       server.use(
         http.post('/api/v1/graph/query/graph', () =>
           HttpResponse.json({ error: 'Query timeout' }, { status: 504 })
