@@ -15,6 +15,11 @@ from .accounts import (
     SyncStatusListResponse,
     SyncStatusSchema,
 )
+from .workflow_progress import (
+    WorkflowProgressActionableState,
+    WorkflowProgressSchema,
+    normalize_workflow_progress,
+)
 
 __all__ = [
     "AccountActivityResponse",
@@ -30,4 +35,7 @@ __all__ = [
     "SyncAccountsResponse",
     "SyncStatusListResponse",
     "SyncStatusSchema",
+    "WorkflowProgressActionableState",
+    "WorkflowProgressSchema",
+    "normalize_workflow_progress",
 ]

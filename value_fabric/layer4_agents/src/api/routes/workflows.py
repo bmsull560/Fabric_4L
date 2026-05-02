@@ -24,6 +24,7 @@ from shared.models.typed_dict import TypedDictModel
 from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
 from ...workflows import list_workflow_types
+from ..schemas.workflow_progress import WorkflowProgressSchema, normalize_workflow_progress
 
 
 class get_workflow_resultResult(TypedDictModel):
@@ -162,6 +163,7 @@ class WorkflowStatusResponse(BaseModel):
     user_id: str | None = None
     priority: int | None = None
     scheduler_status: str | None = None
+    progress: WorkflowProgressSchema | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -413,6 +415,7 @@ async def get_workflow_status(
         user_id=status.get("user_id"),
         priority=status.get("priority"),
         scheduler_status=status.get("scheduler_status"),
+        progress=normalize_workflow_progress(status=status),
     )
 
 
@@ -644,6 +647,10 @@ async def get_workflow_events(
                         "status": status.get("status"),
                         "progress": status.get("progress_percentage"),
                         "current_node": status.get("current_node"),
+                        "normalized_progress": normalize_workflow_progress(
+                            status=status,
+                            message=f"Workflow status: {status.get('status')}",
+                        ).model_dump(),
                     },
                 )
 

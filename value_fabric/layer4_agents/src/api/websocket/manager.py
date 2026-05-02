@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import WebSocket
 from shared.models.typed_dict import TypedDictModel
+from ..schemas.workflow_progress import normalize_workflow_progress
 
 
 class WorkflowWebSocketManager__summarize_outputResult(TypedDictModel):
@@ -321,6 +322,10 @@ class WorkflowWebSocketManager:
             "current_node": current_node,
             "progress_percentage": progress_percentage,
         }
+        payload["normalized_progress"] = normalize_workflow_progress(
+            status=payload,
+            message=f"Workflow status: {status}",
+        ).model_dump()
 
         if output_data:
             payload["output_snapshot"] = self._summarize_output(output_data)
