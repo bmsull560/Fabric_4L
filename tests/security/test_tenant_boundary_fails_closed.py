@@ -41,14 +41,14 @@ for name in list(_existing_shared_modules.keys()):
     del sys.modules[name]
 
 # Import the boundary module directly
-from shared.boundaries.tenant_boundary import (
+from value_fabric.shared.boundaries.tenant_boundary import (
     TenantBoundaryError,
     get_tenant_context,
     require_tenant_context,
     get_tenant_id,
     require_tenant_id,
 )
-from shared.identity.context import RequestContext, set_request_context
+from value_fabric.shared.identity.context import RequestContext, set_request_context
 
 # Restore the original root `shared` package so later tests that rely
 # on root-only submodules (e.g. `shared.crypto`) are not affected.

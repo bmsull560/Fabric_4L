@@ -17,10 +17,10 @@ from typing import Any
 import jsonschema
 import pytest
 
-from shared.audit.models import MemoryAccessRecord, ReplaySnapshotRecord
-from shared.crypto.canonical import canonical_hash
-from shared.governance.memory_gateway import MemoryGateway
-from shared.governance.replay import ReplayRecorder
+from value_fabric.shared.audit.models import MemoryAccessRecord, ReplaySnapshotRecord
+from value_fabric.shared.crypto.canonical import canonical_hash
+from value_fabric.shared.governance.memory_gateway import MemoryGateway
+from value_fabric.shared.governance.replay import ReplayRecorder
 
 SCHEMA_DIR = Path(__file__).resolve().parents[3] / "packages" / "platform-contract" / "schemas" / "gate"
 

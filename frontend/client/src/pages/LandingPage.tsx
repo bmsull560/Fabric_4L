@@ -5,10 +5,10 @@
  * Uses platform design tokens for consistent theming.
  */
 
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Shield, Database, FileText, BarChart3, ArrowRight } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useNavigation } from '@/hooks';
 
 // Platform Logo Component
 const ValyntLogo = () => (
@@ -100,18 +100,18 @@ const ValueVisualization = () => (
 );
 
 export default function LandingPage() {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const { isAuthenticated, isLoading, devBypass } = useAuthContext();
 
   // Redirect if already authenticated
   if (isAuthenticated && !isLoading) {
-    navigate('/home');
+    navigateTo('home');
     return null;
   }
 
   const handleDevBypass = () => {
     devBypass?.();
-    navigate('/home');
+    navigateTo('home');
   };
 
   return (
@@ -146,7 +146,7 @@ export default function LandingPage() {
             <Button
               size="lg"
               className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 font-semibold text-base"
-              onClick={() => navigate('/signup')}
+              onClick={() => navigateTo('signup')}
             >
               Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -157,7 +157,7 @@ export default function LandingPage() {
               size="lg"
               variant="outline"
               className="w-full h-12 font-medium text-base"
-              onClick={() => navigate('/login')}
+              onClick={() => navigateTo('login')}
             >
               Sign In
             </Button>

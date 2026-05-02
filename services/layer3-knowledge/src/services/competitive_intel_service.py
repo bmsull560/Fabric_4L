@@ -1,0 +1,605 @@
+"""
+Competitive Intelligence Service — Data Intelligence Layer Phase 2, Task 2.2.
+
+Manages competitive intelligence data in the Neo4j knowledge graph, including:
+  - Competitor profiles with strengths, weaknesses, and market positioning
+  - Battlecards linking competitors to products with differentiators
+  - Win/loss tracking for competitive deals
+  - Competitive landscape analysis per product
+
+Architecture:
+  - Competitor nodes store company-level competitive data
+  - Battlecard nodes store product-specific competitive positioning
+  - COMPETES_WITH relationships link Products to Competitors (with overlap_score)
+  - WON_AGAINST / LOST_TO relationships track deal outcomes
+  - All data is tenant-scoped for multi-tenancy isolation
+
+Neo4j Node Schema:
+  Competitor:
+    id, tenant_id, name, domain, description, founded_year,
+    strengths (list), weaknesses (list), market_position,
+    pricing_tier, target_segments (list), created_at, updated_at
+
+  Battlecard:
+    id, tenant_id, competitor_id, product_id,
+    positioning, differentiators (list), objection_handlers (list),
+    talk_tracks (list), win_themes (list), trap_questions (list),
+    last_reviewed_at, created_at, updated_at
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
+
+import structlog
+from neo4j import AsyncDriver
+from value_fabric.shared.models.typed_dict import TypedDictModel
+
+
+class CompetitiveIntelService_add_competitorResult(TypedDictModel):
+    id: Any
+
+class CompetitiveIntelService_get_competitorResult(TypedDictModel):
+    battlecards: Any
+    competing_products: Any
+
+class CompetitiveIntelService_list_competitorsResult(TypedDictModel):
+    competitors: Any
+    limit: Any
+    skip: Any
+    total: Any
+
+class CompetitiveIntelService_add_battlecardResult(TypedDictModel):
+    id: Any
+
+class CompetitiveIntelService_record_win_lossResult(TypedDictModel):
+    id: Any
+    outcome: Any
+
+class CompetitiveIntelService_analyze_competitive_landscapeResult(TypedDictModel):
+    landscape: Any
+    overall_win_rate: Any
+    total_competitors: Any
+    total_losses: Any
+    total_wins: Any
+
+class CompetitiveIntelService_get_win_loss_summaryResult(TypedDictModel):
+    competitors: Any
+    total_competitors: Any
+
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
+logger = structlog.get_logger()
+
+
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
+
+
+# ---------------------------------------------------------------------------
+# Data Models
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CompetitorCreate:
+    """Input for creating a competitor node."""
+
+    name: str
+    description: str
+    domain: str | None = None
+    founded_year: int | None = None
+    strengths: list[str] = field(default_factory=list)
+    weaknesses: list[str] = field(default_factory=list)
+    market_position: str = "challenger"  # leader, challenger, niche, emerging
+    pricing_tier: str = "mid"  # low, mid, high, premium
+    target_segments: list[str] = field(default_factory=list)
+
+
+@dataclass
+class BattlecardCreate:
+    """Input for creating a battlecard."""
+
+    product_id: str
+    positioning: str  # How we position against this competitor
+    differentiators: list[str] = field(default_factory=list)
+    objection_handlers: list[dict[str, str]] = field(default_factory=list)
+    talk_tracks: list[str] = field(default_factory=list)
+    win_themes: list[str] = field(default_factory=list)
+    trap_questions: list[str] = field(default_factory=list)
+
+
+@dataclass
+class WinLossRecord:
+    """Input for recording a win or loss against a competitor."""
+
+    competitor_id: str
+    product_id: str
+    outcome: str  # "won" or "lost"
+    deal_size_usd: float = 0.0
+    reason: str = ""
+    industry: str = ""
+    deal_date: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+
+# ---------------------------------------------------------------------------
+# Competitive Intelligence Service
+# ---------------------------------------------------------------------------
+
+
+class CompetitiveIntelService:
+    """Service for managing competitive intelligence in the knowledge graph."""
+
+    def __init__(self, driver: AsyncDriver):
+        self._driver = driver
+
+    # ------------------------------------------------------------------
+    # Competitor CRUD
+    # ------------------------------------------------------------------
+
+    async def add_competitor(
+        self, competitor: CompetitorCreate
+    ) -> dict[str, Any]:
+        """Create a Competitor node in the knowledge graph."""
+        tenant_id = _get_tenant_id()
+        competitor_id = str(uuid.uuid4())
+        now = datetime.now(UTC).isoformat()
+
+        query = """
+        CREATE (c:Competitor {
+            id: $id,
+            tenant_id: $tenant_id,
+            name: $name,
+            description: $description,
+            domain: $domain,
+            founded_year: $founded_year,
+            strengths: $strengths,
+            weaknesses: $weaknesses,
+            market_position: $market_position,
+            pricing_tier: $pricing_tier,
+            target_segments: $target_segments,
+            entity_type: 'Competitor',
+            created_at: $now,
+            updated_at: $now
+        })
+        RETURN c {.*} AS competitor
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, {
+                "id": competitor_id,
+                "tenant_id": tenant_id,
+                "name": competitor.name,
+                "description": competitor.description,
+                "domain": competitor.domain or "",
+                "founded_year": competitor.founded_year,
+                "strengths": competitor.strengths,
+                "weaknesses": competitor.weaknesses,
+                "market_position": competitor.market_position,
+                "pricing_tier": competitor.pricing_tier,
+                "target_segments": competitor.target_segments,
+                "now": now,
+            })
+            record = await result.single()
+
+        logger.info(
+            "competitor_created",
+            competitor_id=competitor_id,
+            name=competitor.name,
+        )
+        return CompetitiveIntelService_add_competitorResult.model_validate({"id": competitor_id, **(record["competitor"] if record else {})})
+
+    async def get_competitor(
+        self, competitor_id: str
+    ) -> dict[str, Any] | None:
+        """Get a single competitor with related products and battlecards."""
+        tenant_id = _get_tenant_id()
+        query = """
+        MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
+        OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)
+        OPTIONAL MATCH (bc:Battlecard {competitor_id: $competitor_id, tenant_id: $tenant_id})
+        RETURN c {.*} AS competitor,
+               collect(DISTINCT p {.id, .name, overlap_score: cw.overlap_score}) AS competing_products,
+               collect(DISTINCT bc {.id, .product_id, .positioning}) AS battlecards
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, {
+                "competitor_id": competitor_id,
+                "tenant_id": tenant_id,
+            })
+            record = await result.single()
+
+        if not record or not record["competitor"]:
+            return None
+
+        return CompetitiveIntelService_get_competitorResult.model_validate({
+            **record["competitor"],
+            "competing_products": record["competing_products"],
+            "battlecards": record["battlecards"],
+        })
+
+
+    async def list_competitors(
+        self,
+        *,
+        market_position: str | None = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        """List competitors with optional filtering."""
+        tenant_id = _get_tenant_id()
+        where_clauses = ["c.tenant_id = $tenant_id"]
+        params: dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "skip": skip,
+            "limit": limit,
+        }
+
+        if market_position:
+            where_clauses.append("c.market_position = $market_position")
+            params["market_position"] = market_position
+
+        where = " AND ".join(where_clauses)
+
+        count_query = f"MATCH (c:Competitor) WHERE {where} RETURN count(c) AS total"
+        list_query = f"""
+        MATCH (c:Competitor) WHERE {where}
+        OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)
+        RETURN c {{.*}} AS competitor,
+               count(DISTINCT p) AS product_overlap_count
+        ORDER BY c.name
+        SKIP $skip LIMIT $limit
+        """
+
+        async with self._driver.session() as session:
+            count_result = await session.run(count_query, params)
+            count_record = await count_result.single()
+            total = count_record["total"] if count_record else 0
+
+            list_result = await session.run(list_query, params)
+            records = [record async for record in list_result]
+
+        competitors = [
+            {
+                **r["competitor"],
+                "product_overlap_count": r["product_overlap_count"],
+            }
+            for r in records
+        ]
+
+        return CompetitiveIntelService_list_competitorsResult.model_validate({
+            "competitors": competitors,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+        })
+
+
+    async def update_competitor(
+        self, competitor_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Update a competitor's properties."""
+        tenant_id = _get_tenant_id()
+        protected = {"id", "tenant_id", "entity_type", "created_at"}
+        safe_updates = {k: v for k, v in updates.items() if k not in protected}
+        safe_updates["updated_at"] = datetime.now(UTC).isoformat()
+
+        if not safe_updates:
+            return None
+
+        set_parts = [f"c.{k} = ${k}" for k in safe_updates]
+        set_clause = ", ".join(set_parts)
+
+        query = f"""
+        MATCH (c:Competitor {{id: $competitor_id, tenant_id: $tenant_id}})
+        SET {set_clause}
+        RETURN c {{.*}} AS competitor
+        """
+        params = {"competitor_id": competitor_id, "tenant_id": tenant_id, **safe_updates}
+
+        async with self._driver.session() as session:
+            result = await session.run(query, params)
+            record = await result.single()
+
+        if not record:
+            return None
+        return record["competitor"]
+
+    async def delete_competitor(
+        self, competitor_id: str
+    ) -> bool:
+        """Delete a competitor and all related battlecards."""
+        tenant_id = _get_tenant_id()
+        query = """
+        MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
+        OPTIONAL MATCH (bc:Battlecard {competitor_id: $competitor_id, tenant_id: $tenant_id})
+        DETACH DELETE c, bc
+        RETURN count(c) AS deleted
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, {
+                "competitor_id": competitor_id,
+                "tenant_id": tenant_id,
+            })
+            record = await result.single()
+        return record["deleted"] > 0 if record else False
+
+    # ------------------------------------------------------------------
+    # Battlecard Management
+    # ------------------------------------------------------------------
+
+    async def add_battlecard(
+        self,
+        competitor_id: str,
+        battlecard: BattlecardCreate,
+    ) -> dict[str, Any]:
+        """Create a battlecard for a competitor + product pair."""
+        tenant_id = _get_tenant_id()
+        bc_id = str(uuid.uuid4())
+        now = datetime.now(UTC).isoformat()
+
+        # Serialize objection handlers to strings for Neo4j storage
+        objection_strs = [
+            f"{oh.get('objection', '')}: {oh.get('response', '')}"
+            for oh in battlecard.objection_handlers
+        ]
+
+        query = """
+        MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
+        MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
+        CREATE (bc:Battlecard {
+            id: $id,
+            tenant_id: $tenant_id,
+            competitor_id: $competitor_id,
+            product_id: $product_id,
+            positioning: $positioning,
+            differentiators: $differentiators,
+            objection_handlers: $objection_handlers,
+            talk_tracks: $talk_tracks,
+            win_themes: $win_themes,
+            trap_questions: $trap_questions,
+            entity_type: 'Battlecard',
+            last_reviewed_at: $now,
+            created_at: $now,
+            updated_at: $now
+        })
+        MERGE (p)-[cw:COMPETES_WITH]->(c)
+        ON CREATE SET cw.overlap_score = 0.5
+        RETURN bc {.*} AS battlecard
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, {
+                "id": bc_id,
+                "tenant_id": tenant_id,
+                "competitor_id": competitor_id,
+                "product_id": battlecard.product_id,
+                "positioning": battlecard.positioning,
+                "differentiators": battlecard.differentiators,
+                "objection_handlers": objection_strs,
+                "talk_tracks": battlecard.talk_tracks,
+                "win_themes": battlecard.win_themes,
+                "trap_questions": battlecard.trap_questions,
+                "now": now,
+            })
+            record = await result.single()
+
+        logger.info(
+            "battlecard_created",
+            battlecard_id=bc_id,
+            competitor_id=competitor_id,
+            product_id=battlecard.product_id,
+        )
+        return CompetitiveIntelService_add_battlecardResult.model_validate({"id": bc_id, **(record["battlecard"] if record else {})})
+
+    async def get_battlecard(
+        self, competitor_id: str, product_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get battlecards for a competitor, optionally filtered by product."""
+        tenant_id = _get_tenant_id()
+        where_clauses = [
+            "bc.tenant_id = $tenant_id",
+            "bc.competitor_id = $competitor_id",
+        ]
+        params: dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "competitor_id": competitor_id,
+        }
+
+        if product_id:
+            where_clauses.append("bc.product_id = $product_id")
+            params["product_id"] = product_id
+
+        where = " AND ".join(where_clauses)
+
+        query = f"""
+        MATCH (bc:Battlecard) WHERE {where}
+        RETURN bc {{.*}} AS battlecard
+        ORDER BY bc.updated_at DESC
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, params)
+            records = [record async for record in result]
+
+        return [r["battlecard"] for r in records]
+
+    # ------------------------------------------------------------------
+    # Win/Loss Tracking
+    # ------------------------------------------------------------------
+
+    async def record_win_loss(
+        self, record_data: WinLossRecord
+    ) -> dict[str, Any]:
+        """Record a competitive win or loss."""
+        tenant_id = _get_tenant_id()
+        wl_id = str(uuid.uuid4())
+        now = datetime.now(UTC).isoformat()
+
+        rel_type = "WON_AGAINST" if record_data.outcome == "won" else "LOST_TO"
+
+        query = f"""
+        MATCH (p:Product {{id: $product_id, tenant_id: $tenant_id}})
+        MATCH (c:Competitor {{id: $competitor_id, tenant_id: $tenant_id}})
+        CREATE (p)-[r:{rel_type} {{
+            id: $id,
+            deal_size_usd: $deal_size_usd,
+            reason: $reason,
+            industry: $industry,
+            deal_date: $deal_date,
+            recorded_at: $now
+        }}]->(c)
+        RETURN r {{.*}} AS record
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, {
+                "id": wl_id,
+                "tenant_id": tenant_id,
+                "product_id": record_data.product_id,
+                "competitor_id": record_data.competitor_id,
+                "deal_size_usd": record_data.deal_size_usd,
+                "reason": record_data.reason,
+                "industry": record_data.industry,
+                "deal_date": record_data.deal_date,
+                "now": now,
+            })
+            rec = await result.single()
+
+        logger.info(
+            "win_loss_recorded",
+            outcome=record_data.outcome,
+            competitor_id=record_data.competitor_id,
+            product_id=record_data.product_id,
+        )
+        return CompetitiveIntelService_record_win_lossResult.model_validate({
+            "id": wl_id,
+            "outcome": record_data.outcome,
+            **(rec["record"] if rec else {}),
+        })
+
+
+    # ------------------------------------------------------------------
+    # Competitive Analysis
+    # ------------------------------------------------------------------
+
+    async def analyze_competitive_landscape(
+        self, product_id: str | None = None
+    ) -> dict[str, Any]:
+        """Analyze the competitive landscape for a product or all products."""
+        tenant_id = _get_tenant_id()
+        where_parts = ["c.tenant_id = $tenant_id"]
+        params: dict[str, Any] = {"tenant_id": tenant_id}
+
+        if product_id:
+            product_match = "MATCH (p:Product {id: $product_id})-[cw:COMPETES_WITH]->(c)"
+            params["product_id"] = product_id
+        else:
+            product_match = "OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)"
+
+        where = " AND ".join(where_parts)
+
+        query = f"""
+        MATCH (c:Competitor) WHERE {where}
+        {product_match}
+        OPTIONAL MATCH (p2:Product)-[won:WON_AGAINST]->(c)
+        WHERE p2.tenant_id = $tenant_id
+        OPTIONAL MATCH (p3:Product)-[lost:LOST_TO]->(c)
+        WHERE p3.tenant_id = $tenant_id
+        RETURN c {{.id, .name, .market_position, .pricing_tier}} AS competitor,
+               count(DISTINCT p) AS product_overlaps,
+               count(DISTINCT won) AS wins,
+               count(DISTINCT lost) AS losses,
+               COALESCE(cw.overlap_score, 0) AS overlap_score
+        ORDER BY (count(DISTINCT won) + count(DISTINCT lost)) DESC
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, params)
+            records = [record async for record in result]
+
+        landscape = []
+        total_wins = 0
+        total_losses = 0
+
+        for r in records:
+            wins = r["wins"]
+            losses = r["losses"]
+            total_wins += wins
+            total_losses += losses
+            win_rate = wins / (wins + losses) if (wins + losses) > 0 else 0.0
+
+            landscape.append({
+                "competitor": r["competitor"],
+                "product_overlaps": r["product_overlaps"],
+                "wins": wins,
+                "losses": losses,
+                "win_rate": round(win_rate, 3),
+                "overlap_score": r["overlap_score"],
+            })
+
+        overall_win_rate = (
+            total_wins / (total_wins + total_losses)
+            if (total_wins + total_losses) > 0
+            else 0.0
+        )
+
+        return CompetitiveIntelService_analyze_competitive_landscapeResult.model_validate({
+            "landscape": landscape,
+            "total_competitors": len(landscape),
+            "total_wins": total_wins,
+            "total_losses": total_losses,
+            "overall_win_rate": round(overall_win_rate, 3),
+        })
+
+
+    async def get_win_loss_summary(
+        self
+    ) -> dict[str, Any]:
+        """Get aggregated win/loss data across all competitors."""
+        tenant_id = _get_tenant_id()
+        query = """
+        MATCH (c:Competitor {tenant_id: $tenant_id})
+        OPTIONAL MATCH (p:Product)-[won:WON_AGAINST]->(c)
+        WHERE p.tenant_id = $tenant_id
+        OPTIONAL MATCH (p2:Product)-[lost:LOST_TO]->(c)
+        WHERE p2.tenant_id = $tenant_id
+        WITH c,
+             count(DISTINCT won) AS wins,
+             count(DISTINCT lost) AS losses,
+             sum(COALESCE(won.deal_size_usd, 0)) AS won_revenue,
+             sum(COALESCE(lost.deal_size_usd, 0)) AS lost_revenue
+        RETURN c {.id, .name, .market_position} AS competitor,
+               wins, losses, won_revenue, lost_revenue
+        ORDER BY (wins + losses) DESC
+        """
+        async with self._driver.session() as session:
+            result = await session.run(query, {"tenant_id": tenant_id})
+            records = [record async for record in result]
+
+        summary = []
+        for r in records:
+            wins = r["wins"]
+            losses = r["losses"]
+            total = wins + losses
+            summary.append({
+                "competitor": r["competitor"],
+                "wins": wins,
+                "losses": losses,
+                "total_deals": total,
+                "win_rate": round(wins / total, 3) if total > 0 else 0.0,
+                "won_revenue": r["won_revenue"],
+                "lost_revenue": r["lost_revenue"],
+            })
+
+        return CompetitiveIntelService_get_win_loss_summaryResult.model_validate({"competitors": summary, "total_competitors": len(summary)})

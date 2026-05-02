@@ -15,13 +15,13 @@ from uuid import uuid4
 import jsonschema
 import pytest
 
-from shared.audit.models import (
+from value_fabric.shared.audit.models import (
     AuditAction,
     AuditEvent,
     AuditOutcome,
     ToolInvocationRecord,
 )
-from shared.crypto.canonical import canonical_hash
+from value_fabric.shared.crypto.canonical import canonical_hash
 
 SCHEMA_DIR = Path(__file__).resolve().parents[3] / "packages" / "platform-contract" / "schemas" / "gate"
 

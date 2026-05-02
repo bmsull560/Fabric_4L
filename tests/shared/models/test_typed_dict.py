@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
 class SampleModel(TypedDictModel):

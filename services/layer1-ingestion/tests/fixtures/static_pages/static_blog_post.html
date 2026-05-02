@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Understanding Python Async/Await - Developer Blog</title>
+    <meta name="description" content="A comprehensive guide to Python asyncio">
+</head>
+<body>
+    <article>
+        <h1>Understanding Python Async/Await</h1>
+        <p class="author">By Jane Smith | April 15, 2026</p>
+        <div class="content">
+            <p>Python's asyncio library provides a powerful framework for writing concurrent code using the async/await syntax. This guide will walk you through the fundamentals and best practices.</p>
+            <h2>What is Asyncio?</h2>
+            <p>Asyncio is a library to write concurrent code using the async/await syntax. It is used as a foundation for multiple Python asynchronous frameworks and provides high-performance network and web-servers, database connection libraries, distributed task queues, etc.</p>
+            <h2>The Event Loop</h2>
+            <p>At the heart of asyncio is the event loop. The event loop is the core of every asyncio application. Event loops run asynchronous tasks and callbacks, perform network IO operations, and run subprocesses.</p>
+            <p>Here's a simple example:</p>
+            <pre><code>import asyncio
+
+async def main():
+    print('Hello')
+    await asyncio.sleep(1)
+    print('World')
+
+asyncio.run(main())</code></pre>
+            <h2>Conclusion</h2>
+            <p>Asyncio is a powerful tool for building high-performance applications in Python. By understanding the event loop, coroutines, and tasks, you can write efficient concurrent code that scales.</p>
+        </div>
+    </article>
+</body>
+</html>

@@ -16,9 +16,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from types import SimpleNamespace
-from shared.rate_limiting.admin_api import get_tenant_quota
+from value_fabric.shared.rate_limiting.admin_api import get_tenant_quota
 
-from shared.rate_limiting.tenant_rate_limiter import (
+from value_fabric.shared.rate_limiting.tenant_rate_limiter import (
     TenantRateLimiter,
     TenantTier,
     RateLimitConfig,

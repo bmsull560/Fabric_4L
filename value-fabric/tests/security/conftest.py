@@ -20,7 +20,7 @@ from uuid import UUID, uuid4
 
 import jwt as pyjwt
 import pytest
-from shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
 class AuthFactory_headerResult(TypedDictModel):

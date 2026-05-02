@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from shared.observability import (
+from value_fabric.shared.observability import (
     PathNormalizer,
     is_internal_ip,
     verify_metrics_access,

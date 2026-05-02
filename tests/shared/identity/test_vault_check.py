@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from shared.identity.vault_check import get_vault_health, get_vault_healthResult
+from value_fabric.shared.identity.vault_check import get_vault_health, get_vault_healthResult
 
 
 class TestGetVaultHealth:

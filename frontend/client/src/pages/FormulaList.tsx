@@ -11,7 +11,6 @@
  * - View formula status and metadata
  */
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -32,6 +31,7 @@ import {
   type Formula,
   type FormulaStatus,
 } from "@/hooks/useFormulas";
+import { useNavigation } from "@/hooks";
 import { formatRelativeTime } from "@/lib/formatters";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ interface FormulaRowProps {
 
 function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) {
   const status = STATUS_CONFIG[formula.status as FormulaStatus];
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
 
   return (
     <div className="flex items-center gap-4 p-4 bg-card rounded-lg border border-border hover:border-neutral-300 hover:shadow-sm transition-all group">
@@ -127,7 +127,7 @@ function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={() => navigate(`/model/value-studio/formulas/${formula.formula_id ?? formula.id}`)}
+          onClick={() => navigateTo(`/model/value-studio/formulas/${formula.formula_id ?? formula.id}`)}
           className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
           title="Edit"
         >
@@ -160,7 +160,7 @@ function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FormulaList() {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -202,7 +202,7 @@ export default function FormulaList() {
           title="Formulas"
           subtitle="Create and manage value calculation formulas"
         />
-        <Btn variant="primary" onClick={() => navigate("/model/value-studio/formulas/new")}>
+        <Btn variant="primary" onClick={() => navigateTo('formula-new')}>
           <Plus size={14} /> New Formula
         </Btn>
       </div>
@@ -285,7 +285,7 @@ export default function FormulaList() {
               <Btn
                 variant="primary"
                 className="mt-4"
-                onClick={() => navigate("/model/value-studio/formulas/new")}
+                onClick={() => navigateTo('formula-new')}
               >
                 <Plus size={14} /> Create Formula
               </Btn>
@@ -298,12 +298,12 @@ export default function FormulaList() {
             {filteredFormulas.map((formula) => (
               <div
                 key={formula.formula_id}
-                onClick={() => navigate(`/model/value-studio/formulas/${formula.formula_id}`)}
+                onClick={() => navigateTo(`/model/value-studio/formulas/${formula.formula_id}`)}
                 className="cursor-pointer"
               >
                 <FormulaRow
                   formula={formula}
-                  onEdit={(id) => navigate(`/model/value-studio/formulas/${id}`)}
+                  onEdit={(id) => navigateTo(`/model/value-studio/formulas/${id}`)}
                   onDelete={(id) => setShowDeleteConfirm(id)}
                   isDeleting={isDeleting && showDeleteConfirm === formula.formula_id}
                 />

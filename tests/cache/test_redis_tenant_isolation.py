@@ -24,8 +24,8 @@ from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 
 import redis.asyncio as redis
-from shared.identity.context import RequestContext
-from shared.rate_limiting.tenant_rate_limiter import TenantRateLimiter, TenantTier
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.rate_limiting.tenant_rate_limiter import TenantRateLimiter, TenantTier
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Shared identity components
-from shared.identity.context import (
+from value_fabric.shared.identity.context import (
     AUTH_SOURCE_API_KEY,
     AUTH_SOURCE_JWT,
     AUTH_SOURCE_SERVICE_ACCOUNT,
@@ -23,7 +23,7 @@ from shared.identity.context import (
     ISOLATION_TIER_SHARED,
     RequestContext,
 )
-from shared.identity.dependencies import require_tenant_context
+from value_fabric.shared.identity.dependencies import require_tenant_context
 
 
 class TestCrossLayerContextConsistency:

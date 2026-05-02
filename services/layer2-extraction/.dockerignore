@@ -1,0 +1,65 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Documentation
+*.md
+docs/
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.pytest_cache
+.coverage
+htmlcov
+.tox
+.venv
+venv
+env
+
+# Development
+.env
+.env.*
+!.env.example
+*.local
+
+# Tests
+tests/
+test/
+*_test.py
+pytest.ini
+conftest.py
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (safety)
+*.pem
+*.key
+secrets/
+
+# Local data
+rdf-output/
+*.rdf
+*.ttl

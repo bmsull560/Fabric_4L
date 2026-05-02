@@ -18,8 +18,8 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from shared.identity.context import RequestContext
-from shared.identity.dependencies import (
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import (
     require_authenticated,
     require_tenant_context,
     require_admin,

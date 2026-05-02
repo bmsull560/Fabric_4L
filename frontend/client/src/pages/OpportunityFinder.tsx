@@ -13,13 +13,13 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Plus, Search, Filter, TrendingUp, Target, Zap, Building2,
   ArrowRight, Loader2, AlertCircle, Lightbulb, DollarSign,
   Users, Clock, ChevronDown, ChevronUp
 } from "lucide-react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
+import { useNavigation } from "@/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
@@ -91,7 +91,7 @@ function OpportunityCard({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const status = STATUS_CONFIG[opportunity.status];
   const impact = IMPACT_CONFIG[opportunity.impact];
 
@@ -204,14 +204,14 @@ function OpportunityCard({
               <Btn
                 variant="ghost"
                 className="text-[11px]"
-                onClick={() => navigate(`/accounts/${opportunity.accountId}`)}
+                onClick={() => navigateTo('account-detail', { accountId: opportunity.accountId })}
               >
                 View Account
               </Btn>
               <Btn
                 variant="primary"
                 className="text-[11px]"
-                onClick={() => navigate(`/deliver/cases/new?opportunity=${opportunity.id}`)}
+                onClick={() => navigateTo('business-case-new', undefined, { query: { opportunity: opportunity.id } })}
               >
                 <Plus size={12} className="mr-1" />
                 Create Case
@@ -245,7 +245,7 @@ function OpportunitySkeleton() {
 // ── Main Component ─────────────────────────────────────────────────────────
 
 function OpportunityFinderContent() {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<OpportunityStatus | 'all'>('all');
@@ -368,7 +368,7 @@ function OpportunityFinderContent() {
           title="Opportunity Finder"
           subtitle={`${stats.total} opportunities · ${stats.highImpact} high impact · ${stats.newOpps} new`}
         />
-        <Btn variant="primary" onClick={() => navigate('/discover/opportunities/scan')}>
+        <Btn variant="primary" onClick={() => navigateTo('opportunity-scan')}>
           <Zap size={14} className="mr-1" />
           Run AI Scan
         </Btn>

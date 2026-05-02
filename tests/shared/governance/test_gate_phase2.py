@@ -20,15 +20,15 @@ from uuid import uuid4
 import jsonschema
 import pytest
 
-from shared.governance.abom import (
+from value_fabric.shared.governance.abom import (
     ABOMInvariants,
     AgentBillOfMaterials,
     clear_abom_cache,
     load_abom,
 )
-from shared.governance.invariants import InvariantEvaluator
-from shared.governance.policy_engine import PolicyDecision, PolicyEngineClient
-from shared.governance.tool_gateway import (
+from value_fabric.shared.governance.invariants import InvariantEvaluator
+from value_fabric.shared.governance.policy_engine import PolicyDecision, PolicyEngineClient
+from value_fabric.shared.governance.tool_gateway import (
     InvariantViolation,
     ToolGateway,
     ToolGatewayDenied,

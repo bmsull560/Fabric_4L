@@ -50,9 +50,9 @@ _mock_span.get_span_context.return_value = MagicMock(trace_id=0)
 _otel_trace.get_current_span = MagicMock(return_value=_mock_span)
 
 # Now import GATE components
-from shared.crypto.canonical import canonical_hash
-from shared.audit.models import AuditAction
-from shared.governance.abom import AgentBillOfMaterials
+from value_fabric.shared.crypto.canonical import canonical_hash
+from value_fabric.shared.audit.models import AuditAction
+from value_fabric.shared.governance.abom import AgentBillOfMaterials
 
 # Import governance components that don't need heavy deps
 import importlib.util

@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("jose")
 
-from shared.identity.middleware import (
+from value_fabric.shared.identity.middleware import (
     GovernanceMiddleware,
     RateLimiterConfigurationError,
 )

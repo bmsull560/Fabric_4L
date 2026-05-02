@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 from fastapi import HTTPException, status
 
-from shared.identity.context import RequestContext
+from value_fabric.shared.identity.context import RequestContext
 from value_fabric.layer4_agents.src.tools.registry import ToolRegistry, ToolCategory
 
 

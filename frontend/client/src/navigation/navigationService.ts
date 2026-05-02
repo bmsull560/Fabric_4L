@@ -28,6 +28,7 @@ export type RouteState =
   | 'account-detail'
   // Workspaces
   | 'intelligence'
+  | 'intelligence-signals'
   | 'hypothesis'
   | 'drivers'
   | 'calculator'
@@ -40,6 +41,7 @@ export type RouteState =
   | 'my-models'
   | 'formulas'
   | 'formula-builder'
+  | 'formula-new'
   | 'value-trees'
   | 'agent-workflows'
   | 'ontology'
@@ -50,9 +52,16 @@ export type RouteState =
   | 'extraction'
   | 'integrations'
   | 'sources'
+  // Discover
+  | 'opportunities'
+  | 'opportunity-scan'
   // Deliverables
   | 'business-cases'
   | 'business-case-detail'
+  | 'business-case-new'
+  | 'business-case-interactive'
+  // Decision Support
+  | 'decision-trace'
   | 'interactive-calculator'
   | 'cfo-view'
   | 'executive-view'
@@ -133,6 +142,7 @@ const ROUTE_MAP: Record<RouteState, RouteConfig> = {
 
   // Workspaces (account-scoped)
   'intelligence': { path: '/intelligence/:accountId', params: ['accountId'] },
+  'intelligence-signals': { path: '/intelligence/:accountId/signals', params: ['accountId'] },
   'hypothesis': { path: '/hypothesis/:accountId', params: ['accountId'] },
   'drivers': { path: '/drivers/:accountId', params: ['accountId'] },
   'calculator': { path: '/calculator/:accountId', params: ['accountId'] },
@@ -147,6 +157,7 @@ const ROUTE_MAP: Record<RouteState, RouteConfig> = {
   'my-models': { path: '/context/models' },
   'formulas': { path: '/context/formulas' },
   'formula-builder': { path: '/context/formulas/:formulaId', params: ['formulaId'] },
+  'formula-new': { path: '/model/value-studio/formulas/new' },
   'value-trees': { path: '/context/value-trees/explorer' },
   'agent-workflows': { path: '/context/agents' },
   'ontology': { path: '/context/ontology' },
@@ -158,9 +169,14 @@ const ROUTE_MAP: Record<RouteState, RouteConfig> = {
   'integrations': { path: '/context/integrations' },
   'sources': { path: '/context/sources' },
 
+  // Discover
+  'opportunities': { path: '/discover/opportunities' },
+  'opportunity-scan': { path: '/discover/opportunities/scan' },
+
   // Deliverables
   'business-cases': { path: '/deliverables/cases' },
   'business-case-detail': { path: '/deliverables/cases/:caseId', params: ['caseId'] },
+  'business-case-new': { path: '/deliverables/cases/new' },
   'interactive-calculator': { path: '/deliverables/calculators' },
   'cfo-view': { path: '/deliverables/views/cfo' },
   'executive-view': { path: '/deliverables/views/executive' },

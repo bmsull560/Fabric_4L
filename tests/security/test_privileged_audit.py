@@ -18,9 +18,9 @@ except ImportError:
     HTTPException = None
     Request = None
 
-from shared.identity.context import RequestContext
-from shared.identity.dependencies import require_privileged_access
-from shared.audit.models import AuditAction, PrivilegedAccessDetails
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_privileged_access
+from value_fabric.shared.audit.models import AuditAction, PrivilegedAccessDetails
 
 
 @pytest.fixture

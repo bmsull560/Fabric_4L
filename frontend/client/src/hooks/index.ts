@@ -109,4 +109,5 @@ export {
 
 // ── Navigation Hooks ─────────────────────────────────────────────────────────
 
-export { useNavigation, type RouteState } from "./useNavigation";
+export { useNavigation } from "./useNavigation";
+export type { RouteState } from "@/navigation/navigationService";

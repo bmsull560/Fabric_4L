@@ -2,6 +2,7 @@
 
 **Status:** P0 Blocker - Must Complete Before Production Deployment  
 **Created:** 2026-05-02  
+**Updated:** 2026-05-02  
 **Applies To:** All `.env*`, `k8s/secrets.yml`, and secret-bearing files in git history
 
 ---
@@ -10,7 +11,24 @@
 
 **This repository contains committed secrets.** Do not deploy to production until this runbook is executed.
 
-**Files at risk:** `.env.dev`, `value-fabric/.env`, `k8s/secrets.yml` (and variants)
+**Files at risk:** `frontend/.env.development`, `frontend/.env.production`, `frontend/.env.staging`, `frontend/.env.test`, `value-fabric/.env.staging`, `value-fabric/.env.test` (and any other non-example `.env` variants)
+
+---
+
+## Mandatory Sequence
+
+These steps **must** be performed in order. Do not skip or reorder.
+
+1. **Rotate all credentials first.** Every secret referenced by a committed `.env` file must be rotated at its source before any Git cleanup begins.
+2. **Replace committed `.env` usage with `.env.example` templates and external secret management.** Remove non-example `.env` files from the working tree and provide `.env.*.example` templates with placeholder values. Use ExternalSecrets, Vault, or equivalent for runtime injection.
+3. **Only after rotation, remove files from Git tracking.** Run `git rm --cached` on all non-example `.env` files. Update `.gitignore` to prevent recurrence.
+4. **Then use `git-filter-repo` or BFG to purge history.** Purge `.env` files and any other secret-bearing files from the entire Git history.
+5. **All collaborators must reclone or hard-reset after history rewrite.** Notify the team. A force-pushed rewrite invalidates all existing clones.
+
+**Failure to follow this sequence risks:**
+- Rotating secrets that are still visible in Git history (pointless)
+- Breaking applications because secrets are removed before replacements are operational
+- Data breaches from credentials that remain valid in historical commits
 
 ---
 

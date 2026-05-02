@@ -1,0 +1,144 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "layer1-ingestion"
+version = "1.0.0"
+description = "Intelligent Data Ingestion Service for Value Fabric"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Internal"}
+authors = [
+    {name = "Value Fabric Team"}
+]
+keywords = ["crawler", "ingestion", "web-scraping", "markdown"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.9",
+    "alembic>=1.12.0",
+    "celery>=5.3.0",
+    "redis>=5.0.0",
+    "playwright>=1.40.0",
+    "trafilatura>=1.6.0",
+    "beautifulsoup4>=4.12.0",
+    "markdownify>=0.11.0",
+    "httpx>=0.25.0",
+    "python-multipart>=0.0.6",
+    "python-dotenv>=1.0.0",
+    "structlog>=23.2.0",
+    "prometheus-client>=0.19.0",
+    "opentelemetry-api>=1.21.0",
+    "opentelemetry-sdk>=1.21.0",
+    "opentelemetry-instrumentation>=0.42b0",
+    "pyyaml>=6.0.0",
+    "protego>=0.3.0",
+    "defusedxml>=0.7.1",  # P1-20: XXE protection for XML parsing
+    # Downgraded from >=2.0.0 to >=1.0.0 for compatibility with existing auth flow
+    # v2 introduced breaking changes in client initialization
+    "infisicalsdk>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "httpx>=0.25.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/value-fabric/layer1-ingestion"
+Documentation = "https://docs.value-fabric.io/layer1"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "I",   # isort
+    "W",   # pycodestyle warnings
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "E402",   # Module level import not at top of file
+    "E722",   # Do not use bare `except`
+    "W291",   # Trailing whitespace
+    "W293",   # Blank line contains whitespace
+    "N805",   # First argument of a method should be named `self`
+    "N811",   # Constant imported as non-constant
+    "N818",   # Exception name should end with `Error`
+    "N801",   # Auto-generated TypedDictModel result classes use snake_case names
+    "UP042",  # Use `StrEnum` instead of `(str, enum.Enum)` – pre-existing pattern
+    "UP007",  # Use `X | Y` for union types
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+# Note: Additional flags are passed via Makefile for CI consistency
+exclude = [
+    "migrations/",
+    "tests/",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+pythonpath = ["src", ".."]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/migrations/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

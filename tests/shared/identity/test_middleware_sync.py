@@ -4,7 +4,7 @@ import pytest
 from uuid import UUID
 from unittest.mock import patch
 
-from shared.identity.middleware_sync import (
+from value_fabric.shared.identity.middleware_sync import (
     SyncRequestContext,
     GovernanceMiddlewareSync,
     AUTH_SOURCE_SERVICE_ACCOUNT,

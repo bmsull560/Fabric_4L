@@ -20,9 +20,9 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
-from shared.audit import AuditAction, AuditOutcome
-from shared.identity.oidc import OIDCClient, map_role_from_claims
-from shared.identity.oidc_config import OIDCProviderConfig
+from value_fabric.shared.audit import AuditAction, AuditOutcome
+from value_fabric.shared.identity.oidc import OIDCClient, map_role_from_claims
+from value_fabric.shared.identity.oidc_config import OIDCProviderConfig
 
 
 def _generate_code_verifier() -> str:

@@ -17,15 +17,16 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useNavigation } from '@/hooks';
 import { LoginForm } from '../components/login-form';
 import { getSSOTenantSlug } from '../config/auth';
 import { sessionService } from '../services/sessionService';
 
 export default function Login() {
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const [searchParams] = useSearchParams();
   const {
     isAuthenticated, isLoading,
@@ -47,7 +48,7 @@ export default function Login() {
     if (signup === 'success') {
       setSuccessMessage('Account created successfully. Please sign in.');
       // Clean up URL
-      navigate('/login', { replace: true });
+      navigateTo('login', undefined, { replace: true });
     }
 
     // Preserve intended destination before IdP redirect
@@ -58,15 +59,15 @@ export default function Login() {
     if (code && state) {
       void handleCallbackFlow(code, state);
     }
-  }, [searchParams, navigate]);
+  }, [searchParams]);
 
   // Skip login if already authenticated (Skill §3: "Skip login if session valid")
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       const redirect = sessionService.consumePostLoginRedirect();
-      navigate(redirect || '/home');
+      navigateTo(redirect ? redirect as string : 'home');
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading]);
 
   /**
    * Trace 2: Exchange authorization code for JWT.
@@ -81,7 +82,7 @@ export default function Login() {
       const success = await handleCallback(code, state);
       if (success) {
         const redirect = sessionService.consumePostLoginRedirect();
-        navigate(redirect || '/home');
+        navigateTo(redirect ? redirect as string : 'home');
       } else {
         setError('Authentication failed. Please try again.');
       }
@@ -104,7 +105,7 @@ export default function Login() {
     try {
       if (import.meta.env.DEV && devBypass) {
         devBypass();
-        navigate('/home');
+        navigateTo('home');
       } else {
         setError('Email/password login is not yet configured. Use SSO or contact your admin.');
       }
@@ -113,7 +114,7 @@ export default function Login() {
     } finally {
       setIsLoggingIn(false);
     }
-  }, [devBypass, navigate]);
+  }, [devBypass]);
 
   /**
    * Trace 1: SSO button → OIDC redirect.
@@ -149,8 +150,8 @@ export default function Login() {
 
   const handleDevBypass = useCallback(() => {
     devBypass?.();
-    navigate('/home');
-  }, [devBypass, navigate]);
+    navigateTo('home');
+  }, [devBypass]);
 
   // Show loading state while checking auth or handling callback
   if (isLoading || isLoggingIn) {

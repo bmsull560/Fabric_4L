@@ -1,0 +1,10 @@
+Extract all product features mentioned in this text.
+
+Text:
+{text}
+
+Instructions:
+- A feature is a concrete product functionality (e.g., "Dashboard Widget", "API Endpoint")
+- Features implement capabilities - they are the "how" to capability's "what"
+- Note the implementation status if mentioned (planned, beta, generally available, deprecated)
+- Return empty array if no clear features are mentioned

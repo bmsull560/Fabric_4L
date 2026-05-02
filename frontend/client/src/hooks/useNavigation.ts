@@ -10,8 +10,12 @@ interface NavigationOptions extends Omit<NavigateOptions, 'state'> {
   state?: Record<string, unknown>;
 }
 
+interface StateNavigationOptions extends NavigationOptions {
+  query?: Record<string, string | number | undefined>;
+}
+
 interface NavigateToFunction {
-  (state: RouteState, params?: NavigationParams, options?: NavigationOptions): void;
+  (state: RouteState, params?: NavigationParams, options?: StateNavigationOptions): void;
   (path: string, options?: NavigationOptions): void;
 }
 
@@ -19,10 +23,22 @@ export function useNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const buildQueryString = (query?: Record<string, string | number | undefined>): string => {
+    if (!query) return '';
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined) {
+        params.append(key, String(value));
+      }
+    }
+    const queryString = params.toString();
+    return queryString ? `?${queryString}` : '';
+  };
+
   const navigateTo: NavigateToFunction = (
     stateOrPath: RouteState | string,
     paramsOrOptions?: NavigationParams | NavigationOptions,
-    options?: NavigationOptions
+    options?: StateNavigationOptions
   ) => {
     if (typeof stateOrPath === 'string' && stateOrPath.startsWith('/')) {
       // Direct path navigation (backward compat)
@@ -33,7 +49,10 @@ export function useNavigation() {
       const state = stateOrPath as RouteState;
       const params = paramsOrOptions as NavigationParams | undefined;
       const opts = options;
-      const path = getStatePath(state, params);
+      let path = getStatePath(state, params);
+      if (opts?.query) {
+        path += buildQueryString(opts.query);
+      }
       navigate(path, opts);
     }
   };
