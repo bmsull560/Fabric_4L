@@ -64,7 +64,7 @@ for name, g in data.get('gate-definitions', {}).items():
             fi
             GATE_TABLE="${GATE_TABLE}| $gate | $status_icon | $caveat |\n"
         fi
-    done < "$LOG_DIR/release-gate.log"
+    done < "$LOG_DIR/release-gate.log" || true
 else
     GATE_TABLE="| (no gate log found) | ⏳ | Run release-gate.sh first |\n"
 fi

@@ -116,7 +116,7 @@ describe('ValuePacks', () => {
 
     it('displays error state with retry button when API fails', async () => {
       server.use(
-        http.get('/packs', () => {
+        http.get('/api/v1/graph/packs', () => {
           return HttpResponse.json({ error: 'Database connection failed' }, { status: 500 });
         })
       );
@@ -306,7 +306,7 @@ describe('ValuePacks', () => {
     it('displays deploy error in pack actions panel when API returns 400', async () => {
       // Setup error response for apply endpoint
       server.use(
-        http.post('/packs/:id/apply', () => {
+        http.post('/api/v1/graph/packs/:id/apply', () => {
           return HttpResponse.json({ message: 'Deployment failed' }, { status: 400 });
         })
       );

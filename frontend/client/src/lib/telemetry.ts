@@ -72,9 +72,37 @@ export function logDebug(message: string, context?: LogContext): void {
 }
 
 /**
+ * Send error report to backend telemetry endpoint.
+ * Used in production for centralized error tracking.
+ */
+async function sendToTelemetryBackend(
+  type: 'exception' | 'message',
+  payload: { message: string; stack?: string; name?: string; level?: LogLevel; context?: LogContext }
+): Promise<void> {
+  try {
+    const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
+    await fetch(`${API_BASE}/telemetry/error`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type,
+        timestamp: new Date().toISOString(),
+        url: typeof window !== 'undefined' ? window.location.href : undefined,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        ...payload,
+      }),
+      // Use keepalive to ensure the request completes even if page unloads
+      keepalive: true,
+    });
+  } catch {
+    // Silently fail - don't cause errors while reporting errors
+  }
+}
+
+/**
  * Capture an exception for telemetry.
  * In development: logs to console with stack trace.
- * In production: reserved for Sentry/DataDog/etc.
+ * In production: sends to backend telemetry endpoint.
  */
 export function captureException(error: Error, context?: LogContext): void {
   logError(error.message, {
@@ -83,16 +111,21 @@ export function captureException(error: Error, context?: LogContext): void {
     ...context,
   });
 
-  // TODO: Integrate with Sentry/Datadog in production
-  // if (import.meta.env.PROD && typeof window.Sentry !== 'undefined') {
-  //   window.Sentry.captureException(error, { extra: context });
-  // }
+  // P2 FIX: Send to backend in production
+  if (import.meta.env.PROD) {
+    sendToTelemetryBackend('exception', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      context,
+    });
+  }
 }
 
 /**
  * Capture a structured message for telemetry.
  * In development: logs to console.
- * In production: reserved for Sentry/DataDog/etc.
+ * In production: sends to backend telemetry endpoint.
  */
 export function captureMessage(
   message: string,
@@ -101,10 +134,14 @@ export function captureMessage(
 ): void {
   log(level, message, context);
 
-  // TODO: Integrate with Sentry/Datadog in production
-  // if (import.meta.env.PROD && typeof window.Sentry !== 'undefined') {
-  //   window.Sentry.captureMessage(message, level);
-  // }
+  // P2 FIX: Send to backend in production
+  if (import.meta.env.PROD) {
+    sendToTelemetryBackend('message', {
+      message,
+      level,
+      context,
+    });
+  }
 }
 
 /**

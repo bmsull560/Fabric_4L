@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+SCRIPT_DIR="$(cd "$(dirname "scripts/release-gate.sh")" && pwd)"
+ROOT="$(dirname "$SCRIPT_DIR")"
+POLICY_FILE="${ROOT}/.fabric/prod-gates.policy.yaml"
+POLICY_FILE="${POLICY_FILE//\\//}"
+echo "SCRIPT_DIR=$SCRIPT_DIR"
+echo "ROOT=$ROOT"
+echo "POLICY_FILE=$POLICY_FILE"
+test -s "$POLICY_FILE" && echo "exists" || echo "missing"
+python3 -c "import yaml; yaml.safe_load(open('$POLICY_FILE'))" && echo "yaml ok" || echo "yaml fail"

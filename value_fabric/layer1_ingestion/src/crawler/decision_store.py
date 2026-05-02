@@ -2,15 +2,11 @@
 
 Provides persistent, queryable decision history separate from operational logs.
 Enables replay analysis, audit lookup, and policy validation.
-
-FIXME (P2 Risk #13): Async methods use sync SQLAlchemy calls.
-Current implementation uses thread-blocking sync calls in async methods.
-Resolution: Migrate to async SQLAlchemy (asyncio extension) or asyncpg.
-Tracked: Risk #13 in correctness hardening protocol.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -201,6 +197,37 @@ class CrawlDecisionRepository:
             return self._session
         return get_db_session()
 
+    def _save_sync(self, record: CrawlDecisionRecord) -> None:
+        """Synchronous save implementation (runs in thread pool)."""
+        tenant_id = UUID(record.tenant_id) if record.tenant_id else None
+        with get_db_session(tenant_id=tenant_id, require_tenant=False) as session:
+            db_record = CrawlDecisionModel(
+                decision_id=UUID(record.decision_id),
+                job_id=UUID(record.job_id) if record.job_id else None,
+                tenant_id=UUID(record.tenant_id) if record.tenant_id else None,
+                url=record.url,
+                domain=record.domain,
+                requested_path=record.requested_path,
+                router_decision=record.router_decision,
+                router_rule=record.router_rule,
+                quality_passed=record.quality_passed,
+                quality_checks=json.dumps(record.quality_checks) if record.quality_checks else None,
+                fallback_reason=record.fallback_reason,
+                final_path=record.final_path,
+                status_code=record.status_code,
+                fast_duration_ms=record.fast_duration_ms,
+                browser_duration_ms=record.browser_duration_ms,
+                fetch_time_ms=record.fetch_time_ms,
+                bytes_transferred=record.bytes_transferred,
+                spa_detected=record.spa_detected,
+                text_length=record.text_length,
+                error_type=record.error_type,
+                error_message=record.error_message,
+                created_at=record.created_at,
+            )
+            session.add(db_record)
+            session.commit()
+
     async def save(self, record: CrawlDecisionRecord) -> None:
         """Save a crawl decision record.
 
@@ -208,44 +235,14 @@ class CrawlDecisionRepository:
             record: The decision record to persist
         """
         try:
-            # CONTRACT §2.2: Use tenant-scoped session with RLS
-            tenant_id = UUID(record.tenant_id) if record.tenant_id else None
-            with get_db_session(tenant_id=tenant_id, require_tenant=False) as session:
-                db_record = CrawlDecisionModel(
-                    decision_id=UUID(record.decision_id),
-                    job_id=UUID(record.job_id) if record.job_id else None,
-                    tenant_id=UUID(record.tenant_id) if record.tenant_id else None,
-                    url=record.url,
-                    domain=record.domain,
-                    requested_path=record.requested_path,
-                    router_decision=record.router_decision,
-                    router_rule=record.router_rule,
-                    quality_passed=record.quality_passed,
-                    quality_checks=json.dumps(record.quality_checks) if record.quality_checks else None,
-                    fallback_reason=record.fallback_reason,
-                    final_path=record.final_path,
-                    status_code=record.status_code,
-                    fast_duration_ms=record.fast_duration_ms,
-                    browser_duration_ms=record.browser_duration_ms,
-                    fetch_time_ms=record.fetch_time_ms,
-                    bytes_transferred=record.bytes_transferred,
-                    spa_detected=record.spa_detected,
-                    text_length=record.text_length,
-                    error_type=record.error_type,
-                    error_message=record.error_message,
-                    created_at=record.created_at,
-                )
-
-                session.add(db_record)
-                session.commit()
-
-                self.logger.debug(
-                    "Decision record saved",
-                    decision_id=record.decision_id,
-                    job_id=record.job_id,
-                    final_path=record.final_path,
-                )
-
+            # P2 FIX: Run sync DB operations in thread pool to prevent blocking
+            await asyncio.to_thread(self._save_sync, record)
+            self.logger.debug(
+                "Decision record saved",
+                decision_id=record.decision_id,
+                job_id=record.job_id,
+                final_path=record.final_path,
+            )
         except Exception as e:
             self.logger.error(
                 "Failed to save decision record",
@@ -254,6 +251,14 @@ class CrawlDecisionRepository:
                 exc_info=True,
             )
             raise
+
+    def _get_by_id_sync(self, decision_id: str) -> CrawlDecisionRecord | None:
+        """Synchronous get by ID implementation."""
+        with self._get_session() as session:
+            db_record = session.get(CrawlDecisionModel, UUID(decision_id))
+            if not db_record:
+                return None
+            return self._to_record(db_record)
 
     async def get_by_id(self, decision_id: str) -> CrawlDecisionRecord | None:
         """Get a decision record by ID.
@@ -264,13 +269,25 @@ class CrawlDecisionRepository:
         Returns:
             Decision record or None if not found
         """
+        return await asyncio.to_thread(self._get_by_id_sync, decision_id)
+
+    def _get_by_job_sync(
+        self,
+        job_id: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[CrawlDecisionRecord]:
+        """Synchronous get by job implementation."""
         with self._get_session() as session:
-            db_record = session.get(CrawlDecisionModel, UUID(decision_id))
-
-            if not db_record:
-                return None
-
-            return self._to_record(db_record)
+            stmt = (
+                select(CrawlDecisionModel)
+                .where(CrawlDecisionModel.job_id == UUID(job_id))
+                .order_by(CrawlDecisionModel.created_at.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+            db_records = session.execute(stmt).scalars().all()
+            return [self._to_record(r) for r in db_records]
 
     async def get_by_job(
         self,
@@ -288,15 +305,17 @@ class CrawlDecisionRepository:
         Returns:
             List of decision records
         """
+        return await asyncio.to_thread(self._get_by_job_sync, job_id, limit, offset)
+
+    def _get_by_url_sync(self, url: str, limit: int = 100) -> list[CrawlDecisionRecord]:
+        """Synchronous get by URL implementation."""
         with self._get_session() as session:
             stmt = (
                 select(CrawlDecisionModel)
-                .where(CrawlDecisionModel.job_id == UUID(job_id))
+                .where(CrawlDecisionModel.url == url)
                 .order_by(CrawlDecisionModel.created_at.desc())
                 .limit(limit)
-                .offset(offset)
             )
-
             db_records = session.execute(stmt).scalars().all()
             return [self._to_record(r) for r in db_records]
 
@@ -314,14 +333,20 @@ class CrawlDecisionRepository:
         Returns:
             List of decision records for this URL
         """
-        with self._get_session() as session:
-            stmt = (
-                select(CrawlDecisionModel)
-                .where(CrawlDecisionModel.url == url)
-                .order_by(CrawlDecisionModel.created_at.desc())
-                .limit(limit)
-            )
+        return await asyncio.to_thread(self._get_by_url_sync, url, limit)
 
+    def _get_by_domain_sync(
+        self,
+        domain: str,
+        since: datetime | None = None,
+        limit: int = 1000,
+    ) -> list[CrawlDecisionRecord]:
+        """Synchronous get by domain implementation."""
+        with self._get_session() as session:
+            stmt = select(CrawlDecisionModel).where(CrawlDecisionModel.domain == domain)
+            if since:
+                stmt = stmt.where(CrawlDecisionModel.created_at >= since)
+            stmt = stmt.order_by(CrawlDecisionModel.created_at.desc()).limit(limit)
             db_records = session.execute(stmt).scalars().all()
             return [self._to_record(r) for r in db_records]
 
@@ -341,16 +366,54 @@ class CrawlDecisionRepository:
         Returns:
             List of decision records
         """
+        return await asyncio.to_thread(self._get_by_domain_sync, domain, since, limit)
+
+    def _get_fallback_stats_sync(
+        self,
+        domain: str,
+        since: datetime | None = None,
+    ) -> FallbackStats:
+        """Synchronous get fallback stats implementation."""
         with self._get_session() as session:
-            stmt = select(CrawlDecisionModel).where(CrawlDecisionModel.domain == domain)
-
+            base_stmt = select(CrawlDecisionModel).where(CrawlDecisionModel.domain == domain)
             if since:
-                stmt = stmt.where(CrawlDecisionModel.created_at >= since)
-
-            stmt = stmt.order_by(CrawlDecisionModel.created_at.desc()).limit(limit)
-
-            db_records = session.execute(stmt).scalars().all()
-            return [self._to_record(r) for r in db_records]
+                base_stmt = base_stmt.where(CrawlDecisionModel.created_at >= since)
+            all_decisions = session.execute(base_stmt).scalars().all()
+            if not all_decisions:
+                return FallbackStats(
+                    domain=domain,
+                    total_decisions=0,
+                    fast_count=0,
+                    browser_count=0,
+                    fallback_count=0,
+                    fallback_rate=0.0,
+                    top_fallback_reasons={},
+                    avg_fast_duration_ms=0.0,
+                    avg_browser_duration_ms=0.0,
+                )
+            total = len(all_decisions)
+            fast_count = sum(1 for d in all_decisions if d.final_path == "fast")
+            browser_count = sum(1 for d in all_decisions if d.final_path == "browser")
+            fallback_count = sum(1 for d in all_decisions if d.final_path == "fallback")
+            reasons: dict[str, int] = {}
+            for d in all_decisions:
+                if d.fallback_reason:
+                    reasons[d.fallback_reason] = reasons.get(d.fallback_reason, 0) + 1
+            fast_times = [d.fast_duration_ms for d in all_decisions if d.fast_duration_ms > 0]
+            browser_times = [d.browser_duration_ms for d in all_decisions if d.browser_duration_ms]
+            avg_fast = sum(fast_times) / len(fast_times) if fast_times else 0.0
+            avg_browser = sum(browser_times) / len(browser_times) if browser_times else 0.0
+            return FallbackStats(
+                domain=domain,
+                total_decisions=total,
+                fast_count=fast_count,
+                browser_count=browser_count,
+                fallback_count=fallback_count,
+                fallback_rate=fallback_count / total if total > 0 else 0.0,
+                top_fallback_reasons=dict(sorted(reasons.items(), key=lambda x: x[1], reverse=True)[:5]),
+                avg_fast_duration_ms=avg_fast,
+                avg_browser_duration_ms=avg_browser,
+            )
 
     async def get_fallback_stats(
         self,
@@ -366,80 +429,17 @@ class CrawlDecisionRepository:
         Returns:
             Fallback statistics
         """
-        with self._get_session() as session:
-            # Base query for domain
-            base_stmt = select(CrawlDecisionModel).where(CrawlDecisionModel.domain == domain)
+        return await asyncio.to_thread(self._get_fallback_stats_sync, domain, since)
 
-            if since:
-                base_stmt = base_stmt.where(CrawlDecisionModel.created_at >= since)
-
-            # Get all decisions
-            all_decisions = session.execute(base_stmt).scalars().all()
-
-            if not all_decisions:
-                return FallbackStats(
-                    domain=domain,
-                    total_decisions=0,
-                    fast_count=0,
-                    browser_count=0,
-                    fallback_count=0,
-                    fallback_rate=0.0,
-                    top_fallback_reasons={},
-                    avg_fast_duration_ms=0.0,
-                    avg_browser_duration_ms=0.0,
-                )
-
-            # Calculate stats
-            total = len(all_decisions)
-            fast_count = sum(1 for d in all_decisions if d.final_path == "fast")
-            browser_count = sum(1 for d in all_decisions if d.final_path == "browser")
-            fallback_count = sum(1 for d in all_decisions if d.final_path == "fallback")
-
-            # Fallback reasons
-            reasons: dict[str, int] = {}
-            for d in all_decisions:
-                if d.fallback_reason:
-                    reasons[d.fallback_reason] = reasons.get(d.fallback_reason, 0) + 1
-
-            # Average durations
-            fast_times = [d.fast_duration_ms for d in all_decisions if d.fast_duration_ms > 0]
-            browser_times = [
-                d.browser_duration_ms for d in all_decisions if d.browser_duration_ms
-            ]
-
-            avg_fast = sum(fast_times) / len(fast_times) if fast_times else 0.0
-            avg_browser = sum(browser_times) / len(browser_times) if browser_times else 0.0
-
-            return FallbackStats(
-                domain=domain,
-                total_decisions=total,
-                fast_count=fast_count,
-                browser_count=browser_count,
-                fallback_count=fallback_count,
-                fallback_rate=fallback_count / total if total > 0 else 0.0,
-                top_fallback_reasons=dict(sorted(reasons.items(), key=lambda x: x[1], reverse=True)[:5]),
-                avg_fast_duration_ms=avg_fast,
-                avg_browser_duration_ms=avg_browser,
-            )
-
-    async def get_router_quality_report(self, job_id: str) -> RouterQualityReport:
-        """Generate a quality report for a job's routing decisions.
-
-        Args:
-            job_id: The job to analyze
-
-        Returns:
-            Router quality report
-        """
+    def _get_router_quality_report_sync(self, job_id: str) -> RouterQualityReport:
+        """Synchronous get router quality report implementation."""
         with self._get_session() as session:
             stmt = (
                 select(CrawlDecisionModel)
                 .where(CrawlDecisionModel.job_id == UUID(job_id))
                 .order_by(CrawlDecisionModel.created_at.desc())
             )
-
             decisions = session.execute(stmt).scalars().all()
-
             if not decisions:
                 return RouterQualityReport(
                     job_id=job_id,
@@ -454,37 +454,25 @@ class CrawlDecisionRepository:
                     slowest_url=None,
                     fastest_url=None,
                 )
-
             total = len(decisions)
             fast_count = sum(1 for d in decisions if d.final_path == "fast")
             browser_count = sum(1 for d in decisions if d.final_path == "browser")
             fallback_count = sum(1 for d in decisions if d.final_path == "fallback")
-
-            # Router rules used
             rules: dict[str, int] = {}
             for d in decisions:
                 rules[d.router_rule] = rules.get(d.router_rule, 0) + 1
-
-            # Quality gate accuracy
-            # If quality_passed=True and final_path=fast → correct
-            # If quality_passed=False and final_path=fallback → correct
             correct_quality = 0
             for d in decisions:
                 if d.quality_passed is True and d.final_path == "fast":
                     correct_quality += 1
                 elif d.quality_passed is False and d.final_path == "fallback":
                     correct_quality += 1
-
             accuracy = correct_quality / total if total > 0 else 0.0
-
-            # Fetch times
             times = [(d.url, d.fetch_time_ms) for d in decisions if d.fetch_time_ms > 0]
             avg_time = sum(t[1] for t in times) / len(times) if times else 0.0
-
             sorted_times = sorted(times, key=lambda x: x[1])
             slowest = sorted_times[-1][0] if sorted_times else None
             fastest = sorted_times[0][0] if sorted_times else None
-
             return RouterQualityReport(
                 job_id=job_id,
                 total_urls=total,
@@ -498,6 +486,32 @@ class CrawlDecisionRepository:
                 slowest_url=slowest,
                 fastest_url=fastest,
             )
+
+    async def get_router_quality_report(self, job_id: str) -> RouterQualityReport:
+        """Generate a quality report for a job's routing decisions.
+
+        Args:
+            job_id: The job to analyze
+
+        Returns:
+            Router quality report
+        """
+        return await asyncio.to_thread(self._get_router_quality_report_sync, job_id)
+
+    def _get_decisions_by_rule_sync(
+        self,
+        router_rule: str,
+        since: datetime | None = None,
+        limit: int = 100,
+    ) -> list[CrawlDecisionRecord]:
+        """Synchronous get decisions by rule implementation."""
+        with self._get_session() as session:
+            stmt = select(CrawlDecisionModel).where(CrawlDecisionModel.router_rule == router_rule)
+            if since:
+                stmt = stmt.where(CrawlDecisionModel.created_at >= since)
+            stmt = stmt.order_by(CrawlDecisionModel.created_at.desc()).limit(limit)
+            db_records = session.execute(stmt).scalars().all()
+            return [self._to_record(r) for r in db_records]
 
     async def get_decisions_by_rule(
         self,
@@ -515,16 +529,7 @@ class CrawlDecisionRepository:
         Returns:
             List of matching decisions
         """
-        with self._get_session() as session:
-            stmt = select(CrawlDecisionModel).where(CrawlDecisionModel.router_rule == router_rule)
-
-            if since:
-                stmt = stmt.where(CrawlDecisionModel.created_at >= since)
-
-            stmt = stmt.order_by(CrawlDecisionModel.created_at.desc()).limit(limit)
-
-            db_records = session.execute(stmt).scalars().all()
-            return [self._to_record(r) for r in db_records]
+        return await asyncio.to_thread(self._get_decisions_by_rule_sync, router_rule, since, limit)
 
     def _to_record(self, db_record: CrawlDecisionModel) -> CrawlDecisionRecord:
         """Convert database model to domain record."""

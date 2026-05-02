@@ -21,6 +21,8 @@ async function screenshot(page: Page, name: string) {
 async function seedAdmin(page: Page) {
   await seedAuthState(page);
   await setUserTier(page, 'admin', 'super_admin');
+  // Reload so AuthProvider initializes with the seeded state
+  await page.reload();
 }
 
 async function waitForStable(page: Page) {
