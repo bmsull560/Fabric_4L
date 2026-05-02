@@ -781,23 +781,6 @@ async def calculate_scenario(
 # ============================================================================
 
 
-def _validate_expression(v: str) -> None:
-    """Shared expression validation: pattern matching + dangerous keyword checks.
-
-    Raises:
-        ValueError: If expression contains invalid characters or forbidden patterns.
-    """
-    valid_pattern = re.compile(r"^[a-zA-Z0-9_+\-*/()\s]+$")
-    dangerous = ["import", "exec", "eval", "compile", "__", "lambda", "class", "def"]
-
-    if not valid_pattern.match(v):
-        raise ValueError("Expression contains invalid characters")
-    v_lower = v.lower()
-    for pattern in dangerous:
-        if pattern in v_lower:
-            raise ValueError(f"Expression contains forbidden pattern: {pattern}")
-
-
 def evaluate_expression(expression: str, variables: dict[str, float]) -> float:
     """Safely evaluate a mathematical expression with variables."""
     # Simple expression evaluation with basic operators

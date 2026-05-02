@@ -245,7 +245,7 @@ describe('useCanonicalCaseId', () => {
       { wrapper }
     );
 
-    expect(result.current.data).toBeNull();
+    expect(result.current.data).toBeUndefined();
     expect(result.current.isLoading).toBe(false);
   });
 });

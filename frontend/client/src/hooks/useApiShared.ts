@@ -29,7 +29,10 @@ export const STALE_TIME = {
 
 // ── Retry configuration ───────────────────────────────────────────────────────
 // Vitest detection disables retries to prevent test timeouts
-const isTestEnv = typeof process !== 'undefined' && process.env?.VITEST === 'true';
+// Vitest defines globalThis.VITEST or process.env.VITEST in test environment
+const isTestEnv = 
+  (typeof process !== 'undefined' && process.env?.VITEST === 'true') ||
+  (typeof globalThis !== 'undefined' && (globalThis as any).VITEST === true);
 
 export const RETRY_CONFIG = {
   maxRetries: isTestEnv ? false : 3,

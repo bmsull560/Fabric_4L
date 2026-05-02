@@ -95,7 +95,7 @@ describe('useOpportunities', () => {
     expect(result.current.data?.total).toBe(0);
   });
 
-  it.skip('validates response format and throws on invalid data', async () => {
+  it('validates response format and throws on invalid data', async () => {
     server.use(
       http.get('/api/v1/agents/discover/opportunities', () => {
         // Return invalid response missing required 'opportunities' array
@@ -116,7 +116,7 @@ describe('useOpportunities', () => {
     expect(result.current.error?.message).toContain('Missing or invalid opportunities array');
   }, 30000);
 
-  it.skip('validates that response data is an object', async () => {
+  it('validates that response data is an object', async () => {
     server.use(
       http.get('/api/v1/agents/discover/opportunities', () => {
         // Return non-object response
@@ -134,7 +134,7 @@ describe('useOpportunities', () => {
     expect(result.current.error?.message).toContain('Invalid response format');
   }, 30000);
 
-  it.skip('handles API error responses', async () => {
+  it('handles API error responses', async () => {
     server.use(
       http.get('/api/v1/agents/discover/opportunities', () => {
         return new HttpResponse(null, { status: 500 });
@@ -151,7 +151,7 @@ describe('useOpportunities', () => {
     expect(result.current.error).toBeInstanceOf(OpportunitiesApiError);
   }, 30000);
 
-  it.skip('returns error with status code when API fails', async () => {
+  it('returns error with status code when API fails', async () => {
     server.use(
       http.get('/api/v1/agents/discover/opportunities', () => {
         return new HttpResponse(JSON.stringify({ error: 'Unauthorized' }), {

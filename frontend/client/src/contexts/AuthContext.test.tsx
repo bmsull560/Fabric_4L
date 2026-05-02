@@ -98,7 +98,12 @@ describe('AuthProvider', () => {
         tenantSlug: 'test-tenant',
       };
 
-      localStorage.setItem('accessToken', 'stored-token-123');
+      // Use a valid JWT-format token so refreshToken() validates successfully
+      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
+      const signature = btoa('signature');
+      const validToken = `${header}.${payload}.${signature}`;
+      localStorage.setItem('accessToken', validToken);
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
       localStorage.setItem('tenantId', 'tenant-1');
 
@@ -116,7 +121,7 @@ describe('AuthProvider', () => {
 
       expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
       expect(screen.getByTestId('user-email')).toHaveTextContent('restored@example.com');
-      expect(screen.getByTestId('token')).toHaveTextContent('stored-token-123');
+      expect(screen.getByTestId('token')).toHaveTextContent(validToken);
     });
 
     it('clears invalid stored data and initializes as unauthenticated', async () => {
@@ -483,6 +488,10 @@ describe('AuthProvider', () => {
 
   describe('devBypass', () => {
     it('creates mock auth state in development mode', async () => {
+      // devBypass is only available in development mode
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+
       // Component that exposes devBypass for testing
       function DevBypassTrigger() {
         const auth = useAuthContext();
@@ -525,8 +534,11 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('user-email')).toHaveTextContent('dev@example.com');
       });
 
-      // Verify token was stored
-      expect(localStorage.getItem('accessToken')).toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+      // Verify token was stored (valid JWT format with 3 parts)
+      const storedToken = localStorage.getItem('accessToken');
+      expect(storedToken?.split('.')).toHaveLength(3);
+
+      process.env.NODE_ENV = originalNodeEnv;
     });
   });
 

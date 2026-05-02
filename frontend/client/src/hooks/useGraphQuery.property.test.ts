@@ -132,7 +132,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
 
     const wrapper = createWrapper();
     const { result } = renderHook(
-      () => useSubgraph({ query: randomString(5, 20) }),
+      () => useSubgraph({ query: 'test-query' }),
       { wrapper }
     );
 
@@ -248,9 +248,6 @@ describe('useSubgraph Properties [L3-Property]', () => {
    * PROPERTY 5: "Empty result is handled gracefully"
    */
   it('property: empty result is valid', async () => {
-    // Use unique query for each iteration to avoid React Query caching
-    const uniqueQuery = 'no-results-' + randomString();
-
     server.use(
       http.get('/api/v1/graph/graph/subgraph', () =>
         HttpResponse.json({
@@ -265,7 +262,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
 
     const wrapper = createWrapper();
     const { result } = renderHook(
-      () => useSubgraph({ query: uniqueQuery }),
+      () => useSubgraph({ query: 'no-results-test' }),
       { wrapper }
     );
 

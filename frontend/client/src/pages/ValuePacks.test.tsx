@@ -129,14 +129,14 @@ describe('ValuePacks', () => {
       });
     });
 
-    it('displays error state with retry button when API fails [FIXME: mock not intercepting]', async () => {
-      // Mock API client to return error - more reliable than MSW for error state testing
-      vi.mocked(apiClient.get).mockRejectedValueOnce(
-        new ValuePackApiError('Database connection failed', 500)
+    it('displays error state with retry button when API fails', async () => {
+      server.use(
+        http.get('/api/v1/graph/packs', () => {
+          return new HttpResponse(null, { status: 500 });
+        })
       );
 
-      // Use wrapper with retry disabled for faster error state detection
-      const wrapper = createWrapperWithRetry(false);
+      const wrapper = createWrapper();
       render(<ValuePacks />, { wrapper });
 
       // Wait for error state to appear
@@ -144,7 +144,6 @@ describe('ValuePacks', () => {
         expect(screen.getByText(/Failed to load value packs/i)).toBeInTheDocument();
       }, { timeout: 5000 });
 
-      expect(screen.getByText(/Database connection failed/i)).toBeInTheDocument();
       expect(screen.getByText(/Try again/i)).toBeInTheDocument();
     }, 10000);
   });
