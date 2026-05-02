@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "agent_type": "OrchestrationController",
+  "agent_id": "OrchestrationController-00000000",
+  "privilege_tier": "elevated",
+  "allowed_tools": [
+    "query_graph",
+    "semantic_search",
+    "get_entity",
+    "get_relationships",
+    "traverse_tree",
+    "find_paths",
+    "evaluate_formula",
+    "calculate_roi",
+    "compare_benchmarks",
+    "sensitivity_analysis",
+    "analyze_competition",
+    "generate_section",
+    "create_chart",
+    "format_table",
+    "assemble_document",
+    "export_document",
+    "send_notification",
+    "create_task",
+    "validate_input",
+    "format_currency"
+  ],
+  "denied_tools": [
+    "update_opportunity",
+    "export_to_crm",
+    "score_lead"
+  ],
+  "invariants": {
+    "max_tool_calls_per_run": 200,
+    "budget_limit_usd": 15.00,
+    "require_human_approval": [
+      "send_notification",
+      "export_document"
+    ],
+    "custom": {
+      "max_parallel_agents": 5,
+      "max_workflow_duration_seconds": 600,
+      "max_checkpoint_size_bytes": 1048576
+    }
+  },
+  "metadata": {
+    "description": "Workflow scheduling, task distribution, and failure recovery. Coordinates multi-agent pipelines (ROI calculator, whitespace analysis, business case generation).",
+    "owner": "platform-team",
+    "last_reviewed": "2026-04-27"
+  }
+}

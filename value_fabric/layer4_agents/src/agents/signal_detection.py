@@ -1,0 +1,558 @@
+"""Signal Detection Agent for operational pain signal discovery.
+
+Orchestrates the complete signal detection pipeline:
+1. Receives prospect setup data
+2. Calls Layer 2 for structured extraction
+3. Queries Layer 3 for evidence and quantification
+4. Persists enriched signals
+5. Emits streaming events to frontend
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import UTC, datetime
+from typing import Any
+
+from shared.identity.context import RequestContext
+
+from ..messaging.signal_events import (
+    SignalCompletedEvent,
+    SignalDiscoveredEvent,
+    SignalFailedEvent,
+    SignalStreamCompleteEvent,
+)
+from ..models.pain_signal import EvidenceMatch, PainSignal, SignalCategory, TrendDirection
+from .base import AgentCapability, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class SignalDetectionAgent__detect_signalsResult(TypedDictModel):
+    message: str
+    processing_metadata: Any
+    signals: list[Any]
+
+class SignalDetectionAgent__extract_signals_from_layer2Result(TypedDictModel):
+    duration_ms: int
+    error: Any
+    signals: list[Any]
+
+logger = logging.getLogger(__name__)
+
+
+class SignalDetectionAgent(BaseAgent):
+    """Agent for detecting operational pain signals from prospect data.
+
+    This agent orchestrates a multi-layer pipeline:
+    - Layer 2: LLM-based structured extraction of operational signals
+    - Layer 3: Evidence matching and impact quantification
+    - Layer 4: Event streaming and persistence coordination
+
+    Capabilities:
+    - detect_operational_signals: Extract and enrich operational signals
+    - stream_signal_detection: Real-time streaming version with progress events
+    """
+
+    agent_type = "SignalDetectionAgent"
+
+    # Supported signal categories (operational only for Phase 3 vertical slice)
+    SUPPORTED_CATEGORIES: set[str] = {"Operational"}
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.layer2_client = None
+        self.layer3_client = None
+        self.stream_callback = None
+        self.max_signals = self.config.get("max_signals_per_request", 3)
+        self.evidence_match_limit = self.config.get("evidence_match_limit", 5)
+
+    async def _initialize_resources(self) -> None:
+        """Initialize Layer 2 and Layer 3 API clients."""
+        # These will be initialized lazily when needed
+        self.layer2_client = None
+        self.layer3_client = None
+
+    def _get_layer2_client(self):
+        """Get or create Layer 2 extraction client."""
+        if self.layer2_client is None:
+            from ..integration.layer2_client import Layer2ExtractionClient
+
+            self.layer2_client = Layer2ExtractionClient(
+                base_url=self.config.get("layer2_url", "http://layer2-extraction:8000"),
+                api_key=self.config.get("layer2_api_key"),
+            )
+        return self.layer2_client
+
+    def _get_layer3_client(self):
+        """Get or create Layer 3 knowledge client."""
+        if self.layer3_client is None:
+            from ..integration.layer3_client import Layer3KnowledgeClient
+
+            self.layer3_client = Layer3KnowledgeClient(
+                base_url=self.config.get("layer3_url", "http://layer3-knowledge:8000"),
+                api_key=self.config.get("layer3_api_key"),
+            )
+        return self.layer3_client
+
+    def get_capabilities(self) -> list[AgentCapability]:
+        return [
+            AgentCapability(
+                name="detect_operational_signals",
+                description="Detect operational pain signals from prospect setup data",
+                input_schema={
+                    "prospect_data": {
+                        "account_id": "string",
+                        "company_name": "string",
+                        "industry": "string",
+                        "business_pains": ["string"],
+                        "friction_points": ["string"],
+                        "desired_outcomes": ["string"],
+                        "prompt_text": "string",
+                        "attachments": ["object"],
+                    },
+                    "options": {
+                        "include_evidence": "boolean",
+                        "quantify_impact": "boolean",
+                        "stream_results": "boolean",
+                    },
+                },
+                output_schema={
+                    "signals": ["PainSignal"],
+                    "processing_metadata": {
+                        "extraction_duration_ms": "number",
+                        "signals_found": "number",
+                        "signals_with_evidence": "number",
+                    },
+                },
+                timeout_seconds=120,
+            ),
+            AgentCapability(
+                name="stream_signal_detection",
+                description="Stream signal detection progress in real-time",
+                input_schema={
+                    "prospect_data": "object",
+                    "stream_callback": "callable",
+                },
+                output_schema={
+                    "stream_id": "string",
+                    "signals_count": "number",
+                },
+                timeout_seconds=180,
+            ),
+        ]
+
+    async def execute(
+        self,
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Execute signal detection task.
+
+        Args:
+            task: Task with 'capability' and 'parameters'
+            context: Execution context with tenant_id, user_id, trace_id
+
+        Returns:
+            Task execution result
+        """
+        capability = task.get("capability", "detect_operational_signals")
+        parameters = task.get("parameters", {})
+        ctx = RequestContext.model_validate(context)
+
+        if capability == "detect_operational_signals":
+            return await self._detect_signals(parameters, ctx)
+        elif capability == "stream_signal_detection":
+            self.stream_callback = parameters.get("stream_callback")
+            return await self._stream_detection(parameters, ctx)
+        else:
+            raise ValueError(f"Unknown capability: {capability}")
+
+    async def _detect_signals(
+        self,
+        parameters: dict[str, Any],
+        ctx: RequestContext,
+    ) -> dict[str, Any]:
+        """Core signal detection pipeline.
+
+        Pipeline stages:
+        1. Layer 2: Extract operational signals via LLM
+        2. Layer 3: Match evidence, quantify impact
+        3. Layer 3: Persist enriched signals
+        """
+        start_time = datetime.now(UTC)
+        prospect_data = parameters.get("prospect_data", {})
+        options = parameters.get("options", {})
+        include_evidence = options.get("include_evidence", True)
+        quantify_impact = options.get("quantify_impact", True)
+
+        signals: list[PainSignal] = []
+        processing_metadata = {
+            "extraction_duration_ms": 0,
+            "enrichment_duration_ms": 0,
+            "persistence_duration_ms": 0,
+            "signals_found": 0,
+            "signals_with_evidence": 0,
+            "signals_quantified": 0,
+            "trace_id": ctx.trace_id or "",
+        }
+
+        try:
+            # Stage 1: Layer 2 Extraction
+            logger.info(
+                "Starting signal extraction",
+                extra={
+                    "tenant_id": ctx.tenant_id,
+                    "account_id": prospect_data.get("account_id"),
+                    "trace_id": ctx.trace_id,
+                },
+            )
+
+            extraction_result = await self._extract_signals_from_layer2(
+                prospect_data, ctx
+            )
+            processing_metadata["extraction_duration_ms"] = extraction_result.get(
+                "duration_ms", 0
+            )
+
+            raw_signals = extraction_result.get("signals", [])
+            processing_metadata["signals_found"] = len(raw_signals)
+
+            if not raw_signals:
+                return SignalDetectionAgent__detect_signalsResult.model_validate({
+                    "signals": [],
+                    "processing_metadata": processing_metadata,
+                    "message": "No operational signals detected",
+                })
+
+
+            # Stage 2: Layer 3 Enrichment
+            enrichment_start = datetime.now(UTC)
+            for idx, raw_signal in enumerate(raw_signals):
+                signal = self._create_pain_signal(raw_signal, prospect_data, ctx)
+
+                if include_evidence:
+                    signal = await self._enrich_with_evidence(signal, ctx)
+
+                if quantify_impact and signal.confidence_score >= 0.7:
+                    signal = await self._quantify_impact(signal, prospect_data, ctx)
+
+                signals.append(signal)
+
+                # Emit discovery event if streaming
+                if self.stream_callback:
+                    event = SignalDiscoveredEvent(
+                        prospect_id=prospect_data.get("account_id", ""),
+                        signal=signal,
+                        partial=idx < len(raw_signals) - 1 or include_evidence,
+                        stage="enriching",
+                        progress_percent=int((idx + 1) / len(raw_signals) * 50),
+                    )
+                    await self._emit_event(event)
+
+            processing_metadata["enrichment_duration_ms"] = int(
+                (datetime.now(UTC) - enrichment_start).total_seconds() * 1000
+            )
+
+            # Stage 3: Layer 3 Persistence
+            persistence_start = datetime.now(UTC)
+            persisted_count = 0
+            for signal in signals:
+                try:
+                    await self._persist_signal(signal, ctx)
+                    persisted_count += 1
+
+                    # Emit completion event if streaming
+                    if self.stream_callback:
+                        event = SignalCompletedEvent(
+                            prospect_id=prospect_data.get("account_id", ""),
+                            signal_id=signal.id,
+                            final_signal=signal,
+                            processing_duration_ms=int(
+                                (datetime.now(UTC) - start_time).total_seconds() * 1000
+                            ),
+                        )
+                        await self._emit_event(event)
+
+                except Exception as e:
+                    logger.error(
+                        f"Failed to persist signal {signal.id}: {e}",
+                        extra={
+                            "tenant_id": ctx.tenant_id,
+                            "signal_id": signal.id,
+                            "trace_id": ctx.trace_id,
+                        },
+                    )
+
+            processing_metadata["persistence_duration_ms"] = int(
+                (datetime.now(UTC) - persistence_start).total_seconds() * 1000
+            )
+            processing_metadata["signals_with_evidence"] = len(
+                [s for s in signals if s.evidence_matches]
+            )
+            processing_metadata["signals_quantified"] = len(
+                [s for s in signals if s.impact_value is not None]
+            )
+
+            # Emit stream complete if streaming
+            if self.stream_callback:
+                stream_duration_ms = int(
+                    (datetime.now(UTC) - start_time).total_seconds() * 1000
+                )
+                event = SignalStreamCompleteEvent(
+                    prospect_id=prospect_data.get("account_id", ""),
+                    total_signals=len(signals),
+                    completed_signals=persisted_count,
+                    failed_signals=len(signals) - persisted_count,
+                    stream_duration_ms=stream_duration_ms,
+                )
+                await self._emit_event(event)
+
+            return SignalDetectionAgent__detect_signalsResult.model_validate({
+                "signals": [s.model_dump() for s in signals],
+                "processing_metadata": processing_metadata,
+            })
+
+
+        except Exception as e:
+            logger.error(
+                f"Signal detection failed: {e}",
+                extra={
+                    "tenant_id": ctx.tenant_id,
+                    "trace_id": ctx.trace_id,
+                },
+            )
+
+            if self.stream_callback:
+                event = SignalFailedEvent(
+                    prospect_id=prospect_data.get("account_id", ""),
+                    error=str(e),
+                    stage="extraction",
+                    recoverable=False,
+                )
+                await self._emit_event(event)
+
+            raise
+
+    async def _stream_detection(
+        self,
+        parameters: dict[str, Any],
+        ctx: RequestContext,
+    ) -> dict[str, Any]:
+        """Streaming version of signal detection.
+
+        Same pipeline as _detect_signals but with real-time event emission.
+        """
+        self.stream_callback = parameters.get("stream_callback")
+        return await self._detect_signals(parameters, ctx)
+
+    async def _extract_signals_from_layer2(
+        self,
+        prospect_data: dict[str, Any],
+        ctx: RequestContext,
+    ) -> dict[str, Any]:
+        """Call Layer 2 for signal extraction.
+
+        Args:
+            prospect_data: Prospect setup data
+            ctx: Request context
+
+        Returns:
+            Extraction result with signals list
+        """
+        client = self._get_layer2_client()
+
+        try:
+            result = await client.extract_operational_signals(
+                prospect_data=prospect_data,
+                tenant_id=ctx.tenant_id,
+                trace_id=ctx.trace_id,
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Layer 2 extraction failed: {e}")
+            # Return empty result on failure
+            return SignalDetectionAgent__extract_signals_from_layer2Result.model_validate({
+                "signals": [],
+                "duration_ms": 0,
+                "error": str(e),
+            })
+
+
+    def _create_pain_signal(
+        self,
+        raw_signal: dict[str, Any],
+        prospect_data: dict[str, Any],
+        ctx: RequestContext,
+    ) -> PainSignal:
+        """Create PainSignal from raw extraction result."""
+        return PainSignal(
+            id=f"sig_{self._id_gen.generate()[:12]}",
+            name=raw_signal.get("name", "Unknown Signal"),
+            category=SignalCategory.OPERATIONAL,
+            description=raw_signal.get("description", ""),
+            confidence_score=raw_signal.get("confidence_score", 0.0),
+            confidence_explanation=raw_signal.get("confidence_explanation", ""),
+            trend_direction=TrendDirection(raw_signal.get("trend_direction", "new")),
+            trend_explanation=raw_signal.get("trend_explanation", ""),
+            impact_indicators=raw_signal.get("impact_indicators", []),
+            stakeholder_quotes=raw_signal.get("stakeholder_quotes", []),
+            likely_value_drivers=raw_signal.get("likely_value_drivers", []),
+            account_id=prospect_data.get("account_id", ""),
+            tenant_id=ctx.tenant_id,
+            extraction_trace_id=ctx.trace_id,
+            source_prompt_id=prospect_data.get("prompt_id", ""),
+        )
+
+    async def _enrich_with_evidence(
+        self,
+        signal: PainSignal,
+        ctx: RequestContext,
+    ) -> PainSignal:
+        """Enrich signal with evidence matches from Layer 3.
+
+        Args:
+            signal: Signal to enrich
+            ctx: Request context
+
+        Returns:
+            Enriched signal with evidence matches
+        """
+        client = self._get_layer3_client()
+
+        try:
+            evidence_matches = await client.find_matching_evidence(
+                signal_description=signal.description,
+                industry=None,  # Could extract from context
+                limit=self.evidence_match_limit,
+                tenant_id=ctx.tenant_id,
+            )
+
+            signal.evidence_matches = [
+                EvidenceMatch(
+                    evidence_id=match.get("evidence_id", ""),
+                    evidence_type=match.get("evidence_type", "case_study"),
+                    title=match.get("title", ""),
+                    match_score=match.get("match_score", 0),
+                    match_reasoning=match.get("match_reasoning", ""),
+                    relevance_quote=match.get("relevance_quote"),
+                )
+                for match in evidence_matches
+            ]
+
+        except Exception as e:
+            logger.warning(f"Evidence matching failed for signal {signal.id}: {e}")
+
+        return signal
+
+    async def _quantify_impact(
+        self,
+        signal: PainSignal,
+        prospect_data: dict[str, Any],
+        ctx: RequestContext,
+    ) -> PainSignal:
+        """Quantify signal impact using Layer 3 formulas.
+
+        Args:
+            signal: Signal to quantify
+            prospect_data: Prospect data for variable extraction
+            ctx: Request context
+
+        Returns:
+            Signal with impact_value and formula reference
+        """
+        client = self._get_layer3_client()
+
+        try:
+            quantification = await client.quantify_signal(
+                signal_name=signal.name,
+                signal_description=signal.description,
+                impact_indicators=signal.impact_indicators,
+                industry=prospect_data.get("industry"),
+                prospect_data=prospect_data,
+                tenant_id=ctx.tenant_id,
+            )
+
+            if quantification.get("success"):
+                signal.impact_value = quantification.get("impact_value")
+                signal.impact_unit = quantification.get("impact_unit")
+                signal.impact_formula_id = quantification.get("formula_id")
+
+        except Exception as e:
+            logger.warning(f"Impact quantification failed for signal {signal.id}: {e}")
+
+        return signal
+
+    async def _persist_signal(
+        self,
+        signal: PainSignal,
+        ctx: RequestContext,
+    ) -> None:
+        """Persist signal to Layer 3 knowledge graph.
+
+        Args:
+            signal: Signal to persist
+            ctx: Request context
+        """
+        client = self._get_layer3_client()
+
+        try:
+            await client.persist_signal(
+                signal_data=signal.model_dump(),
+                tenant_id=ctx.tenant_id,
+            )
+
+            # Link evidence if available
+            if signal.evidence_matches:
+                await client.link_evidence(
+                    signal_id=signal.id,
+                    evidence_matches=[match.model_dump() for match in signal.evidence_matches],
+                    tenant_id=ctx.tenant_id,
+                )
+
+        except Exception as e:
+            logger.error(f"Signal persistence failed: {e}")
+            raise
+
+    async def _emit_event(self, event: Any) -> None:
+        """Emit streaming event via callback.
+
+        Args:
+            event: Event to emit
+        """
+        if self.stream_callback:
+            try:
+                await self.stream_callback(event.to_json())
+            except Exception as e:
+                logger.warning(f"Failed to emit event: {e}")
+
+    async def get_account_signals(
+        self,
+        account_id: str,
+        tenant_id: str,
+        category: str | None = None,
+    ) -> list[PainSignal]:
+        """Retrieve signals for an account.
+
+        Args:
+            account_id: Account identifier
+            tenant_id: Tenant identifier
+            category: Optional category filter
+
+        Returns:
+            List of signals
+        """
+        client = self._get_layer3_client()
+
+        try:
+            signals_data = await client.get_signals_for_account(
+                account_id=account_id,
+                tenant_id=tenant_id,
+                category=category,
+            )
+
+            return [PainSignal.model_validate(data) for data in signals_data]
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve account signals: {e}")
+            return []

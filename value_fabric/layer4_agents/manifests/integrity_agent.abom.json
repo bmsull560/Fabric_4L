@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "agent_type": "IntegrityAgent",
+  "agent_id": "IntegrityAgent-00000000",
+  "privilege_tier": "elevated",
+  "allowed_tools": [
+    "query_graph",
+    "semantic_search",
+    "get_entity",
+    "get_relationships",
+    "evaluate_formula",
+    "compare_benchmarks",
+    "validate_input"
+  ],
+  "denied_tools": [
+    "update_opportunity",
+    "export_to_crm",
+    "send_notification",
+    "generate_section",
+    "assemble_document",
+    "export_document"
+  ],
+  "invariants": {
+    "max_tool_calls_per_run": 60,
+    "budget_limit_usd": 4.00,
+    "require_human_approval": [],
+    "custom": {
+      "max_validation_retries": 3,
+      "confidence_threshold_for_pass": 0.7
+    }
+  },
+  "metadata": {
+    "description": "Validates value model claims, checks formula correctness, flags unsupported assertions, and enforces evidence thresholds. Produces IntegrityArtifact.",
+    "owner": "platform-team",
+    "last_reviewed": "2026-04-27"
+  }
+}

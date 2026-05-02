@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "agent_type": "NarrativeAgent",
+  "agent_id": "NarrativeAgent-00000000",
+  "privilege_tier": "standard",
+  "allowed_tools": [
+    "query_graph",
+    "semantic_search",
+    "get_entity",
+    "get_relationships",
+    "traverse_tree",
+    "generate_section",
+    "create_chart",
+    "format_table",
+    "assemble_document",
+    "export_document",
+    "validate_input",
+    "format_currency"
+  ],
+  "denied_tools": [
+    "update_opportunity",
+    "export_to_crm",
+    "send_notification",
+    "score_lead"
+  ],
+  "invariants": {
+    "max_tool_calls_per_run": 100,
+    "budget_limit_usd": 8.00,
+    "require_human_approval": [
+      "export_document"
+    ],
+    "custom": {
+      "max_sections_per_narrative": 12,
+      "max_document_size_bytes": 5242880
+    }
+  },
+  "metadata": {
+    "description": "Generates executive summaries, proposals, and stakeholder-ready business case documents. Produces NarrativeArtifact.",
+    "owner": "platform-team",
+    "last_reviewed": "2026-04-27"
+  }
+}

@@ -1,0 +1,63 @@
+# Multi-stage build for Layer 4: Agentic Workflow Engine (uv edition)
+# Stage 1: Builder - compiles dependencies using uv.lock
+FROM python:3.11.11-slim-bookworm AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Copy lock file and install dependencies
+COPY layer4-agents/pyproject.toml layer4-agents/uv.lock ./
+RUN uv pip sync uv.lock --target /app/venv
+
+# Stage 2: Runtime - minimal image with only runtime libraries
+FROM python:3.11.11-slim-bookworm AS runtime
+
+# Install only runtime library (libpq for psycopg2)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user with home directory
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
+
+WORKDIR /app
+
+# Copy Python packages from builder
+COPY --from=builder /app/venv /app/venv
+ENV PATH=/app/venv/bin:$PATH
+ENV PYTHONPATH=/app/venv/lib/python3.11/site-packages:/app
+
+# Copy shared package
+COPY shared/ ./shared/
+
+# Copy source code
+COPY layer4-agents/src/ ./src/
+
+# Change ownership
+RUN chown -R appuser:appgroup /app /home/appuser
+
+# Switch to non-root user
+USER appuser
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Expose API port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run the API server
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
