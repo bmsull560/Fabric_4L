@@ -9,6 +9,7 @@ Provides endpoints for:
 """
 
 import logging
+from typing import Any, Protocol
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -104,7 +105,26 @@ async def get_rate_limiter() -> TenantRateLimiter:
 # Helper Functions
 # ═══════════════════════════════════════════════════════════════════════════
 
-async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
+class TenantMetadataProvider(Protocol):
+    """Provider for authoritative tenant metadata lookups."""
+
+    async def get_tenant_tier(self, tenant_id: UUID) -> TenantTier | None:
+        """Return tenant tier for tenant_id, or None if not found."""
+
+
+class Neo4jTenantMetadataProvider:
+    """Tenant metadata provider backed by Neo4j."""
+
+    async def get_tenant_tier(self, tenant_id: UUID) -> TenantTier | None:
+        return await _get_tenant_tier_from_db(tenant_id)
+
+
+async def get_tenant_metadata_provider() -> TenantMetadataProvider:
+    """Get tenant metadata provider dependency."""
+    return Neo4jTenantMetadataProvider()
+
+
+async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier | None:
     """Fetch tenant tier from authoritative database source.
 
     Queries Neo4j Tenant node for tier/isolation_tier property.
@@ -115,7 +135,7 @@ async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
         tenant_id: Tenant UUID
 
     Returns:
-        TenantTier enum value from database or SHARED as fallback
+        TenantTier enum value from database, or None if tenant not found
     """
     if not NEO4J_AVAILABLE or get_driver is None:
         logger.warning(
@@ -123,7 +143,7 @@ async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
             "falling back to SHARED for tenant_id=%s",
             tenant_id,
         )
-        return TenantTier.SHARED
+        return None
 
     try:
         driver = await get_driver()
@@ -143,7 +163,7 @@ async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
                     "Tenant %s not found in database, falling back to SHARED tier",
                     tenant_id,
                 )
-                return TenantTier.SHARED
+                return None
 
             # Check tier property first, then isolation_tier
             tier_value = record.get("tier") or record.get("isolation_tier")
@@ -153,7 +173,7 @@ async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
                     "falling back to SHARED",
                     tenant_id,
                 )
-                return TenantTier.SHARED
+                return None
 
             # Normalize to lowercase and map to TenantTier
             tier_str = str(tier_value).lower()
@@ -173,7 +193,7 @@ async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
                     tier_value,
                     tenant_id,
                 )
-                return TenantTier.SHARED
+                raise ValueError(f"Unknown tenant tier value: {tier_value}")
 
             logger.debug(
                 "Resolved tenant %s to tier %s from database",
@@ -189,7 +209,7 @@ async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
             tenant_id,
             e,
         )
-        return TenantTier.SHARED
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -213,6 +233,7 @@ async def get_tenant_quota(
     tenant_id: UUID,
     context: RequestContext = Depends(require_privileged_access()),
     rate_limiter: TenantRateLimiter = Depends(get_rate_limiter),
+    tenant_metadata_provider: TenantMetadataProvider = Depends(get_tenant_metadata_provider),
 ) -> TenantQuotaResponse:
     """Get quota status for tenant.
     
@@ -225,16 +246,37 @@ async def get_tenant_quota(
         TenantQuotaResponse with quota and usage
     """
     try:
-        # Fetch tenant tier from database (authoritative source)
-        tenant_tier = await _get_tenant_tier_from_db(tenant_id)
+        tenant_tier = await tenant_metadata_provider.get_tenant_tier(tenant_id)
+        if tenant_tier is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Tenant {tenant_id} not found",
+            )
+
+        logger.info(
+            "Admin quota request",
+            extra={
+                "tenant_id": str(tenant_id),
+                "tenant_tier": tenant_tier.value,
+                "admin_user_id": str(context.user_id),
+            },
+        )
 
         status_data = await rate_limiter.get_tenant_quota_status(
             tenant_id=tenant_id,
             tenant_tier=tenant_tier,
         )
-        
+        status_data["tier"] = tenant_tier.value
+
         return TenantQuotaResponse(**status_data)
         
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except Exception as e:
         logger.error(f"Failed to get tenant quota: {e}")
         raise HTTPException(

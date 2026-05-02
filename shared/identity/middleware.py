@@ -53,6 +53,9 @@ RATE_LIMIT_CACHE_TTL_SECONDS = 120
 # Redis-backed rate limiting is required.
 _tenant_rate_limit_buckets: dict[str, tuple[int, float]] = {}
 
+_PROD_LIKE_ENVS = frozenset({"prod", "production", "staging"})
+_LOCAL_FALLBACK_ENVS = frozenset({"dev", "development", "local", "test", "testing"})
+
 
 class RateLimitExceeded(Exception):
     """Raised when rate limit is exceeded."""
@@ -239,6 +242,27 @@ class MultiWorkerRateLimitError(RuntimeError):
         )
 
 
+class RateLimiterConfigurationError(RuntimeError):
+    """Raised when rate limiter backend is unsafe for the current environment."""
+
+    def __init__(self, environment: str):
+        super().__init__(
+            f"Rate limiter initialization failed for environment '{environment}'. "
+            "Redis backend is required in prod/staging but REDIS_URL or Redis client "
+            "is unavailable."
+        )
+
+
+def _detect_environment() -> str:
+    """Resolve runtime environment from common environment variables."""
+    return (
+        os.getenv("APP_ENV")
+        or os.getenv("ENVIRONMENT")
+        or os.getenv("ENV")
+        or "development"
+    ).strip().lower()
+
+
 class SuspendedTenantError(Exception):
     """Raised when tenant is suspended and cannot access resources."""
 
@@ -272,12 +296,29 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self.skip_paths = skip_paths or frozenset()
 
         # Multi-worker safety check (Task 84 Hardening)
+        self._environment = _detect_environment()
         self._redis_client = redis_client or _get_redis_client()
         self._worker_count = _get_worker_count()
+        self._rate_limiter_backend = "redis" if self._redis_client else "memory"
+
+        if self.enable_per_tenant_rate_limiting and self._environment in _PROD_LIKE_ENVS and not self._redis_client:
+            raise RateLimiterConfigurationError(self._environment)
 
         if self.enable_per_tenant_rate_limiting and self._worker_count > 1:
             if not self._redis_client:
                 raise MultiWorkerRateLimitError()
+
+        if self.enable_per_tenant_rate_limiting and self._rate_limiter_backend == "memory":
+            if self._environment not in _LOCAL_FALLBACK_ENVS:
+                raise RateLimiterConfigurationError(self._environment)
+
+        logger.info(
+            "rate_limiter_backend_selected backend=%s env=%s workers=%d enabled=%s",
+            self._rate_limiter_backend,
+            self._environment,
+            self._worker_count,
+            self.enable_per_tenant_rate_limiting,
+        )
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Process request with auth, context, and optional rate limiting (Task 84)."""

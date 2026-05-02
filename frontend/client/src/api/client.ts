@@ -195,11 +195,14 @@ class ApiClient {
           config.headers['X-Request-ID'] = generateRequestId();
           config.headers['X-Tenant-ID'] = sessionService.getTenantId();
 
+<<<<<<< ours
           const accessToken = sessionService.getAccessToken();
           if (accessToken) {
             config.headers.Authorization = `Bearer ${accessToken}`;
           }
 
+=======
+>>>>>>> theirs
           const method = (config.method ?? 'get').toUpperCase();
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
             const csrfToken = getCookie('vf_csrf_token');
@@ -237,7 +240,14 @@ class ApiClient {
             null;
 
           if (error.response?.status === 401) {
+<<<<<<< ours
             sessionService.handleUnauthorized({ route: typeof window !== 'undefined' ? window.location.pathname : undefined, traceId });
+=======
+            // Avoid infinite redirect loop: only redirect if not already on /login
+            if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+              window.location.replace('/login');
+            }
+>>>>>>> theirs
           }
 
           // MANDATE 3: Log error with full context for debugging

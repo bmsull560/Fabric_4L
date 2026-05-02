@@ -10,7 +10,7 @@
  * - Loading / error / empty states render correctly
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createWrapper, createWrapperWithRetry } from '../test-utils';
 import { http, HttpResponse } from 'msw';
@@ -116,7 +116,7 @@ describe('ValuePacks', () => {
 
     it('displays empty state when API returns no packs', async () => {
       server.use(
-        http.get('/api/v1/graph/packs', () => {
+        http.get(/\/api\/v1\/graph\/packs.*/, () => {
           return HttpResponse.json([]);
         })
       );
@@ -129,10 +129,34 @@ describe('ValuePacks', () => {
       });
     });
 
-    it('displays error state with retry button when API fails', async () => {
+    it('displays error state with retry button when API fails and retries successfully', async () => {
+      let requestCount = 0;
       server.use(
         http.get('/api/v1/graph/packs', () => {
-          return new HttpResponse(null, { status: 500 });
+          requestCount += 1;
+          if (requestCount <= 3) {
+            return HttpResponse.json({ message: 'Service unavailable' }, { status: 500 });
+          }
+
+          return HttpResponse.json([
+            {
+              id: 'recovered-pack',
+              pack_id: 'recovered-pack',
+              name: 'Recovered Pack',
+              industry: 'SaaS / B2B',
+              status: 'active',
+              category: 'Revenue',
+              description: 'Recovered after retry',
+              version: '1.0.1',
+              scope: 'global',
+              driver_count: 1,
+              formula_count: 1,
+              benchmark_count: 1,
+              workflow_count: 1,
+              updated_at: '2026-01-10T00:00:00Z',
+              created_at: '2026-01-01T00:00:00Z',
+            },
+          ]);
         })
       );
 
@@ -140,11 +164,20 @@ describe('ValuePacks', () => {
       render(<ValuePacks />, { wrapper });
 
       // Wait for error state to appear
-      await waitFor(() => {
-        expect(screen.getByText(/Failed to load value packs/i)).toBeInTheDocument();
-      }, { timeout: 5000 });
+      const errorBanner = await screen.findByText(/Failed to load value packs/i);
+      expect(errorBanner).toBeInTheDocument();
+      expect(screen.getByText(/(HTTP|unexpected error|failed)/i)).toBeInTheDocument();
 
-      expect(screen.getByText(/Try again/i)).toBeInTheDocument();
+      const retryButton = screen.getByRole('button', { name: /Try again/i });
+      expect(retryButton).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      await user.click(retryButton);
+
+      expect(await screen.findByText('Recovered Pack')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText(/Failed to load value packs/i)).not.toBeInTheDocument();
+      });
     }, 10000);
   });
 
@@ -325,31 +358,37 @@ describe('ValuePacks', () => {
       const wrapper = createWrapper();
       render(<ValuePacks />, { wrapper });
 
-      await waitFor(() => {
-        expect(screen.getAllByText('Enterprise Security ROI')[0]).toBeInTheDocument();
-      });
+      expect(await screen.findAllByRole('heading', { name: 'Enterprise Security ROI' })).not.toHaveLength(0);
 
       const user = userEvent.setup();
-      await user.click(screen.getAllByText('Enterprise Security ROI')[0]);
+      await user.click(screen.getAllByRole('heading', { name: 'Enterprise Security ROI' })[0]);
 
       // The pack actions panel should be present with deploy button
       expect(screen.getByTestId('pack-actions')).toBeInTheDocument();
 
       // Enable the deploy button by selecting a pack first
+      const deployBtn = await screen.findByRole('button', { name: 'Deploy to Account' });
       await waitFor(() => {
-        const deployBtn = screen.getByText('Deploy to Account').closest('button');
-        expect(deployBtn).not.toBeDisabled();
+        expect(deployBtn).toBeEnabled();
       });
 
       // Click deploy button
-      const deployBtn = screen.getByText('Deploy to Account');
-      await user.click(deployBtn.closest('button')!);
+      await user.click(deployBtn);
 
-      // Wait for error to appear in PackActions - check for AlertCircle icon presence in error div
+      // Wait for mutation to settle and error alert to render
+      const packActions = screen.getByTestId('pack-actions');
       await waitFor(() => {
-        const packActions = screen.getByTestId('pack-actions');
-        const errorDiv = packActions.querySelector('[class*="destructive"]');
-        expect(errorDiv).toBeInTheDocument();
+        expect(within(packActions).getByText(/Deployment failed/i)).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Deploy to Account' })).toBeEnabled();
+      });
+
+      // Banner can be dismissed by the clear button
+      const dismissErrorButton = within(packActions).getByRole('button', { name: '×' });
+      await user.click(dismissErrorButton);
+      await waitFor(() => {
+        expect(within(packActions).queryByText(/Deployment failed/i)).not.toBeInTheDocument();
       });
     });
   });
