@@ -15,7 +15,7 @@ interface Stakeholder { id: string; name: string; title: string; role: string; p
 
 export default function StakeholdersTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
   const { data, isLoading, error } = useWorkspaceTabQuery<{ stakeholders: Stakeholder[] }>(caseId ?? null, "stakeholders");
   const persistTab = usePersistWorkspaceTab("stakeholders");
@@ -30,8 +30,12 @@ export default function StakeholdersTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (isLoading) return <CenteredLoader message="Loading stakeholders…" />;
+  if (accountLoading || isLoading) return <CenteredLoader message="Loading stakeholders…" />;
   if (error) return <div className="p-6 text-sm text-destructive">Failed to load stakeholders.</div>;
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  }
 
   return <IntelligenceShell account={{ accountName: account?.name ?? "Account", industry: account?.industry ?? "Unknown", revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="stakeholders" detailContent={selectedStakeholder ? <div><h3 className="text-sm font-bold">{selectedStakeholder.name}</h3><p className="text-xs text-muted-foreground">{selectedStakeholder.title}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}>
     {stakeholders.length === 0 ? <SectionCard title="Buying Committee"><div className="text-sm text-muted-foreground">No stakeholder mapping exists yet for this case.</div></SectionCard> : <>

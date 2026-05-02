@@ -151,8 +151,11 @@ describe('ValuePacks', () => {
       await user.type(searchInput, 'Churn');
 
       await waitFor(() => {
-        expect(screen.queryByText('Customer Churn Reduction')).toBeInTheDocument();
-        expect(screen.queryByText('Enterprise Security ROI')).not.toBeInTheDocument();
+        // Use getAllByText + check length to avoid false matches from ComparisonPanel <option> elements
+        expect(screen.getAllByText('Customer Churn Reduction').length).toBeGreaterThanOrEqual(1);
+        // Enterprise Security ROI should not appear in pack cards (it may still be in ComparisonPanel selects)
+        const packGrid = screen.getByText('Pack Grid').closest('div');
+        expect(packGrid).not.toHaveTextContent('Enterprise Security ROI');
       });
     });
 

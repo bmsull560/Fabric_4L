@@ -128,7 +128,7 @@ function BenchmarkCard({ benchmark }: { benchmark: IndustryBenchmark | null }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function ValueModelTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
   const { data, isLoading, error } = useWorkspaceTabQuery<{
     valueLines: ValueLine[];
@@ -199,7 +199,7 @@ export default function ValueModelTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (isLoading || generateMutation.isPending) {
+  if (accountLoading || isLoading || generateMutation.isPending) {
     return (
       <CenteredLoader
         message={
@@ -216,6 +216,10 @@ export default function ValueModelTab() {
         Failed to load value model.
       </div>
     );
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (

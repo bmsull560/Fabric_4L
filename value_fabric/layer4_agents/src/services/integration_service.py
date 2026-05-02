@@ -8,6 +8,7 @@ validation, and audit logging. Supports Salesforce and HubSpot.
 import asyncio
 import json
 import logging
+import os
 import re
 import uuid
 from datetime import UTC, datetime
@@ -150,10 +151,12 @@ class IntegrationService:
         sync_interval_minutes: int = 60,
         sync_batch_size: int = 100,
         user_id: str | None = None,
-        refresh_token: str | None = None,
         salesforce_org_id: str | None = None,
     ) -> tuple[Integration, bool]:
         """Create or update an integration configuration.
+
+        SECURITY: refresh_token is NOT accepted here. It is obtained
+        exclusively via the OAuth callback flow and stored separately.
 
         Args:
             tenant_id: Tenant identifier
@@ -164,7 +167,6 @@ class IntegrationService:
             sync_interval_minutes: Sync frequency (5-1440)
             sync_batch_size: Records per batch (10-500)
             user_id: User making the change (for audit)
-            refresh_token: OAuth refresh token (Salesforce only)
             salesforce_org_id: Salesforce organization ID
 
         Returns:
@@ -182,13 +184,6 @@ class IntegrationService:
         credentials_json = json.dumps(credentials)
         encrypted_creds = await EncryptionService.encrypt(credentials_json, key_id=DEFAULT_KEY_ID)
 
-        # Encrypt refresh token if provided
-        encrypted_refresh_token = None
-        if refresh_token:
-            encrypted_refresh_token = await EncryptionService.encrypt(
-                refresh_token, key_id=DEFAULT_KEY_ID
-            )
-
         # Check if integration exists
         existing = await self.get_integration(tenant_id, provider)
         is_update = existing is not None
@@ -202,8 +197,6 @@ class IntegrationService:
             existing.sync_interval_minutes = sync_interval_minutes
             existing.sync_batch_size = sync_batch_size
             existing.updated_by = user_id
-            if encrypted_refresh_token:
-                existing.refresh_token_encrypted = encrypted_refresh_token
             if salesforce_org_id:
                 existing.salesforce_org_id = salesforce_org_id
             # Reset status on config change
@@ -216,7 +209,6 @@ class IntegrationService:
                 provider=provider,
                 enabled=enabled,
                 credentials_encrypted=encrypted_creds,
-                refresh_token_encrypted=encrypted_refresh_token,
                 encryption_key_id=DEFAULT_KEY_ID,
                 instance_url=instance_url,
                 salesforce_org_id=salesforce_org_id,

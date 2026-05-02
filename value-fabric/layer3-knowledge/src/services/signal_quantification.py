@@ -174,7 +174,7 @@ class SignalQuantificationService:
         Returns:
             Quantification result with impact value or errors
         """
-        tenant_id = _get_tenant_id()
+        _get_tenant_id()
         try:
             # Step 1: Find appropriate formula
             formula = await self._select_formula(

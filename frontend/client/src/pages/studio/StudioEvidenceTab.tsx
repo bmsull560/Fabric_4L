@@ -89,7 +89,7 @@ function CaseStudyCard({
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function StudioEvidenceTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
   const [searchQuery, setSearchQuery] = useState("");
   const [industryFilter, setIndustryFilter] = useState("");
@@ -119,8 +119,12 @@ export default function StudioEvidenceTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (!account) {
+  if (accountLoading) {
     return <CenteredLoader message="Loading account…" />;
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (

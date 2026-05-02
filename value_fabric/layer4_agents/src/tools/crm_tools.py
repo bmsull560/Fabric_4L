@@ -10,6 +10,7 @@ import httpx
 # P0-1 FIX: Salesforce ID format — 15 or 18 alphanumeric characters only
 _SFDC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9]{15,18}$")
 
+from ..metrics import get_metrics
 from ..models.tool_schemas import (
     FetchInteractionHistoryInput,
     FetchInteractionHistoryOutput,
@@ -21,7 +22,6 @@ from ..models.tool_schemas import (
     UpdateOpportunityInput,
     UpdateOpportunityOutput,
 )
-from ..metrics import get_metrics
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -94,6 +94,11 @@ class GetProspectDataTool(BaseTool):
 
             if response.status_code == 429:
                 logger.warning("Salesforce rate limit hit (429)")
+                prom = get_metrics()
+                if prom:
+                    # Note: tenant_id is not available in the tool context;
+                    # the metric will be recorded with 'unknown' tenant_tier.
+                    prom.increment_crm_salesforce_rate_limit("unknown")
                 # Return what we have so far rather than failing completely
                 break
 

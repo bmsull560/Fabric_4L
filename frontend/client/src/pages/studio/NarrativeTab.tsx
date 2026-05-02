@@ -127,7 +127,7 @@ function DILNarrativeCard({
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function NarrativeTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
   const { data, isLoading, error } = useWorkspaceTabQuery<{
     narratives: NarrativeVersion[];
@@ -202,7 +202,7 @@ export default function NarrativeTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (isLoading || generateMutation.isPending) {
+  if (accountLoading || isLoading || generateMutation.isPending) {
     return (
       <CenteredLoader
         message={
@@ -219,6 +219,10 @@ export default function NarrativeTab() {
         Failed to load narratives.
       </div>
     );
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   const readyCount = narratives.filter((n) => n.status === "ready").length;

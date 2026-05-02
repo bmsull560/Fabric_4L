@@ -40,7 +40,6 @@ class OntologySchemaRepository:
         Returns:
             OntologySchema containing all types and relationships
         """
-        tenant_id = str(require_context().tenant_id)
         types = await self.get_all_types()
         relationships = await self.get_all_relationships()
 

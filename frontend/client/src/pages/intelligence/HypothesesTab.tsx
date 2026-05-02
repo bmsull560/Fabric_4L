@@ -183,6 +183,10 @@ export default function HypothesesTab() {
     return <div className="p-6 text-sm text-destructive">Failed to load hypotheses.</div>;
   }
 
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  }
+
   return (
     <HypothesisShell
       account={{

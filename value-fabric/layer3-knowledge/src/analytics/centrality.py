@@ -1,6 +1,7 @@
 """Centrality analysis for identifying key entities in the Knowledge Graph."""
 
 import logging
+from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from shared.models.typed_dict import TypedDictModel

@@ -9,10 +9,6 @@ from shared.models.typed_dict import TypedDictModel
 from ..config import Settings, get_settings
 
 
-class CommunityDetector__build_rel_filterResult(TypedDictModel):
-    pass
-
-
 class CommunityDetector__fallback_community_detectionResult(TypedDictModel):
     algorithm: str
     communities: Any

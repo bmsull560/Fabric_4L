@@ -33,6 +33,10 @@ export default function ValueCasePage() {
     return <CenteredLoader message="Loading account…" />;
   }
 
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  }
+
   return (
     <ValueCaseShell
       account={{

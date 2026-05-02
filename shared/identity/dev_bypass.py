@@ -36,6 +36,16 @@ DEV_ORG_ID = UUID("00000000-0000-4000-a000-000000000003")
 
 _DEV_BYPASS_ENABLED = os.getenv("DEV_AUTH_BYPASS", "").strip().lower() == "true"
 
+# SECURITY: Hard-block dev bypass in production environments
+# This prevents accidental exposure if DEV_AUTH_BYPASS is set in production
+_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").strip().lower()
+if _DEV_BYPASS_ENABLED and _ENVIRONMENT == "production":
+    raise RuntimeError(
+        "CRITICAL SECURITY ERROR: DEV_AUTH_BYPASS cannot be enabled in production.\n"
+        "This is a development-only feature that bypasses all authentication.\n"
+        "Unset DEV_AUTH_BYPASS or change ENVIRONMENT to 'development' to proceed."
+    )
+
 
 class DevAuthBypassMiddleware(BaseHTTPMiddleware):
     """Injects a fully-populated RequestContext without authentication."""
@@ -101,6 +111,12 @@ def maybe_install_dev_bypass(app: ASGIApp) -> bool:
     if not _DEV_BYPASS_ENABLED:
         return False
 
+    # CRITICAL: Log at error level to ensure visibility in all logging configs
+    logger.error(
+        "SECURITY: Dev auth bypass is ACTIVE. All requests will be auto-authenticated "
+        "as tenant %s with admin privileges. This should NEVER be enabled in production.",
+        DEV_TENANT_ID,
+    )
     logger.warning(
         "╔══════════════════════════════════════════════════════════╗\n"
         "║  DEV AUTH BYPASS ENABLED — ALL REQUESTS AUTO-AUTHED    ║\n"

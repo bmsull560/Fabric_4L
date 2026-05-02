@@ -207,7 +207,7 @@ function ProjectionTable({ projections }: { projections: AnnualProjection[] }) {
 
 export default function ROITab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: templates } = useROITemplates();
   const { data: benchmarks } = useIndustryBenchmarks(account?.industry ?? null);
   const calculateROI = useCalculateROI();
@@ -230,8 +230,12 @@ export default function ROITab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (!account) {
+  if (accountLoading) {
     return <CenteredLoader message="Loading account…" />;
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (

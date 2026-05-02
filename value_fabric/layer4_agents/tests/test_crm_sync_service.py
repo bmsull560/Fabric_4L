@@ -386,45 +386,50 @@ class TestCRMSyncService:
             assert len(account_ids) == 2
     
     @pytest.mark.asyncio
-    async def test_get_crm_config_from_env_fallback(self, mock_db):
-        """Test loading CRM config from environment variables."""
-        # Arrange
+    async def test_get_crm_config_from_integration_table(self, mock_db):
+        """Test loading CRM config from tenant integration table (no env fallback)."""
+        from src.models.integration import Integration, IntegrationStatus
         sync_service = CRMSyncService(mock_db, batch_size=10)
         
-        env_vars = {
-            "CRM_TYPE": "salesforce",
-            "CRM_API_KEY": "test_key",
-            "CRM_API_SECRET": "test_secret",
-            "CRM_INSTANCE_URL": "https://test.salesforce.com",
-            "ALLOW_ENV_CRM_FALLBACK": "true",
-        }
+        mock_integration = Integration(
+            id=uuid4(),
+            tenant_id="tenant-123",
+            provider=CRMProvider.SALESFORCE,
+            enabled=True,
+            credentials_encrypted=b"encrypted",
+            encryption_key_id="default",
+            instance_url="https://tenant.salesforce.com",
+            sync_status=IntegrationStatus.IDLE,
+        )
         
-        with patch.dict(os.environ, env_vars, clear=True):
+        mock_service = AsyncMock()
+        mock_service.get_integration.return_value = mock_integration
+        mock_service.decrypt_credentials.return_value = {"api_key": "test_key", "api_secret": "test_secret"}
+        
+        with patch('src.services.crm_sync_service.IntegrationService', return_value=mock_service):
             # Act
-            config = await sync_service._get_crm_config(CRMProvider.SALESFORCE, "default")
+            config = await sync_service._get_crm_config(CRMProvider.SALESFORCE, "tenant-123")
             
             # Assert
+            mock_service.get_integration.assert_awaited_once_with("tenant-123", CRMProvider.SALESFORCE)
             assert config is not None
             assert config["crm_type"] == "salesforce"
             assert config["crm_api_key"] == "test_key"
     
     @pytest.mark.asyncio
-    async def test_get_crm_config_wrong_provider(self, mock_db):
-        """Test that config returns None when provider doesn't match CRM_TYPE."""
-        # Arrange
+    async def test_get_crm_config_missing_integration(self, mock_db):
+        """Test that config returns None when no integration exists for tenant."""
         sync_service = CRMSyncService(mock_db, batch_size=10)
         
-        env_vars = {
-            "CRM_TYPE": "hubspot",  # Different from requested provider
-            "CRM_API_KEY": "test_key",
-            "ALLOW_ENV_CRM_FALLBACK": "true",
-        }
+        mock_service = AsyncMock()
+        mock_service.get_integration.return_value = None
         
-        with patch.dict(os.environ, env_vars, clear=True):
+        with patch('src.services.crm_sync_service.IntegrationService', return_value=mock_service):
             # Act
-            config = await sync_service._get_crm_config(CRMProvider.SALESFORCE, "default")
+            config = await sync_service._get_crm_config(CRMProvider.SALESFORCE, "unknown-tenant")
             
             # Assert
+            mock_service.get_integration.assert_awaited_once_with("unknown-tenant", CRMProvider.SALESFORCE)
             assert config is None
 
 

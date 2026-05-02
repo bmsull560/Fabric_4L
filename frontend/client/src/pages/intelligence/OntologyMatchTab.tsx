@@ -34,6 +34,10 @@ export default function OntologyMatchTab() {
     return <CenteredLoader message="Loading account…" />;
   }
 
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  }
+
   return (
     <IntelligenceShell
       account={{

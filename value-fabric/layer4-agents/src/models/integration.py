@@ -149,6 +149,7 @@ class Integration(Base):
             "records_failed": self.records_failed,
             "status": status_val,
             "last_error_message": self.last_error_message,
+            "has_refresh_token": bool(self.refresh_token_encrypted),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -27,20 +27,35 @@ class RedisRateLimiter:
         key: str,
         limit: int | None = None,
         window: int | None = None,
+        fail_open: bool = False,  # SECURITY: Default to fail-closed
     ) -> tuple[bool, dict[str, Any]]:
         """Check if request is allowed under rate limit.
+
+        SECURITY: Defaults to fail-closed (deny requests) when Redis is unavailable
+        or errors occur. Set fail_open=True explicitly for public health endpoints.
 
         Args:
             key: Rate limit key (e.g., tenant_id or api_key)
             limit: Maximum requests in window
             window: Time window in seconds
+            fail_open: If True, allow requests on infrastructure failure (less safe)
 
         Returns:
             Tuple of (allowed, metadata)
         """
         if not self.redis:
-            # No Redis, allow all
-            return True, {"limit": limit or self.default_limit, "remaining": 1}
+            # SECURITY: No Redis = cannot verify rate limit = deny by default
+            if fail_open:
+                logger.warning("Rate limiting unavailable (Redis not configured), failing open")
+                return True, {"limit": limit or self.default_limit, "remaining": 1}
+            
+            logger.error("Rate limiting unavailable: Redis not configured, denying request")
+            return False, {
+                "error": "rate_limiting_unavailable",
+                "retry_after": 60,
+                "limit": limit or self.default_limit,
+                "remaining": 0,
+            }
 
         limit = limit or self.default_limit
         window = window or self.default_window
@@ -71,9 +86,17 @@ class RedisRateLimiter:
             }
 
         except Exception as e:
-            logger.warning(f"Rate limit check failed: {e}")
-            # Fail open on errors
-            return True, {"limit": limit, "remaining": 1, "error": str(e)}
+            # SECURITY: Fail closed on errors - cannot verify rate limit = deny request
+            logger.error(f"Rate limit check failed: {e}, denying request")
+            if fail_open:
+                logger.warning("fail_open=True, allowing request despite error")
+                return True, {"limit": limit, "remaining": 1, "error": str(e)}
+            return False, {
+                "error": "rate_limit_check_failed",
+                "retry_after": 60,
+                "limit": limit,
+                "remaining": 0,
+            }
 
     async def check_tenant_limit(
         self,

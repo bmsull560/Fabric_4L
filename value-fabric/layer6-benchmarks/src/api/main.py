@@ -8,7 +8,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 # Logger defined early so lifespan() and module-level instrumentation can use it.
 logger = logging.getLogger(__name__)

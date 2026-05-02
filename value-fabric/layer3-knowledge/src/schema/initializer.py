@@ -1,7 +1,7 @@
 """Schema initializer for Neo4j Knowledge Graph."""
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from neo4j import AsyncDriver
 from neo4j.exceptions import (

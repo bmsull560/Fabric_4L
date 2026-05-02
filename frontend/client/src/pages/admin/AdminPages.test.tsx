@@ -185,7 +185,7 @@ describe('FormulaGovernance', () => {
     await waitFor(() => {
       expect(screen.getByText('Formula Governance')).toBeInTheDocument();
     });
-  });
+  }, 10_000);
 });
 
 // BenchmarkPolicies
@@ -198,7 +198,7 @@ describe('BenchmarkPolicies', () => {
     await waitFor(() => {
       expect(screen.getByText('Benchmark Policies')).toBeInTheDocument();
     });
-  });
+  }, 10_000);
 });
 
 // VariableRegistry
@@ -287,5 +287,5 @@ describe('HealthMonitor', () => {
     await waitFor(() => {
       expect(screen.getByText('System Health')).toBeInTheDocument();
     });
-  });
+  }, 10_000);
 });

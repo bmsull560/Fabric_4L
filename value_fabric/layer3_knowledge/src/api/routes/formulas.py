@@ -52,8 +52,8 @@ class FormulaEvaluateRequest(BaseModel):
     output_unit: str | None = Field(None, description="Desired output unit")
 
     # Valid expression pattern: alphanumeric, operators (+, -, *, /), parentheses, underscores, whitespace
-    # ** operator is matched as two * characters
-    VALID_EXPRESSION_PATTERN: ClassVar[re.Pattern] = re.compile(r"^[a-zA-Z0-9_+\-*/().\s]+$")
+    # Note: period (.) intentionally excluded to prevent attribute access attempts
+    VALID_EXPRESSION_PATTERN: ClassVar[re.Pattern] = re.compile(r"^[a-zA-Z0-9_+\-*/()\s]+$")
     # Dangerous Python keywords/patterns that should not appear in formula expressions
     DANGEROUS_PATTERNS: ClassVar[list[str]] = [
         "import", "exec", "eval", "compile", "__", "lambda", "class", "def"
@@ -65,14 +65,7 @@ class FormulaEvaluateRequest(BaseModel):
         if not v and not info.data.get("formula_id"):
             raise ValueError("Either formula_id or expression must be provided")
         if v:
-            # Validate expression contains only allowed characters
-            if not cls.VALID_EXPRESSION_PATTERN.match(v):
-                raise ValueError("Expression contains invalid characters. Only alphanumeric, operators (+, -, *, /, **), parentheses, and underscores are allowed.")
-            # Check for dangerous patterns
-            v_lower = v.lower()
-            for pattern in cls.DANGEROUS_PATTERNS:
-                if pattern in v_lower:
-                    raise ValueError(f"Expression contains forbidden pattern: {pattern}")
+            _validate_expression(v)
         return v
 
 
@@ -151,15 +144,7 @@ class CreateFormulaRequest(BaseModel):
     @classmethod
     def validate_expression(cls, v):
         """Validate expression syntax."""
-        VALID_PATTERN = re.compile(r"^[a-zA-Z0-9_+\-*/().\s]+$")
-        DANGEROUS = ["import", "exec", "eval", "compile", "__", "lambda", "class", "def"]
-
-        if not VALID_PATTERN.match(v):
-            raise ValueError("Expression contains invalid characters")
-        v_lower = v.lower()
-        for pattern in DANGEROUS:
-            if pattern in v_lower:
-                raise ValueError(f"Expression contains forbidden pattern: {pattern}")
+        _validate_expression(v)
         return v
 
 
@@ -179,15 +164,7 @@ class UpdateFormulaRequest(BaseModel):
         """Validate expression syntax."""
         if v is None:
             return v
-        VALID_PATTERN = re.compile(r"^[a-zA-Z0-9_+\-*/().\s]+$")
-        DANGEROUS = ["import", "exec", "eval", "compile", "__", "lambda", "class", "def"]
-
-        if not VALID_PATTERN.match(v):
-            raise ValueError("Expression contains invalid characters")
-        v_lower = v.lower()
-        for pattern in DANGEROUS:
-            if pattern in v_lower:
-                raise ValueError(f"Expression contains forbidden pattern: {pattern}")
+        _validate_expression(v)
         return v
 
 
@@ -775,10 +752,11 @@ async def calculate_scenario(
             warnings=warnings,
         )
 
-    except Exception:
+    except Exception as e:
+        logger.exception("Scenario calculation failed for base_case_id=%s", request.base_case_id)
         raise HTTPException(
-            status_code=400, detail="Scenario calculation failed. Please check inputs and try again."
-        )
+            status_code=400, detail=f"Scenario calculation failed: {type(e).__name__}"
+        ) from e
 
 
 # ============================================================================

@@ -92,7 +92,7 @@ function ProductBadge({ p }: { p: Product }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function ActionPlanTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
   const { data, isLoading, error } = useWorkspaceTabQuery<{
     recommendations: Recommendation[];
@@ -139,7 +139,7 @@ export default function ActionPlanTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (isLoading || generateMutation.isPending) {
+  if (accountLoading || isLoading || generateMutation.isPending) {
     return (
       <CenteredLoader
         message={generateMutation.isPending ? "Generating action plan..." : "Loading action plan…"}
@@ -148,6 +148,10 @@ export default function ActionPlanTab() {
   }
   if (error || generateMutation.isError) {
     return <div className="p-6 text-sm text-destructive">Failed to load action plan.</div>;
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (

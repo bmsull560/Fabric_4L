@@ -17,7 +17,7 @@ const VERIFICATION_CONFIG: Record<VerificationState, { icon: typeof CheckCircle2
 
 function useEvidenceTabState() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
   const { data, isLoading, error } = useWorkspaceTabQuery<{ evidence: EvidenceItem[] }>(caseId ?? null, "evidence");
   const persistTab = usePersistWorkspaceTab("evidence");
@@ -34,7 +34,7 @@ function useEvidenceTabState() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "evidence", accountName: account?.name ?? "Account" });
 
   return {
-    account, caseId, evidence, isLoading, error, verified, avgMatch,
+    account, accountLoading, caseId, evidence, isLoading, error, verified, avgMatch,
     selectedEvidence, setSelectedEvidence, railMode, setRailMode,
     messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
     validateClaim,
@@ -104,9 +104,23 @@ export function EvidenceTabContent() {
 
 export default function EvidenceTab() {
   const {
-    account, selectedEvidence, railMode, setRailMode,
+    account, accountLoading, selectedEvidence, railMode, setRailMode,
     messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
   } = useEvidenceTabState();
+
+  const { accountId } = useParams<{ accountId: string }>();
+
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (accountLoading) {
+    return <CenteredLoader message="Loading evidence…" />;
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  }
 
   return (
     <IntelligenceShell

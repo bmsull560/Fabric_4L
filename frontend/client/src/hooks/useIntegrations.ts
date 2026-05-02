@@ -20,6 +20,7 @@ export interface Integration {
   records_failed: number;
   status: 'idle' | 'running' | 'failed' | 'pending' | 'degraded';
   last_error_message: string | null;
+  has_refresh_token: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -39,7 +40,6 @@ export interface IntegrationCreateRequest {
   instance_url?: string;
   sync_interval_minutes: number;
   sync_batch_size: number;
-  refresh_token?: string;
   salesforce_org_id?: string;
 }
 

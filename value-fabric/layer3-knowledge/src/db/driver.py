@@ -10,6 +10,7 @@ Design philosophy:
 
 import asyncio
 import logging
+from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.exceptions import (

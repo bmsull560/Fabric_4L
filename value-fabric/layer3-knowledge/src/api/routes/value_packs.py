@@ -302,7 +302,6 @@ async def _update_relationships(
     # Validate all targets exist with tenant scoping
     if target_ids:
         # SECURITY: Add tenant_id filter if available
-        tenant_filter = "{tenant_id: $tenant_id}" if tenant_id else ""
         check_query = f"""
         UNWIND $target_ids as target_id
         MATCH (t:{target_label} {{id: target_id, tenant_id: $tenant_id}})

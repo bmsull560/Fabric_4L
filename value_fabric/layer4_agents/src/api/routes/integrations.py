@@ -53,12 +53,18 @@ class IntegrationStatusResponse(IntegrationConfig):
     records_failed: int = 0
     status: str = "idle"
     last_error_message: str | None = None
+    has_refresh_token: bool = False
     created_at: str
     updated_at: str
 
 
 class IntegrationCreateRequest(BaseModel):
-    """Request to create/update an integration."""
+    """Request to create/update an integration.
+
+    SECURITY: Never accept access_token, refresh_token, or auth_code
+    from frontend requests. Tokens are obtained via OAuth callback
+    or internal service mechanisms only.
+    """
 
     enabled: bool = Field(False, description="Whether to enable the integration")
     api_key: str = Field(..., description="API key/token for the CRM")
@@ -66,7 +72,6 @@ class IntegrationCreateRequest(BaseModel):
     instance_url: str | None = Field(None, description="CRM instance URL")
     sync_interval_minutes: int = Field(60)
     sync_batch_size: int = Field(100)
-    refresh_token: str | None = Field(None, description="OAuth refresh token (Salesforce only)")
     salesforce_org_id: str | None = Field(None, description="Salesforce organization ID")
 
     @field_validator("sync_interval_minutes")
@@ -206,7 +211,6 @@ async def create_or_update_integration(
             sync_interval_minutes=request.sync_interval_minutes,
             sync_batch_size=request.sync_batch_size,
             user_id=x_user_id,
-            refresh_token=request.refresh_token,
             salesforce_org_id=request.salesforce_org_id,
         )
 

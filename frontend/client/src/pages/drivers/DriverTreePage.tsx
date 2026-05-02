@@ -27,6 +27,10 @@ export default function DriverTreePage() {
     return <CenteredLoader message="Loading driver tree…" />;
   }
 
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  }
+
   const accountName = account?.name ?? "Account";
   const industry = account?.industry ?? "Unknown";
   const revenue = account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A";

@@ -119,7 +119,7 @@ function SourceCard({
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function StudioEnrichmentTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: statusData } = useEnrichmentStatus();
   const { data: enrichmentDetails } = useEnrichmentDetails(accountId ?? null);
   const enrichMutation = useEnrichAccount();
@@ -144,8 +144,12 @@ export default function StudioEnrichmentTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (!account) {
+  if (accountLoading) {
     return <CenteredLoader message="Loading account…" />;
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (

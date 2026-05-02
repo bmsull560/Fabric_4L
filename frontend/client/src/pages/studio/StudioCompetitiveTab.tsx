@@ -162,7 +162,7 @@ function BattlecardPanel({ battlecards }: { battlecards: Battlecard[] }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function StudioCompetitiveTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: competitorsData } = useCompetitors();
   const { data: landscapeData } = useLandscape();
   const { data: winLossData } = useWinLossSummary();
@@ -197,8 +197,12 @@ export default function StudioCompetitiveTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (!account) {
+  if (accountLoading) {
     return <CenteredLoader message="Loading account…" />;
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (

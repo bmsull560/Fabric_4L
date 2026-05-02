@@ -54,8 +54,6 @@ from .dependencies import (
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
     from .dependencies_tenant import (
-        Neo4jTenantSession,
-        get_neo4j_with_optional_tenant,
         get_neo4j_with_tenant,
     )
     NEO4J_TENANT_AVAILABLE = True

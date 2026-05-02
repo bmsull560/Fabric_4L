@@ -13,6 +13,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+
 from shared.models.typed_dict import TypedDictModel
 
 
@@ -56,8 +57,8 @@ class RDFStarTriple_to_dictResult(TypedDictModel):
     subject: Any
 
 class PROVGraph_to_dictResult(TypedDictModel):
-    @context: dict[str, Any]
-    @id: Any
+    context_: dict[str, Any]
+    id_: Any
     activities: Any
     agents: Any
     annotations: Any

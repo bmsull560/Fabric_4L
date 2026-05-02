@@ -2,8 +2,11 @@
 API key validation cache with tenant isolation.
 
 API key validation results are cached per tenant to prevent key reuse between tenants.
+Uses HMAC-SHA256 for secure key fingerprinting (not raw key storage).
 """
 
+import hashlib
+import hmac
 import logging
 import os
 from uuid import UUID
@@ -11,6 +14,17 @@ from uuid import UUID
 import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
+
+# SECURITY: Secret key for HMAC-SHA256 key fingerprinting
+# Must be set in production to prevent key hash collisions
+_API_KEY_CACHE_SECRET = os.getenv("API_KEY_CACHE_SECRET")
+if not _API_KEY_CACHE_SECRET:
+    logger.warning(
+        "API_KEY_CACHE_SECRET not set. Using fallback (not recommended for production). "
+        "Set a 32+ byte random secret for secure API key caching."
+    )
+    # Fallback for backward compatibility - deterministic but not secure
+    _API_KEY_CACHE_SECRET = "CHANGE-ME-IN-PRODUCTION-32-BYTES-MIN"
 
 # Redis client singleton
 _redis_client: redis.Redis | None = None
@@ -30,15 +44,25 @@ async def get_redis_client() -> redis.Redis:
 def _build_api_key_cache_key(api_key: str, tenant_id: UUID) -> str:
     """Build tenant-scoped API key cache key.
     
+    Uses HMAC-SHA256 for cryptographically secure key fingerprinting.
+    This prevents:
+    - Process-randomized hash collisions (Python hash() is not stable across runs)
+    - Timing attacks on key comparison
+    - Information leakage via hash values
+    
     Args:
         api_key: API key string
         tenant_id: Tenant UUID
     
     Returns:
-        Tenant-scoped cache key
+        Tenant-scoped cache key with HMAC-SHA256 fingerprint
     """
-    # Hash API key for security (don't store raw keys in Redis keys)
-    key_hash = str(hash(api_key))
+    # SECURITY: Use HMAC-SHA256 for stable, secure key fingerprinting
+    key_hash = hmac.new(
+        _API_KEY_CACHE_SECRET.encode('utf-8'),
+        api_key.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()[:32]  # First 32 chars (128 bits) sufficient for cache keys
     return f"apikey:tenant:{tenant_id}:hash:{key_hash}"
 
 

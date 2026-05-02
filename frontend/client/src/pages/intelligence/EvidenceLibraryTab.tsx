@@ -206,7 +206,7 @@ function EvidenceDetailPanel({ study }: { study: CaseStudy }) {
 
 export default function EvidenceLibraryTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [industryFilter, setIndustryFilter] = useState<string>("");
@@ -265,8 +265,12 @@ export default function EvidenceLibraryTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (!account) {
+  if (accountLoading) {
     return <CenteredLoader message="Loading account…" />;
+  }
+
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
   }
 
   return (
