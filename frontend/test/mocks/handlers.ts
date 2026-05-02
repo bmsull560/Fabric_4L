@@ -1374,7 +1374,7 @@ export const healthMocks = [
 // ===== Tenant Settings Mocks (L4) =====
 
 export const tenantSettingsMocks = [
-  http.get(`${API_BASE}${L4_PREFIX}/tenant/settings`, async () => {
+  http.get(`${API_BASE}${L4_PREFIX}/tenants/current/settings`, async () => {
     await delay(100);
     return HttpResponse.json({
       tenant_id: 'test-tenant-123',

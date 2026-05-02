@@ -51,7 +51,7 @@ const mockTenantSettings: TenantSettings = {
 describe('usePlatformSettings', () => {
   it('fetches tenant settings successfully', async () => {
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json(mockTenantSettings);
       })
     );
@@ -68,7 +68,7 @@ describe('usePlatformSettings', () => {
 
   it('handles loading state', async () => {
     server.use(
-      http.get('/api/v1/agents/tenant/settings', async () => {
+      http.get('/api/v1/agents/tenants/current/settings', async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         return HttpResponse.json(mockTenantSettings);
       })
@@ -86,7 +86,7 @@ describe('usePlatformSettings', () => {
   it('handles error state', async () => {
     server.resetHandlers();
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json(
           { error: 'Failed to fetch settings' },
           { status: 500 }
@@ -104,7 +104,7 @@ describe('usePlatformSettings', () => {
   it('handles 404 not found', async () => {
     server.resetHandlers();
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return new HttpResponse(null, { status: 404 });
       })
     );
@@ -120,10 +120,10 @@ describe('usePlatformSettings', () => {
 describe('useUpdatePlatformSettings', () => {
   it('updates tenant settings successfully', async () => {
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json(mockTenantSettings);
       }),
-      http.patch('/api/v1/agents/tenant/settings', async ({ request }) => {
+      http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
         const body = (await request.json()) as Partial<TenantSettings>;
         return HttpResponse.json({
           ...mockTenantSettings,
@@ -147,7 +147,7 @@ describe('useUpdatePlatformSettings', () => {
 
   it('updates feature flags', async () => {
     server.use(
-      http.patch('/api/v1/agents/tenant/settings', async ({ request }) => {
+      http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
         const body = (await request.json()) as Partial<TenantSettings>;
         return HttpResponse.json({
           ...mockTenantSettings,
@@ -169,7 +169,7 @@ describe('useUpdatePlatformSettings', () => {
 
   it('handles update error', async () => {
     server.use(
-      http.patch('/api/v1/agents/tenant/settings', () => {
+      http.patch('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json(
           { error: 'Permission denied' },
           { status: 403 }
@@ -191,7 +191,7 @@ describe('usePlatformSettings - cache behavior', () => {
   it('uses cached data without unnecessary refetch', async () => {
     let requestCount = 0;
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         requestCount++;
         return HttpResponse.json(mockTenantSettings);
       })
@@ -225,7 +225,7 @@ describe('usePlatformSettings - cache behavior', () => {
   it('refetches when cache is stale', async () => {
     let requestCount = 0;
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         requestCount++;
         return HttpResponse.json({
           ...mockTenantSettings,
@@ -269,11 +269,11 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     let currentSettings = { ...mockTenantSettings };
 
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         fetchCount++;
         return HttpResponse.json(currentSettings);
       }),
-      http.patch('/api/v1/agents/tenant/settings', async ({ request }) => {
+      http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
         const body = (await request.json()) as Partial<TenantSettings>;
         currentSettings = { ...currentSettings, ...body };
         return HttpResponse.json(currentSettings);
@@ -310,10 +310,10 @@ describe('usePlatformSettings - mutation and invalidation', () => {
 
   it('failed update preserves previous usable state', async () => {
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json(mockTenantSettings);
       }),
-      http.patch('/api/v1/agents/tenant/settings', () => {
+      http.patch('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json({ error: 'Server Error' }, { status: 500 });
       })
     );
@@ -349,7 +349,7 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     // Exhaust axios-retry (1 original + 3 retries = 4 attempts) so first mutate actually fails
     let failCount = 4;
     server.use(
-      http.patch('/api/v1/agents/tenant/settings', () => {
+      http.patch('/api/v1/agents/tenants/current/settings', () => {
         if (failCount > 0) {
           failCount--;
           return HttpResponse.json({ error: 'Transient Error' }, { status: 503 });
@@ -391,7 +391,7 @@ describe('usePlatformSettings - concurrency and lifecycle', () => {
   it('concurrent updates resolve predictably', async () => {
     const updates: string[] = [];
     server.use(
-      http.patch('/api/v1/agents/tenant/settings', async ({ request }) => {
+      http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
         const body = (await request.json()) as Partial<TenantSettings>;
         updates.push(body.tenant_name || 'unknown');
         return HttpResponse.json({
@@ -430,7 +430,7 @@ describe('usePlatformSettings - concurrency and lifecycle', () => {
 
   it('unmounted/remounted consumer reuses QueryClient state', async () => {
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json(mockTenantSettings);
       })
     );
@@ -470,7 +470,7 @@ describe('usePlatformSettings - edge cases', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
     server.use(
-      http.get('/api/v1/agents/tenant/settings', async () => {
+      http.get('/api/v1/agents/tenants/current/settings', async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         return HttpResponse.json(mockTenantSettings);
       })
@@ -498,7 +498,7 @@ describe('usePlatformSettings - edge cases', () => {
   it('one-off server override path behaves correctly', async () => {
     // Initial handler returns default
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json(mockTenantSettings);
       })
     );
@@ -522,7 +522,7 @@ describe('usePlatformSettings - edge cases', () => {
 
     // Override with one-off handler for second fetch
     server.use(
-      http.get('/api/v1/agents/tenant/settings', () => {
+      http.get('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json({
           ...mockTenantSettings,
           tenant_name: 'Overridden Corp',

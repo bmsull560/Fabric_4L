@@ -59,12 +59,12 @@ export interface UpdateSettingsPayload {
 // ── Fetch Functions ─────────────────────────────────────────────────────────
 
 async function fetchPlatformSettings(): Promise<TenantSettings> {
-  const response = await apiClient.get('l4', '/tenant/settings');
+  const response = await apiClient.get('l4', '/tenants/current/settings');
   return response.data as TenantSettings;
 }
 
 async function updatePlatformSettings(payload: UpdateSettingsPayload): Promise<TenantSettings> {
-  const response = await apiClient.patch('l4', '/tenant/settings', payload);
+  const response = await apiClient.patch('l4', '/tenants/current/settings', payload);
   return response.data as TenantSettings;
 }
 

@@ -90,12 +90,12 @@ class RegisterTenantResponse(BaseModel):
     verification_required: bool
 
 
-@router.get("/tenant/settings", response_model=TenantSettingsResponse)
+@router.get("/tenant/settings", response_model=TenantSettingsResponse, deprecated=True, openapi_extra={"x-deprecated-removal-date": "2026-08-01", "x-canonical-path": "/v1/tenants/current/settings"})
 async def get_current_tenant_settings(
     db: AsyncSession = Depends(get_db_from_context),
     ctx: RequestContext = Depends(require_authenticated),
 ) -> TenantSettingsResponse:
-    """Get settings for the current tenant (frontend compatibility alias)."""
+    """DEPRECATED alias for GET /v1/tenants/current/settings. Planned removal: 2026-08-01."""
     tenant = await get_tenant(db, ctx.tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -114,7 +114,7 @@ async def get_current_tenant_settings(
     )
 
 
-@router.patch("/tenant/settings", response_model=TenantSettingsUpdateResponse)
+@router.patch("/tenant/settings", response_model=TenantSettingsUpdateResponse, deprecated=True, openapi_extra={"x-deprecated-removal-date": "2026-08-01", "x-canonical-path": "/v1/tenants/current/settings"})
 async def update_current_tenant_settings(
     update: TenantSettingsUpdate,
     db: AsyncSession = Depends(get_db_from_context),
@@ -122,7 +122,7 @@ async def update_current_tenant_settings(
     _csrf_cookie: str | None = Cookie(default=None, alias=CSRF_COOKIE_NAME),
     _csrf_ok: None = Depends(validate_double_submit),
 ) -> TenantSettingsUpdateResponse:
-    """Update settings for the current tenant (frontend compatibility alias)."""
+    """DEPRECATED alias for PATCH /v1/tenants/current/settings. Planned removal: 2026-08-01."""
     tenant = await get_tenant(db, ctx.tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -151,14 +151,14 @@ async def update_current_tenant_settings(
     )
 
 
-@router.post("/auth/register", status_code=202, response_model=RegisterTenantResponse)
+@router.post("/auth/register", status_code=202, response_model=RegisterTenantResponse, deprecated=True, openapi_extra={"x-deprecated-removal-date": "2026-07-01", "x-canonical-path": "/v1/tenants/register"})
 async def register_tenant_frontend_alias(
     request: RegisterTenantRequest,
     db: AsyncSession = Depends(get_db_from_context),
     _csrf_cookie: str | None = Cookie(default=None, alias=CSRF_COOKIE_NAME),
     _csrf_ok: None = Depends(validate_double_submit),
 ) -> RegisterTenantResponse:
-    """Register a new tenant (frontend compatibility alias for /v1/tenants/register)."""
+    """DEPRECATED alias for POST /v1/tenants/register. Planned removal: 2026-07-01."""
     from shared.identity.models import TenantCreateRequest
 
     from ...service import create_tenant, get_tenant_by_slug

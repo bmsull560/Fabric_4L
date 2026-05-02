@@ -14,9 +14,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from shared.identity.dependencies import require_super_admin
+from shared.identity.dependencies import require_authenticated, require_super_admin
+from shared.identity.context import RequestContext
 from shared.identity.models import (
     TenantCreateRequest,
     TenantModel,
@@ -24,6 +25,7 @@ from shared.identity.models import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ....api.security.csrf import CSRF_COOKIE_NAME, validate_double_submit
 from ....database import get_db_from_context
 from ...service import (
     create_tenant,
@@ -42,6 +44,83 @@ class StatusChangeRequest(BaseModel):
 
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
+
+
+class CurrentTenantSettingsResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    status: str
+    tier_id: str
+    settings: dict
+    created_at: str
+
+
+class CurrentTenantSettingsUpdate(BaseModel):
+    settings: dict | None = None
+
+
+class CurrentTenantSettingsUpdateResponse(BaseModel):
+    id: str
+    name: str
+    settings: dict
+    updated_at: str
+
+
+@router.get('/current/settings', response_model=CurrentTenantSettingsResponse)
+async def api_get_current_tenant_settings(
+    db: AsyncSession = Depends(get_db_from_context),
+    ctx: RequestContext = Depends(require_authenticated),
+) -> CurrentTenantSettingsResponse:
+    tenant = await get_tenant(db, ctx.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail='Tenant not found')
+    settings = tenant.settings or {}
+    tier_id = settings.get('tier_id', 'free')
+    return CurrentTenantSettingsResponse(
+        id=str(tenant.id),
+        name=tenant.name,
+        slug=tenant.slug,
+        status=tenant.status,
+        tier_id=tier_id,
+        settings=settings,
+        created_at=tenant.created_at.isoformat() if tenant.created_at else '',
+    )
+
+
+@router.patch('/current/settings', response_model=CurrentTenantSettingsUpdateResponse)
+async def api_update_current_tenant_settings(
+    update: CurrentTenantSettingsUpdate,
+    db: AsyncSession = Depends(get_db_from_context),
+    ctx: RequestContext = Depends(require_authenticated),
+    _csrf_cookie: str | None = Cookie(default=None, alias=CSRF_COOKIE_NAME),
+    _csrf_ok: None = Depends(validate_double_submit),
+) -> CurrentTenantSettingsUpdateResponse:
+    tenant = await get_tenant(db, ctx.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail='Tenant not found')
+
+    current_settings = tenant.settings or {}
+    if update.settings:
+        allowed_fields = {'custom_branding', 'notification_preferences', 'webhook_url'}
+        for key, value in update.settings.items():
+            if key in allowed_fields:
+                current_settings[key] = value
+
+    updated = await update_tenant(
+        db,
+        ctx.tenant_id,
+        TenantUpdateRequest(settings=current_settings),
+    )
+    if not updated:
+        raise HTTPException(status_code=500, detail='Failed to update tenant settings')
+
+    return CurrentTenantSettingsUpdateResponse(
+        id=str(updated.id),
+        name=updated.name,
+        settings=updated.settings or {},
+        updated_at=updated.updated_at.isoformat() if updated.updated_at else '',
+    )
 
 
 @router.post("", response_model=TenantModel, status_code=status.HTTP_201_CREATED)
