@@ -15,6 +15,15 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { createWrapper, renderWithRouter } from '../../test-utils';
 
+// Static imports avoid per-test dynamic import overhead that causes timeouts
+import FormulaGovernance from './FormulaGovernance';
+import BenchmarkPolicies from './BenchmarkPolicies';
+import VariableRegistry from './VariableRegistry';
+import PackManagement from './PackManagement';
+import PermissionsAdmin from './PermissionsAdmin';
+import PlatformSettings from './PlatformSettings';
+import HealthMonitor from './HealthMonitor';
+
 // Mock the hooks to avoid backend dependencies
 vi.mock('@/hooks/useFormulas', () => ({
   useFormulas: () => ({
@@ -31,10 +40,12 @@ vi.mock('@/hooks/useFormulas', () => ({
   }),
   useApproveFormula: () => ({
     mutate: () => {},
+    mutateAsync: async () => {},
     isPending: false,
   }),
   useSubmitFormula: () => ({
     mutate: () => {},
+    mutateAsync: async () => {},
     isPending: false,
   }),
 }));
@@ -178,7 +189,6 @@ vi.mock('@/hooks/useHealthMonitor', () => ({
 // FormulaGovernance
 describe('FormulaGovernance', () => {
   it('renders without crashing', async () => {
-    const FormulaGovernance = (await import('./FormulaGovernance')).default;
     const wrapper = createWrapper();
     render(<FormulaGovernance />, { wrapper });
 
@@ -191,7 +201,6 @@ describe('FormulaGovernance', () => {
 // BenchmarkPolicies
 describe('BenchmarkPolicies', () => {
   it('renders without crashing', async () => {
-    const BenchmarkPolicies = (await import('./BenchmarkPolicies')).default;
     const wrapper = createWrapper();
     render(<BenchmarkPolicies />, { wrapper });
 
@@ -204,43 +213,39 @@ describe('BenchmarkPolicies', () => {
 // VariableRegistry
 describe('VariableRegistry', () => {
   it('renders without crashing', async () => {
-    const VariableRegistry = (await import('./VariableRegistry')).default;
     const wrapper = createWrapper();
     render(<VariableRegistry />, { wrapper });
 
     await waitFor(() => {
       expect(screen.getByText('Variable Registry')).toBeInTheDocument();
     });
-  });
+  }, 10_000);
 });
 
 // PackManagement
 describe('PackManagement', () => {
   it('renders without crashing', async () => {
-    const PackManagement = (await import('./PackManagement')).default;
     const wrapper = createWrapper();
     render(<PackManagement />, { wrapper });
 
     await waitFor(() => {
       expect(screen.getByText('Pack Management')).toBeInTheDocument();
     });
-  });
+  }, 10_000);
 });
 
 // PermissionsAdmin
 describe('PermissionsAdmin', () => {
   it('renders without crashing', async () => {
-    const PermissionsAdmin = (await import('./PermissionsAdmin')).default;
     const wrapper = createWrapper();
     render(<PermissionsAdmin />, { wrapper });
 
     await waitFor(() => {
       expect(screen.getByText('Permissions & Access')).toBeInTheDocument();
     });
-  });
+  }, 10_000);
 
   it('sets API Keys as the active tab for /settings/access/keys', async () => {
-    const PermissionsAdmin = (await import('./PermissionsAdmin')).default;
     renderWithRouter(<PermissionsAdmin />, { path: '/settings/access/keys' });
 
     await waitFor(() => {
@@ -249,10 +254,9 @@ describe('PermissionsAdmin', () => {
       expect(apiKeysTab).toHaveClass('text-blue-700');
       expect(usersTab).not.toHaveClass('text-blue-700');
     });
-  });
+  }, 10_000);
 
   it('keeps Users as the active tab for /settings/access/roles', async () => {
-    const PermissionsAdmin = (await import('./PermissionsAdmin')).default;
     renderWithRouter(<PermissionsAdmin />, { path: '/settings/access/roles' });
 
     await waitFor(() => {
@@ -261,26 +265,24 @@ describe('PermissionsAdmin', () => {
       expect(usersTab).toHaveClass('text-blue-700');
       expect(apiKeysTab).not.toHaveClass('text-blue-700');
     });
-  });
+  }, 10_000);
 });
 
 // PlatformSettings
 describe('PlatformSettings', () => {
   it('renders without crashing', async () => {
-    const PlatformSettings = (await import('./PlatformSettings')).default;
     const wrapper = createWrapper();
     render(<PlatformSettings />, { wrapper });
 
     await waitFor(() => {
       expect(screen.getByText('Platform Settings')).toBeInTheDocument();
     });
-  });
+  }, 10_000);
 });
 
 // HealthMonitor
 describe('HealthMonitor', () => {
   it('renders without crashing', async () => {
-    const HealthMonitor = (await import('./HealthMonitor')).default;
     const wrapper = createWrapper();
     render(<HealthMonitor />, { wrapper });
 

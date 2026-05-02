@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { captureException } from "@/lib/telemetry";
 import { AlertTriangle, RotateCcw, Copy, Check } from "lucide-react";
 import { Component, ReactNode, useState } from "react";
 
@@ -72,16 +73,12 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log to console in all environments
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    captureException(error, {
+      traceId: this.state.traceId,
+      componentStack: errorInfo.componentStack,
+    });
 
     this.setState({ errorInfo });
-
-    // In production, send to error tracking service
-    if (import.meta.env.PROD) {
-      // TODO: Send to Sentry/DataDog/etc.
-      // captureException(error, { extra: { traceId: this.state.traceId } });
-    }
   }
 
   private getSupportMessage(): string {

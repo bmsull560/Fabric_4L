@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -91,6 +92,8 @@ export class AccountApiError extends BaseApiError {
   }
 }
 
+
+const log = createLogger('useAccounts');
 
 export interface AccountFilters {
   provider?: CRMProvider | 'all';
@@ -282,7 +285,7 @@ export function useCreateAccount() {
       queryClient.invalidateQueries({ queryKey: QK.accounts.all });
     },
     onError: (error) => {
-      console.error('[useCreateAccount] Failed:', error.message);
+      log.error('CreateAccount failed', { error: error.message });
     },
   });
 }
@@ -304,7 +307,7 @@ export function useSyncAccounts() {
       queryClient.invalidateQueries({ queryKey: QK.accounts.all });
     },
     onError: (error) => {
-      console.error('[useSyncAccounts] Sync failed:', error.message);
+      log.error('SyncAccounts failed', { error: error.message });
     },
   });
 }
@@ -326,7 +329,7 @@ export function useRefreshAccount() {
       queryClient.invalidateQueries({ queryKey: QK.accounts.list({}) });
     },
     onError: (error, accountId) => {
-      console.error(`[useRefreshAccount] Failed to refresh account ${accountId}:`, error.message);
+      log.error('RefreshAccount failed', { accountId, error: error.message });
     },
   });
 }

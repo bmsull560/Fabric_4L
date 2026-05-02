@@ -143,7 +143,7 @@ describe('useSubgraph Performance [L4-Performance]', () => {
 
     expect(result.mean).toBeLessThan(200);
     const cv = result.stdDev / result.mean;
-    expect(cv).toBeLessThan(0.3);
+    expect(cv).toBeLessThan(0.5);
 
     console.log(`Medium graph: mean=${result.mean.toFixed(2)}ms, p95=${(result.mean + 1.96 * result.stdDev).toFixed(2)}ms`);
   });

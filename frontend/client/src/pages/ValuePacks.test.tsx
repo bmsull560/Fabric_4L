@@ -114,18 +114,20 @@ describe('ValuePacks', () => {
       });
     });
 
-    it.skip('displays error state with retry button when API fails [FIXME: error state not rendering - implementation issue]', async () => {
-      // Pre-existing failure: The error state from useValuePacks hook isn't being
-      // rendered correctly. The component shows loading state but not error state.
-      // See audit: test-quality-audit-2025-04-20.md P1-2
+    it('displays error state with retry button when API fails', async () => {
       server.use(
-        http.get('/api/v1/graph/packs', () => {
+        http.get('/packs', () => {
           return HttpResponse.json({ error: 'Database connection failed' }, { status: 500 });
         })
       );
 
       const wrapper = createWrapper();
       render(<ValuePacks />, { wrapper });
+
+      // Wait for loading to complete, then error should appear
+      await waitFor(() => {
+        expect(screen.queryByTestId('packs-loading')).not.toBeInTheDocument();
+      });
 
       await waitFor(() => {
         expect(screen.getByText(/Failed to load value packs/i)).toBeInTheDocument();
@@ -150,13 +152,15 @@ describe('ValuePacks', () => {
       const searchInput = screen.getByPlaceholderText(/Search packs/i);
       await user.type(searchInput, 'Churn');
 
+      // Wait for the search-triggered fetch to settle (isLoading becomes false)
       await waitFor(() => {
-        // Use getAllByText + check length to avoid false matches from ComparisonPanel <option> elements
-        expect(screen.getAllByText('Customer Churn Reduction').length).toBeGreaterThanOrEqual(1);
-        // Enterprise Security ROI should not appear in pack cards (it may still be in ComparisonPanel selects)
-        const packGrid = screen.getByText('Pack Grid').closest('div');
-        expect(packGrid).not.toHaveTextContent('Enterprise Security ROI');
+        expect(screen.queryByTestId('packs-loading')).not.toBeInTheDocument();
       });
+
+      // Filtering is applied: only the matching pack should be visible in the grid
+      expect(screen.getAllByText('Customer Churn Reduction').length).toBeGreaterThanOrEqual(1);
+      const packGrid = screen.getByText('Pack Grid').closest('div');
+      expect(packGrid).not.toHaveTextContent('Enterprise Security ROI');
     });
 
     it('shows industry tags on pack cards', async () => {
@@ -299,16 +303,14 @@ describe('ValuePacks', () => {
       expect(deployBtn.closest('button')).toBeDisabled();
     });
 
-    it.skip('displays deploy error in pack actions panel when API returns 400 [FIXME: unhandled rejection in MSW error handler]', async () => {
-      // This test is skipped due to unhandled promise rejection issues with MSW
-      // The component properly catches errors via handleDeploy, but the test
-      // environment has timing issues with error handler overrides.
-      // See: https://mswjs.io/docs/basics/response-resolver#runtime-error-handling
-      //
-      // To properly test this, we would need to:
-      // 1. Use the 'error-pack' ID which triggers MSW 400 response
-      // 2. Ensure the mutation's onError is fully awaited before test cleanup
-      // 3. Or use a spy on the mutation and verify error state change
+    it('displays deploy error in pack actions panel when API returns 400', async () => {
+      // Setup error response for apply endpoint
+      server.use(
+        http.post('/packs/:id/apply', () => {
+          return HttpResponse.json({ message: 'Deployment failed' }, { status: 400 });
+        })
+      );
+
       const wrapper = createWrapper();
       render(<ValuePacks />, { wrapper });
 
@@ -319,8 +321,25 @@ describe('ValuePacks', () => {
       const user = userEvent.setup();
       await user.click(screen.getAllByText('Enterprise Security ROI')[0]);
 
-      // The pack actions panel should be present (basic assertion)
+      // The pack actions panel should be present with deploy button
       expect(screen.getByTestId('pack-actions')).toBeInTheDocument();
+
+      // Enable the deploy button by selecting a pack first
+      await waitFor(() => {
+        const deployBtn = screen.getByText('Deploy to Account').closest('button');
+        expect(deployBtn).not.toBeDisabled();
+      });
+
+      // Click deploy button
+      const deployBtn = screen.getByText('Deploy to Account');
+      await user.click(deployBtn.closest('button')!);
+
+      // Wait for error to appear in PackActions - check for AlertCircle icon presence in error div
+      await waitFor(() => {
+        const packActions = screen.getByTestId('pack-actions');
+        const errorDiv = packActions.querySelector('[class*="destructive"]');
+        expect(errorDiv).toBeInTheDocument();
+      });
     });
   });
 });

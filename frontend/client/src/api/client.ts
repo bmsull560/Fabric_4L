@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axiosRetry from 'axios-retry';
 import { z } from 'zod';
+import { logError, logWarn } from '@/lib/telemetry';
 
 // ============================================================================
 // MANDATE 4: INPUT VALIDATION - Runtime validation schemas
@@ -62,21 +63,6 @@ const safeLocalStorage = {
     }
   },
 };
-
-/** Safe logging that guards against production leakage */
-function logError(message: string, context?: Record<string, unknown>): void {
-  if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
-    console.error(`[ApiClient] ${message}`, context ?? '');
-  }
-}
-
-function logWarn(message: string, context?: Record<string, unknown>): void {
-  if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
-    console.warn(`[ApiClient] ${message}`, context ?? '');
-  }
-}
 
 // ============================================================================
 // Environment Configuration with Validation

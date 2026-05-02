@@ -136,18 +136,25 @@ jq 'select(.message | contains("webhook rejected"))'
    ```
 4. Trigger a new sync via API or UI.
 
-### 4.2 "Invalid webhook signature" Errors
+### 4.2 "Invalid webhook credentials" Errors
 
 **Symptom:** Salesforce webhooks return 401.
 
 **Steps:**
-1. Verify `SALESFORCE_WEBHOOK_SECRET` matches the secret configured in Salesforce outbound message.
-2. Check that the webhook URL includes `?tenant_id=<tenant-id>`.
-3. Verify the tenant has an active Salesforce integration:
+1. Check that the webhook URL includes `?tenant_id=<tenant-id>`.
+2. Verify the tenant has an active Salesforce integration:
    ```sql
    SELECT enabled, sync_status FROM integrations
    WHERE tenant_id = '<tenant-id>' AND provider = 'salesforce';
    ```
+3. Verify the tenant's per-tenant webhook token is configured:
+   ```sql
+   SELECT credentials_encrypted IS NOT NULL as has_creds
+   FROM integrations
+   WHERE tenant_id = '<tenant-id>' AND provider = 'salesforce';
+   ```
+   The `credentials_encrypted` blob must contain a `webhook_token` field.
+4. If no per-tenant token is configured, check that `SALESFORCE_WEBHOOK_SECRET` matches the secret configured in Salesforce outbound message (global HMAC fallback).
 
 ### 4.3 "Token refresh failed"
 
@@ -206,9 +213,9 @@ alembic downgrade 020
 ## 6. Security Checklist
 
 - [ ] `CREDENTIALS_MASTER_KEY` is 43 chars and stored in secrets manager
-- [ ] `ALLOW_ENV_CRM_FALLBACK` is `false` in production
 - [ ] `CRM_WEBHOOKS_REQUIRE_TENANT_ID` is `true` in production
 - [ ] Webhook URLs include `?tenant_id=<tenant-id>`
+- [ ] Each pilot tenant has a unique `webhook_token` stored encrypted in `integrations.credentials_encrypted`
 - [ ] Salesforce Connected App uses minimal OAuth scopes
-- [ ] HMAC webhook secret is rotated quarterly
+- [ ] Global HMAC webhook secret is rotated quarterly
 - [ ] RLS policies are enabled on `integrations`, `accounts`, `account_sync_status`

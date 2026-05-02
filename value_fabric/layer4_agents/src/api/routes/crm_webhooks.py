@@ -89,14 +89,14 @@ class SalesforceSObject(BaseModel):
 
 class SalesforceNotification(BaseModel):
     """Salesforce outbound message notification wrapper."""
-    sObject: SalesforceSObject = Field(default_factory=SalesforceSObject)
+    sObject: SalesforceSObject = Field(default_factory=SalesforceSObject)  # noqa: N815
 
 
 class SalesforceChangeEventHeader(BaseModel):
     """Salesforce ChangeEventHeader for platform events."""
-    recordIds: list[str] = Field(default_factory=list)
-    changeType: str = ""
-    entityName: str = ""
+    recordIds: list[str] = Field(default_factory=list)  # noqa: N815
+    changeType: str = ""  # noqa: N815
+    entityName: str = ""  # noqa: N815
 
 
 class SalesforcePayloadData(BaseModel):
@@ -122,14 +122,14 @@ class HubSpotWebhookEvent(BaseModel):
 
     HubSpot sends arrays of these events for object changes.
     """
-    eventId: int | None = None
-    subscriptionId: int | None = None
-    portalId: int | None = None
-    occurredAt: int | None = None
-    subscriptionType: str = ""
-    objectId: int | None = None
-    propertyName: str | None = None
-    propertyValue: str | None = None
+    eventId: int | None = None  # noqa: N815
+    subscriptionId: int | None = None  # noqa: N815
+    portalId: int | None = None  # noqa: N815
+    occurredAt: int | None = None  # noqa: N815
+    subscriptionType: str = ""  # noqa: N815
+    objectId: int | None = None  # noqa: N815
+    propertyName: str | None = None  # noqa: N815
+    propertyValue: str | None = None  # noqa: N815
     # Allow extra fields for future compatibility
     model_config = {"extra": "allow"}
 

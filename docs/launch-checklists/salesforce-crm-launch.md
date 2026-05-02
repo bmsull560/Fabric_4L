@@ -1,7 +1,7 @@
-# Salesforce CRM Integration — Pilot Launch Checklist
+# Salesforce CRM Integration — Controlled Pilot Launch Checklist
 
 **Date:** 2026-05-01  
-**Status:** PILOT-READY — NOT SUITABLE FOR GENERAL AVAILABILITY (GA)
+**Status:** CONTROLLED PILOT APPROVED — NOT SUITABLE FOR GENERAL AVAILABILITY (GA)
 
 This checklist covers readiness for a **controlled pilot** with a small number of trusted tenants. See Section 5 for GA blockers.
 
@@ -15,7 +15,7 @@ This checklist covers readiness for a **controlled pilot** with a small number o
 - [x] `SALESFORCE_REDIRECT_URI` configured and matches Connected App
 - [x] `SALESFORCE_WEBHOOK_SECRET` configured
 - [x] `CRM_WEBHOOKS_REQUIRE_TENANT_ID=true` in production
-- [x] `ALLOW_ENV_CRM_FALLBACK=false` in production
+- [x] `ALLOW_ENV_CRM_FALLBACK` removed — no env fallback exists
 - [x] `.env.example` updated with all CRM variables
 
 ## 2. Salesforce Configuration
@@ -47,6 +47,7 @@ This checklist covers readiness for a **controlled pilot** with a small number o
 - [x] Credential encryption at rest verified
 - [x] **No secrets in API responses** (`to_dict()` excludes credentials; `has_refresh_token` boolean only)
 - [x] **No `refresh_token` accepted in create/update API** — tokens only via OAuth callback
+- [x] Per-tenant webhook token auth (`X-Webhook-Token` header validated with constant-time comparison)
 - [x] Structured logging with `tenant_id` and redacted errors
 
 ## 5. Known Limitations & GA Blockers
@@ -59,11 +60,11 @@ This checklist covers readiness for a **controlled pilot** with a small number o
   - **Mitigation:** Documented in runbook. Pilot tenants must be trusted admins.
   - **GA Requirement:** Must implement before general availability.
 
-- [ ] **SOQL pagination is NOT implemented.**
-  - `GetProspectDataTool` does not handle `nextRecordsUrl`.
-  - **Impact:** Tenants with >2,000 records per query will experience silent data truncation.
-  - **Mitigation:** Documented. Pilot tenants must have small datasets.
-  - **GA Requirement:** Must implement before general availability.
+- [x] **SOQL pagination is implemented.**
+  - `GetProspectDataTool` handles `nextRecordsUrl` with `max_pages=10` safety limit.
+  - When `max_pages` is hit, partial data is returned, a warning is logged, and sync status is set to `DEGRADED`.
+  - Rate limit (429) handling returns partial data gracefully.
+  - **GA Requirement:** Pagination safety limit may need tuning for very large tenants.
 
 - [ ] **Background sync uses `asyncio.create_task`, not Celery.**
   - Sync jobs are ephemeral and lost on pod restart.
@@ -105,7 +106,8 @@ This checklist covers readiness for a **controlled pilot** with a small number o
 - [x] Unit tests: max page safety limit
 - [x] Integration tests: sync provider with mocked CRM APIs
 - [x] Integration tests: webhook payload parsing
-- [ ] Integration tests: cross-tenant webhook isolation (requires full env)
+- [x] Unit tests: webhook auth logic (token validation, HMAC, constant-time comparison) — CI-runnable
+- [ ] Integration tests: cross-tenant webhook isolation (requires full env with PostgreSQL)
 - [ ] Integration tests: RLS fail-closed (requires PostgreSQL)
 - [x] Frontend typecheck passes (`pnpm check`)
 - [ ] **E2E tests: connect → sync → verify flow** (GA requirement)
@@ -127,20 +129,21 @@ This checklist covers readiness for a **controlled pilot** with a small number o
 
 ## Launch Decision
 
-**Status:** `PILOT-READY`
+**Status:** `CONTROLLED PILOT APPROVED`
 
-The Salesforce CRM integration is **safe to launch for pilot use** with the following conditions:
+The Salesforce CRM integration is **approved for controlled pilot** with a small number of trusted tenants. Broad GA is explicitly blocked until the items below are resolved.
+
+**Pilot conditions:**
 1. Access is gated to pilot tenants only (do not expose to all tenants).
 2. Admins accept manual token entry for initial Salesforce connection (OAuth flow missing).
-3. Pilot tenants have small datasets (<2,000 records per query) due to missing SOQL pagination.
-4. Single-replica deployment is acceptable (no Celery/Redis yet).
-5. Webhook URLs are configured with `?tenant_id=<tenant-id>` query parameters.
-6. `CRM_WEBHOOKS_REQUIRE_TENANT_ID=true` is enforced in production.
+3. Single-replica deployment is acceptable (no Celery/Redis yet).
+4. Webhook URLs are configured with `?tenant_id=<tenant-id>` and per-tenant `webhook_token`.
+5. `CRM_WEBHOOKS_REQUIRE_TENANT_ID=true` is enforced in production.
+6. `ALLOW_ENV_CRM_FALLBACK` does not exist — all credentials come from tenant integration table only.
 
-**GA Roadmap:**
+**GA Roadmap (blockers for general availability):**
 1. Implement OAuth authorization flow (redirect → callback → token exchange).
-2. Add SOQL pagination with `nextRecordsUrl` handling.
-3. Migrate background sync from `asyncio.create_task` to Celery/Redis queue.
-4. Add Playwright E2E tests for full connect → sync flow.
-5. Add `sync_jobs` table for durable job history and retry tracking.
-6. Configure Prometheus export and Grafana alert thresholds.
+2. Migrate background sync from `asyncio.create_task` to Celery/Redis queue.
+3. Add Playwright E2E tests for full connect → sync flow.
+4. Add `sync_jobs` table for durable job history and retry tracking.
+5. Configure Prometheus export and Grafana alert thresholds.

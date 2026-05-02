@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
 import {
@@ -11,6 +12,8 @@ import {
 } from '@/lib/schemas/valuePack';
 
 // Domain-specific error class
+const log = createLogger('useValuePacks');
+
 export class ValuePackApiError extends BaseApiError {
   constructor(message: string, statusCode?: number, responseData?: unknown) {
     super(message, statusCode, responseData);
@@ -48,7 +51,7 @@ async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> 
   // Runtime validation with Zod
   const parsed = ValuePackListSchema.safeParse((response as any).data);
   if (!parsed.success) {
-    console.error('Value pack list validation failed:', parsed.error);
+    log.error('Value pack list validation failed', { error: parsed.error });
     throw new ValuePackApiError(formatZodError(parsed.error, 'value pack list response'));
   }
   return parsed.data;
@@ -86,7 +89,7 @@ async function fetchValuePack(packId: string): Promise<ValuePack> {
   // Runtime validation with Zod
   const parsed = ValuePackSchema.safeParse((response as any).data);
   if (!parsed.success) {
-    console.error('Value pack detail validation failed:', parsed.error);
+    log.error('Value pack detail validation failed', { error: parsed.error });
     throw new ValuePackApiError(formatZodError(parsed.error, 'value pack response'));
   }
   return parsed.data;
@@ -139,9 +142,7 @@ export function useApplyValuePack() {
     },
     onError: (error) => {
       // Log error for monitoring/debugging; UI handles display via error state
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[useApplyValuePack] Deployment failed:', error.message);
-      }
+      log.error('Deployment failed', { error: error.message });
     },
   });
 }
@@ -346,9 +347,7 @@ export function useValuePackComparison() {
       return response.data;
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[useValuePackComparison] Comparison failed:', error.message);
-      }
+      log.error('Comparison failed', { error: error.message });
     },
   });
 }

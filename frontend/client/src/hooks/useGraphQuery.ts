@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import {
@@ -13,6 +14,8 @@ import {
   SubgraphResponseSchema,
   validateOrThrow,
 } from '@/lib/validation/schemas';
+
+const log = createLogger('useGraphQuery');
 
 export interface GraphNode {
   id: string;
@@ -141,7 +144,7 @@ export function useGraphQuery() {
       });
     },
     onError: (error) => {
-      console.error('GraphRAG query failed:', error);
+      log.error('GraphRAG query failed', { error: error instanceof Error ? error.message : error });
     },
   });
 }
@@ -218,7 +221,7 @@ export function useEntityTraversal() {
       return validated;
     },
     onError: (error) => {
-      console.error('Entity traversal failed:', error);
+      log.error('Entity traversal failed', { error: error instanceof Error ? error.message : error });
     },
   });
 }

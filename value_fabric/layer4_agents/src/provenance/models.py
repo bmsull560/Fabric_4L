@@ -28,25 +28,25 @@ class PROVEntity_to_dictResult(TypedDictModel):
     id_: Any
     type_: Any
     attributes: Any
-    generatedAt: Any
-    generatedBy: Any
+    generatedAt: Any  # noqa: N815
+    generatedBy: Any  # noqa: N815
     label: Any
 
 class PROVActivity_to_dictResult(TypedDictModel):
     id_: Any
     type_: Any
-    associatedWith: Any
+    associatedWith: Any  # noqa: N815
     attributes: Any
-    endedAt: Any
+    endedAt: Any  # noqa: N815
     generated: Any
     label: Any
-    startedAt: Any
+    startedAt: Any  # noqa: N815
     used: Any
 
 class PROVAgent_to_dictResult(TypedDictModel):
     id_: Any
     type_: Any
-    actedOnBehalfOf: Any
+    actedOnBehalfOf: Any  # noqa: N815
     attributes: Any
     label: Any
 

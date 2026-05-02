@@ -106,7 +106,6 @@ ignore = [
     "N811",   # Constant imported as non-constant
     "N818",   # Exception name should end with `Error`
     "N801",   # Auto-generated TypedDictModel result classes use snake_case names
-    "N815",   # Pydantic model fields mirror external API schemas (Salesforce, HubSpot, PROV-O)
     "UP042",  # Use `StrEnum` instead of `(str, enum.Enum)` – pre-existing pattern
     "UP007",  # Use `X | Y` for union types
     "SIM101", # Multiple `isinstance()` calls, merge into a single call

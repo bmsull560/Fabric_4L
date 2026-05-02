@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, FormulaApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
 import {
@@ -12,6 +13,8 @@ import {
   type ApprovalRequest,
   type FormulaEvaluationResult,
 } from '@/lib/schemas/formula';
+
+const log = createLogger('useFormulas');
 
 export type { Formula, FormulaStatus, ApprovalRequest, FormulaEvaluationResult };
 
@@ -47,9 +50,7 @@ async function fetchFormulas(filters: FormulaFilters): Promise<Formula[]> {
   // Runtime validation with Zod
   const parsed = FormulaListSchema.safeParse(formulasArray);
   if (!parsed.success) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Formula list validation failed:', parsed.error);
-    }
+    log.error('Formula list validation failed', { error: parsed.error });
     throw new FormulaApiError(formatZodError(parsed.error, 'formula list response'));
   }
   return parsed.data;
@@ -77,9 +78,7 @@ async function fetchFormula(formulaId: string): Promise<Formula> {
   // Runtime validation with Zod
   const parsed = FormulaSchema.safeParse(response.data);
   if (!parsed.success) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Formula detail validation failed:', parsed.error);
-    }
+    log.error('Formula detail validation failed', { error: parsed.error });
     throw new FormulaApiError(formatZodError(parsed.error, 'formula response'));
   }
   return parsed.data;
@@ -111,9 +110,7 @@ async function fetchFormulaApprovals(): Promise<ApprovalRequest[]> {
   // Runtime validation with Zod
   const parsed = ApprovalRequestListSchema.safeParse(response.data);
   if (!parsed.success) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Formula approvals validation failed:', parsed.error);
-    }
+    log.error('Formula approvals validation failed', { error: parsed.error });
     throw new FormulaApiError(formatZodError(parsed.error, 'formula approvals response'));
   }
   return parsed.data;
@@ -154,9 +151,7 @@ export function useApproveFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Formula approval failed:', error.message);
-      }
+      log.error('Formula approval failed', { error: error.message });
     },
   });
 }
@@ -178,9 +173,7 @@ export function useSubmitFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Formula submission failed:', error.message);
-      }
+      log.error('Formula submission failed', { error: error.message });
     },
   });
 }
@@ -214,9 +207,7 @@ export function useCreateFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Formula creation failed:', error.message);
-      }
+      log.error('Formula creation failed', { error: error.message });
     },
   });
 }
@@ -248,9 +239,7 @@ export function useUpdateFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.detail(variables.formulaId) });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Formula update failed:', error.message);
-      }
+      log.error('Formula update failed', { error: error.message });
     },
   });
 }
@@ -272,9 +261,7 @@ export function useDeleteFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Formula deletion failed:', error.message);
-      }
+      log.error('Formula deletion failed', { error: error.message });
     },
   });
 }
@@ -303,17 +290,13 @@ export function useEvaluateFormula() {
       // Runtime validation with Zod
       const parsed = FormulaEvaluationResultSchema.safeParse(response.data);
       if (!parsed.success) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Formula evaluation validation failed:', parsed.error);
-        }
+        log.error('Formula evaluation validation failed', { error: parsed.error });
         throw new FormulaApiError(formatZodError(parsed.error, 'formula evaluation response'));
       }
       return parsed.data;
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Formula evaluation failed:', error.message);
-      }
+      log.error('Formula evaluation failed', { error: error.message });
     },
   });
 }

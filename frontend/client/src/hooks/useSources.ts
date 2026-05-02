@@ -10,8 +10,11 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, SourceApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+
+const log = createLogger('useSources');
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -501,9 +504,7 @@ export function useCreateSource() {
       queryClient.invalidateQueries({ queryKey: QK.sources.all });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to create source:', error);
-      }
+      log.error('Failed to create source', { error: error instanceof Error ? error.message : error });
     },
   });
 }
@@ -549,9 +550,7 @@ export function useUpdateSource() {
       queryClient.invalidateQueries({ queryKey: QK.sources.detail(data.id) });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to update source:', error);
-      }
+      log.error('Failed to update source', { error: error instanceof Error ? error.message : error });
     },
   });
 }
@@ -573,9 +572,7 @@ export function useDeleteSource() {
       queryClient.invalidateQueries({ queryKey: QK.sources.all });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to delete source:', error);
-      }
+      log.error('Failed to delete source', { error: error instanceof Error ? error.message : error });
     },
   });
 }
@@ -601,9 +598,7 @@ export function useTestConnection() {
       };
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Connection test failed:', error);
-      }
+      log.error('Connection test failed', { error: error instanceof Error ? error.message : error });
     },
   });
 }
@@ -629,9 +624,7 @@ export function useExecuteSource() {
       queryClient.invalidateQueries({ queryKey: QK.ingestion.all });
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to execute source:', error);
-      }
+      log.error('Failed to execute source', { error: error instanceof Error ? error.message : error });
     },
   });
 }

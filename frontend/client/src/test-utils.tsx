@@ -1,11 +1,12 @@
 import { ReactElement, ReactNode, useState } from "react";
 import { render, RenderOptions } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // Re-export for AuthContext tests (avoids circular dependency)
 export type { UserInfo } from "./contexts/AuthContext";
+import { logError } from "./lib/telemetry";
 
 // P2 Improvement: Shared mock response factory for API tests
 export function createMockResponse<T>(data: T, status = 200): AxiosResponse<T> {
@@ -20,6 +21,22 @@ export function createMockResponse<T>(data: T, status = 200): AxiosResponse<T> {
 
 export const createTestQueryClient = () =>
   new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        logError('Test query failed', {
+          queryKey: JSON.stringify(query.queryKey),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) => {
+        logError('Test mutation failed', {
+          mutationKey: mutation.options.mutationKey?.toString(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    }),
     defaultOptions: {
       queries: {
         retry: false,

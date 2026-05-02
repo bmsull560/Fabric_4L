@@ -1,7 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+
+const log = createLogger('useIntegrations');
 
 export type CRMProvider = 'salesforce' | 'hubspot';
 
@@ -114,7 +117,7 @@ export function useCreateOrUpdateIntegration() {
       queryClient.invalidateQueries({ queryKey: QK.integrations.all });
     },
     onError: (error) => {
-      console.error('[useCreateOrUpdateIntegration] Failed:', error.message);
+      log.error('CreateOrUpdate failed', { error: error.message });
     },
   });
 }
@@ -130,7 +133,7 @@ export function useDeleteIntegration() {
       queryClient.invalidateQueries({ queryKey: QK.integrations.all });
     },
     onError: (error) => {
-      console.error('[useDeleteIntegration] Failed:', error.message);
+      log.error('Delete failed', { error: error.message });
     },
   });
 }
@@ -142,7 +145,7 @@ export function useTestIntegration() {
       return response.data as ConnectionTestResult;
     },
     onError: (error) => {
-      console.error('[useTestIntegration] Failed:', error.message);
+      log.error('Test failed', { error: error.message });
     },
   });
 }
@@ -159,7 +162,7 @@ export function useSyncIntegration() {
       queryClient.invalidateQueries({ queryKey: QK.integrations.all });
     },
     onError: (error) => {
-      console.error('[useSyncIntegration] Failed:', error.message);
+      log.error('Sync failed', { error: error.message });
     },
   });
 }

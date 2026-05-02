@@ -13,6 +13,10 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
 
+PROFILE ?= release-candidate
+POLICY_FILE := .fabric/prod-gates.policy.yaml
+ARTIFACT_DIR := artifacts/release
+
 PYTHON := python3
 PIP    := pip install -e
 PYTEST := pytest -v --tb=short
@@ -72,13 +76,13 @@ lint: ## Lint all Python layers with ruff (fails fast on first error)
 
 # Per-layer mypy flags - stricter layers enforce more type safety
 # Layer 1: Relaxed with explicit untyped handling
-MYPY_LAYER1_FLAGS = --warn-return-any --warn-unused-configs --disallow-untyped-defs=false
+MYPY_LAYER1_FLAGS = --warn-return-any --warn-unused-configs
 # Layer 2: Strict - fully typed codebase
 MYPY_LAYER2_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 3: Strict - fully typed codebase
 MYPY_LAYER3_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 4: Moderate - typed with some flexibility for agent patterns
-MYPY_LAYER4_FLAGS = --warn-return-any --warn-unused-configs --disallow-untyped-defs=false
+MYPY_LAYER4_FLAGS = --warn-return-any --warn-unused-configs
 # Layer 5: Strict - fully typed codebase
 MYPY_LAYER5_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 6: Minimal - gradual typing
@@ -338,7 +342,7 @@ setup-hooks: ## Configure git to use .githooks/ (run once after clone)
 # Each gate-* target runs pytest directly. Non-zero exit = release blocked.
 # No runners, no policy engines, no simulation.
 
-GATE_PYTEST := $(PYTEST) --tb=short -q
+GATE_PYTEST := $(PYTEST) --tb=short -q -n 0
 
 gate-security: ## Gate: tenant isolation, RLS, auth enforcement, export access
 	@echo "→ Gate: Security & Tenant Isolation"
@@ -365,58 +369,86 @@ gate-all: gate-security gate-state gate-arch gate-config ## Run all production r
 
 # ─── Extended Gate Targets (referenced by prod-readiness.yml) ────────────────
 
-POLICY_FILE := .fabric/prod-gates.policy.yaml
-ARTIFACT_DIR := artifacts/release
-
 lint-release: lint-layer1 lint-layer2 lint-layer3 lint-layer4 lint-layer5 lint-layer6 ## Lint all layers (release variant)
 	@echo "✅  Release lint complete"
 
-gates-validate-policy: ## Validate gate policy schema and artifact dirs
+gates-validate-policy: ## Validate gate policy schema, profile existence, and artifact dirs
 	@echo "→ Gate: Validate Policy"
 	@test -s $(POLICY_FILE) || (echo "❌ Policy file $(POLICY_FILE) not found" && exit 1)
+	@python -c "import yaml; yaml.safe_load(open('$(POLICY_FILE)'))" || (echo "❌ Policy file is not valid YAML" && exit 1)
 	@mkdir -p artifacts/{arch,security,chaos,smoke,agent,state,obs,release}
 	@echo "✅  gates-validate-policy passed"
 
 gate-chaos: ## Gate: dependency chaos and failure injection
 	@echo "→ Gate: Chaos"
-	@$(PYTEST) tests/chaos/ -v --tb=short -q 2>/dev/null || echo "⚠️  Chaos tests skipped (no tests or deps missing)"
+	@if [ ! -d tests/chaos ] || [ -z "$$(find tests/chaos -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No chaos tests implemented (0 test files)."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/chaos/ -v --tb=short -q
 	@echo "✅  gate-chaos passed"
 
 gate-smoke: ## Gate: cross-domain smoke tests
 	@echo "→ Gate: Smoke"
-	@$(PYTEST) tests/e2e/ -v --tb=short -q -m "not runtime_contract" 2>/dev/null || echo "⚠️  Smoke tests skipped (no tests or deps missing)"
+	@if [ ! -d tests/e2e ] || [ -z "$$(find tests/e2e -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No smoke tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/e2e/ -v --tb=short -q -m "not runtime_contract"
 	@echo "✅  gate-smoke passed"
 
 gate-agent: ## Gate: agent provenance and behavior regression
 	@echo "→ Gate: Agent"
-	@$(PYTEST) tests/agents/ -v --tb=short -q 2>/dev/null || echo "⚠️  Agent tests skipped (no tests or deps missing)"
+	@if [ ! -d tests/agents ] || [ -z "$$(find tests/agents -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No agent tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/agents/ -v --tb=short -q
 	@echo "✅  gate-agent passed"
 
 gate-obs: ## Gate: observability, metrics, and SLO validation
 	@echo "→ Gate: Observability"
-	@$(PYTEST) tests/performance/ -v --tb=short -q 2>/dev/null || echo "⚠️  Performance tests skipped (no tests or deps missing)"
+	@if [ ! -d tests/performance ] || [ -z "$$(find tests/performance -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No performance tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/performance/ -v --tb=short -q
 	@echo "✅  gate-obs passed"
 
 gate-release-policy: ## Gate: release policy compliance
 	@echo "→ Gate: Release Policy"
-	@$(PYTEST) tests/release/ -v --tb=short -q 2>/dev/null || echo "⚠️  Release tests skipped (no tests or deps missing)"
-	@python scripts/ci/check_deprecations.py 2>/dev/null || echo "⚠️  Deprecation check skipped"
+	@if [ ! -d tests/release ] || [ -z "$$(find tests/release -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No release-policy tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/release/ -v --tb=short -q
+	python scripts/ci/check_deprecations.py
 	@echo "✅  gate-release-policy passed"
 
 gates-sign-manifest: ## Sign artifact manifest with SHA-256
 	@echo "→ Gate: Sign Manifest"
 	@mkdir -p $(ARTIFACT_DIR)/logs
-	@find $(ARTIFACT_DIR) -type f -not -path "*/logs/*" -not -name "manifest.sha256" -exec sha256sum {} \; > $(ARTIFACT_DIR)/manifest.sha256 2>/dev/null || true
-	@echo "✅  gates-sign-manifest passed"
+	@if [ ! -d $(ARTIFACT_DIR) ]; then \
+		echo "❌ Artifact directory $(ARTIFACT_DIR) does not exist"; \
+		exit 1; \
+	fi
+	@FILE_COUNT=$$(find $(ARTIFACT_DIR) -type f -not -path "*/logs/*" -not -name "manifest.sha256" | wc -l); \
+	if [ "$$FILE_COUNT" -eq 0 ]; then \
+		echo "❌ No artifacts to sign in $(ARTIFACT_DIR)"; \
+		exit 1; \
+	fi
+	@find $(ARTIFACT_DIR) -type f -not -path "*/logs/*" -not -name "manifest.sha256" -exec sha256sum {} \; > $(ARTIFACT_DIR)/manifest.sha256
+	@echo "✅  gates-sign-manifest passed ($$(wc -l < $(ARTIFACT_DIR)/manifest.sha256) files)"
 
 gates-render-summary: ## Render release summary with gate results
 	@echo "→ Gate: Render Summary"
 	@bash scripts/render-release-summary.sh
+	@test -s $(ARTIFACT_DIR)/summary.md || (echo "❌ Summary file not generated" && exit 1)
 	@echo "✅  gates-render-summary passed"
 
 release-gate: ## Run the full 4-layer quality gate sequence
 	@echo "🚀 Starting Release Gate Sequence..."
-	@bash scripts/release-gate.sh
+	@bash scripts/release-gate.sh $(PROFILE)
 
 contract-lint: ## Run ESLint contract rules across all packages
 	@echo "→ Running contract lint rules..."

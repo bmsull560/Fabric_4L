@@ -12,6 +12,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
 from shared.identity.context import RequestContext
@@ -22,6 +23,14 @@ from .tenant_rate_limiter import (
     RateLimitConfig,
 )
 from shared.models.typed_dict import TypedDictModel
+
+# Import driver getter - may not be available in all contexts
+try:
+    from value_fabric.layer3_knowledge.src.db.driver import get_driver
+    NEO4J_AVAILABLE = True
+except ImportError:
+    NEO4J_AVAILABLE = False
+    get_driver = None  # type: ignore
 
 
 class list_rate_limit_tiersResult(TypedDictModel):
@@ -92,6 +101,98 @@ async def get_rate_limiter() -> TenantRateLimiter:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Helper Functions
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def _get_tenant_tier_from_db(tenant_id: UUID) -> TenantTier:
+    """Fetch tenant tier from authoritative database source.
+
+    Queries Neo4j Tenant node for tier/isolation_tier property.
+    Falls back to SHARED only if tenant not found or DB unavailable,
+    with appropriate warning logs.
+
+    Args:
+        tenant_id: Tenant UUID
+
+    Returns:
+        TenantTier enum value from database or SHARED as fallback
+    """
+    if not NEO4J_AVAILABLE or get_driver is None:
+        logger.warning(
+            "Neo4j driver not available for tenant tier lookup, "
+            "falling back to SHARED for tenant_id=%s",
+            tenant_id,
+        )
+        return TenantTier.SHARED
+
+    try:
+        driver = await get_driver()
+        async with driver.session() as session:
+            # Query Tenant node for tier - check both tier and isolation_tier properties
+            result = await session.run(
+                """
+                MATCH (t:Tenant {id: $tenant_id})
+                RETURN t.tier as tier, t.isolation_tier as isolation_tier
+                """,
+                tenant_id=str(tenant_id),
+            )
+            record = await result.single()
+
+            if not record:
+                logger.warning(
+                    "Tenant %s not found in database, falling back to SHARED tier",
+                    tenant_id,
+                )
+                return TenantTier.SHARED
+
+            # Check tier property first, then isolation_tier
+            tier_value = record.get("tier") or record.get("isolation_tier")
+            if not tier_value:
+                logger.warning(
+                    "Tenant %s has no tier/isolation_tier property, "
+                    "falling back to SHARED",
+                    tenant_id,
+                )
+                return TenantTier.SHARED
+
+            # Normalize to lowercase and map to TenantTier
+            tier_str = str(tier_value).lower()
+            tier_mapping = {
+                "shared": TenantTier.SHARED,
+                "dedicated": TenantTier.DEDICATED,
+                "enterprise": TenantTier.ENTERPRISE,
+                # Also accept isolation tier values
+                "standard": TenantTier.SHARED,
+                "isolated": TenantTier.DEDICATED,
+            }
+
+            tier = tier_mapping.get(tier_str)
+            if tier is None:
+                logger.warning(
+                    "Unknown tier value '%s' for tenant %s, falling back to SHARED",
+                    tier_value,
+                    tenant_id,
+                )
+                return TenantTier.SHARED
+
+            logger.debug(
+                "Resolved tenant %s to tier %s from database",
+                tenant_id,
+                tier.value,
+            )
+            return tier
+
+    except Exception as e:
+        logger.error(
+            "Failed to query tenant tier from database for %s: %s. "
+            "Falling back to SHARED",
+            tenant_id,
+            e,
+        )
+        return TenantTier.SHARED
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Endpoints
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -124,9 +225,9 @@ async def get_tenant_quota(
         TenantQuotaResponse with quota and usage
     """
     try:
-        # Determine tenant tier (would come from database in production)
-        tenant_tier = TenantTier.SHARED  # TODO: Query from database
-        
+        # Fetch tenant tier from database (authoritative source)
+        tenant_tier = await _get_tenant_tier_from_db(tenant_id)
+
         status_data = await rate_limiter.get_tenant_quota_status(
             tenant_id=tenant_id,
             tenant_tier=tenant_tier,

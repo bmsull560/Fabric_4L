@@ -1,10 +1,11 @@
 import { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 import { I18nProvider } from "./i18n";
 import { STALE_TIME } from "./hooks/useApiShared";
+import { logError } from "./lib/telemetry";
 
 // ReactQueryDevtools is only included in development builds.
 // Vite's tree-shaking drops this import entirely in production,
@@ -18,6 +19,22 @@ const ReactQueryDevtools = import.meta.env.DEV
   : null;
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      logError('Query failed', {
+        queryKey: JSON.stringify(query.queryKey),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      logError('Mutation failed', {
+        mutationKey: mutation.options.mutationKey?.toString(),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
+  }),
   defaultOptions: {
     queries: {
       // Global default — individual hooks override with a more specific STALE_TIME key

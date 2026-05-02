@@ -154,16 +154,13 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // Value Packs - List
-  http.get('/api/value-packs', () => {
-    return HttpResponse.json({
-      items: mockValuePacks,
-      total: mockValuePacks.length,
-    });
+  // Value Packs - List (matches apiClient.get('l3', '/packs'))
+  http.get('/packs', () => {
+    return HttpResponse.json(mockValuePacks);
   }),
 
   // Value Packs - Get single
-  http.get('/api/value-packs/:id', ({ params }) => {
+  http.get('/packs/:id', ({ params }) => {
     const pack = mockValuePacks.find(p => p.id === params.id);
     if (!pack) {
       return new HttpResponse(null, { status: 404 });
@@ -172,7 +169,7 @@ export const handlers = [
   }),
 
   // Value Packs - Apply
-  http.post('/api/value-packs/:id/apply', async ({ params }) => {
+  http.post('/packs/:id/apply', async ({ params }) => {
     await delay(500);
     const pack = mockValuePacks.find(p => p.id === params.id);
     if (!pack) {

@@ -7,7 +7,6 @@ import hashlib
 import json
 import logging
 import lzma
-import pickle
 import zlib
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -731,9 +730,18 @@ class RedisCache:
         if self.config.serialization == SerializationType.JSON:
             return json.dumps(value, default=str).encode("utf-8")
         elif self.config.serialization == SerializationType.PICKLE:
-            return pickle.dumps(value)
+            # P0 FIX: Pickle is disabled for security — use json or msgpack
+            raise ValueError("pickle serializer is disabled for security — use json or msgpack")
+        elif self.config.serialization == SerializationType.BINARY:
+            if isinstance(value, bytes):
+                return value
+            elif isinstance(value, str):
+                return value.encode("utf-8")
+            else:
+                return str(value).encode("utf-8")
         else:
-            return pickle.dumps(value)
+            # P0 FIX: Default to JSON instead of pickle for security
+            return json.dumps(value, default=str).encode("utf-8")
 
     def _compress(self, data: bytes) -> bytes:
         """Compress data."""
@@ -775,9 +783,13 @@ class RedisCache:
         if self.config.serialization == SerializationType.JSON:
             return json.loads(data.decode("utf-8"))
         elif self.config.serialization == SerializationType.PICKLE:
-            return pickle.loads(data)
+            # P0 FIX: Pickle is disabled for security — use json or msgpack
+            raise ValueError("pickle serializer is disabled for security — use json or msgpack")
+        elif self.config.serialization == SerializationType.BINARY:
+            return data
         else:
-            return pickle.loads(data)
+            # P0 FIX: Default to JSON instead of pickle for security
+            return json.loads(data.decode("utf-8"))
 
     def get_stats(self) -> CacheStats:
         """Get cache statistics."""

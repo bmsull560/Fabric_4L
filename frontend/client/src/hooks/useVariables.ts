@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ZodError } from 'zod';
 import { apiClient } from '@/api/client';
+import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, VariableApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 import {
@@ -15,6 +16,8 @@ import {
   type SourceBinding,
   type VariableStats,
 } from '@/lib/schemas/variable';
+
+const log = createLogger('useVariables');
 
 /**
  * Format Zod validation errors into a human-readable string.
@@ -48,7 +51,7 @@ async function fetchVariables(filters: VariableFilters): Promise<Variable[]> {
   // Runtime validation with Zod
   const parsed = VariableListSchema.safeParse(response.data);
   if (!parsed.success) {
-    console.error('Variable list validation failed:', parsed.error);
+    log.error('Variable list validation failed', { error: parsed.error });
     throw new VariableApiError(formatZodError(parsed.error, 'variable list response'));
   }
   return parsed.data;
@@ -70,7 +73,7 @@ async function fetchVariable(variableId: string): Promise<Variable> {
   // Runtime validation with Zod
   const parsed = VariableSchema.safeParse(response.data);
   if (!parsed.success) {
-    console.error('Variable detail validation failed:', parsed.error);
+    log.error('Variable detail validation failed', { error: parsed.error });
     throw new VariableApiError(formatZodError(parsed.error, 'variable response'));
   }
   return parsed.data;
@@ -96,7 +99,7 @@ async function fetchVariableStats(): Promise<VariableStats> {
   // Runtime validation with Zod
   const parsed = VariableStatsSchema.safeParse(response.data);
   if (!parsed.success) {
-    console.error('Variable stats validation failed:', parsed.error);
+    log.error('Variable stats validation failed', { error: parsed.error });
     throw new VariableApiError(formatZodError(parsed.error, 'variable stats response'));
   }
   return parsed.data;
@@ -118,7 +121,7 @@ async function fetchSourceBindings(): Promise<SourceBinding[]> {
   // Runtime validation with Zod
   const parsed = SourceBindingListSchema.safeParse(response.data);
   if (!parsed.success) {
-    console.error('Source binding list validation failed:', parsed.error);
+    log.error('Source binding list validation failed', { error: parsed.error });
     throw new VariableApiError(formatZodError(parsed.error, 'source binding list response'));
   }
   return parsed.data;

@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu, PanelLeftClose, PanelLeftOpen, Search, Bell } from "lucide-react";
+import { useMatches } from "react-router-dom";
 
 interface AppHeaderProps {
   leftNavCollapsed: boolean;
@@ -8,11 +9,48 @@ interface AppHeaderProps {
   onOpenMobileNav: () => void;
 }
 
+interface RouteHandle {
+  title?: string;
+  category?: string;
+}
+
+function useHeaderMeta(): { title: string; subtitle: string } {
+  const matches = useMatches();
+
+  // Find the deepest route that has handle metadata
+  const routeWithMeta = [...matches].reverse().find((m) => {
+    const handle = m.handle as RouteHandle | undefined;
+    return handle?.title || handle?.category;
+  });
+
+  const handle = routeWithMeta?.handle as RouteHandle | undefined;
+
+  if (handle?.title) {
+    return {
+      title: handle.title,
+      subtitle: handle.category || "",
+    };
+  }
+
+  // Fallback: derive from pathname for routes without handle metadata
+  const pathname = matches[matches.length - 1]?.pathname || "/";
+  const segments = pathname.split("/").filter(Boolean);
+  const lastSegment = segments[segments.length - 1] || "Home";
+
+  const formatted = lastSegment
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  return { title: formatted, subtitle: "" };
+}
+
 export function AppHeader({
   leftNavCollapsed,
   onToggleLeftNav,
   onOpenMobileNav,
 }: AppHeaderProps) {
+  const { title, subtitle } = useHeaderMeta();
+
   return (
     <header className="z-20 flex h-14 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="flex min-w-0 items-center gap-2">
@@ -39,10 +77,12 @@ export function AppHeader({
         </button>
 
         <div className="min-w-0">
-          <div className="text-sm font-medium">Settings</div>
-          <div className="truncate text-xs text-muted-foreground">
-            Configuration Center
-          </div>
+          <div className="text-sm font-medium">{title}</div>
+          {subtitle && (
+            <div className="truncate text-xs text-muted-foreground">
+              {subtitle}
+            </div>
+          )}
         </div>
       </div>
 

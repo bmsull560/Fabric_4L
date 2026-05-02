@@ -1,16 +1,21 @@
 """
-Tests for CRM webhook tenant isolation hardening.
+Integration tests for CRM webhook tenant isolation hardening.
 
 Covers:
 - tenant_id query parameter enforcement in production
 - Rejection of webhooks for unknown/disabled tenants
 - tenant_id propagation to sync_provider
+
+NOTE: These tests require the full Python environment (langgraph, psycopg,
+shared.crypto, etc.). Marked as integration tests — skip in lightweight CI.
 """
 
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+pytestmark = pytest.mark.integration
 
 # Patch problematic imports before loading the module
 with patch.dict(
