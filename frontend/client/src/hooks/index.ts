@@ -106,3 +106,7 @@ export {
   type ValidationEventResponse,
   type MaturityLadderResponse,
 } from "./useGroundTruthGovernance";
+
+// ── Navigation Hooks ─────────────────────────────────────────────────────────
+
+export { useNavigation, type RouteState } from "./useNavigation";
