@@ -19,6 +19,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "value-fabric"))
 
 import pytest
 
+pytestmark = [pytest.mark.security, pytest.mark.tenant_boundary]
+
+
 # ---------------------------------------------------------------------------
 # Test constants — extracted to avoid magic strings and aid maintainability
 # ---------------------------------------------------------------------------

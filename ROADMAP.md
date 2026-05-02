@@ -10,6 +10,10 @@
 
 ## Executive Summary
 
+> Canonical launch readiness and launch criteria now live in `docs/readiness/current.md`.
+> Current canonical value: **Launch Readiness: 95%**.
+
+
 The Value Fabric platform has substantial implementation across all 4 original layers:
 
 | Layer | Completion | Status | Key Gaps |
@@ -2184,6 +2188,10 @@ Task 40 (30min) → Task 41 (15min) → Task 42 (2hrs) → Tasks 46-47 (4 days) 
 
 ### Executive Summary
 
+> Canonical launch readiness and launch criteria now live in `docs/readiness/current.md`.
+> Current canonical value: **Launch Readiness: 95%**.
+
+
 This build environment is in the "dangerous middle" zone: components look mature but contain quiet ways to diverge across developer machines and CI runners. The target state is attainable in **6 weeks of focused platform work** without blocking product delivery.
 
 **Primary Risk:** No dependency lock files means every build resolves live from PyPI. Any transitive dependency release can break builds or silently introduce incompatible behavior.
@@ -3966,6 +3974,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 | DevOps/Infra | ~95% | 95% | 0% | ✅ Monitoring stack complete (Alertmanager + Grafana + LLM metrics), Task 69 remaining |
 
 ### Executive Summary
+
+> Canonical launch readiness and launch criteria now live in `docs/readiness/current.md`.
+> Current canonical value: **Launch Readiness: 95%**.
+
 
 The platform has achieved substantial production readiness. All Phase 1 (Tasks 25-36) and Phase 2 (Tasks 37-39, 51-52) tasks are complete.
 

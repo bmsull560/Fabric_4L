@@ -20,6 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+
+      - name: Validate workflow command/artifact references
+        run: |
+          python3 scripts/ci/check_workflow_references.py --workflow-glob "drift-check.yml"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

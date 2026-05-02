@@ -6,7 +6,7 @@
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
         gate-security gate-state gate-arch gate-config gate-all \
-        platform-contract-lint setup-hooks check-ui-duplicates
+        platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency
 
 # Strict shell settings for production safety
 .ONESHELL:
@@ -30,11 +30,14 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency) — required before PR
 	@echo "✅  All checks passed"
 
 check-ui-duplicates: ## Block new duplicate UI component filenames between prototype and production trees
 	@python3 scripts/check_ui_duplicate_filenames.py
+
+check-readiness-consistency: ## Ensure canonical readiness percentages are aligned and archives are snapshot-tagged
+	@python3 scripts/ci/check_readiness_consistency.py
 
 verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
 	@echo "✅  Strict verification passed"

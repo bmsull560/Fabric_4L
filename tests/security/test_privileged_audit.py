@@ -6,6 +6,8 @@ audit events with comprehensive details for compliance monitoring.
 """
 
 import pytest
+
+pytestmark = [pytest.mark.security, pytest.mark.tenant_boundary]
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 

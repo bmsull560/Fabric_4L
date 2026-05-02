@@ -26,43 +26,12 @@ const ErrorResponseSchema = z.object({
 
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
-/**
- * Safe localStorage accessor with null checks and try/catch.
- *
- * P1-21 SECURITY WARNING: Storing access tokens in localStorage makes them
- * vulnerable to XSS extraction. This is a known risk that should be
- * migrated to httpOnly cookies with CSRF protection in a future release.
- *
- * TODO(P1-21): Migrate to httpOnly cookie-based auth with SameSite=Strict
- */
-const safeLocalStorage = {
-  isAvailable(): boolean {
-    try {
-      return typeof window !== 'undefined' && window.localStorage !== null;
-    } catch {
-      return false;
-    }
-  },
-
-  getItem(key: string): string | null {
-    try {
-      if (!this.isAvailable()) return null;
-      return window.localStorage.getItem(key);
-    } catch (error) {
-      logError('localStorage.getItem failed', { key, error });
-      return null;
-    }
-  },
-
-  removeItem(key: string): void {
-    try {
-      if (!this.isAvailable()) return;
-      window.localStorage.removeItem(key);
-    } catch (error) {
-      logError('localStorage.removeItem failed', { key, error });
-    }
-  },
-};
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const key = `${name}=`;
+  const match = document.cookie.split('; ').find((part) => part.startsWith(key));
+  return match ? decodeURIComponent(match.slice(key.length)) : null;
+}
 
 // ============================================================================
 // Environment Configuration with Validation
@@ -199,6 +168,7 @@ class ApiClient {
     (Object.keys(LAYER_PREFIXES) as LayerKey[]).forEach((layer) => {
       const client = axios.create({
         baseURL: `${API_BASE}${LAYER_PREFIXES[layer]}`,
+        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -218,16 +188,15 @@ class ApiClient {
 
       client.interceptors.request.use(
         (config) => {
-          // MANDATE 1: NULL/UNDEFINED SAFETY - Safe localStorage access
           // Add correlation ID for request tracing
           config.headers['X-Request-ID'] = generateRequestId();
 
-          const tenantId = safeLocalStorage.getItem('tenantId') ?? 'default';
-          config.headers['X-Tenant-ID'] = tenantId;
-
-          const token = safeLocalStorage.getItem('accessToken');
-          if (typeof token === 'string' && token.length > 0) {
-            config.headers['Authorization'] = `Bearer ${token}`;
+          const method = (config.method ?? 'get').toUpperCase();
+          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+            const csrfToken = getCookie('vf_csrf_token');
+            if (csrfToken) {
+              config.headers['X-CSRF-Token'] = csrfToken;
+            }
           }
 
           return config;
@@ -258,12 +227,7 @@ class ApiClient {
             errorData.trace_id ??
             null;
 
-          // MANDATE 3: ERROR HANDLING COMPLETENESS - Auth error handling with safe storage
           if (error.response?.status === 401) {
-            // Clear auth state and redirect to login
-            safeLocalStorage.removeItem('accessToken');
-            safeLocalStorage.removeItem('userInfo');
-            safeLocalStorage.removeItem('tenantId');
             // Avoid infinite redirect loop: only redirect if not already on /login
             if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
               window.location.replace('/login');

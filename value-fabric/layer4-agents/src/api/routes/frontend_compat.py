@@ -29,12 +29,13 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Cookie, Depends, HTTPException
 from pydantic import BaseModel
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ....api.security.csrf import CSRF_COOKIE_NAME, validate_double_submit
 from ....database import get_db_from_context
 from ....tenants.email_verification import EmailVerificationService
 from ....tenants.service import get_tenant, update_tenant_settings
@@ -118,6 +119,8 @@ async def update_current_tenant_settings(
     update: TenantSettingsUpdate,
     db: AsyncSession = Depends(get_db_from_context),
     ctx: RequestContext = Depends(require_authenticated),
+    _csrf_cookie: str | None = Cookie(default=None, alias=CSRF_COOKIE_NAME),
+    _csrf_ok: None = Depends(validate_double_submit),
 ) -> TenantSettingsUpdateResponse:
     """Update settings for the current tenant (frontend compatibility alias)."""
     tenant = await get_tenant(db, ctx.tenant_id)
@@ -152,6 +155,8 @@ async def update_current_tenant_settings(
 async def register_tenant_frontend_alias(
     request: RegisterTenantRequest,
     db: AsyncSession = Depends(get_db_from_context),
+    _csrf_cookie: str | None = Cookie(default=None, alias=CSRF_COOKIE_NAME),
+    _csrf_ok: None = Depends(validate_double_submit),
 ) -> RegisterTenantResponse:
     """Register a new tenant (frontend compatibility alias for /v1/tenants/register)."""
     from shared.identity.models import TenantCreateRequest

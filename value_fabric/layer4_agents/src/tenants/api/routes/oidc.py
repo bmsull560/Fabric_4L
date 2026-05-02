@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.jwt import encode_jwt
 from shared.identity.oidc_config import OIDCProviderConfig
@@ -30,6 +30,7 @@ from shared.identity.oidc import OIDCClient, map_role_from_claims
 # The user does not yet have a JWT, so get_db (no tenant context) is
 # intentional here. Authentication is via OIDC provider + PKCE.
 from ....database import get_db_from_context
+from ....api.security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token
 from ....tenants.models.tenant import Tenant
 from ....tenants.models.user import User
 
@@ -210,6 +211,7 @@ async def oidc_login(
 @router.get("/callback")
 async def oidc_callback(
     request: Request,
+    response: Response,
     state: str = Query(...),
     code: str = Query(...),
     db: AsyncSession = Depends(get_db_from_context),
@@ -380,6 +382,25 @@ async def oidc_callback(
         roles=[user.role],
         expires_in_seconds=3600,
     )
+    csrf_token = issue_csrf_token()
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=3600,
+        path="/",
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=csrf_token,
+        httponly=False,
+        secure=True,
+        samesite="strict",
+        max_age=3600,
+        path="/",
+    )
 
     emit_audit_event(
         AuditAction.OIDC_LOGIN,
@@ -424,5 +445,4 @@ async def oidc_metadata(
         "auto_provision_users": oidc_config.auto_provision_users,
         "enabled": oidc_config.enabled,
     })
-
 

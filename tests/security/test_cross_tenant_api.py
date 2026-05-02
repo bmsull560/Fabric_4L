@@ -31,6 +31,9 @@ from uuid import UUID
 import jwt as pyjwt
 import pytest
 
+pytestmark = [pytest.mark.security, pytest.mark.tenant_boundary]
+
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
