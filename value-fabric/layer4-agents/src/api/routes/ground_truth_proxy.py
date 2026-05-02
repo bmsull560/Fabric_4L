@@ -29,6 +29,23 @@ router = APIRouter(prefix="/v1/ground-truth", tags=["ground-truth-proxy"])
 
 
 # -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+
+def _handle_l5_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Raise HTTPException if L5 returned an error dict, otherwise return result."""
+    error = result.get("error")
+    if error:
+        logger.error("L5 proxy error: %s", error)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Ground Truth service error: {error}",
+        )
+    return result
+
+
+# -----------------------------------------------------------------------------
 # Request/Response Models
 # -----------------------------------------------------------------------------
 
@@ -61,7 +78,6 @@ async def list_truths(
     claim_type: str | None = Query(None, description="Filter by claim type"),
     min_maturity: int | None = Query(None, ge=0, le=5, description="Minimum maturity level"),
     min_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Minimum confidence"),
-    is_stale: bool | None = Query(None, description="Filter by staleness"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: RequestContext = Depends(require_authenticated),
@@ -77,15 +93,7 @@ async def list_truths(
         limit=limit,
         offset=offset,
     )
-
-    if result.get("error"):
-        logger.error("L5 list_truths failed: %s", result["error"])
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ground Truth service error: {result['error']}",
-        )
-
-    return result
+    return _handle_l5_result(result)
 
 
 @router.get("/truths/{truth_id}", summary="Get a TruthObject")
@@ -99,15 +107,7 @@ async def get_truth(
         truth_id=str(truth_id),
         organization_id=str(ctx.tenant_id) if ctx.tenant_id else None,
     )
-
-    if result.get("error"):
-        logger.error("L5 get_truth failed: %s", result["error"])
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ground Truth service error: {result['error']}",
-        )
-
-    return result
+    return _handle_l5_result(result)
 
 
 @router.get("/truths/{truth_id}/audit", summary="Get TruthObject audit trail")
@@ -122,13 +122,7 @@ async def get_truth_audit(
         organization_id=str(ctx.tenant_id) if ctx.tenant_id else None,
     )
 
-    if result.get("error"):
-        logger.error("L5 get_truth_audit failed: %s", result["error"])
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ground Truth service error: {result['error']}",
-        )
-
+    _handle_l5_result(result)
     return result.get("events", [])
 
 
@@ -148,15 +142,7 @@ async def validate_truth(
         organization_id=str(ctx.tenant_id) if ctx.tenant_id else None,
         notes=request.notes,
     )
-
-    if result.get("error"):
-        logger.error("L5 validate_truth failed: %s", result["error"])
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ground Truth service error: {result['error']}",
-        )
-
-    return result
+    return _handle_l5_result(result)
 
 
 @router.get("/truths/freshness-summary", summary="Get freshness summary")
@@ -168,15 +154,7 @@ async def get_freshness_summary(
     result = await l5_client.get_freshness_summary(
         organization_id=str(ctx.tenant_id) if ctx.tenant_id else None,
     )
-
-    if result.get("error"):
-        logger.error("L5 get_freshness_summary failed: %s", result["error"])
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ground Truth service error: {result['error']}",
-        )
-
-    return result
+    return _handle_l5_result(result)
 
 
 @router.get("/truths/stale", summary="Get stale TruthObjects")
@@ -192,15 +170,7 @@ async def get_stale_truths(
         limit=limit,
         offset=offset,
     )
-
-    if result.get("error"):
-        logger.error("L5 get_stale_truths failed: %s", result["error"])
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ground Truth service error: {result['error']}",
-        )
-
-    return result
+    return _handle_l5_result(result)
 
 
 @router.get("/maturity-ladder", summary="Get maturity ladder definition")
@@ -212,12 +182,4 @@ async def get_maturity_ladder(
     result = await l5_client.get_maturity_ladder(
         organization_id=str(ctx.tenant_id) if ctx.tenant_id else None,
     )
-
-    if result.get("error"):
-        logger.error("L5 get_maturity_ladder failed: %s", result["error"])
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Ground Truth service error: {result['error']}",
-        )
-
-    return result
+    return _handle_l5_result(result)

@@ -578,6 +578,42 @@
       "timeout_ms": 120000,
       "required_context": ["layer4_tools", "contracts/tool-manifests", "tests/evals"],
       "allowed_agents": ["code-reviewer", "drift-assessor"]
+    },
+    {
+      "skill_id": "value-engine-e2e-validation",
+      "name": "Value Engine E2E Workflow Validation",
+      "version": "1.0.0",
+      "description": "Bootstrap the full development stack, seed a demo tenant and user, authenticate, execute the complete 7-step Value Engine workflow end-to-end, autonomously fix blockers, and produce a final validation report",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "demo_tenant_slug": { "type": "string", "default": "demo-acme" },
+          "demo_user_email": { "type": "string", "default": "sarah.chen@acmerobotics.com" },
+          "demo_user_password": { "type": "string", "default": "Demo1234!" },
+          "prospect_company": { "type": "string", "default": "Axiom Robotics" },
+          "prospect_domain": { "type": "string", "default": "axiomrobotics.com" },
+          "max_fix_attempts": { "type": "integer", "minimum": 1, "maximum": 10, "default": 3 },
+          "fix_timebox_minutes": { "type": "integer", "minimum": 1, "maximum": 60, "default": 15 },
+          "skip_phases": { "type": "array", "items": { "type": "string" }, "default": [] },
+          "output_format": { "type": "string", "enum": ["markdown", "json"], "default": "markdown" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "result": { "type": "string", "enum": ["Go", "Conditional Go", "No-Go"] },
+          "duration_minutes": { "type": "number" },
+          "environment": { "type": "object" },
+          "workflow_results": { "type": "array" },
+          "fixes_applied": { "type": "array" },
+          "blockers": { "type": "array" },
+          "decision": { "type": "object" }
+        }
+      },
+      "side_effects": "exec",
+      "timeout_ms": 1800000,
+      "required_context": ["project_graph", "test_inventory"],
+      "allowed_agents": ["*"]
     }
   ]
 }

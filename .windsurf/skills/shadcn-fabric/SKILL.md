@@ -1,5 +1,5 @@
 ---
-name: shadcn-facbric
+name: shadcn-fabric
 description: shadcn/ui usage guidelines for Value Fabric frontend
 tags: [frontend, ui, components, shadcn]
 ---

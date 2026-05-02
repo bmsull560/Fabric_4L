@@ -75,27 +75,7 @@ from ..tenants.api import (
 )
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-from .routes import accounts, agent_stream, analysis, signals, tools, value_flow, workflows
-=======
 from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
->>>>>>> theirs
-=======
-from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
->>>>>>> theirs
-=======
-from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
->>>>>>> theirs
-=======
-from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
->>>>>>> theirs
-=======
-from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
->>>>>>> theirs
 from .routes import audit as audit_router
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
@@ -472,27 +452,7 @@ app.include_router(c1_router, prefix="/v1", tags=["c1"])
 
 # Frontend compatibility aliases (drift-matched paths)
 app.include_router(frontend_compat_router, prefix="/v1")
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-app.include_router(value_flow.router)
-=======
 app.include_router(prospects.router, prefix="/v1")
->>>>>>> theirs
-=======
-app.include_router(prospects.router, prefix="/v1")
->>>>>>> theirs
-=======
-app.include_router(prospects.router, prefix="/v1")
->>>>>>> theirs
-=======
-app.include_router(prospects.router, prefix="/v1")
->>>>>>> theirs
-=======
-app.include_router(prospects.router, prefix="/v1")
->>>>>>> theirs
 
 
 @app.get("/health")

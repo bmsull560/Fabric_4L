@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "skill_id": "value-engine-e2e-validation",
+  "version": "1.0.0",
+  "description": "Schema for Value Engine E2E Workflow Validation skill inputs and outputs",
+  
+  "input": {
+    "type": "object",
+    "properties": {
+      "demo_tenant_slug": {
+        "type": "string",
+        "default": "demo-acme",
+        "description": "Slug for the demo tenant"
+      },
+      "demo_user_email": {
+        "type": "string",
+        "format": "email",
+        "default": "sarah.chen@acmerobotics.com",
+        "description": "Email for demo user"
+      },
+      "demo_user_password": {
+        "type": "string",
+        "default": "Demo1234!",
+        "description": "Password for demo user"
+      },
+      "prospect_company": {
+        "type": "string",
+        "default": "Axiom Robotics",
+        "description": "Company name for test prospect"
+      },
+      "prospect_domain": {
+        "type": "string",
+        "format": "hostname",
+        "default": "axiomrobotics.com",
+        "description": "Domain for test prospect"
+      },
+      "max_fix_attempts": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "default": 3,
+        "description": "Maximum retry attempts per step"
+      },
+      "fix_timebox_minutes": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 60,
+        "default": 15,
+        "description": "Time limit per fix attempt in minutes"
+      },
+      "skip_phases": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["1", "2", "3", "4", "5"]
+        },
+        "default": [],
+        "description": "Phases to skip (e.g., ['1', '2'] if services already running)"
+      },
+      "output_format": {
+        "type": "string",
+        "enum": ["markdown", "json"],
+        "default": "markdown",
+        "description": "Report output format"
+      }
+    },
+    "additionalProperties": false
+  },
+  
+  "output": {
+    "type": "object",
+    "required": ["result", "duration_minutes", "environment", "workflow_results", "fixes_applied", "decision"],
+    "properties": {
+      "result": {
+        "type": "string",
+        "enum": ["Go", "Conditional Go", "No-Go"],
+        "description": "Overall validation result"
+      },
+      "duration_minutes": {
+        "type": "number",
+        "description": "Total validation time"
+      },
+      "environment": {
+        "type": "object",
+        "required": ["services", "auth"],
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "status", "url", "healthy"],
+              "properties": {
+                "name": { "type": "string" },
+                "status": { "type": "string", "enum": ["running", "failed", "skipped"] },
+                "url": { "type": "string", "format": "uri" },
+                "healthy": { "type": "boolean" },
+                "notes": { "type": "string" }
+              }
+            }
+          },
+          "auth": {
+            "type": "object",
+            "required": ["user_created", "login_successful", "tenant_context_verified"],
+            "properties": {
+              "user_created": { "type": "boolean" },
+              "login_successful": { "type": "boolean" },
+              "tenant_context_verified": { "type": "boolean" },
+              "token_type": { "type": "string", "enum": ["jwt", "session", "api_key"] }
+            }
+          }
+        }
+      },
+      "workflow_results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["step", "name", "status", "api_used", "duration_seconds"],
+          "properties": {
+            "step": { "type": "integer", "minimum": 1, "maximum": 7 },
+            "name": { "type": "string" },
+            "status": { "type": "string", "enum": ["passed", "failed", "skipped"] },
+            "api_used": { "type": "string" },
+            "duration_seconds": { "type": "number" },
+            "issues_fixed": { "type": "integer" },
+            "pass_criteria_met": { "type": "array", "items": { "type": "string" } },
+            "failures": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "fixes_applied": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["phase", "issue", "fix", "timestamp"],
+          "properties": {
+            "phase": { "type": "string" },
+            "issue": { "type": "string" },
+            "fix": { "type": "string" },
+            "timestamp": { "type": "string", "format": "date-time" },
+            "files_modified": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "blockers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["step", "description", "severity", "recommended_action"],
+          "properties": {
+            "step": { "type": "string" },
+            "description": { "type": "string" },
+            "severity": { "type": "string", "enum": ["Critical", "Warning"] },
+            "recommended_action": { "type": "string" }
+          }
+        }
+      },
+      "decision": {
+        "type": "object",
+        "required": ["outcome", "rationale"],
+        "properties": {
+          "outcome": { "type": "string", "enum": ["Go", "Conditional Go", "No-Go"] },
+          "rationale": { "type": "string" },
+          "next_steps": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "artifacts": {
+        "type": "object",
+        "properties": {
+          "report_path": { "type": "string" },
+          "api_samples_path": { "type": "string" },
+          "log_excerpts_path": { "type": "string" },
+          "screenshots_path": { "type": "string" }
+        }
+      }
+    }
+  }
+}
