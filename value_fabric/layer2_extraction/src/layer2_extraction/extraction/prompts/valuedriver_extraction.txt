@@ -1,0 +1,24 @@
+Extract all quantifiable business value drivers mentioned in this text.
+
+Text:
+{text}
+
+Categories (aligned with pack ontology):
+- capital_efficiency: Optimizes capital deployment (cash flow, inventory turns, working capital)
+- cost_reduction: Reduces operational costs (automation, efficiency gains, resource optimization)
+- risk_mitigation: Reduces business risk (compliance, security, operational resilience)
+- revenue_enhancement: Increases revenue (up-sell, cross-sell, retention, expansion)
+
+Legacy category mappings (for reference):
+- revenue → revenue_enhancement
+- cost → cost_reduction
+- risk → risk_mitigation
+- capital → capital_efficiency
+
+Instructions:
+- Use granular pack-aligned categories when clear (capital_efficiency, cost_reduction, etc.)
+- Look for specific metrics and formulas
+- Include time-to-value if mentioned
+- Return only data that can be justified by explicit evidence in the text
+- Use calibrated confidence values and avoid inflated scores
+- Return empty array if no clear value drivers are mentioned

@@ -1,0 +1,195 @@
+# Docker Compose for MCP Gateway integration tests.
+# Provides containerized MCP servers for realistic integration testing.
+
+version: '3.8'
+
+services:
+  # MCP Gateway under test
+  mcp-gateway:
+    build:
+      context: ../../..
+      dockerfile: shared/mcp_gateway/Dockerfile
+    container_name: mcp-gateway-test
+    ports:
+      - "3000:3000"
+    environment:
+      # Upstream configurations
+      - MCP_UPSTREAM_TOOLS_URL=http://upstream-tools:8080
+      - MCP_UPSTREAM_RESOURCES_URL=http://upstream-resources:8080
+      - MCP_UPSTREAM_PROMPTS_URL=http://upstream-prompts:8080
+      - MCP_UPSTREAM_FAULTY_URL=http://upstream-faulty:8080
+      
+      # Auth configuration
+      - MCP_AUTH_PUBLIC_KEY=/secrets/public.pem
+      - MCP_AUTH_ISSUER=https://auth.example.com
+      - MCP_AUTH_AUDIENCE=mcp-gateway
+      
+      # Observability
+      - MCP_LOG_LEVEL=debug
+      - MCP_ENABLE_METRICS=true
+      - MCP_TRACE_EXPORTER=console
+      
+      # Circuit breaker settings
+      - MCP_CIRCUIT_FAILURE_THRESHOLD=5
+      - MCP_CIRCUIT_TIMEOUT_SECONDS=30
+      - MCP_CIRCUIT_HALF_OPEN_MAX_CALLS=3
+    volumes:
+      - ./secrets:/secrets:ro
+      - ./logs:/logs
+    depends_on:
+      upstream-tools:
+        condition: service_healthy
+      upstream-resources:
+        condition: service_healthy
+      upstream-prompts:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - mcp-test-network
+    restart: unless-stopped
+
+  # Healthy upstream: Tools server
+  upstream-tools:
+    build:
+      context: ./upstreams
+      dockerfile: Dockerfile.tools
+    container_name: mcp-upstream-tools
+    expose:
+      - "8080"
+    environment:
+      - SERVER_NAME=tools-server
+      - SERVER_TYPE=tools
+      - MCP_TOOLS=["search", "calculate", "validate", "transform"]
+      - RESPONSE_DELAY_MS=10
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - mcp-test-network
+    restart: unless-stopped
+
+  # Healthy upstream: Resources server
+  upstream-resources:
+    build:
+      context: ./upstreams
+      dockerfile: Dockerfile.resources
+    container_name: mcp-upstream-resources
+    expose:
+      - "8080"
+    environment:
+      - SERVER_NAME=resources-server
+      - SERVER_TYPE=resources
+      - MCP_RESOURCES=["docs://api", "docs://guides", "config://app", "template://email"]
+      - RESPONSE_DELAY_MS=5
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - mcp-test-network
+    restart: unless-stopped
+
+  # Healthy upstream: Prompts server
+  upstream-prompts:
+    build:
+      context: ./upstreams
+      dockerfile: Dockerfile.prompts
+    container_name: mcp-upstream-prompts
+    expose:
+      - "8080"
+    environment:
+      - SERVER_NAME=prompts-server
+      - SERVER_TYPE=prompts
+      - MCP_PROMPTS=["analyze-data", "summarize-text", "generate-code"]
+      - RESPONSE_DELAY_MS=5
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - mcp-test-network
+    restart: unless-stopped
+
+  # Faulty upstream: Simulates failures for resilience tests
+  upstream-faulty:
+    build:
+      context: ./upstreams
+      dockerfile: Dockerfile.faulty
+    container_name: mcp-upstream-faulty
+    expose:
+      - "8080"
+    environment:
+      - SERVER_NAME=faulty-server
+      - SERVER_TYPE=tools
+      - FAULT_MODE=configurable
+      # Controlled via API calls to /admin/fault (for resilience testing)
+      - FAULT_RATE=0.0
+      - FAULT_TYPES=timeout,error,garbage
+      - TIMEOUT_MS=0
+      - LOG_LEVEL=debug
+    networks:
+      - mcp-test-network
+    restart: unless-stopped
+
+  # Slow upstream: High latency for timeout testing
+  upstream-slow:
+    build:
+      context: ./upstreams
+      dockerfile: Dockerfile.tools
+    container_name: mcp-upstream-slow
+    expose:
+      - "8080"
+    environment:
+      - SERVER_NAME=slow-server
+      - SERVER_TYPE=tools
+      - MCP_TOOLS=["slow-operation"]
+      - RESPONSE_DELAY_MS=5000  # 5 second delay
+      - LOG_LEVEL=info
+    networks:
+      - mcp-test-network
+    restart: unless-stopped
+
+  # Test runner container
+  test-runner:
+    build:
+      context: ../../..
+      dockerfile: shared/mcp_gateway/tests/integration/Dockerfile.test
+    container_name: mcp-test-runner
+    environment:
+      - GATEWAY_URL=http://mcp-gateway:3000
+      - TEST_TIMEOUT=300
+      - LOG_LEVEL=debug
+    volumes:
+      - ../../../:/workspace:ro
+      - ./reports:/reports
+    depends_on:
+      mcp-gateway:
+        condition: service_healthy
+    networks:
+      - mcp-test-network
+    command: >
+      pytest tests/integration/
+      -v
+      --tb=short
+      --html=/reports/report.html
+      --self-contained-html
+      -m "not slow"
+
+networks:
+  mcp-test-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

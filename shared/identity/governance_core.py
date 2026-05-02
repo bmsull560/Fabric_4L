@@ -98,9 +98,8 @@ class GovernanceCore:
         self._api_key_resolver = api_key_resolver
         self._tenant_settings_resolver = tenant_settings_resolver
         self._jwt_secret = jwt_secret or os.getenv("JWT_SECRET", "")
-        self._allow_query_param = allow_query_param or (
-            os.getenv("ALLOW_TENANT_QUERY_PARAM", "false").lower() == "true"
-        )
+        # P0 FIX: Query param tenant authentication removed entirely
+        self._allow_query_param = False
 
     async def resolve_identity(
         self,
@@ -154,7 +153,19 @@ class GovernanceCore:
                 logger.debug("API key resolution failed: %s", e)
 
         # 3. X-Tenant-ID (service-to-service)
+        # P0 FIX: Require SERVICE_AUTH_SECRET to prevent header spoofing
         if x_tenant_header:
+            expected_secret = os.getenv("SERVICE_AUTH_SECRET", "")
+            if not expected_secret:
+                logger.warning("X-Tenant-ID rejected: SERVICE_AUTH_SECRET not configured")
+                return None
+            provided_secret = query_params.get("x_service_auth") if query_params else None
+            if not provided_secret:
+                provided_secret = ""
+            import hmac
+            if not hmac.compare_digest(provided_secret, expected_secret):
+                logger.warning("X-Tenant-ID rejected: invalid service auth secret")
+                return None
             try:
                 tenant_id = UUID(x_tenant_header)
                 return RequestContext(
@@ -167,20 +178,7 @@ class GovernanceCore:
             except ValueError:
                 logger.debug("Invalid X-Tenant-ID: %s", x_tenant_header)
 
-        # 4. Query param fallback (dev/test only)
-        if self._allow_query_param and query_params:
-            qp_tenant = query_params.get("tenant_id")
-            if qp_tenant:
-                try:
-                    tenant_id = UUID(qp_tenant)
-                    return RequestContext(
-                        tenant_id=tenant_id,
-                        roles=["read_only"],
-                        auth_source=AUTH_SOURCE_UNKNOWN,
-                        request_id=None,
-                    )
-                except ValueError:
-                    logger.debug("Invalid tenant_id in query param: %s", qp_tenant)
+        # P0 FIX: Query param tenant authentication removed entirely — never trust client-supplied identity
 
         return None
 

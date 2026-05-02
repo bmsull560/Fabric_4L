@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "agent_type": "ValueModelAgent",
+  "agent_id": "ValueModelAgent-00000000",
+  "privilege_tier": "standard",
+  "allowed_tools": [
+    "query_graph",
+    "semantic_search",
+    "get_entity",
+    "get_relationships",
+    "traverse_tree",
+    "find_paths",
+    "evaluate_formula",
+    "calculate_roi",
+    "compare_benchmarks",
+    "sensitivity_analysis",
+    "validate_input",
+    "format_currency"
+  ],
+  "denied_tools": [
+    "update_opportunity",
+    "export_to_crm",
+    "send_notification",
+    "export_document"
+  ],
+  "invariants": {
+    "max_tool_calls_per_run": 80,
+    "budget_limit_usd": 5.00,
+    "require_human_approval": [],
+    "custom": {
+      "max_formula_evaluations_per_run": 50,
+      "max_sensitivity_iterations": 1000
+    }
+  },
+  "metadata": {
+    "description": "Builds value chains, generates hypotheses, executes formulas, performs ROI calculations and whitespace analysis. Produces ValueModelArtifact.",
+    "owner": "platform-team",
+    "last_reviewed": "2026-04-27"
+  }
+}

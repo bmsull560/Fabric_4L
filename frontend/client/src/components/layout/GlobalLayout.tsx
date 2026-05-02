@@ -15,7 +15,7 @@ import type { AgentChatMode } from "@/types/layout";
 // shells (account header + tab bar + scrollable canvas + right rail) fill the
 // entire content area. Regular pages keep the padded container.
 
-function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode }) {
+export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode }) {
   // Hooks must be called unconditionally on every render — do not use ||
   // short-circuiting because it changes the hook count between renders.
   const matchIntelligence = useMatch("/intelligence/*");
