@@ -44,6 +44,37 @@ class Layer5GroundTruthClient_validate_truthResult(TypedDictModel):
     error: Any
     truth_object_id: Any
 
+
+class Layer5GroundTruthClient_get_truthResult(TypedDictModel):
+    error: Any | None = None
+
+
+class Layer5GroundTruthClient_get_truth_auditResult(TypedDictModel):
+    error: Any | None = None
+    events: list[Any] = []
+
+
+class Layer5GroundTruthClient_get_freshness_summaryResult(TypedDictModel):
+    error: Any | None = None
+    stale_count: int = 0
+    fresh_count: int = 0
+    expiring_soon_count: int = 0
+    total_count: int = 0
+
+
+class Layer5GroundTruthClient_get_stale_truthsResult(TypedDictModel):
+    error: Any | None = None
+    items: list[Any] = []
+    total: int = 0
+    limit: int = 0
+    offset: int = 0
+    has_more: bool = False
+
+
+class Layer5GroundTruthClient_get_maturity_ladderResult(TypedDictModel):
+    error: Any | None = None
+
+
 logger = logging.getLogger(__name__)
 
 TENANT_ID_HEADER = "X-Tenant-ID"
@@ -349,6 +380,138 @@ class Layer5GroundTruthClient:
         except Exception as exc:
             logger.warning("Layer 5 validate_truth failed for %s: %s", truth_id, exc)
             return Layer5GroundTruthClient_validate_truthResult.model_validate({"error": str(exc), "truth_object_id": truth_id})
+
+    # ------------------------------------------------------------------
+    # Proxy Methods for Frontend Governance
+    # ------------------------------------------------------------------
+
+    async def get_truth(
+        self,
+        truth_id: str,
+        organization_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Get a single TruthObject by ID.
+
+        Args:
+            truth_id: UUID of the TruthObject.
+            organization_id: Tenant UUID for service-to-service auth.
+
+        Returns:
+            TruthObject dict or {"error": ...} on failure.
+        """
+        params: dict[str, str] = {}
+        if organization_id:
+            params["organization_id"] = str(organization_id)
+
+        try:
+            resp = await self._client.get(f"/api/v1/truths/{truth_id}", params=params)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            logger.warning("Layer 5 get_truth failed for %s: %s", truth_id, exc)
+            return Layer5GroundTruthClient_get_truthResult.model_validate({"error": str(exc)})
+
+    async def get_truth_audit(
+        self,
+        truth_id: str,
+        organization_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Get audit trail for a TruthObject.
+
+        Args:
+            truth_id: UUID of the TruthObject.
+            organization_id: Tenant UUID for service-to-service auth.
+
+        Returns:
+            Dict with validation events or {"error": ...} on failure.
+        """
+        params: dict[str, str] = {}
+        if organization_id:
+            params["organization_id"] = str(organization_id)
+
+        try:
+            resp = await self._client.get(f"/api/v1/truths/{truth_id}/audit", params=params)
+            resp.raise_for_status()
+            return {"events": resp.json()}
+        except Exception as exc:
+            logger.warning("Layer 5 get_truth_audit failed for %s: %s", truth_id, exc)
+            return Layer5GroundTruthClient_get_truth_auditResult.model_validate({"error": str(exc), "events": []})
+
+    async def get_freshness_summary(
+        self,
+        organization_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Get freshness summary across all TruthObjects.
+
+        Args:
+            organization_id: Tenant UUID for service-to-service auth.
+
+        Returns:
+            Dict with stale_count, fresh_count, expiring_soon_count, total_count.
+        """
+        params: dict[str, str] = {}
+        if organization_id:
+            params["organization_id"] = str(organization_id)
+
+        try:
+            resp = await self._client.get("/api/v1/truths/freshness-summary", params=params)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            logger.warning("Layer 5 get_freshness_summary failed: %s", exc)
+            return Layer5GroundTruthClient_get_freshness_summaryResult.model_validate({"error": str(exc)})
+
+    async def get_stale_truths(
+        self,
+        organization_id: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """Get stale TruthObjects that need revalidation.
+
+        Args:
+            organization_id: Tenant UUID for service-to-service auth.
+            limit: Max items to return.
+            offset: Pagination offset.
+
+        Returns:
+            Dict with items, total, limit, offset, has_more.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if organization_id:
+            params["organization_id"] = str(organization_id)
+
+        try:
+            resp = await self._client.get("/api/v1/truths/stale", params=params)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            logger.warning("Layer 5 get_stale_truths failed: %s", exc)
+            return Layer5GroundTruthClient_get_stale_truthsResult.model_validate({"error": str(exc)})
+
+    async def get_maturity_ladder(
+        self,
+        organization_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Get the maturity ladder reference definition.
+
+        Args:
+            organization_id: Tenant UUID for service-to-service auth.
+
+        Returns:
+            Dict with maturity levels definition or {"error": ...} on failure.
+        """
+        params: dict[str, str] = {}
+        if organization_id:
+            params["organization_id"] = str(organization_id)
+
+        try:
+            resp = await self._client.get("/api/v1/maturity-ladder", params=params)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            logger.warning("Layer 5 get_maturity_ladder failed: %s", exc)
+            return Layer5GroundTruthClient_get_maturity_ladderResult.model_validate({"error": str(exc)})
 
     # ------------------------------------------------------------------
     # Lifecycle

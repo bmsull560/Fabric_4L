@@ -75,7 +75,27 @@ from ..tenants.api import (
 )
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 from .routes import accounts, agent_stream, analysis, signals, tools, value_flow, workflows
+=======
+from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
+>>>>>>> theirs
+=======
+from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
+>>>>>>> theirs
+=======
+from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
+>>>>>>> theirs
+=======
+from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
+>>>>>>> theirs
+=======
+from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
+>>>>>>> theirs
 from .routes import audit as audit_router
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
@@ -89,6 +109,7 @@ from .routes.intelligence import router as intelligence_router
 from .routes.narratives import router as narratives_router
 from .routes.state_inspector import state_inspector_router
 from .routes.value_hypotheses import router as value_hypotheses_router
+from .routes.ground_truth_proxy import router as ground_truth_proxy_router
 from .websocket import get_ws_manager, websocket_router
 
 
@@ -437,6 +458,7 @@ app.include_router(enrichment_router, prefix="/v1")
 app.include_router(value_hypotheses_router, prefix="/v1")  # DIL Phase 2 — Value Hypotheses
 app.include_router(narratives_router, prefix="/v1")  # DIL Phase 3 — Narrative Builder
 app.include_router(intelligence_router, prefix="/v1")  # DIL Phase 3 — Intelligence Orchestrator
+app.include_router(ground_truth_proxy_router)  # L5 Ground Truth Proxy — Governance Data
 
 # Billing routes (conditional on feature flag)
 if settings.is_billing_configured:
@@ -450,7 +472,27 @@ app.include_router(c1_router, prefix="/v1", tags=["c1"])
 
 # Frontend compatibility aliases (drift-matched paths)
 app.include_router(frontend_compat_router, prefix="/v1")
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 app.include_router(value_flow.router)
+=======
+app.include_router(prospects.router, prefix="/v1")
+>>>>>>> theirs
+=======
+app.include_router(prospects.router, prefix="/v1")
+>>>>>>> theirs
+=======
+app.include_router(prospects.router, prefix="/v1")
+>>>>>>> theirs
+=======
+app.include_router(prospects.router, prefix="/v1")
+>>>>>>> theirs
+=======
+app.include_router(prospects.router, prefix="/v1")
+>>>>>>> theirs
 
 
 @app.get("/health")

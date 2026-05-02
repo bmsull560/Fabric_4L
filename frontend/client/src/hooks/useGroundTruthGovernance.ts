@@ -65,8 +65,8 @@ async function fetchTruths(
   filters: TruthListFilters
 ): Promise<components["schemas"]["TruthObjectListResponse"]> {
   const response = (await apiClient.get(
-    "l5",
-    `/truths${toQueryString(filters)}`
+    "l4",
+    `/ground-truth/truths${toQueryString(filters)}`
   )) as { data: unknown };
   return response.data as components["schemas"]["TruthObjectListResponse"];
 }
@@ -75,16 +75,16 @@ async function fetchTruthAuditTrail(
   truthId: string
 ): Promise<ValidationEventResponse[]> {
   const response = (await apiClient.get(
-    "l5",
-    `/truths/${encodeURIComponent(truthId)}/audit`
+    "l4",
+    `/ground-truth/truths/${encodeURIComponent(truthId)}/audit`
   )) as { data: unknown };
   return response.data as ValidationEventResponse[];
 }
 
 async function fetchFreshnessSummary(): Promise<FreshnessSummaryResponse> {
   const response = (await apiClient.get(
-    "l5",
-    "/truths/freshness-summary"
+    "l4",
+    "/ground-truth/truths/freshness-summary"
   )) as { data: unknown };
   return response.data as FreshnessSummaryResponse;
 }
@@ -107,8 +107,8 @@ async function fetchStaleTruths(
   params: Pick<TruthListFilters, "limit" | "offset">
 ): Promise<StaleTruthsResponse> {
   const response = (await apiClient.get(
-    "l5",
-    `/truths/stale${toQueryString(params)}`
+    "l4",
+    `/ground-truth/truths/stale${toQueryString(params)}`
   )) as { data: unknown };
   const payload = response.data as Record<string, unknown>;
   const items = normalizeTruthItems(payload);
@@ -130,7 +130,7 @@ async function fetchStaleTruths(
 }
 
 async function fetchMaturityLadder(): Promise<MaturityLadderResponse> {
-  const response = (await apiClient.get("l5", "/maturity-ladder")) as {
+  const response = (await apiClient.get("l4", "/ground-truth/maturity-ladder")) as {
     data: unknown;
   };
   return response.data as MaturityLadderResponse;
