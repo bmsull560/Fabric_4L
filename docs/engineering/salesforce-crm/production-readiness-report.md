@@ -3,25 +3,30 @@
 **Date:** 2026-05-01
 **Scope:** Salesforce CRM integration (backend, frontend, security, observability)
 **Assessor:** Kimi Code CLI
+**Status:** PILOT-READY — NOT SUITABLE FOR GENERAL AVAILABILITY (GA)
 
 ---
 
 ## 1. Executive Status
 
-**Ready with caveats.**
+**Pilot-ready with explicit caveats.**
 
-The integration is **structurally sound** for production deployment after the hardening changes in this sprint. Critical security gaps (tenant isolation bypass, environment fallback, missing RLS) have been closed. The remaining blockers are product-level (OAuth UI) rather than safety-level.
+The integration is **structurally sound for a controlled pilot** with a small number of trusted tenants who accept manual onboarding steps. It is **NOT ready for broad production/GA deployment** until the blockers listed in Section 4 are resolved.
+
+Critical security gaps (tenant isolation bypass, environment fallback, missing RLS) have been closed. The remaining issues are a mix of product-level gaps (OAuth UI), data integrity risks (SOQL pagination), and operational scalability concerns (in-memory scheduler).
 
 | Area | Before | After | Status |
 |------|--------|-------|--------|
-| Tenant isolation | Broken (empty tenant_id) | Fixed (RLS + proper context) | ✅ Ready |
-| Credential security | Env fallback allowed | Fallback removed; per-tenant only | ✅ Ready |
-| Token refresh | Missing | Implemented with degraded state | ✅ Ready |
-| Data model | Missing OAuth fields | Added refresh_token, org_id | ✅ Ready |
-| Observability | Basic logging | Structured logs + metrics | ✅ Ready |
-| OAuth flow | Not implemented | Backend ready; UI missing | ⚠️ Caveat |
-| Scheduler | Singleton, no tenant sweep | Tenant-aware sweep | ✅ Ready |
-| Frontend | Manual API key only | OAuth-aware status display | ⚠️ Caveat |
+| Tenant isolation | Broken (empty tenant_id) | Fixed (RLS + proper context) | ✅ Pilot-ready |
+| Credential security | Env fallback allowed | Fallback removed; per-tenant only | ✅ Pilot-ready |
+| Token refresh | Missing | Implemented with degraded state | ✅ Pilot-ready |
+| Data model | Missing OAuth fields | Added refresh_token, org_id | ✅ Pilot-ready |
+| Observability | Basic logging | Structured logs + metrics | ⚠️ In-memory only |
+| OAuth flow | Not implemented | Backend ready; UI missing | ❌ Blocker for GA |
+| Scheduler | Singleton, no tenant sweep | Tenant-aware sweep | ⚠️ In-memory singleton |
+| Frontend | Manual API key only | OAuth-aware status display | ⚠️ Manual entry only |
+| SOQL pagination | Missing | Still missing | ❌ Blocker for GA |
+| E2E smoke tests | None | None | ❌ Blocker for GA |
 
 ---
 
@@ -33,9 +38,9 @@ The integration is **structurally sound** for production deployment after the ha
 |------|--------|
 | `value-fabric/layer4-agents/src/services/crm_sync_scheduler.py` | **Rewritten.** Removed `app.tenant_id = ''`. Added per-tenant sweep with `db_session_for_context()`. |
 | `value-fabric/layer4-agents/src/services/crm_sync_service.py` | Removed `ALLOW_ENV_CRM_FALLBACK`. Added token refresh call. Added structured logging and metrics. |
-| `value-fabric/layer4-agents/src/services/integration_service.py` | Added `refresh_salesforce_token()`. Updated `create_or_update_integration()` to accept `refresh_token` and `salesforce_org_id`. |
-| `value-fabric/layer4-agents/src/models/integration.py` | Added `DEGRADED` to `IntegrationStatus`. Added `refresh_token_encrypted` and `salesforce_org_id` columns. |
-| `value-fabric/layer4-agents/src/api/routes/integrations.py` | Added `refresh_token` and `salesforce_org_id` to `IntegrationCreateRequest`. |
+| `value-fabric/layer4-agents/src/services/integration_service.py` | Added `refresh_salesforce_token()`. **SECURITY:** Removed `refresh_token` from `create_or_update_integration()` API. Tokens only obtained via OAuth callback. |
+| `value-fabric/layer4-agents/src/models/integration.py` | Added `DEGRADED` to `IntegrationStatus`. Added `refresh_token_encrypted` and `salesforce_org_id` columns. `to_dict()` now returns `has_refresh_token: bool` instead of token. |
+| `value-fabric/layer4-agents/src/api/routes/integrations.py` | **SECURITY:** Removed `refresh_token` from `IntegrationCreateRequest`. Response schema now includes `has_refresh_token: bool`. |
 | `value-fabric/layer4-agents/migrations/versions/021_add_salesforce_oauth_fields.py` | **New migration.** Adds columns and partial index for active Salesforce integrations. |
 | `value-fabric/.env.example` | Documented `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_REDIRECT_URI`. Added warning about `ALLOW_ENV_CRM_FALLBACK`. |
 
@@ -43,7 +48,7 @@ The integration is **structurally sound** for production deployment after the ha
 
 | File | Change |
 |------|--------|
-| `frontend/client/src/hooks/useIntegrations.ts` | Added `refresh_token` and `salesforce_org_id` to types. Added `degraded` to status union. |
+| `frontend/client/src/hooks/useIntegrations.ts` | **SECURITY:** Removed `refresh_token` from `IntegrationCreateRequest`. `Integration` interface now uses `has_refresh_token: boolean`. Added `degraded` to status union. |
 | `frontend/client/src/components/integrations/utils.ts` | Added `degraded` status badge styling and text. |
 | `frontend/client/src/components/integrations/IntegrationConfigPanel.tsx` | Added degraded state rendering in status badge. |
 | `frontend/client/src/pages/intelligence/EvidenceTab.tsx` | Fixed pre-existing TypeScript error (unrelated but blocking typecheck). |
@@ -52,7 +57,8 @@ The integration is **structurally sound** for production deployment after the ha
 
 | File | Change |
 |------|--------|
-| `value-fabric/layer4-agents/tests/test_salesforce_oauth.py` | **New.** Tests token refresh success, 401 degradation, missing refresh token, tenant isolation source check, env fallback removal. |
+| `value-fabric/layer4-agents/tests/test_salesforce_oauth.py` | **Updated.** Tests token refresh success, 401 degradation, missing refresh token, **runtime tenant isolation verification**, env fallback removal. |
+| `value-fabric/layer4-agents/tests/test_crm_sync_service.py` | **Updated.** Replaced env-fallback tests with integration-table-driven config tests. |
 
 ### Documentation
 
@@ -90,9 +96,11 @@ python -m py_compile tests/test_salesforce_oauth.py
 ### Backend Tests
 
 ```
-pytest tests/test_salesforce_oauth.py
-# Note: Full pytest execution blocked by missing psycopg binary in local env.
-# Syntax validation and import checks pass.
+pytest tests/test_salesforce_oauth.py tests/test_integration_service.py
+# Result: 21 passed (token refresh, validation, encryption, tenant isolation)
+#
+# Note: Full pytest execution for test_crm_sync_service.py blocked by
+# missing psycopg binary in local env. Must run in CI Docker container.
 ```
 
 ### Migrations
@@ -108,8 +116,10 @@ pytest tests/test_salesforce_oauth.py
 | `integrations` table has RLS enabled | ✅ (migration 013) |
 | `account_sync_status` table has RLS enabled | ✅ (migration 013 + 020) |
 | Scheduler uses `db_session_for_context()` | ✅ |
-| No `app.tenant_id = ''` in scheduler | ✅ |
+| No unsafe `app.tenant_id = ''` in sync execution | ✅ |
 | No env fallback in sync service | ✅ |
+| `refresh_token` excluded from API request/response | ✅ |
+| `has_refresh_token` boolean exposed instead of token | ✅ |
 
 ### Contract Drift
 
@@ -122,60 +132,64 @@ pytest tests/test_salesforce_oauth.py
 
 ## 4. Remaining Risks
 
-### Blockers
+### GA Blockers (Must resolve before general availability)
 
-| # | Risk | Mitigation | Owner |
-|---|------|------------|-------|
-| 1 | **OAuth UI not implemented** — Frontend still uses manual API key paste. Salesforce OAuth connect/reconnect flow requires new UI components. | Documented as known limitation. Can launch with manual token entry for pilot tenants. | Frontend team |
+| # | Risk | Impact | Mitigation | Owner |
+|---|------|--------|------------|-------|
+| 1 | **OAuth Connect UI not implemented** — Frontend still requires manual API key paste. No Salesforce OAuth redirect flow. Admin burden; tokens may be exposed during copy-paste. | High | Documented as known limitation. Acceptable for pilot with trusted admins only. | Frontend team |
+| 2 | **No SOQL pagination** — `GetProspectDataTool._get_salesforce_data()` queries without `nextRecordsUrl` handling. Large tenants will silently truncate data. | High | Add cursor-based pagination. Hard ceiling of 2,000 records without pagination. | Backend team |
+| 3 | **No E2E smoke tests** — No Playwright tests covering connect → sync → verify flow. Regressions in critical path will not be caught. | High | Add mocked E2E test using MSW handlers. | QA / Frontend |
+| 4 | **Distributed scheduler missing** — Background sync uses in-memory `asyncio.create_task`; lost on pod restart. No horizontal scaling. | High | Migrate to Celery + Redis for durable job queue. | Backend team |
 
-### High
+### High (Acceptable for pilot, must resolve for GA)
 
-| # | Risk | Mitigation | Owner |
-|---|------|------------|-------|
-| 2 | **No KMS integration** — Fernet key from env var. Key rotation requires re-encrypting all tokens. | Documented. Use Infisical/Vault for key management. | Platform / SRE |
-| 3 | **Scheduler singleton** — Single Python process scheduler won't distribute across replicas. | Documented. Migrate to Celery beat or Redis-backed distributed scheduler before multi-replica deployment. | Backend team |
-| 4 | **No SOQL pagination** — Large opportunity lists may exceed Salesforce query limits. | Documented. Add `LIMIT`/`OFFSET` or cursor-based pagination in `GetProspectDataTool`. | Backend team |
+| # | Risk | Impact | Mitigation | Owner |
+|---|------|--------|------------|-------|
+| 5 | **No KMS integration** — Fernet key from env var. Key rotation requires re-encrypting all tokens. | Medium | Use Infisical/Vault for key management. Document rotation runbook. | Platform / SRE |
+| 6 | **Metrics are in-memory** — Prometheus counters reset on restart. No durable metrics history. | Medium | Add Prometheus/OpenTelemetry export. | Backend team |
 
 ### Medium
 
-| # | Risk | Mitigation | Owner |
-|---|------|------------|-------|
-| 5 | **No deleted record sync** — Salesforce soft-deletes not propagated to Value Fabric. | Documented. Add `IsDeleted = false` filter and periodic cleanup job. | Backend team |
-| 6 | **Webhook secret not auto-configured** — `salesforce_webhook_secret` must be set manually on app state. | Documented in runbook. Add startup check that logs warning if missing. | Backend team |
-| 7 | **OpenAPI not regenerated** — Contract may drift if backend routes change without spec update. | Add `make generate-openapi` to CI pipeline. | DevOps |
-
-### Low
-
-| # | Risk | Mitigation | Owner |
-|---|------|------------|-------|
-| 8 | **Frontend `apiKey` field still visible** — Manual token entry UI may confuse users expecting OAuth. | Add help text explaining manual entry vs OAuth. | Frontend team |
-| 9 | **Missing E2E smoke test for CRM** — No Playwright test covers connect → sync flow. | Add mocked E2E test using MSW handlers. | QA |
+| # | Risk | Impact | Mitigation | Owner |
+|---|------|--------|------------|-------|
+| 7 | **No deleted record sync** — Salesforce soft-deletes not propagated to Value Fabric. | Low | Add `IsDeleted = false` filter and periodic cleanup job. | Backend team |
+| 8 | **Webhook secret not auto-configured** — `salesforce_webhook_secret` must be set manually on app state. | Low | Documented in runbook. Add startup check that logs warning if missing. | Backend team |
+| 9 | **OpenAPI not regenerated** — Contract may drift if backend routes change without spec update. | Low | Add `make generate-openapi` to CI pipeline. | DevOps |
 
 ---
 
 ## 5. Launch Decision
 
-### Recommendation: **SHIP with caveats**
+### Recommendation: **PILOT ONLY**
 
-The integration is safe to deploy for **pilot tenants** who are willing to manually paste Salesforce access tokens. The backend is hardened for production multi-tenant isolation, encryption, and observability.
+The integration is **safe to deploy for pilot tenants** who:
+1. Are willing to manually paste Salesforce access tokens (OAuth UI missing).
+2. Have fewer than 2,000 records per query (SOQL pagination missing).
+3. Accept that background sync jobs are ephemeral (no Celery/Redis).
+4. Are notified that this is a pilot feature with known limitations.
 
-### Required Pre-Launch Fixes
+### Required Pre-Pilot Fixes
 
 1. Run migration `021` in staging and production.
 2. Configure `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_REDIRECT_URI` in Infisical.
 3. Verify RLS policies are active on `integrations` table.
 4. Confirm `CREDENTIALS_MASTER_KEY` is set and ≥ 43 characters.
+5. Add pilot tenant flag to gate access (do not expose to all tenants).
 
-### Post-Launch Follow-Ups
+### Post-Pilot Roadmap to GA
 
-1. **Sprint 1 (Week 1)**: Implement OAuth connect UI — authorization URL, callback handler, success/failure states.
-2. **Sprint 2 (Week 2)**: Add Celery-based distributed scheduler to replace singleton.
-3. **Sprint 3 (Week 3)**: Add SOQL pagination and deleted-record handling.
-4. **Sprint 4 (Week 4)**: Add E2E smoke test for full connect → sync flow.
+| Sprint | Deliverable |
+|--------|-------------|
+| **Sprint 1** | OAuth connect UI — authorization URL, callback handler, success/failure states |
+| **Sprint 2** | SOQL pagination + `nextRecordsUrl` handling in `GetProspectDataTool` |
+| **Sprint 3** | Celery-based distributed scheduler + durable `sync_jobs` table |
+| **Sprint 4** | E2E smoke test (Playwright) for full connect → sync flow |
+| **Sprint 5** | KMS integration (AWS KMS / Vault) + automatic key rotation |
+| **Sprint 6** | Prometheus metrics export + Grafana dashboards + alert thresholds |
 
 ---
 
-## Appendix A: Launch Checklist
+## Appendix A: Pilot Checklist
 
 - [x] Env vars documented in `.env.example`
 - [x] Salesforce Connected App configuration documented
@@ -193,3 +207,4 @@ The integration is safe to deploy for **pilot tenants** who are willing to manua
 - [x] Operator runbook written
 - [x] Rollback plan documented
 - [ ] Alert thresholds configured in Prometheus/Grafana
+- [ ] Pilot tenant flag implemented (gating)

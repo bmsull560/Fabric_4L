@@ -67,9 +67,14 @@ class TestSalesforceTokenRefresh:
         """Test successful token refresh updates credentials."""
         service = IntegrationService(mock_db)
 
-        # Mock decrypt to return a refresh token
+        # Mock decrypt to return a refresh token (first call) and credentials JSON (second call via decrypt_credentials)
+        decrypt_side_effect = [
+            "old_refresh_token",  # refresh token
+            '{"api_key": "old_access_token"}',  # credentials json
+        ]
+
         with patch.object(
-            EncryptionService, "decrypt", AsyncMock(return_value="old_refresh_token")
+            EncryptionService, "decrypt", AsyncMock(side_effect=decrypt_side_effect)
         ):
             with patch.object(
                 EncryptionService, "encrypt", AsyncMock(return_value=b"new_encrypted")

@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -180,13 +181,27 @@ class IntegrationService:
             enabled, credentials, sync_interval_minutes, sync_batch_size, instance_url
         )
 
-        # Encrypt credentials
-        credentials_json = json.dumps(credentials)
-        encrypted_creds = await EncryptionService.encrypt(credentials_json, key_id=DEFAULT_KEY_ID)
-
         # Check if integration exists
         existing = await self.get_integration(tenant_id, provider)
         is_update = existing is not None
+
+        # Preserve or generate webhook token
+        if is_update:
+            try:
+                old_creds = await self.decrypt_credentials(existing)
+                existing_webhook_token = old_creds.get("webhook_token")
+            except Exception:
+                existing_webhook_token = None
+            if existing_webhook_token:
+                credentials["webhook_token"] = existing_webhook_token
+            else:
+                credentials["webhook_token"] = secrets.token_hex(32)
+        else:
+            credentials["webhook_token"] = secrets.token_hex(32)
+
+        # Encrypt credentials
+        credentials_json = json.dumps(credentials)
+        encrypted_creds = await EncryptionService.encrypt(credentials_json, key_id=DEFAULT_KEY_ID)
 
         if is_update:
             # Update existing

@@ -1,5 +1,6 @@
 """State manager for workflow state persistence using Redis."""
 
+import json
 import logging
 from collections import OrderedDict
 from datetime import UTC, datetime

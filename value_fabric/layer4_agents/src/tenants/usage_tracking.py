@@ -30,10 +30,6 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class UsageTrackingService__count_events_by_fieldResult(TypedDictModel):
-    pass
-
-
 class UsageTrackingService__get_llm_usageResult(TypedDictModel):
     requests: int
     tokens_input: int

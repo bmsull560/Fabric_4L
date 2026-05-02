@@ -405,9 +405,9 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 label = req.get("label") or req.get("claim") or req.get("metric") or "required-claim"
                 required = bool(req.get("required", True))
 
-                def _match(truth: dict[str, Any]) -> bool:
-                    claim_q = str(req.get("claim", "")).strip().lower()
-                    metric_q = str(req.get("metric", "")).strip().lower()
+                def _match(truth: dict[str, Any], _req: dict = req) -> bool:
+                    claim_q = str(_req.get("claim", "")).strip().lower()
+                    metric_q = str(_req.get("metric", "")).strip().lower()
                     claim_text = str(truth.get("claim", "")).lower()
                     if claim_q and claim_q in claim_text:
                         return True

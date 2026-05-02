@@ -575,7 +575,7 @@ def get_available_tools(registry: "ToolRegistry", context: RequestContext) -> li
     available = []
     
     for tool_name, tool_class in registry._tools.items():
-        metadata = get_tool_metadata(registry, tool_name)
+        _metadata = get_tool_metadata(registry, tool_name)
         
         # Admin-only tools
         admin_tools = {"delete_tenant", "suspend_tenant", "grant_permission"}

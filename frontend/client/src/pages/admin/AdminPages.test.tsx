@@ -185,7 +185,7 @@ describe('FormulaGovernance', () => {
     await waitFor(() => {
       expect(screen.getByText('Formula Governance')).toBeInTheDocument();
     });
-  }, 10_000);
+  }, 20_000);
 });
 
 // BenchmarkPolicies

@@ -4,6 +4,7 @@ import logging
 import re
 import time
 from typing import Any
+from uuid import UUID
 
 from neo4j import AsyncGraphDatabase
 

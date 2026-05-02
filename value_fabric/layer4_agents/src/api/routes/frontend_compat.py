@@ -37,7 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....database import get_db_from_context
 from ....tenants.email_verification import EmailVerificationService
-from ....tenants.service import get_tenant, update_tenant
+from ....tenants.service import get_tenant, update_tenant_settings
 from ....tenants.tiers import get_tier_config
 
 router = APIRouter(tags=["Frontend Compatibility"])
@@ -132,7 +132,7 @@ async def update_current_tenant_settings(
                 current_settings[key] = value
         tenant.settings = current_settings
 
-    updated = await update_tenant(
+    updated = await update_tenant_settings(
         db,
         ctx.tenant_id,
         settings_update=current_settings,

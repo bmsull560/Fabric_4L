@@ -7,6 +7,7 @@ degraded mode operations are visible and traceable.
 
 import os
 from dataclasses import dataclass
+from typing import Any
 
 from shared.audit import audit_log
 from shared.models.typed_dict import TypedDictModel

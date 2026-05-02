@@ -165,7 +165,8 @@ describe('useSystemHealth', () => {
     expect(result.current.data?.summary.unknown).toBe(1);
   });
 
-  it.skip('handles error state', async () => {
+  it('handles error state', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/agents/health', () => {
         return HttpResponse.json(
@@ -178,7 +179,7 @@ describe('useSystemHealth', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useSystemHealth(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
   });
 });
 

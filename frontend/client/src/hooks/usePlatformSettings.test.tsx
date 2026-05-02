@@ -83,7 +83,8 @@ describe('usePlatformSettings', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
-  it.skip('handles error state', async () => {
+  it('handles error state', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/agents/tenant/settings', () => {
         return HttpResponse.json(
@@ -96,11 +97,12 @@ describe('usePlatformSettings', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => usePlatformSettings(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     expect(result.current.error).toBeDefined();
   });
 
-  it.skip('handles 404 not found', async () => {
+  it('handles 404 not found', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/agents/tenant/settings', () => {
         return new HttpResponse(null, { status: 404 });
@@ -110,7 +112,7 @@ describe('usePlatformSettings', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => usePlatformSettings(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     expect(result.current.error?.statusCode).toBe(404);
   });
 });

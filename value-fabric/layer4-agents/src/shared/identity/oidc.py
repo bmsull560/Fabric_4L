@@ -392,7 +392,7 @@ class OIDCClient:
 
             import json
 
-            header_data = json.loads(header)
+            _header_data = json.loads(header)
             payload_data = json.loads(payload)
 
         except Exception as e:

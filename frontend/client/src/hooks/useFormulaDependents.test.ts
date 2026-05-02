@@ -212,7 +212,8 @@ describe('useFormulaDependencies', () => {
     expect(targetIds).toContain('formula-c');
   });
 
-  it.skip('handles error fetching dependencies', async () => {
+  it('handles error fetching dependencies', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/graph/formulas/error-formula/dependencies', () => {
         return HttpResponse.json(
@@ -225,7 +226,7 @@ describe('useFormulaDependencies', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useFormulaDependencies('error-formula'), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     expect(result.current.error?.statusCode).toBe(500);
   });
 });

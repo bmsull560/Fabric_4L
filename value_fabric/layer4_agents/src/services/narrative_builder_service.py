@@ -299,7 +299,7 @@ class NarrativeBuilderService:
         moderate = scenarios.get(request.roi_scenario, roi_results)
 
         # Evidence metrics
-        industries = ", ".join(
+        _industries = ", ".join(
             sorted({e.get("industry", "general") for e in evidence_data[:10]})
         ) or "various industries"
 

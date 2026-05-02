@@ -358,6 +358,9 @@ describe('useGraphViewState Properties [L3-Property]', () => {
     const { result } = renderHook(() => useGraphViewState());
 
     propertyTest('pan linearity', 50, () => {
+      // Reset state each iteration so expected values start from 0
+      act(() => result.current.resetView());
+
       let expectedX = 0;
       let expectedY = 0;
 

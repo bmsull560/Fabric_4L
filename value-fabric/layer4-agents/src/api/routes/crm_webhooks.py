@@ -7,6 +7,7 @@ triggering immediate sync to keep Account records fresh.
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 from typing import Any
@@ -31,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # not JWT. get_db (no tenant context) is intentional here.
 from ...database import get_db_from_context
 from ...models.account import CRMProvider
+from ...models.integration import Integration
 from ...services.crm_sync_service import CRMSyncService
 from ...services.integration_service import IntegrationService
 
@@ -133,6 +135,99 @@ class HubSpotWebhookEvent(BaseModel):
 
 
 # ============================================================================
+# Webhook Authentication Helpers
+# ============================================================================
+
+
+def _verify_webhook_token(integration: Integration, provided_token: str | None) -> bool:
+    """Verify webhook token using constant-time comparison.
+
+    SECURITY:
+        - Uses hmac.compare_digest to prevent timing attacks.
+        - Never logs the provided or stored token.
+        - Returns False if no token is configured (fail-closed).
+    """
+    if not provided_token:
+        return False
+
+    # Extract webhook_token from decrypted credentials
+    # Note: this is called after integration lookup but before sync.
+    # The caller is responsible for having the integration object ready.
+    _stored_token = None
+    if integration and integration.credentials_encrypted:
+        # We can't decrypt here (async context needed), so the caller
+        # must pass the decrypted token. This signature is kept for
+        # interface compatibility; the actual check is in _authenticate_webhook.
+        pass
+    return False
+
+
+async def _authenticate_webhook(
+    integration: Integration,
+    provided_token: str | None,
+    provided_signature: str | None,
+    body: bytes,
+    app_state_webhook_secret: str | None,
+) -> None:
+    """Authenticate a CRM webhook using token + optional HMAC signature.
+
+    Raises:
+        HTTPException: 401 if authentication fails.
+    """
+    from ...services.encryption_service import EncryptionService
+
+    # Decrypt credentials to obtain the per-tenant webhook token
+    try:
+        decrypted = await EncryptionService.decrypt(
+            integration.credentials_encrypted, integration.encryption_key_id
+        )
+        creds = json.loads(decrypted)
+        stored_webhook_token = creds.get("webhook_token")
+    except Exception:
+        stored_webhook_token = None
+
+    # Primary auth: per-tenant webhook token (constant-time comparison)
+    token_valid = False
+    if stored_webhook_token and provided_token:
+        token_valid = hmac.compare_digest(stored_webhook_token, provided_token)
+
+    if not token_valid:
+        # Fallback: global HMAC secret (if no per-tenant token is configured)
+        if app_state_webhook_secret and provided_signature:
+            expected = hmac.new(app_state_webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+            if hmac.compare_digest(expected, provided_signature):
+                logger.warning(
+                    "Webhook authenticated via global HMAC secret for tenant=%s. "
+                    "Configure a per-tenant webhook_token for stronger security.",
+                    integration.tenant_id,
+                )
+                return
+        logger.warning(
+            "Webhook authentication failed for tenant=%s provider=%s",
+            integration.tenant_id,
+            integration.provider,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook credentials",
+        )
+
+    # Secondary auth: HMAC signature verification (defense-in-depth)
+    if app_state_webhook_secret and provided_signature:
+        expected = hmac.new(app_state_webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, provided_signature):
+            logger.warning(
+                "Webhook HMAC signature mismatch for tenant=%s provider=%s",
+                integration.tenant_id,
+                integration.provider,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook signature",
+            )
+
+
+# ============================================================================
 # Salesforce Webhooks
 # ============================================================================
 
@@ -142,6 +237,8 @@ async def salesforce_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     tenant_id: str | None = Query(None, description="Tenant identifier for multi-tenant webhook routing"),
+    webhook_token: str | None = Query(None, description="Per-tenant webhook token for authentication"),
+    x_webhook_token: str | None = Header(None, alias="X-Webhook-Token"),
     x_salesforce_signature: str | None = Header(None, alias=SALESFORCE_SIGNATURE_HEADER),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
@@ -152,12 +249,13 @@ async def salesforce_webhook(
 
     **Production Multi-Tenancy:**
     The `tenant_id` query parameter is required in production. Configure your
-    Salesforce outbound message URL with `?tenant_id=<your-tenant-id>`.
-    The handler verifies the tenant has an active Salesforce integration before
-    syncing to prevent cross-tenant data leakage.
+    Salesforce outbound message URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
+    The handler verifies both tenant existence and webhook token authenticity
+    before syncing to prevent cross-tenant data leakage.
 
     Headers:
-        X-Salesforce-Signature: HMAC signature for verification (optional)
+        X-Webhook-Token: Per-tenant opaque token (preferred)
+        X-Salesforce-Signature: HMAC signature (defense-in-depth)
 
     Request Body:
         Salesforce platform event or outbound message payload
@@ -177,6 +275,7 @@ async def salesforce_webhook(
 
     # If tenant_id provided, verify the tenant has an active Salesforce integration
     effective_tenant_id = tenant_id or "default"
+    integration = None
     if tenant_id:
         integration_service = IntegrationService(db)
         integration = await integration_service.get_integration(
@@ -204,14 +303,21 @@ async def salesforce_webhook(
     # Read body once and cache for both signature verification and JSON parsing
     body = await request.body()
 
-    # Verify signature if configured
-    webhook_secret = getattr(request.app.state, SALESFORCE_WEBHOOK_SECRET_ATTR, None)
-    if webhook_secret:
-        sig_valid = False
-        if x_salesforce_signature:
-            expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-            sig_valid = hmac.compare_digest(expected, x_salesforce_signature)
-        if not sig_valid:
+    # Authenticate webhook using per-tenant token + optional HMAC
+    provided_token = x_webhook_token or webhook_token
+    app_state_secret = getattr(request.app.state, SALESFORCE_WEBHOOK_SECRET_ATTR, None)
+    if integration:
+        await _authenticate_webhook(
+            integration,
+            provided_token=provided_token,
+            provided_signature=x_salesforce_signature,
+            body=body,
+            app_state_webhook_secret=app_state_secret,
+        )
+    elif app_state_secret and x_salesforce_signature:
+        # Legacy path: no tenant lookup, only global HMAC (not recommended)
+        expected = hmac.new(app_state_secret.encode(), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, x_salesforce_signature):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
             )
@@ -391,6 +497,8 @@ async def hubspot_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     tenant_id: str | None = Query(None, description="Tenant identifier for multi-tenant webhook routing"),
+    webhook_token: str | None = Query(None, description="Per-tenant webhook token for authentication"),
+    x_webhook_token: str | None = Header(None, alias="X-Webhook-Token"),
     x_hubspot_signature: str | None = Header(None, alias=HUBSPOT_SIGNATURE_HEADER),
     x_hubspot_signature_v3: str | None = Header(None, alias=HUBSPOT_SIGNATURE_V3_HEADER),
     db: AsyncSession = Depends(get_db_from_context),
@@ -402,11 +510,12 @@ async def hubspot_webhook(
 
     **Production Multi-Tenancy:**
     The `tenant_id` query parameter is required in production. Configure your
-    HubSpot webhook URL with `?tenant_id=<your-tenant-id>`.
-    The handler verifies the tenant has an active HubSpot integration before
-    syncing to prevent cross-tenant data leakage.
+    HubSpot webhook URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
+    The handler verifies both tenant existence and webhook token authenticity
+    before syncing to prevent cross-tenant data leakage.
 
     Headers:
+        X-Webhook-Token: Per-tenant opaque token (preferred)
         X-HubSpot-Signature: Legacy signature (optional)
         X-HubSpot-Signature-v3: v3 signature for verification (optional)
 
@@ -440,6 +549,7 @@ async def hubspot_webhook(
 
     # If tenant_id provided, verify the tenant has an active HubSpot integration
     effective_tenant_id = tenant_id or "default"
+    integration = None
     if tenant_id:
         integration_service = IntegrationService(db)
         integration = await integration_service.get_integration(
@@ -467,15 +577,22 @@ async def hubspot_webhook(
     # Read body once and cache for both signature verification and JSON parsing
     body = await request.body()
 
-    # Verify signature if configured (v3 or legacy)
-    webhook_secret = getattr(request.app.state, HUBSPOT_WEBHOOK_SECRET_ATTR, None)
-    if webhook_secret:
-        sig_to_verify = x_hubspot_signature_v3 or x_hubspot_signature
-        sig_valid = False
-        if sig_to_verify:
-            expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-            sig_valid = hmac.compare_digest(expected, sig_to_verify)
-        if not sig_valid:
+    # Authenticate webhook using per-tenant token + optional HMAC
+    provided_token = x_webhook_token or webhook_token
+    app_state_secret = getattr(request.app.state, HUBSPOT_WEBHOOK_SECRET_ATTR, None)
+    provided_signature = x_hubspot_signature_v3 or x_hubspot_signature
+    if integration:
+        await _authenticate_webhook(
+            integration,
+            provided_token=provided_token,
+            provided_signature=provided_signature,
+            body=body,
+            app_state_webhook_secret=app_state_secret,
+        )
+    elif app_state_secret and provided_signature:
+        # Legacy path: no tenant lookup, only global HMAC (not recommended)
+        expected = hmac.new(app_state_secret.encode(), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, provided_signature):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
             )

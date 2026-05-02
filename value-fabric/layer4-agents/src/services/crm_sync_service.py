@@ -89,6 +89,12 @@ def _redacted_error(error: str) -> str:
     return redacted
 
 
+class SyncTruncatedError(Exception):
+    """Raised when CRM sync returns partial results due to pagination limits."""
+
+    pass
+
+
 class CRMSyncService:
     """Service for orchestrating CRM account synchronization.
 
@@ -164,6 +170,7 @@ class CRMSyncService:
                 )
 
             # Sync each account
+            has_truncation = False
             for prospect_id in prospect_ids[: self.sync_batch_size]:
                 try:
                     result = await self._sync_single_account(
@@ -173,6 +180,15 @@ class CRMSyncService:
                         stats["updated"] += 1
                     else:
                         stats["synced"] += 1
+                except SyncTruncatedError as e:
+                    has_truncation = True
+                    stats["failed"] += 1
+                    stats["errors"].append(f"{prospect_id}: {str(e)}")
+                    logger.warning(
+                        "Sync truncated for account %s from %s: %s",
+                        prospect_id, provider.value, _redacted_error(str(e)),
+                        extra={"tenant_id": tenant_id, "provider": provider.value},
+                    )
                 except Exception as e:
                     stats["failed"] += 1
                     stats["errors"].append(f"{prospect_id}: {str(e)}")
@@ -182,31 +198,54 @@ class CRMSyncService:
                         extra={"tenant_id": tenant_id, "provider": provider.value},
                     )
 
-            # Update sync status to success
+            # Determine final sync status
+            if has_truncation and stats["failed"] == len(stats["errors"]):
+                # All failures were truncation -> mark degraded, not failed
+                final_status = "degraded"
+                final_error = "Partial sync: some result sets were truncated"
+            elif has_truncation:
+                final_status = "failed"
+                final_error = "; ".join(stats["errors"][:3]) or "Sync failed"
+            else:
+                final_status = "idle"
+                final_error = None
+
             await self._update_sync_status(
                 tenant_id,
                 provider,
-                "idle",
-                None,
+                final_status,
+                final_error,
                 records_synced=stats["synced"] + stats["updated"],
                 records_updated=stats["updated"],
                 records_failed=stats["failed"],
             )
 
-            _increment_metric("crm_salesforce_sync_completed_total")
-            _increment_metric("crm_salesforce_records_synced_total", stats["synced"] + stats["updated"])
             duration = time.monotonic() - sync_start
-            if prom:
-                prom.increment_crm_salesforce_sync_completed(tenant_id, sync_type=sync_type)
-                prom.increment_crm_salesforce_records_synced(
-                    tenant_id, record_type="account", count=stats["synced"] + stats["updated"]
-                )
-                prom.observe_crm_salesforce_sync_duration(tenant_id, duration, sync_type=sync_type)
-            _log_sync_event("sync_completed", tenant_id, provider.value, {
-                "duration_seconds": round(duration, 3),
-                "records_synced": stats["synced"] + stats["updated"],
-                "records_failed": stats["failed"],
-            })
+            if final_status == "idle":
+                _increment_metric("crm_salesforce_sync_completed_total")
+                _increment_metric("crm_salesforce_records_synced_total", stats["synced"] + stats["updated"])
+                if prom:
+                    prom.increment_crm_salesforce_sync_completed(tenant_id, sync_type=sync_type)
+                    prom.increment_crm_salesforce_records_synced(
+                        tenant_id, record_type="account", count=stats["synced"] + stats["updated"]
+                    )
+                    prom.observe_crm_salesforce_sync_duration(tenant_id, duration, sync_type=sync_type)
+                _log_sync_event("sync_completed", tenant_id, provider.value, {
+                    "duration_seconds": round(duration, 3),
+                    "records_synced": stats["synced"] + stats["updated"],
+                    "records_failed": stats["failed"],
+                })
+            elif final_status == "degraded":
+                _increment_metric("crm_salesforce_sync_failed_total")
+                if prom:
+                    prom.increment_crm_salesforce_sync_failed(tenant_id, error_type="truncated")
+                    prom.observe_crm_salesforce_sync_duration(tenant_id, duration, sync_type=sync_type)
+                _log_sync_event("sync_degraded", tenant_id, provider.value, {
+                    "duration_seconds": round(duration, 3),
+                    "records_synced": stats["synced"] + stats["updated"],
+                    "records_failed": stats["failed"],
+                    "error": final_error,
+                })
             return stats
 
         except Exception as e:
@@ -296,6 +335,19 @@ class CRMSyncService:
 
         if not result.profile:
             raise ValueError(f"No profile data returned for {prospect_id}")
+
+        # Check for truncation warnings
+        if result.error and "truncated" in result.error.lower():
+            logger.warning(
+                "CRM sync returned partial results for %s: %s",
+                prospect_id,
+                result.error,
+                extra={"tenant_id": tenant_id, "provider": provider.value},
+            )
+            prom = get_metrics()
+            if prom:
+                prom.increment_crm_salesforce_sync_failed(tenant_id, error_type="truncated")
+            raise SyncTruncatedError(result.error)
 
         # Check if account exists
         existing = await self.db.execute(

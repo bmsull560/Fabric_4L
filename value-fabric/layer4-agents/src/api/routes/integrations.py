@@ -6,6 +6,7 @@ All credentials are encrypted at rest and never returned in API responses.
 """
 
 import logging
+import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -54,6 +55,7 @@ class IntegrationStatusResponse(IntegrationConfig):
     status: str = "idle"
     last_error_message: str | None = None
     has_refresh_token: bool = False
+    webhook_url: str | None = Field(None, description="Webhook URL with token (shown once on create/update)")
     created_at: str
     updated_at: str
 
@@ -233,7 +235,23 @@ async def create_or_update_integration(
                 exc_info=True,
             )
 
-        return IntegrationStatusResponse(**integration.to_dict())
+        # Build webhook URL with token for one-time display
+        response_data = integration.to_dict()
+        try:
+            decrypted = await service.decrypt_credentials(integration)
+            webhook_token = decrypted.get("webhook_token")
+            if webhook_token:
+                # SECURITY: Only include token in create/update response, never in list/get
+                base_url = os.getenv("PUBLIC_API_URL", "https://localhost:3000")
+                response_data["webhook_url"] = (
+                    f"{base_url}/v1/webhooks/crm/{provider.value}"
+                    f"?tenant_id={tenant_id}&webhook_token={webhook_token}"
+                )
+        except Exception:
+            # Don't fail the request if webhook URL generation fails
+            pass
+
+        return IntegrationStatusResponse(**response_data)
 
     except IntegrationValidationError as e:
         raise HTTPException(

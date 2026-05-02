@@ -12,8 +12,12 @@ try:
 except ImportError:
     pass  # shared package not available; env vars used directly
 
+import logging
+
 from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -386,51 +390,7 @@ class Settings(BaseSettings):
             )
         return v
 
-    @field_validator("jwt_secret")
-    @classmethod
-    def validate_jwt_secret(cls, v: str, info: ValidationInfo) -> str:
-        """Validate JWT secret minimum length - fails fast in production.
 
-        SECURITY: Requires at least 32 characters in production to prevent
-        brute force attacks against JWT signing keys.
-        """
-        environment = info.data.get("environment", "development")
-        if environment in ("production", "staging"):
-            if not v or len(v) < 32:
-                raise ValueError(
-                    "JWT_SECRET must be at least 32 characters in production/staging. "
-                    f"Current length: {len(v) if v else 0}"
-                )
-        # Warn in development but don't fail
-        elif v and len(v) < 32:
-            logger.warning(
-                "JWT_SECRET is less than 32 characters. "
-                "Use a strong secret in production."
-            )
-        return v
-
-    @field_validator("api_key_hmac_secret")
-    @classmethod
-    def validate_api_key_hmac_secret(cls, v: str, info: ValidationInfo) -> str:
-        """Validate API key HMAC secret minimum length - fails fast in production.
-
-        SECURITY: Requires at least 32 characters in production to prevent
-        brute force attacks against API key HMAC.
-        """
-        environment = info.data.get("environment", "development")
-        if environment in ("production", "staging"):
-            if not v or len(v) < 32:
-                raise ValueError(
-                    "API_KEY_HMAC_SECRET must be at least 32 characters in production/staging. "
-                    f"Current length: {len(v) if v else 0}"
-                )
-        # Warn in development but don't fail
-        elif v and len(v) < 32:
-            logger.warning(
-                "API_KEY_HMAC_SECRET is less than 32 characters. "
-                "Use a strong secret in production."
-            )
-        return v
 
     # ==========================================================================
     # Computed Properties

@@ -17,10 +17,6 @@ from ..config.plans import Plan, get_plan
 from ..models.billing import BillingSubscription, BillingUsageEvent, UsageEventStatus
 
 
-class OverageService_get_plan_limitsResult(TypedDictModel):
-    pass
-
-
 class OverageService_validate_requestResult(TypedDictModel):
     allowed: bool
     current_usage: Any

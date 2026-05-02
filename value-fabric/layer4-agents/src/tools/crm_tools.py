@@ -71,7 +71,7 @@ class GetProspectDataTool(BaseTool):
         client: httpx.AsyncClient,
         query: str,
         max_pages: int = 10,
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], bool]:
         """Execute a SOQL query with pagination support.
 
         Args:
@@ -80,11 +80,12 @@ class GetProspectDataTool(BaseTool):
             max_pages: Maximum number of pages to fetch (safety limit)
 
         Returns:
-            Combined list of records from all pages
+            Tuple of (combined records, was_truncated)
         """
         all_records: list[dict[str, Any]] = []
         query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(query)}"
         pages_fetched = 0
+        was_truncated = False
 
         while query_url and pages_fetched < max_pages:
             response = await client.get(query_url)
@@ -100,6 +101,7 @@ class GetProspectDataTool(BaseTool):
                     # the metric will be recorded with 'unknown' tenant_tier.
                     prom.increment_crm_salesforce_rate_limit("unknown")
                 # Return what we have so far rather than failing completely
+                was_truncated = True
                 break
 
             if response.status_code != 200:
@@ -108,6 +110,7 @@ class GetProspectDataTool(BaseTool):
                     response.status_code,
                     response.text[:200],
                 )
+                was_truncated = True
                 break
 
             data = response.json()
@@ -129,8 +132,9 @@ class GetProspectDataTool(BaseTool):
                 "Some records may not have been fetched.",
                 max_pages,
             )
+            was_truncated = True
 
-        return all_records
+        return all_records, was_truncated
 
     async def execute(self, input_data: GetProspectDataInput) -> GetProspectDataOutput:
         """Get prospect data from CRM."""
@@ -231,7 +235,7 @@ class GetProspectDataTool(BaseTool):
         if "opportunities" in input_data.data_types:
             safe_id = self._soql_safe_id(prospect_id)
             opp_query = f"SELECT Id, Name, StageName, Amount, Probability, CloseDate FROM Opportunity WHERE AccountId = '{safe_id}'"
-            opp_records = await self._execute_soql_query(client, opp_query)
+            opp_records, opp_truncated = await self._execute_soql_query(client, opp_query)
             result.opportunities = [
                 {
                     "id": rec.get("Id"),
@@ -245,12 +249,14 @@ class GetProspectDataTool(BaseTool):
                 }
                 for rec in opp_records
             ]
+            if opp_truncated:
+                result.error = "Partial results: opportunity pagination truncated"
 
         # Fetch interactions (activities) with pagination
         if "interactions" in input_data.data_types:
             safe_id = self._soql_safe_id(prospect_id)
             task_query = f"SELECT Id, Subject, ActivityDate, Status, Description FROM Task WHERE WhatId = '{safe_id}' ORDER BY ActivityDate DESC"
-            task_records = await self._execute_soql_query(client, task_query)
+            task_records, task_truncated = await self._execute_soql_query(client, task_query)
             result.interactions = [
                 {
                     "id": rec.get("Id"),
@@ -261,6 +267,9 @@ class GetProspectDataTool(BaseTool):
                 }
                 for rec in task_records
             ]
+            if task_truncated:
+                existing_error = result.error or ""
+                result.error = f"{existing_error}; Partial results: interaction pagination truncated".strip("; ")
 
         return result
 

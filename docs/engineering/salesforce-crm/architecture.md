@@ -108,8 +108,15 @@
 
 ## Known Limitations
 
-1. **OAuth UI not implemented**: Frontend currently uses manual API key entry. OAuth connect flow requires UI work.
-2. **No KMS**: Encryption uses Fernet with env-derived key. Production should use AWS KMS / HashiCorp Vault.
-3. **Scheduler singleton**: `CRMSyncScheduler` is a Python singleton. For multi-replica deployments, use a distributed lock (Redis) or Celery beat.
-4. **No SOQL pagination**: `GetProspectDataTool` does not paginate large result sets.
-5. **No deleted record handling**: Salesforce soft-deletes are not synchronized.
+### GA Blockers (must resolve before general availability)
+
+1. **OAuth UI not implemented**: Frontend currently uses manual API key entry. OAuth connect flow requires UI work. Admin tokens may be exposed during copy-paste.
+2. **No SOQL pagination**: `GetProspectDataTool` does not paginate large result sets. Tenants with >2,000 records will experience silent data truncation.
+3. **No E2E smoke tests**: No Playwright tests covering the connect → sync → verify flow.
+4. **Scheduler is in-memory**: `CRMSyncScheduler` uses `asyncio.create_task`. Jobs are lost on pod restart. Multi-replica deployments require Celery + Redis.
+
+### Accepted for Pilot
+
+5. **No KMS**: Encryption uses Fernet with env-derived key. Production should use AWS KMS / HashiCorp Vault.
+6. **No deleted record handling**: Salesforce soft-deletes are not synchronized.
+7. **No dedicated sync_jobs table**: Sync history is ephemeral; rely on logs and metrics.

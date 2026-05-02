@@ -4,11 +4,10 @@ Provides endpoints for formula evaluation and variable registry.
 Delegates calculation logic to the ROI calculation agent.
 """
 
-import logging
 import re
 import uuid
 from datetime import UTC, datetime
-from typing import Any, ClassVar, Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from neo4j import AsyncDriver
@@ -28,6 +27,24 @@ logger = get_logger(__name__)
 DEFAULT_CONFIDENCE = 0.92
 FLOATING_POINT_EPSILON = 1e-10  # Threshold for considering a value as zero
 
+# Valid expression pattern: alphanumeric, operators (+, -, *, /), parentheses, underscores, whitespace
+# Note: period (.) intentionally excluded to prevent attribute access attempts
+_VALID_EXPRESSION_PATTERN: re.Pattern = re.compile(r"^[a-zA-Z0-9_+\-*/()\s]+$")
+# Dangerous Python keywords/patterns that should not appear in formula expressions
+_DANGEROUS_PATTERNS: list[str] = [
+    "import", "exec", "eval", "compile", "__", "lambda", "class", "def"
+]
+
+
+def _validate_expression(v: str) -> None:
+    """Validate a formula expression for safety and syntax."""
+    if not _VALID_EXPRESSION_PATTERN.match(v):
+        raise ValueError("Expression contains invalid characters")
+    lowered = v.lower()
+    for dangerous in _DANGEROUS_PATTERNS:
+        if dangerous in lowered:
+            raise ValueError(f"Expression contains forbidden keyword: {dangerous}")
+
 
 class FormulaInput(BaseModel):
     """Single formula input variable."""
@@ -35,6 +52,15 @@ class FormulaInput(BaseModel):
     name: str = Field(..., description="Variable name")
     value: float = Field(..., description="Variable value")
     unit: str | None = Field(None, description="Unit of measurement")
+
+    @field_validator("value")
+    @classmethod
+    def validate_value_is_finite(cls, v: float) -> float:
+        """Ensure value is a finite number (not inf, -inf, or nan)."""
+        import math
+        if not math.isfinite(v):
+            raise ValueError("Value must be a finite number")
+        return v
 
 
 class FormulaEvaluateRequest(BaseModel):
@@ -50,14 +76,6 @@ class FormulaEvaluateRequest(BaseModel):
         default_factory=list, description="Input variables"
     )
     output_unit: str | None = Field(None, description="Desired output unit")
-
-    # Valid expression pattern: alphanumeric, operators (+, -, *, /), parentheses, underscores, whitespace
-    # Note: period (.) intentionally excluded to prevent attribute access attempts
-    VALID_EXPRESSION_PATTERN: ClassVar[re.Pattern] = re.compile(r"^[a-zA-Z0-9_+\-*/()\s]+$")
-    # Dangerous Python keywords/patterns that should not appear in formula expressions
-    DANGEROUS_PATTERNS: ClassVar[list[str]] = [
-        "import", "exec", "eval", "compile", "__", "lambda", "class", "def"
-    ]
 
     @field_validator("expression")
     @classmethod
@@ -701,8 +719,6 @@ async def calculate_scenario(
     ROI and payback metrics based on adjusted input variables.
     """
 
-    logger = logging.getLogger(__name__)
-
     try:
         # NOTE: Business case repository not yet implemented.
         # Using representative demo data with explicit warning to API consumers.
@@ -762,6 +778,23 @@ async def calculate_scenario(
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
+
+def _validate_expression(v: str) -> None:
+    """Shared expression validation: pattern matching + dangerous keyword checks.
+
+    Raises:
+        ValueError: If expression contains invalid characters or forbidden patterns.
+    """
+    valid_pattern = re.compile(r"^[a-zA-Z0-9_+\-*/()\s]+$")
+    dangerous = ["import", "exec", "eval", "compile", "__", "lambda", "class", "def"]
+
+    if not valid_pattern.match(v):
+        raise ValueError("Expression contains invalid characters")
+    v_lower = v.lower()
+    for pattern in dangerous:
+        if pattern in v_lower:
+            raise ValueError(f"Expression contains forbidden pattern: {pattern}")
 
 
 def evaluate_expression(expression: str, variables: dict[str, float]) -> float:

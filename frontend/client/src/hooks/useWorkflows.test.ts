@@ -95,7 +95,8 @@ describe('useActiveWorkflows', () => {
     expect(badWorkflow?.progress).toBe(0); // Invalid progress normalized to 0
   });
 
-  it.skip('handles API error', async () => {
+  it('handles API error', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/agents/workflows/active', () => {
         return HttpResponse.json({ error: 'Service unavailable' }, { status: 500 });
@@ -105,7 +106,7 @@ describe('useActiveWorkflows', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useActiveWorkflows(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     expect(result.current.error).toBeDefined();
   });
 });

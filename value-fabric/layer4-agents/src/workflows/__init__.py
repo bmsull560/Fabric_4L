@@ -1,5 +1,7 @@
 """Workflows package for Layer 4 Agentic Workflow Engine."""
 
+from typing import Any
+
 from shared.models.typed_dict import TypedDictModel
 
 from .base import BaseWorkflow, NodeExecutionError, WorkflowBuilder, WorkflowError

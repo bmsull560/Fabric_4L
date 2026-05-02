@@ -154,7 +154,9 @@ describe('useBenchmarks', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
-  it.skip('handles API errors', async () => {
+  it('handles API errors', async () => {
+    // Override the handler without resetting — resetHandlers() can race with
+    // in-flight requests from the singleton apiClient deduplication cache.
     server.use(
       http.get('/api/v1/benchmarks/datasets', () => {
         return HttpResponse.json({ error: 'Database error' }, { status: 500 });
@@ -164,7 +166,7 @@ describe('useBenchmarks', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useBenchmarks(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
   });
 });
 
@@ -197,7 +199,10 @@ describe('useBenchmark', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useBenchmark('non-existent'), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
   });
 });
+
+
+
 

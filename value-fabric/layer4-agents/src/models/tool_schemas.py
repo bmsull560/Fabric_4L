@@ -250,6 +250,7 @@ class GetProspectDataOutput(BaseModel):
     interactions: list[dict[str, Any]] = Field(default_factory=list)
     opportunities: list[dict[str, Any]] = Field(default_factory=list)
     custom_fields: dict[str, Any] = Field(default_factory=dict)
+    error: str | None = None
 
 
 class UpdateOpportunityInput(BaseModel):

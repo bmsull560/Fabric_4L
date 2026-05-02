@@ -131,7 +131,7 @@ async def setup_prospect(
     Returns:
         ProspectSetupResponse with detected signals and metadata
     """
-    start_time = datetime.now(UTC)
+    _start_time = datetime.now(UTC)
 
     try:
         # Initialize agent

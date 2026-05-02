@@ -276,7 +276,7 @@ to avoid impacting user-facing workflows.
         """
         logger.warning("_execute_sync called without tenant_id — use _execute_sync_for_tenant")
         try:
-            provider = CRMProvider(provider_str)
+            _provider = CRMProvider(provider_str)
         except ValueError:
             logger.error("Invalid CRM provider: %s", provider_str)
             return CRMSyncScheduler__execute_syncResult.model_validate(

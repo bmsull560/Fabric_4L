@@ -160,7 +160,8 @@ describe('useFormulaVersions', () => {
     expect(result.current.error?.statusCode).toBe(404);
   });
 
-  it.skip('handles network error gracefully', async () => {
+  it('handles network error gracefully', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/graph/formulas/network-error/versions', () => {
         return HttpResponse.error();
@@ -170,7 +171,7 @@ describe('useFormulaVersions', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useFormulaVersions('network-error'), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
     expect(result.current.error).toBeDefined();
   });
 

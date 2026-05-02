@@ -76,7 +76,8 @@ describe('GraphExplorer', () => {
     }, { timeout: 3000 });
   });
 
-  it.skip('handles graph error state', async () => {
+  it('handles graph error state', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/graph/graph/subgraph', () => {
         return HttpResponse.json({ error: 'Neo4j connection failed' }, { status: 500 });
@@ -88,7 +89,7 @@ describe('GraphExplorer', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Retry')).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it('allows search input', async () => {

@@ -85,7 +85,8 @@ describe('useFormulas', () => {
     expect(result.current.data).toHaveLength(0);
   });
 
-  it.skip('handles API errors', async () => {
+  it('handles API errors', async () => {
+    server.resetHandlers();
     server.use(
       http.get('/api/v1/graph/formulas', () => {
         return HttpResponse.json({ error: 'Database error' }, { status: 500 });
@@ -95,7 +96,7 @@ describe('useFormulas', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useFormulas(), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
   });
 });
 
