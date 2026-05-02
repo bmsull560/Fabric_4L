@@ -92,7 +92,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package.json
+          cache-dependency-path: apps/web/package.json
 
       - name: Install frontend dependencies
         working-directory: frontend
@@ -212,6 +212,10 @@ jobs:
 
       - name: Run Platform Contract Lint
         run: python scripts/ci/platform_contract_lint.py
+
+      - name: Run Strict Shared-Import Enforcement
+        run: python scripts/ci/check_shared_imports.py --strict --scope executable
+        # NO continue-on-error: This is a BLOCKING contract gate
 
       - name: Contract scan - Tenant context violations
         run: |
@@ -566,3 +570,4 @@ jobs:
           echo "- **UI State**: no-imperative-navigation, no-url-concatenation" >> $GITHUB_STEP_SUMMARY
           echo "- **Public API**: no-private-imports, no-circular-dependencies" >> $GITHUB_STEP_SUMMARY
           echo "- **OpenAPI Drift**: Auto-detection via spec comparison" >> $GITHUB_STEP_SUMMARY
+

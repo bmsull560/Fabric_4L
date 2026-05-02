@@ -4,15 +4,24 @@ Verifies that tools return structured ToolResult instead of raising exceptions.
 """
 
 import asyncio
+import sys
+from pathlib import Path
+
+# Add the services path to sys.path
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_SERVICES_PATH = str(_PROJECT_ROOT / "services" / "layer4-agents" / "src")
+if _SERVICES_PATH not in sys.path:
+    sys.path.insert(0, _SERVICES_PATH)
+
 import pytest
 from pydantic import BaseModel
 
-from value_fabric.layer4_agents.src.tools import (
+from tools import (
     BaseTool,
     ToolRegistry,
     ToolResult,
 )
-from value_fabric.layer4_agents.src.tools.calculation_tools import (
+from tools.calculation_tools import (
     CalculateROITool,
     EvaluateFormulaTool,
 )

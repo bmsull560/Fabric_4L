@@ -39,7 +39,7 @@ else:
     _PATH_ADDED = False
 
 try:
-    from shared.security import SecurityConfig, add_security_middleware
+    from value_fabric.shared.security import SecurityConfig, add_security_middleware
 finally:
     if _PATH_ADDED and _value_fabric_path in sys.path:
         sys.path.remove(_value_fabric_path)

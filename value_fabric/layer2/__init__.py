@@ -6,7 +6,7 @@ Ontology-guided entity and relationship extraction pipeline.
 __version__ = "1.0.0"
 
 # Models - these have no side effects
-from layer2_extraction.models import (
+from .models import (
     Capability,
     ExtractionCost,
     ExtractionResult,

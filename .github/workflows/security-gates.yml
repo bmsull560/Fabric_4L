@@ -379,7 +379,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-security-audit
-          path: frontend/pnpm-audit-report.json
+          path: apps/web/pnpm-audit-report.json
           retention-days: 14
 
   # Dockerfile non-root user check
@@ -567,4 +567,5 @@ jobs:
 
       - name: Enforce route auth dependency policy
         run: python scripts/ci/check_route_auth_dependencies.py
+
 

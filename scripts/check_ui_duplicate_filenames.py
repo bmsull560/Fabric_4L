@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PROD_UI = REPO_ROOT / "frontend/client/src/components/ui"
+PROD_UI = REPO_ROOT / "apps/web/client/src/components/ui"
 PROTOTYPE_UI = REPO_ROOT / "prototypes/ui-prototype/non-production/ui-components-archive"
 BASELINE_FILE = REPO_ROOT / "scripts/ui_duplicate_baseline.txt"
 

@@ -3,8 +3,8 @@ name: Frontend Route Audit Check
 on:
   pull_request:
     paths:
-      - 'frontend/client/src/App.tsx'
-      - 'frontend/client/src/App/Router.test.tsx'
+      - 'apps/web/src/App.tsx'
+      - 'apps/web/src/App/Router.test.tsx'
       - 'frontend/audit-output/route-map.md'
       - 'frontend/audit-output/track-a-route-extraction.json'
       - 'scripts/extract-routes-audit.py'
@@ -12,8 +12,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'frontend/client/src/App.tsx'
-      - 'frontend/client/src/App/Router.test.tsx'
+      - 'apps/web/src/App.tsx'
+      - 'apps/web/src/App/Router.test.tsx'
       - 'frontend/audit-output/route-map.md'
       - 'frontend/audit-output/track-a-route-extraction.json'
       - 'scripts/extract-routes-audit.py'
@@ -29,3 +29,4 @@ jobs:
           python-version: '3.11'
       - name: Verify frontend route audit freshness
         run: python3 scripts/check-route-audit-freshness.py
+

@@ -32,7 +32,7 @@ else:
     _PATH_ADDED = False
 
 try:
-    from shared.security import (
+    from value_fabric.shared.security import (
         SecurityConfig,
         SecurityValidator,
         add_security_middleware,

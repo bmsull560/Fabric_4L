@@ -526,11 +526,11 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          if ! git diff --quiet frontend/client/src/api/generated/; then
+          if ! git diff --quiet apps/web/src/api/generated/; then
             echo "❌ Generated API type drift detected."
             node frontend/scripts/report-generated-type-drift.mjs
           fi
-          git diff --exit-code frontend/client/src/api/generated/
+          git diff --exit-code apps/web/src/api/generated/
 
       - name: Type check
         run: pnpm tsc --noEmit
@@ -541,7 +541,7 @@ jobs:
       - name: Check for unguarded console statements
         run: |
           # Find console.log/console.warn without DEV guard (excluding tests)
-          violations=$(grep -rn "console\.log\|console\.warn" frontend/client/src/ \
+          violations=$(grep -rn "console\.log\|console\.warn" apps/web/src/ \
             --include="*.ts" --include="*.tsx" \
             | grep -v "\.test\." \
             | grep -v "\.spec\." \
@@ -610,7 +610,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build-failure
-          path: frontend/dist/public/
+          path: apps/web/dist/public/
 
   # Kubernetes manifest validation (server-side dry-run via kustomize)
   k8s-dry-run:
@@ -1071,4 +1071,5 @@ jobs:
 
       - name: Enforce route auth dependency policy
         run: python scripts/ci/check_route_auth_dependencies.py
+
 

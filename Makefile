@@ -38,8 +38,12 @@ verify-structure: ## Run structural preflight and Python contract lint checks
 	@python scripts/ci/structural_preflight.py --strict
 	@echo "→ Running Python contract lint..."
 	@python scripts/ci/python_contract_lint.py --strict
+	@echo "→ Running strict shared-import enforcement..."
+	@python scripts/ci/check_shared_imports.py --strict --scope executable
 	@echo "→ Running import topology tests..."
 	@python -m pytest tests/contract/test_import_topology.py -q
+	@echo "→ Running strict navigation pattern check..."
+	@cd apps/web && python ../../scripts/ci/check_navigation_patterns.py --strict
 	@echo "✅  Structure verification passed"
 
 check-ui-duplicates: ## Block new duplicate UI component filenames between prototype and production trees
@@ -148,10 +152,10 @@ typecheck: ## Type-check all Python layers with mypy (fails fast on first error)
 test: test-layer1 test-layer2 test-layer3 test-layer4 test-layer5 test-layer6 ## Run all backend unit tests
 
 test-e2e-contracts: ## Layer 1: Run Playwright isolated page contract tests (mocked)
-	cd frontend && npx playwright test --project=contracts
+	cd apps/web && npx playwright test --project=contracts
 
 test-e2e-journeys: ## Layer 2: Run Playwright chained user journeys (live or mocked)
-	cd frontend && npx playwright test --project=journeys
+	cd apps/web && npx playwright test --project=journeys
 
 test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 	$(PYTEST) tests/contract/test_journey_contracts.py -v
@@ -204,10 +208,10 @@ test-layer6: ## Run Layer 6 tests
 	cd value-fabric/layer6-benchmarks && $(PYTEST) tests/
 
 test-frontend: ## Run frontend unit tests
-	cd frontend && pnpm run test
+	cd apps/web && pnpm run test
 
 test-e2e: ## Run Playwright end-to-end tests (requires running stack)
-	cd frontend && pnpm exec playwright test
+	cd apps/web && pnpm exec playwright test
 
 # ─── Security Tests ───────────────────────────────────────────────────────────
 
@@ -271,7 +275,7 @@ perf-eval: ## Evaluate k6 results against versioned SLO thresholds
 # ─── Build ────────────────────────────────────────────────────────────────────
 
 build: ## Build frontend production bundle
-	cd frontend && pnpm run build
+	cd apps/web && pnpm run build
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 
@@ -305,7 +309,7 @@ sdk: ## Generate the Python SDK (manual typed client)
 # ─── Dev Infrastructure ───────────────────────────────────────────────────────
 
 preflight: ## Run pre-flight checks (Docker, env, ports)
-	@bash scripts/dev-preflight.sh
+	@bash scripts/dev/dev-preflight.sh
 
 up: preflight ## Start all services with Docker Compose (runs preflight first)
 	cd value-fabric && docker compose up -d
@@ -463,7 +467,7 @@ release-gate: ## Run the full 4-layer quality gate sequence
 
 contract-lint: ## Run ESLint contract rules across all packages
 	@echo "→ Running contract lint rules..."
-	cd frontend/client && npm run lint -- --ext .ts,.tsx --rule 'fabric-contracts/no-tenant-id-parameter: error' --rule 'fabric-contracts/no-req-tenant-access: error' --rule 'fabric-contracts/no-raw-tenant-query: error' --rule 'fabric-contracts/no-explicit-db-connect: error' --rule 'fabric-contracts/no-inline-middleware: error' --rule 'fabric-contracts/no-inline-tool-definition: error' --rule 'fabric-contracts/no-throw-in-tool: error' --rule 'fabric-contracts/no-json-parse-agent-output: error' --rule 'fabric-contracts/no-imperative-navigation: error' --rule 'fabric-contracts/no-url-concatenation: error' --rule 'fabric-contracts/no-private-imports: error' --rule 'fabric-contracts/no-circular-dependencies: error' 2>/dev/null || echo "⚠️  Contract ESLint plugin not yet installed"
+	@cd apps/web && npm run lint -- --ext .ts,.tsx --rule 'fabric-contracts/no-tenant-id-parameter: error' --rule 'fabric-contracts/no-req-tenant-access: error' --rule 'fabric-contracts/no-raw-tenant-query: error' --rule 'fabric-contracts/no-explicit-db-connect: error' --rule 'fabric-contracts/no-inline-middleware: error' --rule 'fabric-contracts/no-inline-tool-definition: error' --rule 'fabric-contracts/no-throw-in-tool: error' --rule 'fabric-contracts/no-json-parse-agent-output: error' --rule 'fabric-contracts/no-imperative-navigation: error' --rule 'fabric-contracts/no-url-concatenation: error' --rule 'fabric-contracts/no-private-imports: error' --rule 'fabric-contracts/no-circular-dependencies: error' 2>/dev/null || echo "⚠️  Contract ESLint plugin not yet installed"
 
 # ─── Backup/DR Tests ─────────────────────────────────────────────────────────
 

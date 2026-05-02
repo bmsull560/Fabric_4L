@@ -4,9 +4,9 @@ import re
 import sys
 from pathlib import Path
 
-app = Path('frontend/client/src/App.tsx')
-route_map = Path('frontend/audit-output/route-map.md')
-extraction = Path('frontend/audit-output/track-a-route-extraction.json')
+app = Path('apps/web/client/src/App.tsx')
+route_map = Path('apps/web/audit-output/route-map.md')
+extraction = Path('apps/web/audit-output/track-a-route-extraction.json')
 
 missing = [str(p) for p in (app, route_map, extraction) if not p.exists()]
 if missing:
@@ -14,7 +14,7 @@ if missing:
     sys.exit(1)
 
 if route_map.stat().st_mtime < app.stat().st_mtime:
-    print('ERROR: frontend/audit-output/route-map.md is older than frontend/client/src/App.tsx')
+    print('ERROR: apps/web/audit-output/route-map.md is older than apps/web/client/src/App.tsx')
     sys.exit(1)
 
 summary = json.loads(extraction.read_text()).get('summary', {})

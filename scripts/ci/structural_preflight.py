@@ -283,14 +283,14 @@ def check_tool_manifest_alignment(repo_root: Path) -> list[Finding]:
     findings = []
 
     # Count registered tools
-    tools_init = repo_root / "value-fabric" / "layer4-agents" / "src" / "tools" / "__init__.py"
-    skill_manifests_dir = repo_root / "layer4-agents" / "skills"
+    tools_init = repo_root / "services" / "layer4-agents" / "src" / "tools" / "__init__.py"
+    skill_manifests_dir = repo_root / "services" / "layer4-agents" / "skills"
 
     if not tools_init.exists():
         findings.append(Finding(
             check_id="tool_manifest_alignment",
             severity="medium",
-            path="value-fabric/layer4-agents/src/tools/__init__.py",
+            path="services/layer4-agents/src/tools/__init__.py",
             finding_type="missing_tools_init",
             message="Tools registry init not found",
             recommendation="Verify layer4-agents structure",
@@ -305,7 +305,7 @@ def check_tool_manifest_alignment(repo_root: Path) -> list[Finding]:
             findings.append(Finding(
                 check_id="tool_manifest_alignment",
                 severity="medium",
-                path="layer4-agents/skills/",
+                path="services/layer4-agents/skills/",
                 finding_type="few_skill_manifests",
                 message=f"Only {len(manifests)} skill manifests found",
                 recommendation="Ensure all tools have corresponding skill definitions",

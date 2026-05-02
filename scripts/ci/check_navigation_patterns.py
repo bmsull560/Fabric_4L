@@ -39,9 +39,12 @@ class Finding:
 def find_frontend_src() -> Path:
     """Locate the frontend source directory."""
     repo_root = Path(__file__).parent.parent.parent
-    frontend_src = repo_root / "frontend" / "client" / "src"
+    # Try new apps/web path first, then fall back to legacy frontend/client path
+    frontend_src = repo_root / "apps" / "web" / "src"
     if not frontend_src.exists():
-        raise FileNotFoundError(f"Frontend source not found: {frontend_src}")
+        frontend_src = repo_root / "frontend" / "client" / "src"
+    if not frontend_src.exists():
+        raise FileNotFoundError(f"Frontend source not found: tried {repo_root / 'apps' / 'web' / 'src'} and {repo_root / 'frontend' / 'client' / 'src'}")
     return frontend_src
 
 

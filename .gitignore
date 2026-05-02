@@ -114,3 +114,9 @@ audit-output/
 
 # Windows shortcuts
 *.lnk
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.cer

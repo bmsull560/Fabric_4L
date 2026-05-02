@@ -1,0 +1,294 @@
+/**
+ * Integrations Page — CRM Connection Management
+ * 
+ * Features:
+ * - Configure Salesforce and HubSpot connections
+ * - Test connection status
+ * - View sync logs and health
+ * - Manage OAuth tokens
+ */
+import React from "react";
+import { useLocation } from "react-router-dom";
+import { useNavigation } from "@/hooks/useNavigation";
+import { PageHeader, Btn } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import {
+  IntegrationGrid,
+  IntegrationConfigPanel,
+  IntegrationList,
+  PROVIDER_NAMES,
+} from "@/components/integrations";
+import {
+  useIntegrations,
+  useCreateOrUpdateIntegration,
+  useDeleteIntegration,
+  useTestIntegration,
+  useSyncIntegration,
+  type CRMProvider,
+  type IntegrationCreateRequest,
+} from "@/hooks/useIntegrations";
+import {
+  AlertCircle,
+  RefreshCw,
+  ExternalLink,
+  Key,
+  Shield,
+} from "lucide-react";
+
+function Integrations() {
+  const location = useLocation().pathname;
+  const { navigateTo } = useNavigation();
+  const { data: integrations, isLoading, error, refetch } = useIntegrations();
+  const createOrUpdateMutation = useCreateOrUpdateIntegration();
+  const deleteMutation = useDeleteIntegration();
+  const testMutation = useTestIntegration();
+  const syncMutation = useSyncIntegration();
+
+  // Parse selected provider from URL query params
+  const searchParams = new URLSearchParams(location.split('?')[1] || '');
+  const selectedProvider = searchParams.get('provider') as CRMProvider | null;
+
+  const setSelectedProvider = (provider: CRMProvider | null) => {
+    if (provider) {
+      navigateTo('integrations', undefined, { query: { provider } });
+    } else {
+      navigateTo('integrations');
+    }
+  };
+
+  // Get integration by provider
+  const getIntegration = (provider: CRMProvider) => {
+    return integrations?.find(i => i.provider === provider);
+  };
+
+  // Handle provider selection
+  const handleSelectProvider = (provider: CRMProvider) => {
+    setSelectedProvider(provider === selectedProvider ? null : provider);
+  };
+
+  // Handle update/create integration
+  const handleUpdate = (provider: CRMProvider, data: IntegrationCreateRequest) => {
+    createOrUpdateMutation.mutate(
+      { provider, data },
+      {
+        onSuccess: () => {
+          toast.success(`${PROVIDER_NAMES[provider]} integration saved`);
+        },
+        onError: (error) => {
+          toast.error(`Failed to save integration: ${error.message}`);
+        },
+      }
+    );
+  };
+
+  // Handle delete integration
+  const handleDelete = (provider: CRMProvider) => {
+    deleteMutation.mutate(provider, {
+      onSuccess: () => {
+        toast.success(`${PROVIDER_NAMES[provider]} integration disconnected`);
+        if (selectedProvider === provider) {
+          setSelectedProvider(null);
+        }
+      },
+      onError: (error) => {
+        toast.error(`Failed to disconnect: ${error.message}`);
+      },
+    });
+  };
+
+  // Handle test connection
+  const handleTest = (provider: CRMProvider) => {
+    testMutation.mutate(provider, {
+      onSuccess: (result) => {
+        if (result.success) {
+          toast.success(`Connection to ${PROVIDER_NAMES[provider]} successful`);
+        } else {
+          toast.error(`Connection failed: ${result.message}`);
+        }
+      },
+      onError: (error) => {
+        toast.error(`Test failed: ${error.message}`);
+      },
+    });
+  };
+
+  // Handle sync
+  const handleSync = (provider: CRMProvider) => {
+    syncMutation.mutate(provider, {
+      onSuccess: () => {
+        toast.success(`Sync started for ${PROVIDER_NAMES[provider]}`);
+      },
+      onError: (error) => {
+        toast.error(`Sync failed: ${error.message}`);
+      },
+    });
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-50">
+        <div className="max-w-[1200px] mx-auto px-6 py-8">
+          <Skeleton className="h-8 w-48 mb-8" />
+          <Skeleton className="h-4 w-96 mb-8" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Skeleton className="h-48 w-full rounded-xl" />
+              <Skeleton className="h-64 w-full rounded-xl" />
+            </div>
+            <div className="lg:col-span-1">
+              <Skeleton className="h-96 w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neutral-50">
+        <div className="max-w-[1200px] mx-auto px-6 py-8">
+          <PageHeader
+            title="Integrations"
+            subtitle="Connect and manage your CRM data sources"
+          />
+          <div className="mt-8 p-6 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={24} className="text-red-500 mt-0.5" />
+              <div>
+                <p className="text-[14px] font-semibold text-red-800">Failed to load integrations</p>
+                <p className="text-[13px] text-red-600 mt-1">{error.message}</p>
+                <Btn variant="outline" className="mt-4" onClick={() => refetch()}>
+                  <RefreshCw size={14} className="mr-2" />
+                  Retry
+                </Btn>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedIntegration = selectedProvider ? getIntegration(selectedProvider) : undefined;
+
+  return (
+    <div className="min-h-screen bg-neutral-50">
+      <div className="max-w-[1200px] mx-auto px-6 py-8">
+        {/* Header */}
+        <PageHeader
+          title="Integrations"
+          subtitle="Connect and manage your CRM data sources"
+        />
+
+        {/* Info Banner */}
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <Shield size={18} className="text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-[13px] font-medium text-blue-900">Secure Integration</p>
+              <p className="text-[12px] text-blue-700 mt-1">
+                Your CRM credentials are encrypted at rest and only used for syncing account data.
+                OAuth tokens are refreshed automatically when possible.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content: Grid + Panel */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column: Grid + List */}
+          <div className="lg:col-span-2 space-y-6">
+            <IntegrationGrid
+              integrations={integrations}
+              selectedProvider={selectedProvider}
+              onSelect={handleSelectProvider}
+            />
+            <IntegrationList
+              integrations={integrations}
+              selectedProvider={selectedProvider}
+              onSelect={handleSelectProvider}
+              onSync={handleSync}
+              isSyncing={syncMutation.isPending}
+              syncingProvider={syncMutation.variables || null}
+            />
+          </div>
+
+          {/* Right Column: Config Panel */}
+          <div className="lg:col-span-1">
+            <IntegrationConfigPanel
+              integration={selectedIntegration}
+              onUpdate={(data: IntegrationCreateRequest) => selectedProvider && handleUpdate(selectedProvider, data)}
+              onDelete={() => selectedProvider && handleDelete(selectedProvider)}
+              onTest={() => selectedProvider && handleTest(selectedProvider)}
+              onSync={() => selectedProvider && handleSync(selectedProvider)}
+              isUpdating={createOrUpdateMutation.isPending}
+              isTesting={testMutation.isPending}
+              isSyncing={syncMutation.isPending && syncMutation.variables === selectedProvider}
+            />
+          </div>
+        </div>
+
+        {/* Documentation */}
+        <div className="mt-12 p-6 bg-white border border-neutral-200 rounded-xl">
+          <h3 className="text-[14px] font-semibold text-neutral-800 mb-4">Getting Started</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <a
+              href="https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_understanding_authentication.htm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200 hover:border-blue-300 hover:bg-blue-50/30 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <Key size={18} />
+              </div>
+              <div>
+                <p className="text-[13px] font-medium text-neutral-800">Salesforce Setup Guide</p>
+                <p className="text-[11px] text-neutral-500 mt-1">
+                  Learn how to create a connected app and generate OAuth tokens.
+                </p>
+                <span className="inline-flex items-center gap-1 text-[11px] text-blue-600 mt-2">
+                  View Documentation
+                  <ExternalLink size={10} />
+                </span>
+              </div>
+            </a>
+
+            <a
+              href="https://developers.hubspot.com/docs/api/private-apps"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200 hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                <Key size={18} />
+              </div>
+              <div>
+                <p className="text-[13px] font-medium text-neutral-800">HubSpot Setup Guide</p>
+                <p className="text-[11px] text-neutral-500 mt-1">
+                  Create a private app and generate an access token for API access.
+                </p>
+                <span className="inline-flex items-center gap-1 text-[11px] text-orange-600 mt-2">
+                  View Documentation
+                  <ExternalLink size={10} />
+                </span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function IntegrationsPage() {
+  return (
+    <ErrorBoundary>
+      <Integrations />
+    </ErrorBoundary>
+  );
+}

@@ -1,26 +1,22 @@
 """Pytest configuration for Layer 4 Agents tests.
-
-Requires package to be installed in editable mode:
-    pip install -e value-fabric/layer4-agents
 """
 
 import sys
 from pathlib import Path
 
 # ── Path Setup ─────────────────────────────────────────────────────────────
-# Add repo root to path for shared package imports (must be before any imports)
 _tests_dir = Path(__file__).parent.resolve()
 _layer4_dir = _tests_dir.parent.resolve()
-_repo_root = _layer4_dir.parent.parent.resolve()  # layer4-agents -> value-fabric -> repo root
+_repo_root = _layer4_dir.parent.parent.resolve()  # layer4-agents -> services -> repo root
 
 # Add repo root to path BEFORE any imports
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
-# Also add value-fabric to path for src imports
-_value_fabric = _repo_root / "value-fabric"
-if str(_value_fabric) not in sys.path:
-    sys.path.insert(0, str(_value_fabric))
+# Add layer4 src to path for internal imports
+_layer4_src = _layer4_dir / "src"
+if str(_layer4_src) not in sys.path:
+    sys.path.insert(0, str(_layer4_src))
 
 import pytest
 
@@ -134,9 +130,9 @@ from typing import Any
 import pytest_asyncio
 from langgraph.checkpoint.memory import InMemorySaver
 
-from src.engine.executor import OrchestrationController
-from src.engine.state_manager import StateManager
-from src.models.agent_state import BaseAgentState, WorkflowStatus
+from value_fabric.layer4.engine.executor import OrchestrationController
+from value_fabric.layer4.engine.state_manager import StateManager
+from value_fabric.layer4.models.agent_state import BaseAgentState, WorkflowStatus
 
 TEST_WORKFLOW_TYPE = "roi_calculator"
 
