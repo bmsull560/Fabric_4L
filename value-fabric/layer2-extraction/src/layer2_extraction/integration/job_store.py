@@ -12,7 +12,6 @@ import os
 from dataclasses import asdict, dataclass
 from typing import Any
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +35,7 @@ class PipelineJob:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "PipelineJob":
+    def from_dict(cls, data: dict[str, Any]) -> PipelineJob:
         """Deserialize job from dictionary."""
         return cls(**data)
 

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+
 from shared.models.typed_dict import TypedDictModel
 
 

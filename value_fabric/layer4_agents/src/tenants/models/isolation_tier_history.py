@@ -94,7 +94,7 @@ class TenantIsolationTierHistory(Base):
     )
 
     # Relationship to tenant (optional, for convenience)
-    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="tier_history")
+    tenant: Mapped[Tenant] = relationship("Tenant", back_populates="tier_history")
 
     __table_args__ = (
         Index("ix_tier_history_tenant_changed", "tenant_id", "changed_at"),

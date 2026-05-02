@@ -31,13 +31,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ....database import get_db_from_context
-from ....tenants.service import get_tenant, update_tenant
 from ....tenants.email_verification import EmailVerificationService
+from ....tenants.service import get_tenant, update_tenant
 from ....tenants.tiers import get_tier_config
 
 router = APIRouter(tags=["Frontend Compatibility"])
@@ -154,8 +154,9 @@ async def register_tenant_frontend_alias(
     db: AsyncSession = Depends(get_db_from_context),
 ) -> RegisterTenantResponse:
     """Register a new tenant (frontend compatibility alias for /v1/tenants/register)."""
-    from ...service import get_tenant_by_slug, create_tenant
-    from shared.identity.models import TenantCreateRequest, TenantStatus
+    from shared.identity.models import TenantCreateRequest
+
+    from ...service import create_tenant, get_tenant_by_slug
 
     # Check slug uniqueness
     existing = await get_tenant_by_slug(db, request.slug)

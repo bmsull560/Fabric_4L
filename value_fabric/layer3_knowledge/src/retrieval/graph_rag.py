@@ -8,11 +8,11 @@ from typing import Any
 from neo4j import AsyncDriver
 from neo4j.time import Date as Neo4jDate
 from neo4j.time import DateTime as Neo4jDateTime
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from .vector_store import VectorStore
-from shared.models.typed_dict import TypedDictModel
 
 
 class _serialize_neo4j_valueResult(TypedDictModel):

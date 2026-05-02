@@ -2,7 +2,6 @@
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 import asyncpg
 
@@ -41,7 +40,7 @@ class DatabaseConfig:
 
 
 # Global connection pool
-_pool: Optional[asyncpg.Pool] = None
+_pool: asyncpg.Pool | None = None
 
 
 def get_db_config() -> DatabaseConfig:

@@ -10,12 +10,12 @@ Orchestrates the complete signal detection pipeline:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
 
 from shared.identity.context import RequestContext
+from shared.models.typed_dict import TypedDictModel
 
 from ..messaging.signal_events import (
     SignalCompletedEvent,
@@ -25,7 +25,6 @@ from ..messaging.signal_events import (
 )
 from ..models.pain_signal import EvidenceMatch, PainSignal, SignalCategory, TrendDirection
 from .base import AgentCapability, BaseAgent
-from shared.models.typed_dict import TypedDictModel
 
 
 class SignalDetectionAgent__detect_signalsResult(TypedDictModel):

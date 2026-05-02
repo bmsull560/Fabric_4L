@@ -19,11 +19,11 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .tiers import TierConfig, get_tier_config
-from shared.models.typed_dict import TypedDictModel
 
 
 class TierEnforcement_get_usage_summaryResult(TypedDictModel):

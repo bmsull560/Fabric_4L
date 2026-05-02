@@ -10,9 +10,10 @@ import logging
 import random
 from typing import Any
 
+from shared.models.typed_dict import TypedDictModel
+
 from .bus import MessageBus
 from .types import MessageType
-from shared.models.typed_dict import TypedDictModel
 
 
 class MessageRouter_get_cluster_healthResult(TypedDictModel):

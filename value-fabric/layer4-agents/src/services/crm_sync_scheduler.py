@@ -14,10 +14,9 @@ import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
+from shared.models.typed_dict import TypedDictModel
+from sqlalchemy import select
 
 from ..database import db_session_for_context, get_session_factory
 from ..engine.scheduler import ScheduledTask, TaskPriority, TaskScheduler
@@ -25,7 +24,6 @@ from ..models.account import CRMProvider
 from ..models.integration import Integration
 from .crm_sync_service import CRMSyncService
 from .integration_service import IntegrationService
-from shared.models.typed_dict import TypedDictModel
 
 
 class CRMSyncScheduler_get_statusResult(TypedDictModel):

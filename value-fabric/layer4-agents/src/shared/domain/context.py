@@ -8,8 +8,9 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
+
 from shared.models.typed_dict import TypedDictModel
 
 
@@ -46,12 +47,12 @@ class TenantContext:
         source: How the context was authenticated (jwt, api_key, service)
     """
     tenant_id: UUID
-    user_id: Optional[str] = None
+    user_id: str | None = None
     roles: list[str] = field(default_factory=list)
     source: str = "unknown"
     
     @classmethod
-    def from_request_context(cls) -> "TenantContext":
+    def from_request_context(cls) -> TenantContext:
         """Extract tenant context from the current request context.
         
         This method retrieves the context from GovernanceMiddleware's
@@ -86,7 +87,7 @@ class TenantContext:
             ) from e
     
     @classmethod
-    def from_explicit_tenant_id(cls, tenant_id: UUID | str, user_id: Optional[str] = None) -> "TenantContext":
+    def from_explicit_tenant_id(cls, tenant_id: UUID | str, user_id: str | None = None) -> TenantContext:
         """Create context from explicit tenant_id (for service-to-service calls).
         
         Use with caution - only for internal service calls where tenant_id
@@ -107,7 +108,7 @@ class TenantContext:
         """
         return f"{node_alias}.tenant_id = '{self.tenant_id}'"
     
-    def to_metadata_filter(self) -> Dict[str, Any]:
+    def to_metadata_filter(self) -> dict[str, Any]:
         """Generate metadata filter for vector store queries.
         
         Returns:
@@ -140,7 +141,7 @@ def get_current_tenant_context() -> TenantContext:
     return TenantContext.from_request_context()
 
 
-def get_current_tenant_context_optional() -> Optional[TenantContext]:
+def get_current_tenant_context_optional() -> TenantContext | None:
     """Get tenant context if available, None otherwise.
     
     Use only for operations where tenant scoping is optional (rare).

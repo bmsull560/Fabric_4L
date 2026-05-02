@@ -11,10 +11,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from shared.models.typed_dict import TypedDictModel
 
 from layer2_extraction.models import ExtractionResult
 from layer2_extraction.output.rdf_generator import generate_rdf
-from shared.models.typed_dict import TypedDictModel
 
 
 class Layer3KnowledgeClient_detailed_health_checkResult(TypedDictModel):

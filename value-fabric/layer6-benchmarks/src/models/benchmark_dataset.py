@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, Optional
+
 from shared.models.typed_dict import TypedDictModel
 
 

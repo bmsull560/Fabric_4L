@@ -11,11 +11,11 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from .constraints import CONSTRAINTS, INDEXES, TENANT_CONSTRAINTS, Constraint, Index
-from shared.models.typed_dict import TypedDictModel
 
 
 class SchemaInitializer_health_checkResult(TypedDictModel):

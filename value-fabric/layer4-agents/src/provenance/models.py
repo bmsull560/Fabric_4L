@@ -24,16 +24,16 @@ class PROVNamespace_get_prefixesResult(TypedDictModel):
     xsd: Any
 
 class PROVEntity_to_dictResult(TypedDictModel):
-    @id: Any
-    @type: Any
+    id_: Any
+    type_: Any
     attributes: Any
     generatedAt: Any
     generatedBy: Any
     label: Any
 
 class PROVActivity_to_dictResult(TypedDictModel):
-    @id: Any
-    @type: Any
+    id_: Any
+    type_: Any
     associatedWith: Any
     attributes: Any
     endedAt: Any
@@ -43,8 +43,8 @@ class PROVActivity_to_dictResult(TypedDictModel):
     used: Any
 
 class PROVAgent_to_dictResult(TypedDictModel):
-    @id: Any
-    @type: Any
+    id_: Any
+    type_: Any
     actedOnBehalfOf: Any
     attributes: Any
     label: Any

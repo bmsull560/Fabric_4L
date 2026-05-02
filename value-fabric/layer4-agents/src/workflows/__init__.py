@@ -1,10 +1,11 @@
 """Workflows package for Layer 4 Agentic Workflow Engine."""
 
+from shared.models.typed_dict import TypedDictModel
+
 from .base import BaseWorkflow, NodeExecutionError, WorkflowBuilder, WorkflowError
 from .business_case import BusinessCaseGeneratorWorkflow
 from .roi_calculator import ROICalculatorWorkflow
 from .whitespace import WhitespaceAnalysisWorkflow
-from shared.models.typed_dict import TypedDictModel
 
 
 class list_workflow_typesResult(TypedDictModel):

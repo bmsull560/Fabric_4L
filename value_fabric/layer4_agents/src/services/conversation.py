@@ -22,7 +22,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from shared.audit.emitter import emit_audit_event
@@ -223,7 +223,7 @@ class ConversationService:
                 "tenant_id": tenant_id,
                 "tool_name": "valuepilot_conversation",
                 "audit_event_id": audit_event_id,
-                "emitted_at": datetime.now(timezone.utc).isoformat(),
+                "emitted_at": datetime.now(UTC).isoformat(),
                 "intent": intent,
                 "confidence": confidence,
                 "workflow_triggered": workflow_result is not None,

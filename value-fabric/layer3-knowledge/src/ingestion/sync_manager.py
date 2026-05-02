@@ -5,10 +5,10 @@ import logging
 from datetime import datetime
 
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
 from .neo4j_loader import Neo4jLoader, RDFLoadError
-from shared.models.typed_dict import TypedDictModel
 
 
 class SyncManager_sync_extraction_resultResult(TypedDictModel):

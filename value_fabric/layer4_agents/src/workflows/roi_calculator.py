@@ -2,11 +2,12 @@
 
 from typing import Any
 
+from shared.models.typed_dict import TypedDictModel
+
 from ..models.agent_state import ROIAgentState, ROIInputData, ROIResult, WorkflowStatus
 from ..models.workflow_config import ROI_WORKFLOW_CONFIG
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
-from shared.models.typed_dict import TypedDictModel
 
 
 class ROICalculatorWorkflow__execute_get_prospect_dataResult(TypedDictModel):

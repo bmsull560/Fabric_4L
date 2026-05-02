@@ -729,10 +729,10 @@ class SpanLink_to_dictResult(TypedDictModel):
     trace_id: Any
 
 class Tracer_create_trace_context_headersResult(TypedDictModel):
-    X-Parent-Span-Id: bool | None = None
-    X-Span-Id: Any | None = None
-    X-Trace-Id: Any | None = None
-    X-Trace-Sampled: Any | None = None
+    x_parent_span_id: bool | None = None
+    x_span_id: Any | None = None
+    x_trace_id: Any | None = None
+    x_trace_sampled: Any | None = None
 
 class Tracer_get_trace_summaryResult(TypedDictModel):
     active_spans: Any

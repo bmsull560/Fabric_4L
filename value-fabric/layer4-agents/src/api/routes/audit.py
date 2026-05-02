@@ -4,7 +4,6 @@ This module provides a stub implementation of the L3 audit logs endpoint
 for use in local development where only L4 is running.
 """
 
-from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Query

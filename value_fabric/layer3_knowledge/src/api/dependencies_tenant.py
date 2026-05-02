@@ -31,7 +31,7 @@ except ImportError:
 
 
 try:
-    from shared.audit import emit_audit_event, AuditAction, AuditOutcome
+    from shared.audit import AuditAction, AuditOutcome, emit_audit_event
     AUDIT_AVAILABLE = True
 except ImportError:
     AUDIT_AVAILABLE = False
@@ -136,7 +136,7 @@ class Neo4jTenantSession:
 
 async def get_neo4j_with_tenant(
     request: Request,
-    context: "RequestContext" = Depends(get_request_context),  # type: ignore
+    context: RequestContext = Depends(get_request_context),  # type: ignore
 ) -> Neo4jTenantSession:
     """FastAPI dependency for Neo4j session with tenant context (Sprint 5).
 
@@ -200,7 +200,7 @@ async def get_neo4j_with_tenant(
 
 async def get_neo4j_with_optional_tenant(
     request: Request,
-    context: "RequestContext" = Depends(get_request_context),  # type: ignore
+    context: RequestContext = Depends(get_request_context),  # type: ignore
 ) -> Neo4jTenantSession:
     """Neo4j session with optional tenant for super-admin operations (Sprint 5).
 

@@ -221,10 +221,10 @@ async def close_db() -> None:
 # Sprint 5: Context-aware database session for async layers (Task 5.2.2)
 # ---------------------------------------------------------------------------
 
+from uuid import UUID
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import text
-
-from uuid import UUID
 
 try:
     from shared.identity.context import RequestContext

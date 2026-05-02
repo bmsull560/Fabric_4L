@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from shared.models.typed_dict import TypedDictModel
 
 
 class UsageTrackingService_get_current_month_usageResult(TypedDictModel):
@@ -21,7 +20,7 @@ class UsageTrackingService_get_current_month_usageResult(TypedDictModel):
     period: str
 
 if TYPE_CHECKING:
-    from ..database import AsyncSession as DBSession
+    pass
 
 logger = logging.getLogger(__name__)
 

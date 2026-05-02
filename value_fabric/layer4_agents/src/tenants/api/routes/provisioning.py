@@ -15,15 +15,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated, require_super_admin
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....database import get_db_from_context
 from ...provisioning import (
-    ProvisioningState,
     ProvisioningStatus,
     TenantProvisioningService,
     provision_tenant,

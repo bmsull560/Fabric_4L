@@ -16,13 +16,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from shared.models.typed_dict import TypedDictModel
 
 from shared.security.dil_auth import (
+    VALID_HYPOTHESIS_STATUSES,
     get_verified_tenant_id,
     validate_enum_value,
-    VALID_HYPOTHESIS_STATUSES,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class generate_hypothesesResult(TypedDictModel):

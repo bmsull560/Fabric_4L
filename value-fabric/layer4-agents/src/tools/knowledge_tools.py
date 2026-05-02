@@ -22,12 +22,11 @@ from ..models.tool_schemas import (
     TraverseTreeInput,
     TraverseTreeOutput,
 )
-from .registry import BaseTool
 from ..shared.domain.context import (
-    TenantContext,
     TenantContextError,
     get_current_tenant_context,
 )
+from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
 

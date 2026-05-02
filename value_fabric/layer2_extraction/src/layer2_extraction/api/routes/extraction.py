@@ -87,7 +87,6 @@ async def extract_signals(
     Returns:
         SignalExtractionResponse with extracted signals
     """
-    import time
 
     from layer2_extraction.extraction.prompts import load_prompt
     from layer2_extraction.models.operational_signal_extraction import (

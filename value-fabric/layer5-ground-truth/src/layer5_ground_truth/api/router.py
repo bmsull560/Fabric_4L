@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
@@ -49,7 +50,6 @@ from .schemas import (
     ValidateResponse,
     ValidationEventResponse,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class sync_to_kgResult(TypedDictModel):

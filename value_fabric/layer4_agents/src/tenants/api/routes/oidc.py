@@ -18,11 +18,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.jwt import encode_jwt
-from shared.identity.oidc import OIDCClient, map_role_from_claims
 from shared.identity.oidc_config import OIDCProviderConfig
 from shared.identity.permissions import Role
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from shared.identity.oidc import OIDCClient, map_role_from_claims
 
 # SECURITY: OIDC login/callback endpoints are pre-authentication flows.
 # The user does not yet have a JWT, so get_db (no tenant context) is
@@ -30,7 +32,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ....database import get_db_from_context
 from ....tenants.models.tenant import Tenant
 from ....tenants.models.user import User
-from shared.models.typed_dict import TypedDictModel
 
 
 class oidc_loginResult(TypedDictModel):

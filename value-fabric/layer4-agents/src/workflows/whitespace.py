@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from shared.identity.context import require_context
+from shared.models.typed_dict import TypedDictModel
 
 from ..metrics import get_metrics
 from ..metrics.llm_cost_calculator import LLMCostCalculator
@@ -18,7 +19,6 @@ from ..models.workflow_config import WHITESPACE_WORKFLOW_CONFIG
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
-from shared.models.typed_dict import TypedDictModel
 
 
 class WhitespaceAnalysisWorkflow__execute_analyze_prospectResult(TypedDictModel):

@@ -22,10 +22,10 @@ from typing import Any
 
 from neo4j import AsyncDriver
 from neo4j.exceptions import ClientError, ServiceUnavailable
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
-from shared.models.typed_dict import TypedDictModel
 
 
 class Neo4jVectorStore_index_healthResult(TypedDictModel):

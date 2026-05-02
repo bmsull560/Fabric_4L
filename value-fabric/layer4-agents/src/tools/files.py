@@ -99,7 +99,7 @@ async def read_file(
 
     try:
         return validated_path.read_text(encoding="utf-8")
-    except (IOError, UnicodeDecodeError) as e:
+    except (OSError, UnicodeDecodeError) as e:
         logger.error(
             "Failed to read file",
             extra={"file_path": str(validated_path), "tenant_id": tenant_id, "error": str(e)}

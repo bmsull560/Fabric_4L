@@ -16,8 +16,6 @@ Architecture:
 - L3 graph    = downstream projection (deferred — orchestrator writes to L4 only)
 """
 
-import asyncio
-import re
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
@@ -25,12 +23,13 @@ from uuid import UUID
 
 import httpx
 import structlog
-from sqlalchemy import select, update
+from shared.models.typed_dict import TypedDictModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.security.dil_auth import SSRFBlockedError, validate_url_safe
+
 from ..models.account import Account
-from shared.models.typed_dict import TypedDictModel
 
 
 class EnrichmentOrchestrator_enrich_accountResult(TypedDictModel):

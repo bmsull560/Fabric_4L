@@ -7,10 +7,11 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 from shared.audit import AuditAction, AuditEmitter, emit_audit_event
 from shared.identity.context import RequestContext
-from shared.identity.dependencies import get_optional_context, require_authenticated
+from shared.identity.dependencies import require_authenticated
+from shared.models.typed_dict import TypedDictModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...config.settings import settings
 from ...database import get_db_from_context
@@ -20,7 +21,6 @@ from ...services.account_service import AccountService
 from ...services.business_case_service import BusinessCaseService
 from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
-from shared.models.typed_dict import TypedDictModel
 
 
 class export_business_caseResult(TypedDictModel):
@@ -593,6 +593,7 @@ async def list_cases(
     Returns all cases associated with the specified account.
     """
     from sqlalchemy import select
+
     from ...models.business_case_record import BusinessCaseRecord
 
     result = await db.execute(
@@ -720,7 +721,6 @@ async def generate_workspace_intelligence(
     Triggers AI workflows to populate signals, drivers, evidence, and stakeholders
     based on account enrichment data.
     """
-    from sqlalchemy import select
     from ...models.business_case_record import BusinessCaseRecord
 
     # Get case and account info

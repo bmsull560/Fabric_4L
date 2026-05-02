@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
 
 from ..interfaces.formula_governance import (
     ActivationRequest,
@@ -22,7 +23,6 @@ from ..interfaces.formula_governance import (
     IFormulaGovernanceService,
 )
 from ..metrics import get_metrics
-from shared.models.typed_dict import TypedDictModel
 
 
 class Neo4jFormulaGovernanceService_validate_activationResult(TypedDictModel):

@@ -1,11 +1,11 @@
 """Database connection management."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import asyncpg
 
-from .config import get_db_pool, close_db_pool
+from .config import close_db_pool, get_db_pool
 
 
 @asynccontextmanager

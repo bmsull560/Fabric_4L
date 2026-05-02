@@ -9,7 +9,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from ..dependencies import AppState, get_app_state, _extract_tenant_id
+from ..dependencies import AppState, _extract_tenant_id, get_app_state
 
 router = APIRouter()
 

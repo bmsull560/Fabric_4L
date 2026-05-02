@@ -3,9 +3,9 @@
 import logging
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
-from shared.models.typed_dict import TypedDictModel
 
 
 class CentralityAnalyzer__fallback_centralityResult(TypedDictModel):

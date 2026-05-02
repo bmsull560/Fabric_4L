@@ -2,13 +2,13 @@
 
 import os
 from functools import lru_cache
-from typing import List
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from shared.secrets import load_infisical_secrets
+
 try:
     load_infisical_secrets()
 except Exception:
@@ -82,7 +82,7 @@ class Settings(BaseSettings):
 
     # Security Configuration
     jwt_secret: str = Field(default="changeme", alias="JWT_SECRET")
-    cors_origins: List[str] = Field(default=["*"], alias="CORS_ORIGINS")
+    cors_origins: list[str] = Field(default=["*"], alias="CORS_ORIGINS")
 
     @field_validator("jwt_secret")
     @classmethod
@@ -98,7 +98,7 @@ class Settings(BaseSettings):
 
     @field_validator("cors_origins")
     @classmethod
-    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
         """Validate CORS origins are secure."""
         if os.getenv("ENVIRONMENT") == "production":
             if "*" in v:

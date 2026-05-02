@@ -8,11 +8,10 @@ import os
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from uuid import UUID
 
 import httpx
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class EmailConfig(BaseModel):
         return v
 
     @classmethod
-    def from_env(cls) -> "EmailConfig":
+    def from_env(cls) -> EmailConfig:
         port_str = os.getenv("SMTP_PORT", "587")
         try:
             port = int(port_str)

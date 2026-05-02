@@ -15,8 +15,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from .base import AgentResult, BaseAgent
 from shared.models.typed_dict import TypedDictModel
+
+from .base import AgentResult, BaseAgent
 
 
 class NarrativeSynthesisAgent__generate_executive_summaryResult(TypedDictModel):

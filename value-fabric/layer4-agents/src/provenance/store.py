@@ -10,8 +10,9 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
-from .models import PROVGraph
 from shared.models.typed_dict import TypedDictModel
+
+from .models import PROVGraph
 
 
 class InMemoryTripleStore_get_lineageResult(TypedDictModel):

@@ -4,10 +4,10 @@ import logging
 from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
 from ..retrieval.vector_store import VectorStore
-from shared.models.typed_dict import TypedDictModel
 
 
 class SimilarityAnalyzer_compare_entitiesResult(TypedDictModel):

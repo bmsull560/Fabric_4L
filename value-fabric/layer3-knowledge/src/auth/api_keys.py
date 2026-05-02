@@ -19,9 +19,9 @@ from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+from shared.models.typed_dict import TypedDictModel
 
 from ..logging_config import get_logger
-from shared.models.typed_dict import TypedDictModel
 
 
 class APIKeyManager_get_usage_statisticsResult(TypedDictModel):

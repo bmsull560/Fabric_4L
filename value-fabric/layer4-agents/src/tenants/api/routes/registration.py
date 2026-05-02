@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # is intentional. Tenant isolation begins AFTER registration completes.
 from ....database import get_db_from_context
 from ...email_verification import EmailVerificationService
-from ...models.tenant import Tenant, IsolationTier
-from ...provisioning import TenantProvisioningService, ProvisioningStatus
+from ...models.tenant import IsolationTier
+from ...provisioning import ProvisioningStatus, TenantProvisioningService
 from ...service import create_tenant, get_tenant_by_slug
 from ...tiers import get_public_tiers, get_tier_config
 
@@ -124,7 +124,7 @@ async def register_tenant(
         )
 
     # Create tenant
-    from shared.identity.models import TenantCreateRequest, TenantStatus
+    from shared.identity.models import TenantCreateRequest
 
     create_request = TenantCreateRequest(
         name=request.name,

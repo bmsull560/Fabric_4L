@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, HTTPException, Request, status
 
-from src.security import QueryValidator, UnscopedQueryError, create_validated_session
+from src.security import QueryValidator, UnscopedQueryError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -86,7 +86,7 @@ class Neo4jTenantSessionSecured:
         self._validator = get_query_validator()
         self._session: AsyncSession | None = None
     
-    async def __aenter__(self) -> "Neo4jTenantSessionSecured":
+    async def __aenter__(self) -> Neo4jTenantSessionSecured:
         """Enter async context and create underlying session."""
         self._session = self._driver.session()
         return self
@@ -146,7 +146,7 @@ class Neo4jTenantSessionSecured:
 
 async def get_neo4j_secured(
     request: Request,
-    context: "RequestContext" = Depends(get_request_context),
+    context: RequestContext = Depends(get_request_context),
 ) -> Neo4jTenantSessionSecured:
     """FastAPI dependency for secured, tenant-scoped Neo4j sessions.
     
@@ -204,7 +204,7 @@ async def get_neo4j_secured(
 
 async def get_neo4j_with_validation(
     request: Request,
-    context: "RequestContext" = Depends(get_request_context),
+    context: RequestContext = Depends(get_request_context),
 ) -> Neo4jTenantSessionSecured:
     """Alias for get_neo4j_secured - explicit validation naming.
     

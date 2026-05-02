@@ -12,10 +12,9 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db_from_context
 from ...models.account import CRMProvider, SyncStatus
@@ -27,8 +26,8 @@ from ..schemas.accounts import (
     AccountListItemSchema,
     AccountListResponse,
     AccountSearchRequest,
-    CreateAccountRequest,
     ContactSchema,
+    CreateAccountRequest,
     OpportunitySchema,
     SyncAccountsRequest,
     SyncAccountsResponse,

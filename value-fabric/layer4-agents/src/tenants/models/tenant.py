@@ -144,7 +144,7 @@ class Tenant(Base):
     )
 
     # Relationship to tier history (Task 4.1)
-    tier_history: Mapped[list["TenantIsolationTierHistory"]] = relationship(
+    tier_history: Mapped[list[TenantIsolationTierHistory]] = relationship(
         "TenantIsolationTierHistory",
         back_populates="tenant",
         order_by="desc(TenantIsolationTierHistory.changed_at)",

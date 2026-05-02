@@ -10,10 +10,6 @@ from .extraction_response import (
     UseCaseExtractionResponse,
     ValueDriverExtractionResponse,
 )
-from .operational_signal_extraction import (
-    ExtractionMetadata,
-    OperationalSignal,
-)
 from .ontology import (
     Capability,
     ExtractionResult,
@@ -24,6 +20,10 @@ from .ontology import (
     UseCase,
     ValueCategory,
     ValueDriver,
+)
+from .operational_signal_extraction import (
+    ExtractionMetadata,
+    OperationalSignal,
 )
 from .relationships import (
     BenefitType,

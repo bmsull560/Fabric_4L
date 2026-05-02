@@ -13,19 +13,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from shared.audit import AuditAction, AuditEmitter, AuditOutcome
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
 
 from ...agents.signal_detection import SignalDetectionAgent
-from ...messaging.signal_events import (
-    SignalCompletedEvent,
-    SignalDiscoveredEvent,
-    SignalFailedEvent,
-    SignalStreamCompleteEvent,
-)
-from ...models.pain_signal import PainSignal, SignalCategory
 
 logger = logging.getLogger(__name__)
 
@@ -312,8 +305,9 @@ async def signal_stream_websocket(
         prospect_id: Prospect/account ID to stream signals for
     """
     # P0-9 FIX: Authenticate WebSocket before accepting
-    from shared.identity.jwt import decode_jwt
     import os
+
+    from shared.identity.jwt import decode_jwt
 
     token = websocket.query_params.get("token")
     if not token:

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def cleanup_expired_oidc_sessions(db: "AsyncSession") -> int:
+async def cleanup_expired_oidc_sessions(db: AsyncSession) -> int:
     """Delete expired OIDC sessions from the database.
 
     Args:
@@ -126,7 +126,7 @@ class OIDCCleanupTask:
                         self._stop_event.wait(),
                         timeout=self._interval_seconds,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Normal timeout - continue to next cleanup
                     pass
 

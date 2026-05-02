@@ -1,7 +1,8 @@
 """Shared dependencies for Layer 6 API."""
 
-from fastapi import Query, Request
 from typing import TYPE_CHECKING
+
+from fastapi import Query, Request
 
 if TYPE_CHECKING:
     from shared.identity.context import RequestContext

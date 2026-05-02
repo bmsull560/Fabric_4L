@@ -6,10 +6,10 @@ from collections import defaultdict, deque
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
+from shared.models.typed_dict import TypedDictModel
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..logging_config import get_logger
-from shared.models.typed_dict import TypedDictModel
 
 
 class RateLimitMiddleware_get_statsResult(TypedDictModel):

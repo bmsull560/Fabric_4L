@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 from shared.crypto.canonical import canonical_hash
-
 from shared.identity.context import RequestContext
+from shared.models.typed_dict import TypedDictModel
 
 from ..config.settings import settings
-from shared.models.typed_dict import TypedDictModel
 
 
 class _normalize_source_pointerResult(TypedDictModel):

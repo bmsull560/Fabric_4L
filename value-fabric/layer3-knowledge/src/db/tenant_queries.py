@@ -18,7 +18,8 @@ Usage:
     rels = await get_relationships_for_entity(session, entity_id="abc123", tenant_id="tenant-1")
 """
 
-from typing import Any, Optional
+from typing import Any
+
 from neo4j import AsyncSession
 from shared.models.typed_dict import TypedDictModel
 
@@ -39,7 +40,7 @@ async def get_entity_by_id(
     entity_id: str,
     tenant_id: str,
     include_properties: bool = True,
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Retrieve a single entity by ID with mandatory tenant filtering.
     
@@ -163,7 +164,7 @@ async def get_relationships_for_entity(
 async def search_entities(
     session: AsyncSession,
     tenant_id: str,
-    entity_types: Optional[list[str]] = None,
+    entity_types: list[str] | None = None,
     min_confidence: float = 0.0,
     limit: int = 100,
     offset: int = 0,
@@ -229,7 +230,7 @@ async def get_entity_context(
     tenant_id: str,
     hops: int = 2,
     min_confidence: float = 0.0,
-    relationship_types: Optional[list[str]] = None,
+    relationship_types: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Get entity with N-hop neighborhood context, tenant-scoped.

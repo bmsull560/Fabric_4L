@@ -9,12 +9,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config.plans import USAGE_LIMITS, Plan, UsageLimit, get_plan
+from ..config.plans import Plan, get_plan
 from ..models.billing import BillingSubscription, BillingUsageEvent, UsageEventStatus
-from shared.models.typed_dict import TypedDictModel
 
 
 class OverageService_get_plan_limitsResult(TypedDictModel):

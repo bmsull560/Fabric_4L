@@ -8,13 +8,13 @@ All credentials are encrypted at rest and never returned in API responses.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ...database import get_db_from_context
 from ...models.account import CRMProvider
 from ...services.integration_service import (

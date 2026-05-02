@@ -12,7 +12,7 @@ architectural decomposition effort (Weakness #3).
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...logging_config import get_logger
 from ..dependencies import (

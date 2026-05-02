@@ -542,7 +542,7 @@ async def evaluate_formula(
         # Calculate result using safe evaluation
         try:
             result = evaluate_expression(expression, inputs_dict)
-        except Exception as e:
+        except Exception:
             raise HTTPException(
                 status_code=400, detail="Formula evaluation failed. Check expression syntax and variable values."
             )
@@ -723,7 +723,6 @@ async def calculate_scenario(
     This endpoint enables interactive "what-if" analysis by recalculating
     ROI and payback metrics based on adjusted input variables.
     """
-    import logging
 
     logger = logging.getLogger(__name__)
 
@@ -776,7 +775,7 @@ async def calculate_scenario(
             warnings=warnings,
         )
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=400, detail="Scenario calculation failed. Please check inputs and try again."
         )

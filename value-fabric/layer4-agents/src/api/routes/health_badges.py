@@ -13,10 +13,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from shared.models.typed_dict import TypedDictModel
 
 from ...api.websocket import get_ws_manager
 from ...services.health_tracker import HealthStatus, HealthTracker, get_health_tracker
-from shared.models.typed_dict import TypedDictModel
 
 
 class report_connection_qualityResult(TypedDictModel):

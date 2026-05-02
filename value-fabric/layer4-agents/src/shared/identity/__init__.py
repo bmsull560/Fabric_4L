@@ -1,8 +1,8 @@
 """Identity and authentication shared components."""
 
 from oidc import (
-    OIDCClient,
     OIDCClaims,
+    OIDCClient,
     OIDCProviderConfig,
     OIDCStateStore,
     OIDCTokenSet,

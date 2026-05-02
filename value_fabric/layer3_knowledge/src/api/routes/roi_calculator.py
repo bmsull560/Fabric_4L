@@ -14,7 +14,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-
 from shared.security.dil_auth import get_verified_tenant_id
 
 router = APIRouter(prefix="/roi", tags=["ROI Calculator"])
@@ -239,7 +238,10 @@ async def create_template(
     tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Create a new ROI calculation template."""
-    from ...services.roi_calculator_service import ROICalculatorService, ROITemplateCreate
+    from ...services.roi_calculator_service import (
+        ROICalculatorService,
+        ROITemplateCreate,
+    )
 
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)

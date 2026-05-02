@@ -67,7 +67,7 @@ class TenantSettings(BaseModel):
     # billing: BillingSettings = Field(default_factory=BillingSettings)
 
     @classmethod
-    def from_json(cls, data: dict | None) -> "TenantSettings":
+    def from_json(cls, data: dict | None) -> TenantSettings:
         """Parse tenant settings from JSONB dict.
 
         Args:

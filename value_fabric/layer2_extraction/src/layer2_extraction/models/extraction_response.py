@@ -7,7 +7,6 @@ They wrap the ontology models for use with OpenAI's structured outputs API.
 from pydantic import BaseModel, ConfigDict, Field
 
 from .ontology import Capability, Feature, Persona, UseCase, ValueDriver
-from .operational_signal_extraction import OperationalSignalExtractionResponse
 from .relationships import Relationship
 
 

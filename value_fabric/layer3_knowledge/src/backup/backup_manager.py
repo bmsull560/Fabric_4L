@@ -19,8 +19,9 @@ except ImportError:
     HAS_CRYPTOGRAPHY = False
     Fernet = None  # type: ignore
 
-from ..logging_config import get_logger
 from shared.models.typed_dict import TypedDictModel
+
+from ..logging_config import get_logger
 
 
 class BackupMetadata_to_dictResult(TypedDictModel):

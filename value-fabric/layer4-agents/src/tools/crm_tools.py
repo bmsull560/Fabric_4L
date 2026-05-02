@@ -21,6 +21,7 @@ from ..models.tool_schemas import (
     UpdateOpportunityInput,
     UpdateOpportunityOutput,
 )
+from ..metrics import get_metrics
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,78 @@ class GetProspectDataTool(BaseTool):
                 headers["Authorization"] = f"Bearer {self.api_key}"
             self._client = httpx.AsyncClient(headers=headers, timeout=30.0)
         return self._client
+
+    @staticmethod
+    def _check_salesforce_rate_limit(response: httpx.Response) -> None:
+        """Check Salesforce rate limit headers and log warnings.
+
+        Salesforce returns rate limit info in the Sforce-Limit-Info header.
+        Example: api-usage=18/50000
+        """
+        limit_info = response.headers.get("Sforce-Limit-Info")
+        if limit_info:
+            logger.debug("Salesforce rate limit info: %s", limit_info)
+
+    async def _execute_soql_query(
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        max_pages: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Execute a SOQL query with pagination support.
+
+        Args:
+            client: HTTP client
+            query: SOQL query string
+            max_pages: Maximum number of pages to fetch (safety limit)
+
+        Returns:
+            Combined list of records from all pages
+        """
+        all_records: list[dict[str, Any]] = []
+        query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(query)}"
+        pages_fetched = 0
+
+        while query_url and pages_fetched < max_pages:
+            response = await client.get(query_url)
+
+            # Check rate limits
+            self._check_salesforce_rate_limit(response)
+
+            if response.status_code == 429:
+                logger.warning("Salesforce rate limit hit (429)")
+                # Return what we have so far rather than failing completely
+                break
+
+            if response.status_code != 200:
+                logger.error(
+                    "Salesforce SOQL query failed: %s %s",
+                    response.status_code,
+                    response.text[:200],
+                )
+                break
+
+            data = response.json()
+            records = data.get("records", [])
+            all_records.extend(records)
+
+            # Check for next page
+            next_url = data.get("nextRecordsUrl")
+            if next_url:
+                query_url = f"{self.instance_url}{next_url}"
+            else:
+                query_url = None
+
+            pages_fetched += 1
+
+        if pages_fetched >= max_pages and query_url:
+            logger.warning(
+                "Salesforce SOQL query reached max_pages limit (%s). "
+                "Some records may not have been fetched.",
+                max_pages,
+            )
+
+        return all_records
 
     async def execute(self, input_data: GetProspectDataInput) -> GetProspectDataOutput:
         """Get prospect data from CRM."""
@@ -131,6 +204,7 @@ class GetProspectDataTool(BaseTool):
         if "profile" in input_data.data_types:
             account_url = f"{self.instance_url}/services/data/v58.0/sobjects/Account/{prospect_id}"
             response = await client.get(account_url)
+            self._check_salesforce_rate_limit(response)
             if response.status_code == 200:
                 data = response.json()
                 result.profile = {
@@ -145,47 +219,43 @@ class GetProspectDataTool(BaseTool):
                     "employees": data.get("NumberOfEmployees"),
                     "segment": data.get("Type"),
                 }
+            elif response.status_code == 429:
+                logger.warning("Salesforce rate limit hit during profile fetch")
 
-        # Fetch opportunities
+        # Fetch opportunities with pagination
         if "opportunities" in input_data.data_types:
             safe_id = self._soql_safe_id(prospect_id)
             opp_query = f"SELECT Id, Name, StageName, Amount, Probability, CloseDate FROM Opportunity WHERE AccountId = '{safe_id}'"
-            query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(opp_query)}"
-            response = await client.get(query_url)
-            if response.status_code == 200:
-                data = response.json()
-                result.opportunities = [
-                    {
-                        "id": rec.get("Id"),
-                        "name": rec.get("Name"),
-                        "stage": rec.get("StageName"),
-                        "value": rec.get("Amount"),
-                        "probability": rec.get("Probability") / 100
-                        if rec.get("Probability")
-                        else 0,
-                        "close_date": rec.get("CloseDate"),
-                    }
-                    for rec in data.get("records", [])
-                ]
+            opp_records = await self._execute_soql_query(client, opp_query)
+            result.opportunities = [
+                {
+                    "id": rec.get("Id"),
+                    "name": rec.get("Name"),
+                    "stage": rec.get("StageName"),
+                    "value": rec.get("Amount"),
+                    "probability": rec.get("Probability") / 100
+                    if rec.get("Probability")
+                    else 0,
+                    "close_date": rec.get("CloseDate"),
+                }
+                for rec in opp_records
+            ]
 
-        # Fetch interactions (activities)
+        # Fetch interactions (activities) with pagination
         if "interactions" in input_data.data_types:
             safe_id = self._soql_safe_id(prospect_id)
             task_query = f"SELECT Id, Subject, ActivityDate, Status, Description FROM Task WHERE WhatId = '{safe_id}' ORDER BY ActivityDate DESC"
-            query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(task_query)}"
-            response = await client.get(query_url)
-            if response.status_code == 200:
-                data = response.json()
-                result.interactions = [
-                    {
-                        "id": rec.get("Id"),
-                        "type": "task",
-                        "date": rec.get("ActivityDate"),
-                        "subject": rec.get("Subject"),
-                        "outcome": rec.get("Status"),
-                    }
-                    for rec in data.get("records", [])
-                ]
+            task_records = await self._execute_soql_query(client, task_query)
+            result.interactions = [
+                {
+                    "id": rec.get("Id"),
+                    "type": "task",
+                    "date": rec.get("ActivityDate"),
+                    "subject": rec.get("Subject"),
+                    "outcome": rec.get("Status"),
+                }
+                for rec in task_records
+            ]
 
         return result
 

@@ -5,11 +5,11 @@ entitlement checks, and usage-based billing. Includes high-throughput
 usage event ingestion with idempotency and tenant isolation.
 """
 
-from datetime import datetime
 import ipaddress
 import logging
 import os
 import re
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
@@ -101,15 +101,15 @@ def validate_customer_id(customer_id: str) -> str:
         )
     return customer_id
 
+from shared.identity.context import RequestContext
+from shared.identity.dependencies import require_authenticated
+from shared.models.typed_dict import TypedDictModel
+
 from ...database import get_db_from_context
 from ...services.billing_service import BillingService
 from ...services.overage_service import OverageService
 from ...services.stripe_client import StripeError
 from ...services.usage_service import UsageService, UsageValidationError
-
-from shared.identity.context import RequestContext
-from shared.identity.dependencies import require_authenticated
-from shared.models.typed_dict import TypedDictModel
 
 
 class get_subscriptionResult(TypedDictModel):

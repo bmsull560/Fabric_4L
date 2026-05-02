@@ -10,9 +10,7 @@ Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002
 
 from __future__ import annotations
 
-from typing import Any
-
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from shared.security.dil_auth import get_verified_tenant_id
 

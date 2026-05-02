@@ -11,7 +11,7 @@ import logging
 import operator
 import re
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 from neo4j import AsyncDriver

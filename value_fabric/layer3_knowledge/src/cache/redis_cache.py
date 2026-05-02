@@ -3,7 +3,6 @@
 import asyncio
 import hashlib
 import json
-import pickle
 import time
 from collections.abc import Callable
 from functools import wraps
@@ -18,8 +17,9 @@ try:
 except ImportError:
     REDIS_AVAILABLE = False
 
-from ..logging_config import get_logger
 from shared.models.typed_dict import TypedDictModel
+
+from ..logging_config import get_logger
 
 
 class RedisCache_get_statsResult(TypedDictModel):

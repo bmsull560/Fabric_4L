@@ -21,12 +21,12 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-
-from ...services.case_study_service import CaseStudyService, CaseStudy
-from ...services.evidence_search import EvidenceSearchService
-from shared.security.dil_auth import get_verified_tenant_id
-from ..dependencies import get_neo4j_driver
 from shared.models.typed_dict import TypedDictModel
+from shared.security.dil_auth import get_verified_tenant_id
+
+from ...services.case_study_service import CaseStudy, CaseStudyService
+from ...services.evidence_search import EvidenceSearchService
+from ..dependencies import get_neo4j_driver
 
 
 class delete_case_studyResult(TypedDictModel):

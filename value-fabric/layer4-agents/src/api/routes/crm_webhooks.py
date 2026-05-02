@@ -11,9 +11,19 @@ import logging
 import os
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from pydantic import BaseModel, Field, TypeAdapter
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # SECURITY: CRM webhook endpoints are server-to-server calls from
@@ -23,7 +33,6 @@ from ...database import get_db_from_context
 from ...models.account import CRMProvider
 from ...services.crm_sync_service import CRMSyncService
 from ...services.integration_service import IntegrationService
-from shared.models.typed_dict import TypedDictModel
 
 
 class _handle_webhook_errorResult(TypedDictModel):

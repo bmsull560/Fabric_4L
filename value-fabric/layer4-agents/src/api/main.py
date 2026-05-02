@@ -21,11 +21,10 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 # Task 60/61: Shared error handling and request correlation
 from shared.error_handling import RequestIDMiddleware, register_exception_handlers
+
 SHARED_ERROR_HANDLING_AVAILABLE = True
 
 # Shared identity imports
-from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
-
 # Governance middleware replaces the old TenantMiddleware
 # P1-29: OpenTelemetry imports
 from opentelemetry import trace
@@ -34,12 +33,14 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
 
 # Hard imports - fail fast if security components unavailable
 from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.rate_limiter import RedisRateLimiter
 from shared.identity.vault_check import is_vault_healthy
-from shared.security import add_security_middleware, SecurityConfig
+
+from shared.security import SecurityConfig, add_security_middleware
 
 from ..config.checkpoint import CheckpointConfig
 from ..config.settings import settings
@@ -58,6 +59,8 @@ try:
 except ImportError:
     METRICS_ACCESS_AVAILABLE = False
     verify_metrics_access = None
+from shared.models.typed_dict import TypedDictModel
+
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
 from ..tenants import get_tenant_settings, lookup_api_key_by_hash
@@ -71,21 +74,21 @@ from ..tenants.api import (
 )
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
-from .routes import accounts, agent_stream, analysis, audit as audit_router, signals, tools, workflows
-from .routes.enrichment import router as enrichment_router
-from .routes.value_hypotheses import router as value_hypotheses_router
-from .routes.narratives import router as narratives_router
-from .routes.intelligence import router as intelligence_router
+from .routes import accounts, agent_stream, analysis, signals, tools, workflows
+from .routes import audit as audit_router
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
 from .routes.crm_webhooks import router as crm_webhooks_router
+from .routes.enrichment import router as enrichment_router
+from .routes.frontend_compat import router as frontend_compat_router
 from .routes.health_badges import health_badges_router
 from .routes.integrations import router as integrations_router
+from .routes.intelligence import router as intelligence_router
+from .routes.narratives import router as narratives_router
 from .routes.state_inspector import state_inspector_router
-from .routes.frontend_compat import router as frontend_compat_router
+from .routes.value_hypotheses import router as value_hypotheses_router
 from .websocket import get_ws_manager, websocket_router
-from shared.models.typed_dict import TypedDictModel
 
 
 class health_checkResult(TypedDictModel):
@@ -253,7 +256,6 @@ async def lifespan(app: FastAPI):
 
     # Start OIDC session cleanup task (Task 69 gap fix)
     from ..services.oidc_cleanup import create_oidc_cleanup_task
-    from ..database import db_session
 
     global oidc_cleanup_task
     oidc_cleanup_task = await create_oidc_cleanup_task(

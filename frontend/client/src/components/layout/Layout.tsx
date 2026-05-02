@@ -354,7 +354,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
       />
       {!isCollapsed && hasChildren && isOpen && (
         <div className="ml-7 mt-1 space-y-0.5 border-l border-sidebar-border pl-3">
-          {visibleChildren!.map(child => {
+          {(visibleChildren || []).map(child => {
             const childResolved = resolveWorkspaceRoutePath(child.path, selectedAccountId);
             const childActive = currentPath === childResolved || currentPath.startsWith(childResolved + "/");
             return (

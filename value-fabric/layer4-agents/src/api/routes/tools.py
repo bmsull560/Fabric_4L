@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from shared.audit import AuditAction, AuditEmitter, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import text
 
 from ...config.settings import settings
@@ -20,7 +21,6 @@ from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
 from ...tools import create_default_registry
 from ...tools.registry import ToolCategory, ToolRegistry
-from shared.models.typed_dict import TypedDictModel
 
 
 class get_tool_schemaResult(TypedDictModel):
@@ -38,7 +38,7 @@ class list_tool_categoriesResult(TypedDictModel):
 
 try:
     from shared.governance.abom import AgentBillOfMaterials
-    from shared.governance.tool_gateway import ToolGateway, ToolGatewayDenied, InvariantViolation
+    from shared.governance.tool_gateway import InvariantViolation, ToolGateway, ToolGatewayDenied
 
     _GATE_AVAILABLE = True
 except ImportError:

@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 if TYPE_CHECKING:
-    import asyncpg
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 logger = logging.getLogger(__name__)
@@ -70,7 +69,7 @@ class CheckpointConfig:
         return cleaned
 
     @classmethod
-    async def create_saver(cls) -> "AsyncPostgresSaver":
+    async def create_saver(cls) -> AsyncPostgresSaver:
         """Create and initialize AsyncPostgresSaver.
 
         Creates a direct asyncpg connection for LangGraph's PostgresSaver.
@@ -103,7 +102,7 @@ class CheckpointConfig:
         return saver
 
     @classmethod
-    async def close_saver(cls, saver: "AsyncPostgresSaver" | None) -> None:
+    async def close_saver(cls, saver: AsyncPostgresSaver | None) -> None:
         """Close the connection associated with a checkpoint saver.
 
         Args:
@@ -114,7 +113,7 @@ class CheckpointConfig:
 
     @classmethod
     @asynccontextmanager
-    async def get_saver(cls) -> AsyncGenerator["AsyncPostgresSaver", None]:
+    async def get_saver(cls) -> AsyncGenerator[AsyncPostgresSaver, None]:
         """Context manager for short-lived checkpoint saver usage.
 
         Automatically handles connection cleanup on exit.

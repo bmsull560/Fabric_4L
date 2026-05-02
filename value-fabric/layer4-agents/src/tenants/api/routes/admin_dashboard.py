@@ -30,16 +30,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
+from shared.models.typed_dict import TypedDictModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....database import get_db_from_context
 from ...tier_enforcement import TierEnforcement
 from ...usage_tracking import UsageTrackingService
-from shared.models.typed_dict import TypedDictModel
 
 
 class get_tenant_usageResult(TypedDictModel):

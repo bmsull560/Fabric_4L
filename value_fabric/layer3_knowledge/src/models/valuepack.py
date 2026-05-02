@@ -7,7 +7,8 @@ Energy, Retail, Logistics, Public Sector.
 """
 
 from enum import Enum
-from typing import List, Dict, Optional, Any, Literal
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -68,9 +69,9 @@ class EconomicModelType(BaseModel):
     id: str = Field(..., description="Unique identifier")
     name: str = Field(..., description="Model name")
     formula_shape: str = Field(..., description="Input → Calculation → Output structure")
-    inputs: List[str] = Field(default_factory=list, description="Required input variables")
+    inputs: list[str] = Field(default_factory=list, description="Required input variables")
     output_unit: str = Field(..., description="What the output represents")
-    typical_range: Optional[str] = Field(None, description="Typical output range")
+    typical_range: str | None = Field(None, description="Typical output range")
 
 
 class ProofRequirement(BaseModel):
@@ -93,7 +94,7 @@ class EndpointContribution(BaseModel):
     enabled: bool = Field(default=True)
     contribution_summary: str = Field(..., description="What this ValuePack adds")
     data_format: str = Field(..., description="Format of contribution")
-    specific_assets: List[str] = Field(default_factory=list, description="Asset IDs/URLs")
+    specific_assets: list[str] = Field(default_factory=list, description="Asset IDs/URLs")
 
 
 class EndpointMappings(BaseModel):
@@ -110,9 +111,9 @@ class ComposableModelTemplate(BaseModel):
     template_id: str = Field(..., description="Unique template identifier")
     template_name: str = Field(..., description="Human-readable name")
     formula_pattern: str = Field(..., description="Mathematical pattern")
-    inputs_required: List[str] = Field(..., description="Input variables")
+    inputs_required: list[str] = Field(..., description="Input variables")
     output_definition: str = Field(..., description="What this calculates")
-    applicable_industries: List[str] = Field(..., description="Industry IDs using this template")
+    applicable_industries: list[str] = Field(..., description="Industry IDs using this template")
     example_calculation: str = Field(..., description="Concrete example")
 
 
@@ -120,7 +121,7 @@ class OntologyTag(BaseModel):
     """Taxonomy tag for cross-industry linkage."""
     tag: str = Field(..., description="Tag name")
     category: str = Field(..., description="Tag category (driver, model, proof, etc.)")
-    related_tags: List[str] = Field(default_factory=list, description="Related tags")
+    related_tags: list[str] = Field(default_factory=list, description="Related tags")
 
 
 class EconomicNode(BaseModel):
@@ -129,7 +130,7 @@ class EconomicNode(BaseModel):
     node_type: Literal["driver", "intervention", "outcome", "metric"] = Field(...)
     name: str = Field(..., description="Node name")
     description: str = Field(..., description="Node description")
-    default_value: Optional[str] = Field(None, description="Default/typical value")
+    default_value: str | None = Field(None, description="Default/typical value")
 
 
 class EconomicRelationship(BaseModel):
@@ -137,14 +138,14 @@ class EconomicRelationship(BaseModel):
     from_node_id: str = Field(..., description="Source node ID")
     to_node_id: str = Field(..., description="Target node ID")
     relationship_type: Literal["drives", "enables", "measures", "depends_on"] = Field(...)
-    weight: Optional[float] = Field(None, description="Relationship strength 0-1")
-    formula: Optional[str] = Field(None, description="Calculation between nodes")
+    weight: float | None = Field(None, description="Relationship strength 0-1")
+    formula: str | None = Field(None, description="Calculation between nodes")
 
 
 class PreBuiltEconomicGraph(BaseModel):
     """Pre-built driver-tree skeleton with node relationships."""
-    nodes: List[EconomicNode] = Field(..., description="All nodes in the graph")
-    relationships: List[EconomicRelationship] = Field(..., description="Node relationships")
+    nodes: list[EconomicNode] = Field(..., description="All nodes in the graph")
+    relationships: list[EconomicRelationship] = Field(..., description="Node relationships")
     root_node_id: str = Field(..., description="Root node of the graph")
     graph_description: str = Field(..., description="What this graph represents")
 
@@ -153,15 +154,15 @@ class EvidenceHierarchyRule(BaseModel):
     """Validation rule for evidence in this industry."""
     level: EvidenceLevel = Field(..., description="Hierarchy level")
     label: str = Field(..., description="Human-readable label")
-    requirements: List[str] = Field(..., description="Requirements to meet this level")
-    acceptable_sources: List[str] = Field(..., description="Acceptable evidence sources")
+    requirements: list[str] = Field(..., description="Requirements to meet this level")
+    acceptable_sources: list[str] = Field(..., description="Acceptable evidence sources")
 
 
 class EvidenceFramework(BaseModel):
     """Evidence types, hierarchy, and validation rules."""
-    hierarchy: List[EvidenceHierarchyRule] = Field(..., description="Evidence ranking")
+    hierarchy: list[EvidenceHierarchyRule] = Field(..., description="Evidence ranking")
     required_level: EvidenceLevel = Field(..., description="Minimum level for this industry")
-    validation_rules: List[str] = Field(default_factory=list, description="Custom validation")
+    validation_rules: list[str] = Field(default_factory=list, description="Custom validation")
 
 
 class ValuePackMetadata(BaseModel):
@@ -180,31 +181,31 @@ class ValuePackBase(BaseModel):
     display_name: str = Field(..., description="Human-readable industry name")
     description: str = Field(..., description="Industry overview")
     
-    primary_value_drivers: List[ValueDriver] = Field(
+    primary_value_drivers: list[ValueDriver] = Field(
         ..., 
         min_length=1, 
         max_length=4, 
         description="What moves money (max 4)"
     )
-    core_use_cases: List[CoreUseCase] = Field(
+    core_use_cases: list[CoreUseCase] = Field(
         ..., 
         min_length=1, 
         max_length=4, 
         description="What customers buy (max 4)"
     )
-    economic_model_types: List[EconomicModelType] = Field(
+    economic_model_types: list[EconomicModelType] = Field(
         ..., 
         min_length=1, 
         max_length=4, 
         description="How value is calculated (max 4)"
     )
-    proof_requirements: List[ProofRequirement] = Field(
+    proof_requirements: list[ProofRequirement] = Field(
         ..., 
         min_length=1, 
         max_length=3, 
         description="What makes it credible (max 3)"
     )
-    why_it_wins: List[WinStatement] = Field(
+    why_it_wins: list[WinStatement] = Field(
         ..., 
         min_length=1, 
         max_length=3, 
@@ -212,11 +213,11 @@ class ValuePackBase(BaseModel):
     )
     
     endpoint_mappings: EndpointMappings = Field(..., description="5 endpoint contributions")
-    composable_model_templates: List[ComposableModelTemplate] = Field(
+    composable_model_templates: list[ComposableModelTemplate] = Field(
         default_factory=list, 
         description="Reusable calculation patterns"
     )
-    pre_wired_ontology_tags: List[OntologyTag] = Field(
+    pre_wired_ontology_tags: list[OntologyTag] = Field(
         default_factory=list, 
         description="Taxonomy tags"
     )
@@ -227,8 +228,8 @@ class ValuePackBase(BaseModel):
     # System fields
     version: str = Field(default="1.0", description="Schema version")
     is_active: bool = Field(default=True, description="Whether this ValuePack is active")
-    created_at: Optional[str] = Field(None, description="Creation timestamp")
-    updated_at: Optional[str] = Field(None, description="Last update timestamp")
+    created_at: str | None = Field(None, description="Creation timestamp")
+    updated_at: str | None = Field(None, description="Last update timestamp")
     
     @field_validator('primary_value_drivers')
     @classmethod
@@ -253,21 +254,21 @@ class ValuePackCreate(ValuePackBase):
 
 class ValuePackUpdate(BaseModel):
     """Model for updating an existing ValuePack."""
-    tier: Optional[ValuePackTier] = None
-    display_name: Optional[str] = None
-    description: Optional[str] = None
-    primary_value_drivers: Optional[List[ValueDriver]] = None
-    core_use_cases: Optional[List[CoreUseCase]] = None
-    economic_model_types: Optional[List[EconomicModelType]] = None
-    proof_requirements: Optional[List[ProofRequirement]] = None
-    why_it_wins: Optional[List[WinStatement]] = None
-    endpoint_mappings: Optional[EndpointMappings] = None
-    composable_model_templates: Optional[List[ComposableModelTemplate]] = None
-    pre_wired_ontology_tags: Optional[List[OntologyTag]] = None
-    pre_built_economic_graph: Optional[PreBuiltEconomicGraph] = None
-    evidence_framework: Optional[EvidenceFramework] = None
-    metadata: Optional[ValuePackMetadata] = None
-    is_active: Optional[bool] = None
+    tier: ValuePackTier | None = None
+    display_name: str | None = None
+    description: str | None = None
+    primary_value_drivers: list[ValueDriver] | None = None
+    core_use_cases: list[CoreUseCase] | None = None
+    economic_model_types: list[EconomicModelType] | None = None
+    proof_requirements: list[ProofRequirement] | None = None
+    why_it_wins: list[WinStatement] | None = None
+    endpoint_mappings: EndpointMappings | None = None
+    composable_model_templates: list[ComposableModelTemplate] | None = None
+    pre_wired_ontology_tags: list[OntologyTag] | None = None
+    pre_built_economic_graph: PreBuiltEconomicGraph | None = None
+    evidence_framework: EvidenceFramework | None = None
+    metadata: ValuePackMetadata | None = None
+    is_active: bool | None = None
 
 
 class ValuePackInDB(ValuePackBase):
@@ -280,7 +281,7 @@ class ValuePackInDB(ValuePackBase):
 
 class ValuePackResponse(ValuePackBase):
     """Model for ValuePack API responses."""
-    completeness_score: Optional[float] = Field(None, description="Schema completeness 0-1")
+    completeness_score: float | None = Field(None, description="Schema completeness 0-1")
     
     class Config:
         from_attributes = True
@@ -288,7 +289,7 @@ class ValuePackResponse(ValuePackBase):
 
 class ValuePackListResponse(BaseModel):
     """Paginated list of ValuePacks."""
-    items: List[ValuePackResponse]
+    items: list[ValuePackResponse]
     total: int
     page: int
     page_size: int
@@ -297,38 +298,38 @@ class ValuePackListResponse(BaseModel):
 
 class ValuePackFilter(BaseModel):
     """Filter parameters for ValuePack queries."""
-    tier: Optional[ValuePackTier] = None
-    tags: Optional[List[str]] = None
-    search: Optional[str] = None
-    is_active: Optional[bool] = True
+    tier: ValuePackTier | None = None
+    tags: list[str] | None = None
+    search: str | None = None
+    is_active: bool | None = True
 
 
 class OntologyMapResponse(BaseModel):
     """Cross-industry ontology map response."""
-    shared_drivers: List[Dict[str, Any]] = Field(..., description="Value drivers appearing across industries")
-    shared_model_types: List[Dict[str, Any]] = Field(..., description="Model types used across industries")
-    shared_proof_patterns: List[Dict[str, Any]] = Field(..., description="Proof patterns used across industries")
-    cross_reference_matrix: Dict[str, Dict[str, int]] = Field(..., description="Overlap density matrix")
+    shared_drivers: list[dict[str, Any]] = Field(..., description="Value drivers appearing across industries")
+    shared_model_types: list[dict[str, Any]] = Field(..., description="Model types used across industries")
+    shared_proof_patterns: list[dict[str, Any]] = Field(..., description="Proof patterns used across industries")
+    cross_reference_matrix: dict[str, dict[str, int]] = Field(..., description="Overlap density matrix")
 
 
 class ComposableTemplateLibraryResponse(BaseModel):
     """Composable template library response."""
-    templates: List[ComposableModelTemplate] = Field(..., description="All reusable templates")
-    template_usage: Dict[str, List[str]] = Field(..., description="Template ID -> Industry IDs using it")
+    templates: list[ComposableModelTemplate] = Field(..., description="All reusable templates")
+    template_usage: dict[str, list[str]] = Field(..., description="Template ID -> Industry IDs using it")
 
 
 class ValuePackComparisonRequest(BaseModel):
     """Request to compare multiple ValuePacks."""
-    industry_ids: List[str] = Field(..., min_length=2, max_length=5, description="Industries to compare")
-    dimensions: Optional[List[str]] = Field(None, description="Specific dimensions to compare")
+    industry_ids: list[str] = Field(..., min_length=2, max_length=5, description="Industries to compare")
+    dimensions: list[str] | None = Field(None, description="Specific dimensions to compare")
 
 
 class ValuePackComparisonResponse(BaseModel):
     """Response for ValuePack comparison."""
-    valuepacks: List[ValuePackResponse] = Field(..., description="Full ValuePack data")
-    comparison_matrix: Dict[str, Dict[str, Any]] = Field(..., description="Dimension-by-dimension comparison")
-    shared_templates: List[str] = Field(..., description="Templates shared between industries")
-    differentiation_analysis: Dict[str, str] = Field(..., description="Analysis of unique aspects")
+    valuepacks: list[ValuePackResponse] = Field(..., description="Full ValuePack data")
+    comparison_matrix: dict[str, dict[str, Any]] = Field(..., description="Dimension-by-dimension comparison")
+    shared_templates: list[str] = Field(..., description="Templates shared between industries")
+    differentiation_analysis: dict[str, str] = Field(..., description="Analysis of unique aspects")
 
 
 # Pre-built data for the 8 industries

@@ -444,13 +444,14 @@ class MaturityLadderResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 # Re-export enums
+from shared.models.typed_dict import TypedDictModel
+
 from ..models.model_registry import (
     DeploymentEnvironment,
     DeploymentStatus,
     ModelCapability,
     ModelProvider,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class TruthSourceResponse_extract_metadataResult(TypedDictModel):

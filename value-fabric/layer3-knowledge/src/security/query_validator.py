@@ -32,6 +32,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+
 from shared.models.typed_dict import TypedDictModel
 
 
@@ -235,7 +236,7 @@ class QueryValidator:
             if 'tenant_id' not in query.lower():
                 self._findings.append(ValidationFinding(
                     severity=ValidationSeverity.ERROR,
-                    message=f"DETACH DELETE without tenant_id filtering detected",
+                    message="DETACH DELETE without tenant_id filtering detected",
                     line_number=self._estimate_line(query, 'DETACH DELETE'),
                     pattern="DETACH DELETE",
                     suggestion="Add MATCH with {tenant_id: $tenant_id} before DELETE"
@@ -267,7 +268,7 @@ class QueryValidator:
             if 'tenant_id' not in where_clause.lower():
                 self._findings.append(ValidationFinding(
                     severity=ValidationSeverity.WARNING,
-                    message=f"WHERE clause may be missing tenant_id filter",
+                    message="WHERE clause may be missing tenant_id filter",
                     line_number=self._estimate_line(query, 'WHERE'),
                     pattern="MATCH (n:Entity) WHERE ...",
                     suggestion="Add AND n.tenant_id = $tenant_id to WHERE clause"

@@ -55,8 +55,8 @@ from .dependencies import (
 try:
     from .dependencies_tenant import (
         Neo4jTenantSession,
-        get_neo4j_with_tenant,
         get_neo4j_with_optional_tenant,
+        get_neo4j_with_tenant,
     )
     NEO4J_TENANT_AVAILABLE = True
 except ImportError:
@@ -81,6 +81,12 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
+from shared.error_handling import RequestIDMiddleware
+from shared.identity.vault_check import is_vault_healthy
+
+# Hard imports - fail fast if security components unavailable
+from shared.security import SecurityConfig, add_security_middleware
+
 from .exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -89,10 +95,7 @@ from .exceptions import (
     ValidationError,
     ValueFabricException,
 )
-# Hard imports - fail fast if security components unavailable
-from shared.security import add_security_middleware, SecurityConfig
-from shared.identity.vault_check import is_vault_healthy
-from shared.error_handling import RequestIDMiddleware
+
 SHARED_ERROR_HANDLING_AVAILABLE = True
 # Import dataclass utilities
 from dataclasses import asdict
@@ -687,8 +690,8 @@ if SecurityConfig and add_security_middleware:
     add_security_middleware(app, config=_security_config_l3)
 
 # GovernanceMiddleware — provides verified JWT + API-key auth for L3 (mandatory)
-from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.api_key_stub import reject_api_key_unsupported
+from shared.identity.middleware import GovernanceMiddleware
 from shared.models.typed_dict import TypedDictModel
 
 

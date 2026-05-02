@@ -18,7 +18,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -27,7 +26,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 try:
-    from shared.security import add_security_middleware, SecurityConfig
+    from shared.security import SecurityConfig, add_security_middleware
 except ImportError:
     add_security_middleware = None
     SecurityConfig = None
@@ -42,9 +41,10 @@ try:
 except ImportError:  # pragma: no cover
     verify_metrics_access = None  # type: ignore[assignment]
 
+from metrics import MetricsMiddleware, get_metrics, initialize_metrics
+
 from ..config import get_settings
 from ..database import close_db, init_db
-from metrics import initialize_metrics, MetricsMiddleware, get_metrics
 from .router import router
 
 # ---------------------------------------------------------------------------

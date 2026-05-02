@@ -122,7 +122,7 @@ function TreeNodeView({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
         <div className="flex flex-col items-center">
           <div className="w-px h-4 bg-neutral-300"/>
           <div className="flex gap-4 items-start">
-            {node.children!.map((child) => (
+            {(node.children || []).map((child) => (
               <div key={child.id} className="flex flex-col items-center">
                 <div className="w-px h-4 bg-neutral-300"/>
                 <TreeNodeView node={child} depth={depth + 1}/>
@@ -154,7 +154,7 @@ function OutlineNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
         <EntityBadge type={node.type}/>
         <span className="text-muted-foreground">{node.label}</span>
       </div>
-      {hasChildren && open && node.children!.map((child) => (
+      {hasChildren && open && (node.children || []).map((child) => (
         <OutlineNode key={child.id} node={child} depth={depth + 1}/>
       ))}
     </div>

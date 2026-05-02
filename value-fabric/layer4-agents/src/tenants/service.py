@@ -40,6 +40,7 @@ except ImportError as e:
         "shared.identity package is required for tenant management. "
         "Install the shared package or set PYTHONPATH to include value-fabric/shared"
     ) from e
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,7 +48,6 @@ from .models.api_key import APIKey
 from .models.isolation_tier_history import TenantIsolationTierHistory
 from .models.tenant import IsolationTier, Tenant
 from .models.user import User
-from shared.models.typed_dict import TypedDictModel
 
 
 class lookup_api_key_by_hashResult(TypedDictModel):

@@ -10,8 +10,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .config.settings import settings
 from shared.models.typed_dict import TypedDictModel
+
+from .config.settings import settings
 
 
 class CircuitBreakerRegistry_get_all_statesResult(TypedDictModel):

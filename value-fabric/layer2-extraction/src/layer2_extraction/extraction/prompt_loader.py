@@ -6,6 +6,7 @@ Loads prompt templates from files and renders them with variable substitution.
 import json
 from pathlib import Path
 from typing import Any
+
 from shared.models.typed_dict import TypedDictModel
 
 

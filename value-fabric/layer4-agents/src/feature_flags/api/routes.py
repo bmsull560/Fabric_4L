@@ -16,11 +16,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from pydantic import BaseModel, ConfigDict, Field
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db_from_context
 from ..service import FeatureFlagService
-from shared.models.typed_dict import TypedDictModel
 
 
 class evaluate_feature_flagResult(TypedDictModel):

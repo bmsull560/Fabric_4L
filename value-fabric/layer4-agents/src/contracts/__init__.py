@@ -21,34 +21,34 @@ from .artifacts import (
     # Constants
     CONFIDENCE_HIGH_THRESHOLD,
     CONFIDENCE_MEDIUM_THRESHOLD,
-    # Core schema
-    EntityRef,
+    Assumption,
+    AssumptionAuditEntry,
+    CapabilityValueChain,
     ConfidenceScore,
-    ProvenanceRecord,
     # Artifact 1
     ContextArtifact,
     CustomerProfile,
-    Stakeholder,
-    PainPoint,
+    # Core schema
+    EntityRef,
+    EvidenceAssessment,
+    ExecutiveSummary,
     ExtractionSource,
-    # Artifact 2
-    ValueModelArtifact,
-    CapabilityValueChain,
-    ValueDriverEntry,
     FinancialModel,
-    ScenarioAnalysis,
-    Assumption,
-    VariableRegistryEntry,
+    GateResult,
     # Artifact 3
     IntegrityArtifact,
-    AssumptionAuditEntry,
-    EvidenceAssessment,
-    GateResult,
     # Artifact 4
     NarrativeArtifact,
-    ExecutiveSummary,
-    StakeholderVersion,
+    PainPoint,
+    ProvenanceRecord,
     RealizationMilestone,
+    ScenarioAnalysis,
+    Stakeholder,
+    StakeholderVersion,
+    ValueDriverEntry,
+    # Artifact 2
+    ValueModelArtifact,
+    VariableRegistryEntry,
 )
 
 __all__ = [

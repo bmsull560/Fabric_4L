@@ -15,10 +15,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-from ..config.plans import check_entitlement, get_entitlements_response
-from ..models.billing import BillingCustomer, BillingSubscription, BillingWebhookEvent, SubscriptionStatus
-from .stripe_client import get_price_id, get_stripe, StripeNotConfiguredError, StripeError
 from shared.models.typed_dict import TypedDictModel
+
+from ..config.plans import check_entitlement, get_entitlements_response
+from ..models.billing import (
+    BillingCustomer,
+    BillingSubscription,
+    BillingWebhookEvent,
+    SubscriptionStatus,
+)
+from .stripe_client import StripeError, StripeNotConfiguredError, get_price_id, get_stripe
 
 
 class BillingService_create_checkout_sessionResult(TypedDictModel):
@@ -94,7 +100,7 @@ class BillingService:
                         metadata={"app_customer_id": customer_id},
                     )
                     stripe_customer_id = stripe_customer.id
-                except (StripeNotConfiguredError,) as e:
+                except StripeNotConfiguredError as e:
                     # Log but continue - we can retry Stripe sync later
                     logger.warning(f"Stripe customer creation failed: {e}")
 

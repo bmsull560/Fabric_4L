@@ -5,8 +5,9 @@ Includes support for Stripe MeterEvents (usage-based billing).
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
+
 from shared.models.typed_dict import TypedDictModel
 
 
@@ -170,7 +171,7 @@ def report_meter_event(
             "value": str(int(quantity)),  # Stripe requires string integer
             "stripe_customer_id": stripe_customer_id,
         },
-        "identifier": event_id or f"evt_{stripe_customer_id}_{datetime.now(timezone.utc).timestamp()}",
+        "identifier": event_id or f"evt_{stripe_customer_id}_{datetime.now(UTC).timestamp()}",
     }
 
     # Add timestamp if provided
@@ -266,6 +267,7 @@ async def sync_usage_to_stripe(
         Sync summary with counts
     """
     from sqlalchemy import func, select
+
     from ..models.billing import BillingUsageEvent, UsageEventStatus
 
     # Query pending events
@@ -306,7 +308,7 @@ async def sync_usage_to_stripe(
         events_result = await db_session.execute(update_query)
         events = events_result.scalars().all()
 
-        processed_at = datetime.now(timezone.utc)
+        processed_at = datetime.now(UTC)
         for event in events:
             event.status = UsageEventStatus.PROCESSED
             event.processed_at = processed_at

@@ -5,22 +5,23 @@ Handles CRUD operations for integrations with credential encryption,
 validation, and audit logging. Supports Salesforce and HubSpot.
 """
 
+import asyncio
 import json
 import logging
 import re
 import uuid
-import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..metrics import get_metrics
 from ..models.account import CRMProvider
 from ..models.integration import Integration, IntegrationStatus
 from .encryption_service import DEFAULT_KEY_ID, EncryptionService
-from shared.models.typed_dict import TypedDictModel
 
 
 class IntegrationService_trigger_syncResult(TypedDictModel):
@@ -548,8 +549,9 @@ class IntegrationService:
         await self.db.commit()
 
         async def _run_sync_job() -> None:
-            from ..database import db_session_for_context
             from shared.identity.context import RequestContext
+
+            from ..database import db_session_for_context
             from .crm_sync_service import CRMSyncService
 
             context = RequestContext(tenant_id=tenant_id)
@@ -727,6 +729,9 @@ class IntegrationService:
             integration.sync_status = IntegrationStatus.DEGRADED
             integration.last_error_message = f"Token refresh failed: HTTP {response.status_code}"
             await self.db.commit()
+            prom = get_metrics()
+            if prom:
+                prom.increment_crm_salesforce_token_refresh_failed(integration.tenant_id)
             raise IntegrationValidationError(
                 f"Token refresh failed: HTTP {response.status_code} - {response.text}"
             )

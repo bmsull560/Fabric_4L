@@ -14,9 +14,9 @@ from typing import Any
 from uuid import UUID
 
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
 
 from .base import AgentResult, BaseAgent
-from shared.models.typed_dict import TypedDictModel
 
 
 class ProvenanceTrackingAgent__record_entityResult(TypedDictModel):

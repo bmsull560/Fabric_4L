@@ -12,9 +12,8 @@ from typing import Any
 from uuid import UUID
 
 from neo4j import AsyncGraphDatabase
-
+from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext, require_context
-from shared.audit import emit_audit_event, AuditAction, AuditOutcome
 
 logger = logging.getLogger(__name__)
 

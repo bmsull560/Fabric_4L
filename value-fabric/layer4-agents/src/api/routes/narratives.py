@@ -17,15 +17,15 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+from shared.models.typed_dict import TypedDictModel
 
 from shared.security.dil_auth import (
-    get_verified_tenant_id,
-    validate_enum_value,
+    VALID_NARRATIVE_AUDIENCES,
     VALID_NARRATIVE_STATUSES,
     VALID_NARRATIVE_TONES,
-    VALID_NARRATIVE_AUDIENCES,
+    get_verified_tenant_id,
+    validate_enum_value,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class delete_narrativeResult(TypedDictModel):

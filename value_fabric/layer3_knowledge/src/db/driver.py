@@ -18,9 +18,9 @@ from neo4j.exceptions import (
     ServiceUnavailable,
     TransientError,
 )
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
-from shared.models.typed_dict import TypedDictModel
 
 
 class health_checkResult(TypedDictModel):

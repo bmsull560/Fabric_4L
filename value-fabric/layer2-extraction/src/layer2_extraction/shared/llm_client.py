@@ -67,7 +67,7 @@ except ImportError:
 
 # OpenAI import with graceful fallback
 try:
-    from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
+    from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
     from openai.types.chat import ChatCompletion
 
     OPENAI_AVAILABLE = True
@@ -80,7 +80,8 @@ except ImportError:
 
 # Anthropic import with graceful fallback
 try:
-    from anthropic import AsyncAnthropic, APIError as AnthropicAPIError
+    from anthropic import APIError as AnthropicAPIError
+    from anthropic import AsyncAnthropic
     from anthropic import RateLimitError as AnthropicRateLimitError
 
     ANTHROPIC_AVAILABLE = True

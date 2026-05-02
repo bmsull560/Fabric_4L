@@ -3,11 +3,12 @@ Workflow tools that chain multiple operations.
 """
 
 import logging
-from uuid import UUID
+
 from shared.identity.context import RequestContext
-from .knowledge import get_entity, update_entity
-from .analytics import compute_metrics
 from shared.models.typed_dict import TypedDictModel
+
+from .analytics import compute_metrics
+from .knowledge import get_entity, update_entity
 
 
 class analyze_entityResult(TypedDictModel):

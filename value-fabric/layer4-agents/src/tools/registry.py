@@ -12,8 +12,9 @@ from typing import Any
 from uuid import UUID
 
 from shared.identity.context import RequestContext
-from ..models.tool_schemas import ToolCategory, ToolSchema
 from shared.models.typed_dict import TypedDictModel
+
+from ..models.tool_schemas import ToolCategory, ToolSchema
 
 
 class ToolRegistry_get_all_schemasResult(TypedDictModel):

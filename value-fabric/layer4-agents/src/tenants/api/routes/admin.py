@@ -5,18 +5,17 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
-from shared.identity.models import UserModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ....database import get_db_from_context
 from ...models.tenant import Tenant
 from ...models.user import User
-from ...service import get_tenant, update_tenant
+from ...service import get_tenant
 from ...usage import UsageTrackingService
 
 router = APIRouter(prefix="/tenants/{tenant_id}", tags=["Tenant Admin"])

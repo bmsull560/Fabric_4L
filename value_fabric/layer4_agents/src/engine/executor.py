@@ -28,6 +28,8 @@ class WorkflowExecutionError(Exception):
     pass
 
 
+from shared.models.typed_dict import TypedDictModel
+
 from ..agents.base import BaseAgent
 from ..messaging.bus import InMemoryMessageBus, MessageBus
 from ..messaging.router import MessageRouter
@@ -37,7 +39,6 @@ from ..tools.registry import ToolRegistry
 from ..workflows import create_workflow
 from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from .state_manager import StateManager
-from shared.models.typed_dict import TypedDictModel
 
 
 class OrchestrationController_get_resultResult(TypedDictModel):
@@ -225,8 +226,9 @@ class OrchestrationController:
         import os
 
         try:
-            from ..database import db_session_for_context
             from shared.identity.context import RequestContext
+
+            from ..database import db_session_for_context
 
             context = RequestContext(tenant_id=tenant_id)
             async with db_session_for_context(context) as db:

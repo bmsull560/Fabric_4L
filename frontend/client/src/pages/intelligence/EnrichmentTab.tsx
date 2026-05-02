@@ -202,6 +202,10 @@ export default function EnrichmentTab() {
     return <CenteredLoader message="Loading account intelligence…" />;
   }
 
+  if (!account) {
+    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+  }
+
   return (
     <IntelligenceShell
       account={{

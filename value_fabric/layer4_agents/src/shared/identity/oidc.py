@@ -13,14 +13,14 @@ from __future__ import annotations
 import base64
 import hashlib
 import secrets
-import structlog
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Optional
-from urllib.parse import urlencode, urljoin
+from typing import Any
+from urllib.parse import urlencode
 
 import httpx
+import structlog
 from pydantic import BaseModel, Field, field_validator
 
 logger = structlog.get_logger(__name__)
@@ -51,7 +51,7 @@ class OIDCProviderConfig:
 
     issuer: str
     client_id: str
-    client_secret: Optional[str] = None
+    client_secret: str | None = None
     jwks_uri: str = ""
     authorization_endpoint: str = ""
     token_endpoint: str = ""
@@ -80,7 +80,7 @@ class OIDCTokenSet(BaseModel):
 
     access_token: str
     id_token: str
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
     token_type: str = "Bearer"
     expires_in: int = 3600
     scope: str = ""
@@ -114,8 +114,8 @@ class OIDCClaims(BaseModel):
     aud: str
     exp: datetime
     iat: datetime
-    email: Optional[str] = None
-    name: Optional[str] = None
+    email: str | None = None
+    name: str | None = None
     groups: list[str] = Field(default_factory=list)
     raw_claims: dict[str, Any] = Field(default_factory=dict)
 
@@ -159,8 +159,8 @@ class OIDCClient:
         """
         self.tenant_id = tenant_id
         self.config = config
-        self._jwks_cache: Optional[dict[str, Any]] = None
-        self._jwks_cache_expiry: Optional[datetime] = None
+        self._jwks_cache: dict[str, Any] | None = None
+        self._jwks_cache_expiry: datetime | None = None
         self._http_client = httpx.AsyncClient(timeout=30.0)
 
         logger.info(
@@ -203,7 +203,7 @@ class OIDCClient:
         return state
 
     async def get_authorization_url(
-        self, redirect_uri: Optional[str] = None, state: Optional[str] = None
+        self, redirect_uri: str | None = None, state: str | None = None
     ) -> tuple[str, str, str]:
         """Generate OIDC authorization URL with PKCE.
 
@@ -249,7 +249,7 @@ class OIDCClient:
         return auth_url, use_state, code_verifier
 
     async def exchange_code(
-        self, code: str, code_verifier: str, redirect_uri: Optional[str] = None
+        self, code: str, code_verifier: str, redirect_uri: str | None = None
     ) -> OIDCTokenSet:
         """Exchange authorization code for tokens.
 
@@ -526,7 +526,7 @@ class OIDCStateStore:
 
         logger.debug("state_stored", state_prefix=state[:8], ttl=self._ttl)
 
-    def get(self, state: str) -> Optional[str]:
+    def get(self, state: str) -> str | None:
         """Retrieve and validate code verifier for state.
 
         Args:

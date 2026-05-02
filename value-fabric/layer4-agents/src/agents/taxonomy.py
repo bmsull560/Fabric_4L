@@ -29,8 +29,9 @@ import logging
 from enum import Enum
 from typing import Any
 
-from .base import AgentCapability, BaseAgent
 from shared.models.typed_dict import TypedDictModel
+
+from .base import AgentCapability, BaseAgent
 
 
 class ContextExtractionAgent_executeResult(TypedDictModel):

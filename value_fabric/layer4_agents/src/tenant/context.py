@@ -6,6 +6,7 @@ Provides thread-safe tenant context storage and retrieval.
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
+
 from shared.models.typed_dict import TypedDictModel
 
 

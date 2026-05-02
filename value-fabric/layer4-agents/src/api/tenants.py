@@ -14,10 +14,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_privileged_access
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..database import get_db_session
 from ..services.tenant_provisioning import (
     TenantProvisioningService,

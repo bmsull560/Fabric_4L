@@ -1,8 +1,8 @@
 """Prometheus metrics collection for Layer 2 Extraction Pipeline."""
 
 import time
-from typing import Any
 from collections import defaultdict
+from typing import Any
 
 try:
     from prometheus_client import (

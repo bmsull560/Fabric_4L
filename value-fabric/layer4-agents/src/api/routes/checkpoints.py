@@ -13,10 +13,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
+from shared.models.typed_dict import TypedDictModel
 
 from ...engine.executor import OrchestrationController
 from .workflows import get_executor
-from shared.models.typed_dict import TypedDictModel
 
 
 class _calculate_state_diffResult(TypedDictModel):

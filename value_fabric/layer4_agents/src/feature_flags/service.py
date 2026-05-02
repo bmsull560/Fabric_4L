@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import BackgroundTasks
+
 try:
     from shared.audit import AuditEmitter, emit_audit_event
     from shared.audit.models import AuditAction
@@ -17,11 +18,11 @@ except ImportError as e:
         "shared.audit and shared.identity packages are required for feature flag functionality. "
         "Install the shared package or set PYTHONPATH to include value-fabric/shared"
     ) from e
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import FeatureFlag
-from shared.models.typed_dict import TypedDictModel
 
 
 class FeatureFlagService_lookup_flagResult(TypedDictModel):
@@ -189,8 +190,9 @@ class FeatureFlagService:
 
 async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] | None:
     """DB lookup callback registered with ``shared.identity.feature_flags``."""
-    from ..database import db_session_for_context, get_session_factory
     from shared.identity.context import RequestContext
+
+    from ..database import db_session_for_context, get_session_factory
 
     # Try tenant-specific first
     if tenant_id is not None:

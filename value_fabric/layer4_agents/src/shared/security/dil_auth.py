@@ -4,7 +4,6 @@ This module exists because layer4-agents/src/shared/ shadows the top-level
 value-fabric/shared/ package when 'src' is on sys.path.
 """
 import importlib.util
-import sys
 from pathlib import Path
 
 # Resolve the real dil_auth module from the top-level shared package

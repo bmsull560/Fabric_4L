@@ -9,6 +9,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,12 +18,9 @@ from ..models.billing import (
     BillingCharge,
     BillingInvoice,
     BillingInvoiceItem,
-    BillingUsageEvent,
     ChargeStatus,
     InvoiceStatus,
-    UsageEventStatus,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class InvoiceService_get_revenue_summaryResult(TypedDictModel):

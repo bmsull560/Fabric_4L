@@ -74,7 +74,7 @@ except ImportError:
 
 # Task 3.1: Tenant resolution audit logging
 try:
-    from shared.audit import emit_audit_event, AuditAction, AuditOutcome, TenantContextSetDetails
+    from shared.audit import AuditAction, AuditOutcome, TenantContextSetDetails, emit_audit_event
     AUDIT_AVAILABLE = True
 except ImportError:
     AUDIT_AVAILABLE = False
@@ -85,7 +85,7 @@ except ImportError:
 
 
 async def _emit_tenant_context_set_audit(
-    context: "RequestContext",
+    context: RequestContext,
     tenant_id: str | None,
     *,
     is_bypass: bool = False,
@@ -373,7 +373,7 @@ async def get_db_with_tenant(
 
 
 async def get_db_from_context(
-    context: "RequestContext" = Depends(get_request_context),  # type: ignore
+    context: RequestContext = Depends(get_request_context),  # type: ignore
 ) -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency that yields DB session with tenant context from RequestContext (Task 1.2).
 
@@ -439,7 +439,7 @@ async def get_db_from_context(
 
 
 async def get_db_with_optional_tenant(
-    context: "RequestContext" = Depends(get_request_context),  # type: ignore
+    context: RequestContext = Depends(get_request_context),  # type: ignore
 ) -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency for DB sessions with optional tenant context (Task 1.3).
 
@@ -529,7 +529,7 @@ async def get_tiered_db_session(
     tenant_id: UUID | str,
     isolation_tier: str = DEFAULT_ISOLATION_TIER,
     *,
-    request_context: "RequestContext" | None = None,
+    request_context: RequestContext | None = None,
 ) -> AsyncGenerator[AsyncSession, None]:
     """Get database session with appropriate isolation based on tenant tier.
 
@@ -665,7 +665,7 @@ async def db_session(
 
 @asynccontextmanager
 async def db_session_for_context(
-    context: "RequestContext",
+    context: RequestContext,
 ) -> AsyncGenerator[AsyncSession, None]:
     """Context manager for DB sessions outside FastAPI request lifecycle.
 

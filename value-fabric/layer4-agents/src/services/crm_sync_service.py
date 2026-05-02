@@ -13,9 +13,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..metrics import get_metrics
 from ..models.account import (
     Account,
     AccountSyncStatus,
@@ -26,7 +28,6 @@ from ..models.integration import Integration
 from ..models.tool_schemas import GetProspectDataInput
 from ..tools.crm_tools import GetProspectDataTool
 from .integration_service import IntegrationService
-from shared.models.typed_dict import TypedDictModel
 
 
 class CRMSyncService__get_crm_configResult(TypedDictModel):
@@ -120,6 +121,17 @@ class CRMSyncService:
         Returns:
             Sync statistics: synced, updated, failed, errors
         """
+        sync_start = time.monotonic()
+        sync_type = "incremental" if incremental else "full"
+        _increment_metric("crm_salesforce_sync_started_total")
+        prom = get_metrics()
+        if prom:
+            prom.increment_crm_salesforce_sync_started(tenant_id, sync_type=sync_type)
+        _log_sync_event("sync_started", tenant_id, provider.value, {
+            "incremental": incremental,
+            "account_count": len(account_ids) if account_ids else None,
+        })
+
         # Update sync status to running
         await self._update_sync_status(tenant_id, provider, "running", None)
 
@@ -132,7 +144,7 @@ class CRMSyncService:
         }
 
         try:
-            # Get CRM config from environment
+            # Get CRM config from tenant integration table
             config = await self._get_crm_config(provider, tenant_id)
             if not config or not config.get("api_key"):
                 raise ValueError(f"CRM configuration missing for {provider.value}")
@@ -164,7 +176,11 @@ class CRMSyncService:
                 except Exception as e:
                     stats["failed"] += 1
                     stats["errors"].append(f"{prospect_id}: {str(e)}")
-                    logger.error(f"Failed to sync account {prospect_id} from {provider.value}: {e}")
+                    logger.error(
+                        "Failed to sync account %s from %s: %s",
+                        prospect_id, provider.value, _redacted_error(str(e)),
+                        extra={"tenant_id": tenant_id, "provider": provider.value},
+                    )
 
             # Update sync status to success
             await self._update_sync_status(
@@ -177,13 +193,40 @@ class CRMSyncService:
                 records_failed=stats["failed"],
             )
 
-            logger.info(f"CRM sync completed for {provider.value}: {stats}")
+            _increment_metric("crm_salesforce_sync_completed_total")
+            _increment_metric("crm_salesforce_records_synced_total", stats["synced"] + stats["updated"])
+            duration = time.monotonic() - sync_start
+            if prom:
+                prom.increment_crm_salesforce_sync_completed(tenant_id, sync_type=sync_type)
+                prom.increment_crm_salesforce_records_synced(
+                    tenant_id, record_type="account", count=stats["synced"] + stats["updated"]
+                )
+                prom.observe_crm_salesforce_sync_duration(tenant_id, duration, sync_type=sync_type)
+            _log_sync_event("sync_completed", tenant_id, provider.value, {
+                "duration_seconds": round(duration, 3),
+                "records_synced": stats["synced"] + stats["updated"],
+                "records_failed": stats["failed"],
+            })
             return stats
 
         except Exception as e:
             # Update sync status to failed
-            await self._update_sync_status(tenant_id, provider, "failed", str(e))
-            logger.error(f"CRM sync failed for {provider.value}: {e}")
+            await self._update_sync_status(tenant_id, provider, "failed", str(e)[:1000])
+            _increment_metric("crm_salesforce_sync_failed_total")
+            duration = time.monotonic() - sync_start
+            error_type = type(e).__name__
+            if prom:
+                prom.increment_crm_salesforce_sync_failed(tenant_id, error_type=error_type)
+                prom.observe_crm_salesforce_sync_duration(tenant_id, duration, sync_type=sync_type)
+            _log_sync_event("sync_failed", tenant_id, provider.value, {
+                "duration_seconds": round(duration, 3),
+                "error_type": error_type,
+            })
+            logger.error(
+                "CRM sync failed for %s: %s",
+                provider.value, _redacted_error(str(e)),
+                extra={"tenant_id": tenant_id, "provider": provider.value},
+            )
             stats["errors"].append(str(e))
             return stats
 

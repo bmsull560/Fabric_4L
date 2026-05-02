@@ -3,7 +3,6 @@ Analytics tools with tenant isolation.
 """
 
 import logging
-from uuid import UUID
 
 from shared.identity.context import RequestContext, require_context
 from shared.models.typed_dict import TypedDictModel

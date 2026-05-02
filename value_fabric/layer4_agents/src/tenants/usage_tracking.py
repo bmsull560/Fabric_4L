@@ -25,9 +25,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, text
-from sqlalchemy.ext.asyncio import AsyncSession
 from shared.models.typed_dict import TypedDictModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class UsageTrackingService__count_events_by_fieldResult(TypedDictModel):
@@ -359,7 +359,7 @@ class UsageTrackingService:
         since: datetime,
     ) -> int:
         """Sum a numeric field from the JSONB details column."""
-        query = text(f"""
+        query = text("""
             SELECT COALESCE(
                 SUM((details->>:detail_key)::int), 0
             )

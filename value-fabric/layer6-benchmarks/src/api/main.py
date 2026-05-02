@@ -32,7 +32,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 try:
-    from shared.security import add_security_middleware, SecurityConfig
+    from shared.security import SecurityConfig, add_security_middleware
 except ImportError:
     add_security_middleware = None
     SecurityConfig = None
@@ -171,9 +171,8 @@ if SecurityConfig and add_security_middleware:
 
 # GovernanceMiddleware — provides auth and tenant context
 try:
-    from shared.identity.middleware import GovernanceMiddleware
-
     from shared.identity.api_key_stub import reject_api_key_unsupported
+    from shared.identity.middleware import GovernanceMiddleware
 
     app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported)
 except ImportError:
@@ -246,6 +245,12 @@ async def metrics_endpoint(request: Request):
 
 
 # Pydantic models for API (defined in schemas.py to avoid circular imports)
+# API Routes
+import time
+from datetime import datetime
+
+from shared.models.typed_dict import TypedDictModel
+
 from .schemas import (
     ComparisonRequestPayload,
     ComparisonResponse,
@@ -254,13 +259,6 @@ from .schemas import (
     ValidationRequestPayload,
     ValidationResponse,
 )
-
-
-# API Routes
-
-import time
-from datetime import datetime
-from shared.models.typed_dict import TypedDictModel
 
 
 class health_checkResult(TypedDictModel):

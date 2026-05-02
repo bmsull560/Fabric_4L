@@ -5,14 +5,14 @@ This matches the extraction capabilities defined in the LLM prompts.
 """
 
 from layer2_extraction.models.ontology import (
+    Cardinality,
+    OntologyProperty,
     OntologySchema,
     OntologyType,
-    OntologyProperty,
-    TypeRelationship,
+    PropertyConstraints,
     PropertyType,
     RelationshipType,
-    Cardinality,
-    PropertyConstraints,
+    TypeRelationship,
 )
 
 

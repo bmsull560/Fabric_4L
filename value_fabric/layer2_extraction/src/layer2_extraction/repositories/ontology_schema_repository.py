@@ -1,7 +1,6 @@
 """Repository for ontology schema database operations."""
 
 from datetime import UTC, datetime
-from typing import Optional
 from uuid import uuid4
 
 import asyncpg
@@ -12,6 +11,7 @@ DEFAULT_TENANT_ID = "default"
 SYSTEM_USER_ID = "system"
 
 from shared.identity.context import require_context
+
 from layer2_extraction.db import get_connection
 from layer2_extraction.models.ontology import (
     OntologyProperty,
@@ -55,7 +55,7 @@ class OntologySchemaRepository:
             published_by=version.published_by if version else None,
         )
 
-    async def _get_latest_version(self) -> Optional[SchemaVersion]:
+    async def _get_latest_version(self) -> SchemaVersion | None:
         """Get the latest published schema version for a tenant."""
         tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
@@ -181,7 +181,7 @@ class OntologySchemaRepository:
             ))
         return properties
 
-    async def get_type_by_id(self, type_id: str) -> Optional[OntologyType]:
+    async def get_type_by_id(self, type_id: str) -> OntologyType | None:
         """Get a specific type by ID."""
         tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
@@ -213,7 +213,7 @@ class OntologySchemaRepository:
 
     async def create_type(
         self, name: str, description: str,
-        parent_type_id: Optional[str] = None
+        parent_type_id: str | None = None
     ) -> OntologyType:
         """Create a new ontology type."""
         tenant_id = str(require_context().tenant_id)
@@ -244,8 +244,8 @@ class OntologySchemaRepository:
 
     async def update_type(
         self, type_id: str,
-        name: Optional[str] = None, description: Optional[str] = None
-    ) -> Optional[OntologyType]:
+        name: str | None = None, description: str | None = None
+    ) -> OntologyType | None:
         """Update an ontology type."""
         tenant_id = str(require_context().tenant_id)
         now = datetime.now(UTC)
@@ -265,7 +265,7 @@ class OntologySchemaRepository:
             if not updates:
                 return await self.get_type_by_id(tenant_id, type_id)
 
-            updates.append(f"updated_at = $1")
+            updates.append("updated_at = $1")
             updates.append("version = version + 1")
 
             query = f"""
@@ -522,7 +522,7 @@ class OntologySchemaRepository:
     # ==========================================================================
 
     async def publish_schema(
-        self, version: str, user_id: str, comment: Optional[str] = None
+        self, version: str, user_id: str, comment: str | None = None
     ) -> SchemaVersion:
         """Publish the current schema as a new version."""
         tenant_id = str(require_context().tenant_id)
@@ -563,7 +563,7 @@ class OntologySchemaRepository:
 
     async def get_schema_version(
         self, version: str
-    ) -> Optional[OntologySchema]:
+    ) -> OntologySchema | None:
         """Get a specific published schema version."""
         tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:

@@ -13,9 +13,9 @@ from decimal import Decimal
 from typing import Any
 
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
 
 from .base import AgentResult, BaseAgent
-from shared.models.typed_dict import TypedDictModel
 
 
 class ROICalculationAgent__run_sensitivity_analysisResult(TypedDictModel):

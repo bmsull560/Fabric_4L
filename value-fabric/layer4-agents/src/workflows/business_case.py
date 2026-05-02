@@ -12,6 +12,8 @@ except ImportError:
     def is_enabled(flag_key: str, tenant_id=None, user_id=None) -> bool:
         return False
 
+from shared.models.typed_dict import TypedDictModel
+
 from ..integration.layer5_client import Layer5GroundTruthClient
 from ..models.agent_state import (
     BusinessCaseAgentState,
@@ -23,7 +25,6 @@ from ..models.workflow_config import BUSINESS_CASE_WORKFLOW_CONFIG
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
 from .roi_calculator import ROICalculatorWorkflow
-from shared.models.typed_dict import TypedDictModel
 
 
 class BusinessCaseGeneratorWorkflow__execute_agentResult(TypedDictModel):

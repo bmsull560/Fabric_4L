@@ -16,12 +16,12 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
 from ..models.truth_object import ClaimType, TruthObject, ValidationEvent
-from shared.models.typed_dict import TypedDictModel
 
 
 class FreshnessMonitor_check_and_mark_staleResult(TypedDictModel):

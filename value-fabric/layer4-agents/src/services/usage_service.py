@@ -10,13 +10,12 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.billing import BillingCustomer, BillingUsageEvent, UsageEventStatus
-from shared.models.typed_dict import TypedDictModel
 
 
 class UsageService_ingest_batchResult(TypedDictModel):
@@ -84,7 +83,6 @@ class UsageService:
         Returns:
             Stripe customer ID or None if not found
         """
-        from ..services.stripe_client import StripeNotConfiguredError
 
         if not self.tenant_id:
             return None
@@ -238,7 +236,7 @@ class UsageService:
             event._stripe_response = stripe_response
             return event
 
-        except IntegrityError as e:
+        except IntegrityError:
             # Duplicate event - fetch and return existing
             await self.db.rollback()
             existing = await self._get_event_by_idempotency(event_id)

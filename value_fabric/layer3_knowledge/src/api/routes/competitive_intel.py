@@ -16,14 +16,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-
-from shared.security.dil_auth import (
-    get_verified_tenant_id,
-    AllowlistedFieldUpdate,
-    validate_enum_value,
-    VALID_WIN_LOSS_OUTCOMES,
-)
 from shared.models.typed_dict import TypedDictModel
+from shared.security.dil_auth import (
+    VALID_WIN_LOSS_OUTCOMES,
+    AllowlistedFieldUpdate,
+    get_verified_tenant_id,
+    validate_enum_value,
+)
 
 
 class add_competitorResult(TypedDictModel):
@@ -127,7 +126,10 @@ async def add_competitor(
     tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Add a new competitor to the knowledge graph."""
-    from ...services.competitive_intel_service import CompetitorCreate, CompetitiveIntelService
+    from ...services.competitive_intel_service import (
+        CompetitiveIntelService,
+        CompetitorCreate,
+    )
 
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
@@ -252,7 +254,10 @@ async def add_battlecard(
     tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Create a battlecard for a competitor + product pair."""
-    from ...services.competitive_intel_service import BattlecardCreate, CompetitiveIntelService
+    from ...services.competitive_intel_service import (
+        BattlecardCreate,
+        CompetitiveIntelService,
+    )
 
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
@@ -310,7 +315,10 @@ async def record_win_loss(
     tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Record a competitive win or loss."""
-    from ...services.competitive_intel_service import CompetitiveIntelService, WinLossRecord
+    from ...services.competitive_intel_service import (
+        CompetitiveIntelService,
+        WinLossRecord,
+    )
 
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)

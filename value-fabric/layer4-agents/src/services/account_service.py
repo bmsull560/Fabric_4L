@@ -8,6 +8,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +25,6 @@ from ..tools.crm_tools import (
     FetchInteractionHistoryTool,
 )
 from .crm_sync_service import CRMSyncService
-from shared.models.typed_dict import TypedDictModel
 
 
 class AccountService_get_filter_optionsResult(TypedDictModel):

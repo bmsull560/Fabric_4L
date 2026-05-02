@@ -4,8 +4,8 @@ Admin tools with strict permission enforcement.
 
 import logging
 from uuid import UUID
-from fastapi import HTTPException, status
 
+from fastapi import HTTPException, status
 from shared.identity.context import RequestContext
 from shared.models.typed_dict import TypedDictModel
 

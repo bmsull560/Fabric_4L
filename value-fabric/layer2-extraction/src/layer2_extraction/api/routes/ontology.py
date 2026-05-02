@@ -5,12 +5,11 @@ This module provides endpoints for both:
 - Schema management (ontology type definitions)
 """
 
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
+from shared.models.typed_dict import TypedDictModel
 
-from .. import main as handlers
 from layer2_extraction.models.ontology import (
     OntologyProperty,
     OntologySchema,
@@ -20,7 +19,8 @@ from layer2_extraction.models.ontology import (
     ValidationWarning,
 )
 from layer2_extraction.repositories.ontology_schema_repository import OntologySchemaRepository
-from shared.models.typed_dict import TypedDictModel
+
+from .. import main as handlers
 
 
 class delete_ontology_typeResult(TypedDictModel):
@@ -66,19 +66,19 @@ async def get_relationships(entity_id: str):
 class CreateTypeRequest(BaseModel):
     name: str
     description: str
-    parent_type_id: Optional[str] = None
+    parent_type_id: str | None = None
 
 
 class UpdateTypeRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
 
 class CreateRelationshipRequest(BaseModel):
     source_type_id: str
     target_type_id: str
     relationship_type: str
-    description: Optional[str] = None
+    description: str | None = None
     cardinality: str = "many_to_many"
 
 
@@ -95,7 +95,7 @@ class ValidateSchemaResponse(BaseModel):
 
 class PublishSchemaRequest(BaseModel):
     version: str
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class PublishSchemaResponse(BaseModel):

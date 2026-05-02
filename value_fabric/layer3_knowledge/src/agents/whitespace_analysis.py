@@ -11,9 +11,9 @@ from enum import Enum
 from typing import Any
 
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
 
 from .base import AgentResult, BaseAgent
-from shared.models.typed_dict import TypedDictModel
 
 
 class WhitespaceAnalysisAgent__identify_gapsResult(TypedDictModel):

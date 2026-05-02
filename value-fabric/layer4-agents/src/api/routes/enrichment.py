@@ -17,20 +17,20 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.security.dil_auth import get_verified_tenant_id
+
 from ...database import get_db_from_context
 from ...models.account import Account
 from ...services.enrichment_orchestrator import (
     EnrichmentOrchestrator,
     EnrichmentSource,
-    EnrichmentStatus,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class get_account_enrichmentResult(TypedDictModel):

@@ -19,11 +19,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
+from shared.models.typed_dict import TypedDictModel
 
 from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
 from ...workflows import list_workflow_types
-from shared.models.typed_dict import TypedDictModel
 
 
 class get_workflow_resultResult(TypedDictModel):

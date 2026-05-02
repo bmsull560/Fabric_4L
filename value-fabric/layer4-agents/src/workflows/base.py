@@ -11,11 +11,11 @@ from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import StateGraph
+from shared.models.typed_dict import TypedDictModel
 
 from ..models.agent_state import AgentState, BaseAgentState, WorkflowStatus
 from ..models.workflow_config import EdgeConfig, NodeConfig, NodeType, WorkflowConfig
 from ..tools.registry import ToolRegistry
-from shared.models.typed_dict import TypedDictModel
 
 
 class BaseWorkflow__execute_llmResult(TypedDictModel):

@@ -23,8 +23,8 @@ from ..interfaces.value_pack_service import (
     ValueDriverRef,
     ValuePack,
 )
-from ..tools.calculation_tools import EvaluateFormulaTool
 from ..models.tool_schemas import EvaluateFormulaInput
+from ..tools.calculation_tools import EvaluateFormulaTool
 
 
 class Neo4jValuePackService(IValuePackService):

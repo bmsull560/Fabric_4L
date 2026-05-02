@@ -4,9 +4,9 @@ import logging
 from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
-from shared.models.typed_dict import TypedDictModel
 
 
 class CommunityDetector__build_rel_filterResult(TypedDictModel):
