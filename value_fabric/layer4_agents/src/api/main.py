@@ -62,6 +62,7 @@ except ImportError:
 from shared.models.typed_dict import TypedDictModel
 
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
+from ..services.value_flow_facade import ValueFlowFacadeService
 from ..services.health_tracker import get_health_tracker
 from ..tenants import get_tenant_settings, lookup_api_key_by_hash
 from ..tenants.api import (
@@ -74,7 +75,7 @@ from ..tenants.api import (
 )
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
-from .routes import accounts, agent_stream, analysis, signals, tools, workflows
+from .routes import accounts, agent_stream, analysis, signals, tools, value_flow, workflows
 from .routes import audit as audit_router
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
@@ -202,6 +203,7 @@ async def lifespan(app: FastAPI):
     redis_rate_limiter = RedisRateLimiter(state_manager.redis_client)
     app.state.rate_limiter = redis_rate_limiter
     init_feature_flags(state_manager.redis_client)
+    app.state.value_flow_facade = ValueFlowFacadeService(state_manager.redis_client)
 
     # Register DB-backed feature flag lookup
     async def _feature_flag_lookup(flag_key: str, tenant_id):
@@ -448,6 +450,7 @@ app.include_router(c1_router, prefix="/v1", tags=["c1"])
 
 # Frontend compatibility aliases (drift-matched paths)
 app.include_router(frontend_compat_router, prefix="/v1")
+app.include_router(value_flow.router)
 
 
 @app.get("/health")
