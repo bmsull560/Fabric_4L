@@ -21,7 +21,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { LoginForm } from '../components/login-form';
-import { SSO_PROVIDER_TENANT, getSSOTenantSlug } from '../config/auth';
+import { getSSOTenantSlug } from '../config/auth';
+import { sessionService } from '../services/sessionService';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -51,19 +52,18 @@ export default function Login() {
 
     // Preserve intended destination before IdP redirect
     if (redirect && !code) {
-      sessionStorage.setItem('postLoginRedirect', redirect);
+      sessionService.setPostLoginRedirect(redirect);
     }
 
     if (code && state) {
-      handleCallbackFlow(code, state);
+      void handleCallbackFlow(code, state);
     }
   }, [searchParams, navigate]);
 
   // Skip login if already authenticated (Skill §3: "Skip login if session valid")
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      const redirect = sessionStorage.getItem('postLoginRedirect');
-      sessionStorage.removeItem('postLoginRedirect');
+      const redirect = sessionService.consumePostLoginRedirect();
       navigate(redirect || '/home');
     }
   }, [isAuthenticated, isLoading, navigate]);
@@ -80,8 +80,7 @@ export default function Login() {
     try {
       const success = await handleCallback(code, state);
       if (success) {
-        const redirect = sessionStorage.getItem('postLoginRedirect');
-        sessionStorage.removeItem('postLoginRedirect');
+        const redirect = sessionService.consumePostLoginRedirect();
         navigate(redirect || '/home');
       } else {
         setError('Authentication failed. Please try again.');

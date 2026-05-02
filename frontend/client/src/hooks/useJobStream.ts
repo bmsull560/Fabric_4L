@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { z } from 'zod';
 import { apiClient } from '@/api/client';
+import { createFeatureLogger } from '@/lib/telemetry';
 import { SSEBuilders, SSE_TIMEOUT_MS as SHARED_SSE_TIMEOUT_MS } from './useSSEUtils';
 import { parseExtractionJob } from '@/types/api';
 import { POLL_INTERVALS } from './usePolling';
@@ -50,20 +51,14 @@ type JobStreamEvent = z.infer<typeof JobStreamEventSchema>;
 // MANDATE 3: ERROR HANDLING - Safe Logging Wrapper
 // ============================================================================
 
-const MODULE_NAME = '[useJobStream]';
+const log = createFeatureLogger('use-job-stream');
 
 function logWarn(message: string, context?: Record<string, unknown>): void {
-  if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
-    console.warn(`${MODULE_NAME} ${message}`, context ?? '');
-  }
+  log.warn(message, context);
 }
 
 function logError(message: string, context?: Record<string, unknown>): void {
-  if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
-    console.error(`${MODULE_NAME} ${message}`, context ?? '');
-  }
+  log.error(message, context);
 }
 
 // ============================================================================

@@ -16,15 +16,12 @@ import {
   validateLoginInitiationResponse,
   AuthError,
   AuthErrorCategory,
-  UserInfoSchema,
 } from '../schemas/auth';
+import { sessionService } from './sessionService';
 
 // API configuration from environment
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const L4_PREFIX = import.meta.env.VITE_L4_PREFIX || '/agents';
-
-// Token expiry buffer (1 minute before actual expiry)
-const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 
 /**
  * AuthClient — Formal contract boundary for identity operations
@@ -140,25 +137,7 @@ export class AuthClient {
    * @returns UserInfo if valid session, null otherwise
    */
   getCurrentSession(): UserInfo | null {
-    const storedToken = localStorage.getItem('accessToken');
-    const storedUser = localStorage.getItem('userInfo');
-
-    if (!storedToken || !storedUser) {
-      return null;
-    }
-
-    try {
-      const parsedUser = JSON.parse(storedUser);
-      const result = UserInfoSchema.safeParse(parsedUser);
-      if (!result.success) {
-        this.clearSession();
-        return null;
-      }
-      return result.data;
-    } catch {
-      this.clearSession();
-      return null;
-    }
+    return sessionService.getCurrentUser();
   }
 
   /**
@@ -170,33 +149,7 @@ export class AuthClient {
    * @returns true if token is valid, false if expired/invalid
    */
   async refreshToken(): Promise<boolean> {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return false;
-
-    // Validate JWT structure (header.payload.signature)
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      this.clearSession();
-      return false;
-    }
-
-    try {
-      // base64url decode with proper padding
-      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      const padding = '='.repeat((4 - base64.length % 4) % 4);
-      const payload = JSON.parse(atob(base64 + padding));
-
-      const exp = payload.exp * 1000; // Convert to milliseconds
-
-      if (Date.now() >= exp - TOKEN_EXPIRY_BUFFER_MS) {
-        this.clearSession();
-        return false;
-      }
-      return true;
-    } catch {
-      this.clearSession();
-      return false;
-    }
+    return sessionService.isSessionValid();
   }
 
   /**
@@ -207,26 +160,21 @@ export class AuthClient {
    * @param tenantId — tenant identifier
    */
   persistSession(token: string, user: UserInfo, tenantId: string): void {
-    localStorage.setItem('accessToken', token);
-    localStorage.setItem('userInfo', JSON.stringify(user));
-    localStorage.setItem('tenantId', tenantId);
+    sessionService.persistSession(token, user, tenantId);
   }
 
   /**
    * Clear all session storage
    */
   clearSession(): void {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userInfo');
-    localStorage.removeItem('tenantId');
+    sessionService.clearSession();
   }
 
   /**
    * Clear OIDC flow state from session storage
    */
   clearOidcState(): void {
-    sessionStorage.removeItem('oidcState');
-    sessionStorage.removeItem('oidcTenantSlug');
+    sessionService.clearOidcState();
   }
 }
 

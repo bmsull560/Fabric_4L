@@ -26,7 +26,7 @@ class _mergeResult(TypedDictModel):
 
 class _make_initial_stateResult(TypedDictModel):
     errors: list[Any]
-    output_data: bool
+    output_data: dict[str, Any]
     status: str
     workflow_id: Any
 
@@ -62,7 +62,7 @@ def _last(left: Any, right: Any) -> Any:
 
 def _merge(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     """Reducer: shallow-merge dicts, right wins on conflict."""
-    return _mergeResult.model_validate({**left, **right})
+    return {**left, **right}
 
 
 class TestState(TypedDict, total=False):

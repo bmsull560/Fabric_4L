@@ -15,10 +15,18 @@
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
 export interface LogContext extends Record<string, unknown> {
+  feature?: string;
+  route?: string;
+  accountId?: string | null;
+  tenantId?: string | null;
+  userId?: string | null;
+  authPhase?: string;
   traceId?: string | null;
   statusCode?: number;
   errorCode?: string;
 }
+
+export type TelemetryContextDefaults = Omit<LogContext, 'feature'>;
 
 /** Determine whether console logging should be emitted */
 function isLoggingEnabled(): boolean {
@@ -169,5 +177,34 @@ export function createLogger(module: string) {
       log('info', `${prefix} ${message}`, context),
     debug: (message: string, context?: LogContext) =>
       log('debug', `${prefix} ${message}`, context),
+  };
+}
+
+/**
+ * Create a feature-scoped logger that automatically enriches telemetry context.
+ */
+export function createFeatureLogger(
+  feature: string,
+  defaults: TelemetryContextDefaults = {}
+) {
+  const logger = createLogger(feature);
+
+  const withDefaults = (context?: LogContext): LogContext => ({
+    feature,
+    ...defaults,
+    ...context,
+  });
+
+  return {
+    error: (message: string, context?: LogContext) =>
+      logger.error(message, withDefaults(context)),
+    warn: (message: string, context?: LogContext) =>
+      logger.warn(message, withDefaults(context)),
+    info: (message: string, context?: LogContext) =>
+      logger.info(message, withDefaults(context)),
+    debug: (message: string, context?: LogContext) =>
+      logger.debug(message, withDefaults(context)),
+    child: (context: TelemetryContextDefaults) =>
+      createFeatureLogger(feature, { ...defaults, ...context }),
   };
 }

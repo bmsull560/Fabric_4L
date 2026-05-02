@@ -14,7 +14,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
-import { authClient } from '../services/authClient';
+import { sessionService } from '../services/sessionService';
 import { SignupForm } from '../components/login-form';
 import { getSSOTenantSlug } from '../config/auth';
 import { registerWithEmailPassword } from '../api/auth';
@@ -85,7 +85,7 @@ export default function Signup() {
 
       if (canAutoLogin && response.access_token && response.user_id && response.email) {
         const tenantSlug = response.tenant_slug || 'default';
-        authClient.persistSession(
+        sessionService.persistSession(
           response.access_token,
           {
             id: response.user_id,

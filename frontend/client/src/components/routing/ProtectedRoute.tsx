@@ -2,8 +2,10 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useUserTierStore, type UserTier } from "@/hooks";
 import { ErrorBoundary } from "@/components";
+import { createFeatureLogger } from "@/lib/telemetry";
 
 type RequiredUserTier = Exclude<UserTier, "unknown">;
+const log = createFeatureLogger("protected-route");
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -40,7 +42,10 @@ export function ProtectedRoute({
   try {
     accessDecision = canAccessRouteWithReason(requiredTier);
   } catch (error) {
-    console.error("[ProtectedRoute] Permission evaluation failed:", error);
+    log.error("Permission evaluation failed", {
+      route: location.pathname,
+      error: error instanceof Error ? error.message : String(error),
+    });
     accessDecision = {
       allowed: false,
       reason: "PERMISSION_EVALUATION_EXCEPTION",
@@ -48,9 +53,11 @@ export function ProtectedRoute({
   }
 
   if (!accessDecision.allowed) {
-    console.warn(
-      `[ProtectedRoute] Access denied to ${location.pathname}: ${accessDecision.reason}`
-    );
+    log.warn("Access denied", {
+      route: location.pathname,
+      errorCode: accessDecision.reason,
+      userId: null,
+    });
     return <Navigate to="/home" replace />;
   }
 

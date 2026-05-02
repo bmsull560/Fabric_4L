@@ -2,8 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../../../test/mocks/server";
 import { apiClient } from "./client";
+import {
+  applySessionServiceTestEnvironment,
+  authFixtures,
+  type MemoryStorage,
+} from "@/test/authSessionTestUtils";
 
 describe("ApiClient", () => {
+  let testLocalStorage: MemoryStorage;
+
+  beforeEach(() => {
+    ({ localStorage: testLocalStorage } = applySessionServiceTestEnvironment());
+  });
+
   describe("layer routing", () => {
     it("should route l1 requests to ingestion layer", async () => {
       let capturedUrl = "";
@@ -47,7 +58,7 @@ describe("ApiClient", () => {
 
   describe("request configuration", () => {
     beforeEach(() => {
-      localStorage.clear();
+      testLocalStorage.clear();
     });
 
     afterEach(() => {
@@ -55,7 +66,15 @@ describe("ApiClient", () => {
     });
 
     it("should include tenant ID header from localStorage", async () => {
-      localStorage.setItem("tenantId", "test-tenant-123");
+      testLocalStorage.setItem(
+        "vf.auth.session",
+        JSON.stringify(
+          authFixtures.validSession({
+            tenantId: "test-tenant-123",
+            user: authFixtures.user({ tenantId: "test-tenant-123" }),
+          })
+        )
+      );
       let capturedHeaders: Record<string, string> = {};
 
       server.use(
@@ -69,6 +88,7 @@ describe("ApiClient", () => {
 
       await apiClient.get("l3", "/test");
       expect(capturedHeaders["x-tenant-id"]).toBe("test-tenant-123");
+      expect(capturedHeaders.authorization).toMatch(/^Bearer /);
     });
 
     it("should use default tenant ID when not in localStorage", async () => {

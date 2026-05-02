@@ -17,16 +17,15 @@ import { useRef } from "react";
  * @param fn - The function to persist across renders
  * @returns A stable function reference with the same signature
  */
-export function usePersistFn<T extends (...args: never[]) => unknown>(fn: T) {
+export function usePersistFn<T extends (...args: any[]) => any>(fn: T) {
+  type PersistedFunction = (...args: Parameters<T>) => ReturnType<T>;
+
   const fnRef = useRef<T>(fn);
   fnRef.current = fn;
 
-  const persistFn = useRef<T | null>(null);
-  if (!persistFn.current) {
-    persistFn.current = function (this: unknown, ...args: never[]) {
-      return fnRef.current.apply(this, args);
-    } as T;
-  }
+  const persistFn = useRef<PersistedFunction>(
+    ((...args: Parameters<T>) => fnRef.current(...args)) as PersistedFunction
+  );
 
-  return persistFn.current as T;
+  return persistFn.current;
 }

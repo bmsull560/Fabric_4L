@@ -13,7 +13,9 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useUserTierStore } from '@/stores/userTierStore';
-import { authClient, AuthClient } from '../services/authClient';
+import { createFeatureLogger } from '@/lib/telemetry';
+import { authClient } from '../services/authClient';
+import { sessionService } from '../services/sessionService';
 import { type UserInfo, AuthError, AuthErrorCategory } from '../schemas/auth';
 
 // Re-export UserInfo for backward compatibility
@@ -36,6 +38,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const log = createFeatureLogger('auth-context');
 
 // Auth state machine states
 type AuthState = 'idle' | 'loading' | 'authenticated' | 'error';
@@ -60,24 +63,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize auth state from storage on mount
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('accessToken');
-      const session = authClient.getCurrentSession();
+      const snapshot = sessionService.getSessionSnapshot();
 
-      if (storedToken && session) {
-        // Validate token expiry before restoring session
-        const isValid = await authClient.refreshToken();
+      if (snapshot) {
+        const isValid = sessionService.isSessionValid(snapshot);
         if (isValid) {
           setAuthState({
             state: 'authenticated',
-            user: session,
-            accessToken: storedToken,
+            user: snapshot.user,
+            accessToken: snapshot.accessToken,
             error: null,
           });
           // Synchronize restored role with userTierStore
-          useUserTierStore.getState().setUserRole(session.role);
+          useUserTierStore.getState().setUserRole(snapshot.user.role);
         } else {
-          // Token expired — clear and stay idle
-          authClient.clearSession();
+          sessionService.clearSession();
           setAuthState({
             state: 'idle',
             user: null,
@@ -86,8 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } else {
-        // Clear any partial/invalid data
-        authClient.clearSession();
+        sessionService.clearSession();
         setAuthState({
           state: 'idle',
           user: null,
@@ -99,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     };
 
-    initAuth();
+    void initAuth();
   }, []);
 
   /**
@@ -112,17 +111,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState(prev => ({ ...prev, state: 'loading' }));
 
     try {
-      const callbackUrl = `${window.location.origin}/login/callback`;
+      const callbackUrl = sessionService.getCallbackUrl();
       const result = await authClient.initiateLogin(tenantSlug, callbackUrl);
 
-      // Store state for verification on callback
-      sessionStorage.setItem('oidcState', result.state);
-      sessionStorage.setItem('oidcTenantSlug', tenantSlug);
+      const postLoginRedirect = sessionService.consumePostLoginRedirect() ?? undefined;
+      sessionService.persistOidcFlowState({
+        state: result.state,
+        tenantSlug,
+        postLoginRedirect,
+      });
 
       // Redirect to IdP (this will unload the page)
-      window.location.href = result.authorization_url;
+      sessionService.redirectTo(result.authorization_url);
     } catch (error) {
       setIsLoading(false);
+      log.error('Login initiation failed', {
+        tenantId: tenantSlug,
+        authPhase: 'initiate-login',
+        route: typeof window !== 'undefined' ? window.location.pathname : undefined,
+        error: error instanceof Error ? error.message : String(error),
+      });
       setAuthState(prev => ({
         ...prev,
         state: 'error',
@@ -143,9 +151,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState(prev => ({ ...prev, state: 'loading' }));
 
     try {
-      // Verify state matches what we stored
-      const storedState = sessionStorage.getItem('oidcState');
-      if (state !== storedState) {
+      const oidcFlow = sessionService.getOidcFlowState();
+      if (!oidcFlow || state !== oidcFlow.state) {
         throw new AuthError(
           'Invalid state parameter - possible CSRF attack',
           AuthErrorCategory.AUTHENTICATION
@@ -155,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Use AuthClient for contract-validated token exchange
       const tokenResponse = await authClient.exchangeCodeForTokens(code, state);
 
-      const tenantSlug = sessionStorage.getItem('oidcTenantSlug') || 'default';
+      const tenantSlug = oidcFlow.tenantSlug || 'default';
 
       // Build validated user info
       const userInfo: UserInfo = {
@@ -167,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       // Persist session via AuthClient
-      authClient.persistSession(tokenResponse.access_token, userInfo, tenantSlug);
+      sessionService.persistSession(tokenResponse.access_token, userInfo, tenantSlug);
 
       // Update auth state machine
       setAuthState({
@@ -181,13 +188,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       useUserTierStore.getState().setUserRole(tokenResponse.role);
 
       // Clean up session storage
-      authClient.clearOidcState();
+      sessionService.clearOidcState();
 
       return true;
     } catch (error) {
-      // Clean up on failure
-      authClient.clearOidcState();
-      sessionStorage.removeItem('postLoginRedirect');
+      sessionService.clearOidcState();
 
       // Categorize error for better UX
       let authError: AuthError;
@@ -221,6 +226,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      log.error('Callback authentication failed', {
+        route: typeof window !== 'undefined' ? window.location.pathname : undefined,
+        authPhase: 'callback',
+        traceId: authError.statusCode ? String(authError.statusCode) : null,
+        errorCode: authError.category,
+        message: authError.message,
+      });
+
       setAuthState({
         state: 'error',
         user: null,
@@ -236,8 +249,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Logout — clear all auth state via AuthClient
    */
   const logout = useCallback(() => {
-    authClient.clearSession();
-    authClient.clearOidcState();
+    sessionService.clearSession();
+    sessionService.clearOidcState();
 
     setAuthState({
       state: 'idle',
@@ -252,27 +265,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     tierStore.disableAdvancedMode();
 
     // Redirect to login
-    window.location.href = '/login';
+    sessionService.redirectToLogin();
   }, []);
 
   /**
    * Token refresh — delegates to AuthClient
    */
   const refreshToken = useCallback(async (): Promise<boolean> => {
-    const isValid = await authClient.refreshToken();
+    const snapshot = sessionService.getSessionSnapshot();
+    const isValid = sessionService.isSessionValid(snapshot);
 
     if (isValid) {
-      // Re-hydrate state from storage in case token was refreshed
-      const session = authClient.getCurrentSession();
-      const storedToken = localStorage.getItem('accessToken');
-      if (session && storedToken) {
+      const restoredSnapshot = sessionService.getSessionSnapshot();
+      if (restoredSnapshot) {
         setAuthState({
           state: 'authenticated',
-          user: session,
-          accessToken: storedToken,
+          user: restoredSnapshot.user,
+          accessToken: restoredSnapshot.accessToken,
           error: null,
         });
-        useUserTierStore.getState().setUserRole(session.role);
+        useUserTierStore.getState().setUserRole(restoredSnapshot.user.role);
       }
     } else {
       // Session expired or invalid, clear state
@@ -293,7 +305,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const devBypass = useCallback(() => {
     if (process.env.NODE_ENV !== 'development') {
-      console.warn('[Auth] devBypass is only available in development mode');
+      log.warn('devBypass is only available in development mode', {
+        authPhase: 'dev-bypass',
+      });
       return;
     }
     // Set mock authenticated state for development testing
@@ -312,7 +326,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenant_id: mockUser.tenantId,
     };
     const mockToken = `header.${btoa(JSON.stringify(payload))}.signature`;
-    authClient.persistSession(mockToken, mockUser, 'dev-tenant');
+    sessionService.persistSession(mockToken, mockUser, 'dev-tenant');
     setAuthState({
       state: 'authenticated',
       user: mockUser,

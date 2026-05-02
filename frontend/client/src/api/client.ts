@@ -1,7 +1,10 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axiosRetry from 'axios-retry';
 import { z } from 'zod';
-import { logError, logWarn } from '@/lib/telemetry';
+import { createFeatureLogger } from '@/lib/telemetry';
+import { sessionService } from '@/services/sessionService';
+
+const log = createFeatureLogger('api-client');
 
 // ============================================================================
 // MANDATE 4: INPUT VALIDATION - Runtime validation schemas
@@ -43,7 +46,7 @@ function getEnvVar(name: string, fallback: string): string {
   if (typeof value === 'string' && value.length > 0) {
     return value;
   }
-  logWarn(`Environment variable ${name} not set, using fallback`, { fallback });
+  log.warn(`Environment variable ${name} not set, using fallback`, { fallback });
   return fallback;
 }
 
@@ -190,6 +193,12 @@ class ApiClient {
         (config) => {
           // Add correlation ID for request tracing
           config.headers['X-Request-ID'] = generateRequestId();
+          config.headers['X-Tenant-ID'] = sessionService.getTenantId();
+
+          const accessToken = sessionService.getAccessToken();
+          if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+          }
 
           const method = (config.method ?? 'get').toUpperCase();
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
@@ -203,7 +212,7 @@ class ApiClient {
         },
         (error: AxiosError) => {
           // MANDATE 3: ERROR HANDLING COMPLETENESS - Log request errors with context
-          logError('Request interceptor error', {
+          log.error('Request interceptor error', {
             message: error.message,
             code: error.code,
             stack: error.stack,
@@ -228,14 +237,11 @@ class ApiClient {
             null;
 
           if (error.response?.status === 401) {
-            // Avoid infinite redirect loop: only redirect if not already on /login
-            if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-              window.location.replace('/login');
-            }
+            sessionService.handleUnauthorized({ route: typeof window !== 'undefined' ? window.location.pathname : undefined, traceId });
           }
 
           // MANDATE 3: Log error with full context for debugging
-          logError('API request failed', {
+          log.error('API request failed', {
             url: error.config?.url,
             method: error.config?.method,
             status: error.response?.status,
@@ -272,14 +278,14 @@ class ApiClient {
       const error = new TypeError(
         `Invalid layer key: ${String(layer)}. Must be one of: ${VALID_LAYER_KEYS.join(', ')}`
       );
-      logError('Layer validation failed', { layer, error: error.message });
+      log.error('Layer validation failed', { layer, error: error.message });
       throw error;
     }
 
     const client = this.clients.get(layer);
     if (!client) {
       const error = new Error(`API client for layer ${layer} not initialized`);
-      logError('Client lookup failed', { layer, error: error.message });
+      log.error('Client lookup failed', { layer, error: error.message });
       throw error;
     }
     return client;
@@ -294,7 +300,7 @@ class ApiClient {
     // Check for existing in-flight request
     const existing = this.inFlightRequests.get(requestKey);
     if (existing) {
-      logWarn('Deduplicating identical in-flight GET request', { path: validatedPath, layer });
+      log.warn('Deduplicating identical in-flight GET request', { path: validatedPath, layer });
       return existing.promise as Promise<AxiosResponse>;
     }
 
@@ -323,7 +329,7 @@ class ApiClient {
     // Check for existing in-flight request
     const existing = this.inFlightRequests.get(requestKey);
     if (existing) {
-      logWarn('Deduplicating identical in-flight POST request', { path: validatedPath, layer });
+      log.warn('Deduplicating identical in-flight POST request', { path: validatedPath, layer });
       return existing.promise as Promise<AxiosResponse>;
     }
 

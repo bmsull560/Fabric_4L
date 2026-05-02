@@ -1,11 +1,9 @@
 /**
- * Wireframe UI primitives — TEMPORARY BRIDGE FILE
- * 
- * This file re-exports new Fabric primitives under legacy names
- * to maintain backward compatibility during migration.
- * 
- * TODO: Migrate all consumers to import directly from @/components/ui/fabric
- * Then delete this file.
+ * Wireframe UI primitives — deprecated compatibility surface
+ *
+ * This module is frozen to the legacy export set below. New adapters should not
+ * be added here; migrate callers to direct imports from the canonical Fabric or
+ * shadcn component modules instead.
  */
 
 // Re-export from new Fabric primitives with legacy names

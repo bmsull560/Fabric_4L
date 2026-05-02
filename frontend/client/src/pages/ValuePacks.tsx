@@ -26,6 +26,8 @@ import {
   useSuggestValuePacks,
   type ValuePack,
   type PackStatus,
+  type ValuePackFrameworkData,
+  type ValuePackSuggestion,
 } from "@/hooks";
 import {
   Package, Search, Filter, AlertCircle, RefreshCw, Loader2,
@@ -363,7 +365,7 @@ function FrameworkBrowserPanel() {
         <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
       ) : frameworks && frameworks.length > 0 ? (
         <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-          {frameworks.map((fw: any) => (
+          {frameworks.map((fw: ValuePackFrameworkData) => (
             <div key={fw.industry_id} className="flex items-center justify-between p-2 bg-muted/10 rounded-md hover:bg-muted/20 cursor-pointer">
               <div>
                 <div className="text-[11px] font-semibold text-foreground">{fw.display_name}</div>
@@ -381,7 +383,7 @@ function FrameworkBrowserPanel() {
 
 // ── Ontology Map Panel ───────────────────────────────────────────────────────
 function OntologyMapPanel() {
-  const { data: ontologyMap, isLoading, refetch } = useValuePackOntologyMap();
+  const { data: ontologyMap, isLoading } = useValuePackOntologyMap();
   return (
     <div className="border border-border rounded-lg bg-card p-4">
       <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
@@ -391,12 +393,12 @@ function OntologyMapPanel() {
         <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-6 w-full" />)}</div>
       ) : ontologyMap ? (
         <div className="space-y-2 text-[11px]">
-          {ontologyMap.shared_drivers?.map((m: any, i: number) => (
-            <div key={i} className="flex items-center justify-between p-1.5 bg-muted/10 rounded">
-              <span className="text-muted-foreground">{m.name || m.id}</span>
+          {ontologyMap.shared_drivers.map((mapping) => (
+            <div key={mapping.id} className="flex items-center justify-between p-1.5 bg-muted/10 rounded">
+              <span className="text-muted-foreground">{mapping.name || mapping.id}</span>
               <span className="text-[10px] text-muted-foreground/60">→</span>
-              <span className="font-medium text-foreground">{m.industries?.join(", ") || ""}</span>
-              <span className="text-[10px] text-emerald-600">{m.count} industries</span>
+              <span className="font-medium text-foreground">{mapping.industries.join(", ")}</span>
+              <span className="text-[10px] text-emerald-600">{mapping.count} industries</span>
             </div>
           )) ?? <p className="text-muted-foreground/60 text-center py-2">No mappings available.</p>}
         </div>
@@ -419,11 +421,11 @@ function TemplateLibraryPanel() {
         <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
       ) : templates && templates.templates?.length > 0 ? (
         <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-          {templates.templates.map((t: any) => (
-            <div key={t.template_id} className="p-2 bg-muted/10 rounded-md hover:bg-muted/20 cursor-pointer">
-              <div className="text-[11px] font-semibold text-foreground">{t.template_name}</div>
-              {t.description && <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.formula_pattern}</div>}
-              {t.category && <div className="text-[9px] text-muted-foreground/60 mt-0.5">{t.applicable_industries?.[0] || "General"}</div>}
+          {templates.templates.map((template) => (
+            <div key={template.template_id} className="p-2 bg-muted/10 rounded-md hover:bg-muted/20 cursor-pointer">
+              <div className="text-[11px] font-semibold text-foreground">{template.template_name}</div>
+              {template.formula_pattern && <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{template.formula_pattern}</div>}
+              <div className="text-[9px] text-muted-foreground/60 mt-0.5">{template.applicable_industries[0] || "General"}</div>
             </div>
           ))}
         </div>
@@ -485,7 +487,7 @@ function SuggestionPanel() {
   const [industry, setIndustry] = useState("");
   const [dealSize, setDealSize] = useState("");
   const suggestions = useSuggestValuePacks();
-  const [suggestionResults, setSuggestionResults] = useState<any[]>([]);
+  const [suggestionResults, setSuggestionResults] = useState<ValuePackSuggestion[]>([]);
   const handleSuggest = () => {
     if (industry) {
       setSuggestionResults(suggestions.suggest({
@@ -514,7 +516,7 @@ function SuggestionPanel() {
       </Btn>
       {suggestionResults && suggestionResults.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          {suggestionResults.map((s: any) => (
+          {suggestionResults.map((s) => (
             <div key={s.industry_id} className="p-2 bg-emerald-50/50 border border-emerald-100 rounded-md">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] font-semibold text-foreground">{s.display_name}</span>

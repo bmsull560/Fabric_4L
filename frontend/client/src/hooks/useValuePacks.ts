@@ -1,15 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
-import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
+import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 import {
-  ValuePackSchema,
-  ValuePackListSchema,
   type ValuePack,
   type PackStatus,
-  type PackScope,
 } from '@/lib/schemas/valuePack';
+import {
+  applyValuePack,
+  getValuePackDetail,
+  listValuePackSummaries,
+  type ApplyValuePackResponse,
+  type ValuePackFilters,
+} from '@/api/packs';
+import {
+  compareFrameworkValuePacks,
+  getFrameworkValuePack,
+  getOntologyMap,
+  getTemplateLibrary,
+  listFrameworkValuePacks,
+  type OntologyMapData,
+  type TemplateLibraryData,
+  type ValuePackComparisonData,
+  type ValuePackComparisonRequest,
+  type ValuePackFrameworkData,
+} from '@/api/valuePackFramework';
 
 // Domain-specific error class
 const log = createLogger('useValuePacks');
@@ -22,16 +37,15 @@ export class ValuePackApiError extends BaseApiError {
 }
 
 // Re-export types from schema for backward compatibility
-export type { ValuePack, PackStatus, PackScope };
-
-
-export interface ValuePackFilters {
-  industry?: string | 'all';
-  status?: PackStatus | 'all';
-  scope?: PackScope | 'all';
-  category?: string | 'all';
-  search?: string;
-}
+export type { ValuePack, PackStatus };
+export type { ValuePackFilters };
+export type {
+  ValuePackFrameworkData,
+  OntologyMapData,
+  TemplateLibraryData,
+  ValuePackComparisonData,
+  ValuePackComparisonRequest,
+};
 
 /**
  * Fetch value packs with optional filtering.
@@ -39,22 +53,15 @@ export interface ValuePackFilters {
  * @returns Array of value packs matching the filters
  */
 async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> {
-  const params = new URLSearchParams();
-  if (filters.industry && filters.industry !== 'all') params.set('industry', filters.industry);
-  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
-  if (filters.scope && filters.scope !== 'all') params.set('scope', filters.scope);
-  if (filters.category && filters.category !== 'all') params.set('category', filters.category);
-  if (filters.search) params.set('search', filters.search);
-
-  const response = await apiClient.get('l3', `/packs?${params.toString()}`);
-
-  // Runtime validation with Zod
-  const parsed = ValuePackListSchema.safeParse((response as any).data);
-  if (!parsed.success) {
-    log.error('Value pack list validation failed', { error: parsed.error });
-    throw new ValuePackApiError(formatZodError(parsed.error, 'value pack list response'));
+  try {
+    return await listValuePackSummaries(filters);
+  } catch (error) {
+    if (error instanceof Error) {
+      log.error('Value pack list validation failed', { error: error.message });
+      throw error;
+    }
+    throw new ValuePackApiError('Invalid value pack list response');
   }
-  return parsed.data;
 }
 
 /**
@@ -84,15 +91,15 @@ export function useValuePacks(filters: ValuePackFilters = {}) {
  * @throws ValuePackApiError if the pack is not found or request fails
  */
 async function fetchValuePack(packId: string): Promise<ValuePack> {
-  const response = await apiClient.get('l3', `/packs/${packId}`);
-
-  // Runtime validation with Zod
-  const parsed = ValuePackSchema.safeParse((response as any).data);
-  if (!parsed.success) {
-    log.error('Value pack detail validation failed', { error: parsed.error });
-    throw new ValuePackApiError(formatZodError(parsed.error, 'value pack response'));
+  try {
+    return await getValuePackDetail(packId);
+  } catch (error) {
+    if (error instanceof Error) {
+      log.error('Value pack detail validation failed', { error: error.message });
+      throw error;
+    }
+    throw new ValuePackApiError('Invalid value pack response');
   }
-  return parsed.data;
 }
 
 /**
@@ -104,8 +111,11 @@ async function fetchValuePack(packId: string): Promise<ValuePack> {
 export function useValuePack(packId: string | null) {
   return useQuery<ValuePack, ValuePackApiError>({
     queryKey: QK.valuePacks.detail(packId || ''),
-    queryFn: () => withApiError(fetchValuePack(packId!), ValuePackApiError),
-    enabled: !!packId,
+    queryFn: () =>
+      packId
+        ? withApiError(fetchValuePack(packId), ValuePackApiError)
+        : Promise.reject(new ValuePackApiError('Pack ID is required')),
+    enabled: packId !== null,
     staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
@@ -115,11 +125,6 @@ export function useValuePack(packId: string | null) {
 /** Parameters for applying/deploying a value pack */
 export interface ApplyValuePackParams {
   packId: string;
-}
-
-export interface ApplyValuePackResponse {
-  success: boolean;
-  message?: string;
 }
 
 /**
@@ -134,8 +139,7 @@ export function useApplyValuePack() {
   return useMutation<ApplyValuePackResponse, ValuePackApiError, ApplyValuePackParams>({
     mutationFn: async ({ packId }) => {
       if (!packId) throw new ValuePackApiError('Pack ID is required');
-      const response = await apiClient.post('l3', `/packs/${packId}/apply`, {});
-      return (response as { data: unknown }).data as ApplyValuePackResponse;
+      return applyValuePack(packId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.valuePacks.all });
@@ -148,82 +152,11 @@ export function useApplyValuePack() {
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ValuePack Framework v1.0 - Industry-Specific Value Model Templates
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * ValuePack Framework Industry Data
- */
-export interface ValuePackFrameworkData {
-  industry_id: string;
-  display_name: string;
-  tier: 1 | 2 | 3;
-  description: string;
-  primary_value_drivers: Array<{
-    id: string;
-    name: string;
-    description: string;
-    typical_impact: string;
-    measurement_approach: string;
-  }>;
-  core_use_cases: Array<{
-    id: string;
-    name: string;
-    description: string;
-    target_persona: string;
-    business_problem: string;
-  }>;
-  economic_model_types: Array<{
-    id: string;
-    name: string;
-    formula_shape: string;
-    inputs: string[];
-    output_unit: string;
-    typical_range?: string;
-  }>;
-  why_it_wins: Array<{
-    statement: string;
-    differentiation: string;
-    proof_point: string;
-  }>;
-  composable_model_templates: Array<{
-    template_id: string;
-    template_name: string;
-    formula_pattern: string;
-    applicable_industries: string[];
-    example_calculation: string;
-  }>;
-  pre_wired_ontology_tags: Array<{
-    tag: string;
-    category: string;
-    related_tags: string[];
-  }>;
-  metadata: {
-    deal_size_range: string;
-    sales_cycle_length: string;
-    switching_cost: 'low' | 'medium' | 'high';
-    data_richness: 'low' | 'medium' | 'high';
-    feedback_loop_speed: 'slow' | 'medium' | 'fast';
-  };
-  completeness_score?: number;
-  proof_requirements?: Array<{
-    id: string;
-    requirement: string;
-    evidence_type: string;
-  } | null>;
-}
-
 /**
  * Fetch ValuePack Framework data for all industries.
  */
 async function fetchValuePackFrameworkList(tier?: number, search?: string): Promise<ValuePackFrameworkData[]> {
-  const params = new URLSearchParams();
-  if (tier) params.set('tier', String(tier));
-  if (search) params.set('search', search);
-  
-  const response = await apiClient.get('l3', `/valuepacks?${params.toString()}`) as { data: { items: ValuePackFrameworkData[] } };
-  return response.data.items;
+  return listFrameworkValuePacks(tier, search);
 }
 
 /**
@@ -242,8 +175,7 @@ export function useValuePackFrameworkList(tier?: number, search?: string) {
  * Fetch single ValuePack Framework data.
  */
 async function fetchValuePackFramework(industryId: string): Promise<ValuePackFrameworkData> {
-  const response = await apiClient.get('l3', `/valuepacks/${industryId}`) as { data: ValuePackFrameworkData };
-  return response.data;
+  return getFrameworkValuePack(industryId);
 }
 
 /**
@@ -252,36 +184,14 @@ async function fetchValuePackFramework(industryId: string): Promise<ValuePackFra
 export function useValuePackFramework(industryId: string | null) {
   return useQuery<ValuePackFrameworkData, ValuePackApiError>({
     queryKey: [...QK.valuePacks.all, 'framework', 'detail', industryId],
-    queryFn: () => withApiError(fetchValuePackFramework(industryId!), ValuePackApiError),
-    enabled: !!industryId,
+    queryFn: () =>
+      industryId
+        ? withApiError(fetchValuePackFramework(industryId), ValuePackApiError)
+        : Promise.reject(new ValuePackApiError('Industry ID is required')),
+    enabled: industryId !== null,
     staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
   });
-}
-
-/**
- * Cross-industry ontology map.
- */
-export interface OntologyMapData {
-  shared_drivers: Array<{
-    id: string;
-    name: string;
-    industries: string[];
-    count: number;
-  }>;
-  shared_model_types: Array<{
-    id: string;
-    name: string;
-    industries: string[];
-    count: number;
-  }>;
-  shared_proof_patterns: Array<{
-    id: string;
-    requirement: string;
-    industries: string[];
-    count: number;
-  }>;
-  cross_reference_matrix: Record<string, Record<string, number>>;
 }
 
 /**
@@ -290,21 +200,10 @@ export interface OntologyMapData {
 export function useValuePackOntologyMap() {
   return useQuery<OntologyMapData, ValuePackApiError>({
     queryKey: [...QK.valuePacks.all, 'framework', 'ontology'],
-    queryFn: async () => {
-      const response = await apiClient.get('l3', '/valuepacks/ontology-map') as { data: OntologyMapData };
-      return response.data;
-    },
+    queryFn: () => withApiError(getOntologyMap(), ValuePackApiError),
     staleTime: STALE_TIME.stats,
     retry: RETRY_CONFIG.maxRetries,
   });
-}
-
-/**
- * Composable template library.
- */
-export interface TemplateLibraryData {
-  templates: ValuePackFrameworkData['composable_model_templates'];
-  template_usage: Record<string, string[]>;
 }
 
 /**
@@ -313,28 +212,10 @@ export interface TemplateLibraryData {
 export function useValuePackTemplates() {
   return useQuery<TemplateLibraryData, ValuePackApiError>({
     queryKey: [...QK.valuePacks.all, 'framework', 'templates'],
-    queryFn: async () => {
-      const response = await apiClient.get('l3', '/valuepacks/composable-templates') as { data: TemplateLibraryData };
-      return response.data;
-    },
+    queryFn: () => withApiError(getTemplateLibrary(), ValuePackApiError),
     staleTime: STALE_TIME.stats,
     retry: RETRY_CONFIG.maxRetries,
   });
-}
-
-/**
- * ValuePack comparison request/response.
- */
-export interface ValuePackComparisonRequest {
-  industry_ids: string[];
-  dimensions?: string[];
-}
-
-export interface ValuePackComparisonData {
-  valuepacks: ValuePackFrameworkData[];
-  comparison_matrix: Record<string, Record<string, string[] | string>>;
-  shared_templates: string[];
-  differentiation_analysis: Record<string, string>;
 }
 
 /**
@@ -342,10 +223,7 @@ export interface ValuePackComparisonData {
  */
 export function useValuePackComparison() {
   return useMutation<ValuePackComparisonData, ValuePackApiError, ValuePackComparisonRequest>({
-    mutationFn: async (request) => {
-      const response = await apiClient.post('l3', '/valuepacks/compare', request) as { data: ValuePackComparisonData };
-      return response.data;
-    },
+    mutationFn: (request) => compareFrameworkValuePacks(request),
     onError: (error) => {
       log.error('Comparison failed', { error: error.message });
     },
@@ -391,6 +269,7 @@ export function useSuggestValuePacks() {
   return {
     suggest: (profile: ProspectProfile): ValuePackSuggestion[] => {
       if (!allValuePacks) return [];
+      const painPoints = profile.pain_points ?? [];
       
       // Simple matching algorithm
       return allValuePacks.map(vp => {
@@ -413,9 +292,9 @@ export function useSuggestValuePacks() {
         }
         
         // Pain point alignment
-        if (profile.pain_points) {
+        if (painPoints.length > 0) {
           const matchedDrivers = vp.primary_value_drivers.filter(driver =>
-            profile.pain_points!.some(pp => 
+            painPoints.some(pp => 
               driver.name.toLowerCase().includes(pp.toLowerCase()) ||
               driver.description.toLowerCase().includes(pp.toLowerCase())
             )
@@ -436,7 +315,7 @@ export function useSuggestValuePacks() {
             tech_fit: 1.0, // Default
           },
           recommended_drivers: vp.primary_value_drivers
-            .filter(d => profile.pain_points?.some(pp => 
+            .filter(d => painPoints.some(pp => 
               d.description.toLowerCase().includes(pp.toLowerCase())
             ))
             .map(d => ({ driver_id: d.id, relevance: `Matches pain point` })),

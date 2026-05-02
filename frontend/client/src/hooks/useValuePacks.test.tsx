@@ -87,6 +87,20 @@ describe("useValuePacks", () => {
       expect(result.current.error).toBeDefined();
       expect(result.current.error?.message).toBe("Network error");
     }, 10000);
+
+    it("should reject malformed pack list responses", async () => {
+      vi.mocked(apiClient.get).mockResolvedValueOnce(
+        createMockResponse([{ pack_id: "pack-1", name: "Missing required fields" }])
+      );
+
+      const { result } = renderHook(() => useValuePacks(), {
+        wrapper: createWrapperWithRetry(false),
+      });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+
+      expect(result.current.error).toBeInstanceOf(ValuePackApiError);
+    });
   });
 
   describe("useValuePack hook (single pack)", () => {
@@ -130,13 +144,18 @@ describe("useValuePacks", () => {
 
   describe("useApplyValuePack mutation", () => {
     it("should apply pack successfully", async () => {
-      vi.mocked(apiClient.post).mockResolvedValueOnce(createMockResponse({ applied: true }));
+      vi.mocked(apiClient.post).mockResolvedValueOnce(
+        createMockResponse({ success: true, message: "Applied" })
+      );
 
       const { result } = renderHook(() => useApplyValuePack(), {
         wrapper: createWrapper(),
       });
 
-      await result.current.mutateAsync({ packId: "pack-1" });
+      await expect(result.current.mutateAsync({ packId: "pack-1" })).resolves.toEqual({
+        success: true,
+        message: "Applied",
+      });
 
       expect(apiClient.post).toHaveBeenCalledWith(
         "l3",

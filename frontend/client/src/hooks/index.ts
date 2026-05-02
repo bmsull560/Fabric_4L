@@ -48,6 +48,14 @@ export {
   useSuggestValuePacks,
   type ValuePack,
   type PackStatus,
+  type ValuePackFilters,
+  type ValuePackFrameworkData,
+  type OntologyMapData,
+  type TemplateLibraryData,
+  type ValuePackComparisonData,
+  type ValuePackComparisonRequest,
+  type ValuePackSuggestion,
+  type ProspectProfile,
 } from "./useValuePacks";
 export {
   useSystemHealth,

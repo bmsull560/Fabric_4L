@@ -13,6 +13,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { AuthProvider, useAuthContext, type UserInfo } from './AuthContext';
+import {
+  applySessionServiceTestEnvironment,
+  authFixtures,
+  type MemoryStorage,
+  type MutableLocationLike,
+} from '@/test/authSessionTestUtils';
 
 // ── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -55,15 +61,15 @@ function TestComponent() {
 }
 
 describe('AuthProvider', () => {
+  let testLocalStorage: MemoryStorage;
+  let testSessionStorage: MemoryStorage;
+  let location: MutableLocationLike;
+
   beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
     vi.clearAllMocks();
-    // Reset window.location.href
-    Object.defineProperty(window, 'location', {
-      writable: true,
-      value: { href: 'http://localhost:3000', origin: 'http://localhost:3000', pathname: '/', replace: vi.fn() },
-    });
+    ({ localStorage: testLocalStorage, sessionStorage: testSessionStorage, location } = applySessionServiceTestEnvironment());
+    location.href = 'http://localhost:3000/';
+    location.pathname = '/';
   });
 
   afterEach(() => {
@@ -90,22 +96,19 @@ describe('AuthProvider', () => {
     });
 
     it('restores auth state from localStorage on mount', async () => {
-      const userInfo: UserInfo = {
-        id: 'user-123',
+      const userInfo: UserInfo = authFixtures.user({
         email: 'restored@example.com',
-        role: 'tenant_admin',  // Backend-canonical role
+        role: 'tenant_admin',
         tenantId: 'tenant-1',
         tenantSlug: 'test-tenant',
-      };
+      });
 
-      // Use a valid JWT-format token so refreshToken() validates successfully
-      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-      const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
-      const signature = btoa('signature');
-      const validToken = `${header}.${payload}.${signature}`;
-      localStorage.setItem('accessToken', validToken);
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      localStorage.setItem('tenantId', 'tenant-1');
+      const validSession = authFixtures.validSession({
+        accessToken: authFixtures.validSession().accessToken,
+        tenantId: 'tenant-1',
+        user: userInfo,
+      });
+      testLocalStorage.setItem('vf.auth.session', JSON.stringify(validSession));
 
       const wrapper = createWrapper();
       render(
@@ -121,12 +124,12 @@ describe('AuthProvider', () => {
 
       expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
       expect(screen.getByTestId('user-email')).toHaveTextContent('restored@example.com');
-      expect(screen.getByTestId('token')).toHaveTextContent(validToken);
+      expect(screen.getByTestId('token')).toHaveTextContent(validSession.accessToken);
     });
 
     it('clears invalid stored data and initializes as unauthenticated', async () => {
-      localStorage.setItem('accessToken', 'some-token');
-      localStorage.setItem('userInfo', 'invalid-json{');
+      testLocalStorage.setItem('accessToken', 'some-token');
+      testLocalStorage.setItem('userInfo', 'invalid-json{');
 
       const wrapper = createWrapper();
       render(
@@ -141,12 +144,12 @@ describe('AuthProvider', () => {
       });
 
       expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
-      expect(localStorage.getItem('accessToken')).toBeNull();
-      expect(localStorage.getItem('userInfo')).toBeNull();
+      expect(testLocalStorage.getItem('accessToken')).toBeNull();
+      expect(testLocalStorage.getItem('userInfo')).toBeNull();
     });
 
     it('handles missing user info gracefully', async () => {
-      localStorage.setItem('accessToken', 'token-without-user');
+      testLocalStorage.setItem('accessToken', 'token-without-user');
       // No userInfo in localStorage
 
       const wrapper = createWrapper();
@@ -189,13 +192,13 @@ describe('AuthProvider', () => {
 
       // Wait for async operations to complete (state storage then redirect)
       await waitFor(() => {
-        expect(sessionStorage.getItem('oidcState')).toBe('oidc-state-123');
-        expect(sessionStorage.getItem('oidcTenantSlug')).toBe('test-tenant');
+        expect(testSessionStorage.getItem('oidcState')).toBe('oidc-state-123');
+        expect(testSessionStorage.getItem('oidcTenantSlug')).toBe('test-tenant');
       });
 
       // Verify redirect happened
       await waitFor(() => {
-        expect(window.location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
+        expect(location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
       });
     });
 
@@ -224,7 +227,7 @@ describe('AuthProvider', () => {
 
       // Wait for the async operation to complete (and redirect)
       await waitFor(() => {
-        expect(window.location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
+        expect(location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
       });
     });
 
@@ -318,8 +321,8 @@ describe('AuthProvider', () => {
     beforeEach(() => {
       // Set state to match what TestComponent callback button uses
       // Must match the default MSW handler's expected state pattern
-      sessionStorage.setItem('oidcState', 'oidc-state-123');
-      sessionStorage.setItem('oidcTenantSlug', 'test-tenant');
+      testSessionStorage.setItem('oidcState', 'oidc-state-123');
+      testSessionStorage.setItem('oidcTenantSlug', 'test-tenant');
     });
 
     it('exchanges code for tokens and sets auth state', async () => {
@@ -350,12 +353,12 @@ describe('AuthProvider', () => {
       });
 
       // Verify localStorage updated
-      expect(localStorage.getItem('accessToken')).toBe('new-access-token');
-      expect(localStorage.getItem('tenantId')).toBe('test-tenant');
+      expect(testLocalStorage.getItem('accessToken')).toBe('new-access-token');
+      expect(testLocalStorage.getItem('tenantId')).toBe('test-tenant');
 
       // Verify sessionStorage cleaned up
-      expect(sessionStorage.getItem('oidcState')).toBeNull();
-      expect(sessionStorage.getItem('oidcTenantSlug')).toBeNull();
+      expect(testSessionStorage.getItem('oidcState')).toBeNull();
+      expect(testSessionStorage.getItem('oidcTenantSlug')).toBeNull();
     });
 
     it('rejects when state parameter does not match', async () => {
@@ -394,7 +397,7 @@ describe('AuthProvider', () => {
 
       // Should fail and clean up session storage
       await waitFor(() => {
-        expect(sessionStorage.getItem('oidcState')).toBeNull();
+        expect(testSessionStorage.getItem('oidcState')).toBeNull();
       });
     });
 
@@ -445,16 +448,18 @@ describe('AuthProvider', () => {
   describe('logout', () => {
     it('clears all auth state and storage', async () => {
       // Set up authenticated state with backend-canonical role
-      const userInfo: UserInfo = {
-        id: 'user-123',
+      const userInfo: UserInfo = authFixtures.user({
         email: 'test@example.com',
-        role: 'super_admin',  // Backend-canonical role
+        role: 'super_admin',
         tenantId: 'tenant-1',
         tenantSlug: 'test-tenant',
-      };
-      localStorage.setItem('accessToken', 'token-123');
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      localStorage.setItem('tenantId', 'tenant-1');
+      });
+      const snapshot = authFixtures.validSession({
+        accessToken: 'header.eyJleHAiOjQ3MDAwMDAwMDB9.signature',
+        tenantId: 'tenant-1',
+        user: userInfo,
+      });
+      testLocalStorage.setItem('vf.auth.session', JSON.stringify(snapshot));
 
       const wrapper = createWrapper();
       render(
@@ -480,9 +485,9 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('token')).toHaveTextContent('no-token');
 
       // Verify all storage cleared
-      expect(localStorage.getItem('accessToken')).toBeNull();
-      expect(localStorage.getItem('userInfo')).toBeNull();
-      expect(localStorage.getItem('tenantId')).toBeNull();
+      expect(testLocalStorage.getItem('accessToken')).toBeNull();
+      expect(testLocalStorage.getItem('userInfo')).toBeNull();
+      expect(testLocalStorage.getItem('tenantId')).toBeNull();
     });
   });
 
@@ -535,7 +540,7 @@ describe('AuthProvider', () => {
       });
 
       // Verify token was stored (valid JWT format with 3 parts)
-      const storedToken = localStorage.getItem('accessToken');
+      const storedToken = testLocalStorage.getItem('accessToken');
       expect(storedToken?.split('.')).toHaveLength(3);
 
       process.env.NODE_ENV = originalNodeEnv;
@@ -550,7 +555,7 @@ describe('AuthProvider', () => {
       const signature = btoa('signature');
       const validToken = `${header}.${payload}.${signature}`;
 
-      localStorage.setItem('accessToken', validToken);
+      testLocalStorage.setItem('accessToken', validToken);
 
       const wrapper = createWrapper();
       render(
@@ -570,9 +575,9 @@ describe('AuthProvider', () => {
     });
 
     it('logs out when token structure is invalid', async () => {
-      localStorage.setItem('accessToken', 'invalid-token');
+      testLocalStorage.setItem('accessToken', 'invalid-token');
       // Uses backend-canonical role read_only which normalizes to standard tier
-      localStorage.setItem('userInfo', JSON.stringify({ id: 'user-1', email: 'test@test.com', role: 'read_only', tenantId: 't1', tenantSlug: 'test' }));
+      testLocalStorage.setItem('userInfo', JSON.stringify({ id: 'user-1', email: 'test@test.com', role: 'read_only', tenantId: 't1', tenantSlug: 'test' }));
 
       const wrapper = createWrapper();
       render(

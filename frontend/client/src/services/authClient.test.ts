@@ -8,10 +8,15 @@
  * - Edge cases
  */
 
-import { AuthClient, authClient } from './authClient';
+import { AuthClient } from './authClient';
 import { AuthError, AuthErrorCategory } from '../schemas/auth';
+import {
+  applySessionServiceTestEnvironment,
+  authFixtures,
+  type MemoryStorage,
+} from '@/test/authSessionTestUtils';
 
-import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, type Mock } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 
 // Mock window.fetch directly to bypass MSW for AuthClient unit tests
 const fetchMock = vi.fn();
@@ -23,27 +28,15 @@ afterAll(() => {
   window.fetch = originalFetch;
 });
 
-// Mock localStorage and sessionStorage
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-};
-const mockSessionStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-};
-
-Object.defineProperty(window, 'localStorage', { value: mockLocalStorage });
-Object.defineProperty(window, 'sessionStorage', { value: mockSessionStorage });
-
 describe('AuthClient', () => {
   let client: AuthClient;
+  let testLocalStorage: MemoryStorage;
+  let testSessionStorage: MemoryStorage;
 
   beforeEach(() => {
     client = new AuthClient();
     vi.clearAllMocks();
+    ({ localStorage: testLocalStorage, sessionStorage: testSessionStorage } = applySessionServiceTestEnvironment());
   });
 
   describe('initiateLogin', () => {
@@ -190,19 +183,13 @@ describe('AuthClient', () => {
 
   describe('getCurrentSession', () => {
     it('should return null when no session exists', () => {
-      mockLocalStorage.getItem.mockReturnValue(null);
-
       const session = client.getCurrentSession();
 
       expect(session).toBeNull();
     });
 
     it('should return null when only token exists (no user info)', () => {
-      mockLocalStorage.getItem.mockImplementation((key: string) => {
-        if (key === 'accessToken') return 'token';
-        if (key === 'userInfo') return null;
-        return null;
-      });
+      testLocalStorage.setItem('accessToken', 'token');
 
       const session = client.getCurrentSession();
 
@@ -210,20 +197,10 @@ describe('AuthClient', () => {
     });
 
     it('should return valid session when both token and user exist', () => {
-      // Arrange: Set up valid session data in localStorage
-      const userInfo = {
-        id: 'user-123',
-        email: 'user@example.com',
-        role: 'analyst' as const,
-        tenantId: 'tenant-123',
-        tenantSlug: 'tenant',
-      };
-
-      mockLocalStorage.getItem.mockImplementation((key: string) => {
-        if (key === 'accessToken') return 'valid_token';
-        if (key === 'userInfo') return JSON.stringify(userInfo);
-        return null;
-      });
+      const userInfo = authFixtures.user({ role: 'analyst', tenantSlug: 'tenant' });
+      testLocalStorage.setItem('accessToken', authFixtures.validSession().accessToken);
+      testLocalStorage.setItem('userInfo', JSON.stringify(userInfo));
+      testLocalStorage.setItem('tenantId', userInfo.tenantId);
 
       // Act: Retrieve the current session
       const session = client.getCurrentSession();
@@ -232,59 +209,43 @@ describe('AuthClient', () => {
     });
 
     it('should clear session on invalid user JSON', () => {
-      // Arrange: Mock localStorage with malformed JSON
-      mockLocalStorage.getItem.mockImplementation((key: string) => {
-        if (key === 'accessToken') return 'token';
-        if (key === 'userInfo') return 'invalid json{';
-        return null;
-      });
+      testLocalStorage.setItem('accessToken', authFixtures.validSession().accessToken);
+      testLocalStorage.setItem('userInfo', authFixtures.malformedUserPayload());
+      testLocalStorage.setItem('tenantId', 'tenant-123');
 
       // Act: Attempt to retrieve session
       const session = client.getCurrentSession();
 
       // Assert: Session should be null and storage cleared
       expect(session).toBeNull();
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('userInfo');
+      expect(testLocalStorage.getItem('accessToken')).toBeNull();
+      expect(testLocalStorage.getItem('userInfo')).toBeNull();
     });
 
     it('should clear session on schema validation failure', () => {
-      // Arrange: Set up invalid user data (missing required fields)
-      const invalidUser = {
-        id: 'user-123',
-      };
-
-      mockLocalStorage.getItem.mockImplementation((key: string) => {
-        if (key === 'accessToken') return 'token';
-        if (key === 'userInfo') return JSON.stringify(invalidUser);
-        return null;
-      });
+      testLocalStorage.setItem('accessToken', authFixtures.validSession().accessToken);
+      testLocalStorage.setItem('userInfo', JSON.stringify({ id: 'user-123' }));
+      testLocalStorage.setItem('tenantId', 'tenant-123');
 
       // Act: Attempt to get session with invalid data
       const session = client.getCurrentSession();
 
       // Assert: Session should be cleared and null returned
       expect(session).toBeNull();
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
+      expect(testLocalStorage.getItem('accessToken')).toBeNull();
     });
   });
 
   describe('refreshToken', () => {
     it('should return false when no token exists', async () => {
-      mockLocalStorage.getItem.mockReturnValue(null);
-
       const result = await client.refreshToken();
 
       expect(result).toBe(false);
     });
 
     it('should return true for valid unexpired token', async () => {
-      const exp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-      const payload = { exp };
-      const base64Payload = btoa(JSON.stringify(payload));
-      const token = `header.${base64Payload}.signature`;
-
-      mockLocalStorage.getItem.mockReturnValue(token);
+      const snapshot = authFixtures.validSession();
+      testLocalStorage.setItem('vf.auth.session', JSON.stringify(snapshot));
 
       const result = await client.refreshToken();
 
@@ -292,18 +253,12 @@ describe('AuthClient', () => {
     });
 
     it('should return false and clear session for expired token', async () => {
-      const exp = Math.floor(Date.now() / 1000) - 60; // 1 minute ago
-      const payload = { exp };
-      const base64Payload = btoa(JSON.stringify(payload));
-      const token = `header.${base64Payload}.signature`;
-
-      mockLocalStorage.getItem.mockReturnValue(token);
+      testLocalStorage.setItem('vf.auth.session', JSON.stringify(authFixtures.expiredSession()));
 
       const result = await client.refreshToken();
 
       expect(result).toBe(false);
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('userInfo');
+      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
     });
 
     it('should return false and clear session for token expiring within buffer', async () => {
@@ -311,26 +266,34 @@ describe('AuthClient', () => {
       const payload = { exp };
       const base64Payload = btoa(JSON.stringify(payload));
       const token = `header.${base64Payload}.signature`;
-
-      mockLocalStorage.getItem.mockReturnValue(token);
+      testLocalStorage.setItem(
+        'vf.auth.session',
+        JSON.stringify(authFixtures.validSession({ accessToken: token }))
+      );
 
       const result = await client.refreshToken();
 
       expect(result).toBe(false);
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
+      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
     });
 
     it('should return false for malformed JWT', async () => {
-      mockLocalStorage.getItem.mockReturnValue('not.a.valid.jwt');
+      testLocalStorage.setItem(
+        'vf.auth.session',
+        JSON.stringify(authFixtures.validSession({ accessToken: 'not.a.valid.jwt' }))
+      );
 
       const result = await client.refreshToken();
 
       expect(result).toBe(false);
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
+      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
     });
 
     it('should return false for invalid JWT structure', async () => {
-      mockLocalStorage.getItem.mockReturnValue('invalid-token');
+      testLocalStorage.setItem(
+        'vf.auth.session',
+        JSON.stringify(authFixtures.validSession({ accessToken: 'invalid-token' }))
+      );
 
       const result = await client.refreshToken();
 
@@ -346,8 +309,10 @@ describe('AuthClient', () => {
         .replace(/\//g, '_')
         .replace(/=/g, '');
       const token = `header.${base64Payload}.signature`;
-
-      mockLocalStorage.getItem.mockReturnValue(token);
+      testLocalStorage.setItem(
+        'vf.auth.session',
+        JSON.stringify(authFixtures.validSession({ accessToken: token }))
+      );
 
       const result = await client.refreshToken();
 
@@ -359,43 +324,48 @@ describe('AuthClient', () => {
     it('should persist all session data to localStorage', () => {
       // Arrange: Prepare session data
       const token = 'jwt_token';
-      const userInfo = {
-        id: 'user-123',
-        email: 'user@example.com',
-        role: 'analyst' as const,
-        tenantId: 'tenant-123',
-        tenantSlug: 'tenant',
-      };
+      const userInfo = authFixtures.user({ role: 'analyst', tenantSlug: 'tenant' });
       const tenantId = 'tenant-123';
 
       // Act: Persist the session
       client.persistSession(token, userInfo, tenantId);
 
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('accessToken', token);
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-        'userInfo',
-        JSON.stringify(userInfo),
-      );
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('tenantId', tenantId);
+      expect(testLocalStorage.getItem('accessToken')).toBe(token);
+      expect(testLocalStorage.getItem('userInfo')).toBe(JSON.stringify(userInfo));
+      expect(testLocalStorage.getItem('tenantId')).toBe(tenantId);
+      expect(testLocalStorage.getItem('vf.auth.session')).not.toBeNull();
     });
   });
 
   describe('clearSession', () => {
     it('should remove all session data from localStorage', () => {
+      const snapshot = authFixtures.validSession();
+      testLocalStorage.setItem('vf.auth.session', JSON.stringify(snapshot));
+      testLocalStorage.setItem('accessToken', snapshot.accessToken);
+      testLocalStorage.setItem('userInfo', JSON.stringify(snapshot.user));
+      testLocalStorage.setItem('tenantId', snapshot.tenantId);
+
       client.clearSession();
 
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('userInfo');
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('tenantId');
+      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
+      expect(testLocalStorage.getItem('accessToken')).toBeNull();
+      expect(testLocalStorage.getItem('userInfo')).toBeNull();
+      expect(testLocalStorage.getItem('tenantId')).toBeNull();
     });
   });
 
   describe('clearOidcState', () => {
     it('should remove OIDC state from sessionStorage', () => {
+      const flow = authFixtures.oidcFlow({ postLoginRedirect: '/home' });
+      testSessionStorage.setItem('vf.auth.oidc', JSON.stringify(flow));
+      testSessionStorage.setItem('oidcState', flow.state);
+      testSessionStorage.setItem('oidcTenantSlug', flow.tenantSlug);
+
       client.clearOidcState();
 
-      expect(mockSessionStorage.removeItem).toHaveBeenCalledWith('oidcState');
-      expect(mockSessionStorage.removeItem).toHaveBeenCalledWith('oidcTenantSlug');
+      expect(testSessionStorage.getItem('vf.auth.oidc')).toBeNull();
+      expect(testSessionStorage.getItem('oidcState')).toBeNull();
+      expect(testSessionStorage.getItem('oidcTenantSlug')).toBeNull();
     });
   });
 });

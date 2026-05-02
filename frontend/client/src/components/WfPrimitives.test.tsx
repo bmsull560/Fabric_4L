@@ -11,8 +11,31 @@ import {
   type EntityType,
   type StatusType,
 } from "./WfPrimitives";
+import * as WfPrimitives from "./WfPrimitives";
 
 describe("WfPrimitives", () => {
+  it("exposes only the approved legacy compatibility surface", () => {
+    expect(Object.keys(WfPrimitives).sort()).toEqual([
+      "Btn",
+      "Callout",
+      "DataTable",
+      "Dialog",
+      "EntityBadge",
+      "FilterBar",
+      "GraphLegend",
+      "MetricCard",
+      "PageHeader",
+      "SearchInput",
+      "SectionCard",
+      "SidePanel",
+      "Skeleton",
+      "StatusBadge",
+      "StatusBadgeLegacy",
+      "Tabs",
+      "Toolbar",
+    ].sort());
+  });
+
   describe("EntityBadge", () => {
     const entityTypes: EntityType[] = [
       "capability",
