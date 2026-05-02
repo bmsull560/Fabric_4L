@@ -65,7 +65,7 @@ def reset_tenant_validation_metrics() -> None:
 
 try:
     from value_fabric.shared.identity.context import RequestContext
-    from value_fabric.shared.identity.dependencies import get_request_context
+    from value_fabric.shared.identity.dependencies import get_current_context as get_request_context
     SHARED_IDENTITY_AVAILABLE = True
 except ImportError:
     SHARED_IDENTITY_AVAILABLE = False

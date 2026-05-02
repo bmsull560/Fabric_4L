@@ -26,3 +26,5 @@ __path__ = pkgutil.extend_path(__path__, __name__)
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _append_namespace_root(_REPO_ROOT / "packages" / "shared" / "src" / "value_fabric")
 _append_namespace_root(_REPO_ROOT / "services" / "layer4-agents" / "src")
+_append_namespace_root(_REPO_ROOT / "services" / "layer3-knowledge" / "src")
+_append_namespace_root(_REPO_ROOT / "services" / "layer2-extraction" / "src")

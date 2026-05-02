@@ -160,7 +160,7 @@ class TestCacheKeyIsolation:
         
         Rationale: Without tenant_id, tenant A could read tenant B's cached entities.
         """
-        from value_fabric.layer3_knowledge.src.api.cache import get_cached_entity, set_cached_entity
+        from value_fabric.layer3.api.cache import get_cached_entity, set_cached_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -179,7 +179,7 @@ class TestCacheKeyIsolation:
         mock_redis.get = mock_get
         mock_redis.set = mock_set
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             # Cache entity for tenant A
             await set_cached_entity(
                 tenant_id=tenant_a,
@@ -214,7 +214,7 @@ class TestCacheKeyIsolation:
         
         Rationale: Shared query cache would leak search results between tenants.
         """
-        from value_fabric.layer3_knowledge.src.api.cache import get_cached_query, set_cached_query
+        from value_fabric.layer3.api.cache import get_cached_query, set_cached_query
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -233,7 +233,7 @@ class TestCacheKeyIsolation:
         mock_redis.get = mock_get
         mock_redis.set = mock_set
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             # Cache query results for tenant A
             await set_cached_query(
                 tenant_id=tenant_a,
@@ -262,7 +262,7 @@ class TestCacheKeyIsolation:
         
         Rationale: Bulk invalidation must maintain tenant boundaries.
         """
-        from value_fabric.layer3_knowledge.src.api.cache import invalidate_tenant_cache
+        from value_fabric.layer3.api.cache import invalidate_tenant_cache
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -286,7 +286,7 @@ class TestCacheKeyIsolation:
         mock_redis.keys = mock_keys
         mock_redis.delete = mock_delete
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             # Invalidate tenant A's cache
             await invalidate_tenant_cache(tenant_id=tenant_a)
             
@@ -312,7 +312,7 @@ class TestSessionCacheIsolation:
         
         Rationale: Shared session cache would allow session hijacking between tenants.
         """
-        from shared.identity.session_cache import get_session, set_session
+        from value_fabric.shared.identity.session_cache import get_session, set_session
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -359,7 +359,7 @@ class TestSessionCacheIsolation:
         
         Rationale: Shared API key cache could allow key reuse between tenants.
         """
-        from shared.identity.api_key_cache import validate_api_key
+        from value_fabric.shared.identity.api_key_cache import validate_api_key
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -437,7 +437,7 @@ class TestDegradedModeIsolation:
         Rationale: Cache miss should trigger fresh DB query with tenant filter,
         not return data from another tenant.
         """
-        from value_fabric.layer3_knowledge.src.api.cache import get_cached_entity
+        from value_fabric.layer3.api.cache import get_cached_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -446,7 +446,7 @@ class TestDegradedModeIsolation:
         mock_redis = AsyncMock()
         mock_redis.get = AsyncMock(return_value=None)  # Cache miss
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             # Cache miss for tenant A
             result = await get_cached_entity(tenant_id=tenant_a, entity_id=entity_id)
             
@@ -476,9 +476,9 @@ class TestDegradedModeIsolation:
         
         mock_redis.set = mock_set
         
-        from value_fabric.layer3_knowledge.src.api.cache import set_cached_entity
+        from value_fabric.layer3.api.cache import set_cached_entity
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             # Request 1: Tenant A
             await set_cached_entity(
                 tenant_id=tenant_a,
@@ -513,7 +513,7 @@ class TestCachePoisoningPrevention:
         
         Attack scenario: Malicious tenant crafts cache key to pollute another tenant.
         """
-        from value_fabric.layer3_knowledge.src.api.cache import set_cached_entity
+        from value_fabric.layer3.api.cache import set_cached_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -529,7 +529,7 @@ class TestCachePoisoningPrevention:
         
         mock_redis.set = mock_set
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             # Tenant A tries to write with tenant B's ID in key
             # This should be prevented by cache layer validation
             await set_cached_entity(
@@ -550,7 +550,7 @@ class TestCachePoisoningPrevention:
         Attack scenario: Tenant provides entity_id with embedded tenant_id
         to bypass tenant scoping.
         """
-        from value_fabric.layer3_knowledge.src.api.cache import set_cached_entity
+        from value_fabric.layer3.api.cache import set_cached_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -567,7 +567,7 @@ class TestCachePoisoningPrevention:
         
         mock_redis.set = mock_set
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             await set_cached_entity(
                 tenant_id=tenant_a,
                 entity_id=malicious_entity_id,
@@ -587,7 +587,7 @@ class TestCachePoisoningPrevention:
         
         Attack scenario: Tenant A tries to invalidate all caches using wildcard.
         """
-        from value_fabric.layer3_knowledge.src.api.cache import invalidate_cache_pattern
+        from value_fabric.layer3.api.cache import invalidate_cache_pattern
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -614,7 +614,7 @@ class TestCachePoisoningPrevention:
         mock_redis.keys = mock_keys
         mock_redis.delete = mock_delete
         
-        with patch("value_fabric.layer3_knowledge.src.api.cache.redis_client", mock_redis):
+        with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
             # Tenant A tries to invalidate with wildcard
             await invalidate_cache_pattern(
                 tenant_id=tenant_a,

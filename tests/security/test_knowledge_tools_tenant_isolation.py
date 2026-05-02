@@ -248,8 +248,8 @@ class TestSemanticSearchToolTenantIsolation:
         """POSITIVE: Semantic search includes tenant_id in metadata filter."""
         from tools.knowledge_tools import SemanticSearchTool
         from models.tool_schemas import SemanticSearchInput
-        from shared.identity.context import RequestContext, set_request_context
-        from shared.identity.permissions import Permission
+        from value_fabric.shared.identity.context import RequestContext, set_request_context
+        from value_fabric.shared.identity.permissions import Permission
         
         # Set tenant context
         ctx = RequestContext(
@@ -286,7 +286,7 @@ class TestSemanticSearchToolTenantIsolation:
                 f"Filter must use context tenant_id, got {filter_metadata.get('tenant_id')}"
             )
         finally:
-            from shared.identity.context import _current_context
+            from value_fabric.shared.identity.context import _current_context
             _current_context.reset(token)
 
 

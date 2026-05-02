@@ -159,13 +159,13 @@ export default defineConfig({
   plugins,
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "client", "src"),
+      "@": path.resolve(__dirname, "src"),
       "@shared": path.resolve(__dirname, "shared"),
       "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
   envDir: __dirname,
-  root: path.resolve(__dirname, "client"),
+  root: __dirname,
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
@@ -232,11 +232,11 @@ export default defineConfig({
     setupFiles: [path.resolve(__dirname, "test", "setup.ts")],
     coverage: {
       provider: "v8",
-      include: ["client/src/**/*.{ts,tsx}"],
+      include: ["src/**/*.{ts,tsx}"],
       exclude: [
-        "client/src/**/*.d.ts",
-        "client/src/**/*.test.{ts,tsx}",
-        "client/src/test/**",
+        "src/**/*.d.ts",
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**",
       ],
       thresholds: {
         lines: 35,

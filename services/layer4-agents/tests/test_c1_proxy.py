@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.api.routes.c1 import C1Message, C1StreamRequest, router
+from value_fabric.layer4.api.routes.c1 import C1Message, C1StreamRequest, router
 
 _app = FastAPI()
 _app.include_router(router, prefix="/v1")

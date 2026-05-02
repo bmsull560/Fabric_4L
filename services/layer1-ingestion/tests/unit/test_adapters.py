@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+pytest.importorskip("defusedxml")
+
 from src.adapters.base import AdapterType
 from src.adapters.sec_edgar import SECEdgarAdapter
 

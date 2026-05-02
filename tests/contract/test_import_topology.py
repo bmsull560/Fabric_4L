@@ -24,7 +24,7 @@ class TestImportTopology:
 
     def test_shared_namespace_resolution(self):
         """import shared should resolve to canonical location."""
-        import shared
+        import value_fabric.shared
 
         shared_path = Path(shared.__file__)
         # Should resolve to value-fabric/shared/ or value_fabric/shared/
@@ -38,7 +38,7 @@ class TestImportTopology:
         "layer1_ingestion",
         "layer2_extraction",
         "layer3_knowledge",
-        "layer4_agents",
+        "layer4",
         "layer5_ground_truth",
         "layer6_benchmarks",
     ])
@@ -49,6 +49,24 @@ class TestImportTopology:
             assert module is not None
         except ImportError as e:
             pytest.skip(f"Layer {layer} not yet available: {e}")
+
+    def test_layer4_engine_import(self):
+        """Layer 4 engine module should be importable via value_fabric.layer4."""
+        import value_fabric.layer4.engine
+
+        assert value_fabric.layer4.engine.__file__ is not None
+
+    def test_layer4_tools_import(self):
+        """Layer 4 tools module should be importable via value_fabric.layer4."""
+        import value_fabric.layer4.tools
+
+        assert value_fabric.layer4.tools.__file__ is not None
+
+    def test_layer4_models_import(self):
+        """Layer 4 models module should be importable via value_fabric.layer4."""
+        import value_fabric.layer4.models
+
+        assert value_fabric.layer4.models.__file__ is not None
 
     def test_pytest_collection_no_import_errors(self):
         """pytest --collect-only should have zero import errors."""
@@ -75,7 +93,7 @@ class TestImportTopology:
 
     def test_no_root_shared_shadowing(self):
         """Root shared/ should not shadow value-fabric/shared/."""
-        import shared
+        import value_fabric.shared
 
         shared_file = Path(shared.__file__)
         repo_root = REPO_ROOT

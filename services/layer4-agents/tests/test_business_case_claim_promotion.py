@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.services.export_provenance import build_export_provenance_manifest
-from src.workflows.business_case import BusinessCaseGeneratorWorkflow
+from value_fabric.layer4.services.export_provenance import build_export_provenance_manifest
+from value_fabric.layer4.workflows.business_case import BusinessCaseGeneratorWorkflow
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

@@ -14,16 +14,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+
+# Skip test if psycopg is not available
+pytest.importorskip("psycopg", reason="psycopg wrapper not installed - requires psycopg[binary]")
+
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.main import app
-from src.models.account import (
+from value_fabric.layer4.api.main import app
+from value_fabric.layer4.models.account import (
     Account,
     CRMProvider,
     SyncStatus,
 )
-from src.services.crm_sync_service import CRMSyncService
+from value_fabric.layer4.services.crm_sync_service import CRMSyncService
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

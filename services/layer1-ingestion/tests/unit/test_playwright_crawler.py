@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+pytest.importorskip("playwright")
+
 from src.crawler.crawler_config import CrawlerConfig
 from src.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
 from value_fabric.shared.models.typed_dict import TypedDictModel

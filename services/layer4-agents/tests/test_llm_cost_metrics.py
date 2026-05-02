@@ -10,8 +10,8 @@ from uuid import uuid4
 import pytest
 from prometheus_client import CollectorRegistry
 
-from src.metrics.llm_cost_calculator import LLMCostCalculator
-from src.metrics.prometheus_metrics import MetricsConfig, PrometheusMetrics
+from value_fabric.layer4.metrics.llm_cost_calculator import LLMCostCalculator
+from value_fabric.layer4.metrics.prometheus_metrics import MetricsConfig, PrometheusMetrics
 
 
 class TestLLMCostCalculator:

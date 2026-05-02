@@ -38,8 +38,8 @@ class TestAuthSourceUnknownRejected:
         # We can't directly manipulate the auth_source, but we test
         # that the validation would reject it if it were set
         try:
-            from shared.identity.context import AUTH_SOURCE_UNKNOWN, RequestContext
-            from shared.identity.dependencies import require_authenticated
+            from value_fabric.shared.identity.context import AUTH_SOURCE_UNKNOWN, RequestContext
+            from value_fabric.shared.identity.dependencies import require_authenticated
             
             # Create context with UNKNOWN auth source
             context = RequestContext(
@@ -83,7 +83,7 @@ class TestValidAuthSources:
     def test_jwt_auth_source_valid(self):
         """JWT claim auth source is valid."""
         try:
-            from shared.identity.context import AUTH_SOURCE_JWT, RequestContext
+            from value_fabric.shared.identity.context import AUTH_SOURCE_JWT, RequestContext
             
             context = RequestContext(
                 tenant_id="tenant-a",
@@ -101,7 +101,7 @@ class TestValidAuthSources:
     def test_api_key_auth_source_valid(self):
         """API key auth source is valid."""
         try:
-            from shared.identity.context import AUTH_SOURCE_API_KEY, RequestContext
+            from value_fabric.shared.identity.context import AUTH_SOURCE_API_KEY, RequestContext
             
             context = RequestContext(
                 tenant_id="tenant-a",
@@ -119,7 +119,7 @@ class TestValidAuthSources:
     def test_service_account_auth_source_valid(self):
         """Service account auth source is valid."""
         try:
-            from shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT, RequestContext
+            from value_fabric.shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT, RequestContext
             
             context = RequestContext(
                 tenant_id="tenant-a",
@@ -143,7 +143,7 @@ class TestAuthSourceValidationErrors:
     def test_invalid_auth_source_in_validation(self):
         """Invalid auth_source produces validation error."""
         try:
-            from shared.identity.context import RequestContext
+            from value_fabric.shared.identity.context import RequestContext
             
             context = RequestContext(
                 tenant_id="tenant-a",
@@ -162,7 +162,7 @@ class TestAuthSourceValidationErrors:
     def test_empty_auth_source_in_validation(self):
         """Empty auth_source produces validation error."""
         try:
-            from shared.identity.context import RequestContext
+            from value_fabric.shared.identity.context import RequestContext
             
             context = RequestContext(
                 tenant_id="tenant-a",
@@ -210,7 +210,7 @@ class TestAuthSourceConsistency:
     def test_service_account_has_service_account_id(self):
         """Service account auth requires service_account_id."""
         try:
-            from shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT, RequestContext
+            from value_fabric.shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT, RequestContext
             
             # Service account auth without service_account_id is inconsistent
             context = RequestContext(
@@ -231,7 +231,7 @@ class TestAuthSourceConsistency:
     def test_service_account_without_scopes_invalid(self):
         """Service account must have scopes."""
         try:
-            from shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT, RequestContext
+            from value_fabric.shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT, RequestContext
             
             context = RequestContext(
                 tenant_id="tenant-a",
@@ -256,8 +256,8 @@ class TestRequireAuthenticatedDependency:
     def test_require_authenticated_rejects_unknown_source(self):
         """P0: require_authenticated rejects AUTH_SOURCE_UNKNOWN."""
         try:
-            from shared.identity.context import AUTH_SOURCE_UNKNOWN, RequestContext
-            from shared.identity.dependencies import require_authenticated
+            from value_fabric.shared.identity.context import AUTH_SOURCE_UNKNOWN, RequestContext
+            from value_fabric.shared.identity.dependencies import require_authenticated
             from fastapi import HTTPException
             
             context = RequestContext(

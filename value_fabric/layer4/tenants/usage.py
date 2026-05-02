@@ -65,7 +65,7 @@ class UsageTrackingService:
     async def __aenter__(self):
         if not self._external_db:
             # Import here to avoid circular imports
-            from ..database import get_db_session
+            from ..database import get_db_from_context as get_db_session
 
             self.db = await get_db_session().__aenter__()
         return self

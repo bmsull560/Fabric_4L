@@ -30,7 +30,7 @@ sys.modules.setdefault("src.models.pain_signal", _mock_pain_signal)
 
 import pytest
 
-from src.services.value_hypothesis_engine import (
+from value_fabric.layer4.services.value_hypothesis_engine import (
     HypothesisStatus,
     RankingStrategy,
     RANKING_WEIGHTS,

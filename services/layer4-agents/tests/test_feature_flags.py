@@ -8,6 +8,10 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
+
+# Skip test if psycopg is not available
+pytest.importorskip("psycopg", reason="psycopg wrapper not installed - requires psycopg[binary]")
+
 from httpx import ASGITransport, AsyncClient
 from value_fabric.shared.audit.models import AuditAction
 from value_fabric.shared.identity.context import RequestContext
@@ -21,9 +25,9 @@ from value_fabric.shared.identity.permissions import Role
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.api.main import app
-from src.database import Base, get_db
-from src.feature_flags.service import FeatureFlagService
+from value_fabric.layer4.api.main import app
+from value_fabric.layer4.database import Base, get_db
+from value_fabric.layer4.feature_flags.service import FeatureFlagService
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

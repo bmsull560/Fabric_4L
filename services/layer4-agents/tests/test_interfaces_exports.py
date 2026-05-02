@@ -5,7 +5,7 @@ Uses src.* imports with pytest pythonpath configuration.
 
 import pytest
 
-from src.interfaces import (
+from value_fabric.layer4.interfaces import (
     ActivationRequest,
     BenchmarkDataset,
     ComparisonRequest,

@@ -18,7 +18,7 @@ from fastapi.responses import Response
 
 # Import metrics functions to test
 try:
-    from value_fabric.layer4_agents.src.metrics.prometheus_metrics import (
+    from value_fabric.layer4.metrics.prometheus_metrics import (
         _derive_tenant_tier,
         _normalize_path,
     )
@@ -28,7 +28,7 @@ except ImportError:
 
 # Import billing webhook functions to test
 try:
-    from value_fabric.layer4_agents.src.api.routes.billing import (
+    from value_fabric.layer4.api.routes.billing import (
         _get_client_ip,
         _is_stripe_webhook_ip,
     )
@@ -38,7 +38,7 @@ except ImportError:
 
 # Import settings to test
 try:
-    from value_fabric.layer4_agents.src.config.settings import Settings
+    from value_fabric.layer4.config.settings import Settings
     SETTINGS_IMPORTS_AVAILABLE = True
 except ImportError:
     SETTINGS_IMPORTS_AVAILABLE = False
@@ -280,7 +280,7 @@ class TestMetricsAccessControl:
         # This is an integration test that would require the full app
         # For unit testing, we verify the security import is present
         try:
-            from value_fabric.layer4_agents.src.api.main import (
+            from value_fabric.layer4.api.main import (
                 METRICS_ACCESS_AVAILABLE,
                 metrics_endpoint,
             )
@@ -299,7 +299,7 @@ class TestHealthEndpointAuth:
     def test_detailed_health_requires_auth(self):
         """Detailed health endpoint should require authentication."""
         try:
-            from value_fabric.layer4_agents.src.api.routes.health_badges import (
+            from value_fabric.layer4.api.routes.health_badges import (
                 SECURITY_AVAILABLE,
                 get_detailed_health,
             )
@@ -314,7 +314,7 @@ class TestHealthEndpointAuth:
     def test_badge_dismissal_requires_auth(self):
         """Badge dismissal should require authentication."""
         try:
-            from value_fabric.layer4_agents.src.api.routes.health_badges import (
+            from value_fabric.layer4.api.routes.health_badges import (
                 SECURITY_AVAILABLE,
                 dismiss_badge,
             )

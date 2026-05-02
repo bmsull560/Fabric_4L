@@ -60,7 +60,7 @@ class TestCrossLayerContextConsistency:
     def test_isolation_tier_validation_across_layers(self):
         """All layers use same isolation tier constants."""
         # Layer 4 uses these constants - all layers should agree
-        from shared.identity.context import VALID_ISOLATION_TIERS
+        from value_fabric.shared.identity.context import VALID_ISOLATION_TIERS
 
         valid_tiers = {ISOLATION_TIER_SHARED, ISOLATION_TIER_SCHEMA, ISOLATION_TIER_DATABASE}
         assert VALID_ISOLATION_TIERS == valid_tiers
@@ -87,7 +87,7 @@ class TestLayerSpecificEnforcement:
     def test_layer_1_uses_sync_context(self):
         """Layer 1 (ingestion) uses sync SQLAlchemy with context."""
         try:
-            from value_fabric.layer1_ingestion.src.shared.database import (
+            from value_fabric.layer1.shared.database import (
                 get_db_from_context_sync,
                 get_db_with_optional_tenant_sync,
             )
@@ -99,7 +99,7 @@ class TestLayerSpecificEnforcement:
 
     def test_layer_4_uses_async_context(self):
         """Layer 4 (agents) uses async SQLAlchemy with context."""
-        from value_fabric.layer4_agents.src.database import (
+        from value_fabric.layer4.database import (
             get_db_from_context,
             get_db_with_optional_tenant,
         )
@@ -109,7 +109,7 @@ class TestLayerSpecificEnforcement:
     def test_layer_5_uses_async_context(self):
         """Layer 5 (ground-truth) uses async SQLAlchemy with context."""
         try:
-            from value_fabric.layer5_ground_truth.src.layer5_ground_truth.database import (
+            from value_fabric.layer5.database import (
                 get_db_from_context,
                 get_db_with_optional_tenant,
             )
@@ -180,7 +180,7 @@ class TestAuditConsistencyAcrossLayers:
 
     def test_tenant_resolved_event_structure(self):
         """All layers emit TENANT_RESOLVED with same schema."""
-        from shared.audit.models import TenantResolvedDetails
+        from value_fabric.shared.audit.models import TenantResolvedDetails
 
         details = TenantResolvedDetails(
             resolution_source="jwt_claim",
@@ -201,7 +201,7 @@ class TestAuditConsistencyAcrossLayers:
 
     def test_tenant_context_set_event_structure(self):
         """All layers emit TENANT_CONTEXT_SET with same schema."""
-        from shared.audit.models import TenantContextSetDetails
+        from value_fabric.shared.audit.models import TenantContextSetDetails
 
         details = TenantContextSetDetails(
             tenant_id=str(uuid.uuid4()),
@@ -248,7 +248,7 @@ class TestGovernanceCoreContract:
     def test_governance_core_exists(self):
         """Shared GovernanceCore is available for all layers."""
         try:
-            from shared.identity.governance_core import GovernanceCore
+            from value_fabric.shared.identity.governance_core import GovernanceCore
 
             core = GovernanceCore()
             assert hasattr(core, "resolve_identity")
@@ -264,7 +264,7 @@ class TestLayer3Neo4jSpecifics:
     def test_neo4j_tenant_session_wrapper(self):
         """Layer 3 provides Neo4jTenantSession for graph-aware scoping."""
         try:
-            from value_fabric.layer3_knowledge.src.api.dependencies_tenant import (
+            from value_fabric.layer3.api.dependencies_tenant import (
                 Neo4jTenantSession,
                 get_neo4j_with_tenant,
             )
@@ -286,7 +286,7 @@ class TestMigrationCompleteness:
     def test_layer_4_has_full_implementation(self):
         """Layer 4 is the reference implementation."""
         # These should all be importable and functional
-        from value_fabric.layer4_agents.src.database import (
+        from value_fabric.layer4.database import (
             get_db_from_context,
             get_db_with_optional_tenant,
             get_tiered_db_session,
@@ -297,7 +297,7 @@ class TestMigrationCompleteness:
 
     def test_shared_identity_exports_context_constants(self):
         """shared.identity module exports all required constants."""
-        from shared.identity.context import (
+        from value_fabric.shared.identity.context import (
             AUTH_SOURCE_API_KEY,
             AUTH_SOURCE_JWT,
             AUTH_SOURCE_SERVICE_ACCOUNT,

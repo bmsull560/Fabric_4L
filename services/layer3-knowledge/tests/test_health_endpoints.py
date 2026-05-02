@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from tests.conftest import TestUtils
+from conftest import TestUtils
 
 # Health status values (contract-valid states)
 HEALTH_STATUSES = frozenset({"healthy", "degraded", "unhealthy"})

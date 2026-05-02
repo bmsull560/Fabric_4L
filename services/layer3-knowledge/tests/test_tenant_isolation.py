@@ -6,7 +6,7 @@ to prevent cross-tenant data exposure.
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, Mock
 from fastapi import HTTPException, Request
-from api.main import _extract_tenant_id, list_entities, get_full_graph
+from value_fabric.layer3.api.main import _extract_tenant_id, list_entities, get_full_graph
 
 
 class TestTenantIsolation:

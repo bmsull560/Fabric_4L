@@ -21,7 +21,7 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, status
 
 from value_fabric.shared.identity.context import RequestContext
-from value_fabric.layer4_agents.src.tools.registry import ToolRegistry, ToolCategory
+from value_fabric.layer4.tools.registry import ToolRegistry, ToolCategory
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -108,14 +108,14 @@ class TestToolInvocationIsolation:
         
         Attack scenario: Tenant A tries to read tenant B's entities.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import get_entity
+        from value_fabric.layer4.tools.knowledge import get_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
         entity_id = "entity-123"
         
         # Mock database to return entity for tenant B
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.db_session") as mock_db:
+        with patch("value_fabric.layer4.tools.knowledge.db_session") as mock_db:
             mock_result = MagicMock()
             mock_result.tenant_id = tenant_b
             mock_result.id = entity_id
@@ -138,14 +138,14 @@ class TestToolInvocationIsolation:
         
         Attack scenario: Tenant A tries to update tenant B's entity.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import update_entity
+        from value_fabric.layer4.tools.knowledge import update_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
         entity_id = "entity-123"
         
         # Mock database
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.db_session") as mock_db:
+        with patch("value_fabric.layer4.tools.knowledge.db_session") as mock_db:
             # Entity belongs to tenant B
             mock_entity = MagicMock()
             mock_entity.tenant_id = tenant_b
@@ -173,14 +173,14 @@ class TestToolInvocationIsolation:
         
         Attack scenario: Tenant A tries to delete tenant B's entity.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import delete_entity
+        from value_fabric.layer4.tools.knowledge import delete_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
         entity_id = "entity-123"
         
         # Mock database
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.db_session") as mock_db:
+        with patch("value_fabric.layer4.tools.knowledge.db_session") as mock_db:
             # Entity belongs to tenant B
             mock_entity = MagicMock()
             mock_entity.tenant_id = tenant_b
@@ -218,7 +218,7 @@ class TestToolParameterValidation:
         
         Attack scenario: Tenant provides SQL in entity_id parameter.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import get_entity
+        from value_fabric.layer4.tools.knowledge import get_entity
         
         tenant_id = uuid4()
         malicious_entity_id = "' OR '1'='1"
@@ -235,7 +235,7 @@ class TestToolParameterValidation:
         
         Attack scenario: Tenant provides path traversal in file parameter.
         """
-        from value_fabric.layer4_agents.src.tools.files import read_file
+        from value_fabric.layer4.tools.files import read_file
         
         tenant_id = uuid4()
         malicious_path = "../../etc/passwd"
@@ -252,7 +252,7 @@ class TestToolParameterValidation:
         
         Attack scenario: Tenant provides huge parameter to DoS.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import search_entities
+        from value_fabric.layer4.tools.knowledge import search_entities
         
         tenant_id = uuid4()
         huge_query = "A" * 100000  # 100KB query
@@ -269,7 +269,7 @@ class TestToolParameterValidation:
         
         Rationale: Invalid tenant_id could cause downstream errors.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import get_entity
+        from value_fabric.layer4.tools.knowledge import get_entity
         
         invalid_tenant_id = "not-a-uuid"
         
@@ -294,13 +294,13 @@ class TestToolResultFiltering:
         
         Rationale: Search across all tenants would leak data.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import search_entities
+        from value_fabric.layer4.tools.knowledge import search_entities
         
         tenant_a = uuid4()
         tenant_b = uuid4()
         
         # Mock database with mixed results
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.db_session") as mock_db:
+        with patch("value_fabric.layer4.tools.knowledge.db_session") as mock_db:
             mock_results = [
                 MagicMock(tenant_id=tenant_a, id="a1", name="Tenant A Entity 1"),
                 MagicMock(tenant_id=tenant_b, id="b1", name="Tenant B Entity 1"),
@@ -325,13 +325,13 @@ class TestToolResultFiltering:
         
         Rationale: Listing all items would leak data.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import list_entities
+        from value_fabric.layer4.tools.knowledge import list_entities
         
         tenant_a = uuid4()
         tenant_b = uuid4()
         
         # Mock database
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.db_session") as mock_db:
+        with patch("value_fabric.layer4.tools.knowledge.db_session") as mock_db:
             mock_results = [
                 MagicMock(tenant_id=tenant_a, id="a1"),
                 MagicMock(tenant_id=tenant_a, id="a2"),
@@ -353,13 +353,13 @@ class TestToolResultFiltering:
         
         Rationale: Aggregating across tenants would leak statistics.
         """
-        from value_fabric.layer4_agents.src.tools.analytics import count_entities
+        from value_fabric.layer4.tools.analytics import count_entities
         
         tenant_a = uuid4()
         tenant_b = uuid4()
         
         # Mock database
-        with patch("value_fabric.layer4_agents.src.tools.analytics.db_session") as mock_db:
+        with patch("value_fabric.layer4.tools.analytics.db_session") as mock_db:
             # Total count includes both tenants
             mock_db.query().count.return_value = 100
             
@@ -387,14 +387,14 @@ class TestToolAuditLogging:
         
         Rationale: Audit trail must show which tenant invoked which tool.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import get_entity
-        from shared.audit import emit_audit_event
+        from value_fabric.layer4.tools.knowledge import get_entity
+        from value_fabric.shared.audit import emit_audit_event
         
         tenant_id = uuid4()
         entity_id = "entity-123"
         
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.emit_audit_event") as mock_audit:
-            with patch("value_fabric.layer4_agents.src.tools.knowledge.db_session"):
+        with patch("value_fabric.layer4.tools.knowledge.emit_audit_event") as mock_audit:
+            with patch("value_fabric.layer4.tools.knowledge.db_session"):
                 await get_entity(
                     tenant_id=tenant_id,
                     entity_id=entity_id
@@ -415,13 +415,13 @@ class TestToolAuditLogging:
         
         Rationale: Failed attempts may indicate attack.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import delete_entity
+        from value_fabric.layer4.tools.knowledge import delete_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
         
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.emit_audit_event") as mock_audit:
-            with patch("value_fabric.layer4_agents.src.tools.knowledge.db_session") as mock_db:
+        with patch("value_fabric.layer4.tools.knowledge.emit_audit_event") as mock_audit:
+            with patch("value_fabric.layer4.tools.knowledge.db_session") as mock_db:
                 # Entity belongs to tenant B
                 mock_entity = MagicMock()
                 mock_entity.tenant_id = tenant_b
@@ -457,7 +457,7 @@ class TestToolPermissionEnforcement:
         
         Rationale: Read-only users should not be able to modify data.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import update_entity
+        from value_fabric.layer4.tools.knowledge import update_entity
         
         # Context with only read permission
         context = RequestContext(
@@ -482,7 +482,7 @@ class TestToolPermissionEnforcement:
         
         Rationale: Write permission should not grant delete access.
         """
-        from value_fabric.layer4_agents.src.tools.knowledge import delete_entity
+        from value_fabric.layer4.tools.knowledge import delete_entity
         
         # Context with read and write, but not delete
         context = RequestContext(
@@ -506,7 +506,7 @@ class TestToolPermissionEnforcement:
         
         Rationale: Regular users should not access admin tools.
         """
-        from value_fabric.layer4_agents.src.tools.admin import suspend_tenant
+        from value_fabric.layer4.tools.admin import suspend_tenant
         
         # Context without admin permission
         context = RequestContext(
@@ -538,13 +538,13 @@ class TestToolChaining:
         
         Rationale: Tool A calling tool B must pass tenant_id.
         """
-        from value_fabric.layer4_agents.src.tools.workflows import analyze_entity
+        from value_fabric.layer4.tools.workflows import analyze_entity
         
         tenant_id = uuid4()
         entity_id = "entity-123"
         
-        with patch("value_fabric.layer4_agents.src.tools.knowledge.get_entity") as mock_get:
-            with patch("value_fabric.layer4_agents.src.tools.analytics.compute_metrics") as mock_compute:
+        with patch("value_fabric.layer4.tools.knowledge.get_entity") as mock_get:
+            with patch("value_fabric.layer4.tools.analytics.compute_metrics") as mock_compute:
                 mock_get.return_value = {"id": entity_id, "tenant_id": str(tenant_id)}
                 mock_compute.return_value = {"score": 0.95}
                 
@@ -564,7 +564,7 @@ class TestToolChaining:
         
         Attack scenario: Read-only tool chains to write tool.
         """
-        from value_fabric.layer4_agents.src.tools.workflows import read_and_update
+        from value_fabric.layer4.tools.workflows import read_and_update
         
         # Context with only read permission
         context = RequestContext(

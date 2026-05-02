@@ -31,8 +31,8 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from ..config import get_settings
-from ..logging_config import get_logger, setup_logging
+from value_fabric.layer3.config import get_settings
+from value_fabric.layer3.logging_config import get_logger, setup_logging
 from .dependencies import (
     AppState,
     close_app_state,

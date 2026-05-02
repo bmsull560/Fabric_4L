@@ -10,8 +10,8 @@ import pytest
 # Test constants
 UUID_STRING_LENGTH = 36  # Standard UUID format: 8-4-4-4-12 hexadecimal digits with hyphens
 
-from layer2_extraction.extraction import chunk_markdown
-from layer2_extraction.models import (
+from value_fabric.layer2.extraction import chunk_markdown
+from value_fabric.layer2.models import (
     Capability,
     ExtractionResult,
     Feature,
@@ -143,7 +143,7 @@ class TestOntologyModels:
     
     def test_feature_extraction_result(self):
         """Test ExtractionResult with features."""
-        from layer2_extraction.models import ExtractionResult
+        from value_fabric.layer2.models import ExtractionResult
         
         cap = Capability(name="Cap", description="Test capability for feature extraction")
         feature = Feature(name="Feature1", description="Test feature description for tests")
@@ -230,7 +230,7 @@ class TestRelationships:
     
     def test_relationship_graph(self):
         """Test RelationshipGraph operations."""
-        from layer2_extraction.models import RelationshipGraph
+        from value_fabric.layer2.models import RelationshipGraph
         
         cap = Capability(name="Test", description="Test capability description")
         uc = UseCase(name="Test UC", description="Test use case description")
@@ -313,7 +313,7 @@ class TestRelationships:
     
     def test_feature_relationship(self):
         """Test Feature implements Capability relationship."""
-        from layer2_extraction.models import Feature
+        from value_fabric.layer2.models import Feature
         
         cap = Capability(name="Analytics", description="Analytics capability")
         feature = Feature(name="Dashboard", description="Dashboard feature")
@@ -393,7 +393,7 @@ class TestExtractionPipeline:
         """Test entity extraction with real LLM."""
         import os
 
-        from layer2_extraction.extraction import EntityExtractor
+        from value_fabric.layer2.extraction import EntityExtractor
         
         extractor = EntityExtractor(api_key=os.getenv("OPENAI_API_KEY"))
         
@@ -419,8 +419,8 @@ class TestEntailmentValidator:
     
     def test_validation_required_properties(self):
         """Test VAL-001: Required properties validation."""
-        from layer2_extraction.models import ExtractionResult, ValueCategory, ValueDriver
-        from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+        from value_fabric.layer2.models import ExtractionResult, ValueCategory, ValueDriver
+        from value_fabric.layer2.validation import EntailmentValidator, ValidationSeverity
         
         validator = EntailmentValidator()
         
@@ -445,8 +445,8 @@ class TestEntailmentValidator:
     
     def test_validation_confidence_scores(self):
         """Test VAL-006: Confidence score bounds validation."""
-        from layer2_extraction.models import ExtractionResult
-        from layer2_extraction.validation import EntailmentValidator
+        from value_fabric.layer2.models import ExtractionResult
+        from value_fabric.layer2.validation import EntailmentValidator
         
         validator = EntailmentValidator()
         
@@ -466,8 +466,8 @@ class TestEntailmentValidator:
     
     def test_validation_domain_range(self):
         """Test VAL-002: Domain/range constraints."""
-        from layer2_extraction.models import ExtractionResult
-        from layer2_extraction.validation import EntailmentValidator
+        from value_fabric.layer2.models import ExtractionResult
+        from value_fabric.layer2.validation import EntailmentValidator
         
         validator = EntailmentValidator()
         
@@ -485,7 +485,7 @@ class TestEntailmentValidator:
         )
         
         # Create invalid relationship: Persona enables Capability (should be Capability enables UseCase)
-        from layer2_extraction.models.relationships import Relationship
+        from value_fabric.layer2.models.relationships import Relationship
         rel = Relationship(
             source_id=persona.id,
             raw_predicate="enables",
@@ -508,7 +508,7 @@ class TestCoreferenceResolver:
     
     def test_exact_name_match(self):
         """Test exact name matching for coreference."""
-        from layer2_extraction.coreference import CoreferenceResolver
+        from value_fabric.layer2.coreference import CoreferenceResolver
         
         resolver = CoreferenceResolver()
         
@@ -523,8 +523,8 @@ class TestCoreferenceResolver:
     
     def test_semantically_equivalent_relationship(self):
         """Test coreference via semantically_equivalent relationship."""
-        from layer2_extraction.coreference import CoreferenceResolver
-        from layer2_extraction.models import Relationship
+        from value_fabric.layer2.coreference import CoreferenceResolver
+        from value_fabric.layer2.models import Relationship
         
         resolver = CoreferenceResolver()
         
@@ -553,7 +553,7 @@ class TestSemanticAligner:
     
     def test_alignment_cache_key(self):
         """Test cache key generation."""
-        from layer2_extraction.alignment import SemanticAligner
+        from value_fabric.layer2.alignment import SemanticAligner
         
         aligner = SemanticAligner()
         
@@ -567,7 +567,7 @@ class TestSemanticAligner:
     
     def test_normalize_name(self):
         """Test name normalization for comparison."""
-        from layer2_extraction.alignment import SemanticAligner
+        from value_fabric.layer2.alignment import SemanticAligner
         
         aligner = SemanticAligner()
         

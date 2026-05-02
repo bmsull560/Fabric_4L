@@ -7,6 +7,9 @@ and batch operations.
 from __future__ import annotations
 
 import pytest
+
+pytest.importorskip("respx")
+
 import respx
 from httpx import Response
 

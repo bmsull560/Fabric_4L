@@ -14,7 +14,7 @@ class TestWebSocketJWTAuth:
     @pytest.mark.asyncio
     async def test_token_in_query_param_is_rejected(self):
         """JWT in query parameter must be rejected with 1008 code."""
-        from value_fabric.layer4_agents.src.api.websocket.routes import (
+        from value_fabric.layer4.api.websocket.routes import (
             workflow_websocket,
         )
 
@@ -39,7 +39,7 @@ class TestWebSocketJWTAuth:
     @pytest.mark.asyncio
     async def test_token_in_header_is_accepted(self):
         """JWT in Sec-WebSocket-Protocol header should be accepted."""
-        from value_fabric.layer4_agents.src.api.websocket.routes import (
+        from value_fabric.layer4.api.websocket.routes import (
             workflow_websocket,
         )
 
@@ -48,7 +48,7 @@ class TestWebSocketJWTAuth:
         mock_ws.headers = {"sec-websocket-protocol": "token,valid-jwt"}
 
         with patch(
-            "value_fabric.layer4_agents.src.api.websocket.routes.get_ws_manager"
+            "value_fabric.layer4.api.websocket.routes.get_ws_manager"
         ) as mock_manager:
             mock_manager.return_value.connect = AsyncMock()
 
@@ -64,7 +64,7 @@ class TestWebSocketJWTAuth:
 
     def test_extract_tenant_from_token_parses_protocol_header(self):
         """Token extraction should handle Sec-WebSocket-Protocol format."""
-        from value_fabric.layer4_agents.src.api.websocket.routes import (
+        from value_fabric.layer4.api.websocket.routes import (
             _extract_tenant_from_token,
         )
 

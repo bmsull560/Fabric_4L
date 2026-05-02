@@ -532,14 +532,14 @@ const Layout = memo(function Layout({
             <SidebarTooltip text="Value Fabric">
               <div
                 className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0 cursor-pointer"
-                onClick={() => handleNavigate("/home")}
+                onClick={() => navigateTo('home')}
               >
                 <Frame className="w-4 h-4 text-sidebar-primary-foreground" />
               </div>
             </SidebarTooltip>
           ) : (
             <button
-              onClick={() => handleNavigate("/home")}
+              onClick={() => navigateTo('home')}
               className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent transition-colors text-left"
             >
               <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
@@ -683,7 +683,7 @@ const Layout = memo(function Layout({
                     Profile
                   </button>
                   <button
-                    onClick={() => handleNavigate("/settings/workspace")}
+                    onClick={() => navigateTo('settings-workspace')}
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent"
                   >
                     Settings

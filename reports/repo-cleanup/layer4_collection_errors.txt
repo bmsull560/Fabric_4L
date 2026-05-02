@@ -1,0 +1,1971 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\BBB\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+Using --randomly-seed=3587592097
+rootdir: C:\Users\BBB\Fabric_4L\services\layer4-agents
+configfile: pyproject.toml
+plugins: anyio-4.13.0, langsmith-0.8.0, asyncio-1.3.0, cov-7.1.0, env-1.6.0, randomly-4.1.0, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 619 items / 14 errors
+
+<Dir layer4-agents>
+  <Dir tests>
+    <Module test_workflow_archive_and_list.py>
+      Integration tests for workflow archive and list endpoints.
+      
+      Tests the following routes added for frontend-backend contract alignment:
+      - GET /v1/workflows (with type filter)
+      - POST /v1/workflows/{id}/archive (with tenant isolation)
+      
+      Uses inline FastAPI app (same pattern as test_workflow_controls.py) to avoid
+      heavy app-level imports.
+      <Coroutine test_list_workflows_excludes_archived>
+        Archived workflows must not appear in GET /v1/workflows.
+      <Coroutine test_list_workflows_tenant_isolation>
+        Workflows from other tenants are excluded.
+      <Coroutine test_list_workflows_with_type_filter>
+        GET /v1/workflows?type=business_case filters by workflow type.
+      <Coroutine test_archive_workflow_idempotent>
+        Repeated archive calls succeed and preserve the same archived_at.
+      <Coroutine test_archive_workflow_success>
+        Archiving a workflow returns 200 with archived timestamp.
+      <Coroutine test_list_workflows_defaults>
+        GET /v1/workflows returns paginated list with defaults.
+      <Coroutine test_archive_workflow_not_found>
+        Archiving a non-existent workflow returns 404.
+      <Coroutine test_archive_workflow_cross_tenant_forbidden>
+        Archiving a workflow belonging to another tenant returns 403.
+      <Coroutine test_list_workflows_pagination>
+        Pagination limit and offset are respected.
+    <Module test_workflows_real_execution.py>
+      Real LangGraph workflow execution tests with InMemory checkpointing.
+      
+      Tier A: Fast tests using InMemorySaver (no Redis required).
+      Validates actual LangGraph execution, not mocks.
+      
+      Key scenarios:
+      - Workflow executes and terminates deterministically
+      - Recursion limit enforced
+      - Checkpoint saved at each node
+      - State accumulates output across nodes
+      - Thread-based checkpoint isolation
+      <Class TestCheckpointPersistence>
+        Test checkpoint save/resume with real LangGraph checkpointing.
+        <Coroutine test_thread_id_isolation>
+          Different thread IDs maintain independent state.
+        <Coroutine test_checkpoint_saved_during_execution>
+          Checkpoints are persisted; thread state can be inspected.
+      <Class TestRealWorkflowExecution>
+        Test workflow execution with real LangGraph (not mocked).
+        <Coroutine test_recursion_limit_enforced>
+          Infinite-loop workflow hits recursion limit and raises error.
+        <Coroutine test_workflow_executes_and_terminates>
+          Workflow runs through all nodes and terminates deterministically.
+        <Function test_default_recursion_limit_is_bounded>
+          DEFAULT_RECURSION_LIMIT is a sane positive integer (not unbounded).
+        <Coroutine test_state_accumulates_output>
+          Output data merges across nodes (not overwritten).
+    <Module test_frontend_compat_routes.py>
+      Integration tests for frontend compatibility routes.
+      
+      Tests the following alias routes:
+      - POST /v1/auth/register
+      - GET /v1/tenant/settings
+      - PATCH /v1/tenant/settings
+      
+      Uses inline FastAPI app with in-memory stores to avoid heavy DB setup.
+      <Coroutine test_get_tenant_settings_not_found>
+        GET /v1/tenant/settings returns 404 when tenant does not exist.
+      <Coroutine test_auth_register_duplicate_slug>
+        POST /v1/auth/register rejects duplicate slug with 409.
+      <Coroutine test_get_tenant_settings>
+        GET /v1/tenant/settings returns settings for the current tenant.
+      <Coroutine test_patch_tenant_settings>
+        PATCH /v1/tenant/settings updates allowed settings fields.
+      <Coroutine test_auth_register_creates_tenant>
+        POST /v1/auth/register creates a new tenant and returns tenant_id.
+    <Module test_websocket_manager.py>
+      Tests for WebSocket manager workflow streaming.
+      
+      Tests the pub/sub-style event broadcasting system with connection resilience,
+      event replay, and workflow-scoped channels.
+      <Class TestConnectionManagement>
+        Test WebSocket connect/disconnect functionality.
+        <Coroutine test_connect_sends_connection_established_event>
+          Connect should send connection established event to client.
+        <Coroutine test_connect_accepts_websocket_and_stores_connection>
+          Connect should accept WebSocket and track the connection.
+        <Coroutine test_multiple_connections_same_workflow>
+          Multiple clients can connect to same workflow.
+        <Coroutine test_connect_replays_missed_events_on_reconnect>
+          Connect with last_event_id should replay missed events.
+        <Coroutine test_disconnect_removes_connection>
+          Disconnect should remove connection from tracking.
+      <Class TestSingleton>
+        Test global singleton instance.
+        <Function test_get_ws_manager_creates_new_if_none>
+          Should create new instance if none exists.
+        <Function test_get_ws_manager_returns_same_instance>
+          Should return same manager instance on multiple calls.
+      <Class TestClientMessageHandling>
+        Test handling of messages from clients.
+        <Coroutine test_handle_ack_logs_debug>
+          Ack message should log debug information.
+        <Coroutine test_handle_pong_marks_connection_alive>
+          Pong message should mark connection as alive.
+        <Coroutine test_handle_subscribe_history_sends_events>
+          Subscribe history should send last 50 events.
+      <Class TestOutputSummarization>
+        Test output summarization for streaming.
+        <Function test_summarize_output_limits_keys>
+          Should limit number of keys in summary.
+        <Function test_summarize_output_handles_none>
+          Should handle None output gracefully.
+        <Function test_summarize_output_summarizes_collections>
+          Should summarize list/dict values with type and length.
+        <Function test_summarize_output_handles_empty>
+          Should handle empty output gracefully.
+        <Function test_summarize_output_truncates_large_values>
+          Should truncate large string values.
+      <Class TestBroadcasting>
+        Test event broadcasting to workflow connections.
+        <Coroutine test_broadcast_pause_point>
+          Broadcast pause point should send pause event with action info.
+        <Coroutine test_broadcast_to_workflow_delivers_to_all_connections>
+          Broadcast should deliver event to all connected clients.
+        <Coroutine test_broadcast_cleans_up_dead_connections>
+          Broadcast should remove dead connections and not count them.
+        <Coroutine test_broadcast_completion>
+          Broadcast completion should send workflow complete event.
+        <Coroutine test_broadcast_state_update_sends_formatted_event>
+          Broadcast state update should send properly formatted event.
+        <Coroutine test_broadcast_stores_event_for_replay>
+          Broadcast should store event for future replay.
+        <Coroutine test_broadcast_returns_zero_for_unknown_workflow>
+          Broadcast to non-existent workflow should return 0.
+        <Coroutine test_broadcast_node_transition>
+          Broadcast node transition should send transition event.
+      <Class TestManagerLifecycle>
+        Test manager start/stop lifecycle.
+        <Coroutine test_stop_cancels_background_tasks>
+          Stopping manager should cancel background tasks.
+        <Coroutine test_stop_closes_all_connections>
+          Stopping should gracefully close all active connections.
+        <Coroutine test_start_creates_background_tasks>
+          Starting manager should create cleanup and heartbeat tasks.
+      <Class TestWorkflowConnection>
+        Test WebSocket connection wrapper.
+        <Coroutine test_send_event_success_updates_last_event_id>
+          Successful send should update last_event_id tracking.
+        <Coroutine test_send_event_to_dead_connection_returns_false>
+          Sending to already-dead connection should return False immediately.
+        <Coroutine test_send_event_failure_marks_connection_dead>
+          Failed send should mark connection as not alive.
+      <Class TestIntegrationScenarios>
+        End-to-end integration scenarios.
+        <Coroutine test_reconnect_receives_missed_events>
+          Client reconnecting should receive events missed while offline.
+        <Coroutine test_full_lifecycle_connect_broadcast_disconnect>
+          Complete lifecycle: connect -> broadcast -> disconnect.
+      <Class TestEventStore>
+        Test event storage and replay functionality.
+        <Function test_get_since_returns_events_after_event_id>
+          Should return all events after the specified event ID.
+        <Function test_maintains_max_size_as_ring_buffer>
+          Event store should act as ring buffer, dropping oldest events.
+        <Function test_get_since_returns_empty_for_unknown_id>
+          Should return empty list if event ID not found.
+        <Function test_adds_event_with_timestamp>
+          Event storage should add _stored_at timestamp to events.
+        <Function test_get_since_returns_last_10_by_default>
+          Should return last 10 events when no last_event_id provided.
+    <Module test_crm_webhook_auth_unit.py>
+      CI-runnable unit tests for CRM webhook authentication logic.
+      
+      These tests verify the core authentication behavior without importing the
+      full FastAPI route module (which requires langgraph, psycopg, etc.).
+      
+      Covers:
+      - Per-tenant webhook token validation (constant-time comparison)
+      - Missing token rejection (fail-closed)
+      - Invalid token rejection
+      - Global HMAC fallback (with warning)
+      - HMAC signature mismatch (defense-in-depth)
+      <Class TestWebhookHMACAuth>
+        Test HMAC signature verification (defense-in-depth).
+        <Coroutine test_valid_token_and_invalid_hmac_rejects>
+          Valid token but bad HMAC \u2192 rejected (defense-in-depth).
+        <Coroutine test_global_hmac_fallback_accepts>
+          No per-tenant token but valid global HMAC \u2192 accepted.
+        <Coroutine test_global_hmac_fallback_rejects_bad_sig>
+          No per-tenant token and bad global HMAC \u2192 rejected.
+        <Coroutine test_valid_token_and_valid_hmac_accepts>
+          Both token and HMAC valid \u2192 accepted.
+      <Class TestWebhookConstantTimeComparison>
+        Verify that token comparison uses constant-time hmac.compare_digest.
+        <Coroutine test_timing_attack_resistance>
+          Wrong-length token should still go through compare_digest, not early exit.
+        <Coroutine test_empty_token_vs_empty_stored>
+          Both empty should reject (fail-closed).
+      <Class TestWebhookTokenAuth>
+        Test per-tenant webhook token authentication.
+        <Coroutine test_valid_token_accepts>
+          Webhook with correct per-tenant token is accepted.
+        <Coroutine test_no_token_configured_rejects>
+          Integration with no webhook_token configured rejects all requests.
+        <Coroutine test_invalid_token_rejects>
+          Webhook with wrong per-tenant token is rejected with 401.
+        <Coroutine test_missing_token_rejects>
+          Webhook with no token is rejected (fail-closed).
+    <Module test_interfaces_exports.py>
+      Tests for Layer 4 interfaces package exports and basic interface behavior.
+      
+      Uses src.* imports with pytest pythonpath configuration.
+      <Function test_formula_governance_construction>
+        Verify FormulaGovernance dataclass constructs with expected fields.
+      <Function test_activation_request_construction>
+        Verify ActivationRequest dataclass constructs with expected fields.
+      <Function test_comparison_request_construction>
+        Verify ComparisonRequest dataclass constructs with expected fields.
+      <Function test_http_benchmark_client_normalizes_base_url>
+        Verify HTTPBenchmarkClient removes trailing slash from base URL.
+      <Function test_interfaces_module_exports_core_symbols>
+        Verify all core interface symbols are exported from the interfaces module.
+      <Function test_resolution_context_construction>
+        Verify ResolutionContext dataclass constructs with expected fields.
+      <Function test_benchmark_dataset_construction>
+        Verify BenchmarkDataset dataclass constructs with expected fields.
+      <Function test_governance_transition_result_construction>
+        Verify GovernanceTransitionResult dataclass constructs with expected fields.
+      <Function test_variable_source_type_enum_values>
+        Verify VariableSourceType enum has expected string values.
+      <Function test_value_pack_construction>
+        Verify ValuePack dataclass constructs with expected fields.
+      <Coroutine test_http_benchmark_client_close_is_safe_without_open_client>
+        Verify closing an unopened HTTPBenchmarkClient is safe (no-op).
+      <Function test_variable_construction>
+        Verify Variable dataclass constructs with expected fields.
+      <Function test_pack_execution_request_construction>
+        Verify PackExecutionRequest dataclass constructs with expected fields.
+    <Module test_business_case_claim_promotion.py>
+      Integration-ish tests for deterministic claim promotion into Layer 5.
+      <Coroutine test_promotes_claims_and_persists_traceability>
+      <Function test_export_manifest_reads_persisted_case_linkage>
+      <Coroutine test_skips_claims_below_threshold>
+    <Module test_integration_service.py>
+      Unit tests for Integration Service refinements.
+      
+      Tests validation logic, edge cases, and error handling.
+      <Class TestEncryptionService>
+        Test suite for encryption service.
+        <Coroutine test_encryption_different_keys>
+          Test that different key_ids produce different ciphertexts.
+        <Coroutine test_decryption_wrong_key_fails>
+          Test that decrypting with wrong key fails appropriately.
+        <Coroutine test_encryption_roundtrip>
+          Test that encrypt/decrypt preserves data.
+        <Coroutine test_encryption_empty_data>
+          Test that empty data is handled gracefully.
+      <Class TestIntegrationValidation>
+        Test suite for integration configuration validation.
+        <Function test_validate_config_http_localhost_allowed>
+          Test that HTTP is allowed only for localhost.
+        <Function test_validate_config_none_instance_url>
+          Test that None instance_url is allowed.
+        <Function test_validate_config_invalid_sync_interval>
+          Test sync_interval bounds validation.
+        <Function test_validate_config_http_production_rejected>
+          Test that HTTP is rejected for production URLs.
+        <Function test_validate_config_valid>
+          Test valid configuration passes validation.
+        <Function test_validate_config_invalid_instance_url>
+          Test instance_url format validation.
+        <Function test_validate_config_missing_api_key_when_enabled>
+          Test that enabled=True requires api_key.
+        <Function test_validate_config_disabled_no_api_key>
+          Test that disabled integration doesn't require api_key.
+        <Function test_validate_config_invalid_batch_size>
+          Test batch_size bounds validation.
+        <Function test_validate_config_http_localhost_subdomain_rejected>
+          Test that HTTP is rejected for localhost subdomains (not actual localhost).
+        <Function test_validate_config_valid_instance_urls>
+          Test that valid HTTPS instance URLs pass.
+    <Module test_checkpoint_boundary.py>
+      Checkpoint/resume boundary tests.
+      
+      Tests verify:
+      1. State survives Postgres restart.
+      2. Thread_id consistency across resume.
+      3. Concurrent resume attempts (race condition).
+      4. Partial state recovery after crash.
+      <Class TestCheckpointVersioning>
+        Test checkpoint version compatibility.
+        <Function test_checkpoint_version_compatibility>
+          Older checkpoint formats should be migratable.
+      <Class TestCheckpointPostgresBoundaries>
+        Test checkpoint behavior with Postgres lifecycle.
+        <Coroutine test_thread_id_consistency_across_resume>
+          Thread ID must remain consistent when resuming workflow.
+        <Coroutine test_state_survives_postgres_restart>
+          Workflow state must persist through Postgres restart.
+      <Class TestCheckpointSerialization>
+        Test checkpoint serialization boundaries.
+        <Function test_large_state_serialization>
+          Large workflow states must serialize correctly.
+        <Function test_nested_state_serialization>
+          Deeply nested states must serialize correctly.
+      <Class TestPartialStateRecovery>
+        Test recovery from partial/corrupted state.
+        <Coroutine test_partial_state_recovery>
+          Workflow should resume from last valid checkpoint after crash.
+        <Coroutine test_corrupted_checkpoint_recovery>
+          Corrupted checkpoints should be detected and handled.
+      <Class TestCheckpointRaceConditions>
+        Test race condition handling in checkpoint/resume.
+        <Coroutine test_concurrent_resume_attempts>
+          Only one resume attempt should succeed, others should fail gracefully.
+    <Module test_tiers.py>
+      Tests for tier configuration module (Phase 3).
+      <Class TestTierFunctions>
+        Test tier utility functions.
+        <Function test_get_tier_config_nonexistent>
+          Test getting nonexistent tier raises error.
+        <Function test_get_tier_config_existing>
+          Test getting existing tier config.
+        <Function test_get_public_tiers>
+          Test getting only public tiers.
+        <Function test_check_limit_within>
+          Test check_limit when within limit.
+        <Function test_check_limit_exceeded>
+          Test check_limit when limit exceeded.
+        <Function test_get_tier_limit_unlimited>
+          Test getting limit for unlimited tier.
+        <Function test_check_limit_unlimited>
+          Test check_limit with unlimited tier.
+        <Function test_get_tier_limit_existing>
+          Test getting specific limit value.
+      <Class TestTierConfig>
+        Test TierConfig dataclass.
+        <Function test_tier_config_creation>
+          Test creating TierConfig instance.
+      <Class TestTierFeatures>
+        Test TierFeatures dataclass.
+        <Function test_tier_features_creation>
+          Test creating TierFeatures instance.
+      <Class TestPredefinedTiers>
+        Test predefined tier configurations.
+        <Function test_enterprise_tier_values>
+          Test enterprise tier configuration.
+        <Function test_free_tier_values>
+          Test free tier configuration.
+        <Function test_pro_tier_values>
+          Test pro tier configuration.
+      <Class TestTierLimits>
+        Test TierLimits dataclass.
+        <Function test_tier_limits_creation>
+          Test creating TierLimits instance.
+        <Function test_tier_limits_with_none>
+          Test TierLimits with unlimited fields.
+    <Module test_usage_service.py>
+      Tests for UsageService and usage metering endpoints.
+      
+      Covers:
+      - Single event ingestion with idempotency
+      - Batch ingestion with validation
+      - Usage aggregation and summarization
+      - Tenant isolation validation
+      <Function test_post_events_endpoint>
+        Test POST /billing/events endpoint.
+      <Coroutine test_get_usage_summary>
+        Test usage aggregation query.
+      <Coroutine test_list_customer_usage>
+        Test listing individual usage events.
+      <Function test_get_usage_summary_endpoint>
+        Test GET /billing/usage/{customer_id}/summary endpoint.
+      <Coroutine test_ingest_batch_validation_errors>
+        Test batch ingestion with validation errors.
+      <Coroutine test_mark_events_processed>
+        Test marking events as processed.
+      <Coroutine test_ingest_event_validation_errors>
+        Test validation of required fields.
+      <Coroutine test_ingest_event_success>
+        Test successful single event ingestion.
+      <Coroutine test_ingest_event_missing_tenant_id>
+        Test that tenant_id is required.
+      <Coroutine test_ingest_batch_exceeds_max_size>
+        Test that batch size limit is enforced.
+      <Coroutine test_tenant_isolation_in_queries>
+        Test that tenant_id is always included in queries.
+      <Coroutine test_ingest_batch_success>
+        Test batch ingestion with multiple events.
+    <Module test_model_registry.py>
+      Unit tests for the Model Registry service and evaluation gate.
+      <Class TestModelRegistryCRUD>
+        Tests for model registration and listing.
+        <Coroutine test_list_models>
+        <Coroutine test_get_active_production_model>
+        <Coroutine test_get_active_production_model_none>
+        <Coroutine test_register_model>
+      <Class TestResolveLLMModel>
+        Tests for the LLM model resolution helper.
+        <Coroutine test_resolve_llm_model_fallback>
+        <Coroutine test_resolve_llm_model_uses_registry>
+      <Class TestEvalGate>
+        Tests for evaluation gate checker.
+        <Coroutine test_check_eval_gate_defaults_to_0_85>
+        <Coroutine test_check_eval_gate_missing_model>
+        <Coroutine test_check_eval_gate_uses_tenant_threshold>
+        <Coroutine test_check_eval_gate_uses_min_score>
+      <Class TestModelPromotion>
+        Tests for promotion gates and audit trail.
+        <Coroutine test_staging_to_production_requires_eval>
+        <Coroutine test_staging_to_production_passes_with_high_score>
+        <Coroutine test_production_to_deprecated_allowed>
+        <Coroutine test_dev_to_staging_allowed>
+        <Coroutine test_promotion_history_recorded>
+    <Module test_code_quality.py>
+      Tests for code quality issues identified in autonomous code review.
+      
+      TDD approach: tests define expected behavior for fixes.
+      <Class TestImportPathConvention>
+        Verify import paths use project conventions.
+        <Function test_imports_document_pytest_configuration_requirement>
+          Import paths rely on pytest pythonpath configuration.
+          
+          The project uses: pythonpath = [".", "src"] in pyproject.toml
+          This allows 'from src.interfaces' to work when running from layer4-agents/.
+          
+          The import convention is documented in test_interfaces_exports.py header.
+      <Class TestValidationRuleReconstruction>
+        Verify validation rules handle malformed Neo4j data gracefully.
+        <Function test_variable_validation_rule_handles_missing_keys>
+          Variable registry should handle validation rules with missing keys.
+        <Function test_variable_validation_rule_handles_empty_list>
+          Empty validation rules list should be handled.
+        <Function test_variable_validation_rule_handles_none_values>
+          None values in rule data should be handled gracefully.
+      <Class TestDatetimeDeprecationFixes>
+        Verify datetime.now(timezone.utc) is used instead of deprecated utcnow().
+        <Function test_isoformat_produces_correct_timezone_format>
+          ISO format should include timezone info.
+        <Function test_all_datetime_creation_uses_timezone_aware>
+          All datetime creation should use timezone-aware objects.
+    <Module test_provenance.py>
+      Tests for L4 provenance models and in-memory store.
+      <Class TestPROVNamespace>
+        <Function test_core_namespaces>
+        <Function test_get_prefixes>
+      <Class TestCreateProvGraph>
+        <Function test_activity_references>
+        <Function test_creates_graph_with_agent>
+      <Class TestCreateTripleStore>
+        <Coroutine test_memory_backend>
+        <Coroutine test_unknown_backend_raises>
+      <Class TestPROVGraph>
+        <Function test_add_activity>
+        <Function test_to_turtle_includes_rdf_star>
+        <Function test_add_entity>
+        <Function test_to_turtle_contains_prefixes>
+        <Function test_default_graph_id>
+        <Function test_custom_graph_id>
+        <Function test_to_dict_structure>
+        <Function test_to_triples_aggregates_all>
+        <Function test_add_agent>
+      <Class TestRDFStarTriple>
+        <Function test_to_rdf_star>
+        <Function test_to_dict>
+      <Class TestPROVType>
+        <Function test_vf_types>
+        <Function test_entity_types>
+      <Class TestPROVAgent>
+        <Function test_auto_urn>
+        <Function test_to_dict>
+        <Function test_delegation>
+      <Class TestPROVActivity>
+        <Function test_auto_urn>
+        <Function test_to_dict>
+        <Function test_generated_entities_produce_inverse_triple>
+        <Function test_to_triples_with_relationships>
+      <Class TestPROVEntity>
+        <Function test_to_triples_with_attributes>
+        <Function test_preserves_uri>
+        <Function test_to_dict>
+        <Function test_auto_urn_generation>
+        <Function test_to_triples_with_provenance>
+        <Function test_preserves_urn>
+        <Function test_to_triples_basic>
+      <Class TestInMemoryTripleStore>
+        <Coroutine test_close>
+        <Coroutine test_lineage_empty>
+        <Coroutine test_store_and_query>
+        <Coroutine test_store_rdf_star_annotations>
+        <Coroutine test_upstream_lineage>
+    <Module test_health_tracker.py>
+      Unit tests for HealthTracker service.
+      
+      Tests health status tracking, badge generation, and callback mechanisms.
+      <Class TestHealthStatusEnum>
+        Test suite for HealthStatus enum.
+        <Function test_enum_is_string>
+          Test that HealthStatus is a string enum.
+        <Function test_enum_values>
+          Test that enum has expected values.
+      <Class TestHealthTrackerValidation>
+        Test suite for HealthTracker input validation.
+        <Function test_check_interval_seconds_one_is_valid>
+          Test that check_interval_seconds=1 is accepted.
+        <Function test_check_interval_seconds_zero_raises_value_error>
+          Test that check_interval_seconds=0 raises ValueError.
+        <Function test_check_interval_seconds_negative_raises_value_error>
+          Test that negative check_interval_seconds raises ValueError.
+        <Function test_check_interval_seconds_default_is_valid>
+          Test that default check_interval_seconds is valid.
+      <Class TestGetHealthTracker>
+        Test suite for get_health_tracker singleton.
+        <Function test_singleton_returns_same_instance>
+          Test that get_health_tracker returns the same instance.
+        <Function test_singleton_is_global>
+          Test that singleton is truly global.
+      <Class TestHealthTracker>
+        Test suite for HealthTracker.
+        <Coroutine test_dismiss_nonexistent_badge>
+          Test that dismissing a non-existent badge returns False.
+        <Coroutine test_callback_exception_handling>
+          Test that exceptions in callbacks are handled gracefully.
+        <Coroutine test_failure_and_recovery_counts>
+          Test that failure and recovery counts track transitions.
+        <Coroutine test_to_dict_serialization>
+          Test that to_dict produces serializable output.
+        <Coroutine test_get_all_health>
+          Test retrieving all component health records.
+        <Coroutine test_dismiss_badge>
+          Test that badges can be dismissed.
+        <Coroutine test_update_component_creates_health>
+          Test that updating a component creates health record.
+        <Coroutine test_degraded_status_creates_badge>
+          Test that degraded status creates a health badge.
+        <Coroutine test_cannot_dismiss_non_dismissible_badge>
+          Test that non-dismissible badges cannot be dismissed.
+        <Coroutine test_healthy_status_removes_degraded_badge>
+          Test that returning to healthy status removes the degraded badge.
+        <Coroutine test_overall_status_aggregation>
+          Test that overall status is correctly aggregated.
+        <Coroutine test_auto_hide_badge>
+          Test that badges auto-hide after configured delay.
+        <Coroutine test_status_change_triggers_callback>
+          Test that status changes trigger registered callbacks.
+    <Module test_llm_cost_metrics.py>
+      Tests for LLM cost calculation and metric emission.
+      <Class TestLLMCostCalculator>
+        <Function test_load_override_from_env>
+        <Function test_calculate_cost_mini_model>
+        <Function test_calculate_cost_known_model>
+        <Function test_unknown_model_returns_zero_and_logs_warning>
+      <Class TestLLMMetricEmission>
+        <Function test_record_llm_cost_increments_all_counters>
+        <Function test_disabled_metrics_noop>
+        <Function test_record_llm_cost_failure_status>
+    <Module test_enrichment.py>
+      Tests for Data Intelligence Layer Phase 1 ù Layer 4 Components.
+      
+      Covers:
+        Task 1.2 ù Account Enrichment Pipeline (enrichment_orchestrator.py, enrichment.py routes)
+      
+      These tests use mock-based isolation to avoid the full import chain
+      (database.py requires __future__ annotations for Python 3.11 compat).
+      <Class TestEnrichmentSources>
+        Unit tests for individual enrichment source methods.
+        <Function test_determine_sources_with_revenue>
+          _determine_sources includes SEC EDGAR for high-revenue accounts.
+        <Function test_determine_sources_no_revenue>
+          _determine_sources excludes SEC EDGAR for low/no-revenue accounts.
+        <Coroutine test_web_crawl_enrichment_no_domain>
+          Web crawl enrichment returns error when no domain available.
+        <Function test_determine_sources_includes_news_scan>
+          _determine_sources includes news scan when account has a name.
+        <Coroutine test_sec_edgar_enrichment_makes_http_call>
+          SEC EDGAR enrichment attempts HTTP call to EDGAR API.
+      <Class TestEnrichmentOrchestrator>
+        Unit tests for EnrichmentOrchestrator (Task 1.2).
+        <Coroutine test_enrich_account_not_found>
+          enrich_account returns error when account doesn't exist.
+        <Coroutine test_enrich_account_with_specific_sources>
+          enrich_account uses only specified sources when provided.
+        <Coroutine test_close_noop_when_no_client>
+          close() is safe to call when no HTTP client exists.
+        <Coroutine test_enrich_account_force_reenrich>
+          enrich_account re-enriches when force=True even if already enriched.
+        <Coroutine test_close_cleans_up_http_client>
+          close() properly closes the HTTP client.
+        <Coroutine test_enrich_account_already_enriched_skip>
+          enrich_account skips already-enriched accounts unless force=True.
+      <Class TestEnrichmentEnums>
+        Unit tests for enrichment enums and constants.
+        <Function test_enrichment_source_list>
+          All enrichment sources are enumerable.
+        <Function test_enrichment_source_values>
+          EnrichmentSource enum has expected values.
+        <Function test_enrichment_status_values>
+          EnrichmentStatus enum has expected values.
+      <Class TestEnrichmentRouteModels>
+        Test Pydantic models matching the enrichment route contracts.
+        
+        The L4 route import chain has pre-existing issues (merge conflict markers
+        in business_case.py, missing SignalStreamCompleteEvent). We define
+        equivalent Pydantic models inline to validate the API contract without
+        triggering the broken import chain.
+        <Function test_enrich_account_request_defaults>
+          EnrichAccountRequest has correct defaults.
+        <Function test_batch_enrich_request_validation>
+          BatchEnrichRequest validates required fields.
+        <Function test_enrichment_status_response>
+          EnrichmentStatusResponse accepts valid data.
+    <Module test_llm_budget_guardrails.py>
+      Tests for tenant LLM budget guardrails.
+      <Function test_precheck_returns_throttle_near_soft_cap>
+      <Function test_record_usage_and_prune_old_events>
+      <Function test_precheck_blocks_when_hard_cap_exceeded>
+    <Module test_langgraph_execution.py>
+      LangGraph workflow execution tests with mocked LLM.
+      
+      Tests verify:
+      1. BusinessCaseGeneratorWorkflow runs end-to-end with all LLM calls mocked.
+      2. ROICalculatorWorkflow runs end-to-end with all tool calls mocked.
+      3. Workflow state transitions are correct (PENDING \u2192 RUNNING \u2192 COMPLETED).
+      4. generate_section tool uses AsyncOpenAI and can be mocked cleanly.
+      5. Workflow handles LLM errors gracefully (error section, not crash).
+      6. WorkflowStatus enum values match what the frontend expects.
+      <Class TestWorkflowStatusEnum>
+        Verify WorkflowStatus enum values match frontend expectations.
+        <Function test_all_frontend_statuses_covered>
+          All frontend Workflow.status values must have a matching WorkflowStatus enum.
+        <Function test_pending_status_value>
+        <Function test_completed_status_value>
+        <Function test_cancelled_status_value>
+        <Function test_failed_status_value>
+        <Function test_paused_status_exists>
+          PAUSED status must exist for human-in-the-loop workflows.
+        <Function test_running_status_value>
+      <Class TestGenerateSectionToolLLMMock>
+        Test that GenerateSectionTool._call_llm can be mocked cleanly.
+        <Coroutine test_generate_section_tool_raises_on_llm_failure>
+          GenerateSectionTool must raise RuntimeError when LLM call fails.
+        <Coroutine test_generate_section_tool_with_mocked_openai>
+          GenerateSectionTool must use AsyncOpenAI and be mockable.
+        <Function test_generate_section_tool_has_all_section_templates>
+          GenerateSectionTool must have templates for all 6 standard section types.
+        <Coroutine test_generate_section_tool_uses_gpt4o>
+          GenerateSectionTool must call gpt-4o model.
+      <Class TestBusinessCaseGeneratorWorkflow>
+        Test Business Case Generator workflow with mocked LLM and tool calls.
+        <Coroutine test_generate_sections_with_mocked_llm>
+          _execute_generate_sections must produce sections for each requested type.
+        <Coroutine test_generate_sections_handles_llm_error_gracefully>
+          When LLM fails, _execute_generate_sections must return error section, not crash.
+        <Coroutine test_business_case_workflow_run_with_mocked_graph>
+          BusinessCaseGeneratorWorkflow.run must return a BusinessCaseAgentState.
+        <Function test_create_initial_state>
+          create_initial_state must produce a BusinessCaseAgentState with PENDING status.
+      <Class TestWorkflowStateTransitions>
+        Test edge cases in workflow state transitions.
+        <Function test_initial_state_has_empty_output_data>
+          New workflow states must start with empty output_data.
+        <Function test_workflow_status_cannot_transition_from_completed>
+          A completed workflow must not be reset to running.
+        <Function test_all_status_values_are_lowercase>
+          All WorkflowStatus values must be lowercase (matches frontend expectations).
+        <Function test_workflow_status_has_paused_for_human_in_loop>
+          PAUSED must be a valid WorkflowStatus for human-in-the-loop.
+        <Function test_initial_state_has_empty_errors_list>
+          New workflow states must start with empty errors list.
+      <Class TestOrchestrationControllerErrorPaths>
+        Test error paths in the OrchestrationController.
+        <Coroutine test_execute_workflow_rejects_unknown_type>
+          execute_workflow must raise for unknown workflow types.
+        <Coroutine test_get_workflow_status_after_execute>
+          get_workflow_status must return valid data after workflow execution.
+        <Coroutine test_cancel_nonexistent_workflow_returns_false>
+          cancel_workflow must return False for unknown workflow IDs.
+      <Class TestROICalculatorWorkflow>
+        Test ROI Calculator workflow execution with mocked tool calls.
+        <Function test_create_initial_state_requires_value_driver_ids>
+          create_initial_state must raise if value_driver_ids is empty.
+        <Function test_create_initial_state>
+          create_initial_state must produce a ROIAgentState with PENDING status.
+        <Coroutine test_roi_workflow_state_has_workflow_type>
+          ROI workflow state must include workflow_type for frontend normalization.
+        <Coroutine test_roi_workflow_run_with_mocked_tools>
+          ROI workflow must complete when all tool calls are mocked.
+      <Class TestWorkflowToolFailureHandling>
+        Test workflow behavior when tool calls fail.
+        <Coroutine test_business_case_handles_all_sections_failing>
+          Business case must handle all section generation failures gracefully.
+        <Coroutine test_roi_workflow_handles_tool_timeout>
+          ROI workflow must handle tool execution timeouts.
+      <Class TestOrchestrationControllerWorkflowLifecycle>
+        Test OrchestrationController workflow lifecycle with mocked workflows.
+        <Coroutine test_get_result_returns_route_compatible_shape_from_persisted_state>
+          get_result should read persisted state and return route-compatible keys.
+        <Coroutine test_get_workflow_status_returns_none_for_unknown>
+          get_workflow_status must return None for unknown workflow IDs.
+        <Coroutine test_execute_workflow_creates_metadata>
+          execute_workflow must store workflow_metadata for the new workflow_id.
+        <Coroutine test_list_active_workflows_returns_list>
+          list_active_workflows must return a list (possibly empty).
+      <Class TestWorkflowInputValidation>
+        Test workflow input validation edge cases.
+        <Function test_business_case_accepts_all_section_types>
+          Business case must accept all 6 standard section types.
+        <Function test_roi_workflow_accepts_minimal_valid_input>
+          ROI workflow must accept minimal valid input (prospect_id + value_driver_ids).
+        <Function test_roi_workflow_rejects_missing_prospect_id>
+          ROI workflow must reject inputs without prospect_id.
+        <Function test_business_case_rejects_empty_sections>
+          Business case workflow must reject empty sections_requested.
+    <Module test_tenant_lifecycle.py>
+      Tests for Phase 1 Tenant Lifecycle Hardening.
+      
+      Covers:
+      - Task 1.4: Tenant status lifecycle (transition_to, audit fields)
+      - Task 1.5: Suspended/pending/deleted tenant enforcement in middleware
+      - Task 1.7: Tenant service lifecycle methods and API routes
+      <Class TestRLSMigrationCoverage>
+        Verify that all tables with tenant_id have corresponding RLS migrations.
+        <Function test_billing_tables_have_rls_migration>
+          Migration 018 should cover all billing tables.
+      <Class TestColumnRenameConsistency>
+        Verify that organization_id has been fully renamed to tenant_id.
+        <Function test_layer1_models_use_tenant_id>
+          Layer 1 models should use tenant_id, not organization_id.
+      <Class TestMiddlewareTenantStatusEnforcement>
+        Test that GovernanceMiddleware blocks suspended/pending/deleted tenants.
+        <Coroutine test_active_tenant_allowed>
+          Active tenants should pass through middleware.
+        <Coroutine test_deleted_tenant_returns_404_json>
+          Deleted tenants should get 404 with JSON error body.
+        <Coroutine test_suspended_tenant_blocked_with_json>
+          Suspended tenants should get 403 with JSON error body.
+        <Coroutine test_pending_tenant_blocked_with_json>
+          Pending tenants should get 403 with JSON error body.
+      <Class TestTenantStatusTransitions>
+        Test the enhanced transition_to() state machine on the Tenant model.
+        <Function test_suspended_to_deleted>
+          Suspended tenants can be soft-deleted.
+        <Function test_suspended_to_active>
+          Suspended tenants can be reactivated.
+        <Function test_backward_compat_transition_status>
+          Deprecated transition_status() returns bool instead of raising.
+        <Function test_convenience_suspend>
+          suspend() convenience method works.
+        <Function test_convenience_activate>
+          activate() convenience method works.
+        <Function test_invalid_transition_raises_value_error>
+          Invalid transitions must raise ValueError.
+        <Function test_active_to_deleted>
+          Active tenants can be soft-deleted.
+        <Function test_deleted_to_anything_invalid>
+          Deleted is a terminal state ù no transitions allowed.
+        <Function test_backward_compat_transition_status_invalid>
+          Deprecated transition_status() returns False on invalid transition.
+        <Function test_convenience_mark_deleted>
+          mark_deleted() convenience method works.
+        <Function test_audit_fields_updated_on_transition>
+          status_changed_at, status_reason, status_changed_by are all set.
+        <Function test_active_to_suspended>
+          Active tenants can be suspended.
+        <Function test_pending_to_suspended_invalid>
+          Pending tenants cannot be directly suspended.
+        <Function test_pending_to_active>
+          Pending tenants can be activated.
+      <Class TestTenantServiceLifecycle>
+        Test update_tenant_status and delete_tenant service functions.
+        <Coroutine test_update_tenant_status_uses_state_machine>
+          update_tenant_status should use transition_to() and record audit fields.
+        <Coroutine test_delete_tenant_uses_state_machine>
+          delete_tenant should use transition_to('deleted').
+        <Coroutine test_update_tenant_status_invalid_raises>
+          update_tenant_status should raise ValueError on invalid transition.
+        <Coroutine test_update_tenant_status_not_found>
+          update_tenant_status should return False when tenant not found.
+    <Dir unit>
+      <Module test_workflow_state_machine.py>
+        Unit tests for workflow state machine and state transitions.
+        
+        Tests the core workflow state management without external dependencies.
+        Follows the test pyramid: fast, isolated, deterministic.
+        <Class TestROIAgentState>
+          Test ROI calculator workflow state management.
+          <Function test_roi_state_creation_with_input>
+            ROI state can be created with input data.
+          <Function test_roi_state_accumulates_results>
+            ROI state accumulates calculation results.
+          <Function test_roi_input_validation_requires_value_drivers>
+            ROI input must have at least one value driver.
+        <Class TestWorkflowStatusTransitions>
+          Test workflow status state machine transitions.
+          <Function test_pause_summary_generation>
+            Pause point summary includes all required fields.
+          <Function test_no_pause_summary_when_not_paused>
+            Pause summary is None when workflow not paused.
+          <Function test_cannot_resume_from_failed>
+            Failed workflow cannot be resumed.
+          <Function test_interrupted_status_for_recovery>
+            INTERRUPTED status allows recovery after pod restart.
+          <Function test_resumed_status_transition>
+            Workflow can resume from PAUSED to RUNNING.
+          <Function test_paused_status_transition>
+            Workflow can transition to PAUSED from RUNNING.
+          <Function test_initial_status_is_pending>
+            New workflow must start with PENDING status.
+          <Function test_running_status_transition>
+            Workflow can transition from PENDING to RUNNING.
+          <Function test_cannot_resume_from_completed>
+            Completed workflow cannot be resumed.
+          <Function test_completed_status_transition>
+            Workflow can transition from RUNNING to COMPLETED.
+          <Function test_failed_status_transition>
+            Workflow can transition from RUNNING to FAILED.
+        <Class TestStateSerialization>
+          Test state serialization for checkpoints.
+          <Function test_datetime_serialization_to_isoformat>
+            Datetime fields are serialized to ISO format.
+          <Function test_none_datetime_serialization>
+            None datetime fields remain None in serialization.
+          <Function test_state_immutability_via_reducers>
+            State updates use reducers for safe mutations.
+        <Class TestWorkflowStateEdgeCases>
+          Test edge cases and boundary conditions.
+          <Function test_error_accumulation>
+            Workflow can accumulate multiple errors.
+          <Function test_empty_workflow_id_generation>
+            Workflow ID is auto-generated if not provided.
+          <Function test_multiple_pause_resume_cycles>
+            Workflow can handle multiple pause/resume cycles.
+          <Function test_metadata_accumulation>
+            Metadata can accumulate arbitrary data.
+        <Class TestWhitespaceAgentState>
+          Test whitespace analysis workflow state management.
+          <Function test_whitespace_needs_minimum_length>
+            Prospect needs must be at least 10 characters.
+          <Function test_whitespace_state_creation>
+            Whitespace state can be created with input data.
+          <Function test_whitespace_analysis_depth_validation>
+            Analysis depth must be one of valid values.
+        <Class TestBusinessCaseAgentState>
+          Test business case workflow state management.
+          <Function test_business_case_state_creation>
+            Business case state can be created with input data.
+          <Function test_business_case_output_format_validation>
+            Output format must be one of valid values.
+          <Function test_business_case_sections_accumulation>
+            Business case accumulates generated sections.
+        <Class TestBaseWorkflow>
+          Test base workflow functionality.
+          <Function test_workflow_error_exception>
+            WorkflowError can be raised and caught.
+          <Function test_node_execution_error_is_workflow_error>
+            NodeExecutionError is a subclass of WorkflowError.
+          <Function test_workflow_initialization>
+            Workflow can be initialized with config and tools.
+          <Function test_node_execution_error_exception>
+            NodeExecutionError can be raised and caught.
+    <Module test_crm_tools_pagination.py>
+      Tests for CRM tools pagination and rate limit handling.
+      
+      Covers:
+      - SOQL query pagination via nextRecordsUrl
+      - Rate limit detection and graceful handling
+      - Max page safety limit
+      <Coroutine test_salesforce_rate_limit_graceful>
+        Test that rate limit (429) is handled gracefully without crashing.
+      <Coroutine test_salesforce_max_pages_safety>
+        Test that pagination stops at max_pages to prevent unbounded fetching.
+      <Coroutine test_salesforce_opportunity_pagination>
+        Test that opportunities are fetched across multiple pages.
+    <Module test_checkpoint_resume.py>
+      Integration tests for LangGraph checkpointing and workflow resume.
+      
+      Tests the pause/resume lifecycle for human-in-the-loop workflows.
+      Verifies state persistence across interruptions and container restarts.
+      <Class TestResumeWorkflow>
+        Test OrchestrationController resume functionality.
+        <Coroutine test_resume_merges_user_data>
+          Resume merges user resume data into state.
+        <Coroutine test_resume_nonexistent_workflow_fails>
+          Cannot resume a workflow that doesn't exist.
+        <Coroutine test_resume_completed_workflow_fails>
+          Cannot resume a workflow that is already completed.
+        <Coroutine test_resume_workflow_loads_state>
+          Resume loads existing state and continues execution.
+      <Class TestCheckpointConfiguration>
+        Test checkpoint configuration and database connection.
+        <Coroutine test_factory_get_checkpoint_saver_returns_none_on_db_failure>
+          Factory function get_checkpoint_saver() returns None on DB failure for graceful degradation.
+          
+          Unlike CheckpointConfig.get_saver() which raises exceptions, the factory function
+          is designed to silently fail and return None, allowing workflows to continue
+          without checkpointing when the database is unavailable.
+        <Coroutine test_checkpoint_config_returns_saver>
+          CheckpointConfig creates saver when database available.
+        <Coroutine test_get_checkpoint_saver_raises_connection_error_on_failure>
+          CheckpointConfig.get_saver() raises CheckpointConnectionError when DB unavailable.
+          
+          This test verifies that database connection failures are properly caught
+          and converted to CheckpointConnectionError, allowing callers to handle
+          persistence failures gracefully.
+        <Function test_checkpoint_config_handles_url_variations>
+          CheckpointConfig handles different URL formats.
+      <Class TestCheckpointPersistence>
+        Test that workflow state persists across interruptions.
+        <Coroutine test_workflow_without_checkpoint_saver_runs_normally>
+          Workflow functions without checkpointing (backward compatibility).
+        <Coroutine test_checkpoint_saver_stores_state>
+          Verify checkpoint saver receives state during workflow execution.
+      <Class TestCheckpointIntegration>
+        End-to-end integration tests for checkpoint/resume.
+        <Coroutine test_multiple_resumes_continue_progress>
+          Multiple resume calls continue from latest checkpoint.
+        <Coroutine test_full_pause_resume_lifecycle>
+          Complete workflow: start -> pause -> resume -> complete.
+    <Module test_oidc_cleanup.py>
+      Tests for OIDC session cleanup service.
+      <Class TestOIDCCleanupTask>
+        Tests for OIDCCleanupTask background service.
+        <Coroutine test_cleanup_task_start_stop>
+          Test that cleanup task can be started and stopped.
+        <Coroutine test_cleanup_task_handles_errors_gracefully>
+          Test that task continues running after errors.
+        <Coroutine test_cleanup_task_runs_periodically>
+          Test that cleanup runs multiple times.
+      <Class TestCleanupExpiredSessions>
+        Tests for cleanup_expired_oidc_sessions function.
+        <Coroutine test_cleanup_rolls_back_on_error>
+          Test that transaction is rolled back on error.
+        <Coroutine test_cleanup_no_expired_sessions>
+          Test when no expired sessions exist.
+        <Coroutine test_cleanup_deletes_expired_sessions>
+          Test that expired sessions are deleted.
+    <Module test_phase3_control_plane.py>
+      Phase 3 tests: Tier enforcement, usage tracking, and admin dashboard.
+      
+      Tests are organized into three groups:
+      1. TierEnforcement ù limit checks, feature gates, usage summary
+      2. UsageTrackingService ù aggregation queries, daily breakdown, monthly counters
+      3. AdminDashboard ù authorization, settings CRUD, branding feature gate
+      
+      All tests use mock DB sessions to avoid infrastructure dependencies.
+      Tests are designed to FAIL initially until the application code is
+      correctly wired ù per Agent Workflow Testing Best Practices.
+      <Class TestAdminDashboardAuthorization>
+        Test authorization logic for admin dashboard endpoints.
+        <Function test_authorize_own_tenant>
+        <Function test_authorize_super_admin_any_tenant>
+        <Function test_authorize_other_tenant_denied>
+      <Class TestUsageTrackingService>
+        Test UsageTrackingService aggregation methods.
+        <Coroutine test_llm_cost_estimate>
+          Verify LLM cost estimate calculation.
+        <Coroutine test_get_current_month_api_calls>
+        <Coroutine test_get_top_endpoints>
+        <Coroutine test_get_daily_usage_returns_list>
+        <Coroutine test_graceful_degradation_on_missing_table>
+          Usage tracking should return zeros if audit_events table doesn't exist.
+        <Coroutine test_get_usage_summary_returns_dataclass>
+      <Class TestTierConfiguration>
+        Test tier configuration and lookup.
+        <Function test_check_limit_within>
+        <Function test_get_tier_config_free>
+        <Function test_get_tier_config_enterprise_unlimited>
+        <Function test_get_tier_config_pro>
+        <Function test_get_public_tiers_excludes_enterprise>
+        <Function test_check_limit_unlimited>
+        <Function test_get_tier_config_unknown_raises>
+        <Function test_check_limit_at_boundary>
+        <Function test_check_limit_exceeded>
+      <Class TestTierUsageSummary>
+        Test the get_usage_summary method on TierEnforcement.
+        <Coroutine test_usage_summary_enterprise_unlimited>
+        <Coroutine test_usage_summary_structure>
+      <Class TestTierLimitExceeded>
+        Test the TierLimitExceeded exception structure.
+        <Function test_error_response_shape>
+      <Class TestSettingsFeatureGate>
+        Test that branding updates require the custom_branding feature.
+        <Function test_audit_export_allowed_on_basic_tier>
+        <Function test_branding_allowed_on_pro_tier>
+        <Function test_sso_blocked_on_basic_tier>
+        <Function test_branding_blocked_on_free_tier>
+      <Class TestTierEnforcement>
+        Test TierEnforcement service limit checks.
+        <Function test_require_feature_passes_when_enabled>
+        <Function test_check_feature_enabled>
+        <Coroutine test_check_monthly_api_calls_exceeded>
+        <Coroutine test_check_user_limit_exceeded>
+        <Function test_require_feature_raises_when_disabled>
+        <Function test_check_feature_disabled>
+        <Coroutine test_check_monthly_api_calls_within>
+        <Coroutine test_check_user_limit_enterprise_unlimited>
+        <Coroutine test_check_user_limit_within>
+    <Module test_export_provenance.py>
+      Tests for export provenance manifest determinism and completeness.
+      <Function test_provenance_validation_flags_missing_links>
+      <Function test_snapshot_replay_deterministic_snapshot_stable>
+    <Module test_tenant_provisioning.py>
+      Tests for tenant provisioning service (Task 3).
+      
+      Verifies automated tenant lifecycle management with:
+      - Idempotent tenant creation
+      - Admin user provisioning
+      - Database schema setup
+      - Audit trail generation
+      - Rollback on failure
+      <Class TestTenantProvisionResult>
+        Tests for TenantProvisionResult model.
+        <Function test_creates_partial_result_with_errors>
+          Verify partial result with errors.
+        <Function test_creates_success_result>
+          Verify success result creation.
+      <Class TestTenantProvisioningService>
+        Tests for TenantProvisioningService.
+        <Coroutine test_provision_tenant_stores_argon2id_password_hash>
+          Verify temp password is persisted as Argon2id PHC hash, never raw.
+        <Coroutine test_provision_tenant_validates_name>
+          Verify tenant name validation.
+        <Coroutine test_provision_tenant_rollback_on_failure>
+          Verify rollback is attempted on provisioning failure.
+        <Coroutine test_provision_tenant_emits_audit_event>
+          Verify audit event is emitted on successful provisioning.
+        <Coroutine test_provision_tenant_audit_event_redacts_temp_password>
+          Verify audit payload never contains raw temporary password.
+        <Coroutine test_generate_secure_password>
+          Verify secure password generation.
+        <Coroutine test_provision_tenant_with_metadata>
+          Verify tenant provisioning with custom metadata.
+        <Coroutine test_provision_tenant_validates_isolation_tier>
+          Verify isolation tier validation.
+        <Coroutine test_provision_new_tenant_success>
+          Verify successful tenant provisioning.
+        <Coroutine test_provision_tenant_schema_isolation>
+          Verify schema-level isolation setup.
+        <Coroutine test_provision_tenant_idempotent>
+          Verify idempotent behavior when tenant already exists.
+        <Coroutine test_provision_tenant_validates_email>
+          Verify admin email validation.
+        <Coroutine test_provision_tenant_creates_records>
+          Verify tenant and admin user records are created.
+      <Class TestTenantProvisioningIntegration>
+        Integration tests for tenant provisioning scenarios.
+        <Coroutine test_provision_with_org_hierarchy>
+          Verify tenant provisioning with organization hierarchy.
+        <Coroutine test_provision_multiple_tenants>
+          Verify multiple tenants can be provisioned.
+      <Class TestTenantProvisionRequest>
+        Tests for TenantProvisionRequest model.
+        <Function test_creates_with_all_fields>
+          Verify request can be created with all fields.
+        <Function test_creates_with_required_fields>
+          Verify request can be created with required fields.
+    <Module test_value_hypothesis.py>
+      Data Intelligence Layer Phase 2 ù L4 Tests.
+      
+      Tests for:
+        - Task 2.1: Value Hypothesis Engine (value_hypothesis_engine.py)
+      
+      These tests use mock Neo4j drivers to isolate service logic from the database.
+      Run with: pytest tests/test_value_hypothesis.py --noconftest -v
+      <Class TestHypothesisCRUD>
+        Tests for hypothesis CRUD operations.
+        <Coroutine test_get_account_hypotheses>
+        <Coroutine test_get_nonexistent_hypothesis>
+        <Coroutine test_validate_nonexistent>
+        <Coroutine test_get_hypothesis>
+        <Coroutine test_delete_nonexistent>
+        <Coroutine test_validate_hypothesis>
+        <Coroutine test_delete_hypothesis>
+      <Class TestHypothesisSummary>
+        Tests for hypothesis summary analytics.
+        <Coroutine test_summary_with_data>
+        <Coroutine test_summary_empty>
+      <Class TestHypothesisStatus>
+        Tests for HypothesisStatus enum.
+        <Function test_status_from_string>
+        <Function test_all_statuses>
+      <Class TestValueHypothesis>
+        Tests for ValueHypothesis data model.
+        <Function test_default_values>
+        <Function test_to_node_properties>
+        <Function test_id_is_uuid>
+      <Class TestRanking>
+        Tests for hypothesis ranking logic.
+        <Function test_string_strategy>
+        <Function test_confidence_ranking>
+        <Function test_recency_ranking>
+        <Function test_empty_hypotheses>
+        <Function test_impact_ranking>
+        <Function test_balanced_ranking_adds_composite_score>
+        <Function test_evidence_ranking>
+      <Class TestRankingStrategy>
+        Tests for RankingStrategy enum.
+        <Function test_weights_defined_for_all_strategies>
+        <Function test_all_strategies>
+      <Class TestHypothesisGeneration>
+        Tests for hypothesis generation.
+        <Coroutine test_generate_no_paths>
+          Test generation with no signal\u2192product paths.
+        <Coroutine test_generate_hypotheses>
+          Test that generate_hypotheses produces hypotheses from graph paths.
+    <Module test_checkpoint_resume_failure_paths.py>
+      Failure-path tests for workflow checkpoint/resume.
+      
+      Tests corrupted state recovery, partial resume, missing dependencies,
+      failed agent calls, and inconsistent state scenarios.
+      <Class TestMissingDependencies>
+        Test handling of missing dependencies during resume.
+        <Coroutine test_resume_without_workflow_metadata_fails_clearly>
+          Missing workflow metadata should give clear error.
+        <Coroutine test_resume_with_deleted_tool_fails_gracefully>
+          Tool deleted after workflow started should fail gracefully.
+      <Class TestFailedAgentCalls>
+        Test handling of failed agent/tool calls during resume.
+        <Coroutine test_failed_tool_call_during_resume_propagates_error>
+          Tool failure during resume should be captured in state.
+        <Coroutine test_multiple_tool_failures_accumulate_in_state>
+          Multiple failures should be tracked in state.errors.
+      <Class TestPartialResume>
+        Test partial/incomplete workflow resume scenarios.
+        <Coroutine test_resume_mid_workflow_preserves_previous_output>
+          Resuming mid-workflow should preserve output from completed nodes.
+      <Class TestCheckpointFailureModes>
+        Test checkpoint storage failure scenarios.
+        <Coroutine test_failing_checkpoint_save_does_not_crash_workflow>
+          Checkpoint save failure should not crash workflow (graceful degradation).
+        <Coroutine test_null_checkpoint_saver_is_handled>
+          Should handle None checkpoint_saver (backward compatibility).
+      <Class TestCorruptedStateRecovery>
+        Test handling of corrupted or inconsistent state.
+        <Coroutine test_recover_from_partial_save_state>
+          Should handle case where state was partially saved.
+        <Coroutine test_resume_with_corrupted_checkpoint_raises_clear_error>
+          Should raise clear error when checkpoint data is corrupted.
+        <Coroutine test_handles_state_with_missing_required_fields>
+          Should handle state missing required fields gracefully.
+    <Module test_dil_phase3.py>
+      Data Intelligence Layer ù Phase 3 Tests.
+      
+      Tests for:
+        Task 3.1 ù Narrative Builder Service
+        Task 3.2 ù Intelligence Orchestrator (Cross-Layer)
+      
+      Uses mock Neo4j driver to avoid external dependencies.
+      <Class TestNarrativeBuilderGeneration>
+        Test full narrative generation.
+        <Coroutine test_generate_narrative_with_subset_sections>
+        <Coroutine test_generate_narrative>
+        <Coroutine test_generate_narrative_empty_data>
+      <Class TestNarrativeBuilderCRUD>
+        Test narrative CRUD operations.
+        <Coroutine test_get_nonexistent_narrative>
+        <Coroutine test_delete_narrative>
+        <Coroutine test_update_status_nonexistent>
+        <Coroutine test_delete_nonexistent>
+        <Coroutine test_get_narrative>
+        <Coroutine test_list_narratives>
+        <Coroutine test_update_status>
+      <Class TestNarrativeBuilderSectionRendering>
+        Test the section rendering logic.
+        <Function test_render_section_next_steps_default>
+        <Function test_render_section_executive_summary>
+        <Function test_render_section_next_steps_custom>
+        <Function test_render_section_value_hypotheses_includes_items>
+        <Function test_build_context>
+      <Class TestIntelligenceOrchestratorBriefing>
+        Test account briefing assembly.
+        <Coroutine test_get_account_briefing>
+          Test full briefing assembly with mocked Neo4j queries.
+        <Coroutine test_get_account_briefing_empty>
+          Test briefing with no data.
+      <Class TestIntelligenceOrchestratorPipeline>
+        Test pipeline intelligence.
+        <Coroutine test_get_pipeline_summary>
+        <Coroutine test_get_pipeline_summary_empty>
+      <Class TestNarrativeRequest>
+        Test NarrativeRequest dataclass.
+        <Function test_defaults>
+        <Function test_custom_values>
+      <Class TestIntelligenceOrchestratorDealReadiness>
+        Test deal readiness endpoint.
+        <Coroutine test_get_deal_readiness>
+      <Class TestNarrativeEnums>
+        Test narrative enums and constants.
+        <Function test_status_values>
+        <Function test_tone_templates_exist_for_all_tones>
+        <Function test_tone_values>
+        <Function test_section_order>
+        <Function test_audience_values>
+      <Class TestReadinessScoring>
+        Test deal readiness scoring logic.
+        <Function test_generate_recommendations>
+        <Function test_readiness_label_not_ready>
+        <Function test_readiness_label_early_stage>
+        <Function test_compute_deal_readiness_full>
+        <Function test_readiness_label_developing>
+        <Function test_compute_deal_readiness_empty>
+        <Function test_compute_deal_readiness_partial>
+        <Function test_readiness_weights_sum_to_one>
+        <Function test_readiness_label_deal_ready>
+        <Function test_readiness_label_prepared>
+      <Class TestCrossServiceIntegration>
+        Integration tests verifying data flows between DIL services.
+        <Coroutine test_narrative_uses_competitive_data>
+          Verify narrative builder correctly processes competitive data.
+        <Coroutine test_narrative_uses_evidence_data>
+          Verify narrative builder correctly processes evidence data.
+        <Coroutine test_briefing_includes_readiness_recommendations>
+          Verify briefing includes actionable recommendations for gaps.
+        <Coroutine test_narrative_uses_hypothesis_data>
+          Verify narrative builder correctly processes hypothesis data.
+        <Coroutine test_all_tones_produce_valid_narratives>
+          Verify all tone presets produce valid narrative output.
+    <Module test_pack_variable_loader.py>
+      Unit tests for PackVariableLoader ù Phase 2 of Canonical Contract Migration.
+      
+      Tests cover:
+      - Variable loading from pack files
+      - Idempotent loading (skip already-registered variables)
+      - Formula reference validation
+      - Error handling for missing fields
+      - Type mapping from pack format to VariableRegistry format
+      <Class TestTypeMapping>
+        Tests for pack type to VariableDataType mapping.
+        <Function test_unknown_type_defaults_to_string>
+          Unknown types should default to STRING.
+        <Function test_integer_types_map_to_integer>
+          Integer types should map to INTEGER.
+        <Function test_currency_types_map_to_decimal>
+          Currency types should map to DECIMAL.
+        <Function test_percentage_types_map_to_decimal>
+          Percentage types should map to DECIMAL.
+      <Class TestValidatePackReferences>
+        Tests for formula reference validation.
+        <Coroutine test_validate_references_missing_files>
+          Should return error when pack files are missing.
+        <Coroutine test_validate_references_invalid>
+          Should return errors for undefined variable references.
+        <Coroutine test_validate_references_all_valid>
+          Should return empty list when all references are valid.
+      <Class TestPackVersionPattern>
+        Tests for pack version suffix stripping.
+        <Function test_no_suffix_unchanged>
+          Should leave pack_id unchanged if no version suffix.
+        <Function test_strip_v10_suffix>
+          Should strip -v10 suffix (multi-digit versions).
+        <Function test_strip_v1_suffix>
+          Should strip -v1 suffix from pack_id.
+        <Function test_version_in_middle_unchanged>
+          Should not strip version pattern in middle of string.
+        <Function test_strip_v2_suffix>
+          Should strip -v2 suffix from pack_id.
+      <Class TestPackVariableLoader>
+        Tests for PackVariableLoader class.
+        <Coroutine test_load_all_packs_missing_manifest>
+          Should raise FileNotFoundError when pack-manifest.json missing.
+        <Coroutine test_build_variable_missing_canonical_name>
+          Should raise ValueError when both canonicalName and variable_name are missing.
+        <Coroutine test_load_all_packs>
+          Should load variables from all packs in manifest.
+        <Coroutine test_load_pack_success>
+          Should successfully load variables from pack.
+        <Coroutine test_load_pack_idempotent>
+          Should skip variables that already exist in registry.
+        <Coroutine test_load_pack_missing_variables_file>
+          Should raise FileNotFoundError when variables.json missing.
+        <Coroutine test_build_variable_missing_variable_id>
+          Should raise ValueError when variable_id is missing.
+      <Class TestPackLoadResult>
+        Tests for PackLoadResult dataclass.
+        <Function test_success_property_with_failures>
+          success should be False when there are failures.
+        <Function test_summary_format>
+          summary() should return formatted string with counts.
+        <Function test_success_property_all_loaded>
+          success should be True when no failures.
+    <Module test_security_fixes.py>
+      Regression tests for production security fixes.
+      
+      Tests the security improvements made during the billing/webhook security audit:
+      1. /metrics endpoint access control
+      2. Health endpoint authentication
+      3. Prometheus cardinality limits
+      4. JWT/HMAC secret validation
+      5. Stripe webhook IP allowlist
+      <Class TestHealthEndpointAuth>
+        Test that health endpoints require authentication.
+        <Function test_badge_dismissal_requires_auth>
+          Badge dismissal should require authentication.
+        <Function test_detailed_health_requires_auth>
+          Detailed health endpoint should require authentication.
+      <Class TestTenantTierDerivation>
+        Test that tenant_id is hashed to prevent cardinality explosion.
+        <Function test_derive_tenant_tier_matches_sha256>
+          Tier should match first 2 bytes of SHA256 hash.
+        <Function test_derive_tenant_tier_distribution>
+          Different tenant_ids should produce different tiers.
+        <Function test_derive_tenant_tier_cardinality_limit>
+          Tier values should be limited to 256 possible values (2 hex bytes).
+        <Function test_derive_tenant_tier_empty>
+          Empty tenant_id should return 'unknown'.
+        <Function test_derive_tenant_tier_consistency>
+          Same tenant_id should always produce same tier.
+      <Class TestMetricsAccessControl>
+        Test that /metrics endpoint is properly protected.
+        <Function test_metrics_endpoint_requires_auth>
+          Metrics endpoint should return 401 without valid auth.
+      <Class TestPathNormalization>
+        Test that metric paths are normalized to prevent cardinality explosion.
+        <Function test_normalize_short_hex_path>
+          Short hex IDs (24 chars like MongoDB ObjectId) should be replaced.
+        <Function test_normalize_root_path>
+          Root path should remain root.
+        <Function test_trailing_slash_removed>
+          Trailing slashes should be removed.
+        <Function test_normalize_empty_path>
+          Empty path should return root.
+        <Function test_preserve_static_paths>
+          Static paths without IDs should be preserved.
+        <Function test_normalize_numeric_id_path>
+          Numeric IDs in paths should be replaced with {id} placeholder.
+        <Function test_normalize_uuid_path>
+          UUIDs in paths should be replaced with {id} placeholder.
+      <Class TestStripeIPAllowlist>
+        Test Stripe webhook IP validation for defense-in-depth.
+        <Function test_valid_stripe_ip>
+          Known Stripe IPs should be accepted.
+        <Function test_get_client_ip_from_request>
+          Client IP should be extracted correctly from request.
+        <Function test_get_client_ip_from_x_forwarded_for>
+          X-Forwarded-For header should be respected.
+        <Function test_invalid_ip_rejected>
+          Non-Stripe IPs should be rejected.
+        <Function test_invalid_ip_format>
+          Invalid IP formats should return False.
+        <Function test_loopback_ip_allowed>
+          Loopback IPs should be allowed for local testing.
+      <Class TestSecretValidation>
+        Test that JWT and HMAC secrets are validated on startup.
+        <Function test_staging_requires_strong_secrets>
+          Staging environment should also require strong secrets.
+        <Function test_hmac_secret_too_short_in_production>
+          Short HMAC secret in production should raise ValueError.
+        <Function test_valid_secrets_in_production>
+          Valid length secrets should work in production.
+        <Function test_short_secrets_allowed_in_development>
+          Short secrets should be allowed (with warning) in development.
+        <Function test_jwt_secret_too_short_in_production>
+          Short JWT secret in production should raise ValueError.
+    <Module test_notification.py>
+      Unit tests for NotificationService.
+      
+      Tests quiet hours enforcement, event generation, and channel selection.
+      <Class TestQuietHoursEnforcement>
+        Test suite for quiet hours channel suppression.
+        <Function test_null_user_returns_default_channels>
+          Test that null user returns default channels.
+        <Function test_quiet_hours_suppresses_email_and_webhook>
+          Test that quiet hours suppress email/webhook but allow in-app.
+        <Function test_no_quiet_hours_allows_all_channels>
+          Test that users without quiet hours get all channels.
+        <Function test_outside_quiet_hours_allows_all_channels>
+          Test that outside quiet hours all configured channels are allowed.
+        <Function test_wrapped_quiet_hours_range>
+          Test quiet hours that wrap around midnight (22:00-08:00).
+        <Function test_quiet_hours_allow_in_app_only>
+          Test that in-app notifications are allowed during quiet hours.
+      <Class TestNotificationEventProperties>
+        Test suite for NotificationEvent dataclass.
+        <Function test_event_delivery_tracking_single_channel>
+          Test delivery tracking with single channel.
+        <Function test_event_delivery_tracking_initialized>
+          Test that delivery tracking is initialized for all channels.
+      <Class TestQuietHoursValidation>
+        Test suite for quiet hours preference validation.
+        <Function test_quiet_hours_negative_start_raises_error>
+          Test that negative quiet_hours_start raises ValueError.
+        <Function test_quiet_hours_end_out_of_range_raises_error>
+          Test that quiet_hours_end > 23 raises ValueError.
+        <Function test_quiet_hours_start_out_of_range_raises_error>
+          Test that quiet_hours_start > 23 raises ValueError.
+        <Function test_valid_quiet_hours_accepted>
+          Test that valid quiet hours are accepted.
+      <Class TestEventIdGeneration>
+        Test suite for event ID uniqueness and security.
+        <Coroutine test_event_id_format_is_secure>
+          Test that event IDs use secure random component.
+        <Coroutine test_workflow_completed_event_ids_unique>
+          Test that workflow completed events also have unique IDs.
+        <Coroutine test_event_ids_are_unique_under_concurrent_load>
+          Test that concurrent event generation produces unique IDs.
+        <Coroutine test_checkpoint_event_ids_unique>
+          Test that checkpoint events have unique IDs.
+    <Module test_llm_cost_tracking.py>
+      LLM token and cost tracking tests.
+      
+      Tests verify:
+      1. Token counting accuracy across tool calls.
+      2. Cost calculation with pricing tiers.
+      3. Budget limit enforcement.
+      4. Cost metric emission to Prometheus.
+      5. Cost tracking persists across retries.
+      <Class TestCostRecordTracking>
+        Test CostRecord model and aggregation.
+        <Function test_cost_aggregation_by_tenant>
+          Costs must aggregate correctly by tenant for billing.
+        <Function test_cost_record_creation>
+          CostRecord must capture all required fields.
+        <Function test_cost_aggregation_by_model>
+          Costs must aggregate correctly by model type.
+      <Class TestLLMCostTracking>
+        Test LLM cost tracking functionality.
+        <Coroutine test_budget_limit_enforcement>
+          Budget limit must prevent excessive LLM costs.
+        <Function test_prometheus_cost_metric_emission>
+          Cost metrics must be emitted to Prometheus for monitoring.
+        <Coroutine test_cost_calculation_with_pricing>
+          Cost calculation must use correct pricing per model.
+        <Coroutine test_token_counting_accuracy>
+          Token counting must match actual usage from LLM response.
+        <Coroutine test_cost_tracking_on_success_after_failure>
+          Cost is tracked when LLM call succeeds (tool handles failures gracefully).
+    <Module test_usage_idempotency.py>
+      Idempotency and tenant isolation tests for usage metering.
+      
+      Covers P0 security requirements:
+      - Usage events are deduplicated via DB constraint
+      - Tenant ID cannot be spoofed via request payload
+      - Quantity validation prevents usage inflation
+      - Missing tenant context is rejected
+      <Coroutine test_usage_event_tenant_id_from_service_context_not_payload>
+        P0: Tenant ID must come from service context, never from client request.
+        
+        Risk: Client sends usage event with victim's tenant_id in payload,
+        service records usage against wrong tenant's quota/billing.
+        
+        The UsageService is initialized with tenant_id, not from request body.
+        This test verifies that even if client sends wrong tenant_id, 
+        the service context tenant_id is used.
+      <Coroutine test_usage_batch_partial_duplicate_handling>
+        P1: Batch ingestion must handle partial duplicates gracefully.
+        
+        If 3 of 5 events are duplicates, the 2 new events should still be created.
+      <Coroutine test_get_usage_summary_enforces_tenant_filter>
+        P1: get_usage_summary must include tenant_id in aggregation.
+      <Coroutine test_usage_event_duplicate_idempotency_key_rejected_at_db_level>
+        P0: Duplicate event_id within tenant must be rejected at database level.
+        
+        The BillingUsageEvent model has UniqueConstraint("tenant_id", "event_id").
+        This test verifies that attempting to insert a duplicate raises IntegrityError
+        and the service handles it appropriately (returns existing or raises specific error).
+        
+        Risk: Without DB-level enforcement, race conditions allow duplicate usage events,
+        leading to over-billing and data inconsistency.
+      <Coroutine test_usage_event_zero_quantity_allowed>
+        P1: Zero quantity should typically be allowed (no-op event).
+        
+        Zero quantity events may be valid for tracking purposes.
+      <Coroutine test_usage_batch_db_failure_partial_rollback>
+        P1: Batch failure should rollback entire batch (atomicity).
+      <Coroutine test_usage_event_negative_quantity_rejected>
+        P0: Negative quantity must be rejected to prevent usage manipulation.
+        
+        Risk: Client sends negative quantity to reduce their bill or "refund" usage.
+      <Coroutine test_usage_event_missing_tenant_id_rejected>
+        P0: Usage event must be rejected when tenant context is missing.
+        
+        Risk: Without tenant context, usage events could be recorded without
+        proper isolation, leading to data leakage and billing errors.
+      <Coroutine test_usage_event_missing_event_id_rejected>
+        P0: Missing event_id must be rejected - required for idempotency.
+      <Coroutine test_list_customer_usage_enforces_tenant_filter>
+        P1: list_customer_usage must include tenant_id in WHERE clause.
+        
+        Risk: Querying usage without tenant filter exposes cross-tenant data.
+      <Coroutine test_usage_event_db_failure_rolls_back>
+        P0: Database failure during usage ingestion must rollback.
+      <Coroutine test_usage_event_same_id_different_tenants_allowed>
+        P0: Same event_id must be allowed for different tenants.
+        
+        The unique constraint is on (tenant_id, event_id), not just event_id.
+        This tests that the constraint is properly scoped.
+      <Coroutine test_usage_event_extremely_large_quantity_rejected>
+        P0: Unrealistically large quantity should be rejected or capped.
+        
+        Risk: Client sends huge quantity to test boundaries or cause overflow.
+        Current implementation may not validate upper bounds.
+      <Coroutine test_usage_event_null_event_id_rejected>
+        P0: None event_id must be rejected.
+      <Coroutine test_usage_event_empty_tenant_id_rejected>
+        P0: Empty string tenant_id must be rejected same as None.
+    <Module test_oidc.py>
+      Unit tests for OIDC client, claim mapping, and configuration.
+      
+      Tests the shared OIDC client with PKCE support and role mapping.
+      <Class TestOIDCProviderConfig>
+        Tests for OIDCProviderConfig Pydantic model.
+        <Function test_oidc_provider_config_creation>
+          Test creating OIDCProviderConfig with all fields.
+        <Function test_oidc_provider_config_defaults>
+          Test OIDCProviderConfig default values.
+        <Function test_from_settings_valid_config>
+          Test parsing valid OIDC configuration from tenant settings.
+        <Function test_from_settings_disabled_oidc>
+          Test that disabled OIDC returns None.
+        <Function test_from_settings_nested_config>
+          Test parsing OIDC config nested under 'config' key.
+        <Function test_config_extra_fields_allowed>
+          Test that extra fields are allowed (for forward compatibility).
+        <Function test_from_settings_missing_required_fields>
+          Test validation error for missing required fields.
+        <Function test_from_settings_missing_oidc_key>
+          Test that missing OIDC key returns None.
+      <Class TestRoleMapping>
+        Tests for the OIDC claim \u2192 role mapping engine.
+        <Function test_map_role_groups_with_mapping>
+          Test role mapping from groups claim with explicit mapping.
+        <Function test_map_role_from_claims_array_match>
+          Test matching against array claim values.
+        <Function test_map_role_no_claims>
+          Test that default role is returned when claims are empty.
+        <Function test_map_role_from_claims_exact_match>
+          Test exact string match in claim mapping.
+        <Function test_map_role_admin_detection>
+          Test admin detection in role claim.
+        <Function test_map_role_case_insensitive>
+          Test case-insensitive claim value matching.
+        <Function test_map_role_fallback_to_default>
+          Test fallback to default role when no mapping matches.
+      <Class TestOIDCClient>
+        Tests for OIDCClient discovery and token verification.
+        <Coroutine test_exchange_code_success>
+          Test successful authorization code exchange.
+        <Coroutine test_discover_retries_on_failure>
+          OIDC discovery should retry on transient failures.
+        <Coroutine test_get_userinfo_success>
+          Test successful UserInfo endpoint request.
+        <Function test_build_authorize_url_with_pkce>
+          Build authorization URL with PKCE parameters.
+        <Coroutine test_exchange_code_no_retry_on_4xx>
+          Code exchange should not retry on 4xx errors.
+        <Coroutine test_discover_no_retry_on_4xx>
+          OIDC discovery should not retry on 4xx client errors.
+        <Coroutine test_discover_success>
+          OIDC discovery should fetch metadata from well-known endpoint.
+        <Function test_build_authorize_url_basic>
+          Build authorization URL with minimal parameters.
+      <Class TestPKCEGeneration>
+        Test PKCE code generation for OAuth2 PKCE flow.
+        <Function test_code_challenge_s256>
+          Code challenge should be S256 hash of verifier.
+        <Function test_code_verifier_format>
+          Code verifier should be base64url encoded and 43+ chars.
+        <Function test_code_challenge_consistency>
+          Same verifier should produce same challenge.
+    <Module test_salesforce_oauth.py>
+      Tests for Salesforce OAuth token refresh and integration hardening.
+      
+      Covers:
+      - Token refresh success/failure
+      - Credential encryption/decryption with refresh token
+      - Tenant isolation in scheduler (no empty tenant_id)
+      - Environment fallback disabled
+      <Class TestSalesforceTokenRefresh>
+        Test suite for Salesforce OAuth token refresh.
+        <Coroutine test_refresh_salesforce_token_success>
+          Test successful token refresh updates credentials.
+        <Coroutine test_refresh_salesforce_token_http_401>
+          Test that 401 response marks integration as degraded.
+        <Coroutine test_refresh_salesforce_token_no_refresh_token>
+          Test that missing refresh token raises validation error.
+      <Class TestNoEnvFallback>
+        Test that CRM sync service never falls back to environment variables.
+        <Function test_no_env_fallback_in_source>
+          Verify ALLOW_ENV_CRM_FALLBACK is removed from sync service.
+      <Class TestSchedulerTenantIsolation>
+        Test that scheduler never bypasses tenant isolation during sync execution.
+        <Coroutine test_scheduler_uses_request_context_for_sync>
+          Verify _execute_sync_for_tenant builds proper RequestContext and uses db_session_for_context.
+        <Function test_scheduler_source_no_unsafe_assignment>
+          Verify CRMSyncScheduler does not contain unsafe app.tenant_id = '' assignment outside SQL strings.
+    <Module test_workflow_controls.py>
+      Tests for workflow control endpoints: pause, resume, and edge cases.
+      
+      API-level async tests via httpx.AsyncClient that validate public contract/status behavior.
+      <Class TestWorkflowEvents>
+        Test suite for workflow events endpoint.
+        <Function test_events_for_nonexistent_workflow_returns_404>
+          Events endpoint returns 404 for non-existent workflow.
+        <Function test_events_for_existing_workflow_returns_200>
+          Events endpoint returns 200 for existing workflow.
+      <Class TestWorkflowActive>
+        Test suite for active workflows listing.
+        <Function test_list_active_workflows_returns_only_active>
+          Active workflows endpoint returns only running/paused workflows.
+      <Class TestWorkflowResume>
+        Test suite for workflow resume functionality.
+        <Function test_resume_completed_workflow_returns_400>
+          Resuming a completed workflow returns 400 error.
+        <Function test_resume_paused_workflow_returns_200>
+          Resuming a paused workflow returns 200 with resumed status.
+        <Function test_resume_failed_workflow_returns_400>
+          Resuming a failed workflow returns 400 error.
+      <Class TestWorkflowPause>
+        Test suite for workflow pause functionality.
+        <Function test_pause_already_paused_workflow_returns_400>
+          Pausing an already paused workflow returns 400 error.
+        <Function test_pause_failed_workflow_returns_400>
+          Pausing a failed workflow returns 400 error.
+        <Function test_pause_completed_workflow_returns_400>
+          Pausing a completed workflow returns 400 error.
+        <Function test_pause_nonexistent_workflow_returns_404>
+          Pausing a non-existent workflow returns 404.
+        <Function test_pause_running_workflow_returns_200>
+          Pausing a running workflow returns 200 with paused status.
+    <Module test_knowledge_tool_persistence.py>
+      <Coroutine test_delete_entity_success_and_not_found_paths>
+      <Coroutine test_get_entity_reads_persisted_entity_with_tenant_scope>
+      <Coroutine test_update_entity_denied_without_write_permission>
+      <Coroutine test_update_entity_persists_and_returns_entity>
+      <Coroutine test_search_and_list_are_tenant_isolated>
+
+=================================== ERRORS ====================================
+_________________ ERROR collecting tests/test_accounts_api.py _________________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_accounts_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_accounts_api.py:24: in <module>
+    from value_fabric.layer4.api.main import app
+value_fabric\layer4\api\main.py:20: in <module>
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\checkpoint\postgres\__init__.py:20: in <module>
+    from psycopg import Capabilities, Connection, Cursor, Pipeline
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\__init__.py:9: in <module>
+    from . import pq  # noqa: F401 import early to stabilize side effects
+    ^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:114: in <module>
+    import_from_libpq()
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:108: in import_from_libpq
+    raise ImportError(f"""\
+E   ImportError: no pq wrapper available.
+E   Attempts made:
+E   - couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+E   - couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+E   - couldn't import psycopg 'python' implementation: libpq library not found
+------------------------------- Captured stdout -------------------------------
+
+-----
+
+WeasyPrint could not import some external libraries. Please carefully follow the installation steps before reporting an issue:
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting 
+
+-----
+
+
+-----
+
+WeasyPrint could not import some external libraries. Please carefully follow the installation steps before reporting an issue:
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting 
+
+-----
+
+_______________ ERROR collecting tests/test_analysis_routes.py ________________
+services\layer4-agents\tests\test_analysis_routes.py:12: in <module>
+    from value_fabric.layer4.api.routes import analysis
+value_fabric\layer4\api\routes\__init__.py:3: in <module>
+    from . import analysis, c1, tools, workflows
+value_fabric\layer4\api\routes\analysis.py:247: in <module>
+    @router.post("/cases", response_model=BusinessCaseResponse)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\routing.py:1450: in decorator
+    self.add_api_route(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\routing.py:1386: in add_api_route
+    route = route_class(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\routing.py:949: in __init__
+    self.dependant = get_dependant(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\dependencies\utils.py:334: in get_dependant
+    sub_dependant = get_dependant(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\dependencies\utils.py:318: in get_dependant
+    assert param_details.depends.dependency
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError
+_______________ ERROR collecting tests/test_billing_service.py ________________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_billing_service.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_billing_service.py:20: in <module>
+    from value_fabric.layer4.api.main import app
+value_fabric\layer4\api\main.py:20: in <module>
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\checkpoint\postgres\__init__.py:20: in <module>
+    from psycopg import Capabilities, Connection, Cursor, Pipeline
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\__init__.py:9: in <module>
+    from . import pq  # noqa: F401 import early to stabilize side effects
+    ^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:114: in <module>
+    import_from_libpq()
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:108: in import_from_libpq
+    raise ImportError(f"""\
+E   ImportError: no pq wrapper available.
+E   Attempts made:
+E   - couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+E   - couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+E   - couldn't import psycopg 'python' implementation: libpq library not found
+___________________ ERROR collecting tests/test_c1_proxy.py ___________________
+services\layer4-agents\tests\test_c1_proxy.py:12: in <module>
+    from value_fabric.layer4.api.routes.c1 import C1Message, C1StreamRequest, router
+value_fabric\layer4\api\routes\__init__.py:3: in <module>
+    from . import analysis, c1, tools, workflows
+value_fabric\layer4\api\routes\analysis.py:247: in <module>
+    @router.post("/cases", response_model=BusinessCaseResponse)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\routing.py:1450: in decorator
+    self.add_api_route(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\routing.py:1386: in add_api_route
+    route = route_class(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\routing.py:949: in __init__
+    self.dependant = get_dependant(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\dependencies\utils.py:334: in get_dependant
+    sub_dependant = get_dependant(
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\fastapi\dependencies\utils.py:318: in get_dependant
+    assert param_details.depends.dependency
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError
+__________ ERROR collecting tests/test_case_permissions_and_audit.py __________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_case_permissions_and_audit.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_case_permissions_and_audit.py:11: in <module>
+    from value_fabric.layer4.api.main import app
+value_fabric\layer4\api\main.py:20: in <module>
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\checkpoint\postgres\__init__.py:20: in <module>
+    from psycopg import Capabilities, Connection, Cursor, Pipeline
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\__init__.py:9: in <module>
+    from . import pq  # noqa: F401 import early to stabilize side effects
+    ^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:114: in <module>
+    import_from_libpq()
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:108: in import_from_libpq
+    raise ImportError(f"""\
+E   ImportError: no pq wrapper available.
+E   Attempts made:
+E   - couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+E   - couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+E   - couldn't import psycopg 'python' implementation: libpq library not found
+_______________ ERROR collecting tests/test_crm_sync_service.py _______________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_crm_sync_service.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_crm_sync_service.py:20: in <module>
+    from value_fabric.layer4.api.main import app
+value_fabric\layer4\api\main.py:20: in <module>
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\checkpoint\postgres\__init__.py:20: in <module>
+    from psycopg import Capabilities, Connection, Cursor, Pipeline
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\__init__.py:9: in <module>
+    from . import pq  # noqa: F401 import early to stabilize side effects
+    ^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:114: in <module>
+    import_from_libpq()
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:108: in import_from_libpq
+    raise ImportError(f"""\
+E   ImportError: no pq wrapper available.
+E   Attempts made:
+E   - couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+E   - couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+E   - couldn't import psycopg 'python' implementation: libpq library not found
+_________ ERROR collecting tests/test_crm_webhook_tenant_isolation.py _________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_crm_webhook_tenant_isolation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_crm_webhook_tenant_isolation.py:31: in <module>
+    from src.api.routes.crm_webhooks import router as crm_webhooks_router
+E   ModuleNotFoundError: No module named 'src'
+________________ ERROR collecting tests/test_feature_flags.py _________________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_feature_flags.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_feature_flags.py:24: in <module>
+    from value_fabric.layer4.api.main import app
+value_fabric\layer4\api\main.py:20: in <module>
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\checkpoint\postgres\__init__.py:20: in <module>
+    from psycopg import Capabilities, Connection, Cursor, Pipeline
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\__init__.py:9: in <module>
+    from . import pq  # noqa: F401 import early to stabilize side effects
+    ^^^^^^^^^^^^^^^^
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:114: in <module>
+    import_from_libpq()
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\psycopg\pq\__init__.py:108: in import_from_libpq
+    raise ImportError(f"""\
+E   ImportError: no pq wrapper available.
+E   Attempts made:
+E   - couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+E   - couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+E   - couldn't import psycopg 'python' implementation: libpq library not found
+_________ ERROR collecting tests/test_frontend_endpoint_contracts.py __________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_frontend_endpoint_contracts.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_frontend_endpoint_contracts.py:10: in <module>
+    from value_fabric.layer4_agents.src.api.main import app
+E   ModuleNotFoundError: No module named 'value_fabric.layer4_agents'
+__________________ ERROR collecting tests/test_messaging.py ___________________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_messaging.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_messaging.py:15: in <module>
+    from messaging.bus import InMemoryMessageBus, create_message_bus
+services\layer4-agents\src\messaging\__init__.py:8: in <module>
+    from .signal_events import (
+services\layer4-agents\src\messaging\signal_events.py:15: in <module>
+    from ..models.pain_signal import PainSignal
+E   ImportError: attempted relative import beyond top-level package
+__________________ ERROR collecting tests/test_tenant_api.py __________________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_tenant_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_tenant_api.py:19: in <module>
+    from value_fabric.layer4.api.tenants import router
+value_fabric\layer4\api\tenants.py:21: in <module>
+    from ..database import get_db_session
+E   ImportError: cannot import name 'get_db_session' from 'value_fabric.layer4.database' (C:\Users\BBB\Fabric_4L\value_fabric\layer4\database.py)
+_______________ ERROR collecting tests/test_tenant_isolation.py _______________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_tenant_isolation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_tenant_isolation.py:28: in <module>
+    from value_fabric.shared.identity.dependencies import require_tenant_context
+E   ImportError: cannot import name 'require_tenant_context' from 'value_fabric.shared.identity.dependencies' (C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\identity\dependencies.py)
+______________ ERROR collecting tests/test_tenant_rate_limits.py ______________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_tenant_rate_limits.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_tenant_rate_limits.py:26: in <module>
+    from value_fabric.shared.identity.middleware import (
+E   ImportError: cannot import name '_check_tenant_rate_limit' from 'value_fabric.shared.identity.middleware' (C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\identity\middleware.py)
+_______________ ERROR collecting tests/test_webhook_security.py _______________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_webhook_security.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+services\layer4-agents\tests\test_webhook_security.py:37: in <module>
+    from src.services.billing_service import BillingService
+services\layer4-agents\src\services\billing_service.py:21: in <module>
+    from ..models.billing import (
+E   ModuleNotFoundError: No module named 'src.models.billing'; 'src.models' is not a package
+============================== warnings summary ===============================
+packages\shared\src\value_fabric\shared\identity\jwt.py:17
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\identity\jwt.py:17: UserWarning: Field name "keys" in "get_jwksResult" shadows an attribute in parent "TypedDictModel"
+    class get_jwksResult(TypedDictModel):
+
+packages\shared\src\value_fabric\shared\audit\models.py:138
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\audit\models.py:138: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class TenantResolvedDetails(BaseModel):
+
+value_fabric\layer4\integration\layer5_client.py:38
+  C:\Users\BBB\Fabric_4L\value_fabric\layer4\integration\layer5_client.py:38: UserWarning: Field name "items" in "Layer5GroundTruthClient_list_truthsResult" shadows an attribute in parent "TypedDictModel"
+    class Layer5GroundTruthClient_list_truthsResult(TypedDictModel):
+
+value_fabric\layer4\integration\layer5_client.py:65
+  C:\Users\BBB\Fabric_4L\value_fabric\layer4\integration\layer5_client.py:65: UserWarning: Field name "items" in "Layer5GroundTruthClient_get_stale_truthsResult" shadows an attribute in parent "TypedDictModel"
+    class Layer5GroundTruthClient_get_stale_truthsResult(TypedDictModel):
+
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\pydantic\main.py:263
+  C:\Users\BBB\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\pydantic\main.py:263: RuntimeWarning: JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\pydantic\main.py:263
+  C:\Users\BBB\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\pydantic\main.py:263: RuntimeWarning: API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+services\layer4-agents\tests\test_business_case_claim_promotion.py:14
+  C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_business_case_claim_promotion.py:14: UserWarning: Field name "items" in "_FakeLayer5Client_list_truthsResult" shadows an attribute in parent "TypedDictModel"
+    class _FakeLayer5Client_list_truthsResult(TypedDictModel):
+
+services\layer4-agents\tests\test_langgraph_execution.py:30
+  C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_langgraph_execution.py:30: PytestCollectionWarning: cannot collect test class 'TestBusinessCaseGeneratorWorkflow_mock_execute_errorResult' because it has a __init__ constructor (from: tests/test_langgraph_execution.py)
+    class TestBusinessCaseGeneratorWorkflow_mock_execute_errorResult(TypedDictModel):
+
+services\layer4-agents\tests\test_langgraph_execution.py:33
+  C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_langgraph_execution.py:33: PytestCollectionWarning: cannot collect test class 'TestWorkflowToolFailureHandling_mock_execute_all_failResult' because it has a __init__ constructor (from: tests/test_langgraph_execution.py)
+    class TestWorkflowToolFailureHandling_mock_execute_all_failResult(TypedDictModel):
+
+services\layer4-agents\tests\test_langgraph_execution.py:36
+  C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_langgraph_execution.py:36: PytestCollectionWarning: cannot collect test class 'TestBusinessCaseGeneratorWorkflow_mock_executeResult' because it has a __init__ constructor (from: tests/test_langgraph_execution.py)
+    class TestBusinessCaseGeneratorWorkflow_mock_executeResult(TypedDictModel):
+
+services\layer4-agents\tests\test_tenant_lifecycle.py:24
+  C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_tenant_lifecycle.py:24: PytestCollectionWarning: cannot collect test class 'TestMiddlewareTenantStatusEnforcement__jwt_payloadResult' because it has a __init__ constructor (from: tests/test_tenant_lifecycle.py)
+    class TestMiddlewareTenantStatusEnforcement__jwt_payloadResult(TypedDictModel):
+
+services\layer4-agents\tests\test_tenant_lifecycle.py:29
+  C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_tenant_lifecycle.py:29: PytestCollectionWarning: cannot collect test class 'TestMiddlewareTenantStatusEnforcement_get_dataResult' because it has a __init__ constructor (from: tests/test_tenant_lifecycle.py)
+    class TestMiddlewareTenantStatusEnforcement_get_dataResult(TypedDictModel):
+
+services\layer4-agents\tests\test_workflows_real_execution.py:68
+  C:\Users\BBB\Fabric_4L\services\layer4-agents\tests\test_workflows_real_execution.py:68: PytestCollectionWarning: cannot collect test class 'TestState' because it has a __init__ constructor (from: tests/test_workflows_real_execution.py)
+    class TestState(TypedDict, total=False):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR services\layer4-agents\tests\test_accounts_api.py
+ERROR services\layer4-agents\tests\test_analysis_routes.py - AssertionError
+ERROR services\layer4-agents\tests\test_billing_service.py
+ERROR services\layer4-agents\tests\test_c1_proxy.py - AssertionError
+ERROR services\layer4-agents\tests\test_case_permissions_and_audit.py
+ERROR services\layer4-agents\tests\test_crm_sync_service.py
+ERROR services\layer4-agents\tests\test_crm_webhook_tenant_isolation.py
+ERROR services\layer4-agents\tests\test_feature_flags.py
+ERROR services\layer4-agents\tests\test_frontend_endpoint_contracts.py
+ERROR services\layer4-agents\tests\test_messaging.py
+ERROR services\layer4-agents\tests\test_tenant_api.py
+ERROR services\layer4-agents\tests\test_tenant_isolation.py
+ERROR services\layer4-agents\tests\test_tenant_rate_limits.py
+ERROR services\layer4-agents\tests\test_webhook_security.py
+!!!!!!!!!!!!!!!!!! Interrupted: 14 errors during collection !!!!!!!!!!!!!!!!!!!
+=================== 619 tests collected, 14 errors in 2.36s ===================

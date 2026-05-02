@@ -36,7 +36,7 @@ class TestProductionJWTSecretValidation:
         }, clear=False):
             # Import and test the validation function
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 with pytest.raises(ValueError) as exc_info:
                     validate_jwt_config()
@@ -56,7 +56,7 @@ class TestProductionJWTSecretValidation:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 with pytest.raises(ValueError) as exc_info:
                     validate_jwt_config()
@@ -76,7 +76,7 @@ class TestProductionJWTSecretValidation:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 with pytest.raises(ValueError) as exc_info:
                     validate_jwt_config()
@@ -94,7 +94,7 @@ class TestProductionJWTSecretValidation:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 # Should not raise
                 validate_jwt_config()
@@ -114,7 +114,7 @@ class TestProductionJWTIssuerValidation:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 with pytest.raises(ValueError) as exc_info:
                     validate_jwt_config()
@@ -136,7 +136,7 @@ class TestProductionJWTIssuerValidation:
         
         with patch.dict(os.environ, env_copy, clear=True):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 with pytest.raises(ValueError) as exc_info:
                     validate_jwt_config()
@@ -158,7 +158,7 @@ class TestProductionJWTAudienceValidation:
             "JWT_AUDIENCE": "",  # Empty
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 with pytest.raises(ValueError) as exc_info:
                     validate_jwt_config()
@@ -180,7 +180,7 @@ class TestDevelopmentEnvironment:
             "JWT_SECRET": "",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 # Should not raise in development
                 validate_jwt_config()
@@ -194,7 +194,7 @@ class TestDevelopmentEnvironment:
             "JWT_SECRET": "weak",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 # Should not raise in development
                 validate_jwt_config()
@@ -214,7 +214,7 @@ class TestStagingEnvironment:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 # Staging should enforce production-like validation
                 with pytest.raises(ValueError) as exc_info:
@@ -237,7 +237,7 @@ class TestEdgeCases:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 # Should not raise - special chars should be fine
                 validate_jwt_config()
@@ -253,7 +253,7 @@ class TestEdgeCases:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 # Should not raise
                 validate_jwt_config()
@@ -269,7 +269,7 @@ class TestEdgeCases:
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):
             try:
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 
                 # Should not raise or crash
                 validate_jwt_config()

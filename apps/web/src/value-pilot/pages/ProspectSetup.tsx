@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigation } from "@/hooks/useNavigation";
 import {
   Building2, Briefcase, Globe,
   CheckCircle2, BrainCircuit, AlertTriangle, ArrowRight

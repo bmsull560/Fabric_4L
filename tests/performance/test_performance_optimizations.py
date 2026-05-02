@@ -22,8 +22,8 @@ import pytest
 # or when installed as package
 pytest.importorskip("neo4j")
 
-from value_fabric.layer3_knowledge.src.retrieval.hybrid_search import HybridSearch
-from value_fabric.layer3_knowledge.src.retrieval.graph_rag import GraphRAGEngine
+from value_fabric.layer3.retrieval.hybrid_search import HybridSearch
+from value_fabric.layer3.retrieval.graph_rag import GraphRAGEngine
 
 
 class TestHybridSearchParallelization:

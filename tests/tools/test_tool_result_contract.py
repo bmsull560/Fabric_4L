@@ -27,6 +27,32 @@ from tools.calculation_tools import (
 )
 
 
+def validate_tool_result(result):
+    """Validate ToolResult structure per Contract §2.4.
+
+    Ensures:
+    - status is valid
+    - error structure is correct when present
+    - no sensitive internals leaked to user-facing message
+    - trace_id available for debugging correlation
+    """
+    assert result.status in {"success", "error"}
+
+    if result.status == "error":
+        assert isinstance(result.error, dict), "error must be a dict"
+        assert result.error.get("code"), "error.code is required"
+        assert result.error.get("message"), "error.message is required"
+        # Security: ensure no stack traces or sensitive details in user message
+        message = result.error.get("message", "").lower()
+        assert "traceback" not in message, "traceback leaked to user message"
+        assert "exception" not in message or "expected" in message, "raw exception leaked"
+
+    # Metadata should exist for traceability
+    assert result.metadata is not None, "metadata required for traceability"
+    assert "trace_id" in result.metadata or "execution_time_ms" in result.metadata, \
+        "metadata should contain trace_id or execution_time_ms"
+
+
 class TestToolResultStructure:
     """Test ToolResult structure and factory methods."""
 
@@ -131,6 +157,7 @@ class TestBaseToolContractCompliance:
         result = await test_tool.run({"value": 5})
 
         assert isinstance(result, ToolResult)
+        validate_tool_result(result)
         assert result.status == "success"
         assert result.data["result"] == 10
         assert result.error is None
@@ -143,11 +170,15 @@ class TestBaseToolContractCompliance:
         result = await failing_tool.run({"message": "test error"})
 
         assert isinstance(result, ToolResult)
+        validate_tool_result(result)
         assert result.status == "error"
         assert result.data is None
         assert result.error is not None
         assert result.error["code"] == "TOOL_EXECUTION_ERROR"
-        assert "test error" not in result.error["message"]  # Safe message, no details
+        # Safe user message - no raw exception details
+        assert "test error" not in result.error["message"]
+        # But trace_id should be present for debugging correlation
+        assert result.metadata.get("trace_id") is not None
         assert result.error["recoverable"] is False
 
     @pytest.mark.asyncio
@@ -295,6 +326,58 @@ class TestToolResultTraceId:
         assert result.status == "error"
         assert result.metadata is not None
         assert result.metadata.get("trace_id") == "trace-error-456"
+
+
+class TestToolResultContractSchema:
+    """Validate ToolResult contract schema compliance (Contract §2.4)."""
+
+    def test_success_result_schema(self):
+        """Validate success result has all required fields."""
+        result = ToolResult.success(
+            data={"key": "value"},
+            metadata={"trace_id": "trace-123", "execution_time_ms": 50}
+        )
+
+        validate_tool_result(result)
+        assert result.status == "success"
+        assert result.data == {"key": "value"}
+        assert result.error is None
+        assert result.metadata["trace_id"] == "trace-123"
+
+    def test_error_result_schema(self):
+        """Validate error result has all required fields."""
+        result = ToolResult.error(
+            code="VALIDATION_FAILED",
+            message="Input validation failed",
+            details={"field": "email"},
+            trace_id="trace-error-456",
+            recoverable=True,
+        )
+
+        validate_tool_result(result)
+        assert result.status == "error"
+        assert result.data is None
+        assert result.error["code"] == "VALIDATION_FAILED"
+        assert result.error["message"] == "Input validation failed"
+        assert result.error["details"] == {"field": "email"}
+        assert result.error["recoverable"] is True
+        assert result.metadata["trace_id"] == "trace-error-456"
+
+    def test_error_result_no_leakage(self):
+        """Ensure error results don't leak sensitive internals."""
+        result = ToolResult.error(
+            code="INTERNAL_ERROR",
+            message="An internal error occurred",
+            trace_id="trace-secret-123",
+        )
+
+        # User-facing message should be safe
+        assert "traceback" not in result.error["message"].lower()
+        assert "exception" not in result.error["message"].lower()
+        assert "internal" not in result.error["message"].lower() or "error" in result.error["message"].lower()
+
+        # But trace_id should be in metadata for debugging
+        assert result.metadata.get("trace_id") == "trace-secret-123"
 
 
 class TestToolResultBackwardCompatibility:

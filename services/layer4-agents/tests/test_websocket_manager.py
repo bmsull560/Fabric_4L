@@ -11,7 +11,7 @@ import pytest
 import pytest_asyncio
 from fastapi import WebSocket
 
-from src.api.websocket.manager import (
+from value_fabric.layer4.api.websocket.manager import (
     EventStore,
     WorkflowConnection,
     WorkflowWebSocketManager,

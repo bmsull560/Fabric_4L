@@ -13,10 +13,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.models.account import CRMProvider
-from src.models.integration import Integration, IntegrationStatus
-from src.services.encryption_service import DEFAULT_KEY_ID, EncryptionService
-from src.services.integration_service import (
+from value_fabric.layer4.models.account import CRMProvider
+from value_fabric.layer4.models.integration import Integration, IntegrationStatus
+from value_fabric.layer4.services.encryption_service import DEFAULT_KEY_ID, EncryptionService
+from value_fabric.layer4.services.integration_service import (
     IntegrationService,
     IntegrationValidationError,
 )

@@ -36,7 +36,7 @@ class TestMultiWorkerRateLimitSafety:
     def test_multi_worker_without_redis_raises_error(self):
         """P0: Multi-worker config without Redis raises MultiWorkerRateLimitError."""
         try:
-            from shared.identity.middleware import (
+            from value_fabric.shared.identity.middleware import (
                 GovernanceMiddleware,
                 MultiWorkerRateLimitError,
             )
@@ -63,7 +63,7 @@ class TestMultiWorkerRateLimitSafety:
     def test_single_worker_allows_in_memory_rate_limit(self):
         """POSITIVE: Single-worker can use in-memory rate limiting."""
         try:
-            from shared.identity.middleware import GovernanceMiddleware
+            from value_fabric.shared.identity.middleware import GovernanceMiddleware
             
             # Single worker with no Redis should work fine
             with patch.dict(os.environ, {"UVICORN_WORKERS": "1"}, clear=False):
@@ -80,7 +80,7 @@ class TestMultiWorkerRateLimitSafety:
     def test_multi_worker_with_redis_allowed(self):
         """POSITIVE: Multi-worker with Redis is allowed."""
         try:
-            from shared.identity.middleware import GovernanceMiddleware
+            from value_fabric.shared.identity.middleware import GovernanceMiddleware
             
             # Multi-worker WITH Redis should work
             with patch.dict(os.environ, {"UVICORN_WORKERS": "4"}, clear=False):
@@ -226,7 +226,7 @@ class TestRateLimitConfiguration:
     def test_rate_limit_configuration_defaults(self):
         """Default rate limit configuration is reasonable."""
         try:
-            from shared.identity.middleware import DEFAULT_REQUESTS_PER_MINUTE
+            from value_fabric.shared.identity.middleware import DEFAULT_REQUESTS_PER_MINUTE
             
             # Default should be reasonable (not too low, not unlimited)
             assert DEFAULT_REQUESTS_PER_MINUTE > 0, (
@@ -242,7 +242,7 @@ class TestRateLimitConfiguration:
     def test_rate_limit_window_positive(self):
         """Rate limit window is positive."""
         try:
-            from shared.identity.middleware import RATE_LIMIT_WINDOW_SECONDS
+            from value_fabric.shared.identity.middleware import RATE_LIMIT_WINDOW_SECONDS
             
             assert RATE_LIMIT_WINDOW_SECONDS > 0, (
                 "Rate limit window should be positive"
@@ -258,7 +258,7 @@ class TestRateLimitCleanup:
     def test_stale_rate_limit_entries_cleaned(self):
         """Stale rate limit entries are cleaned up."""
         try:
-            from shared.identity.middleware import _evict_stale_rate_limit_entries
+            from value_fabric.shared.identity.middleware import _evict_stale_rate_limit_entries
             import time
             
             # This would require internal state inspection

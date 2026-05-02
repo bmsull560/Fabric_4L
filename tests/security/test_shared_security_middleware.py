@@ -20,27 +20,11 @@ except ImportError:
     Request = None
     TestClient = None
 
-# P0 Fix: Properly handle shared module import with cleanup
-# Add value-fabric to path for shared imports, then remove after import to maintain isolation
-_repo_root = Path(__file__).resolve().parents[2]
-_value_fabric_path = str(_repo_root / "value-fabric")
-
-if _value_fabric_path not in sys.path:
-    sys.path.insert(0, _value_fabric_path)
-    _PATH_ADDED = True
-else:
-    _PATH_ADDED = False
-
-try:
-    from value_fabric.shared.security import (
-        SecurityConfig,
-        SecurityValidator,
-        add_security_middleware,
-    )
-finally:
-    # P0 Fix: Remove path modification immediately after import to prevent isolation leakage
-    if _PATH_ADDED and _value_fabric_path in sys.path:
-        sys.path.remove(_value_fabric_path)
+from value_fabric.shared.security import (
+    SecurityConfig,
+    SecurityValidator,
+    add_security_middleware,
+)
 
 
 class TestSecurityConfig:
@@ -84,7 +68,7 @@ class TestMiddlewareImportPath:
         This test fails if pytest resolves the root one, preventing silent
         regression when the wrong file is patched.
         """
-        import shared.security.middleware as _middleware
+        import value_fabric.shared.security.middleware as _middleware
 
         assert "value-fabric/shared/security/middleware.py" in _middleware.__file__.replace(
             "\\", "/"
@@ -98,7 +82,7 @@ class TestSecurityValidator:
 
     def test_detect_injection_sql_patterns(self):
         """SQL injection patterns are detected."""
-        from shared.security.middleware import SQL_INJECTION_PATTERNS
+        from value_fabric.shared.security.middleware import SQL_INJECTION_PATTERNS
         assert SecurityValidator.detect_injection("' OR '1'='1", []) is False  # Empty patterns
         assert SecurityValidator.detect_injection("' OR 1=1", SQL_INJECTION_PATTERNS) is True
         assert SecurityValidator.detect_injection("DROP TABLE users", SQL_INJECTION_PATTERNS) is True
@@ -106,7 +90,7 @@ class TestSecurityValidator:
 
     def test_detect_injection_xss_patterns(self):
         """XSS patterns are detected."""
-        from shared.security.middleware import XSS_PATTERNS
+        from value_fabric.shared.security.middleware import XSS_PATTERNS
         assert SecurityValidator.detect_injection("<script>alert(1)</script>", XSS_PATTERNS) is True
         assert SecurityValidator.detect_injection("javascript:alert(1)", XSS_PATTERNS) is True
         assert SecurityValidator.detect_injection("<iframe src='evil.com'>", XSS_PATTERNS) is True
@@ -114,7 +98,7 @@ class TestSecurityValidator:
 
     def test_detect_injection_non_string(self):
         """Non-string values return False."""
-        from shared.security.middleware import SQL_INJECTION_PATTERNS
+        from value_fabric.shared.security.middleware import SQL_INJECTION_PATTERNS
         assert SecurityValidator.detect_injection(123, SQL_INJECTION_PATTERNS) is False
         assert SecurityValidator.detect_injection(None, SQL_INJECTION_PATTERNS) is False
         assert SecurityValidator.detect_injection(["list"], SQL_INJECTION_PATTERNS) is False
@@ -311,7 +295,7 @@ class TestSecurityMiddlewareRDFHandling:
 
     def test_is_rdf_data_detects_turtle(self):
         """RDF/Turtle data is correctly identified."""
-        from shared.security.middleware import SecurityMiddleware
+        from value_fabric.shared.security.middleware import SecurityMiddleware
         
         rdf_text = """
         @prefix ex: <http://example.org/> .
@@ -323,7 +307,7 @@ class TestSecurityMiddlewareRDFHandling:
 
     def test_is_rdf_data_rejects_non_rdf(self):
         """Non-RDF text is not identified as RDF."""
-        from shared.security.middleware import SecurityMiddleware
+        from value_fabric.shared.security.middleware import SecurityMiddleware
         
         middleware = SecurityMiddleware(app=None, config=SecurityConfig())
         assert middleware._is_rdf_data("normal text") is False
@@ -339,7 +323,7 @@ class TestSqlInjectionFalsePositives:
 
     def test_benign_hash_inputs_not_flagged(self):
         """Common # uses must not trigger SQL injection detection."""
-        from shared.security.middleware import SQL_INJECTION_PATTERNS
+        from value_fabric.shared.security.middleware import SQL_INJECTION_PATTERNS
 
         benign_inputs = [
             "# Test Header",           # markdown header
@@ -356,7 +340,7 @@ class TestSqlInjectionFalsePositives:
 
     def test_malicious_sql_comments_still_detected(self):
         """Actual SQL comment syntax must still be caught."""
-        from shared.security.middleware import SQL_INJECTION_PATTERNS
+        from value_fabric.shared.security.middleware import SQL_INJECTION_PATTERNS
 
         malicious_inputs = [
             "' OR 1=1 --",             # line comment

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip("trafilatura")
+
 from src.crawler.httpx_crawler import FastPathResult
 from src.crawler.quality_gate import AdaptiveQualityGate, QualityGate, QualityThresholds
 

@@ -16,14 +16,14 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from src.models.agent_state import (
+from value_fabric.layer4.models.agent_state import (
     BusinessCaseAgentState,
     ROIAgentState,
     WorkflowStatus,
 )
-from src.tools.registry import ToolRegistry
-from src.workflows.business_case import BusinessCaseGeneratorWorkflow
-from src.workflows.roi_calculator import ROICalculatorWorkflow
+from value_fabric.layer4.tools.registry import ToolRegistry
+from value_fabric.layer4.workflows.business_case import BusinessCaseGeneratorWorkflow
+from value_fabric.layer4.workflows.roi_calculator import ROICalculatorWorkflow
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

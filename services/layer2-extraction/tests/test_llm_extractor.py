@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from layer2_extraction.extraction.llm_extractor import (
+from value_fabric.layer2.extraction.llm_extractor import (
     EntityExtractor,
     LLMExtractionError,
     RelationshipExtractor,
@@ -15,12 +15,12 @@ from layer2_extraction.extraction.llm_extractor import (
     _parse_tool_arguments,
     _strict_array_tool,
 )
-from layer2_extraction.models.extraction_response import (
+from value_fabric.layer2.models.extraction_response import (
     CapabilityExtractionResponse,
     RelationshipExtractionResponse,
 )
-from layer2_extraction.models.ontology import Capability
-from layer2_extraction.models.relationships import PredicateType, Relationship
+from value_fabric.layer2.models.ontology import Capability
+from value_fabric.layer2.models.relationships import PredicateType, Relationship
 
 
 def _response_with_logprobs(logprobs: list[float]):

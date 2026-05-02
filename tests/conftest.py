@@ -267,8 +267,8 @@ def jwt_token_malformed_tenant() -> str:
 @pytest.fixture
 def context_a():
     """RequestContext for Tenant A — use with RequestContextManager."""
-    from identity.context import RequestContext
-    from identity.permissions import Permission, Role, get_role_permissions
+    from value_fabric.shared.identity.context import RequestContext
+    from value_fabric.shared.identity.permissions import Permission, Role, get_role_permissions
 
     return RequestContext(
         tenant_id=TENANT_A_ID,
@@ -282,8 +282,8 @@ def context_a():
 @pytest.fixture
 def context_b():
     """RequestContext for Tenant B — use with RequestContextManager."""
-    from identity.context import RequestContext
-    from identity.permissions import Permission, Role, get_role_permissions
+    from value_fabric.shared.identity.context import RequestContext
+    from value_fabric.shared.identity.permissions import Permission, Role, get_role_permissions
 
     return RequestContext(
         tenant_id=TENANT_B_ID,
@@ -297,8 +297,8 @@ def context_b():
 @pytest.fixture
 def context_admin():
     """RequestContext for super_admin."""
-    from identity.context import RequestContext
-    from identity.permissions import Permission, Role, get_role_permissions
+    from value_fabric.shared.identity.context import RequestContext
+    from value_fabric.shared.identity.permissions import Permission, Role, get_role_permissions
 
     return RequestContext(
         tenant_id=TENANT_A_ID,

@@ -113,24 +113,27 @@ def find_navigation_patterns(content: str) -> list[Finding]:
             continue
 
         # Check hard violations first
+        found = False
         for pattern_name, pattern in hard_violation_patterns:
             if re.search(pattern, line):
                 findings.append(Finding(line_num, "hard_violation", pattern_name, line.strip()))
+                found = True
                 break
-        
-        # Check legacy useNavigate
-        else:
+
+        # Check legacy useNavigate (only if no hard violation found)
+        if not found:
             for pattern_name, pattern in legacy_patterns:
                 if re.search(pattern, line):
                     findings.append(Finding(line_num, "legacy_useNavigate", pattern_name, line.strip()))
+                    found = True
                     break
-            
-            # Count approved state navigation (not a violation)
-            else:
-                for pattern_name, pattern in approved_patterns:
-                    if re.search(pattern, line):
-                        findings.append(Finding(line_num, "approved_state_navigation", pattern_name, line.strip()))
-                        break
+
+        # Count approved state navigation (only if no violation found)
+        if not found:
+            for pattern_name, pattern in approved_patterns:
+                if re.search(pattern, line):
+                    findings.append(Finding(line_num, "approved_state_navigation", pattern_name, line.strip()))
+                    break
 
     return findings
 

@@ -48,7 +48,7 @@ class TestProductionRedisRequirement:
         }, clear=True):
             # Import after env is patched
             with pytest.raises(ValueError, match="REDIS_URL.*required.*production"):
-                from shared.rate_limiting.tenant_rate_limiter import validate_redis_config
+                from value_fabric.shared.rate_limiting.tenant_rate_limiter import validate_redis_config
                 validate_redis_config()
     
     @pytest.mark.asyncio
@@ -64,7 +64,7 @@ class TestProductionRedisRequirement:
             "JWT_SECRET": "test-secret",
         }, clear=True):
             with pytest.raises(ValueError, match="Invalid REDIS_URL"):
-                from shared.rate_limiting.tenant_rate_limiter import validate_redis_config
+                from value_fabric.shared.rate_limiting.tenant_rate_limiter import validate_redis_config
                 validate_redis_config()
     
     @pytest.mark.asyncio
@@ -79,7 +79,7 @@ class TestProductionRedisRequirement:
             "REDIS_URL": "",
         }, clear=True):
             with patch("logging.Logger.warning") as mock_warning:
-                from shared.rate_limiting.tenant_rate_limiter import validate_redis_config
+                from value_fabric.shared.rate_limiting.tenant_rate_limiter import validate_redis_config
                 # Should not raise, but should warn
                 try:
                     validate_redis_config()
@@ -107,7 +107,7 @@ class TestProductionCORSValidation:
             "JWT_SECRET": "test-secret",
         }, clear=True):
             with pytest.raises(ValueError, match="CORS.*wildcard.*production"):
-                from shared.security.config import validate_cors_config
+                from value_fabric.shared.security.config import validate_cors_config
                 validate_cors_config()
     
     def test_prod_boot_fails_with_http_cors_origin(self):
@@ -121,7 +121,7 @@ class TestProductionCORSValidation:
             "JWT_SECRET": "test-secret",
         }, clear=True):
             with pytest.raises(ValueError, match="HTTP.*CORS.*production"):
-                from shared.security.config import validate_cors_config
+                from value_fabric.shared.security.config import validate_cors_config
                 validate_cors_config()
     
     def test_prod_accepts_valid_https_cors_origins(self):
@@ -131,7 +131,7 @@ class TestProductionCORSValidation:
             "CORS_ORIGINS": "https://app.example.com,https://admin.example.com",
             "JWT_SECRET": "test-secret",
         }, clear=True):
-            from shared.security.config import validate_cors_config
+            from value_fabric.shared.security.config import validate_cors_config
             # Should not raise
             validate_cors_config()
     
@@ -142,7 +142,7 @@ class TestProductionCORSValidation:
             "CORS_ORIGINS": "*",
         }, clear=True):
             with patch("logging.Logger.warning") as mock_warning:
-                from shared.security.config import validate_cors_config
+                from value_fabric.shared.security.config import validate_cors_config
                 # Should not raise
                 validate_cors_config()
                 
@@ -167,7 +167,7 @@ class TestProductionJWTConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="JWT_SECRET.*required.*production"):
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 validate_jwt_config()
     
     def test_prod_boot_fails_with_weak_jwt_secret(self):
@@ -181,7 +181,7 @@ class TestProductionJWTConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="JWT_SECRET.*at least 32"):
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 validate_jwt_config()
     
     def test_prod_boot_fails_with_missing_jwt_issuer(self):
@@ -196,7 +196,7 @@ class TestProductionJWTConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="JWT_ISSUER.*required.*production"):
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 validate_jwt_config()
     
     def test_prod_boot_fails_with_missing_jwt_audience(self):
@@ -213,7 +213,7 @@ class TestProductionJWTConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="JWT_AUDIENCE.*required.*production"):
-                from shared.identity.dependencies import validate_jwt_config
+                from value_fabric.shared.identity.dependencies import validate_jwt_config
                 validate_jwt_config()
     
     def test_prod_accepts_valid_jwt_config(self):
@@ -225,7 +225,7 @@ class TestProductionJWTConfiguration:
             "JWT_AUDIENCE": "https://api.example.com",
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
-            from shared.identity.dependencies import validate_jwt_config
+            from value_fabric.shared.identity.dependencies import validate_jwt_config
             # Should not raise
             validate_jwt_config()
 
@@ -247,7 +247,7 @@ class TestProductionAuditConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="AUDIT_SINK.*required.*production"):
-                from shared.audit.emitter import validate_audit_config
+                from value_fabric.shared.audit.emitter import validate_audit_config
                 validate_audit_config()
     
     @pytest.mark.asyncio
@@ -268,7 +268,7 @@ class TestProductionAuditConfiguration:
                 mock_post.side_effect = Exception("Connection refused")
                 
                 with pytest.raises(ValueError, match="Audit sink.*unreachable"):
-                    from shared.audit.emitter import validate_audit_config
+                    from value_fabric.shared.audit.emitter import validate_audit_config
                     await validate_audit_config()
     
     @pytest.mark.asyncio
@@ -279,7 +279,7 @@ class TestProductionAuditConfiguration:
             "AUDIT_SINK_URL": "",
         }, clear=True):
             with patch("logging.Logger.warning") as mock_warning:
-                from shared.audit.emitter import validate_audit_config
+                from value_fabric.shared.audit.emitter import validate_audit_config
                 # Should not raise
                 await validate_audit_config()
                 
@@ -306,7 +306,7 @@ class TestStartupControlModeReporting:
             "AUDIT_SINK_URL": "https://audit.example.com",
             "CORS_ORIGINS": "https://app.example.com",
         }, clear=True):
-            from shared.security.config import get_startup_summary
+            from value_fabric.shared.security.config import get_startup_summary
             summary = get_startup_summary()
             
             assert summary["environment"] == "production"
@@ -323,7 +323,7 @@ class TestStartupControlModeReporting:
             "AUDIT_SINK_URL": "",
             "CORS_ORIGINS": "*",
         }, clear=True):
-            from shared.security.config import get_startup_summary
+            from value_fabric.shared.security.config import get_startup_summary
             summary = get_startup_summary()
             
             assert summary["environment"] == "development"
@@ -343,7 +343,7 @@ class TestStartupControlModeReporting:
             "AUDIT_SINK_URL": "https://audit.example.com",
             "CORS_ORIGINS": "https://app.example.com",
         }, clear=True):
-            from shared.security.config import get_startup_summary
+            from value_fabric.shared.security.config import get_startup_summary
             summary = get_startup_summary()
             
             degraded = summary.get("degraded_controls", [])
@@ -371,7 +371,7 @@ class TestProductionDatabaseConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="DATABASE_URL.*required"):
-                from shared.security.config import validate_database_config
+                from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
     
     def test_prod_boot_fails_with_sqlite_database(self):
@@ -386,7 +386,7 @@ class TestProductionDatabaseConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="SQLite.*not supported.*production"):
-                from shared.security.config import validate_database_config
+                from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
     
     def test_prod_boot_warns_with_unencrypted_database_connection(self):
@@ -401,7 +401,7 @@ class TestProductionDatabaseConfiguration:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with patch("logging.Logger.warning") as mock_warning:
-                from shared.security.config import validate_database_config
+                from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
                 
                 # Verify warning was logged
@@ -430,7 +430,7 @@ class TestNegativePathStartupScenarios:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             with pytest.raises(ValueError, match="DEBUG.*production"):
-                from shared.security.config import validate_environment_config
+                from value_fabric.shared.security.config import validate_environment_config
                 validate_environment_config()
     
     def test_startup_with_all_controls_disabled(self):
@@ -446,7 +446,7 @@ class TestNegativePathStartupScenarios:
             "CORS_ORIGINS": "*",
         }, clear=True):
             with pytest.raises(ValueError, match="All security controls.*disabled"):
-                from shared.security.config import validate_all_controls
+                from value_fabric.shared.security.config import validate_all_controls
                 validate_all_controls()
     
     def test_startup_validation_runs_before_server_start(self):
@@ -461,4 +461,4 @@ class TestNegativePathStartupScenarios:
             # Validation should fail during import
             with pytest.raises(ValueError):
                 # This import should trigger validation
-                import value_fabric.layer4_agents.src.main
+                import value_fabric.layer4.main

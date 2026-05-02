@@ -28,8 +28,8 @@ with patch.dict(
     },
 ):
     from fastapi.testclient import TestClient
-    from src.api.routes.crm_webhooks import router as crm_webhooks_router
-    from src.database import get_db
+    from value_fabric.layer4.api.routes.crm_webhooks import router as crm_webhooks_router
+    from value_fabric.layer4.database import get_db
 
 
 @pytest.fixture(autouse=True)

@@ -88,7 +88,7 @@ class TestTenantRateLimiter:
     @pytest.mark.asyncio
     async def test_different_limits_per_tier(self, rate_limiter):
         """Verify different tiers have different limits."""
-        from shared.rate_limiting.tenant_rate_limiter import DEFAULT_TENANT_LIMITS
+        from value_fabric.shared.rate_limiting.tenant_rate_limiter import DEFAULT_TENANT_LIMITS
         
         shared_limits = DEFAULT_TENANT_LIMITS[TenantTier.SHARED]
         enterprise_limits = DEFAULT_TENANT_LIMITS[TenantTier.ENTERPRISE]
@@ -281,7 +281,7 @@ class TestRateLimitMiddleware:
     @pytest.mark.asyncio
     async def test_normalizes_endpoint_paths(self):
         """Verify endpoint normalization groups similar requests."""
-        from shared.rate_limiting.middleware import TenantRateLimitMiddleware
+        from value_fabric.shared.rate_limiting.middleware import TenantRateLimitMiddleware
         
         middleware = TenantRateLimitMiddleware(app=None, rate_limiter=None)
         

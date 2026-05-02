@@ -10,7 +10,7 @@ import uuid
 
 import pytest
 
-from layer2_extraction.models import (
+from value_fabric.layer2.models import (
     BenefitType,
     Capability,
     DriverType,

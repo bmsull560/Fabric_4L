@@ -27,7 +27,14 @@ IGNORED_PATH_PARTS = {
     ".venv",
     "venv",
     "__pycache__",
+    "prototypes",
+    "experiments",
 }
+
+
+def _remove_prefix(value: str, prefix: str) -> str:
+    """Remove prefix from string (Python < 3.9 compatibility)."""
+    return value[len(prefix):] if value.startswith(prefix) else value
 
 # Scope definitions for filtering
 SCOPE_DEFINITIONS = {
@@ -63,41 +70,38 @@ def _is_ignored(relative_path: Path, scope: str = "all") -> bool:
     if relative_path in EXPLICIT_TEST_ALLOWLIST:
         return True
 
-    parts_lower = {part.lower() for part in relative_path.parts}
-    if parts_lower & IGNORED_PATH_PARTS:
+    # Use exact path segment matching instead of set intersection
+    parts_lower = [part.lower() for part in relative_path.parts]
+    for part in parts_lower:
+        if part in IGNORED_PATH_PARTS:
+            return True
+
+    # Check for shared_import_boundary test files
+    if "tests" in parts_lower and "shared_import_boundary" in str(relative_path).lower():
         return True
 
-    path_str = str(relative_path).replace("\\", "/").lower()
-    if "/tests/" in path_str and "shared_import_boundary" in path_str:
-        return True
+    # Scope-based filtering using pathlib parts
+    top_level = parts_lower[0] if parts_lower else ""
 
-    # Scope-based filtering
     if scope == "runtime":
         # Include only production runtime (services/ + packages/, excluding tests/)
-        if "/tests/" in path_str or "\\tests\\" in path_str:
+        if "tests" in parts_lower:
             return True
-        if not (path_str.startswith("services/") or path_str.startswith("services\\") or
-                path_str.startswith("packages/") or path_str.startswith("packages\\")):
+        if top_level not in {"services", "packages"}:
             return True
     elif scope == "tests":
         # Include only test files
-        if "/tests/" not in path_str and "\\tests\\" not in path_str:
+        if "tests" not in parts_lower:
             return True
     elif scope == "executable":
         # Include executable code (services/, packages/, tests/, scripts/)
         # Exclude docs/, reports/, archive/, generated/, prototypes/, experiments/
-        if path_str.startswith("docs/") or "/docs/" in path_str:
+        excluded_tops = {"docs", "reports", "archive", "generated", "prototypes", "experiments"}
+        if top_level in excluded_tops:
             return True
-        if path_str.startswith("reports/") or "/reports/" in path_str:
-            return True
-        if path_str.startswith("archive/") or "/archive/" in path_str:
-            return True
-        if path_str.startswith("generated/") or "/generated/" in path_str:
-            return True
-        if path_str.startswith("prototypes/") or "/prototypes/" in path_str:
-            return True
-        if path_str.startswith("experiments/") or "/experiments/" in path_str:
-            return True
+        for part in parts_lower:
+            if part in excluded_tops:
+                return True
         # Exclude .md files (documentation)
         if relative_path.suffix == ".md":
             return True
@@ -140,7 +144,7 @@ def _build_replacement_for_import(alias: ast.alias) -> str:
         )
 
     if alias.name.startswith("shared."):
-        target = alias.name.removeprefix("shared.")
+        target = _remove_prefix(alias.name, "shared.")
         return (
             "Replace with a specific canonical import such as "
             f"`from value_fabric.shared.{target} import <symbol>`."
@@ -157,7 +161,7 @@ def _build_replacement_for_import_from(node: ast.ImportFrom) -> str:
         names = ", ".join(alias.name for alias in node.names)
         return f"Use `from value_fabric.shared import {names}`."
 
-    target = node.module.removeprefix("shared.")
+    target = _remove_prefix(node.module, "shared.")
     names = ", ".join(alias.name for alias in node.names)
     return f"Use `from value_fabric.shared.{target} import {names}`."
 

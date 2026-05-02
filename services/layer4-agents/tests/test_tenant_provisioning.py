@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
-from src.services.tenant_provisioning import (
+from value_fabric.layer4.services.tenant_provisioning import (
     TenantProvisioningService,
     TenantProvisionRequest,
     TenantProvisionResult,

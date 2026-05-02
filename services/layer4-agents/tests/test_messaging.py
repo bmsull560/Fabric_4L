@@ -1,20 +1,13 @@
 """Tests for L4 messaging types, bus, and router."""
 
 import asyncio
-import sys
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 import pytest
 
-# Add L4 source to path
-_l4_src = str(Path(__file__).resolve().parents[1] / "src")
-if _l4_src not in sys.path:
-    sys.path.insert(0, _l4_src)
-
-from messaging.bus import InMemoryMessageBus, create_message_bus
-from messaging.router import MessageRouter
-from messaging.types import (
+from value_fabric.layer4.messaging.bus import InMemoryMessageBus, create_message_bus
+from value_fabric.layer4.messaging.router import MessageRouter
+from value_fabric.layer4.messaging.types import (
     AgentMessage,
     ErrorNotification,
     MessagePriority,

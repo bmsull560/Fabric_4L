@@ -16,8 +16,8 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from layer2_extraction.api import main as api_main
-from layer2_extraction.integration.job_store import PipelineJob
+from value_fabric.layer2.api import main as api_main
+from value_fabric.layer2.integration.job_store import PipelineJob
 
 # Test defaults for job creation
 DEFAULT_ENTITIES_EXTRACTED = 5

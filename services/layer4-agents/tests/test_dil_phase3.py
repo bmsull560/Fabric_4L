@@ -33,7 +33,7 @@ sys.modules.setdefault("src.models.pain_signal", _pain_signal_mock)
 # Now safe to import
 # ---------------------------------------------------------------------------
 
-from src.services.narrative_builder_service import (
+from value_fabric.layer4.services.narrative_builder_service import (
     SECTION_ORDER,
     TONE_TEMPLATES,
     NarrativeBuilderService,
@@ -42,7 +42,7 @@ from src.services.narrative_builder_service import (
     NarrativeTone,
     NarrativeAudience,
 )
-from src.services.intelligence_orchestrator import (
+from value_fabric.layer4.services.intelligence_orchestrator import (
     READINESS_WEIGHTS,
     READINESS_THRESHOLDS,
     IntelligenceOrchestrator,

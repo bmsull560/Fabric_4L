@@ -15,8 +15,8 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 
 # Module-level imports to avoid repetition in test methods
-from src.models.tool_schemas import GenerateSectionInput
-from src.tools.generation_tools import GenerateSectionTool
+from value_fabric.layer4.models.tool_schemas import GenerateSectionInput
+from value_fabric.layer4.tools.generation_tools import GenerateSectionTool
 
 
 class TestLLMCostTracking:

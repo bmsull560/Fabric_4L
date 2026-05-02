@@ -16,7 +16,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.billing import (
+from value_fabric.layer4.models.billing import (
     BillingCustomer,
     BillingSubscription,
     BillingWebhookEvent,
@@ -34,7 +34,7 @@ mock_stripe_module.checkout = MagicMock()
 mock_stripe_module.billing_portal = MagicMock()
 
 with patch.dict('sys.modules', {'stripe': mock_stripe_module}):
-    from src.services.billing_service import BillingService
+    from value_fabric.layer4.services.billing_service import BillingService
 
 
 # =============================================================================

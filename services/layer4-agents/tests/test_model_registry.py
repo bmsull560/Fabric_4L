@@ -12,9 +12,9 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.registry.eval_gate import _DEFAULT_PROMOTION_THRESHOLD, check_eval_gate
-from src.registry.models import ModelPromotionLog, ModelVersion
-from src.registry.service import ModelRegistryService, PromotionError, resolve_llm_model
+from value_fabric.layer4.registry.eval_gate import _DEFAULT_PROMOTION_THRESHOLD, check_eval_gate
+from value_fabric.layer4.registry.models import ModelPromotionLog, ModelVersion
+from value_fabric.layer4.registry.service import ModelRegistryService, PromotionError, resolve_llm_model
 
 
 class FakeResult:

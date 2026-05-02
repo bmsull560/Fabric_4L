@@ -9,10 +9,10 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
-from src.engine.executor import OrchestrationController, WorkflowExecutionError
-from src.engine.state_manager import StateManager
-from src.models.agent_state import BaseAgentState, WorkflowStatus
-from src.tools.registry import ToolRegistry
+from value_fabric.layer4.engine.executor import OrchestrationController, WorkflowExecutionError
+from value_fabric.layer4.engine.state_manager import StateManager
+from value_fabric.layer4.models.agent_state import BaseAgentState, WorkflowStatus
+from value_fabric.layer4.tools.registry import ToolRegistry
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

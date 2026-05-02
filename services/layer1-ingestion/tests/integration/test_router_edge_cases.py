@@ -9,6 +9,9 @@ Validates routing decisions against real-world HTML patterns:
 """
 
 import pytest
+
+pytest.importorskip("trafilatura")
+
 from pathlib import Path
 
 from src.crawler.smart_router import SmartRouter, RouteType, RoutingDecision

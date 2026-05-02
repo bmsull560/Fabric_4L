@@ -18,7 +18,7 @@ from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_privileged_access
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db_session
+from ..database import get_db_from_context as get_db_session
 from ..services.tenant_provisioning import (
     TenantProvisioningService,
     TenantProvisionRequest,

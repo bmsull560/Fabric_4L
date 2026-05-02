@@ -21,7 +21,7 @@ import xml.etree.ElementTree as ET
 def test_tools_list_requires_auth():
     """P0-8: /tools endpoint must require authentication."""
     from fastapi.testclient import TestClient
-    from value_fabric.layer4_agents.src.api.routes.tools import router
+    from value_fabric.layer4.api.routes.tools import router
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -37,7 +37,7 @@ def test_tools_list_requires_auth():
 def test_tools_invoke_requires_auth():
     """P0-8: /tools/invoke endpoint must require authentication."""
     from fastapi.testclient import TestClient
-    from value_fabric.layer4_agents.src.api.routes.tools import router
+    from value_fabric.layer4.api.routes.tools import router
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -59,7 +59,7 @@ def test_tools_invoke_requires_auth():
 def test_get_current_tenant_id_requires_auth():
     """P0-3: Missing authentication should raise 401, not return dev tenant UUID."""
     from fastapi import Request, HTTPException
-    from value_fabric.layer1_ingestion.src.api.main import get_current_tenant_id
+    from value_fabric.layer1.api.main import get_current_tenant_id
 
     # Mock request without governance context
     request = Mock(spec=Request)
@@ -81,7 +81,7 @@ def test_get_current_tenant_id_requires_auth():
 
 def test_query_param_auth_rejected():
     """P0-4: Query param tenant_id should not grant authentication."""
-    from shared.identity.middleware_sync import GovernanceMiddlewareSync
+    from value_fabric.shared.identity.middleware_sync import GovernanceMiddlewareSync
 
     # Mock WSGI environment with query param but no valid auth
     environ = {
@@ -114,7 +114,7 @@ def test_query_param_auth_rejected():
 
 def test_x_tenant_id_requires_service_secret():
     """F-1: X-Tenant-ID header should require X-Service-Auth."""
-    from shared.identity.middleware_sync import GovernanceMiddlewareSync
+    from value_fabric.shared.identity.middleware_sync import GovernanceMiddlewareSync
     from uuid import uuid4
 
     tenant_id = str(uuid4())
@@ -152,7 +152,7 @@ def test_x_tenant_id_requires_service_secret():
 
 def test_safe_eval_blocks_unsafe_expressions():
     """P0-2: AST evaluator should reject dangerous constructs."""
-    from value_fabric.layer3_knowledge.src.services.signal_quantification import SignalQuantificationService
+    from value_fabric.layer3.services.signal_quantification import SignalQuantificationService
     from neo4j import AsyncDriver
 
     service = SignalQuantificationService(Mock(spec=AsyncDriver))
@@ -178,7 +178,7 @@ def test_safe_eval_blocks_unsafe_expressions():
 
 def test_safe_eval_allows_safe_expressions():
     """P0-2: AST evaluator should allow safe arithmetic."""
-    from value_fabric.layer3_knowledge.src.services.signal_quantification import SignalQuantificationService
+    from value_fabric.layer3.services.signal_quantification import SignalQuantificationService
     from neo4j import AsyncDriver
 
     service = SignalQuantificationService(Mock(spec=AsyncDriver))
@@ -197,7 +197,7 @@ def test_safe_eval_allows_safe_expressions():
 
 def test_sfdc_id_validation():
     """P0-1: Invalid Salesforce IDs should be rejected."""
-    from value_fabric.layer4_agents.src.tools.crm_tools import GetProspectDataTool
+    from value_fabric.layer4.tools.crm_tools import GetProspectDataTool
 
     tool = GetProspectDataTool()
 
@@ -234,7 +234,7 @@ def test_websocket_requires_token():
     """P0-9: WebSocket should reject connections without valid token."""
     # This would require a WebSocket client test
     # For now, verify the code checks for token
-    from value_fabric.layer4_agents.src.api.routes.signals import signal_stream_websocket
+    from value_fabric.layer4.api.routes.signals import signal_stream_websocket
 
     source = inspect.getsource(signal_stream_websocket)
     assert "token" in source
@@ -247,7 +247,7 @@ def test_websocket_requires_token():
 
 def test_pickle_serializer_disabled():
     """P1-10: Pickle serializer should raise ValueError."""
-    from value_fabric.layer3_knowledge.src.cache.redis_cache import RedisCache
+    from value_fabric.layer3.cache.redis_cache import RedisCache
 
     cache = RedisCache()
     cache.config.serializer = "pickle"
@@ -266,7 +266,7 @@ def test_pickle_serializer_disabled():
 
 def test_cypher_write_operations_blocked():
     """P1-11: Write Cypher operations should be rejected."""
-    from value_fabric.layer4_agents.src.tools.knowledge_tools import QueryGraphTool
+    from value_fabric.layer4.tools.knowledge_tools import QueryGraphTool
 
     tool = QueryGraphTool()
 
@@ -303,7 +303,7 @@ def test_cypher_write_operations_blocked():
 
 def test_xbrl_parser_uses_defusedxml():
     """P1-20: XBRL parser should use defusedxml to prevent XXE."""
-    from value_fabric.layer1_ingestion.src.adapters.xbrl_parser import XBRLParser
+    from value_fabric.layer1.adapters.xbrl_parser import XBRLParser
     import inspect
 
     source = inspect.getsource(XBRLParser.parse)
@@ -311,7 +311,7 @@ def test_xbrl_parser_uses_defusedxml():
     # Should use defusedxml.fromstring, not ET.fromstring
     assert "fromstring" in source
     # Check that defusedxml is imported
-    from value_fabric.layer1_ingestion.src.adapters import xbrl_parser as parser_module
+    from value_fabric.layer1.adapters import xbrl_parser as parser_module
     assert hasattr(parser_module, 'fromstring')
 
 
@@ -345,7 +345,7 @@ def test_l6_fails_closed_without_middleware():
     os.environ["ENVIRONMENT"] = "production"
 
     # Verify the logic exists in main.py
-    from value_fabric.layer6_benchmarks.src.api import main as l6_main
+    from value_fabric.layer6.api import main as l6_main
     source = inspect.getsource(l6_main)
 
     assert "GovernanceMiddleware is required" in source or "RuntimeError" in source

@@ -66,6 +66,24 @@ def require_tenant(
     return ctx.tenant_id
 
 
+def require_tenant_context(
+    ctx: Optional[RequestContext] = Depends(get_current_context),
+) -> RequestContext:
+    """Require that tenant context is present in the request.
+
+    Raises HTTP 400 if tenant_id is missing in RequestContext.
+
+    This is different from require_tenant which returns the tenant_id UUID.
+    This function returns the full RequestContext after validating tenant_id is present.
+    """
+    if ctx is None or not ctx.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tenant context required. Ensure request has passed through GovernanceMiddleware.",
+        )
+    return ctx
+
+
 # ---------------------------------------------------------------------------
 # Role-based access control
 # ---------------------------------------------------------------------------
@@ -198,6 +216,7 @@ require_content_admin = require_role(
 require_analyst = require_role(
     Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN, Role.ANALYST
 )
+require_admin = require_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN)
 
 require_read_search = require_permission(Permission.READ_SEARCH)
 require_read_graphrag = require_permission(Permission.READ_GRAPHRAG)

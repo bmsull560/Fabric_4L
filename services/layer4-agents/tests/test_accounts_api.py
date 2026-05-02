@@ -17,15 +17,19 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+
+# Skip test if psycopg is not available
+pytest.importorskip("psycopg", reason="psycopg wrapper not installed - requires psycopg[binary]")
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
 
-from src.api.main import app
-from src.api.routes.analysis import get_executor
-from src.database import Base, get_db
-from src.models.business_case_record import BusinessCaseRecord
-from src.models.account import Account, AccountSyncStatus, CRMProvider, SyncStatus
+from value_fabric.layer4.api.main import app
+from value_fabric.layer4.api.routes.analysis import get_executor
+from value_fabric.layer4.database import Base, get_db
+from value_fabric.layer4.models.business_case_record import BusinessCaseRecord
+from value_fabric.layer4.models.account import Account, AccountSyncStatus, CRMProvider, SyncStatus
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

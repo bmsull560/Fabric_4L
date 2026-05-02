@@ -8,16 +8,7 @@ import pytest
 from datetime import datetime, UTC
 from pydantic import ValidationError
 
-# Import models directly from the source
-import sys
-from pathlib import Path
-
-# Add layer3-knowledge to path
-# NOTE: This file will be migrated to tests/contract/
-layer3_path = Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src"
-sys.path.insert(0, str(layer3_path))
-
-from api.models import (
+from value_fabric.layer3.api.models import (
     EntitySummary,
     EntityDetail,
     EntityFilterRequest,
@@ -384,7 +375,7 @@ class TestFieldConsistency:
 
     def test_status_values_consistent(self):
         """Test that status enum is consistent everywhere."""
-        from api.models import EntityStatus
+        from value_fabric.layer3.api.models import EntityStatus
         
         expected_values = {"validated", "pending", "draft", "deprecated"}
         actual_values = set(EntityStatus.__args__)
@@ -394,7 +385,7 @@ class TestFieldConsistency:
 
     def test_confidence_label_values_consistent(self):
         """Test confidence_label enum consistency."""
-        from api.models import ConfidenceLabel
+        from value_fabric.layer3.api.models import ConfidenceLabel
         
         expected_values = {"high", "medium", "low"}
         actual_values = set(ConfidenceLabel.__args__)

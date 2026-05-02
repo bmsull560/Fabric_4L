@@ -5,9 +5,14 @@ Prevents drift between frontend API clients and backend endpoint contracts.
 
 from __future__ import annotations
 
+import pytest
+
+# Skip test if psycopg is not available
+pytest.importorskip("psycopg", reason="psycopg wrapper not installed - requires psycopg[binary]")
+
 from fastapi.testclient import TestClient
 
-from value_fabric.layer4_agents.src.api.main import app
+from value_fabric.layer4.api.main import app
 
 
 client = TestClient(app)

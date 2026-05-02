@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.services.export_provenance import build_export_provenance_manifest
+from value_fabric.layer4.services.export_provenance import build_export_provenance_manifest
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

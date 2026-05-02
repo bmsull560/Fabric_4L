@@ -192,23 +192,11 @@ def client():
     if TestClient is None:
         pytest.skip("fastapi not installed")
     
-    import sys
-    from pathlib import Path
-
-    # Add L1 src to path for direct imports (matches pattern in test_model_registry_integration.py)
-    l1_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer1-ingestion" / "src")
-    if l1_src not in sys.path:
-        sys.path.insert(0, l1_src)
-
     try:
-        from api.main import app
+        from value_fabric.layer1.api.main import app
         return TestClient(app)
     except ImportError:
         pytest.skip("FastAPI app not available for testing")
-    finally:
-        # Cleanup: remove path modification to prevent isolation leakage
-        if l1_src in sys.path:
-            sys.path.remove(l1_src)
 
 
 @pytest.fixture
@@ -248,21 +236,9 @@ def websocket_client():
     if TestClient is None:
         pytest.skip("fastapi not installed")
     
-    import sys
-    from pathlib import Path
-
-    # Add L4 src to path for direct imports
-    l4_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer4-agents" / "src")
-    if l4_src not in sys.path:
-        sys.path.insert(0, l4_src)
-
     try:
         # Try to import L4 app - may not be available without dependencies
-        from api.main import app
+        from value_fabric.layer4.api.main import app
         return TestClient(app)
     except ImportError:
         pytest.skip("Layer 4 FastAPI app not available for WebSocket testing")
-    finally:
-        # Cleanup: remove path modification to prevent isolation leakage
-        if l4_src in sys.path:
-            sys.path.remove(l4_src)

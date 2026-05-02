@@ -15,7 +15,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.billing import BillingUsageEvent, UsageEventStatus
+from value_fabric.layer4.models.billing import BillingUsageEvent, UsageEventStatus
 
 # Mock stripe before importing
 mock_stripe_module = MagicMock()

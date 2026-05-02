@@ -17,7 +17,7 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, StateGraph
 
-from src.workflows.base import DEFAULT_RECURSION_LIMIT
+from value_fabric.layer4.workflows.base import DEFAULT_RECURSION_LIMIT
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 

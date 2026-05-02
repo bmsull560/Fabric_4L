@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from tests.conftest import TestUtils, create_mock_search_response
+from conftest import TestUtils, create_mock_search_response
 
 
 class TestSearchEndpoints:

@@ -5,19 +5,19 @@ import logging
 from fastapi import FastAPI, HTTPException, Request
 from neo4j import AsyncDriver
 
-from ..agents import (
+from value_fabric.layer3.agents import (
     NarrativeSynthesisAgent,
     ProvenanceTrackingAgent,
     ROICalculationAgent,
     ValueTreeProjectionAgent,
     WhitespaceAnalysisAgent,
 )
-from ..analytics import CentralityAnalyzer, CommunityDetector, SimilarityAnalyzer
-from ..config import Settings, get_settings
-from ..db.driver import get_driver, reset_driver
-from ..ingestion import Neo4jLoader, SyncManager
-from ..retrieval import GraphRAGEngine, HybridSearch, VectorStore
-from ..schema import SchemaInitializer
+from value_fabric.layer3.analytics import CentralityAnalyzer, CommunityDetector, SimilarityAnalyzer
+from value_fabric.layer3.config import Settings, get_settings
+from value_fabric.layer3.db.driver import get_driver, reset_driver
+from value_fabric.layer3.ingestion import Neo4jLoader, SyncManager
+from value_fabric.layer3.retrieval import GraphRAGEngine, HybridSearch, VectorStore
+from value_fabric.layer3.schema import SchemaInitializer
 
 logger = logging.getLogger(__name__)
 

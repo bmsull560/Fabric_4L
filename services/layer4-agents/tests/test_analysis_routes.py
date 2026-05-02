@@ -9,8 +9,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from src.api.routes import analysis
-from src.config.settings import settings
+from value_fabric.layer4.api.routes import analysis
+from value_fabric.layer4.config.settings import settings
 
 
 @dataclass

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from src.tools import knowledge
+from value_fabric.layer4.tools import knowledge
 
 
 class FakeResult:

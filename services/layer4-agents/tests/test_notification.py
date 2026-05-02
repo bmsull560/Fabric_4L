@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.models.pause_point import PauseSeverity
-from src.services.notification import (
+from value_fabric.layer4.models.pause_point import PauseSeverity
+from value_fabric.layer4.services.notification import (
     NotificationChannel,
     NotificationEvent,
     NotificationPreference,

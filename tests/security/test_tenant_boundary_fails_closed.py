@@ -60,7 +60,7 @@ for name, mod in _existing_shared_modules.items():
 @pytest.fixture(autouse=True)
 def reset_context():
     """Reset context before each test."""
-    from shared.identity.context import _current_context
+    from value_fabric.shared.identity.context import _current_context
     _current_context.set(None)
     yield
 
@@ -112,7 +112,7 @@ class TestTenantBoundaryWithContext:
             assert result == ctx
             assert result.tenant_id == ctx.tenant_id
         finally:
-            from shared.identity.context import _current_context
+            from value_fabric.shared.identity.context import _current_context
             _current_context.reset(token)
 
     def test_require_tenant_id_returns_uuid_when_context_set(self):
@@ -132,7 +132,7 @@ class TestTenantBoundaryWithContext:
             assert tenant_id == ctx.tenant_id
             assert isinstance(tenant_id, UUID)
         finally:
-            from shared.identity.context import _current_context
+            from value_fabric.shared.identity.context import _current_context
             _current_context.reset(token)
 
 
@@ -208,7 +208,7 @@ class TestToolBoundaryIntegration:
             result = mock_query_graph_tool_execution()
             assert result["tenant_id"] == TENANT_A_UUID
         finally:
-            from shared.identity.context import _current_context
+            from value_fabric.shared.identity.context import _current_context
             _current_context.reset(token)
 
 

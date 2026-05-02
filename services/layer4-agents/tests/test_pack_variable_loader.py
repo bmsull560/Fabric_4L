@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.services.pack_variable_loader import (
+from value_fabric.layer4.services.pack_variable_loader import (
     PackLoadResult,
     PackVariableLoader,
     _PACK_VERSION_PATTERN,

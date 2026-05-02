@@ -8,6 +8,9 @@ Measures:
 """
 
 import pytest
+
+pytest.importorskip("trafilatura")
+
 import statistics
 import time
 import asyncio

@@ -37,10 +37,14 @@ def redis_container():
     """Provide Redis container for integration tests (requires Docker)."""
     try:
         from testcontainers.redis import RedisContainer
+    except ImportError:
+        pytest.skip("testcontainers not installed")
+
+    try:
         with RedisContainer("redis:7-alpine") as redis:
             yield redis.get_connection_url()
     except Exception as e:
-        pytest.skip(f"Redis container not available: {e}")
+        pytest.fail(f"Redis container failed to start: {e}")
 
 
 # ── Workflow Test Fixtures ─────────────────────────────────────────────────

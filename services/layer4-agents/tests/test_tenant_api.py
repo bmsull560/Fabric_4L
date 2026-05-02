@@ -9,6 +9,10 @@ Verifies:
 """
 
 import pytest
+
+# Skip test if email-validator is not available
+pytest.importorskip("email_validator", reason="email-validator not installed - run `pip install 'pydantic[email]'`")
+
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -16,8 +20,8 @@ from uuid import uuid4
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from src.api.tenants import router
-from src.services.tenant_provisioning import TenantProvisionResult
+from value_fabric.layer4.api.tenants import router
+from value_fabric.layer4.services.tenant_provisioning import TenantProvisionResult
 from value_fabric.shared.identity.context import RequestContext
 
 

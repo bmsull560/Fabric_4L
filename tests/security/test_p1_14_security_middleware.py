@@ -18,7 +18,7 @@ class TestSecurityMiddlewareCoverage:
     def test_layer1_no_ingest_in_skip_list(self):
         """L1: /v1/ingest paths must NOT be in skip_validation_paths."""
         try:
-            from api.main import _security_config_l1
+            from value_fabric.layer1.api.main import _security_config_l1
         except ImportError as e:
             pytest.skip(f"Cannot import L1 main.py due to path conflict: {e}")
 
@@ -36,7 +36,7 @@ class TestSecurityMiddlewareCoverage:
     def test_layer2_no_extract_in_skip_list(self):
         """L2: /v1/extract paths must NOT be in skip_validation_paths."""
         try:
-            from layer2_extraction.api.main import _security_config_l2
+            from value_fabric.layer2.api.main import _security_config_l2
         except ImportError as e:
             pytest.skip(f"Cannot import L2 main.py due to path conflict: {e}")
 
@@ -54,7 +54,7 @@ class TestSecurityMiddlewareCoverage:
     def test_layer3_no_query_in_skip_list(self):
         """L3: /v1/query paths must NOT be in skip_validation_paths."""
         try:
-            from api.main import _security_config_l3
+            from value_fabric.layer3.api.main import _security_config_l3
         except ImportError as e:
             pytest.skip(f"Cannot import L3 main.py due to path conflict: {e}")
 
@@ -72,7 +72,7 @@ class TestSecurityMiddlewareCoverage:
     def test_layer4_no_agent_in_skip_list(self):
         """L4: /agents/v1 paths must NOT be in skip_validation_paths."""
         try:
-            from api.main import _security_config_l4
+            from value_fabric.layer4.api.main import _security_config_l4
         except ImportError as e:
             pytest.skip(f"Cannot import L4 main.py due to path conflict: {e}")
 
@@ -91,10 +91,10 @@ class TestSecurityMiddlewareCoverage:
         """All layers must have strict_mode=True."""
         configs = []
         for layer_name, import_path in [
-            ("L1", "api.main"),
-            ("L2", "layer2_extraction.api.main"),
-            ("L3", "api.main"),
-            ("L4", "api.main"),
+            ("L1", "value_fabric.layer1.api.main"),
+            ("L2", "value_fabric.layer2.api.main"),
+            ("L3", "value_fabric.layer3.api.main"),
+            ("L4", "value_fabric.layer4.api.main"),
         ]:
             try:
                 mod = __import__(import_path, fromlist=["_security_config"])

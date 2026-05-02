@@ -10,9 +10,9 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
-from src.api.dependencies import AppState
-from src.api.main import app
-from src.config import Settings, get_settings
+from value_fabric.layer3.api.dependencies import AppState
+from value_fabric.layer3.api.main import app
+from value_fabric.layer3.config import Settings, get_settings
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
