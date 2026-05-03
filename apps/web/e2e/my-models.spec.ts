@@ -147,22 +147,16 @@ test.describe("My Models E2E", () => {
   });
 
   test("full CRUD flow - create model @backend", async ({ page }) => {
-    // Requires a live backend. Run with PLAYWRIGHT_BACKEND_URL set.
-    // In CI without a backend this test must not silently pass — it must be
-    // explicitly skipped via SKIP_BACKEND_TESTS=true, or it will fail.
+    // Requires a live backend and deterministic E2E seed data. The
+    // backend-integrated project must fail closed when PLAYWRIGHT_BACKEND_URL is
+    // absent; critical CRUD coverage must never become a skipped placeholder.
     const backendUrl = process.env.PLAYWRIGHT_BACKEND_URL;
-    const skipBackend = process.env.SKIP_BACKEND_TESTS === 'true';
 
     if (!backendUrl) {
-      if (process.env.CI === 'true' && !skipBackend) {
-        throw new Error(
-          'PLAYWRIGHT_BACKEND_URL is not set in CI. ' +
-          'Either provide a backend URL or set SKIP_BACKEND_TESTS=true to ' +
-          'explicitly acknowledge this journey is not covered in this run.'
-        );
-      }
-      test.skip(true, 'Backend not configured — set PLAYWRIGHT_BACKEND_URL to run this test');
-      return;
+      throw new Error(
+        'PLAYWRIGHT_BACKEND_URL is required for the @backend My Models CRUD journey. ' +
+        'Start docker-compose.e2e.yml or point PLAYWRIGHT_BACKEND_URL at a seeded backend.'
+      );
     }
 
     // Open create dialog

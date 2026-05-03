@@ -182,7 +182,7 @@ export class AppShellPage {
    * Check if a navigation link is visible (indicating tier access)
    */
   async isNavigationLinkVisible(linkName: string): Promise<boolean> {
-    const escaped = linkName.replace(/[.*+?^${}()|[\]\]/g, '\\$&');
+    const escaped = linkName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const link = this.page.getByRole('link', { name: new RegExp(escaped, 'i') });
     return link.isVisible();
   }

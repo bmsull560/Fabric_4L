@@ -108,7 +108,7 @@ Page Objects encapsulate page-specific interactions, providing:
 - ✅ Single-spine navigation visibility per tier
 - ✅ Redirect behavior (all restricted → `/home`)
 - ✅ Root redirect to `/home`
-- ✅ Mobile navigation (skipped — not yet implemented)
+- ✅ Mobile navigation rail coverage (implemented and required)
 
 ### Extraction Engine (`extraction-engine.spec.ts`)
 
@@ -332,7 +332,7 @@ test.describe('Feature', () => {
 1. **Backend dependency**: Tests run against real app; backend must be available or mocked
 2. **Data variability**: Table content depends on backend state
 3. **Graph data**: Node visualization depends on L3 API availability
-4. **Mobile navigation**: Not yet implemented in AppShell — tests are skipped
+4. **Mobile navigation**: Persistent mobile rail is implemented and covered; skipped mobile-navigation claims are rejected by the E2E guard
 
 ## Troubleshooting
 
@@ -354,3 +354,8 @@ test.describe('Feature', () => {
 1. Check network conditions (test against local server)
 2. Verify dev server starts before tests
 3. Increase `navigationTimeout` if needed
+
+
+### Critical Journey Guard
+
+Run `pnpm test:e2e:guard` before committing E2E changes. The guard fails if the mobile navigation or backend My Models CRUD journeys are converted back to `test.skip`, `test.fixme`, or a backend skip-valve pattern. Backend-integrated runs also seed deterministic E2E data automatically when `PLAYWRIGHT_BACKEND_URL` is set.

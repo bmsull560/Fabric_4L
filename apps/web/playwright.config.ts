@@ -19,7 +19,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Environment variables:
  *   PLAYWRIGHT_BASE_URL      — Frontend dev server URL (default: http://localhost:3001)
  *   PLAYWRIGHT_BACKEND_URL   — Backend API base URL; required for @backend tests
- *   SKIP_BACKEND_TESTS       — Set to 'true' to skip @backend tests without failing CI
+ *   E2E_SEED_DATA            — Set to 'false' only when an external backend is already seeded
  */
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
@@ -89,9 +89,8 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     // ── Layer 3: Backend-integrated Tests (require PLAYWRIGHT_BACKEND_URL) ─
-    // Only runs tests tagged @backend. Skipped when PLAYWRIGHT_BACKEND_URL
-    // is not set (unless CI=true and SKIP_BACKEND_TESTS!=true, which causes
-    // the individual tests to throw).
+    // Only runs tests tagged @backend. Critical backend journeys fail closed
+    // when PLAYWRIGHT_BACKEND_URL is absent; they are never silently skipped.
     {
       name: 'backend-integrated',
       testDir: "./e2e",
@@ -131,6 +130,9 @@ export default defineConfig({
       use: { ...devices['iPhone 12'] },
     },
   ],
+
+  /* Seed deterministic backend data before backend-integrated tests when configured */
+  globalSetup: './e2e/global-setup.ts',
 
   /* Run local dev server before starting tests */
   webServer: {
