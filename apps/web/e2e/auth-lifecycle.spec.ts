@@ -27,7 +27,7 @@ test.describe('Authentication Lifecycle', () => {
 
     test('should display SSO provider buttons', async ({ page }) => {
       await expect(page.getByTestId('sso-google')).toBeVisible();
-      await expect(page.getByTestId('sso-microsoft')).toBeVisible();
+      await expect(page.getByTestId('sso-apple')).toBeVisible();
     });
 
     test('should validate empty email submission', async ({ page }) => {
