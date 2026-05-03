@@ -5,15 +5,15 @@ and provides quarantine functionality for compliance.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
 import structlog
 
 try:
-    from presidio_analyzer import AnalyzerEngine
-    from presidio_anonymizer import AnonymizerEngine
+    from presidio_analyzer import AnalyzerEngine, RecognizerResult
+    from presidio_anonymizer import AnonymizerEngine, OperatorConfig
 
     PRESIDIO_AVAILABLE = True
 except ImportError:
@@ -102,7 +102,7 @@ class PIIScanResult:
     entities: list[PIIEntity] = field(default_factory=list)
     has_pii: bool = False
     highest_score: float = 0.0
-    scan_timestamp: datetime = field(default_factory=datetime.utcnow)
+    scan_timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     engine_version: str = "presidio"
 
     def to_dict(self) -> dict[str, Any]:
@@ -230,7 +230,7 @@ class PIIScanner:
         except Exception as e:
             self.logger.error("PII scan failed", error=str(e))
             return PIIScanResult(
-                text_hash=self._hash_text(text), has_pii=False, scan_timestamp=datetime.utcnow()
+                text_hash=self._hash_text(text), has_pii=False, scan_timestamp=datetime.now(UTC)
             )
 
     def classify_content(self, scan_result: PIIScanResult) -> str:
@@ -277,28 +277,26 @@ class PIIScanner:
             return text
 
         try:
-            # Build anonymizer operators
+            # Build anonymizer operators using OperatorConfig
             operators = {}
             for entity in scan_result.entities:
-                # Use entity type as the anonymized value
-                operators[entity.entity_type] = self._anonymizer.operators.REPLACE
+                operators[entity.entity_type] = OperatorConfig("replace")
+
+            # Build analyzer_results using RecognizerResult
+            analyzer_results = [
+                RecognizerResult(
+                    entity_type=e.entity_type,
+                    start=e.start,
+                    end=e.end,
+                    score=e.score,
+                )
+                for e in scan_result.entities
+            ]
 
             # Anonymize
             anonymized = self._anonymizer.anonymize(
                 text=text,
-                analyzer_results=[
-                    type(
-                        "Result",
-                        (),
-                        {
-                            "entity_type": e.entity_type,
-                            "start": e.start,
-                            "end": e.end,
-                            "score": e.score,
-                        },
-                    )()
-                    for e in scan_result.entities
-                ],
+                analyzer_results=analyzer_results,
                 operators=operators,
             )
 
@@ -312,7 +310,7 @@ class PIIScanner:
         """Create a simple hash of text for identification."""
         import hashlib
 
-        return hashlib.md5(text.encode()).hexdigest()[:16]
+        return hashlib.sha256(text.encode()).hexdigest()[:16]
 
     def get_summary_stats(self, scan_results: list[PIIScanResult]) -> dict[str, Any]:
         """Get summary statistics from multiple scan results.

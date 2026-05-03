@@ -6,7 +6,7 @@ ComplianceLog, ProxyPool, JobStageDetail, JobError entities.
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum as PyEnum
 
 from sqlalchemy import (
@@ -289,9 +289,9 @@ class ScrapingTarget(Base):
 
     # Metadata
     status = Column(String(50), nullable=False, default=TargetStatus.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=datetime.utcnow, nullable=False
     )
     created_by = Column(UUID(as_uuid=True), nullable=False)
     last_success_at = Column(DateTime(timezone=True), nullable=True)
@@ -363,7 +363,7 @@ class ScrapingJob(Base):
     resources_compute_time_ms = Column(Integer, default=0)
 
     # Audit
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     created_by = Column(UUID(as_uuid=True), nullable=False)
     triggered_by = Column(String(50), default=TriggeredBy.MANUAL.value)
     correlation_id = Column(String(100), nullable=True)  # Distributed tracing
@@ -411,7 +411,7 @@ class JobStageDetail(Base):
     error_message = Column(Text, nullable=True)
     meta = Column(JSONB, default=dict)  # Stage-specific details
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     # Relationships
     job = relationship("ScrapingJob", back_populates="stages")
@@ -445,7 +445,7 @@ class JobError(Base):
     retryable = Column(Boolean, default=True)
     retry_count = Column(Integer, default=0)
 
-    occurred_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolution = Column(Text, nullable=True)
 
@@ -484,7 +484,7 @@ class RawContent(Base):
     source_final_url = Column(Text, nullable=True)  # After redirects
     source_domain = Column(String(255), nullable=False, index=True)
     source_ip_address = Column(String(45), nullable=True)  # IPv6 compatible
-    source_accessed_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    source_accessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     source_http_status = Column(Integer, nullable=True)
     source_headers = Column(JSONB, default=dict)
     source_content_type = Column(String(255), nullable=True)
@@ -534,7 +534,7 @@ class RawContent(Base):
     retention_raw_content_expiry_days = Column(Integer, default=30)
     retention_screenshot_expiry_days = Column(Integer, default=30)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     # Relationships
     job = relationship("ScrapingJob", back_populates="raw_contents")
@@ -595,7 +595,7 @@ class ExtractedData(Base):
     # Provenance
     provenance_source_url = Column(Text, nullable=False)
     provenance_extracted_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
     provenance_extraction_version = Column(String(50), nullable=True)
 
@@ -616,9 +616,9 @@ class ExtractedData(Base):
     format = Column(String(20), default="JSON")  # JSON, JSONL, PARQUET, MARKDOWN
     size_bytes = Column(Integer, default=0)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=datetime.utcnow, nullable=False
     )
 
     # Relationships
@@ -695,7 +695,7 @@ class ComplianceLog(Base):
 
     # Request Details
     request_url = Column(Text, nullable=False)
-    request_timestamp = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    request_timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     request_ip_address = Column(String(45), nullable=True)
     request_proxy_used = Column(String(500), nullable=True)
     request_user_agent = Column(String(500), nullable=True)
@@ -707,7 +707,7 @@ class ComplianceLog(Base):
     response_reason = Column(Text, nullable=True)
 
     # Metadata
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     meta = Column(JSONB, default=dict)
 
     # Relationships
@@ -755,9 +755,9 @@ class ProxyPool(Base):
     rotation_quarantine_duration_minutes = Column(Integer, default=60)
     rotation_health_check_interval_minutes = Column(Integer, default=5)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=datetime.utcnow, nullable=False
     )
 
     __table_args__ = (
@@ -781,7 +781,7 @@ class RobotsTxtCache(Base):
     url = Column(Text, nullable=True)
     rules = Column(JSONB, default=dict)
 
-    fetched_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     http_status = Column(Integer, nullable=True)
 
@@ -826,7 +826,7 @@ class CrawlQueueItem(Base):
     next_retry_at = Column(DateTime(timezone=True), nullable=True)
     last_error = Column(Text, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 

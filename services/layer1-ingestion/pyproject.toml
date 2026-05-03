@@ -47,6 +47,9 @@ dependencies = [
     "defusedxml>=0.7.1",  # P1-20: XXE protection for XML parsing
     "croniter>=2.0.0",   # Strict cron expression parsing and validation
     "jsonschema>=4.23.0",  # JSON Schema validation for extracted data payloads
+    "selectolax>=0.3.0",  # Fast HTML parsing for HTTPX crawler
+    "presidio-analyzer>=2.2.0",  # PII detection
+    "presidio-anonymizer>=2.2.0",  # PII anonymization
     # Downgraded from >=2.0.0 to >=1.0.0 for compatibility with existing auth flow
     # v2 introduced breaking changes in client initialization
     "infisicalsdk>=1.0.0",
@@ -66,8 +69,6 @@ dev = [
     "httpx>=0.25.0",
     # Mandatory test deps — tests fail (not skip) when these are absent
     "respx>=0.21.0",       # HTTP mocking for httpx crawler tests
-    "testcontainers>=4.8.0",
-    "factory-boy>=3.3.0",
     "faker>=20.0.0",
 ]
 

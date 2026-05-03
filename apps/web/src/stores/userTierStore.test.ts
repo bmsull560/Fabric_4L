@@ -89,16 +89,24 @@ describe("useUserTierStore", () => {
       expect(result.current.permissions.canManageUsers).toBe(expectManageUsers);
     });
 
-    it("downgrading from admin to standard removes elevated permissions", () => {
+    it("sets elevated permissions when tier is upgraded to admin", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      act(() => result.current.setTier("admin"));
+
+      expect(result.current.permissions.canManageUsers).toBe(true);
+      expect(result.current.permissions.canAccessAdvanced).toBe(true);
+    });
+
+    it("removes elevated permissions when tier is downgraded from admin to standard", () => {
       const { result } = renderHook(() => useUserTierStore());
 
       // Start as admin with full permissions
       act(() => result.current.setTier("admin"));
-      expect(result.current.permissions.canManageUsers).toBe(true);
-      expect(result.current.permissions.canAccessAdvanced).toBe(true);
 
       // Downgrade to standard
       act(() => result.current.setTier("standard"));
+
       expect(result.current.permissions.canManageUsers).toBe(false);
       expect(result.current.permissions.canAccessAdvanced).toBe(false);
     });

@@ -156,10 +156,11 @@ def process_scraping_job(self, job_id: str):
     logger.info("Starting scraping job pipeline", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             # Start job
             job.status = JobStatus.VALIDATING.value
@@ -168,7 +169,7 @@ def process_scraping_job(self, job_id: str):
 
         # Execute pipeline chain
         pipeline_chain = chain(
-            compliance_check_stage.s(job_id),
+            compliance_check_stage.s(str(job_id)),
             browser_launch_stage.s(),
             navigation_stage.s(),
             content_capture_stage.s(),
@@ -195,15 +196,17 @@ def process_scraping_job(self, job_id: str):
 
 
 @celery_app.task(bind=True, max_retries=3)
-def compliance_check_stage(self, job_id: UUID):
+def compliance_check_stage(self, job_id: str):
     """Stage 1: Compliance Check (robots.txt, rate limits, domain policies)."""
+    job_id = UUID(job_id)
     logger.info("Starting compliance check stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             # Update stage status
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "RUNNING")
@@ -218,10 +221,12 @@ def compliance_check_stage(self, job_id: UUID):
 
             # Check robots.txt
             if compliance_config.get("respect_robots_txt", True):
-                checker = RobotsChecker(session)
+                user_agent = compliance_config.get("user_agent_string", "ValueFabricBot")
+                checker = RobotsChecker(user_agent=user_agent)
                 domain = url.split("/")[2] if "/" in url else url
 
-                result = asyncio.run(checker.check_url(domain, url))
+                allowed, reason, rules = asyncio.run(checker.check_url(domain, url))
+                crawl_delay = rules.get("crawl_delay") if rules else None
 
                 # Log compliance check
                 log = ComplianceLog(
@@ -229,28 +234,28 @@ def compliance_check_stage(self, job_id: UUID):
                     job_id=job_id,
                     target_id=job.target_id,
                     event_type=ComplianceEventType.ROBOTS_TXT_CHECK.value,
-                    severity="INFO" if result.allowed else "WARNING",
+                    severity="INFO" if allowed else "WARNING",
                     robots_txt_check={
                         "url": url,
                         "robots_txt_url": f"https://{domain}/robots.txt",
-                        "user_agent": compliance_config.get("user_agent_string", "ValueFabricBot"),
-                        "allowed": result.allowed,
-                        "crawl_delay": result.crawl_delay,
+                        "user_agent": user_agent,
+                        "allowed": allowed,
+                        "crawl_delay": crawl_delay,
                     },
                     request_url=url,
-                    request_user_agent=compliance_config.get("user_agent_string", "ValueFabricBot"),
+                    request_user_agent=user_agent,
                 )
                 session.add(log)
 
-                if not result.allowed:
+                if not allowed:
                     _fail_job(job_id, "URL blocked by robots.txt", PipelineStage.COMPLIANCE_CHECK)
                     return compliance_check_stageResult.model_validate({"success": False, "error": "robots.txt blocked", "job_id": str(job_id)})
 
                 # Apply crawl delay
-                if result.crawl_delay:
+                if crawl_delay:
                     import time
 
-                    time.sleep(result.crawl_delay)
+                    time.sleep(crawl_delay)
 
             # Complete stage
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "COMPLETED")
@@ -262,7 +267,7 @@ def compliance_check_stage(self, job_id: UUID):
     except Exception as exc:
         logger.error("Compliance check failed", job_id=str(job_id), error=str(exc))
         try:
-            with get_db_session() as error_session:
+            with get_db_session(require_tenant=False) as error_session:
                 _update_stage(
                     error_session, job_id, PipelineStage.COMPLIANCE_CHECK, "FAILED", str(exc)
                 )
@@ -279,10 +284,11 @@ def browser_launch_stage(self, prev_result: dict):
     logger.info("Starting browser launch stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.BROWSER_LAUNCH, "RUNNING")
             job.status = JobStatus.BROWSER_ACQUIRING.value
@@ -301,7 +307,8 @@ def browser_launch_stage(self, prev_result: dict):
 
     except Exception as exc:
         logger.error("Browser launch failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.BROWSER_LAUNCH, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.BROWSER_LAUNCH, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=10)
 
 
@@ -313,10 +320,11 @@ def navigation_stage(self, prev_result: dict):
     logger.info("Starting navigation stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.NAVIGATION, "RUNNING")
             job.status = JobStatus.NAVIGATING.value
@@ -361,7 +369,8 @@ def navigation_stage(self, prev_result: dict):
 
     except Exception as exc:
         logger.error("Navigation failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.NAVIGATION, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.NAVIGATION, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=30)
 
 
@@ -373,10 +382,11 @@ def content_capture_stage(self, prev_result: dict):
     logger.info("Starting content capture stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.CONTENT_CAPTURE, "RUNNING")
             job.status = JobStatus.EXTRACTING.value
@@ -467,7 +477,8 @@ def content_capture_stage(self, prev_result: dict):
 
     except Exception as exc:
         logger.error("Content capture failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.CONTENT_CAPTURE, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.CONTENT_CAPTURE, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=30)
 
 
@@ -479,10 +490,11 @@ def ai_extraction_stage(self, prev_result: dict):
     logger.info("Starting AI extraction stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             config = job.configuration
             extraction_config = config.get("extraction_config", {})
@@ -587,7 +599,8 @@ def ai_extraction_stage(self, prev_result: dict):
 
     except Exception as exc:
         logger.error("AI extraction failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.AI_EXTRACTION, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.AI_EXTRACTION, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=30)
 
 
@@ -599,10 +612,11 @@ def post_processing_stage(self, prev_result: dict):
     logger.info("Starting post-processing stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.POST_PROCESSING, "RUNNING")
             job.status = JobStatus.TRANSFORMING.value
@@ -652,7 +666,8 @@ def post_processing_stage(self, prev_result: dict):
 
     except Exception as exc:
         logger.error("Post-processing failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.POST_PROCESSING, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.POST_PROCESSING, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=10)
 
 
@@ -707,10 +722,11 @@ def validation_stage(self, prev_result: dict):
     logger.info("Starting validation stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.VALIDATION, "RUNNING")
             job.progress_stage = PipelineStage.VALIDATION.value
@@ -776,7 +792,8 @@ def validation_stage(self, prev_result: dict):
 
     except Exception as exc:
         logger.error("Validation failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.VALIDATION, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.VALIDATION, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=10)
 
 
@@ -788,10 +805,11 @@ def storage_stage(self, prev_result: dict):
     logger.info("Starting storage stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.STORAGE, "RUNNING")
             job.status = JobStatus.STORING.value
@@ -845,7 +863,8 @@ def storage_stage(self, prev_result: dict):
 
     except Exception as exc:
         logger.error("Storage failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.STORAGE, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.STORAGE, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=10)
 
 
@@ -857,10 +876,11 @@ def notification_stage(prev_result: dict):
     logger.info("Starting notification stage", job_id=str(job_id))
 
     try:
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 return
+            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.NOTIFICATION, "RUNNING")
             job.progress_stage = PipelineStage.NOTIFICATION.value
@@ -894,7 +914,8 @@ def notification_stage(prev_result: dict):
 
     except Exception as exc:
         logger.error("Notification stage failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.NOTIFICATION, "FAILED", str(exc))
+        with get_db_session(require_tenant=False) as error_session:
+            _update_stage(error_session, job_id, PipelineStage.NOTIFICATION, "FAILED", str(exc))
         return notification_stageResult.model_validate({"success": False, "job_id": str(job_id), "error": str(exc)})
 
 
@@ -929,7 +950,7 @@ def _update_stage(
 
 def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
     """Mark job as failed."""
-    with get_db_session() as session:
+    with get_db_session(require_tenant=False) as session:
         job = session.query(ScrapingJob).get(job_id)
         if job:
             job.status = JobStatus.FAILED.value
@@ -1027,11 +1048,10 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
 
     try:
         # Get target configuration from job
-        with get_db_session() as session:
+        with get_db_session(require_tenant=False) as session:
             job = session.query(ScrapingJob).get(job_id_uuid)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-
             tenant_id = str(job.tenant_id) if job.tenant_id else None
             target = session.query(ScrapingTarget).get(job.target_id)
             target_config = target.configuration if target else {}
@@ -1047,7 +1067,7 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
 
         # 1. ROUTING DECISION
         route_type = RouteType(effective_mode)
-        routing_decision = asyncio.run(router.decide(url, route_type))
+        routing_decision = router.decide(url, route_type)
 
         # Initialize decision record
         decision_record = CrawlDecisionRecord(
@@ -1296,7 +1316,8 @@ def cleanup_old_content(days: int = 30):
 
     logger.info("Starting content cleanup", cutoff_date=cutoff_date.isoformat())
 
-    with get_db_session() as session:
+    # System-level operation - use require_tenant=False for admin bypass
+    with get_db_session(require_tenant=False) as session:
         old_content = (
             session.query(RawContent)
             .filter(RawContent.created_at < cutoff_date, RawContent.processing_status != "DELETED")

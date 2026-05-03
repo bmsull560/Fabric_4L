@@ -1069,6 +1069,7 @@ async def create_target(
         target.authentication = authentication
 
     db.add(target)
+    db.flush()
     db.refresh(target)
 
     logger.info("Created scraping target", target_id=str(target.id), name=target.name)
@@ -1234,7 +1235,7 @@ async def update_target(
         else:
             target.authentication = None
 
-    target.updated_at = datetime.utcnow()
+    target.updated_at = datetime.now(UTC)
     db.refresh(target)
 
     logger.info("Updated scraping target", target_id=str(target.id))
@@ -1318,11 +1319,11 @@ async def validate_target(
     if request.validate_robots_txt:
         from ..compliance.robots_checker import RobotsChecker
 
-        checker = RobotsChecker(db)
+        checker = RobotsChecker()
         domain = parsed.netloc
-        robots_result = await checker.check_url(domain, test_url)
-        robots_check = {"allowed": robots_result.allowed, "crawl_delay": robots_result.crawl_delay}
-        if not robots_result.allowed:
+        robots_allowed, robots_reason, robots_rules = await checker.check_url(test_url, force_refresh=True)
+        robots_check = {"allowed": robots_allowed, "crawl_delay": robots_rules.get("crawl_delay") if robots_rules else None}
+        if not robots_allowed:
             warnings.append(
                 ValidationWarning(field="robots_txt", message="URL is disallowed by robots.txt")
             )
@@ -1386,6 +1387,7 @@ async def execute_target(
     )
 
     db.add(job)
+    db.flush()
     db.refresh(job)
 
     # Initialize pipeline stages
@@ -1552,7 +1554,7 @@ async def get_domain_fallback_stats(
         if not has_target:
             raise HTTPException(status_code=403, detail="No access to this domain")
 
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     repo = CrawlDecisionRepository(db)
     stats = await repo.get_fallback_stats(domain, since=since)
 
@@ -1786,7 +1788,7 @@ async def cancel_job(
         raise HTTPException(status_code=409, detail=f"Job already in terminal state: {job.status}")
 
     job.status = JobStatus.CANCELLED.value
-    job.completed_at = datetime.utcnow()
+    job.completed_at = datetime.now(UTC)
 
     logger.info("Cancelled scraping job", job_id=str(job_id))
 
@@ -1818,7 +1820,7 @@ async def get_job_progress(
             current_stage=job.progress_stage,
             percent_complete=job.progress_percent_complete,
         ),
-        last_update=datetime.utcnow(),
+        last_update=datetime.now(UTC),
     )
 
 
@@ -1910,6 +1912,7 @@ async def retry_job(
     )
 
     db.add(new_job)
+    db.flush()
     db.refresh(new_job)
 
     # Initialize stages
@@ -2260,7 +2263,7 @@ async def health_check(db: Session = Depends(get_db_from_context_sync)):
 
         redis_client.ping()
         components["queue"] = ComponentHealth(status="healthy", latency_ms=0)
-    except:
+    except Exception:
         components["queue"] = ComponentHealth(status="degraded", message="Redis not available")
 
     # Active jobs metrics
@@ -2320,7 +2323,7 @@ async def health_check(db: Session = Depends(get_db_from_context_sync)):
     return HealthCheckResponse(
         status=overall_status,
         version=settings.app_version,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         components={k: v.dict() for k, v in components.items()},
         metrics=metrics,
     )
@@ -2377,6 +2380,7 @@ async def create_proxy_pool_endpoint(
     )
 
     db.add(pool)
+    db.flush()
     db.refresh(pool)
 
     return ProxyPoolResponse(

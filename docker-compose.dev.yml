@@ -49,19 +49,13 @@ services:
       - "postgres"
       - "-c"
       - "config_file=/etc/postgresql/postgresql.conf"
-      - "-c"
-      - "shared_preload_libraries=pgaudit"
 
   # PgBouncer connection pool (P1-1: Connection Pooling)
   pgbouncer:
     image: pgbouncer/pgbouncer:latest
     container_name: vf-dev-pgbouncer
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=ingestion
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - DATABASES_HOST=postgres
     volumes:
       - ./k8s/base/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
       - ./k8s/base/userlist.txt:/etc/pgbouncer/userlist.txt:ro
