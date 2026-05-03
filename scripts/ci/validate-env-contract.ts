@@ -16,7 +16,7 @@
  * Exit code 0 = contract satisfied, 1 = violations found.
  */
 
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import { backendEnvSchema } from "../../packages/config/src/env/backend.js";
 import { frontendEnvSchema } from "../../packages/config/src/env/frontend.js";
@@ -27,18 +27,23 @@ const target = (process.argv[2] ?? "all") as Target;
 
 /** Extract variable names from a .env-style file (ignores comments and blanks). */
 function extractKeys(filePath: string): string[] {
-  try {
-    const content = readFileSync(filePath, "utf-8");
-    return content
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("#"))
-      .map((line) => line.split("=")[0])
-      .filter(Boolean);
-  } catch {
-    console.warn(`  ⚠ Could not read ${filePath}`);
-    return [];
+  if (!existsSync(filePath)) {
+    throw new Error(`Contract file does not exist: ${filePath}`);
   }
+
+  const content = readFileSync(filePath, "utf-8");
+  const keys = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .map((line) => line.split("=")[0])
+    .filter(Boolean);
+
+  if (keys.length === 0) {
+    throw new Error(`Contract file declares no environment variables: ${filePath}`);
+  }
+
+  return keys;
 }
 
 function checkContract(label: string, contractFile: string): { missing: string[]; present: string[] } {
@@ -66,7 +71,7 @@ if (target === "backend" || target === "all") {
 
   const contractPath = resolve(
     import.meta.dirname ?? ".",
-    "../../value-fabric/.env.example",
+    "../../.env.example",
   );
   const { missing, present } = checkContract("Backend", contractPath);
 
@@ -97,7 +102,7 @@ if (target === "frontend" || target === "all") {
 
   const contractPath = resolve(
     import.meta.dirname ?? ".",
-    "../../frontend/.env.example",
+    "../../apps/web/.env.example",
   );
   const { missing, present } = checkContract("Frontend", contractPath);
 

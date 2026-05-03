@@ -10,8 +10,8 @@
  * Exit code 0 = valid, 1 = validation errors.
  */
 
-import { backendEnvSchema } from "../packages/config/src/env/backend.js";
-import { frontendEnvSchema } from "../packages/config/src/env/frontend.js";
+import { backendEnvSchema } from "../../packages/config/src/env/backend.js";
+import { frontendEnvSchema } from "../../packages/config/src/env/frontend.js";
 
 type Target = "backend" | "frontend" | "all";
 

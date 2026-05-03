@@ -60,6 +60,8 @@ __pycache__/
 .venv/
 venv/
 env/
+!packages/config/src/env/
+!packages/config/src/env/**
 ENV/
 
 # Python artifacts in all subdirectories (ensures no __pycache__ anywhere)
