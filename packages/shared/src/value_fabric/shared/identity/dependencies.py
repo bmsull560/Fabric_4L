@@ -12,13 +12,28 @@ Import these in route files instead of writing per-endpoint auth logic:
 
 from __future__ import annotations
 
+import logging
+import os
+import sys
+import time
+import types
 from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 
+from value_fabric.shared.audit import emit_audit_event
+from value_fabric.shared.audit.models import AuditAction, AuditOutcome, PrivilegedAccessDetails
+
 from .context import RequestContext
 from .permissions import Permission, Role
+
+logger = logging.getLogger(__name__)
+_shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
+_identity_compat_module = sys.modules.setdefault("shared.identity", types.ModuleType("shared.identity"))
+setattr(_shared_compat_module, "identity", _identity_compat_module)
+setattr(_identity_compat_module, "dependencies", sys.modules[__name__])
+sys.modules.setdefault("shared.identity.dependencies", sys.modules[__name__])
 
 
 # ---------------------------------------------------------------------------
@@ -36,13 +51,18 @@ def get_optional_context(request: Request) -> Optional[RequestContext]:
     return get_current_context(request)
 
 
-def require_authenticated(
+async def require_authenticated(
     ctx: Optional[RequestContext] = Depends(get_current_context),
+    *,
+    context: Optional[RequestContext] = None,
 ) -> RequestContext:
     """Require that the request is authenticated (any identity source).
 
     Raises HTTP 401 if no identity could be resolved.
     """
+    if context is not None:
+        ctx = context
+
     if ctx is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -53,10 +73,23 @@ def require_authenticated(
             },
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    validation_errors = ctx.validate()
+    if validation_errors:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "INVALID_AUTH_CONTEXT",
+                "message": "Request identity context failed validation.",
+                "validation_errors": validation_errors,
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return ctx
 
 
-def require_tenant(
+async def require_tenant(
     ctx: RequestContext = Depends(require_authenticated),
 ) -> UUID:
     """Return the tenant_id from the current context.
@@ -66,8 +99,10 @@ def require_tenant(
     return ctx.tenant_id
 
 
-def require_tenant_context(
+async def require_tenant_context(
     ctx: Optional[RequestContext] = Depends(get_current_context),
+    *,
+    context: Optional[RequestContext] = None,
 ) -> RequestContext:
     """Require that tenant context is present in the request.
 
@@ -76,10 +111,24 @@ def require_tenant_context(
     This is different from require_tenant which returns the tenant_id UUID.
     This function returns the full RequestContext after validating tenant_id is present.
     """
+    if context is not None:
+        ctx = context
+
     if ctx is None or not ctx.tenant_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Tenant context required. Ensure request has passed through GovernanceMiddleware.",
+        )
+    validation_errors = ctx.validate()
+    if validation_errors:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "INVALID_AUTH_CONTEXT",
+                "message": "Request identity context failed validation.",
+                "validation_errors": validation_errors,
+            },
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return ctx
 
@@ -103,7 +152,11 @@ def require_role(*allowed_roles: Role):
 
     async def _dependency(
         ctx: RequestContext = Depends(require_authenticated),
+        *,
+        context: Optional[RequestContext] = None,
     ) -> RequestContext:
+        if context is not None:
+            ctx = await require_authenticated(context=context)
         if not ctx.has_any_role(*allowed_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -141,7 +194,11 @@ def require_permission(permission: Permission):
 
     async def _dependency(
         ctx: RequestContext = Depends(require_authenticated),
+        *,
+        context: Optional[RequestContext] = None,
     ) -> RequestContext:
+        if context is not None:
+            ctx = await require_authenticated(context=context)
         if not ctx.has_permission(permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -162,7 +219,11 @@ def require_any_permission(*permissions: Permission):
 
     async def _dependency(
         ctx: RequestContext = Depends(require_authenticated),
+        *,
+        context: Optional[RequestContext] = None,
     ) -> RequestContext:
+        if context is not None:
+            ctx = await require_authenticated(context=context)
         if not ctx.has_any_permission(*permissions):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -186,7 +247,11 @@ def require_all_permissions(*permissions: Permission):
 
     async def _dependency(
         ctx: RequestContext = Depends(require_authenticated),
+        *,
+        context: Optional[RequestContext] = None,
     ) -> RequestContext:
+        if context is not None:
+            ctx = await require_authenticated(context=context)
         missing = [p.value for p in permissions if not ctx.has_permission(p)]
         if missing:
             raise HTTPException(
@@ -216,7 +281,37 @@ require_content_admin = require_role(
 require_analyst = require_role(
     Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN, Role.ANALYST
 )
-require_admin = require_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN)
+async def require_admin(
+    ctx: RequestContext = Depends(require_authenticated),
+    *,
+    context: Optional[RequestContext] = None,
+) -> RequestContext:
+    """Require an administrative role or explicit administrative permission."""
+    if context is not None:
+        ctx = await require_authenticated(context=context)
+    permission_values = {
+        value.value if isinstance(value, Permission) else str(value)
+        for value in ctx.permissions
+    }
+    has_admin_permission = "admin" in permission_values or any(
+        permission == "all" or permission.startswith("admin:")
+        for permission in permission_values
+    )
+    if not (ctx.has_any_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN) or has_admin_permission):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "INSUFFICIENT_ROLE",
+                "message": "Administrative role or permission is required.",
+                "required_roles": [
+                    Role.SUPER_ADMIN.value,
+                    Role.TENANT_ADMIN.value,
+                    Role.CONTENT_ADMIN.value,
+                ],
+                "current_roles": ctx.roles,
+            },
+        )
+    return ctx
 
 require_read_search = require_permission(Permission.READ_SEARCH)
 require_read_graphrag = require_permission(Permission.READ_GRAPHRAG)
@@ -258,6 +353,23 @@ def require_privileged_access(
         request: Request,
         context: RequestContext = Depends(get_current_context),
     ) -> RequestContext:
+        if context is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Privileged access requires authentication",
+            )
+
+        validation_errors = context.validate()
+        if validation_errors:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "error": "INVALID_AUTH_CONTEXT",
+                    "message": "Privileged access requires a validated identity context.",
+                    "validation_errors": validation_errors,
+                },
+            )
+
         # First check if user has super admin role
         if not context.is_super_admin():
             raise HTTPException(
@@ -274,9 +386,12 @@ def require_privileged_access(
                     detail=f"Privileged access requires {privilege_reason_header} header with audit reason",
                 )
             
-            # Task 2: Initialize privileged session tracking
+            # Task 2: Initialize privileged session tracking.
+            # RequestContext is frozen to protect tenant/auth context propagation;
+            # use the dataclass escape hatch only for this local session-timing
+            # compatibility field rather than weakening global immutability.
             if context.privileged_session_start is None:
-                context.privileged_session_start = time.time()
+                object.__setattr__(context, "privileged_session_start", time.time())
             
             # Log the privileged access attempt
             logger.warning(
@@ -332,14 +447,14 @@ def validate_jwt_config() -> None:
     jwt_issuer = os.getenv("JWT_ISSUER", "")
     jwt_audience = os.getenv("JWT_AUDIENCE", "")
     
-    if environment == "production":
+    if environment in {"production", "staging"}:
         if not jwt_secret:
             raise ValueError(
                 "JWT_SECRET is required in production. "
                 "Tokens cannot be verified without a secret."
             )
         
-        if len(jwt_secret) < 32:
+        if len(jwt_secret.encode("utf-8")) < 32:
             raise ValueError(
                 "JWT_SECRET must be at least 32 characters in production. "
                 "Weak secrets are vulnerable to brute force attacks."

@@ -5,7 +5,7 @@
         test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
-        gate-security gate-state gate-arch gate-config gate-all \
+        gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
         platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency
 
 # Strict shell settings for production safety
@@ -377,7 +377,12 @@ setup-hooks: ## Configure git to use .githooks/ (run once after clone)
 
 GATE_PYTEST := $(PYTEST) --tb=short -q -n 0
 
-gate-security: ## Gate: tenant isolation, RLS, auth enforcement, export access
+gate-mandatory-security-regression: ## Gate: mandatory security regression suite for launch readiness
+	@echo "→ Gate: Mandatory Security Regression"
+	bash scripts/ci/mandatory_security_regression_gate.sh
+	@echo "✅  gate-mandatory-security-regression passed"
+
+gate-security: gate-mandatory-security-regression ## Gate: tenant isolation, RLS, auth enforcement, export access
 	@echo "→ Gate: Security & Tenant Isolation"
 	$(GATE_PYTEST) tests/security/
 	@echo "✅  gate-security passed"

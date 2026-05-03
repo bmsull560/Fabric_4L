@@ -14,6 +14,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from value_fabric.shared.identity import RequestContext, require_authenticated
+
 from ...logging_config import get_logger
 from ..dependencies import (
     AppState,
@@ -30,7 +32,7 @@ from ..models import (
     ValueTreeTraversal,
 )
 
-router = APIRouter(prefix="/v1", tags=["Entities"])
+router = APIRouter(prefix="/v1", tags=["Entities"], dependencies=[Depends(require_authenticated)])
 logger = get_logger(__name__)
 
 
@@ -43,6 +45,7 @@ async def list_entities(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     sort_by: str = Query("confidence", description="Sort field: confidence, name, created_at"),
     sort_order: str = Query("desc", description="Sort order: asc, desc"),
+    _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
 ) -> EntityListResponse:
     """List entities with optional filtering and pagination.
@@ -135,6 +138,7 @@ async def get_entity_detail(
     entity_id: str,
     include_provenance: bool = Query(True, description="Include provenance chain"),
     include_relationships: bool = Query(True, description="Include related entities"),
+    _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
     app_state: AppState = Depends(get_app_state),
 ) -> EntityDetail:
@@ -224,6 +228,7 @@ async def get_entity_detail(
 @router.post("/entities/query", response_model=EntityListResponse)
 async def query_entities(
     request: EntityFilterRequest,
+    _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
 ) -> EntityListResponse:
     """Query entities using Cypher-like filter conditions.
@@ -295,6 +300,7 @@ async def query_entities(
 @router.post("/entity/traverse", response_model=ValueTreeResponse)
 async def traverse_value_tree(
     request: ValueTreeTraversal,
+    _ctx: RequestContext = Depends(require_authenticated),
     graph_rag=Depends(get_graph_rag),
 ) -> ValueTreeResponse:
     """Traverse the value tree starting from a root entity.

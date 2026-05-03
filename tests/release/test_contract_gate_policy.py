@@ -71,6 +71,7 @@ class TestContractGatePolicy:
         content = makefile.read_text(encoding="utf-8")
 
         required_targets = [
+            "gate-mandatory-security-regression",
             "gate-security",
             "gate-arch",
             "gate-state",
@@ -81,3 +82,53 @@ class TestContractGatePolicy:
 
         if missing:
             pytest.fail(f"Required Makefile targets missing: {missing}")
+
+    def test_mandatory_security_regression_gate_is_non_optional(self):
+        """Sprint 2 mandatory security checks must be wired into gate-security.
+
+        The production-readiness workflow invokes ``make gate-security`` for the
+        security-isolation job. Making this aggregate gate a dependency of
+        ``gate-security`` keeps the CI contract intact while ensuring auth,
+        tenant-boundary, contract-drift, critical E2E guard, and workload
+        hardening regressions cannot be skipped.
+        """
+        makefile = Path("Makefile")
+        script = Path("scripts/ci/mandatory_security_regression_gate.sh")
+
+        assert script.exists(), "mandatory security regression script is missing"
+        assert script.stat().st_size > 0, "mandatory security regression script is empty"
+
+        content = makefile.read_text(encoding="utf-8")
+        assert "gate-security: gate-mandatory-security-regression" in content, (
+            "gate-security must depend on gate-mandatory-security-regression so "
+            "the existing production-readiness workflow cannot bypass it"
+        )
+        assert "bash scripts/ci/mandatory_security_regression_gate.sh" in content, (
+            "Makefile target must invoke the canonical mandatory security regression script"
+        )
+
+    def test_mandatory_security_regression_gate_covers_launch_blocker_surfaces(self):
+        """Mandatory gate must cover the Sprint 2 launch-blocker surfaces."""
+        script = Path("scripts/ci/mandatory_security_regression_gate.sh")
+        if not script.exists():
+            pytest.fail("mandatory security regression script is missing")
+
+        content = script.read_text(encoding="utf-8")
+        required_snippets = {
+            "standalone_api_production_safety": "services/api",
+            "i03_persistence_and_provider_boundary": "test_i03_durable_persistence_and_llm.py",
+            "tenant_boundary_security": "test_tenant_boundary_fails_closed.py",
+            "cross_tenant_api_security": "test_cross_tenant_api.py",
+            "shared_tenant_context_contract": "test_tenant_context_contract.py",
+            "shared_import_boundary": "test_shared_import_boundary.py",
+            "openapi_contract_drift": "contract-drift",
+            "frontend_contract_placeholder_guard": "assert-no-placeholder-contract-tests.mjs",
+            "critical_e2e_skip_guard": "assert-no-skipped-critical-e2e.mjs",
+            "kubernetes_hardening": "tests/k8s/test_security_policies.py",
+        }
+
+        missing = [name for name, snippet in required_snippets.items() if snippet not in content]
+        assert not missing, (
+            "mandatory security regression gate is missing required launch-blocker surfaces: "
+            f"{missing}"
+        )
