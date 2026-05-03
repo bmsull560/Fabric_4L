@@ -2,7 +2,7 @@
  * useAuth Hook Tests
  *
  * Comprehensive tests for authentication operations including:
- * - useAuth: Authentication state and header generation
+ * - useAuth: Authentication state and CSRF header helper
  * - useRequireAuth: Protected route redirects
  * - useAuthRedirect: 401 handling
  */
@@ -44,36 +44,57 @@ describe('useAuth', () => {
     vi.resetAllMocks();
   });
 
-  describe('getAuthHeaders', () => {
-    it('returns Authorization header when accessToken exists', () => {
-      const mockUser: UserInfo = {
-        id: 'user-1',
-        email: 'test@example.com',
-        role: 'admin',
-        tenantId: 'tenant-1',
-        tenantSlug: 'test-tenant',
-      };
-
+  describe('getCsrfHeaders', () => {
+    it('returns X-CSRF-Token header when cookie is present', () => {
       mockedUseAuthContext.mockReturnValue({
         isAuthenticated: true,
         isLoading: false,
-        user: mockUser,
-        accessToken: 'test-token-123',
+        user: null,
+        accessToken: null,
         initiateLogin: vi.fn(),
         handleCallback: vi.fn(),
         logout: vi.fn(),
         refreshToken: vi.fn(),
       });
 
+      // Set the CSRF cookie
+      Object.defineProperty(document, 'cookie', {
+        writable: true,
+        value: 'vf_csrf_token=test-csrf-abc123',
+      });
+
       const wrapper = createWrapper();
       const { result } = renderHook(() => useAuth(), { wrapper });
 
-      expect(result.current.getAuthHeaders()).toEqual({
-        Authorization: 'Bearer test-token-123',
+      expect(result.current.getCsrfHeaders()).toEqual({
+        'X-CSRF-Token': 'test-csrf-abc123',
       });
+
+      // Restore
+      Object.defineProperty(document, 'cookie', { writable: true, value: '' });
     });
 
-    it('returns empty object when accessToken is null', () => {
+    it('returns empty object when CSRF cookie is absent', () => {
+      mockedUseAuthContext.mockReturnValue({
+        isAuthenticated: false,
+        isLoading: false,
+        user: null,
+        accessToken: null,
+        initiateLogin: vi.fn(),
+        handleCallback: vi.fn(),
+        logout: vi.fn(),
+        refreshToken: vi.fn(),
+      });
+
+      Object.defineProperty(document, 'cookie', { writable: true, value: '' });
+
+      const wrapper = createWrapper();
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      expect(result.current.getCsrfHeaders()).toEqual({});
+    });
+
+    it('getAuthHeaders is no longer exposed — auth is cookie-based', () => {
       mockedUseAuthContext.mockReturnValue({
         isAuthenticated: false,
         isLoading: false,
@@ -88,25 +109,7 @@ describe('useAuth', () => {
       const wrapper = createWrapper();
       const { result } = renderHook(() => useAuth(), { wrapper });
 
-      expect(result.current.getAuthHeaders()).toEqual({});
-    });
-
-    it('returns empty object when accessToken is empty string', () => {
-      mockedUseAuthContext.mockReturnValue({
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
-        accessToken: '',
-        initiateLogin: vi.fn(),
-        handleCallback: vi.fn(),
-        logout: vi.fn(),
-        refreshToken: vi.fn(),
-      });
-
-      const wrapper = createWrapper();
-      const { result } = renderHook(() => useAuth(), { wrapper });
-
-      expect(result.current.getAuthHeaders()).toEqual({});
+      expect((result.current as Record<string, unknown>).getAuthHeaders).toBeUndefined();
     });
   });
 
@@ -129,7 +132,7 @@ describe('useAuth', () => {
         isAuthenticated: true,
         isLoading: false,
         user: mockUser,
-        accessToken: 'token-123',
+        accessToken: null,
         initiateLogin: mockInitiateLogin,
         handleCallback: mockHandleCallback,
         logout: mockLogout,
@@ -142,7 +145,7 @@ describe('useAuth', () => {
       expect(result.current.isAuthenticated).toBe(true);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.user).toEqual(mockUser);
-      expect(result.current.accessToken).toBe('token-123');
+      expect(result.current.accessToken).toBeNull();
       expect(result.current.logout).toBe(mockLogout);
       expect(result.current.initiateLogin).toBe(mockInitiateLogin);
       expect(result.current.handleCallback).toBe(mockHandleCallback);
@@ -196,7 +199,7 @@ describe('useRequireAuth', () => {
     renderHook(() => useRequireAuth(), { wrapper });
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/login');
+      expect(mockNavigate).toHaveBeenCalledWith('/login', undefined);
     });
   });
 
@@ -213,7 +216,7 @@ describe('useRequireAuth', () => {
       isAuthenticated: true,
       isLoading: false,
       user: mockUser,
-      accessToken: 'token-123',
+      accessToken: null,
       initiateLogin: vi.fn(),
       handleCallback: vi.fn(),
       logout: vi.fn(),
@@ -292,7 +295,7 @@ describe('useRequireAuth', () => {
     rerender();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/login');
+      expect(mockNavigate).toHaveBeenCalledWith('/login', undefined);
     });
   });
 });
@@ -315,7 +318,7 @@ describe('useAuthRedirect', () => {
       isAuthenticated: true,
       isLoading: false,
       user: { id: 'user-1', email: 'test@example.com', role: 'standard', tenantId: 't1', tenantSlug: 'tenant' },
-      accessToken: 'token-123',
+      accessToken: null,
       initiateLogin: vi.fn(),
       handleCallback: vi.fn(),
       logout: mockLogout,
@@ -328,7 +331,7 @@ describe('useAuthRedirect', () => {
     result.current.handleUnauthorized();
 
     expect(mockLogout).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
+    expect(mockNavigate).toHaveBeenCalledWith('/login', undefined);
   });
 
   it('handleUnauthorized can be called multiple times', () => {
@@ -336,7 +339,7 @@ describe('useAuthRedirect', () => {
       isAuthenticated: true,
       isLoading: false,
       user: { id: 'user-1', email: 'test@example.com', role: 'standard', tenantId: 't1', tenantSlug: 'tenant' },
-      accessToken: 'token-123',
+      accessToken: null,
       initiateLogin: vi.fn(),
       handleCallback: vi.fn(),
       logout: mockLogout,
@@ -352,6 +355,6 @@ describe('useAuthRedirect', () => {
 
     expect(mockLogout).toHaveBeenCalledTimes(3);
     expect(mockNavigate).toHaveBeenCalledTimes(3);
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
+    expect(mockNavigate).toHaveBeenCalledWith('/login', undefined);
   });
 });

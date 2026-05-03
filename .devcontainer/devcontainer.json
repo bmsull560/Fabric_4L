@@ -49,7 +49,7 @@
       "onAutoForward": "notify"
     },
     "8000": {
-      "label": "Layer 1, 2, 4 API",
+      "label": "API",
       "onAutoForward": "silent"
     },
     "8001": {

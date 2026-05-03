@@ -1,14 +1,14 @@
 /**
- * Auth Context — Contract-Based OIDC Authentication State Management
+ * Auth Context — OIDC authentication state management
  *
  * Architecture: AuthContext → AuthClient (contract boundary) → HTTP API → IdP
  *
- * Manages:
- * - JWT token storage (memory + localStorage for refresh)
- * - User info (id, email, role, tenant)
- * - Login/logout flows via AuthClient
- * - Token refresh via AuthClient
- * - 401 redirect handling
+ * Token model:
+ *   The access token lives exclusively in the httpOnly `vf_session` cookie set
+ *   by the backend. This context never holds or exposes the token. It manages:
+ *     - User identity metadata (id, email, role, tenant) from sessionStorage
+ *     - Login / callback / logout / refresh flows via AuthClient
+ *     - 401 redirect handling
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
@@ -19,95 +19,55 @@ import { authClient } from '../services/authClient';
 import { sessionService } from '../services/sessionService';
 import { type UserInfo, AuthError, AuthErrorCategory } from '../schemas/auth';
 
-// Re-export UserInfo for backward compatibility
 export type { UserInfo } from '../schemas/auth';
 
 interface AuthContextType {
-  // State
   isAuthenticated: boolean;
   isLoading: boolean;
   user: UserInfo | null;
-  accessToken: string | null;
+  /** @deprecated Token is in the httpOnly cookie; always null. */
+  accessToken: null;
 
-  // Actions
   initiateLogin: (tenantSlug: string) => Promise<void>;
   handleCallback: (code: string, state: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
-  /** Development-only bypass for testing authenticated flows */
+  /** Development-only bypass — undefined in production builds */
   devBypass?: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const log = createFeatureLogger('auth-context');
 
-// Auth state machine states
 type AuthState = 'idle' | 'loading' | 'authenticated' | 'error';
 
 interface AuthStateMachine {
   state: AuthState;
   user: UserInfo | null;
-  accessToken: string | null;
   error: AuthError | null;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Use state machine pattern for clear transitions
   const [authState, setAuthState] = useState<AuthStateMachine>({
     state: 'idle',
     user: null,
-    accessToken: null,
     error: null,
   });
-  const [isLoading, setIsLoading] = useState(true); // Separate loading for UI
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from storage on mount
+  // Restore session metadata from sessionStorage on mount
   useEffect(() => {
-    const initAuth = async () => {
-      const snapshot = sessionService.getSessionSnapshot();
-
-      if (snapshot) {
-        const isValid = sessionService.isSessionValid(snapshot);
-        if (isValid) {
-          setAuthState({
-            state: 'authenticated',
-            user: snapshot.user,
-            accessToken: snapshot.accessToken,
-            error: null,
-          });
-          // Synchronize restored role with userTierStore
-          useUserTierStore.getState().setUserRole(snapshot.user.role);
-        } else {
-          sessionService.clearSession();
-          setAuthState({
-            state: 'idle',
-            user: null,
-            accessToken: null,
-            error: null,
-          });
-        }
-      } else {
-        sessionService.clearSession();
-        setAuthState({
-          state: 'idle',
-          user: null,
-          accessToken: null,
-          error: null,
-        });
-      }
-
-      setIsLoading(false);
-    };
-
-    void initAuth();
+    const meta = sessionService.getSessionMeta();
+    if (meta) {
+      setAuthState({ state: 'authenticated', user: meta.user, error: null });
+      useUserTierStore.getState().setUserRole(meta.user.role);
+    } else {
+      setAuthState({ state: 'idle', user: null, error: null });
+    }
+    setIsLoading(false);
   }, []);
 
-  /**
-   * Step 1: Initiate OIDC login flow
-   * Delegates to AuthClient for contract-validated exchange
-   */
   const initiateLogin = useCallback(async (tenantSlug: string) => {
-    // Set loading state synchronously before async operations
     setIsLoading(true);
     setAuthState(prev => ({ ...prev, state: 'loading' }));
 
@@ -116,38 +76,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = await authClient.initiateLogin(tenantSlug, callbackUrl);
 
       const postLoginRedirect = sessionService.consumePostLoginRedirect() ?? undefined;
-      sessionService.persistOidcFlowState({
-        state: result.state,
-        tenantSlug,
-        postLoginRedirect,
-      });
+      sessionService.persistOidcFlowState({ state: result.state, tenantSlug, postLoginRedirect });
 
-      // Redirect to IdP (this will unload the page)
       sessionService.redirectTo(result.authorization_url);
     } catch (error) {
       setIsLoading(false);
       log.error('Login initiation failed', {
         tenantId: tenantSlug,
         authPhase: 'initiate-login',
-        route: typeof window !== 'undefined' ? window.location.pathname : undefined,
         error: error instanceof Error ? error.message : String(error),
       });
       setAuthState(prev => ({
         ...prev,
         state: 'error',
-        error: error instanceof AuthError ? error : new AuthError(
-          String(error),
-          AuthErrorCategory.AUTHENTICATION
-        ),
+        error: error instanceof AuthError
+          ? error
+          : new AuthError(String(error), AuthErrorCategory.AUTHENTICATION),
       }));
       throw error;
     }
   }, []);
 
-  /**
-   * Step 2: Handle OIDC callback
-   * Delegates token exchange to AuthClient with schema validation
-   */
   const handleCallback = useCallback(async (code: string, state: string): Promise<boolean> => {
     setAuthState(prev => ({ ...prev, state: 'loading' }));
 
@@ -160,12 +109,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      // Use AuthClient for contract-validated token exchange
       const tokenResponse = await authClient.exchangeCodeForTokens(code, state);
-
       const tenantSlug = oidcFlow.tenantSlug || 'default';
 
-      // Build validated user info
       const userInfo: UserInfo = {
         id: tokenResponse.user_id,
         email: tokenResponse.email,
@@ -174,53 +120,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantSlug,
       };
 
-      // Persist session via AuthClient
-      sessionService.persistSession(tokenResponse.access_token, userInfo, tenantSlug);
+      // Persist only non-secret metadata; token is in the httpOnly cookie
+      sessionService.persistSessionMeta(userInfo, tenantSlug);
 
-      // Update auth state machine
-      setAuthState({
-        state: 'authenticated',
-        user: userInfo,
-        accessToken: tokenResponse.access_token,
-        error: null,
-      });
-
-      // Synchronize role with userTierStore
+      setAuthState({ state: 'authenticated', user: userInfo, error: null });
       useUserTierStore.getState().setUserRole(tokenResponse.role);
-
-      // Clean up session storage
       sessionService.clearOidcState();
 
       return true;
     } catch (error) {
       sessionService.clearOidcState();
 
-      // Categorize error for better UX
       let authError: AuthError;
       if (error instanceof AuthError) {
         authError = error;
       } else {
-        const errorMessage = String(error).toLowerCase();
-        if (errorMessage.includes('expired') || errorMessage.includes('timeout')) {
-          authError = new AuthError(
-            'Session expired. Please try logging in again.',
-            AuthErrorCategory.SESSION_EXPIRED
-          );
-        } else if (errorMessage.includes('state') || errorMessage.includes('csrf')) {
-          authError = new AuthError(
-            'Invalid session state. Please try logging in again.',
-            AuthErrorCategory.AUTHENTICATION
-          );
-        } else if (errorMessage.includes('provider') || errorMessage.includes('oidc')) {
-          authError = new AuthError(
-            'SSO provider error. Please contact your administrator.',
-            AuthErrorCategory.SSO_PROVIDER_ERROR
-          );
+        const msg = String(error).toLowerCase();
+        if (msg.includes('expired') || msg.includes('timeout')) {
+          authError = new AuthError('Session expired. Please try logging in again.', AuthErrorCategory.SESSION_EXPIRED);
+        } else if (msg.includes('state') || msg.includes('csrf')) {
+          authError = new AuthError('Invalid session state. Please try logging in again.', AuthErrorCategory.AUTHENTICATION);
+        } else if (msg.includes('provider') || msg.includes('oidc')) {
+          authError = new AuthError('SSO provider error. Please contact your administrator.', AuthErrorCategory.SSO_PROVIDER_ERROR);
         } else {
-          const message = error ? String(error).trim() : '';
+          const clean = error ? String(error).trim() : '';
           authError = new AuthError(
-            message && message !== 'undefined' && message !== 'null'
-              ? message
+            clean && clean !== 'undefined' && clean !== 'null'
+              ? clean
               : 'Authentication failed. Please try again.',
             AuthErrorCategory.AUTHENTICATION
           );
@@ -228,116 +154,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       log.error('Callback authentication failed', {
-        route: typeof window !== 'undefined' ? window.location.pathname : undefined,
         authPhase: 'callback',
-        traceId: authError.statusCode ? String(authError.statusCode) : null,
         errorCode: authError.category,
         message: authError.message,
       });
 
-      setAuthState({
-        state: 'error',
-        user: null,
-        accessToken: null,
-        error: authError,
-      });
-
+      setAuthState({ state: 'error', user: null, error: authError });
       return false;
     }
   }, []);
 
   /**
-   * Logout — clear all auth state via AuthClient
+   * Logout: clears local metadata and calls the backend to expire the cookie.
    */
-  const logout = useCallback(() => {
-    sessionService.clearSession();
-    sessionService.clearOidcState();
+  const logout = useCallback(async () => {
+    await authClient.logout();
 
-    setAuthState({
-      state: 'idle',
-      user: null,
-      accessToken: null,
-      error: null,
-    });
+    setAuthState({ state: 'idle', user: null, error: null });
 
-    // Reset userTierStore to default state
     const tierStore = useUserTierStore.getState();
     tierStore.setTier('standard');
     tierStore.disableAdvancedMode();
 
-    // Redirect to login
     sessionService.redirectToLogin();
   }, []);
 
   /**
-   * Token refresh — delegates to AuthClient
+   * Refresh: calls the backend to rotate the session cookie.
+   * On 401 the session is cleared and the user is considered logged out.
    */
   const refreshToken = useCallback(async (): Promise<boolean> => {
-    const snapshot = sessionService.getSessionSnapshot();
-    const isValid = sessionService.isSessionValid(snapshot);
+    const valid = await authClient.refreshToken();
 
-    if (isValid) {
-      const restoredSnapshot = sessionService.getSessionSnapshot();
-      if (restoredSnapshot) {
-        setAuthState({
-          state: 'authenticated',
-          user: restoredSnapshot.user,
-          accessToken: restoredSnapshot.accessToken,
-          error: null,
-        });
-        useUserTierStore.getState().setUserRole(restoredSnapshot.user.role);
+    if (valid) {
+      const meta = sessionService.getSessionMeta();
+      if (meta) {
+        setAuthState({ state: 'authenticated', user: meta.user, error: null });
+        useUserTierStore.getState().setUserRole(meta.user.role);
       }
     } else {
-      // Session expired or invalid, clear state
-      setAuthState({
-        state: 'idle',
-        user: null,
-        accessToken: null,
-        error: null,
-      });
+      setAuthState({ state: 'idle', user: null, error: null });
     }
 
-    return isValid;
+    return valid;
   }, []);
 
   /**
-   * Development bypass — allows instant authentication for testing.
-   * ONLY available in local/dev/demo mode. Fail-closed in production.
+   * Development bypass — instant mock authentication for local testing.
+   * Blocked in production by NODE_ENV and VITE_APP_ENV checks.
    */
   const devBypass = useCallback(() => {
     const nodeEnv = process.env.NODE_ENV;
     const appEnv = (import.meta.env?.VITE_APP_ENV ?? import.meta.env?.APP_ENV ?? nodeEnv) as string | undefined;
     const bypassFlag = (import.meta.env?.VITE_AUTH_BYPASS ?? 'false') as string;
 
-    const isProductionLike =
-      nodeEnv === 'production' ||
-      appEnv === 'production' ||
-      appEnv === 'prod';
-
+    const isProductionLike = nodeEnv === 'production' || appEnv === 'production' || appEnv === 'prod';
     const isBypassExplicitlyEnabled = bypassFlag === 'true' || bypassFlag === '1';
 
     if (isProductionLike) {
-      log.error('Auth bypass blocked in production environment', {
-        authPhase: 'dev-bypass',
-        nodeEnv,
-        appEnv,
-        bypassFlag,
-      });
-      throw new AuthError(
-        'Auth bypass is disabled in production.',
-        AuthErrorCategory.AUTHENTICATION
-      );
+      log.error('Auth bypass blocked in production environment', { authPhase: 'dev-bypass', nodeEnv, appEnv });
+      throw new AuthError('Auth bypass is disabled in production.', AuthErrorCategory.AUTHENTICATION);
     }
 
-    if (nodeEnv !== 'development' && !isBypassExplicitlyEnabled) {
-      log.warn('devBypass is only available in development mode unless VITE_AUTH_BYPASS is explicitly enabled', {
+    const isDevLike = nodeEnv === 'development' || nodeEnv === 'test';
+    if (!isDevLike && !isBypassExplicitlyEnabled) {
+      log.warn('devBypass is only available in development/test mode unless VITE_AUTH_BYPASS is explicitly enabled', {
         authPhase: 'dev-bypass',
         nodeEnv,
         bypassFlag,
       });
       return;
     }
-    // Set mock authenticated state for development testing
+
     const mockUser: UserInfo = {
       id: 'sarah-chen-001',
       email: 'sarah.chen@axiomrobotics.com',
@@ -345,24 +233,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenantId: 'demo-acme',
       tenantSlug: 'acme',
     };
-    // Generate a valid JWT-format token so refreshToken() doesn't clear it
-    const payload = {
-      exp: Math.floor(Date.now() / 1000) + 3600,
-      iat: Math.floor(Date.now() / 1000),
-      sub: mockUser.id,
-      tenant_id: mockUser.tenantId,
-    };
-    const mockToken = `header.${btoa(JSON.stringify(payload))}.signature`;
-    sessionService.persistSession(mockToken, mockUser, 'demo-acme');
-    setAuthState({
-      state: 'authenticated',
-      user: mockUser,
-      accessToken: mockToken,
-      error: null,
-    });
-    // Synchronize role with userTierStore
+
+    sessionService.persistSessionMeta(mockUser, 'demo-acme');
+    setAuthState({ state: 'authenticated', user: mockUser, error: null });
     useUserTierStore.getState().setUserRole('admin');
-    // Set demo account context for account-scoped routes
     useAccountContextStore.getState().setSelectedAccountId('axiom-robotics');
   }, []);
 
@@ -370,12 +244,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: authState.state === 'authenticated',
     isLoading,
     user: authState.user,
-    accessToken: authState.accessToken,
+    accessToken: null,
     initiateLogin,
     handleCallback,
     logout,
     refreshToken,
-    devBypass: process.env.NODE_ENV === 'development' ? devBypass : undefined,
+    // Expose devBypass in non-production builds (dev + test).
+    // The function itself enforces the production guard at call time.
+    devBypass: import.meta.env.PROD ? undefined : devBypass,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

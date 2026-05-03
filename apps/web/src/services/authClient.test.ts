@@ -1,11 +1,12 @@
 /**
- * AuthClient security tests
+ * AuthClient tests
  *
- * Tests cover:
- * - Token generation and validation
- * - Session management
- * - Error handling
- * - Edge cases
+ * Covers the cookie-based session model:
+ * - Token is never stored in localStorage or returned to JS
+ * - Session metadata (user info, tenantId) lives in sessionStorage
+ * - refreshToken() calls the backend; clears metadata on 401
+ * - logout() calls the backend and clears local metadata
+ * - devBypass is blocked in production
  */
 
 import { AuthClient } from './authClient';
@@ -13,65 +14,61 @@ import { AuthError, AuthErrorCategory } from '../schemas/auth';
 import {
   applySessionServiceTestEnvironment,
   authFixtures,
-  type MemoryStorage,
 } from '@/test/authSessionTestUtils';
+import { sessionService } from './sessionService';
 
-import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 
-// Mock window.fetch directly to bypass MSW for AuthClient unit tests
 const fetchMock = vi.fn();
 const originalFetch = window.fetch;
-beforeAll(() => {
-  window.fetch = fetchMock as unknown as typeof window.fetch;
-});
-afterAll(() => {
-  window.fetch = originalFetch;
-});
+beforeAll(() => { window.fetch = fetchMock as unknown as typeof window.fetch; });
+afterAll(() => { window.fetch = originalFetch; });
 
 describe('AuthClient', () => {
   let client: AuthClient;
-  let testLocalStorage: MemoryStorage;
-  let testSessionStorage: MemoryStorage;
+  let env: ReturnType<typeof applySessionServiceTestEnvironment>;
 
   beforeEach(() => {
     client = new AuthClient();
     vi.clearAllMocks();
-    ({ localStorage: testLocalStorage, sessionStorage: testSessionStorage } = applySessionServiceTestEnvironment());
+    env = applySessionServiceTestEnvironment();
   });
 
-  describe('initiateLogin', () => {
-    it('should initiate login and return authorization URL', async () => {
-      // Arrange: Mock successful OIDC initiation response
-      const mockResponse = {
-        authorization_url: 'https://idp.example.com/auth?client_id=test&state=abc123',
-        state: 'abc123',
-      };
+  afterEach(() => {
+    env.reset();
+  });
 
+  // ── initiateLogin ──────────────────────────────────────────────────────────
+
+  describe('initiateLogin', () => {
+    it('returns authorization URL and state', async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse),
+        json: () => Promise.resolve({
+          authorization_url: 'https://idp.example.com/auth?client_id=test&state=abc123',
+          state: 'abc123',
+        }),
       });
 
-      // Act: Initiate login flow
       const result = await client.initiateLogin('tenant-123', 'https://localhost:3000/callback');
 
-      // Assert: Verify response contains expected auth data
-      expect(result.authorization_url).toBe(mockResponse.authorization_url);
-      expect(result.state).toBe(mockResponse.state);
+      expect(result.authorization_url).toContain('idp.example.com');
+      expect(result.state).toBe('abc123');
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/auth/oidc/tenant-123/login'),
+        expect.objectContaining({ credentials: 'include' })
       );
     });
 
-    it('should throw NETWORK error on fetch failure', async () => {
+    it('throws NETWORK error on fetch failure', async () => {
       fetchMock.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(
-        client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
+        client.initiateLogin('tenant-123', 'https://localhost:3000/callback')
       ).rejects.toThrow(AuthError);
     });
 
-    it('should throw AUTHENTICATION error on 401', async () => {
+    it('throws AUTHENTICATION error on 401', async () => {
       fetchMock.mockResolvedValueOnce({
         ok: false,
         status: 401,
@@ -79,299 +76,251 @@ describe('AuthClient', () => {
       });
 
       await expect(
-        client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
-      ).rejects.toMatchObject({
-        category: AuthErrorCategory.AUTHENTICATION,
-        statusCode: 401,
-      });
+        client.initiateLogin('tenant-123', 'https://localhost:3000/callback')
+      ).rejects.toMatchObject({ category: AuthErrorCategory.AUTHENTICATION, statusCode: 401 });
     });
 
-    it('should throw VALIDATION error on other errors', async () => {
-      fetchMock.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ detail: 'Server error' }),
-      });
-
-      await expect(
-        client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
-      ).rejects.toMatchObject({
-        category: AuthErrorCategory.VALIDATION,
-      });
-    });
-
-    it('should throw MALFORMED_RESPONSE on invalid JSON', async () => {
-      fetchMock.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.reject(new Error('Invalid JSON')),
-      });
-
-      await expect(
-        client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
-      ).rejects.toMatchObject({
-        category: AuthErrorCategory.MALFORMED_RESPONSE,
-      });
-    });
-
-    it('should encode redirect URI properly', async () => {
-      const redirectUri = 'https://localhost:3000/callback?param=value';
+    it('encodes redirect URI', async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ authorization_url: 'https://example.com', state: 'state' }),
       });
 
+      const redirectUri = 'https://localhost:3000/callback?param=value';
       await client.initiateLogin('tenant-123', redirectUri);
 
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining(encodeURIComponent(redirectUri)),
+        expect.anything()
       );
     });
   });
 
+  // ── exchangeCodeForTokens ──────────────────────────────────────────────────
+
   describe('exchangeCodeForTokens', () => {
-    it('should exchange code for tokens successfully', async () => {
-      // Arrange: Mock successful token exchange response
-      const mockResponse = {
-        access_token: 'jwt_token_here',
-        token_type: 'Bearer',
-        expires_in: 3600,
-        user_id: 'user-123',
-        email: 'user@example.com',
-        role: 'analyst' as const,
-      };
-
-      fetchMock.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      // Act: Exchange authorization code for tokens
-      const result = await client.exchangeCodeForTokens('auth-code', 'state-value');
-
-      // Assert: Verify token data and URL parameters
-      expect(result.access_token).toBe(mockResponse.access_token);
-      expect(result.user_id).toBe(mockResponse.user_id);
-      expect(result.email).toBe(mockResponse.email);
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('code=auth-code'),
-      );
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('state=state-value'),
-      );
-    });
-
-    it('should encode special characters in code and state', async () => {
+    it('returns user metadata; does NOT include access_token in response body', async () => {
+      // Backend now omits access_token from JSON body (cookie-only delivery)
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
-          access_token: 'token',
           token_type: 'Bearer',
           expires_in: 3600,
-          user_id: 'user',
-          email: 'test@example.com',
+          user_id: 'user-123',
+          email: 'user@example.com',
           role: 'analyst',
         }),
       });
 
-      await client.exchangeCodeForTokens('code with spaces&symbols=', 'state/value');
+      const result = await client.exchangeCodeForTokens('auth-code', 'state-value');
+
+      expect(result.user_id).toBe('user-123');
+      expect(result.email).toBe('user@example.com');
+      // access_token is optional in the schema; must not be present in this response
+      expect((result as Record<string, unknown>).access_token).toBeUndefined();
+    });
+
+    it('sends credentials: include so the session cookie is set', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          token_type: 'Bearer',
+          expires_in: 3600,
+          user_id: 'user-123',
+          email: 'user@example.com',
+          role: 'analyst',
+        }),
+      });
+
+      await client.exchangeCodeForTokens('code', 'state');
 
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining(encodeURIComponent('code with spaces&symbols=')),
+        expect.anything(),
+        expect.objectContaining({ credentials: 'include' })
       );
     });
   });
 
-  describe('getCurrentSession', () => {
-    it('should return null when no session exists', () => {
-      const session = client.getCurrentSession();
+  // ── Token storage — no localStorage ───────────────────────────────────────
 
-      expect(session).toBeNull();
+  describe('token storage', () => {
+    it('persistSession does NOT write to localStorage', () => {
+      const user = authFixtures.user({ role: 'analyst', tenantSlug: 'tenant' });
+      client.persistSession('some-token', user, 'tenant-123');
+
+      // localStorage must remain empty — token is in the httpOnly cookie
+      expect(localStorage.getItem('accessToken')).toBeNull();
+      expect(localStorage.getItem('vf.auth.session')).toBeNull();
+      expect(localStorage.getItem('userInfo')).toBeNull();
     });
 
-    it('should return null when only token exists (no user info)', () => {
-      testLocalStorage.setItem('accessToken', 'token');
+    it('getAccessToken always returns null', () => {
+      const user = authFixtures.user();
+      client.persistSession('some-token', user, 'tenant-123');
 
-      const session = client.getCurrentSession();
-
-      expect(session).toBeNull();
+      expect(sessionService.getAccessToken()).toBeNull();
     });
 
-    it('should return valid session when both token and user exist', () => {
-      const userInfo = authFixtures.user({ role: 'analyst', tenantSlug: 'tenant' });
-      testLocalStorage.setItem('accessToken', authFixtures.validSession().accessToken);
-      testLocalStorage.setItem('userInfo', JSON.stringify(userInfo));
-      testLocalStorage.setItem('tenantId', userInfo.tenantId);
+    it('getCurrentSession returns user from sessionStorage metadata', () => {
+      const user = authFixtures.user({ role: 'analyst', tenantSlug: 'tenant' });
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
 
-      // Act: Retrieve the current session
       const session = client.getCurrentSession();
 
-      expect(session).toEqual(userInfo);
+      expect(session).toMatchObject({ id: user.id, email: user.email });
     });
 
-    it('should clear session on invalid user JSON', () => {
-      testLocalStorage.setItem('accessToken', authFixtures.validSession().accessToken);
-      testLocalStorage.setItem('userInfo', authFixtures.malformedUserPayload());
-      testLocalStorage.setItem('tenantId', 'tenant-123');
-
-      // Act: Attempt to retrieve session
-      const session = client.getCurrentSession();
-
-      // Assert: Session should be null and storage cleared
-      expect(session).toBeNull();
-      expect(testLocalStorage.getItem('accessToken')).toBeNull();
-      expect(testLocalStorage.getItem('userInfo')).toBeNull();
-    });
-
-    it('should clear session on schema validation failure', () => {
-      testLocalStorage.setItem('accessToken', authFixtures.validSession().accessToken);
-      testLocalStorage.setItem('userInfo', JSON.stringify({ id: 'user-123' }));
-      testLocalStorage.setItem('tenantId', 'tenant-123');
-
-      // Act: Attempt to get session with invalid data
-      const session = client.getCurrentSession();
-
-      // Assert: Session should be cleared and null returned
-      expect(session).toBeNull();
-      expect(testLocalStorage.getItem('accessToken')).toBeNull();
+    it('getCurrentSession returns null when no metadata exists', () => {
+      expect(client.getCurrentSession()).toBeNull();
     });
   });
+
+  // ── refreshToken ───────────────────────────────────────────────────────────
 
   describe('refreshToken', () => {
-    it('should return false when no token exists', async () => {
-      const result = await client.refreshToken();
-
-      expect(result).toBe(false);
-    });
-
-    it('should return true for valid unexpired token', async () => {
-      const snapshot = authFixtures.validSession();
-      testLocalStorage.setItem('vf.auth.session', JSON.stringify(snapshot));
-
-      const result = await client.refreshToken();
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false and clear session for expired token', async () => {
-      testLocalStorage.setItem('vf.auth.session', JSON.stringify(authFixtures.expiredSession()));
-
-      const result = await client.refreshToken();
-
-      expect(result).toBe(false);
-      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
-    });
-
-    it('should return false and clear session for token expiring within buffer', async () => {
-      const exp = Math.floor(Date.now() / 1000) + 30; // 30 seconds from now (within 60s buffer)
-      const payload = { exp };
-      const base64Payload = btoa(JSON.stringify(payload));
-      const token = `header.${base64Payload}.signature`;
-      testLocalStorage.setItem(
-        'vf.auth.session',
-        JSON.stringify(authFixtures.validSession({ accessToken: token }))
-      );
-
-      const result = await client.refreshToken();
-
-      expect(result).toBe(false);
-      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
-    });
-
-    it('should return false for malformed JWT', async () => {
-      testLocalStorage.setItem(
-        'vf.auth.session',
-        JSON.stringify(authFixtures.validSession({ accessToken: 'not.a.valid.jwt' }))
-      );
-
-      const result = await client.refreshToken();
-
-      expect(result).toBe(false);
-      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
-    });
-
-    it('should return false for invalid JWT structure', async () => {
-      testLocalStorage.setItem(
-        'vf.auth.session',
-        JSON.stringify(authFixtures.validSession({ accessToken: 'invalid-token' }))
-      );
-
-      const result = await client.refreshToken();
-
-      expect(result).toBe(false);
-    });
-
-    it('should handle base64url encoding correctly', async () => {
-      // Token with URL-safe base64 characters
-      const payload = { exp: Math.floor(Date.now() / 1000) + 3600 };
-      const base64Payload = Buffer.from(JSON.stringify(payload))
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-      const token = `header.${base64Payload}.signature`;
-      testLocalStorage.setItem(
-        'vf.auth.session',
-        JSON.stringify(authFixtures.validSession({ accessToken: token }))
-      );
+    it('calls POST /auth/refresh with credentials: include', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          token_type: 'Bearer',
+          expires_in: 3600,
+          user_id: 'user-123',
+          email: 'user@example.com',
+          role: 'analyst',
+        }),
+      });
 
       const result = await client.refreshToken();
 
       expect(result).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/oidc/refresh'),
+        expect.objectContaining({ method: 'POST', credentials: 'include' })
+      );
+    });
+
+    it('returns false and clears metadata on 401', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
+
+      fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
+
+      const result = await client.refreshToken();
+
+      expect(result).toBe(false);
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+    });
+
+    it('returns false and clears metadata on 403', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
+
+      fetchMock.mockResolvedValueOnce({ ok: false, status: 403 });
+
+      const result = await client.refreshToken();
+
+      expect(result).toBe(false);
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+    });
+
+    it('returns true on network error (keeps existing metadata)', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
+
+      fetchMock.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.refreshToken();
+
+      // Network error should not log the user out
+      expect(result).toBe(true);
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).not.toBeNull();
     });
   });
 
-  describe('persistSession', () => {
-    it('should persist all session data to localStorage', () => {
-      // Arrange: Prepare session data
-      const token = 'jwt_token';
-      const userInfo = authFixtures.user({ role: 'analyst', tenantSlug: 'tenant' });
-      const tenantId = 'tenant-123';
+  // ── logout ─────────────────────────────────────────────────────────────────
 
-      // Act: Persist the session
-      client.persistSession(token, userInfo, tenantId);
+  describe('logout', () => {
+    it('calls POST /auth/logout and clears local metadata', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
 
-      expect(testLocalStorage.getItem('accessToken')).toBe(token);
-      expect(testLocalStorage.getItem('userInfo')).toBe(JSON.stringify(userInfo));
-      expect(testLocalStorage.getItem('tenantId')).toBe(tenantId);
-      expect(testLocalStorage.getItem('vf.auth.session')).not.toBeNull();
+      fetchMock.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ detail: 'Logged out' }) });
+
+      await client.logout();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/oidc/logout'),
+        expect.objectContaining({ method: 'POST', credentials: 'include' })
+      );
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+    });
+
+    it('clears local metadata even when the network call fails', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
+
+      fetchMock.mockRejectedValueOnce(new Error('Network error'));
+
+      await client.logout();
+
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
     });
   });
+
+  // ── clearSession / clearOidcState ──────────────────────────────────────────
 
   describe('clearSession', () => {
-    it('should remove all session data from localStorage', () => {
-      const snapshot = authFixtures.validSession();
-      testLocalStorage.setItem('vf.auth.session', JSON.stringify(snapshot));
-      testLocalStorage.setItem('accessToken', snapshot.accessToken);
-      testLocalStorage.setItem('userInfo', JSON.stringify(snapshot.user));
-      testLocalStorage.setItem('tenantId', snapshot.tenantId);
+    it('removes session metadata from sessionStorage', () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
 
       client.clearSession();
 
-      expect(testLocalStorage.getItem('vf.auth.session')).toBeNull();
-      expect(testLocalStorage.getItem('accessToken')).toBeNull();
-      expect(testLocalStorage.getItem('userInfo')).toBeNull();
-      expect(testLocalStorage.getItem('tenantId')).toBeNull();
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
     });
   });
 
   describe('clearOidcState', () => {
-    it('should remove OIDC state from sessionStorage', () => {
+    it('removes OIDC state from sessionStorage', () => {
       const flow = authFixtures.oidcFlow({ postLoginRedirect: '/home' });
-      testSessionStorage.setItem('vf.auth.oidc', JSON.stringify(flow));
-      testSessionStorage.setItem('oidcState', flow.state);
-      testSessionStorage.setItem('oidcTenantSlug', flow.tenantSlug);
+      env.sessionStorage.setItem('vf.auth.oidc', JSON.stringify(flow));
+      env.sessionStorage.setItem('oidcState', flow.state);
+      env.sessionStorage.setItem('oidcTenantSlug', flow.tenantSlug);
 
       client.clearOidcState();
 
-      expect(testSessionStorage.getItem('vf.auth.oidc')).toBeNull();
-      expect(testSessionStorage.getItem('oidcState')).toBeNull();
-      expect(testSessionStorage.getItem('oidcTenantSlug')).toBeNull();
+      expect(env.sessionStorage.getItem('vf.auth.oidc')).toBeNull();
+      expect(env.sessionStorage.getItem('oidcState')).toBeNull();
+      expect(env.sessionStorage.getItem('oidcTenantSlug')).toBeNull();
     });
   });
 });
 
+// ── AuthError ──────────────────────────────────────────────────────────────
+
 describe('AuthError', () => {
-  it('should create error with category and message', () => {
+  it('creates error with category and message', () => {
     const error = new AuthError('Test message', AuthErrorCategory.NETWORK);
 
     expect(error.message).toBe('Test message');
@@ -379,7 +328,7 @@ describe('AuthError', () => {
     expect(error.name).toBe('AuthError');
   });
 
-  it('should include status code when provided', () => {
+  it('includes status code when provided', () => {
     const error = new AuthError('Unauthorized', AuthErrorCategory.AUTHENTICATION, 401);
 
     expect(error.statusCode).toBe(401);

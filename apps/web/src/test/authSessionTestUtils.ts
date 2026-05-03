@@ -1,4 +1,11 @@
-import { sessionService, type LocationLike, type SessionSnapshot, type StorageLike, type OidcFlowState } from '@/services/sessionService';
+/**
+ * Test utilities for auth and session service tests.
+ *
+ * The session service no longer uses localStorage — tokens live in the
+ * httpOnly cookie (backend-managed) and only non-secret metadata is kept
+ * in sessionStorage.  These utilities reflect that model.
+ */
+import { sessionService, type LocationLike, type SessionMeta, type StorageLike, type OidcFlowState, type SessionSnapshot } from '@/services/sessionService';
 import type { UserInfo } from '@/schemas/auth';
 
 export class MemoryStorage implements StorageLike {
@@ -44,33 +51,29 @@ export function createLocationMock(
 }
 
 export function applySessionServiceTestEnvironment(options: {
-  localStorage?: MemoryStorage;
   sessionStorage?: MemoryStorage;
   location?: MutableLocationLike;
 } = {}) {
-  const localStorage = options.localStorage ?? new MemoryStorage();
   const sessionStorage = options.sessionStorage ?? new MemoryStorage();
   const location = options.location ?? createLocationMock();
 
-  sessionService.configure({
-    localStorage,
-    sessionStorage,
-    location,
-  });
+  sessionService.configure({ sessionStorage, location });
 
   return {
-    localStorage,
     sessionStorage,
     location,
     reset() {
-      localStorage.clear();
       sessionStorage.clear();
       location.href = 'http://localhost:3000/';
       location.pathname = '/';
-      sessionService.configure({ localStorage, sessionStorage, location });
+      sessionService.configure({ sessionStorage, location });
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
 
 const baseUser: UserInfo = {
   id: 'user-123',
@@ -80,35 +83,49 @@ const baseUser: UserInfo = {
   tenantSlug: 'tenant-123',
 };
 
-function createToken(expOffsetSeconds: number): string {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + expOffsetSeconds }));
-  return `${header}.${payload}.signature`;
-}
-
 export const authFixtures = {
   user(overrides: Partial<UserInfo> = {}): UserInfo {
     return { ...baseUser, ...overrides };
   },
+
+  sessionMeta(overrides: Partial<SessionMeta> = {}): SessionMeta {
+    const user = overrides.user ?? baseUser;
+    return {
+      user,
+      tenantId: overrides.tenantId ?? user.tenantId,
+    };
+  },
+
+  /**
+   * @deprecated Use sessionMeta(). Returns a SessionSnapshot shim with empty
+   * accessToken for tests that haven't been migrated yet.
+   */
   validSession(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     const user = overrides.user ?? baseUser;
     return {
-      accessToken: overrides.accessToken ?? createToken(3600),
+      accessToken: '',
       tenantId: overrides.tenantId ?? user.tenantId,
       user,
     };
   },
+
+  /**
+   * @deprecated Expired sessions are now detected by the backend (401).
+   * Kept for tests that check the shim behaviour.
+   */
   expiredSession(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     const user = overrides.user ?? baseUser;
     return {
-      accessToken: overrides.accessToken ?? createToken(-60),
+      accessToken: '',
       tenantId: overrides.tenantId ?? user.tenantId,
       user,
     };
   },
+
   malformedUserPayload(): string {
     return 'invalid-json{';
   },
+
   oidcFlow(overrides: Partial<OidcFlowState> = {}): OidcFlowState {
     return {
       state: overrides.state ?? 'oidc-state-123',

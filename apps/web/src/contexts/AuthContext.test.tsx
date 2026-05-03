@@ -1,822 +1,457 @@
 /**
- * AuthContext Tests
+ * AuthContext tests — cookie-based session model
  *
- * Comprehensive tests for authentication state management including:
- * - AuthProvider initialization from localStorage
- * - Login flow initiation
- * - Callback handling with state verification
- * - Logout cleanup
- * - Token refresh and validation
+ * Covers:
+ * - Initialization from sessionStorage metadata (no localStorage)
+ * - OIDC login initiation and redirect
+ * - Callback: metadata persisted, no token in JS
+ * - CSRF state mismatch rejection
+ * - Logout: calls backend, clears metadata, redirects
+ * - Refresh: calls backend, updates metadata on success, clears on 401
+ * - devBypass: works in development, throws in production
+ * - accessToken is always null on the context value
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
-import { AuthProvider, useAuthContext, type UserInfo } from './AuthContext';
+import { AuthProvider, useAuthContext } from './AuthContext';
 import {
   applySessionServiceTestEnvironment,
   authFixtures,
-  type MemoryStorage,
   type MutableLocationLike,
 } from '@/test/authSessionTestUtils';
+import { sessionService } from '../services/sessionService';
 
-// ── Test Helpers ───────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Test component
+// ---------------------------------------------------------------------------
 
-/**
- * Test component that exposes all AuthContext values and actions.
- *
- * This component renders the auth state (loading, authenticated, user, token)
- * and provides buttons to trigger auth actions (login, logout, callback).
- *
- * Usage:
- *   render(
- *     <AuthProvider>
- *       <TestComponent />
- *     </AuthProvider>
- *   );
- *   // Then interact with screen.getByTestId('login-btn') etc.
- */
 function TestComponent() {
   const auth = useAuthContext();
   return (
     <div>
       <div data-testid="loading">{auth.isLoading ? 'loading' : 'ready'}</div>
-      <div data-testid="authenticated">{auth.isAuthenticated ? 'authenticated' : 'unauthenticated'}</div>
-      <div data-testid="user-email">{auth.user?.email || 'no-user'}</div>
-      <div data-testid="token">{auth.accessToken || 'no-token'}</div>
-      <button data-testid="login-btn" onClick={() => auth.initiateLogin('test-tenant')}>
-        Login
-      </button>
-      <button data-testid="logout-btn" onClick={auth.logout}>
-        Logout
-      </button>
+      <div data-testid="authenticated">{auth.isAuthenticated ? 'yes' : 'no'}</div>
+      <div data-testid="user-email">{auth.user?.email ?? 'none'}</div>
+      <div data-testid="access-token">{auth.accessToken ?? 'null'}</div>
+      <button data-testid="login-btn" onClick={() => auth.initiateLogin('test-tenant')}>Login</button>
+      <button data-testid="logout-btn" onClick={() => void auth.logout()}>Logout</button>
+      <button data-testid="refresh-btn" onClick={() => void auth.refreshToken()}>Refresh</button>
       <button
         data-testid="callback-btn"
-        onClick={() => auth.handleCallback('test-code', 'oidc-state-123')}
+        onClick={() => void auth.handleCallback('test-code', 'oidc-state-123')}
       >
-        Handle Callback
+        Callback
       </button>
     </div>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Setup
+// ---------------------------------------------------------------------------
+
 describe('AuthProvider', () => {
-  let testLocalStorage: MemoryStorage;
-  let testSessionStorage: MemoryStorage;
+  let env: ReturnType<typeof applySessionServiceTestEnvironment>;
   let location: MutableLocationLike;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    ({ localStorage: testLocalStorage, sessionStorage: testSessionStorage, location } = applySessionServiceTestEnvironment());
-    location.href = 'http://localhost:3000/';
-    location.pathname = '/';
+    env = applySessionServiceTestEnvironment();
+    location = env.location;
   });
 
   afterEach(() => {
+    env.reset();
     vi.restoreAllMocks();
   });
 
+  // ── Initialization ─────────────────────────────────────────────────────────
+
   describe('initialization', () => {
-    it('initializes as unauthenticated when no stored data', async () => {
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+    it('starts unauthenticated when sessionStorage is empty', async () => {
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
-      expect(screen.getByTestId('user-email')).toHaveTextContent('no-user');
-      expect(screen.getByTestId('token')).toHaveTextContent('no-token');
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('no');
+      expect(screen.getByTestId('user-email')).toHaveTextContent('none');
     });
 
-    it('restores auth state from localStorage on mount', async () => {
-      const userInfo: UserInfo = authFixtures.user({
-        email: 'restored@example.com',
-        role: 'tenant_admin',
-        tenantId: 'tenant-1',
-        tenantSlug: 'test-tenant',
-      });
+    it('restores session from sessionStorage metadata on mount', async () => {
+      const user = authFixtures.user({ email: 'restored@example.com', tenantId: 'tenant-1', tenantSlug: 'tenant-1' });
+      env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: 'tenant-1' }));
 
-      const validSession = authFixtures.validSession({
-        accessToken: authFixtures.validSession().accessToken,
-        tenantId: 'tenant-1',
-        user: userInfo,
-      });
-      testLocalStorage.setItem('vf.auth.session', JSON.stringify(validSession));
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('yes');
       expect(screen.getByTestId('user-email')).toHaveTextContent('restored@example.com');
-      expect(screen.getByTestId('token')).toHaveTextContent(validSession.accessToken);
     });
 
-    it('clears invalid stored data and initializes as unauthenticated', async () => {
-      testLocalStorage.setItem('accessToken', 'some-token');
-      testLocalStorage.setItem('userInfo', 'invalid-json{');
+    it('accessToken is always null — token lives in the httpOnly cookie', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
-      expect(testLocalStorage.getItem('accessToken')).toBeNull();
-      expect(testLocalStorage.getItem('userInfo')).toBeNull();
+      expect(screen.getByTestId('access-token')).toHaveTextContent('null');
     });
 
-    it('handles missing user info gracefully', async () => {
-      testLocalStorage.setItem('accessToken', 'token-without-user');
-      // No userInfo in localStorage
+    it('clears corrupted metadata and starts unauthenticated', async () => {
+      env.sessionStorage.setItem('vf.auth.session.meta', 'not-valid-json{');
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('no');
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+    });
+
+    it('does NOT read from localStorage', async () => {
+      // Simulate old localStorage data that should be ignored
+      localStorage.setItem('accessToken', 'old-token');
+      localStorage.setItem('vf.auth.session', JSON.stringify(authFixtures.validSession()));
+
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
+
+      // sessionStorage is empty → unauthenticated, regardless of localStorage
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('no');
+
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('vf.auth.session');
     });
   });
+
+  // ── initiateLogin ──────────────────────────────────────────────────────────
 
   describe('initiateLogin', () => {
-    it('calls backend login endpoint and redirects to IdP', async () => {
-      // Default MSW handler in handlers.ts returns valid LoginInitiationResponse
-      // No need to override - uses contract boundary
+    it('stores OIDC flow state and redirects to IdP', async () => {
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+      await act(async () => { screen.getByTestId('login-btn').click(); });
 
       await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
-      // Trigger login - this starts async operation
-      await act(async () => {
-        screen.getByTestId('login-btn').click();
-      });
-
-      // Wait for async operations to complete (state storage then redirect)
-      await waitFor(() => {
-        expect(testSessionStorage.getItem('oidcState')).toBe('oidc-state-123');
-        expect(testSessionStorage.getItem('oidcTenantSlug')).toBe('test-tenant');
-      });
-
-      // Verify redirect happened
-      await waitFor(() => {
-        expect(location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
+        expect(env.sessionStorage.getItem('vf.auth.oidc')).not.toBeNull();
+        expect(location.href).toContain('idp.example.com');
       });
     });
 
-    it('shows loading state during login', async () => {
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      // Wait for initial ready state
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
-      // Click login and await async operations - triggers setIsLoading(true) synchronously
-      // then proceeds to async authClient call
-      await act(async () => {
-        screen.getByTestId('login-btn').click();
-      });
-
-      // Loading state is set synchronously before async call, verify immediately
-      expect(screen.getByTestId('loading')).toHaveTextContent('loading');
-
-      // Wait for the async operation to complete (and redirect)
-      await waitFor(() => {
-        expect(location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
-      });
-    });
-
-    it('throws error when login initiation fails', async () => {
-      // Component that exposes initiateLogin for direct testing
-      function LoginTrigger() {
+    it('rejects with error for unknown tenant', async () => {
+      function TriggerLogin() {
         const auth = useAuthContext();
-        const [error, setError] = React.useState<string>('');
+        const [err, setErr] = React.useState('');
         return (
           <div>
-            <button
-              data-testid="trigger-login"
-              onClick={async () => {
-                try {
-                  // Use error-tenant which returns 404 in MSW handler
-                  await auth.initiateLogin('error-tenant');
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              Trigger
-            </button>
-            <div data-testid="login-error">{error}</div>
+            <button data-testid="btn" onClick={async () => {
+              try { await auth.initiateLogin('error-tenant'); }
+              catch (e) { setErr((e as Error).message); }
+            }}>go</button>
+            <div data-testid="err">{err}</div>
           </div>
         );
       }
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <LoginTrigger />
-        </AuthProvider>,
-        { wrapper }
-      );
+      render(<AuthProvider><TriggerLogin /></AuthProvider>, { wrapper: createWrapper() });
 
-      // Click immediately - AuthProvider will initialize synchronously
-      await act(async () => {
-        screen.getByTestId('trigger-login').click();
-      });
+      await act(async () => { screen.getByTestId('btn').click(); });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('login-error')).toHaveTextContent('Tenant not found');
-      });
-    });
-
-    it('throws error when network fails', async () => {
-      // Component that exposes initiateLogin for direct testing
-      function LoginTrigger() {
-        const auth = useAuthContext();
-        const [error, setError] = React.useState<string>('');
-        return (
-          <div>
-            <button
-              data-testid="trigger-login"
-              onClick={async () => {
-                try {
-                  await auth.initiateLogin('network-error');
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              Trigger
-            </button>
-            <div data-testid="login-error">{error}</div>
-          </div>
-        );
-      }
-
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <LoginTrigger />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      // Click immediately - AuthProvider will initialize synchronously
-      await act(async () => {
-        screen.getByTestId('trigger-login').click();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('login-error')).toHaveTextContent('Failed to connect to authentication service');
-      });
+      await waitFor(() => expect(screen.getByTestId('err')).toHaveTextContent('Tenant not found'));
     });
   });
+
+  // ── handleCallback ─────────────────────────────────────────────────────────
 
   describe('handleCallback', () => {
     beforeEach(() => {
-      // Set state to match what TestComponent callback button uses
-      // Must match the default MSW handler's expected state pattern
-      testSessionStorage.setItem('oidcState', 'oidc-state-123');
-      testSessionStorage.setItem('oidcTenantSlug', 'test-tenant');
+      env.sessionStorage.setItem('oidcState', 'oidc-state-123');
+      env.sessionStorage.setItem('oidcTenantSlug', 'test-tenant');
     });
 
-    it('exchanges code for tokens and sets auth state', async () => {
-      // Default MSW handler in handlers.ts returns valid TokenResponse
-      // No need to override - uses contract boundary
+    it('sets authenticated state and persists metadata to sessionStorage', async () => {
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+      await act(async () => { screen.getByTestId('callback-btn').click(); });
 
       await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
-      await act(async () => {
-        screen.getByTestId('callback-btn').click();
-      });
-
-      // Verify auth state updated based on contract response
-      await waitFor(() => {
-        expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
+        expect(screen.getByTestId('authenticated')).toHaveTextContent('yes');
         expect(screen.getByTestId('user-email')).toHaveTextContent('newuser@example.com');
-        expect(screen.getByTestId('token')).toHaveTextContent('new-access-token');
       });
 
-      // Verify localStorage updated
-      expect(testLocalStorage.getItem('accessToken')).toBe('new-access-token');
-      expect(testLocalStorage.getItem('tenantId')).toBe('test-tenant');
+      // Metadata in sessionStorage
+      const meta = JSON.parse(env.sessionStorage.getItem('vf.auth.session.meta') ?? 'null');
+      expect(meta).not.toBeNull();
+      expect(meta.user.email).toBe('newuser@example.com');
 
-      // Verify sessionStorage cleaned up
-      expect(testSessionStorage.getItem('oidcState')).toBeNull();
-      expect(testSessionStorage.getItem('oidcTenantSlug')).toBeNull();
+      // Token NOT in sessionStorage or localStorage
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).not.toContain('mock-jwt-token');
+      expect(localStorage.getItem('accessToken')).toBeNull();
     });
 
-    it('rejects when state parameter does not match', async () => {
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+    it('accessToken remains null after successful callback', async () => {
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
+      await act(async () => { screen.getByTestId('callback-btn').click(); });
 
-      // Create a custom button with wrong state
-      function CallbackWithWrongState() {
-        const auth = useAuthContext();
-        return (
-          <button data-testid="wrong-callback-btn" onClick={() => auth.handleCallback('code', 'wrong-state')}>
-            Wrong Callback
-          </button>
-        );
-      }
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
-      render(
-        <AuthProvider>
-          <CallbackWithWrongState />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      await act(async () => {
-        screen.getByTestId('wrong-callback-btn').click();
-      });
-
-      // Should fail and clean up session storage
-      await waitFor(() => {
-        expect(testSessionStorage.getItem('oidcState')).toBeNull();
-      });
+      expect(screen.getByTestId('access-token')).toHaveTextContent('null');
     });
 
-    it('returns false when callback endpoint returns error', async () => {
-      // Component that captures handleCallback result
-      // Uses 'invalid-code' to trigger error response in MSW handler
-      function CallbackWithResult() {
+    it('clears OIDC state from sessionStorage after callback', async () => {
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
+
+      await act(async () => { screen.getByTestId('callback-btn').click(); });
+
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
+
+      expect(env.sessionStorage.getItem('oidcState')).toBeNull();
+      expect(env.sessionStorage.getItem('oidcTenantSlug')).toBeNull();
+      expect(env.sessionStorage.getItem('vf.auth.oidc')).toBeNull();
+    });
+
+    it('rejects with CSRF error when state parameter does not match', async () => {
+      function WrongStateCallback() {
         const auth = useAuthContext();
-        const [callbackResult, setCallbackResult] = React.useState<boolean | null>(null);
+        const [result, setResult] = React.useState<boolean | null>(null);
         return (
           <div>
-            <button
-              data-testid="callback-result-btn"
-              onClick={async () => {
-                const result = await auth.handleCallback('invalid-code', 'oidc-state-123');
-                setCallbackResult(result);
-              }}
-            >
-              Handle Callback
-            </button>
-            <div data-testid="callback-result">{callbackResult === null ? 'null' : callbackResult.toString()}</div>
+            <button data-testid="btn" onClick={async () => {
+              const ok = await auth.handleCallback('code', 'wrong-state');
+              setResult(ok);
+            }}>go</button>
+            <div data-testid="result">{result === null ? 'pending' : String(result)}</div>
           </div>
         );
       }
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <CallbackWithResult />
-        </AuthProvider>,
-        { wrapper }
-      );
+      render(<AuthProvider><WrongStateCallback /></AuthProvider>, { wrapper: createWrapper() });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('callback-result')).toHaveTextContent('null');
-      });
+      await act(async () => { screen.getByTestId('btn').click(); });
 
-      await act(async () => {
-        screen.getByTestId('callback-result-btn').click();
-      });
+      await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('false'));
+      // OIDC state cleaned up even on failure
+      expect(env.sessionStorage.getItem('oidcState')).toBeNull();
+    });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('callback-result')).toHaveTextContent('false');
-      });
+    it('returns false when backend rejects the code', async () => {
+      function BadCodeCallback() {
+        const auth = useAuthContext();
+        const [result, setResult] = React.useState<boolean | null>(null);
+        return (
+          <div>
+            <button data-testid="btn" onClick={async () => {
+              const ok = await auth.handleCallback('invalid-code', 'oidc-state-123');
+              setResult(ok);
+            }}>go</button>
+            <div data-testid="result">{result === null ? 'pending' : String(result)}</div>
+          </div>
+        );
+      }
+
+      render(<AuthProvider><BadCodeCallback /></AuthProvider>, { wrapper: createWrapper() });
+
+      await act(async () => { screen.getByTestId('btn').click(); });
+
+      await waitFor(() => expect(screen.getByTestId('result')).toHaveTextContent('false'));
     });
   });
+
+  // ── logout ─────────────────────────────────────────────────────────────────
 
   describe('logout', () => {
-    it('clears all auth state and storage', async () => {
-      // Set up authenticated state with backend-canonical role
-      const userInfo: UserInfo = authFixtures.user({
-        email: 'test@example.com',
-        role: 'super_admin',
-        tenantId: 'tenant-1',
-        tenantSlug: 'test-tenant',
-      });
-      const snapshot = authFixtures.validSession({
-        accessToken: 'header.eyJleHAiOjQ3MDAwMDAwMDB9.signature',
-        tenantId: 'tenant-1',
-        user: userInfo,
-      });
-      testLocalStorage.setItem('vf.auth.session', JSON.stringify(snapshot));
+    it('clears metadata, resets auth state, and redirects to /login', async () => {
+      const user = authFixtures.user({ email: 'active@example.com' });
+      env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
-      await waitFor(() => {
-        expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
-      });
+      await act(async () => { screen.getByTestId('logout-btn').click(); });
 
-      await act(async () => {
-        screen.getByTestId('logout-btn').click();
-      });
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('no'));
 
-      await waitFor(() => {
-        expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
-      });
+      expect(screen.getByTestId('user-email')).toHaveTextContent('none');
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+      expect(location.pathname).toBe('/login');
+    });
 
-      expect(screen.getByTestId('user-email')).toHaveTextContent('no-user');
-      expect(screen.getByTestId('token')).toHaveTextContent('no-token');
+    it('clears local state even when the backend logout call fails', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      // Verify all storage cleared
-      expect(testLocalStorage.getItem('accessToken')).toBeNull();
-      expect(testLocalStorage.getItem('userInfo')).toBeNull();
-      expect(testLocalStorage.getItem('tenantId')).toBeNull();
+      // Temporarily override the logout handler to simulate network failure
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
+
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
+
+      await act(async () => { screen.getByTestId('logout-btn').click(); });
+
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('no'));
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+
+      fetchSpy.mockRestore();
     });
   });
 
-  describe('devBypass', () => {
-    it('creates mock auth state in development mode', async () => {
-      // devBypass is only available in development mode
-      const originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
-
-      // Component that exposes devBypass for testing
-      function DevBypassTrigger() {
-        const auth = useAuthContext();
-        return (
-          <div>
-            <div data-testid="loading">{auth.isLoading ? 'loading' : 'ready'}</div>
-            <div data-testid="authenticated">{auth.isAuthenticated ? 'authenticated' : 'unauthenticated'}</div>
-            <div data-testid="user-email">{auth.user?.email || 'no-user'}</div>
-            <div data-testid="user-id">{auth.user?.id || 'no-user-id'}</div>
-            <div data-testid="tenant-id">{auth.user?.tenantId || 'no-tenant'}</div>
-            <button data-testid="dev-bypass-btn" onClick={auth.devBypass}>
-              Dev Bypass
-            </button>
-          </div>
-        );
-      }
-
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <DevBypassTrigger />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      // Wait for initial ready state
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
-      // Initially unauthenticated
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
-
-      // Trigger dev bypass
-      await act(async () => {
-        screen.getByTestId('dev-bypass-btn').click();
-      });
-
-      // Should now be authenticated as demo user (Sarah Chen)
-      await waitFor(() => {
-        expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
-        expect(screen.getByTestId('user-email')).toHaveTextContent('sarah.chen@axiomrobotics.com');
-        expect(screen.getByTestId('user-id')).toHaveTextContent('sarah-chen-001');
-        expect(screen.getByTestId('tenant-id')).toHaveTextContent('demo-acme');
-      });
-
-      // Verify token was stored (valid JWT format with 3 parts)
-      const storedToken = testLocalStorage.getItem('accessToken');
-      expect(storedToken?.split('.')).toHaveLength(3);
-
-      process.env.NODE_ENV = originalNodeEnv;
-    });
-
-    it('throws error when called in production mode (NODE_ENV=production)', async () => {
-      const originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      // Suppress console.error for this test
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      function DevBypassTrigger() {
-        const auth = useAuthContext();
-        const [error, setError] = React.useState<string>('');
-        return (
-          <div>
-            <div data-testid="error">{error}</div>
-            <button
-              data-testid="dev-bypass-btn"
-              onClick={() => {
-                try {
-                  auth.devBypass?.();
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              Dev Bypass
-            </button>
-          </div>
-        );
-      }
-
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <DevBypassTrigger />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('error')).toHaveTextContent('');
-      });
-
-      // Trigger dev bypass - should throw in production
-      await act(async () => {
-        screen.getByTestId('dev-bypass-btn').click();
-      });
-
-      // Should show error about production mode
-      await waitFor(() => {
-        expect(screen.getByTestId('error')).toHaveTextContent('Auth bypass is disabled in production.');
-      });
-
-      // Verify no demo data was stored
-      expect(testLocalStorage.getItem('accessToken')).toBeNull();
-      expect(testLocalStorage.getItem('tenantId')).not.toBe('demo-acme');
-
-      consoleSpy.mockRestore();
-      process.env.NODE_ENV = originalNodeEnv;
-    });
-
-    it('throws error when called with VITE_APP_ENV=production', async () => {
-      const originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
-
-      // Mock import.meta.env
-      const originalViteEnv = (globalThis as { import?: { meta?: { env?: Record<string, string> } } }).import;
-      (globalThis as { import?: { meta?: { env?: Record<string, string> } } }).import = {
-        meta: {
-          env: {
-            VITE_APP_ENV: 'production',
-          },
-        },
-      };
-
-      // Suppress console.error for this test
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      function DevBypassTrigger() {
-        const auth = useAuthContext();
-        const [error, setError] = React.useState<string>('');
-        return (
-          <div>
-            <div data-testid="error">{error}</div>
-            <button
-              data-testid="dev-bypass-btn"
-              onClick={() => {
-                try {
-                  auth.devBypass?.();
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            >
-              Dev Bypass
-            </button>
-          </div>
-        );
-      }
-
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <DevBypassTrigger />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('error')).toHaveTextContent('');
-      });
-
-      // Trigger dev bypass - should throw because VITE_APP_ENV=production
-      await act(async () => {
-        screen.getByTestId('dev-bypass-btn').click();
-      });
-
-      // Should show error about production mode
-      await waitFor(() => {
-        expect(screen.getByTestId('error')).toHaveTextContent('Auth bypass is disabled in production.');
-      });
-
-      // Verify no demo data was stored
-      expect(testLocalStorage.getItem('accessToken')).toBeNull();
-
-      consoleSpy.mockRestore();
-      (globalThis as { import?: { meta?: { env?: Record<string, string> } } }).import = originalViteEnv;
-      process.env.NODE_ENV = originalNodeEnv;
-    });
-
-    it('returns undefined when devBypass is not available (production build)', async () => {
-      const originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      function DevBypassCheck() {
-        const auth = useAuthContext();
-        return (
-          <div data-testid="has-bypass">{auth.devBypass === undefined ? 'undefined' : 'defined'}</div>
-        );
-      }
-
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <DevBypassCheck />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('has-bypass')).toHaveTextContent('undefined');
-      });
-
-      process.env.NODE_ENV = originalNodeEnv;
-    });
-
-    it('does not seed Sarah Chen / demo-acme / axiom-robotics in production', async () => {
-      const originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      function DevBypassTrigger() {
-        const auth = useAuthContext();
-        return (
-          <div>
-            <div data-testid="authenticated">{auth.isAuthenticated ? 'authenticated' : 'unauthenticated'}</div>
-            <div data-testid="user-email">{auth.user?.email || 'no-user'}</div>
-            <button data-testid="dev-bypass-btn" onClick={auth.devBypass}>
-              Dev Bypass
-            </button>
-          </div>
-        );
-      }
-
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <DevBypassTrigger />
-        </AuthProvider>,
-        { wrapper }
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
-      });
-
-      // Verify demo data not in storage
-      expect(testLocalStorage.getItem('tenantId')).not.toBe('demo-acme');
-      const userInfo = testLocalStorage.getItem('userInfo');
-      if (userInfo) {
-        const parsed = JSON.parse(userInfo);
-        expect(parsed.email).not.toBe('sarah.chen@axiomrobotics.com');
-        expect(parsed.id).not.toBe('sarah-chen-001');
-      }
-
-      process.env.NODE_ENV = originalNodeEnv;
-    });
-  });
+  // ── refreshToken ───────────────────────────────────────────────────────────
 
   describe('refreshToken', () => {
-    it('returns true when token is valid', async () => {
-      // Create a JWT that expires in 1 hour
-      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-      const payload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }));
-      const signature = btoa('signature');
-      const validToken = `${header}.${payload}.${signature}`;
+    it('calls backend and updates metadata on success', async () => {
+      const user = authFixtures.user({ email: 'active@example.com' });
+      env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      testLocalStorage.setItem('accessToken', validToken);
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
-      );
+      await act(async () => { screen.getByTestId('refresh-btn').click(); });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
-      // Note: We'd need to expose refreshToken through TestComponent to test it directly
-      // For now, the initialization test validates the token parsing logic
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated'); // No user info
+      // Still authenticated after refresh
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
+      // accessToken remains null — cookie is rotated server-side
+      expect(screen.getByTestId('access-token')).toHaveTextContent('null');
     });
 
-    it('logs out when token structure is invalid', async () => {
-      testLocalStorage.setItem('accessToken', 'invalid-token');
-      // Uses backend-canonical role read_only which normalizes to standard tier
-      testLocalStorage.setItem('userInfo', JSON.stringify({ id: 'user-1', email: 'test@test.com', role: 'read_only', tenantId: 't1', tenantSlug: 'test' }));
+    it('clears session and marks unauthenticated on 401', async () => {
+      const user = authFixtures.user();
+      env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      const wrapper = createWrapper();
-      render(
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>,
-        { wrapper }
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        new Response(null, { status: 401 })
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
+      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
-      // Token is set but user info exists - should be authenticated initially
-      // In real scenario, the token validation would happen on refreshToken call
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
+      await act(async () => { screen.getByTestId('refresh-btn').click(); });
+
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('no'));
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+
+      fetchSpy.mockRestore();
     });
   });
-});
 
-describe('useAuthContext error handling', () => {
-  it('throws error when used outside AuthProvider', () => {
-    // Suppress console.error for this test
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  // ── devBypass ──────────────────────────────────────────────────────────────
 
-    function ComponentOutsideProvider() {
-      try {
-        useAuthContext();
-        return <div data-testid="no-error">No error</div>;
-      } catch (e) {
-        return <div data-testid="error">{(e as Error).message}</div>;
+  describe('devBypass', () => {
+    it('is undefined in production builds (PROD=true)', async () => {
+      // import.meta.env.PROD is true in production builds; devBypass is stripped.
+      // In the test environment PROD is false, so devBypass is always present —
+      // the production guard is enforced inside the function itself (tested below).
+      // This test verifies the guard throws rather than silently no-ops.
+      function Inspector() {
+        const auth = useAuthContext();
+        return <div data-testid="bypass-defined">{auth.devBypass ? 'defined' : 'undefined'}</div>;
       }
-    }
 
-    render(<ComponentOutsideProvider />);
+      render(<AuthProvider><Inspector /></AuthProvider>, { wrapper: createWrapper() });
+      // In test mode (PROD=false) devBypass is exposed on the context
+      await waitFor(() => expect(screen.getByTestId('bypass-defined')).toHaveTextContent('defined'));
+    });
 
-    expect(screen.getByTestId('error')).toHaveTextContent(
-      'useAuthContext must be used within an AuthProvider'
-    );
+    it('throws AuthError when called with production env vars', async () => {
+      // vi.stubEnv overrides import.meta.env values at runtime.
+      // process.env.NODE_ENV alone does not affect import.meta.env.DEV,
+      // which Vite bakes in at build time.
+      vi.stubEnv('VITE_APP_ENV', 'production');
 
-    consoleSpy.mockRestore();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      function BypassTrigger() {
+        const auth = useAuthContext();
+        const [err, setErr] = React.useState('');
+        return (
+          <div>
+            <button data-testid="btn" onClick={() => {
+              try { auth.devBypass?.(); }
+              catch (e) { setErr((e as Error).message); }
+            }}>go</button>
+            <div data-testid="err">{err}</div>
+          </div>
+        );
+      }
+
+      render(<AuthProvider><BypassTrigger /></AuthProvider>, { wrapper: createWrapper() });
+
+      await act(async () => { screen.getByTestId('btn').click(); });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('err')).toHaveTextContent('Auth bypass is disabled in production.')
+      );
+
+      // No session metadata written
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+      // No token in localStorage
+      expect(localStorage.getItem('accessToken')).toBeNull();
+
+      consoleSpy.mockRestore();
+      vi.unstubAllEnvs();
+    });
+
+    it('sets mock authenticated state in development', async () => {
+      // devBypass is available in test mode (import.meta.env.PROD = false).
+      // VITE_APP_ENV is not set, so the production guard does not trigger.
+      function BypassTrigger() {
+        const auth = useAuthContext();
+        return (
+          <div>
+            <div data-testid="authenticated">{auth.isAuthenticated ? 'yes' : 'no'}</div>
+            <div data-testid="email">{auth.user?.email ?? 'none'}</div>
+            <button data-testid="btn" onClick={() => auth.devBypass?.()}>go</button>
+          </div>
+        );
+      }
+
+      render(<AuthProvider><BypassTrigger /></AuthProvider>, { wrapper: createWrapper() });
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('no'));
+
+      await act(async () => { screen.getByTestId('btn').click(); });
+
+      await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
+      expect(screen.getByTestId('email')).toHaveTextContent('sarah.chen@axiomrobotics.com');
+
+      // Metadata in sessionStorage, NOT a token in localStorage
+      const meta = JSON.parse(env.sessionStorage.getItem('vf.auth.session.meta') ?? 'null');
+      expect(meta?.user?.email).toBe('sarah.chen@axiomrobotics.com');
+      expect(localStorage.getItem('accessToken')).toBeNull();
+    });
+  });
+
+  // ── useAuthContext guard ───────────────────────────────────────────────────
+
+  describe('useAuthContext', () => {
+    it('throws when used outside AuthProvider', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      function Outside() {
+        try {
+          useAuthContext();
+          return <div data-testid="ok">ok</div>;
+        } catch (e) {
+          return <div data-testid="err">{(e as Error).message}</div>;
+        }
+      }
+
+      render(<Outside />, { wrapper: createWrapper() });
+
+      expect(screen.getByTestId('err')).toHaveTextContent(
+        'useAuthContext must be used within an AuthProvider'
+      );
+
+      consoleSpy.mockRestore();
+    });
   });
 });

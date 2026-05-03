@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
+from .conftest import auth_headers, TENANT_ALPHA
 from app.main import app
 
-HEADERS = {"X-Tenant-ID": "tenant-alpha"}
+HEADERS = auth_headers(TENANT_ALPHA)
 
 
 def test_create_agent_run():

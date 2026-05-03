@@ -1,7 +1,9 @@
+"""Account endpoint tests — updated for JWT-authenticated requests."""
 from fastapi.testclient import TestClient
 from app.main import app
+from .conftest import auth_headers, TENANT_ALPHA
 
-HEADERS = {"X-Tenant-ID": "tenant-alpha"}
+HEADERS = auth_headers(TENANT_ALPHA)
 
 
 def test_list_accounts():
@@ -19,7 +21,7 @@ def test_get_account():
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == "acc-allego"
-        assert data["tenant_id"] == "tenant-alpha"
+        assert data["tenant_id"] == TENANT_ALPHA
 
 
 def test_get_account_not_found():
@@ -34,9 +36,15 @@ def test_create_account():
             "id": "acc-test-1",
             "name": "Test Account",
             "industry": "Software",
-            "tenant_id": "tenant-alpha",
+            "tenant_id": TENANT_ALPHA,
         }
         response = client.post("/v1/accounts", json=payload, headers=HEADERS)
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Test Account"
+
+
+def test_unauthenticated_returns_401():
+    with TestClient(app) as client:
+        response = client.get("/v1/accounts")
+        assert response.status_code == 401

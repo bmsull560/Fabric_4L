@@ -15,7 +15,7 @@ tasks:
     name: Install Python dependencies
     description: Create virtual environments and install dependencies for each service layer.
     command: |
-      for layer_dir in services/layer*/; do
+      for layer_dir in services/*/; do
         if [ -f "$layer_dir/pyproject.toml" ]; then
           layer_name=$(basename "$layer_dir")
           echo "Installing $layer_name..."
@@ -27,7 +27,7 @@ tasks:
           if [ -f "requirements-dev.lock" ]; then
             pip install -r requirements-dev.lock
           else
-            pip install -e ".[dev]"
+            pip install -e ".[dev]" 2>/dev/null || pip install -e .
           fi
           deactivate
           cd /workspace
