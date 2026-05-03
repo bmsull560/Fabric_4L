@@ -45,6 +45,8 @@ dependencies = [
     "pyyaml>=6.0.0",
     "protego>=0.3.0",
     "defusedxml>=0.7.1",  # P1-20: XXE protection for XML parsing
+    "croniter>=2.0.0",   # Strict cron expression parsing and validation
+    "jsonschema>=4.23.0",  # JSON Schema validation for extracted data payloads
     # Downgraded from >=2.0.0 to >=1.0.0 for compatibility with existing auth flow
     # v2 introduced breaking changes in client initialization
     "infisicalsdk>=1.0.0",

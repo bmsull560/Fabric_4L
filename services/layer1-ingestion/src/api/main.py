@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfoNotFoundError, available_timezones
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
@@ -363,22 +364,64 @@ class BrowserConfigInput(BaseModel):
     stealth_mode: bool = True
 
 
+def _validate_cron_expression(expr: str) -> str:
+    """Parse and validate a 5-field cron expression using croniter.
+
+    Raises ValueError with a human-readable message on any of:
+    - Non-standard macros (@reboot, @yearly, etc.) — not schedulable by Celery Beat
+    - Wrong field count (must be exactly 5: minute hour dom month dow)
+    - Out-of-range or syntactically invalid field values
+    """
+    from croniter import CroniterBadCronError, croniter
+
+    expr = expr.strip()
+
+    # Reject @-macros — Celery Beat requires explicit 5-field expressions
+    if expr.startswith("@"):
+        raise ValueError(
+            f"Cron macro '{expr}' is not supported; use an explicit 5-field expression "
+            "(e.g. '0 * * * *' instead of '@hourly')"
+        )
+
+    parts = expr.split()
+    if len(parts) != 5:
+        raise ValueError(
+            f"Cron expression must have exactly 5 fields "
+            f"(minute hour day-of-month month day-of-week), got {len(parts)}: '{expr}'"
+        )
+
+    try:
+        # croniter raises CroniterBadCronError for invalid field values
+        croniter(expr)
+    except CroniterBadCronError as exc:
+        raise ValueError(f"Invalid cron expression '{expr}': {exc}") from exc
+
+    return expr
+
+
 class ScheduleInput(BaseModel):
     """Schedule configuration for a target."""
 
     enabled: bool = False
     cron_expression: str | None = None
     timezone: str = "UTC"
-    max_concurrent_jobs: int = 1
+    max_concurrent_jobs: int = Field(default=1, ge=1, le=100)
 
     @field_validator("cron_expression")
     @classmethod
-    def validate_cron(cls, v):
-        if v:
-            # Basic cron validation - TODO: use cron-validator library
-            parts = v.split()
-            if len(parts) != 5:
-                raise ValueError("Invalid cron expression - must have 5 fields")
+    def validate_cron(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = _validate_cron_expression(v)
+        return v
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        if v not in available_timezones():
+            raise ValueError(
+                f"Unknown timezone '{v}'. Use an IANA timezone name "
+                "(e.g. 'America/New_York', 'Europe/London', 'UTC')."
+            )
         return v
 
 
