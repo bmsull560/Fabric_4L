@@ -23,7 +23,7 @@ from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
-from ...database import get_async_db_session
+from ...database import get_db_from_context
 from ...integration.layer1_client import Layer1IngestionClient
 from ...integration.layer2_client import Layer2ExtractionClient
 from ...integration.layer3_client import Layer3Client, Layer3ClientError
@@ -313,7 +313,7 @@ async def start_prospect_analysis(
     request: StartAnalysisRequest,
     tenant_id: str = Depends(get_verified_tenant_id),
     ctx: RequestContext = Depends(require_authenticated),
-    db: AsyncSession = Depends(get_async_db_session),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> StartAnalysisResponse:
     """Start prospect analysis workflow — real backend implementation.
 

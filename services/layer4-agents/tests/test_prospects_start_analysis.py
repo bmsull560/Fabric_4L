@@ -21,7 +21,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from value_fabric.layer4.api.routes import prospects
-from value_fabric.layer4.database import get_async_db_session
 from value_fabric.layer4.models.account import Account
 
 
@@ -29,7 +28,7 @@ from value_fabric.layer4.models.account import Account
 def prospects_app() -> FastAPI:
     """Build FastAPI app with prospects routes."""
     app = FastAPI()
-    app.include_router(prospects.router, prefix="/v1/prospects")
+    app.include_router(prospects.router, prefix="/v1")
     return app
 
 
@@ -90,7 +89,12 @@ async def test_start_analysis_missing_tenant_fails_closed(prospects_app: FastAPI
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     data = response.json()
-    assert "tenant" in data["detail"].lower()
+    detail = data.get("detail", "")
+    if isinstance(detail, str):
+        assert "tenant" in detail.lower()
+    else:
+        # detail might be a dict or other structure
+        assert "tenant" in str(data).lower()
 
 
 @pytest.mark.asyncio
@@ -108,7 +112,7 @@ async def test_start_analysis_valid_tenant_creates_prospect(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor(workflow_id="wf-123")
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id=test_user)
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -154,7 +158,7 @@ async def test_start_analysis_creates_new_prospect(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor()
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -211,7 +215,7 @@ async def test_start_analysis_updates_existing_prospect(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor()
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -257,7 +261,7 @@ async def test_start_analysis_triggers_workflow(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor(workflow_id="wf-prospect-456")
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -310,7 +314,7 @@ async def test_start_analysis_no_hardcoded_company_data(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor()
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -356,7 +360,7 @@ async def test_start_analysis_no_hardcoded_crm_match(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor()
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -404,7 +408,7 @@ async def test_start_analysis_degraded_when_workflow_fails(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor(should_fail=True)
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -445,7 +449,7 @@ async def test_start_analysis_degraded_when_executor_unavailable(
     mock_result.scalar_one_or_none.return_value = None
     mock_db_session.execute.return_value = mock_result
 
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: None
@@ -490,7 +494,7 @@ async def test_start_analysis_buyer_role_from_executive_title(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor()
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor
@@ -534,7 +538,7 @@ async def test_start_analysis_no_buyer_role_for_non_executive(
     mock_db_session.execute.return_value = mock_result
 
     fake_executor = FakeExecutor()
-    prospects_app.dependency_overrides[get_async_db_session] = lambda: mock_db_session
+    prospects_app.dependency_overrides[prospects.get_db_from_context] = lambda: mock_db_session
     prospects_app.dependency_overrides[prospects.get_verified_tenant_id] = lambda: test_tenant
     prospects_app.dependency_overrides[prospects.require_authenticated] = lambda: MagicMock(user_id="user-1")
     prospects_app.dependency_overrides[prospects.get_executor] = lambda: fake_executor

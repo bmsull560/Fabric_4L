@@ -1,0 +1,28 @@
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.tenant_context import tenant_required
+from app.core.database import db
+from app.models.schemas import Evidence
+
+router = APIRouter(prefix="/accounts/{account_id}", tags=["Evidence"])
+
+
+@router.get("/evidence", response_model=List[Evidence])
+async def list_evidence(account_id: str, tenant_id: str = Depends(tenant_required)):
+    return db.evidence.list(tenant_id=tenant_id, filter_fn=lambda e: e.account_id == account_id)
+
+
+@router.post("/evidence/match", response_model=Evidence)
+async def match_evidence(account_id: str, evidence: Evidence, tenant_id: str = Depends(tenant_required)):
+    evidence.account_id = account_id
+    evidence.tenant_id = tenant_id
+    db.evidence.insert(evidence.id, evidence)
+    return evidence
+
+
+@router.get("/evidence/{evidence_id}", response_model=Evidence)
+async def get_evidence(evidence_id: str, tenant_id: str = Depends(tenant_required)):
+    ev = db.evidence.get(evidence_id, tenant_id=tenant_id)
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    return ev

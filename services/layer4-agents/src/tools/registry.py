@@ -52,6 +52,7 @@ class ToolResult(TypedDictModel):
         details: dict[str, Any] | None = None,
         trace_id: str | None = None,
         recoverable: bool = False,
+        metadata: dict[str, Any] | None = None,
     ) -> "ToolResult":
         """Create an error result.
 
@@ -61,6 +62,7 @@ class ToolResult(TypedDictModel):
             details: Optional structured error details
             trace_id: Correlation ID for debugging
             recoverable: Whether the error is retryable
+            metadata: Optional metadata dict (if not provided, will be built from trace_id)
         """
         error_dict: dict[str, Any] = {
             "code": code,
@@ -70,8 +72,7 @@ class ToolResult(TypedDictModel):
         if details:
             error_dict["details"] = details
 
-        metadata: dict[str, Any] | None = None
-        if trace_id:
+        if metadata is None and trace_id:
             metadata = {"trace_id": trace_id}
 
         return cls(status="error", data=None, error=error_dict, metadata=metadata)
@@ -211,7 +212,7 @@ class BaseTool(ABC):
         start_time = asyncio.get_event_loop().time()
 
         if self.input_schema is None:
-            return ToolResult.error(
+            return ToolResult.failure(
                 code="TOOL_CONFIGURATION_ERROR",
                 message=f"Tool '{self.name}' has no input schema defined",
                 trace_id=trace_id,
@@ -222,7 +223,7 @@ class BaseTool(ABC):
         try:
             validated_input = self.input_schema(**input_dict)
         except Exception as e:
-            return ToolResult.error(
+            return ToolResult.failure(
                 code="INPUT_VALIDATION_ERROR",
                 message=f"Invalid input for tool '{self.name}': {e}",
                 details={"input_keys": list(input_dict.keys())},
@@ -236,20 +237,30 @@ class BaseTool(ABC):
                 self.execute(validated_input), timeout=self.timeout_seconds
             )
         except TimeoutError:
-            return ToolResult.error(
+            elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
+            metadata = {"execution_time_ms": elapsed_ms}
+            if trace_id:
+                metadata["trace_id"] = trace_id
+            return ToolResult.failure(
                 code="TOOL_TIMEOUT",
                 message=f"Tool '{self.name}' timed out after {self.timeout_seconds}s",
                 trace_id=trace_id,
                 recoverable=True,
+                metadata=metadata,
             )
         except Exception as e:
             # Log the full exception internally, return safe error to caller
             logger.exception("Tool execution failed: %s", self.name)
-            return ToolResult.error(
+            elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
+            metadata = {"execution_time_ms": elapsed_ms}
+            if trace_id:
+                metadata["trace_id"] = trace_id
+            return ToolResult.failure(
                 code="TOOL_EXECUTION_ERROR",
                 message=f"Tool '{self.name}' execution failed",
                 trace_id=trace_id,
                 recoverable=False,
+                metadata=metadata,
             )
 
         # Convert result to dict
@@ -299,7 +310,7 @@ class TenantAwareTool(BaseTool):
         if tenant_id:
             return tenant_id, None
         if self.requires_tenant:
-            return None, ToolResult.error(
+            return None, ToolResult.failure(
                 code="TENANT_CONTEXT_MISSING",
                 message=f"Tool '{self.name}' requires tenant context but no tenant_id provided",
                 recoverable=False,
@@ -433,7 +444,7 @@ class ToolRegistry:
         try:
             tool = self.get(tool_name)
         except ToolNotFoundError as e:
-            return ToolResult.error(
+            return ToolResult.failure(
                 code="TOOL_NOT_FOUND",
                 message=str(e),
                 recoverable=False,
