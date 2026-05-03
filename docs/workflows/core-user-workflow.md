@@ -120,6 +120,7 @@ flowchart TD
 8. Click Submit button
 
 **System Actions**:
+
 - Parse structured prompt text into draft object
 - Call `onCreateSetup` with `ProspectSetupPromptPayload`
 - Create account via `POST /api/v1/accounts` if new
@@ -128,11 +129,13 @@ flowchart TD
 - Navigate to `/intelligence/:accountId/signals`
 
 **Preconditions**:
+
 - User is authenticated
 - User has permission to create accounts
 
 **Data Flow**:
-```
+
+```text
 ProspectSetupPromptPayload → useCreateAccount.mutateAsync() → Account { id, name, industry, stage } → accountId → navigation
 ```
 
@@ -166,23 +169,27 @@ ProspectSetupPromptPayload → useCreateAccount.mutateAsync() → Account { id, 
 - **Realization Plan** - Step-by-step realization plan
 
 **User Actions**:
+
 - Click tab to navigate between intelligence areas
 - View account context in header
 - Track progress via progress rail
 - Interact with right rail for agent assistance
 
 **System Actions**:
+
 - Load tab-specific data via React Query
 - Display tab component based on route
 - Maintain account context via `AccountContextSync`
 - Stream agent events via `useAgentEvents`
 
 **Preconditions**:
+
 - Account exists
 - User has permission to view account intelligence
 
 **Data Flow**:
-```
+
+```text
 Route param :tabId → getTabOrDefault() → lazy load tab component → fetch data via hooks → render tab content
 ```
 
@@ -192,6 +199,7 @@ Route param :tabId → getTabOrDefault() → lazy load tab component → fetch d
 **Component**: `HypothesesTab`
 
 **User Actions**:
+
 1. Click "Generate Hypotheses" button
 2. View generated hypotheses with confidence scores (0-100%)
 3. Select hypothesis to view details
@@ -201,6 +209,7 @@ Route param :tabId → getTabOrDefault() → lazy load tab component → fetch d
 7. Filter by status (all/draft/validated/rejected/converted)
 
 **System Actions**:
+
 - Call `useGenerateHypotheses.mutate({ account_id, max_hypotheses: 20 })`
 - Call `POST /api/v1/value-hypotheses/generate`
 - Display hypotheses list with status badges
@@ -209,17 +218,20 @@ Route param :tabId → getTabOrDefault() → lazy load tab component → fetch d
 - Update hypothesis status in UI
 
 **Preconditions**:
+
 - Account has enrichment data
 - Account has signals detected
 - Product portfolio is configured
 
 **Data Flow**:
-```
+
+```text
 Generate button → POST /api/v1/value-hypotheses/generate → ValueHypothesis[] → display in list
 Validate button → POST /api/v1/value-hypotheses/:id/validate → updated status → refresh list
 ```
 
 **API Contract**:
+
 ```typescript
 // Generate hypotheses
 POST /api/v1/value-hypotheses/generate
@@ -238,6 +250,7 @@ Response: { id: string, status: string, updated_at: string }
 **Component**: `ValueModelTab`
 
 **User Actions**:
+
 1. View value breakdown table with scenarios
 2. Select scenario (conservative/expected/optimistic)
 3. Toggle "Include strategic value" checkbox
@@ -248,6 +261,7 @@ Response: { id: string, status: string, updated_at: string }
 8. Click "Variables" to edit inputs
 
 **System Actions**:
+
 - Load value lines from workspace case via `useWorkspaceTabQuery`
 - Call `useCalculateROI.mutate({ deal_size, annual_benefit, implementation_cost, discount_rate, time_horizon_years })`
 - Call `POST /api/v1/roi/calculate`
@@ -257,17 +271,20 @@ Response: { id: string, status: string, updated_at: string }
 - Display benchmarks in comparison card
 
 **Preconditions**:
+
 - Value lines exist in workspace case
 - Account industry is set
 - ROI calculator service is available
 
 **Data Flow**:
-```
+
+```text
 Value lines from workspace → Calculate ROI button → POST /api/v1/roi/calculate → ROI result → display summary
 Industry from account → GET /api/v1/roi/benchmarks/:industry → benchmarks → display comparison
 ```
 
 **API Contract**:
+
 ```typescript
 // Calculate ROI
 POST /api/v1/roi/calculate
@@ -302,7 +319,7 @@ Response: {
 
 ### Frontend Components
 
-```
+```text
 ProspectSetup (workflow/pages/ProspectSetup.tsx)
   ├── ProspectPromptBuilder (components/workspace/ProspectPromptBuilder.tsx)
   │   ├── Company selection dropdown
@@ -344,7 +361,7 @@ ValueModelTab (pages/studio/ValueModelTab.tsx)
 
 ### Backend Services
 
-```
+```text
 Layer 4: Agentic Workflow Engine (port 8004)
   ├── Value Hypothesis Engine
   │   ├── POST /v1/value-hypotheses/generate
@@ -374,7 +391,7 @@ Layer 3: Knowledge Graph (port 8003)
 
 ### Data Stores
 
-```
+```text
 PostgreSQL (Layer 1, 2, 4, 5, 6)
   ├── accounts table (prospect data)
   ├── workspace_cases table (value model data)

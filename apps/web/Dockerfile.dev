@@ -4,7 +4,6 @@ RUN corepack enable
 
 # Copy everything needed at workspace root for pnpm to resolve relative paths correctly
 COPY apps/web/package.json ./package.json
-COPY apps/web/patches ./patches
 COPY apps/web/scripts ./scripts
 
 # Remove local file dependency and unused patches from package.json

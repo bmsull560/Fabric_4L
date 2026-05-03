@@ -35,7 +35,7 @@ services:
     volumes:
       - dev-postgres-data:/var/lib/postgresql/data
       - ./value-fabric/scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
-      - ./k8s/base/postgres-config.yml:/etc/postgresql/postgresql.conf:ro
+      - ./k8s/base/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     ports:
       - "5432:5432"
     networks:
@@ -51,6 +51,32 @@ services:
       - "config_file=/etc/postgresql/postgresql.conf"
       - "-c"
       - "shared_preload_libraries=pgaudit"
+
+  # PgBouncer connection pool (P1-1: Connection Pooling)
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    container_name: vf-dev-pgbouncer
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=ingestion
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./k8s/base/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./k8s/base/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    ports:
+      - "6432:6432"
+    networks:
+      - dev-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   redis:
     image: redis:7-alpine
