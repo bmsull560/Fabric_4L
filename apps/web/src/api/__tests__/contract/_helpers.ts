@@ -1,0 +1,345 @@
+/**
+ * Shared helpers for frontend contract tests.
+ *
+ * Provides Zod schemas derived from checked-in OpenAPI contracts and
+ * fixture factories that produce minimal-valid objects for each shape.
+ * Tests import from here rather than re-declaring schemas inline.
+ */
+
+import { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Common
+// ---------------------------------------------------------------------------
+
+export const ApiErrorSchema = z.object({
+  message: z.string(),
+  code: z.string().optional(),
+  trace_id: z.string().optional(),
+});
+
+export const PaginatedSchema = <T extends z.ZodTypeAny>(item: T) =>
+  z.object({
+    items: z.array(item),
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    page_size: z.number().int().positive(),
+    has_more: z.boolean(),
+  });
+
+// ---------------------------------------------------------------------------
+// L2 Extraction  (contracts/openapi/layer2-extraction.json)
+// ---------------------------------------------------------------------------
+
+export const ExtractResponseSchema = z.object({
+  extraction_job_id: z.string().min(1),
+  status: z.string().min(1),
+  message: z.string(),
+});
+
+export const ExtractionStatusSchema = z.object({
+  job_id: z.string().min(1),
+  overall_status: z.string().min(1),
+  extraction_status: z.string().min(1),
+  ingestion_status: z.string().min(1),
+  entities_extracted: z.number().int().nonnegative(),
+  relationships_extracted: z.number().int().nonnegative(),
+  retry_count: z.number().int().nonnegative().default(0),
+  last_error: z.string().nullable().optional(),
+  next_retry_at: z.string().nullable().optional(),
+  started_at: z.string(),
+  completed_at: z.string().nullable(),
+});
+
+// ---------------------------------------------------------------------------
+// L3 Knowledge Graph  (contracts/openapi/layer3-knowledge.json)
+// ---------------------------------------------------------------------------
+
+export const GraphNodeSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: z.string().min(1),
+  properties: z.record(z.unknown()).optional(),
+  confidence_score: z.number().min(0).max(1).optional(),
+});
+
+export const GraphEdgeSchema = z.object({
+  source: z.string().min(1),
+  target: z.string().min(1),
+  relationship: z.string().min(1),
+  properties: z.record(z.unknown()).optional(),
+});
+
+export const SubgraphResponseSchema = z.object({
+  root_entity_id: z.string(),
+  nodes: z.array(GraphNodeSchema),
+  edges: z.array(GraphEdgeSchema),
+  depth: z.number().int().nonnegative(),
+  stats: z.object({
+    total_nodes: z.number().int(),
+    total_edges: z.number().int(),
+    density: z.number(),
+  }),
+});
+
+export const FormulaEvaluateResponseSchema = z.object({
+  result: z.number(),
+  unit: z.string(),
+  confidence: z.number().min(0).max(1),
+  calculation_steps: z.array(
+    z.object({
+      step: z.number().int().positive(),
+      operation: z.string(),
+      result: z.string(),
+    })
+  ),
+  formula_used: z.string(),
+});
+
+export const PackSummarySchema = z.object({
+  pack_id: z.string().min(1),
+  name: z.string().min(1),
+  industry: z.string(),
+  status: z.string(),
+});
+
+// ---------------------------------------------------------------------------
+// L4 Agents  (contracts/openapi/layer4-agents.json)
+// ---------------------------------------------------------------------------
+
+export const WorkflowStatusEnum = z.enum([
+  'pending', 'running', 'completed', 'failed', 'cancelled', 'paused', 'interrupted',
+]);
+
+export const WorkflowCreateResponseSchema = z.object({
+  workflow_instance_id: z.string().min(1),
+  status: z.string().min(1),
+  estimated_duration_seconds: z.number().int().nonnegative(),
+});
+
+export const WorkflowStatusResponseSchema = z.object({
+  workflow_instance_id: z.string().min(1),
+  workflow_type: z.string().min(1),
+  status: WorkflowStatusEnum,
+  current_state: z.string().nullable(),
+  current_node: z.string().nullable(),
+  progress_percentage: z.number().min(0).max(100),
+  started_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  error_count: z.number().int().nonnegative(),
+  has_output: z.boolean(),
+  results: z.record(z.unknown()).nullable(),
+  tenant_id: z.string().nullable(),
+  user_id: z.string().nullable(),
+});
+
+export const WorkflowResultResponseSchema = z.object({
+  workflow_id: z.string().min(1),
+  status: z.string().min(1),
+  output: z.record(z.unknown()).nullable(),
+  errors: z.array(z.string()),
+  completed_at: z.string().nullable(),
+});
+
+export const WorkflowResumeResponseSchema = z.object({
+  workflow_instance_id: z.string().min(1),
+  status: z.string().min(1),
+  resumed_from_node: z.string().nullable(),
+  message: z.string(),
+  estimated_completion_seconds: z.number().int().nonnegative(),
+});
+
+export const C1MessageSchema = z.object({
+  role: z.string().min(1),
+  content: z.string().min(1),
+});
+
+export const TenantModelSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(200),
+  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  status: z.enum(['active', 'suspended', 'deleted']),
+});
+
+export const FeatureFlagResponseSchema = z.object({
+  id: z.string().uuid(),
+  tenant_id: z.string().uuid().nullable(),
+  flag_key: z.string().min(1),
+  enabled: z.boolean(),
+  rollout_percentage: z.number().int().min(0).max(100),
+});
+
+// ---------------------------------------------------------------------------
+// L5 Ground Truth  (contracts/openapi/layer5-ground-truth.json)
+// ---------------------------------------------------------------------------
+
+export const TruthStatusEnum = z.enum([
+  'extracted', 'supported', 'corroborated', 'validated', 'disputed', 'archived',
+]);
+
+export const TruthObjectResponseSchema = z.object({
+  id: z.string().uuid(),
+  organization_id: z.string().uuid(),
+  claim: z.string().min(1),
+  claim_type: z.string(),
+  confidence: z.number().min(0).max(1),
+  status: z.string(),
+  maturity_level: z.number().int().nonnegative(),
+  freshness: z.string(),
+  is_stale: z.boolean(),
+  applies_to: z.record(z.unknown()).nullable().optional(),
+});
+
+export const TruthObjectListResponseSchema = z.object({
+  items: z.array(TruthObjectResponseSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  page_size: z.number().int().positive(),
+});
+
+export const ValidateResponseSchema = z.object({
+  truth_id: z.string().uuid(),
+  previous_status: z.string(),
+  new_status: z.string(),
+  maturity_level: z.number().int().nonnegative(),
+});
+
+// ---------------------------------------------------------------------------
+// Fixture factories — produce minimal-valid objects for each schema
+// ---------------------------------------------------------------------------
+
+export const fixtures = {
+  extractResponse: (): z.infer<typeof ExtractResponseSchema> => ({
+    extraction_job_id: 'job-abc123',
+    status: 'pending',
+    message: 'Extraction job queued',
+  }),
+
+  extractionStatus: (overrides?: Partial<z.infer<typeof ExtractionStatusSchema>>): z.infer<typeof ExtractionStatusSchema> => ({
+    job_id: 'job-abc123',
+    overall_status: 'completed',
+    extraction_status: 'completed',
+    ingestion_status: 'completed',
+    entities_extracted: 12,
+    relationships_extracted: 8,
+    retry_count: 0,
+    last_error: null,
+    next_retry_at: null,
+    started_at: '2024-01-15T10:00:00Z',
+    completed_at: '2024-01-15T10:01:30Z',
+    ...overrides,
+  }),
+
+  workflowCreateResponse: (): z.infer<typeof WorkflowCreateResponseSchema> => ({
+    workflow_instance_id: 'wf-inst-001',
+    status: 'pending',
+    estimated_duration_seconds: 300,
+  }),
+
+  workflowStatus: (overrides?: Partial<z.infer<typeof WorkflowStatusResponseSchema>>): z.infer<typeof WorkflowStatusResponseSchema> => ({
+    workflow_instance_id: 'wf-inst-001',
+    workflow_type: 'roi_calculator',
+    status: 'running',
+    current_state: 'data_collection',
+    current_node: 'collect_metrics',
+    progress_percentage: 45,
+    started_at: '2024-01-15T10:00:00Z',
+    completed_at: null,
+    error_count: 0,
+    has_output: false,
+    results: null,
+    tenant_id: 'tenant-001',
+    user_id: 'user-001',
+    ...overrides,
+  }),
+
+  workflowResult: (): z.infer<typeof WorkflowResultResponseSchema> => ({
+    workflow_id: 'wf-inst-001',
+    status: 'completed',
+    output: { roi_percent: 142, payback_months: 18 },
+    errors: [],
+    completed_at: '2024-01-15T10:05:00Z',
+  }),
+
+  tenant: (): z.infer<typeof TenantModelSchema> => ({
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    name: 'Acme Corp',
+    slug: 'acme-corp',
+    status: 'active',
+  }),
+
+  featureFlag: (): z.infer<typeof FeatureFlagResponseSchema> => ({
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+    flag_key: 'advanced_analytics',
+    enabled: true,
+    rollout_percentage: 100,
+  }),
+
+  truthObject: (overrides?: Partial<z.infer<typeof TruthObjectResponseSchema>>): z.infer<typeof TruthObjectResponseSchema> => ({
+    id: '550e8400-e29b-41d4-a716-446655440002',
+    organization_id: '550e8400-e29b-41d4-a716-446655440000',
+    claim: 'Manual reporting costs 12 hours/week per analyst',
+    claim_type: 'quantitative',
+    confidence: 0.82,
+    status: 'supported',
+    maturity_level: 2,
+    freshness: '2024-01-15T10:00:00Z',
+    is_stale: false,
+    applies_to: { account_id: 'acct-456' },
+    ...overrides,
+  }),
+
+  graphNode: (): z.infer<typeof GraphNodeSchema> => ({
+    id: 'node-001',
+    name: 'Cloud Migration',
+    type: 'capability',
+    confidence_score: 0.95,
+  }),
+
+  packSummary: (): z.infer<typeof PackSummarySchema> => ({
+    pack_id: 'pack-saas-001',
+    name: 'SaaS Value Pack',
+    industry: 'Technology',
+    status: 'active',
+  }),
+};
+
+// ---------------------------------------------------------------------------
+// Assertion helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert that `data` satisfies `schema` and return the parsed value.
+ * Throws a descriptive error on mismatch — surfaces field-level issues.
+ */
+export function assertSchema<T extends z.ZodTypeAny>(
+  schema: T,
+  data: unknown,
+  label: string
+): z.infer<T> {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `  ${i.path.join('.')}: ${i.message}`)
+      .join('\n');
+    throw new Error(`Contract violation for ${label}:\n${issues}`);
+  }
+  return result.data;
+}
+
+/**
+ * Assert that `data` fails `schema` validation (for negative-path tests).
+ */
+export function assertSchemaRejects(
+  schema: z.ZodTypeAny,
+  data: unknown,
+  label: string
+): void {
+  const result = schema.safeParse(data);
+  if (result.success) {
+    throw new Error(
+      `Expected ${label} to fail schema validation, but it passed`
+    );
+  }
+}
