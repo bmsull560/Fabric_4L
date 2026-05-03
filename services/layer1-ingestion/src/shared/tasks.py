@@ -656,9 +656,52 @@ def post_processing_stage(self, prev_result: dict):
         raise self.retry(exc=exc, countdown=10)
 
 
+def _validate_payload_against_schema(
+    data: dict,
+    schema: dict,
+) -> tuple[bool, list[dict], list[str], list[str]]:
+    """Validate *data* against a JSON Schema *schema*.
+
+    Returns:
+        (schema_valid, errors, required_present, required_missing)
+
+    *errors* is a list of dicts with keys ``path``, ``message``, ``validator``
+    so callers can persist them directly into ``ExtractedData.validation_errors``.
+    """
+    import jsonschema
+    from jsonschema import Draft7Validator
+
+    validator = Draft7Validator(schema)
+    raw_errors = sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path))
+
+    errors = [
+        {
+            "path": ".".join(str(p) for p in err.absolute_path) or "$",
+            "message": err.message,
+            "validator": err.validator,
+        }
+        for err in raw_errors
+    ]
+
+    # Determine which required fields are present / missing
+    required_fields: list[str] = schema.get("required", [])
+    required_present = [f for f in required_fields if f in data]
+    required_missing = [f for f in required_fields if f not in data]
+
+    return len(errors) == 0, errors, required_present, required_missing
+
+
 @celery_app.task(bind=True, max_retries=2)
 def validation_stage(self, prev_result: dict):
-    """Stage 7: Validation (schema, data quality)."""
+    """Stage 7: Validation (schema, data quality).
+
+    Validates the job's ExtractedData payload against the extraction_schema
+    stored in the job configuration.  Results are written back to the
+    ExtractedData record so downstream stages and the API can surface them.
+
+    If no extraction_schema is configured the stage completes successfully
+    without modifying the ExtractedData record (schema validation is opt-in).
+    """
     job_id = UUID(prev_result["job_id"])
 
     logger.info("Starting validation stage", job_id=str(job_id))
@@ -673,12 +716,57 @@ def validation_stage(self, prev_result: dict):
             job.progress_stage = PipelineStage.VALIDATION.value
             session.commit()
 
-            # Validate extracted data against schema
             config = job.configuration
             extraction_config = config.get("extraction_config", {})
-            extraction_config.get("extraction_schema")
+            schema = extraction_config.get("extraction_schema")
 
-            # TODO: Implement schema validation
+            if schema and isinstance(schema, dict):
+                # Locate the ExtractedData record produced by ai_extraction_stage
+                extracted = (
+                    session.query(ExtractedData)
+                    .filter(
+                        ExtractedData.job_id == job_id,
+                        ExtractedData.tenant_id == job.tenant_id,
+                    )
+                    .order_by(ExtractedData.provenance_extracted_at.desc())
+                    .first()
+                )
+
+                if extracted is not None:
+                    payload = extracted.data or {}
+                    schema_valid, errors, required_present, required_missing = (
+                        _validate_payload_against_schema(payload, schema)
+                    )
+
+                    extracted.validation_schema_valid = schema_valid
+                    extracted.validation_errors = errors
+                    extracted.validation_required_fields_present = required_present
+                    extracted.validation_required_fields_missing = required_missing
+
+                    if not schema_valid:
+                        logger.warning(
+                            "Extracted data failed schema validation",
+                            job_id=str(job_id),
+                            tenant_id=str(job.tenant_id),
+                            error_count=len(errors),
+                            required_missing=required_missing,
+                        )
+                    else:
+                        logger.info(
+                            "Extracted data passed schema validation",
+                            job_id=str(job_id),
+                            tenant_id=str(job.tenant_id),
+                        )
+                else:
+                    logger.info(
+                        "No ExtractedData record found; skipping schema validation",
+                        job_id=str(job_id),
+                    )
+            else:
+                logger.info(
+                    "No extraction_schema configured; skipping schema validation",
+                    job_id=str(job_id),
+                )
 
             _update_stage(session, job_id, PipelineStage.VALIDATION, "COMPLETED")
             session.commit()
