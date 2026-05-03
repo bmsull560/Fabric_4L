@@ -13,7 +13,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../../test/mocks/server';
 import GraphExplorer from './GraphExplorer';
 
 // P0 Fix: Standard timeout configuration for flaky async tests

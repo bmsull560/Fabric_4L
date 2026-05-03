@@ -105,7 +105,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _BACKEND_AGENT_STATE = (
     _PROJECT_ROOT
-    / "value-fabric"
+    / "services"
     / "layer4-agents"
     / "src"
     / "models"
@@ -113,7 +113,7 @@ _BACKEND_AGENT_STATE = (
 )
 
 _FRONTEND_WORKFLOWS_TS = (
-    _PROJECT_ROOT / "frontend" / "client" / "src" / "api" / "workflows.ts"
+    _PROJECT_ROOT / "apps" / "web" / "src" / "api" / "workflows.ts"
 )
 
 

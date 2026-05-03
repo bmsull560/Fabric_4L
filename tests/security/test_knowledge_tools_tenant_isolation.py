@@ -8,80 +8,19 @@ Ship/No-Ship Gate: FAIL on this file blocks release.
 """
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
 
-# Path setup - only executed at collection time, cleaned up after
-_repo_root = Path(__file__).resolve().parents[2]
-_layer4_src = _repo_root / "value-fabric" / "layer4-agents" / "src"
-_shared_path = str(_repo_root / "value-fabric")
-_layer4_path = str(_layer4_src)
-
-# Use pytest fixture for scoped path manipulation instead of module-level mutation
-@pytest.fixture(scope="module", autouse=True)
-def setup_import_paths():
-    """Add required paths for imports, cleanup after module tests complete."""
-    paths_added = []
-    for path in [_shared_path, _layer4_path]:
-        if path not in sys.path:
-            sys.path.insert(0, path)
-            paths_added.append(path)
-    yield
-    # Cleanup: remove only paths we added (use discard pattern for safety)
-    for path in paths_added:
-        try:
-            sys.path.remove(path)
-        except ValueError:
-            pass  # Path already removed by another test or cleanup
-
-
 # Lazy import fixtures to avoid import errors at collection time
 def _get_knowledge_tools():
-    """Import knowledge tools with proper error handling.
+    """Import knowledge tools via canonical package imports."""
+    from value_fabric.layer4.tools.knowledge_tools import QueryGraphTool, SemanticSearchTool
+    from value_fabric.layer4.models.tool_schemas import QueryGraphInput, SemanticSearchInput
     
-    Bypasses broken __init__.py by importing directly from module file.
-    """
-    import importlib.util
-    
-    # Import directly from file to bypass package __init__ issues
-    tools_path = _layer4_src / "tools" / "knowledge_tools.py"
-    spec = importlib.util.spec_from_file_location("knowledge_tools", tools_path)
-    module = importlib.util.module_from_spec(spec)
-    
-    # Need to set up sys.path for relative imports in the module
-    sys.path.insert(0, str(_layer4_src))
-    try:
-        spec.loader.exec_module(module)
-    except ImportError as e:
-        pytest.skip(f"Cannot load knowledge_tools module: {e}")
-    finally:
-        if str(_layer4_src) in sys.path:
-            sys.path.remove(str(_layer4_src))
-    
-    # Import schemas separately
-    schemas_path = _layer4_src / "models" / "tool_schemas.py"
-    schemas_spec = importlib.util.spec_from_file_location("tool_schemas", schemas_path)
-    schemas_module = importlib.util.module_from_spec(schemas_spec)
-    sys.path.insert(0, str(_layer4_src))
-    try:
-        schemas_spec.loader.exec_module(schemas_module)
-    except ImportError as e:
-        pytest.skip(f"Cannot load tool_schemas module: {e}")
-    finally:
-        if str(_layer4_src) in sys.path:
-            sys.path.remove(str(_layer4_src))
-    
-    return (
-        module.QueryGraphTool, 
-        module.SemanticSearchTool, 
-        schemas_module.QueryGraphInput, 
-        schemas_module.SemanticSearchInput
-    )
+    return QueryGraphTool, SemanticSearchTool, QueryGraphInput, SemanticSearchInput
 
 # Constants matching conftest.py
 TENANT_A_ID = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
@@ -246,8 +185,8 @@ class TestSemanticSearchToolTenantIsolation:
     @pytest.mark.asyncio
     async def test_semantic_search_applies_tenant_filter(self, mock_pinecone_index, monkeypatch):
         """POSITIVE: Semantic search includes tenant_id in metadata filter."""
-        from tools.knowledge_tools import SemanticSearchTool
-        from models.tool_schemas import SemanticSearchInput
+        from value_fabric.layer4.tools.knowledge_tools import SemanticSearchTool
+        from value_fabric.layer4.models.tool_schemas import SemanticSearchInput
         from value_fabric.shared.identity.context import RequestContext, set_request_context
         from value_fabric.shared.identity.permissions import Permission
         
@@ -296,8 +235,8 @@ class TestKnowledgeToolsRateLimiting:
     @pytest.mark.asyncio
     async def test_query_graph_respects_rate_limit(self, monkeypatch):
         """NEGATIVE: Tool fails gracefully when rate limit exceeded."""
-        from tools.knowledge_tools import QueryGraphTool
-        from models.tool_schemas import QueryGraphInput
+        from value_fabric.layer4.tools.knowledge_tools import QueryGraphTool
+        from value_fabric.layer4.models.tool_schemas import QueryGraphInput
         
         # Mock rate limiter that always blocks
         mock_limiter = MagicMock()
@@ -333,8 +272,8 @@ class TestKnowledgeToolsInputValidation:
     @pytest.mark.asyncio
     async def test_query_graph_blocks_write_operations(self):
         """NEGATIVE: Cypher write operations are blocked (read-only enforcement)."""
-        from tools.knowledge_tools import QueryGraphTool
-        from models.tool_schemas import QueryGraphInput
+        from value_fabric.layer4.tools.knowledge_tools import QueryGraphTool
+        from value_fabric.layer4.models.tool_schemas import QueryGraphInput
         
         tool = QueryGraphTool(config={"neo4j_uri": "bolt://localhost:7687"})
         
@@ -361,8 +300,8 @@ class TestKnowledgeToolsInputValidation:
     @pytest.mark.asyncio
     async def test_query_graph_allows_read_operations(self):
         """POSITIVE: Read-only Cypher queries are permitted."""
-        from tools.knowledge_tools import QueryGraphTool
-        from models.tool_schemas import QueryGraphInput
+        from value_fabric.layer4.tools.knowledge_tools import QueryGraphTool
+        from value_fabric.layer4.models.tool_schemas import QueryGraphInput
         
         tool = QueryGraphTool(config={"neo4j_uri": "bolt://localhost:7687"})
         
@@ -400,8 +339,8 @@ class TestKnowledgeToolsAuditLogging:
     @pytest.mark.asyncio
     async def test_query_graph_logs_executed_queries(self, caplog):
         """POSITIVE: Executed queries are logged for audit trail."""
-        from tools.knowledge_tools import QueryGraphTool
-        from models.tool_schemas import QueryGraphInput
+        from value_fabric.layer4.tools.knowledge_tools import QueryGraphTool
+        from value_fabric.layer4.models.tool_schemas import QueryGraphInput
         
         import logging
         

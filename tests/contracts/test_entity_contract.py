@@ -14,10 +14,10 @@ from pathlib import Path
 
 # Add layer3-knowledge to path
 # NOTE: This file will be migrated to tests/contract/
-layer3_path = Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src"
+layer3_path = Path(__file__).parent.parent.parent / "services" / "layer3-knowledge" / "src"
 sys.path.insert(0, str(layer3_path))
 
-from api.models import (
+from value_fabric.layer3.api.models import (
     EntitySummary,
     EntityDetail,
     EntityFilterRequest,

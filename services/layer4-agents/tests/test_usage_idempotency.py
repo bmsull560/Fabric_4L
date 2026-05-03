@@ -21,7 +21,7 @@ from value_fabric.layer4.models.billing import BillingUsageEvent, UsageEventStat
 mock_stripe_module = MagicMock()
 
 with patch.dict('sys.modules', {'stripe': mock_stripe_module}):
-    from src.services.usage_service import UsageService, UsageValidationError
+    from value_fabric.layer4.services.usage_service import UsageService, UsageValidationError
 
 
 # =============================================================================

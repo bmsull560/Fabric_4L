@@ -3,28 +3,28 @@
 Verifies that tools return structured ToolResult instead of raising exceptions.
 """
 
-import asyncio
 import sys
 from pathlib import Path
 
-# Add the services path to sys.path
+# Set up import paths for Layer 4 agents
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_SERVICES_PATH = str(_PROJECT_ROOT / "services" / "layer4-agents" / "src")
-if _SERVICES_PATH not in sys.path:
-    sys.path.insert(0, _SERVICES_PATH)
+_L4_PATH = str(_PROJECT_ROOT / "services" / "layer4-agents" / "src")
+if _L4_PATH not in sys.path:
+    sys.path.insert(0, _L4_PATH)
 
 import pytest
 from pydantic import BaseModel
 
-from tools import (
-    BaseTool,
-    ToolRegistry,
-    ToolResult,
-)
-from tools.calculation_tools import (
-    CalculateROITool,
-    EvaluateFormulaTool,
-)
+# Import directly from registry module to avoid __init__.py relative imports
+import importlib.util
+_registry_path = Path(_L4_PATH) / "tools" / "registry.py"
+spec = importlib.util.spec_from_file_location("registry", _registry_path)
+registry = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(registry)
+
+BaseTool = registry.BaseTool
+ToolRegistry = registry.ToolRegistry
+ToolResult = registry.ToolResult
 
 
 def validate_tool_result(result):
@@ -72,7 +72,7 @@ class TestToolResultStructure:
 
     def test_tool_result_error(self):
         """Test creating an error result."""
-        result = ToolResult.error(
+        result = ToolResult.failure(
             code="VALIDATION_ERROR",
             message="Invalid input",
             details={"field": "value"},
@@ -93,7 +93,7 @@ class TestToolResultStructure:
 
     def test_tool_result_error_minimal(self):
         """Test creating a minimal error result."""
-        result = ToolResult.error(
+        result = ToolResult.failure(
             code="TIMEOUT",
             message="Tool timed out",
         )
@@ -346,7 +346,7 @@ class TestToolResultContractSchema:
 
     def test_error_result_schema(self):
         """Validate error result has all required fields."""
-        result = ToolResult.error(
+        result = ToolResult.failure(
             code="VALIDATION_FAILED",
             message="Input validation failed",
             details={"field": "email"},
@@ -365,7 +365,7 @@ class TestToolResultContractSchema:
 
     def test_error_result_no_leakage(self):
         """Ensure error results don't leak sensitive internals."""
-        result = ToolResult.error(
+        result = ToolResult.failure(
             code="INTERNAL_ERROR",
             message="An internal error occurred",
             trace_id="trace-secret-123",
@@ -408,3 +408,53 @@ class TestToolResultBackwardCompatibility:
         assert isinstance(result, ToolResult)
         assert result.status == "success"
         assert result.data["result"] == "processed: test"
+
+
+class TestLLMResponseValidation:
+    """Test Pydantic validation for LLM responses (Contract §2.5).
+
+    Replaces raw json.loads with structured model validation.
+    """
+
+    def test_llm_response_model_validates_correct_json(self):
+        """Test that valid LLM JSON response is parsed correctly."""
+        from tools.competitive_tools import (
+            LLMDifferenceItem,
+            LLMDifferencesResponse,
+        )
+
+        valid_json = '''{"differences": [
+            {"category": "COST_STRUCTURE", "description": "20% cheaper", "impact_direction": "FAVORS_US", "confidence_score": 0.8}
+        ]}'''
+
+        result = LLMDifferencesResponse.model_validate_json(valid_json)
+        assert len(result.differences) == 1
+        assert result.differences[0].category == "COST_STRUCTURE"
+        assert result.differences[0].confidence_score == 0.8
+
+    def test_llm_response_model_handles_invalid_json(self):
+        """Test that invalid JSON is handled gracefully."""
+        from value_fabric.layer4.tools.competitive_tools import (
+            LLMDifferencesResponse,
+        )
+
+        # Malformed JSON should raise validation error
+        invalid_json = '{"differences": [invalid]}'
+
+        with pytest.raises(Exception):
+            LLMDifferencesResponse.model_validate_json(invalid_json)
+
+    def test_llm_response_model_uses_defaults_for_missing_fields(self):
+        """Test that missing fields use sensible defaults."""
+        from value_fabric.layer4.tools.competitive_tools import (
+            LLMDifferenceItem,
+        )
+
+        # Partial data should use defaults
+        partial = {"description": "Some description"}
+        item = LLMDifferenceItem.model_validate(partial)
+
+        assert item.category == "CAPABILITY_TO_OUTCOME"  # default
+        assert item.confidence_score == 0.5  # default
+        assert item.is_unsupported_claim is False  # default
+        assert item.description == "Some description"

@@ -1,9 +1,56 @@
 import { useState } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
+import { apiClient } from "@/api/client";
+import { useMutation } from "@tanstack/react-query";
 import {
   Building2, Briefcase, Globe,
-  CheckCircle2, BrainCircuit, AlertTriangle, ArrowRight
+  CheckCircle2, BrainCircuit, AlertTriangle, ArrowRight,
+  Loader2, AlertCircle
 } from "lucide-react";
+
+// =============================================================================
+// Types (matching backend contract)
+// =============================================================================
+
+type WorkflowStartStatus = "started" | "pending" | "degraded" | "failed";
+type EnrichmentStatus = "queued" | "complete" | "unavailable" | "pending" | "degraded";
+type BuyerRoleInferenceStatus = "complete" | "pending" | "unavailable";
+type CrmMatchStatus = "matched" | "not_found" | "unavailable";
+
+interface BuyerRoleInferenceResult {
+  status: BuyerRoleInferenceStatus;
+  role: string | null;
+  confidence: number | null;
+  source: string | null;
+}
+
+interface CrmMatchResult {
+  status: CrmMatchStatus;
+  opportunity_id: string | null;
+  confidence: number | null;
+  source: string | null;
+}
+
+interface StartAnalysisResponse {
+  prospect_id: string;
+  workflow_id: string | null;
+  status: WorkflowStartStatus;
+  enrichment_status: EnrichmentStatus;
+  buyer_role_inference: BuyerRoleInferenceResult;
+  crm_match: CrmMatchResult;
+  next_route_state: string;
+  message: string | null;
+}
+
+interface ProspectSetupData {
+  company_name: string;
+  contact_name: string;
+  contact_title: string | null;
+  primary_objective: string | null;
+  buyer_role_confirmed: boolean;
+  company_confirmed: boolean;
+  crm_reviewed: boolean;
+}
 
 type Status = "complete" | "inferred" | "needed";
 
@@ -38,15 +85,51 @@ const objectives = [
 
 export default function ProspectSetup() {
   const { navigateTo } = useNavigation();
-  const [company, setCompany] = useState("Meridian Automotive Components");
-  const [contact, setContact] = useState("Patricia Chen");
-  const [title, setTitle] = useState("VP Manufacturing Operations");
+  const [company, setCompany] = useState("");
+  const [contact, setContact] = useState("");
+  const [title, setTitle] = useState("");
   const [objective, setObjective] = useState<string | null>(null);
   const [customObjective, setCustomObjective] = useState("");
   const [buyerConfirmed, setBuyerConfirmed] = useState(false);
   const [companyConfirmed, setCompanyConfirmed] = useState(false);
   const [crmReviewed, setCrmReviewed] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  // Backend integration: start-analysis mutation
+  const startAnalysisMutation = useMutation({
+    mutationFn: async (setupData: ProspectSetupData): Promise<StartAnalysisResponse> => {
+      // Generate a prospect ID (or use existing if editing)
+      const prospectId = crypto.randomUUID();
+
+      const response = await apiClient.post('l4', `/v1/prospects/${prospectId}/start-analysis`, {
+        prospect_id: prospectId,
+        setup_data: setupData,
+        workflow_type: "prospect_analysis",
+        priority: "NORMAL",
+      });
+
+      return response.data as StartAnalysisResponse;
+    },
+    onSuccess: (data) => {
+      // Navigate with returned context (real backend response, not mock)
+      // Store analysis context in navigation state for downstream consumption
+      navigateTo('workflow-intelligence', {
+        state: {
+          prospectId: data.prospect_id,
+          workflowId: data.workflow_id,
+          status: data.status,
+          enrichmentStatus: data.enrichment_status,
+          buyerRole: data.buyer_role_inference,
+          crmMatch: data.crm_match,
+        },
+      });
+    },
+    onError: (error: Error) => {
+      setStartError(error.message || "Failed to start prospect analysis. Please try again.");
+    },
+  });
+
+  const isAnalyzing = startAnalysisMutation.isPending;
 
   const objectiveError = !objective && !isAnalyzing;
 
@@ -61,8 +144,19 @@ export default function ProspectSetup() {
 
   const handleContinue = () => {
     if (!canContinue) return;
-    setIsAnalyzing(true);
-    setTimeout(() => navigateTo('workflow-intelligence'), 1500);
+    setStartError(null);
+
+    const setupData: ProspectSetupData = {
+      company_name: company.trim(),
+      contact_name: contact.trim(),
+      contact_title: title.trim() || null,
+      primary_objective: objective === "Custom…" ? customObjective.trim() : objective,
+      buyer_role_confirmed: buyerConfirmed,
+      company_confirmed: companyConfirmed,
+      crm_reviewed: crmReviewed,
+    };
+
+    startAnalysisMutation.mutate(setupData);
   };
 
   return (
@@ -224,16 +318,22 @@ export default function ProspectSetup() {
             </div>
           )}
 
-          {/* Company Profile Found */}
+          {/* Company Profile - No longer hardcoded */}
           {company && (
             <div className="border border-border rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <Globe className="w-[18px] h-[18px] text-muted-foreground shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">Company Profile Found</h3>
-                    <p className="text-sm text-foreground font-medium mt-1">12K employees · $4.2B revenue</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">Source: enrichment</p>
+                    <h3 className="text-base font-semibold text-foreground">Company Profile</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {companyConfirmed
+                        ? "Company profile confirmed"
+                        : "Enrichment data will be loaded after starting analysis"}
+                    </p>
+                    <p className="text-sm text-muted-foreground/60 mt-0.5">
+                      Source: pending enrichment service
+                    </p>
                   </div>
                 </div>
                 {!companyConfirmed ? (
@@ -257,14 +357,18 @@ export default function ProspectSetup() {
             </div>
           )}
 
-          {/* CRM Opportunity Found */}
+          {/* CRM Opportunity - No longer hardcoded */}
           <div className="border border-border rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
                 <Briefcase className="w-[18px] h-[18px] text-muted-foreground shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-base font-semibold text-foreground">CRM Opportunity Found</h3>
-                  <p className="text-sm text-foreground font-medium mt-1">MAC-2026-0417 (Salesforce)</p>
+                  <h3 className="text-base font-semibold text-foreground">CRM Opportunity</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {crmReviewed
+                      ? "CRM opportunity reviewed"
+                      : "CRM matching will be checked after starting analysis"}
+                  </p>
                 </div>
               </div>
               {!crmReviewed ? (
@@ -305,8 +409,8 @@ export default function ProspectSetup() {
         >
           {isAnalyzing ? (
             <>
-              <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-              Analyzing...
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Starting analysis...
             </>
           ) : (
             <>
@@ -320,8 +424,19 @@ export default function ProspectSetup() {
         </button>
       </div>
 
+      {/* Error state */}
+      {startError && (
+        <div className="mt-4 flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl px-4 py-3">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <span className="font-medium">Failed to start analysis:</span>
+            <p className="mt-0.5">{startError}</p>
+          </div>
+        </div>
+      )}
+
       {/* Optional: Missing inputs cue (subtle, only when needed) */}
-      {!canContinue && (
+      {!canContinue && !startError && (
         <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
           <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <div>

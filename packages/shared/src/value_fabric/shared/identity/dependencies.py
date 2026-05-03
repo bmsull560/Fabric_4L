@@ -256,7 +256,7 @@ def require_privileged_access(
 
     async def _check_privileged(
         request: Request,
-        context: RequestContext = Depends(get_request_context),
+        context: RequestContext = Depends(get_current_context),
     ) -> RequestContext:
         # First check if user has super admin role
         if not context.is_super_admin():

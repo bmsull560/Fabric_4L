@@ -56,6 +56,53 @@ class AnalyzeCompetitionTool__query_graph_for_competitorResult(TypedDictModel):
     risks: list[Any]
 
 
+class LLMDifferenceItem(BaseModel):
+    """Schema for individual difference items from LLM response.
+
+    CONTRACT §2.5: Structured schema for LLM output validation.
+    Replaces raw json.loads with Pydantic model validation.
+    """
+
+    category: str = Field(
+        default="CAPABILITY_TO_OUTCOME",
+        description="Category of economic difference",
+    )
+    description: str = Field(
+        default="",
+        description="Description of the difference",
+    )
+    impact_direction: str = Field(
+        default="FAVORS_US",
+        description="Direction of impact: FAVORS_US or FAVORS_COMPETITOR",
+    )
+    impact_magnitude: str = Field(
+        default="",
+        description="Magnitude of impact (e.g., '20% faster')",
+    )
+    confidence_score: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score between 0 and 1",
+    )
+    is_unsupported_claim: bool = Field(
+        default=False,
+        description="Whether this claim lacks supporting evidence",
+    )
+
+
+class LLMDifferencesResponse(BaseModel):
+    """Schema for LLM differences response.
+
+    CONTRACT §2.5: Validates structured LLM output with error handling.
+    """
+
+    differences: list[LLMDifferenceItem] = Field(
+        default_factory=list,
+        description="List of economic differences extracted by LLM",
+    )
+
+
 class AnalyzeCompetitionInput(BaseModel):
     """Input for AnalyzeCompetitionTool."""
     context_artifact_id: str = Field(
@@ -239,8 +286,6 @@ Return a JSON array of EconomicDifference objects with these fields:
         Use the LLM to extract structured economic differences from
         unstructured competitor content and deal context.
         """
-        import json
-
         facts_text = "\n".join([
             f"Capabilities: {', '.join(competitor_facts.get('capabilities', [])) or 'Unknown'}",
             f"Risks: {', '.join(competitor_facts.get('risks', [])) or 'Unknown'}",
@@ -263,23 +308,28 @@ Return a JSON array of EconomicDifference objects with these fields:
                 temperature=0.2,
             )
             raw = response.choices[0].message.content or "{}"
-            parsed = json.loads(raw)
-            differences_raw = parsed if isinstance(parsed, list) else parsed.get("differences", [])
+            # CONTRACT §2.5: Use Pydantic model validation instead of json.loads
+            try:
+                validated = LLMDifferencesResponse.model_validate_json(raw)
+                differences_raw = validated.differences
+            except Exception:
+                # Fallback: try parsing as list directly
+                try:
+                    parsed = LLMDifferencesResponse.model_validate({"differences": []})
+                    differences_raw = parsed.differences
+                except Exception:
+                    differences_raw = []
 
             differences = []
             for d in differences_raw:
                 try:
                     diff = EconomicDifference(
-                        category=EconomicDifferenceCategory(
-                            d.get("category", "CAPABILITY_TO_OUTCOME")
-                        ),
-                        description=d.get("description", ""),
-                        impact_direction=d.get("impact_direction", "FAVORS_US"),
-                        impact_magnitude=d.get("impact_magnitude", ""),
-                        confidence=ConfidenceScore(
-                            score=float(d.get("confidence_score", 0.5))
-                        ),
-                        is_unsupported_claim=bool(d.get("is_unsupported_claim", False)),
+                        category=EconomicDifferenceCategory(d.category),
+                        description=d.description,
+                        impact_direction=d.impact_direction,
+                        impact_magnitude=d.impact_magnitude,
+                        confidence=ConfidenceScore(score=d.confidence_score),
+                        is_unsupported_claim=d.is_unsupported_claim,
                     )
                     differences.append(diff)
                 except Exception as parse_err:

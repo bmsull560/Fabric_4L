@@ -299,7 +299,7 @@ class TestRateLimitAdminAPI:
     """Tests for rate limit admin API."""
     
     @pytest.mark.asyncio
-    @pytest.mark.parametrize("resolved_tier", [TenantTier.FREE, TenantTier.SHARED, TenantTier.DEDICATED])
+    @pytest.mark.parametrize("resolved_tier", [TenantTier.SHARED, TenantTier.DEDICATED, TenantTier.ENTERPRISE])
     async def test_get_tenant_quota_uses_resolved_tier(self, resolved_tier):
         """Verify quota lookup uses the resolved tenant tier from metadata provider."""
         tenant_id = uuid4()

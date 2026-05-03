@@ -16,7 +16,7 @@ from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from value_fabric.shared.identity.context import get_tenant_context
+from value_fabric.shared.boundaries.tenant_boundary import get_tenant_context
 from .tenant_rate_limiter import TenantRateLimiter, TenantTier
 
 logger = logging.getLogger(__name__)

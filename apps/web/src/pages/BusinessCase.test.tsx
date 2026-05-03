@@ -13,7 +13,7 @@ import '@testing-library/jest-dom';
 import { screen, waitFor } from '@testing-library/react';
 import { renderWithRouter } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../../test/mocks/server';
 import BusinessCase from './BusinessCase';
 
 describe('BusinessCase', () => {

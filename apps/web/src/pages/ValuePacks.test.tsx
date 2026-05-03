@@ -14,7 +14,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createWrapper, createWrapperWithRetry } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../../test/mocks/server';
 import ValuePacks from './ValuePacks';
 import { apiClient } from '@/api/client';
 import { ValuePackApiError } from '@/hooks/useValuePacks';

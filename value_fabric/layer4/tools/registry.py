@@ -45,7 +45,7 @@ class ToolResult(TypedDictModel):
         return cls(status="success", data=data, error=None, metadata=metadata)
 
     @classmethod
-    def error(
+    def failure(
         cls,
         code: str,
         message: str,

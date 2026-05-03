@@ -26,7 +26,7 @@ class TestImportTopology:
         """import shared should resolve to canonical location."""
         import value_fabric.shared
 
-        shared_path = Path(shared.__file__)
+        shared_path = Path(value_fabric.shared.__file__)
         # Should resolve to value-fabric/shared/ or value_fabric/shared/
         # NOT root shared/ which causes shadowing
         assert "value" in str(shared_path).lower(), (
@@ -95,7 +95,7 @@ class TestImportTopology:
         """Root shared/ should not shadow value-fabric/shared/."""
         import value_fabric.shared
 
-        shared_file = Path(shared.__file__)
+        shared_file = Path(value_fabric.shared.__file__)
         repo_root = REPO_ROOT
 
         # Check if shared resolves to root directory (bad)

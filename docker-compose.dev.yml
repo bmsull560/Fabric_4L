@@ -83,8 +83,8 @@ services:
   # ---------------------------------------------------------------------------
   layer4:
     build:
-      context: ./value-fabric
-      dockerfile: ./layer4-agents/Dockerfile
+      context: ./services/layer4-agents
+      dockerfile: ./Dockerfile
     container_name: vf-dev-layer4
     ports:
       - "8004:8000"
@@ -129,8 +129,8 @@ services:
       - dev-network
     volumes:
       # Mount source for hot-reload (optional — remove for production-like testing)
-      - ./shared:/app/shared:ro
-      - ./value-fabric/layer4-agents/src:/app/src:ro
+      - ./packages/shared/src:/app/shared:ro
+      - ./services/layer4-agents/src:/app/src:ro
     command: >
       uvicorn src.api.main:app
       --host 0.0.0.0
@@ -151,7 +151,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: ./frontend/Dockerfile.dev
+      dockerfile: ./apps/web/Dockerfile.dev
     container_name: vf-dev-frontend
     ports:
       - "3001:3001"
@@ -163,7 +163,7 @@ services:
       - VITE_ENABLE_QUERY_DEVTOOLS=true
       - VITE_API_LOG_LEVEL=debug
     volumes:
-      - ./frontend:/app
+      - ./apps/web:/app
       - /app/node_modules
     networks:
       - dev-network
