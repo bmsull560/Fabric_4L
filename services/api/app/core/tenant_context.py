@@ -1,6 +1,9 @@
 from contextvars import ContextVar
 from typing import Optional
-from fastapi import Request, HTTPException, Depends
+
+from fastapi import Depends, HTTPException, Request
+
+from app.core.security import TokenPayload, require_authenticated
 
 TenantContext: ContextVar[Optional[str]] = ContextVar("tenant_id", default=None)
 
@@ -13,17 +16,31 @@ def get_tenant_id() -> str:
 
 
 class TenantRequired:
-    def __init__(self, auto_create: bool = False):
-        self.auto_create = auto_create
+    """Resolve tenant_id from the authenticated JWT payload.
 
-    async def __call__(self, request: Request) -> str:
-        tenant_id = request.headers.get("X-Tenant-ID")
-        if not tenant_id:
-            tenant_id = request.query_params.get("tenant_id")
-        if not tenant_id:
-            raise HTTPException(status_code=400, detail="X-Tenant-ID header required")
-        TenantContext.set(tenant_id)
-        return tenant_id
+    The tenant is taken from the verified ``tenant_id`` claim in the JWT —
+    not from a client-supplied header — so callers cannot spoof tenants.
+    The ``X-Tenant-ID`` header is accepted only as a hint when it matches
+    the JWT claim; mismatches are rejected.
+    """
+
+    async def __call__(
+        self,
+        request: Request,
+        auth: TokenPayload = Depends(require_authenticated),
+    ) -> str:
+        jwt_tenant = auth.tenant_id
+
+        # Optional header — must match the JWT claim if provided
+        header_tenant = request.headers.get("X-Tenant-ID")
+        if header_tenant and header_tenant != jwt_tenant:
+            raise HTTPException(
+                status_code=403,
+                detail="X-Tenant-ID does not match authenticated tenant",
+            )
+
+        TenantContext.set(jwt_tenant)
+        return jwt_tenant
 
 
 tenant_required = TenantRequired()

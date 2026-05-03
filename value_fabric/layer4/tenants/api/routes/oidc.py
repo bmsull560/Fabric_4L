@@ -1,8 +1,10 @@
 """OIDC SSO routes for tenant authentication with PKCE support (P0-10).
 
-GET /auth/oidc/{tenant_slug}/login   — initiate OIDC flow with PKCE
-GET /auth/oidc/callback              — handle IdP callback with PKCE verification
-GET /auth/oidc/{tenant_slug}/metadata — return non-sensitive IdP config
+GET  /auth/oidc/{tenant_slug}/login    — initiate OIDC flow with PKCE
+GET  /auth/oidc/callback               — handle IdP callback; sets httpOnly cookie
+GET  /auth/oidc/{tenant_slug}/metadata — return non-sensitive IdP config
+POST /auth/refresh                     — rotate session cookie; returns updated metadata
+POST /auth/logout                      — expire session cookie
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.jwt import encode_jwt
 from value_fabric.shared.identity.oidc_config import OIDCProviderConfig
@@ -40,7 +42,21 @@ class oidc_loginResult(TypedDictModel):
     state: Any
 
 class oidc_callbackResult(TypedDictModel):
-    access_token: Any
+    """Non-secret session metadata returned after a successful OIDC callback.
+
+    The access token is delivered exclusively via the httpOnly ``vf_session``
+    cookie set on this response.  It is intentionally absent from this body so
+    that JavaScript cannot read it.
+    """
+    email: Any
+    expires_in: int
+    role: Any
+    token_type: str
+    user_id: Any
+
+
+class refresh_result(TypedDictModel):
+    """Non-secret metadata returned after a successful token refresh."""
     email: Any
     expires_in: int
     role: Any
@@ -309,20 +325,20 @@ async def oidc_callback(
             status_code=502, detail=f"OIDC token verification failed: {exc}"
         ) from exc
 
-    # Validate nonce if present in token (constant-time comparison to prevent timing attacks)
-    token_nonce = claims.get("nonce")
-    if token_nonce:
-        import hmac
+    # Validate nonce — always required; a missing nonce is treated as a mismatch.
+    # Constant-time comparison prevents timing-based oracle attacks.
+    import hmac
 
-        if not hmac.compare_digest(str(token_nonce), str(nonce)):
-            emit_audit_event(
-                AuditAction.OIDC_LOGIN_FAILED,
-                tenant_id=tenant_id,
-                resource_type="OIDCSession",
-                outcome=AuditOutcome.FAILURE,
-                details={"reason": "nonce_mismatch"},
-            )
-            raise HTTPException(status_code=400, detail="OIDC nonce mismatch")
+    token_nonce = claims.get("nonce") or ""
+    if not hmac.compare_digest(str(token_nonce), str(nonce)):
+        emit_audit_event(
+            AuditAction.OIDC_LOGIN_FAILED,
+            tenant_id=tenant_id,
+            resource_type="OIDCSession",
+            outcome=AuditOutcome.FAILURE,
+            details={"reason": "nonce_mismatch"},
+        )
+        raise HTTPException(status_code=400, detail="OIDC nonce mismatch")
 
     # Map claims to role
     email = claims.get("email", "")
@@ -412,8 +428,9 @@ async def oidc_callback(
         details={"provider": oidc_config.provider_name, "email": email},
     )
 
+    # Token is delivered via the httpOnly cookie set above.
+    # The JSON body contains only non-secret metadata for UI rendering.
     return oidc_callbackResult.model_validate({
-        "access_token": access_token,
         "token_type": "Bearer",
         "expires_in": 3600,
         "user_id": str(user.id),
@@ -446,3 +463,113 @@ async def oidc_metadata(
         "enabled": oidc_config.enabled,
     })
 
+
+
+# ---------------------------------------------------------------------------
+# Session management endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/refresh")
+async def auth_refresh(
+    response: Response,
+    vf_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    db: AsyncSession = Depends(get_db_from_context),
+) -> dict:
+    """Rotate the session cookie and return updated non-secret metadata.
+
+    Verifies the existing ``vf_session`` httpOnly cookie, issues a fresh JWT
+    with a new expiry, and replaces the cookie.  Returns the same non-secret
+    metadata shape as the OIDC callback so the frontend can update its
+    sessionStorage.
+
+    Returns 401 if the cookie is absent, expired, or invalid.
+    """
+    from value_fabric.shared.identity.jwt import decode_jwt, encode_jwt
+    from fastapi import HTTPException
+
+    if not vf_session:
+        raise HTTPException(status_code=401, detail="No active session")
+
+    claims = decode_jwt(vf_session)
+    if claims is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    # Re-fetch user to pick up any role changes since last login
+    from uuid import UUID
+    from sqlalchemy import select
+
+    try:
+        tenant_id = UUID(str(claims.tenant_id))
+        user_id = UUID(str(claims.sub))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid session claims")
+
+    user_result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
+    )
+    user = user_result.scalar_one_or_none()
+    if user is None or user.status != "active":
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    new_token = encode_jwt(
+        tenant_id=tenant_id,
+        user_id=str(user.id),
+        roles=[user.role],
+        expires_in_seconds=3600,
+    )
+    csrf_token = issue_csrf_token()
+
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=new_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=3600,
+        path="/",
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=csrf_token,
+        httponly=False,
+        secure=True,
+        samesite="strict",
+        max_age=3600,
+        path="/",
+    )
+
+    return refresh_result.model_validate({
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "user_id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+    })
+
+
+@router.post("/logout")
+async def auth_logout(response: Response) -> dict:
+    """Expire the session and CSRF cookies.
+
+    Sets both cookies to Max-Age=0 so the browser removes them immediately.
+    Safe to call even when no session exists.
+    """
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value="",
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=0,
+        path="/",
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value="",
+        httponly=False,
+        secure=True,
+        samesite="strict",
+        max_age=0,
+        path="/",
+    )
+    return {"detail": "Logged out"}

@@ -1,29 +1,39 @@
 /**
  * useAuth Hook — Authentication Operations
- * 
+ *
  * Simplified interface for auth operations:
  * - Check authentication status
- * - Get auth headers for API calls
+ * - Get CSRF header for mutating requests
+ *
+ * The session token is delivered via the httpOnly `vf_session` cookie and is
+ * sent automatically by the browser. No Authorization header is needed.
  */
 
 import { useAuthContext } from '../contexts/AuthContext';
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const key = `${name}=`;
+  const match = document.cookie.split('; ').find((part) => part.startsWith(key));
+  return match ? decodeURIComponent(match.slice(key.length)) : null;
+}
 
 export function useAuth() {
   const auth = useAuthContext();
 
   /**
-   * Get authorization headers for API requests
+   * Returns the X-CSRF-Token header for POST/PUT/PATCH/DELETE requests.
+   * Returns an empty object when no CSRF token cookie is present.
    */
-  const getAuthHeaders = () => {
-    if (!auth.accessToken) return {};
-    return {
-      Authorization: `Bearer ${auth.accessToken}`,
-    };
+  const getCsrfHeaders = (): Record<string, string> => {
+    const token = getCookie('vf_csrf_token');
+    if (!token) return {};
+    return { 'X-CSRF-Token': token };
   };
 
   return {
     ...auth,
-    getAuthHeaders,
+    getCsrfHeaders,
   };
 }
 
@@ -61,7 +71,10 @@ export function useAuthRedirect() {
   const { logout } = useAuthContext();
 
   const handleUnauthorized = () => {
-    logout();
+    // logout is async (calls backend to clear cookie) but we navigate
+    // immediately — local state is cleared synchronously before the
+    // network call, so the redirect is safe without awaiting.
+    void logout();
     navigateTo('login');
   };
 

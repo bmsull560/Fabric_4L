@@ -195,10 +195,8 @@ class ApiClient {
           config.headers['X-Request-ID'] = generateRequestId();
           config.headers['X-Tenant-ID'] = sessionService.getTenantId();
 
-          const accessToken = sessionService.getAccessToken();
-          if (accessToken) {
-            config.headers.Authorization = `Bearer ${accessToken}`;
-          }
+          // Access token is in the httpOnly vf_session cookie; sent automatically
+          // via withCredentials: true. No Authorization header needed.
 
           const method = (config.method ?? 'get').toUpperCase();
           if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {

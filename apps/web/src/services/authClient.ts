@@ -1,12 +1,13 @@
 /**
- * AuthClient — Contract-based authentication service
- *
- * Centralizes all identity provider interactions with:
- * - Typed request/response contracts
- * - Deterministic error handling
- * - Zod schema validation
+ * AuthClient — contract boundary for all identity operations
  *
  * Architecture: AuthContext → AuthClient → HTTP API → IdP
+ *
+ * Token delivery model:
+ *   - The backend sets `vf_session` (httpOnly Secure SameSite=Strict) on the
+ *     OIDC callback response. The frontend never reads or stores the token.
+ *   - All API requests include the cookie automatically via `credentials: include`.
+ *   - Refresh and logout are explicit backend calls that rotate / clear the cookie.
  */
 import {
   type TokenResponse,
@@ -19,26 +20,13 @@ import {
 } from '../schemas/auth';
 import { sessionService } from './sessionService';
 
-// API configuration from environment
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const L4_PREFIX = import.meta.env.VITE_L4_PREFIX || '/agents';
 
-/**
- * AuthClient — Formal contract boundary for identity operations
- *
- * All methods return validated responses or throw categorized AuthErrors.
- * No raw fetch calls should exist outside this class.
- */
 export class AuthClient {
   /**
-   * Step 1: Initiate OIDC login flow
-   *
-   * Calls backend to get authorization URL from IdP.
-   *
-   * @param tenantSlug — tenant identifier for routing
-   * @param redirectUri — OAuth2 callback URL (must match backend registration)
-   * @returns LoginInitiationResponse with authorization_url and state
-   * @throws AuthError (NETWORK, AUTHENTICATION, MALFORMED_RESPONSE)
+   * Step 1: Initiate OIDC login flow.
+   * Returns the IdP authorization URL and state parameter.
    */
   async initiateLogin(
     tenantSlug: string,
@@ -48,7 +36,7 @@ export class AuthClient {
 
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetch(url, { credentials: 'include' });
     } catch {
       throw new AuthError(
         'Failed to connect to authentication service',
@@ -57,14 +45,10 @@ export class AuthClient {
     }
 
     if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ detail: 'Authentication failed' }));
+      const errorData = await response.json().catch(() => ({ detail: 'Authentication failed' }));
       throw new AuthError(
         errorData.detail || `Authentication error (${response.status})`,
-        response.status === 401
-          ? AuthErrorCategory.AUTHENTICATION
-          : AuthErrorCategory.VALIDATION,
+        response.status === 401 ? AuthErrorCategory.AUTHENTICATION : AuthErrorCategory.VALIDATION,
         response.status
       );
     }
@@ -80,14 +64,11 @@ export class AuthClient {
   }
 
   /**
-   * Step 2: Exchange OIDC authorization code for tokens
+   * Step 2: Exchange OIDC authorization code for tokens.
    *
-   * Called on OAuth2 callback after IdP redirects back to application.
-   *
-   * @param code — authorization code from IdP callback
-   * @param state — state parameter for CSRF protection
-   * @returns TokenResponse with access_token and user info
-   * @throws AuthError (NETWORK, AUTHENTICATION, MALFORMED_RESPONSE)
+   * The backend sets the `vf_session` httpOnly cookie and returns only
+   * non-secret user metadata in the JSON body. The frontend stores that
+   * metadata in sessionStorage for UI rendering.
    */
   async exchangeCodeForTokens(
     code: string,
@@ -97,7 +78,7 @@ export class AuthClient {
 
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetch(url, { credentials: 'include' });
     } catch {
       throw new AuthError(
         'Failed to connect to authentication service',
@@ -106,14 +87,10 @@ export class AuthClient {
     }
 
     if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ detail: 'Token exchange failed' }));
+      const errorData = await response.json().catch(() => ({ detail: 'Token exchange failed' }));
       throw new AuthError(
         errorData.detail || `Token exchange error (${response.status})`,
-        response.status === 401
-          ? AuthErrorCategory.AUTHENTICATION
-          : AuthErrorCategory.VALIDATION,
+        response.status === 401 ? AuthErrorCategory.AUTHENTICATION : AuthErrorCategory.VALIDATION,
         response.status
       );
     }
@@ -129,54 +106,93 @@ export class AuthClient {
   }
 
   /**
-   * Get current session from storage
+   * Refresh the session cookie.
    *
-   * Validates stored token and user info against schemas.
-   * Returns null if no valid session exists.
-   *
-   * @returns UserInfo if valid session, null otherwise
+   * Calls POST /auth/refresh. The backend rotates the `vf_session` cookie
+   * and returns updated user metadata. Returns false if the session has
+   * expired (401) or the backend is unreachable.
    */
+  async refreshToken(): Promise<boolean> {
+    const url = `${API_BASE}${L4_PREFIX}/auth/oidc/refresh`;
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch {
+      // Network error — keep existing metadata, let next API call surface 401
+      return !!sessionService.getSessionMeta();
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      sessionService.clearSession();
+      return false;
+    }
+
+    if (!response.ok) {
+      // Non-auth error (5xx) — don't clear session, retry later
+      return !!sessionService.getSessionMeta();
+    }
+
+    const data = await response.json().catch(() => null);
+    if (data) {
+      const result = validateTokenResponse(data);
+      // Tenant is stable across refreshes — read from existing metadata rather
+      // than deriving it from the response (which carries no tenant field).
+      const existingMeta = sessionService.getSessionMeta();
+      const tenantId = existingMeta?.tenantId ?? 'default';
+      const user: UserInfo = {
+        id: result.user_id,
+        email: result.email,
+        role: result.role,
+        tenantId,
+        tenantSlug: tenantId,
+      };
+      sessionService.persistSessionMeta(user, tenantId);
+    }
+
+    return true;
+  }
+
+  /**
+   * Logout: clear the server-side session cookie.
+   *
+   * Calls POST /auth/logout which clears the `vf_session` cookie via
+   * Set-Cookie with Max-Age=0. Local metadata is cleared regardless of
+   * whether the network call succeeds.
+   */
+  async logout(): Promise<void> {
+    sessionService.clearSession();
+    sessionService.clearOidcState();
+
+    try {
+      await fetch(`${API_BASE}${L4_PREFIX}/auth/oidc/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Best-effort — local state is already cleared
+    }
+  }
+
   getCurrentSession(): UserInfo | null {
     return sessionService.getCurrentUser();
   }
 
-  /**
-   * Refresh token — placeholder for future refresh implementation
-   *
-   * Currently validates existing token structure and expiry.
-   * In future, will implement proper refresh token flow.
-   *
-   * @returns true if token is valid, false if expired/invalid
-   */
-  async refreshToken(): Promise<boolean> {
-    return sessionService.isSessionValid();
-  }
-
-  /**
-   * Persist session to storage
-   *
-   * @param token — access token
-   * @param user — user info
-   * @param tenantId — tenant identifier
-   */
   persistSession(token: string, user: UserInfo, tenantId: string): void {
     sessionService.persistSession(token, user, tenantId);
   }
 
-  /**
-   * Clear all session storage
-   */
   clearSession(): void {
     sessionService.clearSession();
   }
 
-  /**
-   * Clear OIDC flow state from session storage
-   */
   clearOidcState(): void {
     sessionService.clearOidcState();
   }
 }
 
-// Singleton instance for application use
 export const authClient = new AuthClient();

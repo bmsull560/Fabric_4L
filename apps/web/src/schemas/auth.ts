@@ -62,7 +62,12 @@ export type UserInfo = z.infer<typeof UserInfoSchema>;
  * which are normalized to UI tiers in the auth flow.
  */
 export const TokenResponseSchema = z.object({
-  access_token: z.string().min(1, 'Access token is required'),
+  /**
+   * access_token is optional: the backend delivers the token exclusively via
+   * the httpOnly `vf_session` cookie and omits it from the JSON body.
+   * Legacy clients that still send it in the body are also accepted.
+   */
+  access_token: z.string().min(1).optional(),
   refresh_token: z.string().optional(),
   expires_in: z.number().int().positive().optional().default(3600),
   token_type: z.string().transform(val => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()).default('Bearer'),
