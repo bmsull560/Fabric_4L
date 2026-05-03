@@ -187,13 +187,13 @@ test.describe('Journey 0: Authentication & Session Lifecycle', () => {
     await page.getByRole('button', { name: /development bypass/i }).click();
     await expect(page).toHaveURL(/\/home/, { timeout: 10000 });
 
-    // Trigger logout — try AppHeader dropdown first, fall back to sidebar
+    // Trigger logout — try AppHeader dropdown first, fall back to sidebar.
+    // The header trigger uses only stable selectors: accessible name or
+    // data-testid. The sidebar "Sign Out" button is the reliable fallback.
     const logoutViaHeader = async () => {
-      // Open the user menu in the header (avatar/user button)
       const userMenuTrigger = page
         .getByRole('button', { name: /account|profile|user menu/i })
-        .or(page.locator('[data-testid="user-menu-trigger"]'))
-        .or(page.locator('header button').last());
+        .or(page.locator('[data-testid="user-menu-trigger"]'));
       await userMenuTrigger.first().click({ timeout: 5000 });
 
       const logoutItem = page.getByRole('menuitem', { name: /log out/i });

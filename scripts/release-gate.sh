@@ -13,7 +13,9 @@
 # Profiles:
 #   full    — all 4 layers (default)
 #   fast    — layers 1 + 3 only (skip evals and load tests)
-#   ci      — layers 1 + 3, with JUnit output for CI systems
+#   ci      — layers 1 + 3 with CI=true set for Playwright (enables forbidOnly,
+#             retries=2, workers=2, and JUnit output to e2e-results/junit.xml
+#             as configured in playwright.config.ts)
 #
 # Exit codes:
 #   0 — all gates passed
@@ -27,6 +29,12 @@ FAILED_GATES=()
 log()  { echo "[release-gate] $*"; }
 pass() { echo "[release-gate] ✅  $1"; }
 fail() { echo "[release-gate] ❌  $1"; FAILED_GATES+=("$1"); }
+
+# Export CI=true when running the ci profile so Playwright picks up its CI
+# behaviour (forbidOnly, retries, reduced workers, JUnit reporter output).
+if [[ "${PROFILE}" == "ci" ]]; then
+  export CI=true
+fi
 
 log "Profile: ${PROFILE}"
 log "Starting release gate sequence..."
