@@ -28,10 +28,11 @@ import { sessionService } from '../services/sessionService';
 export default function Login() {
   const { navigateTo } = useNavigation();
   const [searchParams] = useSearchParams();
+  const auth = useAuthContext();
   const {
     isAuthenticated, isLoading,
-    initiateLogin, handleCallback, devBypass,
-  } = useAuthContext();
+    initiateLogin, handleCallback,
+  } = auth;
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,26 +96,27 @@ export default function Login() {
 
   /**
    * Email/password handler.
-   * In dev mode: uses devBypass for instant auth.
-   * In production: placeholder until backend email/password endpoint exists.
+   * Development and test builds may use the local auth shortcut for instant auth.
+   * Production builds are SSO-only until backend email/password auth is available.
    */
   const handleLogin = useCallback(async (_email: string, _password: string) => {
     setIsLoggingIn(true);
     setError(null);
 
     try {
-      if (import.meta.env.DEV && devBypass) {
-        devBypass();
+      if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+        auth.devBypass?.();
         navigateTo('home');
-      } else {
-        setError('Email/password login is not yet configured. Use SSO or contact your admin.');
+        return;
       }
+
+      setError('Email/password login is not yet configured. Use SSO or contact your admin.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoggingIn(false);
     }
-  }, [devBypass]);
+  }, [auth, navigateTo]);
 
   /**
    * Trace 1: SSO button → OIDC redirect.
@@ -148,10 +150,14 @@ export default function Login() {
     }
   }, [initiateLogin]);
 
-  const handleDevBypass = useCallback(() => {
-    devBypass?.();
-    navigateTo('home');
-  }, [devBypass]);
+  const devOnlyLoginFormProps = import.meta.env.DEV || import.meta.env.MODE === 'test'
+    ? {
+        onDevBypass: () => {
+          auth.devBypass?.();
+          navigateTo('home');
+        },
+      }
+    : {};
 
   // Show loading state while checking auth or handling callback
   if (isLoading || isLoggingIn) {
@@ -173,7 +179,7 @@ export default function Login() {
         <LoginForm
           onLogin={handleLogin}
           onSSOProvider={handleSSOProvider}
-          onDevBypass={handleDevBypass}
+          {...devOnlyLoginFormProps}
           isLoading={isLoggingIn}
           error={error}
           successMessage={successMessage}

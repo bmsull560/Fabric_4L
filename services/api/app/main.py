@@ -33,17 +33,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# allow_credentials requires specific origins — cannot be True with wildcard or empty list.
-_cors_origins = settings.cors_origins
-_cors_credentials = bool(_cors_origins) and "*" not in _cors_origins
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=_cors_credentials,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
-)
+# Use the validated policy from Settings so production-like environments fail
+# before middleware is installed, and credentials are never combined with
+# wildcard origins or broad method/header exposure.
+app.add_middleware(CORSMiddleware, **settings.cors_policy)
 
 app.include_router(accounts.router, prefix="/v1")
 app.include_router(intelligence.router, prefix="/v1")
