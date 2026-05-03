@@ -12,18 +12,21 @@ Provides endpoints for:
 
 import json
 import os
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
-from zoneinfo import ZoneInfoNotFoundError, available_timezones
+from zoneinfo import available_timezones
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
@@ -32,8 +35,6 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 # Hard imports - fail fast if security components unavailable
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
-from sqlalchemy import func
-from sqlalchemy.orm import Session
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..shared.config import is_production_like_environment, settings
@@ -169,12 +170,32 @@ def _add_deprecation_headers(response: Response, endpoint_path: str) -> None:
 # Initialize Prometheus metrics
 metrics = initialize_metrics()
 
+# Vault health check error message
+_VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production without secrets backend"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Verify Vault connectivity in production before accepting traffic."""
+    if is_production_like_environment():
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr and is_vault_healthy:
+            logger.info("L1: Checking Vault connectivity", vault_addr=vault_addr)
+            ok = await is_vault_healthy(vault_addr)
+            if not ok:
+                logger.error("L1: Vault unreachable", vault_addr=vault_addr)
+                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
+            logger.info("L1: Vault connectivity verified")
+    yield
+
+
 app = FastAPI(
     title="Value Fabric - Layer 1: Intelligent Data Ingestion",
     description="Production-grade web data ingestion service with spec-compliant API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS middleware with production validation (P0-20) — OUTERMOST.
@@ -259,23 +280,6 @@ if metrics:
     metrics_middleware = MetricsMiddleware(metrics)
     app.middleware("http")(metrics_middleware)
 
-
-# Vault health check error message
-_VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production without secrets backend"
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Verify Vault connectivity in production."""
-    if is_production_like_environment():
-        vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy:
-            logger.info("L1: Checking Vault connectivity", vault_addr=vault_addr)
-            ok = await is_vault_healthy(vault_addr)
-            if not ok:
-                logger.error("L1: Vault unreachable", vault_addr=vault_addr)
-                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
-            logger.info("L1: Vault connectivity verified")
 
 
 # Create router for spec-compliant endpoints
@@ -1234,7 +1238,7 @@ async def update_target(
         else:
             target.authentication = None
 
-    target.updated_at = datetime.utcnow()
+    target.updated_at = datetime.now(UTC)
     db.refresh(target)
 
     logger.info("Updated scraping target", target_id=str(target.id))
@@ -1338,7 +1342,6 @@ async def validate_target(
 async def execute_target(
     target_id: UUID,
     request: ExecuteTargetRequest,
-    background_tasks: BackgroundTasks,
     org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db_from_context_sync),
@@ -1552,7 +1555,7 @@ async def get_domain_fallback_stats(
         if not has_target:
             raise HTTPException(status_code=403, detail="No access to this domain")
 
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     repo = CrawlDecisionRepository(db)
     stats = await repo.get_fallback_stats(domain, since=since)
 
@@ -1786,7 +1789,7 @@ async def cancel_job(
         raise HTTPException(status_code=409, detail=f"Job already in terminal state: {job.status}")
 
     job.status = JobStatus.CANCELLED.value
-    job.completed_at = datetime.utcnow()
+    job.completed_at = datetime.now(UTC)
 
     logger.info("Cancelled scraping job", job_id=str(job_id))
 
@@ -1818,7 +1821,7 @@ async def get_job_progress(
             current_stage=job.progress_stage,
             percent_complete=job.progress_percent_complete,
         ),
-        last_update=datetime.utcnow(),
+        last_update=datetime.now(UTC),
     )
 
 
@@ -1877,7 +1880,6 @@ async def get_job_results(
 async def retry_job(
     job_id: UUID,
     request: RetryJobRequest,
-    background_tasks: BackgroundTasks,
     org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db_from_context_sync),
@@ -2260,7 +2262,7 @@ async def health_check(db: Session = Depends(get_db_from_context_sync)):
 
         redis_client.ping()
         components["queue"] = ComponentHealth(status="healthy", latency_ms=0)
-    except:
+    except Exception:
         components["queue"] = ComponentHealth(status="degraded", message="Redis not available")
 
     # Active jobs metrics
@@ -2320,7 +2322,7 @@ async def health_check(db: Session = Depends(get_db_from_context_sync)):
     return HealthCheckResponse(
         status=overall_status,
         version=settings.app_version,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         components={k: v.dict() for k, v in components.items()},
         metrics=metrics,
     )
@@ -2347,7 +2349,7 @@ async def metrics_endpoint(request: Request):
 
 @router.post("/admin/cleanup")
 async def trigger_cleanup(
-    days: int = Query(default=30, ge=1, le=365), background_tasks: BackgroundTasks = None
+    days: int = Query(default=30, ge=1, le=365),
 ):
     """Trigger content cleanup for old data."""
     cleanup_old_content.delay(days)

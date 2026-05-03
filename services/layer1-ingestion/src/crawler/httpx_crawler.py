@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -317,8 +318,6 @@ class HttpxCrawler:
         high_script_density = script_count > self.config.spa_script_threshold
 
         # Indicator 2: Low content ratio
-        import re
-
         text_content = re.sub(r"<[^>]+>", "", html)
         content_ratio = len(text_content) / max(len(html), 1)
         low_content = content_ratio < self.config.spa_content_ratio_threshold
