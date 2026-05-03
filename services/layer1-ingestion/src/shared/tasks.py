@@ -6,12 +6,16 @@ Manages ScrapingJob lifecycle through 11 PipelineStages.
 
 import asyncio
 import hashlib
+import time
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
+import httpx
 import structlog
 from celery import Celery, chain
+from jsonschema import Draft7Validator
 
 from ..compliance.pii_scanner import PIIScanner
 from ..compliance.robots_checker import RobotsChecker
@@ -248,8 +252,6 @@ def compliance_check_stage(self, job_id: UUID):
 
                 # Apply crawl delay
                 if result.crawl_delay:
-                    import time
-
                     time.sleep(result.crawl_delay)
 
             # Complete stage
@@ -507,8 +509,6 @@ def ai_extraction_stage(self, prev_result: dict):
                 raise ValueError("Raw content not found for AI extraction")
 
             # P0-35: Call Layer 2 Extraction Service for LLM extraction
-            import httpx
-
             l2_url = settings.layer2_api_url
             extraction_payload = {
                 "content": raw_content.meta_title or "",
@@ -549,16 +549,12 @@ def ai_extraction_stage(self, prev_result: dict):
                     last_error = f"HTTP {e.response.status_code}: {e.response.text}"
                     if e.response.status_code in (429, 503, 504):
                         logger.warning(f"L2 extraction attempt {attempt + 1} failed, retrying...")
-                        import time
-
                         time.sleep(2**attempt)
                         continue
                     break
                 except Exception as e:
                     last_error = str(e)
                     logger.warning(f"L2 extraction attempt {attempt + 1} failed: {e}")
-                    import time
-
                     time.sleep(2**attempt)
 
             if extraction_result is None:
@@ -668,9 +664,6 @@ def _validate_payload_against_schema(
     *errors* is a list of dicts with keys ``path``, ``message``, ``validator``
     so callers can persist them directly into ``ExtractedData.validation_errors``.
     """
-    import jsonschema
-    from jsonschema import Draft7Validator
-
     validator = Draft7Validator(schema)
     raw_errors = sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path))
 
@@ -1040,8 +1033,6 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
             effective_mode = target_config.get("crawl_path", target_mode)
 
         # Parse URL for domain extraction
-        from urllib.parse import urlparse
-
         parsed_url = urlparse(url)
         domain = parsed_url.netloc
 
@@ -1214,8 +1205,6 @@ async def _execute_browser_path(url: str, config: dict | None) -> dict:
     Returns:
         dict with browser crawl results
     """
-    import time
-
     start_time = time.monotonic()
 
     # Actual Playwright integration

@@ -54,10 +54,10 @@ class PlaywrightCrawler:
 
     def __init__(
         self,
-        max_concurrent: int = None,
-        timeout_ms: int = None,
-        navigation_timeout_ms: int = None,
-        user_agent: str = None,
+        max_concurrent: int | None = None,
+        timeout_ms: int | None = None,
+        navigation_timeout_ms: int | None = None,
+        user_agent: str | None = None,
         config: CrawlerConfig | None = None,
         enable_telemetry: bool = True,
     ):
@@ -184,8 +184,6 @@ class PlaywrightCrawler:
         Returns:
             CrawlResult with HTML content and metadata
         """
-        import contextlib
-
         start_time = time.time()
         blocked_resources = 0
         scroll_triggered = False
@@ -323,7 +321,7 @@ class PlaywrightCrawler:
                     if page:
                         await page.close()
 
-    async def crawl_urls(self, urls: list[str], delay_seconds: float = None) -> list[CrawlResult]:
+    async def crawl_urls(self, urls: list[str], delay_seconds: float | None = None) -> list[CrawlResult]:
         """Crawl multiple URLs with rate limiting and batch tracing.
 
         Args:
@@ -333,8 +331,6 @@ class PlaywrightCrawler:
         Returns:
             List of CrawlResult objects
         """
-        import contextlib
-
         delay = delay_seconds or self.config.per_domain_delay_seconds
 
         with (
