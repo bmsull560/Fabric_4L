@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 # Copy dependency files
-COPY layer1-ingestion/pyproject.toml .
-COPY layer1-ingestion/uv.lock .
+COPY pyproject.toml .
+COPY uv.lock .
 
 # Install dependencies using uv (creates .venv)
 RUN uv sync --frozen --no-install-project
@@ -67,13 +67,10 @@ ENV PYTHONPATH=/app
 COPY --from=builder /root/.cache/ms-playwright /home/appuser/.cache/ms-playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
 
-# Copy shared package
-COPY shared/ ./shared/
-
 # Copy application code
-COPY layer1-ingestion/src/ ./src/
-COPY layer1-ingestion/alembic.ini .
-COPY layer1-ingestion/migrations/ ./migrations/
+COPY src/ ./src/
+COPY alembic.ini .
+COPY migrations/ ./migrations/
 
 # Change ownership
 RUN chown -R appuser:appgroup /app /home/appuser

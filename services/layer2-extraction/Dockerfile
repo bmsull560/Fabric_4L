@@ -19,17 +19,14 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 WORKDIR /app
 
 # Copy dependency files
-COPY layer2-extraction/pyproject.toml .
-COPY layer2-extraction/uv.lock .
+COPY pyproject.toml .
+COPY uv.lock .
 
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project
 
-# Copy shared package
-COPY shared/ ./shared/
-
 # Copy application code
-COPY layer2-extraction/src/ ./src/
+COPY src/ ./src/
 
 # Set PATH to use uv virtual environment and PYTHONPATH for imports
 ENV PATH="/app/.venv/bin:$PATH"

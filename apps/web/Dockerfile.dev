@@ -3,9 +3,9 @@ WORKDIR /workspace
 RUN corepack enable
 
 # Copy everything needed at workspace root for pnpm to resolve relative paths correctly
-COPY frontend/package.json ./package.json
-COPY frontend/patches ./patches
-COPY frontend/scripts ./scripts
+COPY apps/web/package.json ./package.json
+COPY apps/web/patches ./patches
+COPY apps/web/scripts ./scripts
 
 # Remove local file dependency and unused patches from package.json
 RUN sed -i '/eslint-plugin-fabric-contracts/d' package.json && \
@@ -17,7 +17,7 @@ RUN pnpm install
 
 # Copy frontend source to app directory
 WORKDIR /app
-COPY frontend/ .
+COPY apps/web/ .
 
 # Link dependencies from workspace
 RUN rm -rf /app/node_modules && ln -s /workspace/node_modules /app/node_modules

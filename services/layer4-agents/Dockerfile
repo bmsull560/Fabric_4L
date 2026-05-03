@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 # Copy dependency files
-COPY layer4-agents/pyproject.toml .
-COPY layer4-agents/uv.lock .
+COPY pyproject.toml .
+COPY uv.lock .
 
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project
@@ -38,11 +38,8 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
 
-# Copy shared package
-COPY shared/ ./shared/
-
 # Copy source code
-COPY layer4-agents/src/ ./src/
+COPY src/ ./src/
 
 # Change ownership
 RUN chown -R appuser:appgroup /app /home/appuser
