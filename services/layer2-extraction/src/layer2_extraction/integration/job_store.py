@@ -14,6 +14,23 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+
+
+def _current_environment() -> str:
+    """Return the normalized runtime environment name for persistence policy checks."""
+    return (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("APP_ENV")
+        or os.getenv("LAYER2_ENV")
+        or "development"
+    ).strip().lower()
+
+
+def _is_production_like() -> bool:
+    """Whether the current runtime must fail closed on non-durable persistence."""
+    return _current_environment() in PRODUCTION_LIKE_ENVIRONMENTS
+
 
 @dataclass
 class PipelineJob:
@@ -193,7 +210,9 @@ class RedisJobStore(JobStore):
 def build_job_store() -> JobStore:
     """Factory function to build appropriate job store based on configuration.
 
-    Uses Redis if REDIS_URL is set and reachable, otherwise falls back to in-memory.
+    Production-like environments require an explicit Redis backing store and fail
+    closed before constructing any in-memory fallback. Development and tests keep
+    the historical in-memory fallback when Redis is not configured.
     """
     redis_url = os.getenv("REDIS_URL")
 
@@ -201,6 +220,17 @@ def build_job_store() -> JobStore:
         try:
             return RedisJobStore(redis_url)
         except Exception as exc:
+            if _is_production_like():
+                raise RuntimeError(
+                    "REDIS_URL is configured but the Layer 2 Redis job store could not be "
+                    f"initialized in {_current_environment()}: {exc}"
+                ) from exc
             logger.warning("Failed to initialize Redis job store, falling back to in-memory: %s", exc)
+
+    if _is_production_like():
+        raise RuntimeError(
+            "REDIS_URL is required for Layer 2 job persistence in production-like "
+            f"environment {_current_environment()!r}; refusing in-memory job store fallback."
+        )
 
     return InMemoryJobStore()
