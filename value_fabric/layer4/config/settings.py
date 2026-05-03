@@ -408,10 +408,22 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        """Get CORS origins as a list."""
+        """Get CORS origins as a list.
+
+        Returns explicit origins when configured. Falls back to wildcard only
+        in development; all other environments return an empty list (the
+        validator above will have already raised for production).
+        """
         if not self.cors_origins:
             return ["*"] if self.is_development else []
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        # Wildcard is only permitted in development.
+        if "*" in origins and not self.is_development:
+            raise ValueError(
+                "CORS_ORIGINS cannot contain '*' outside of development. "
+                "Specify exact allowed origins."
+            )
+        return origins
 
     @property
     def database_url_safe(self) -> str:
