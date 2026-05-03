@@ -18,6 +18,9 @@ from pydantic import BaseModel
 # Use canonical namespace import
 from value_fabric.layer4.tools.registry import BaseTool, ToolRegistry, ToolResult
 from value_fabric.layer4.tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
+# Use canonical namespace import
+from value_fabric.layer4.tools.registry import BaseTool, ToolRegistry, ToolResult
+from value_fabric.layer4.tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
 
 
 def validate_tool_result(result):
@@ -171,6 +174,9 @@ class TestBaseToolContractCompliance:
         assert result.error["code"] == "TOOL_EXECUTION_ERROR"
         # Safe user message - no raw exception details
         assert "test error" not in result.error["message"]
+        # Metadata should be present for traceability (trace_id or execution_time_ms)
+        assert result.metadata is not None
+        assert "trace_id" in result.metadata or "execution_time_ms" in result.metadata
         # Metadata should be present for traceability (trace_id or execution_time_ms)
         assert result.metadata is not None
         assert "trace_id" in result.metadata or "execution_time_ms" in result.metadata
@@ -415,6 +421,7 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_validates_correct_json(self):
         """Test that valid LLM JSON response is parsed correctly."""
+        from value_fabric.layer4.tools.competitive_tools import (
         from value_fabric.layer4.tools.competitive_tools import (
             LLMDifferenceItem,
             LLMDifferencesResponse,

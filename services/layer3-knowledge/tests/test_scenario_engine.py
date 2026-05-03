@@ -2,7 +2,7 @@
 Tests for the Scenario Engine what-if analysis functionality.
 """
 
-from src.agents.scenario_engine import (
+from value_fabric.layer3_knowledge.src.agents.scenario_engine import (
     VariableAdjustment,
     scenario_engine,
 )
@@ -119,7 +119,7 @@ class TestScenarioEngine:
             "payback_months": 12.0,
         }
 
-        from src.agents.scenario_engine import SavedScenario
+        from value_fabric.layer3_knowledge.src.agents.scenario_engine import SavedScenario
 
         scenarios = [
             SavedScenario(
@@ -196,3 +196,4 @@ class TestVariableAdjustment:
         assert adj.name == "implementation_cost"
         assert adj.value == 250000
         assert adj.original_value == 200000
+

@@ -7,8 +7,8 @@ import pytest
 
 pytest.importorskip("defusedxml")
 
-from src.adapters.base import AdapterType
-from src.adapters.sec_edgar import SECEdgarAdapter
+from value_fabric.layer1_ingestion.src.adapters.base import AdapterType
+from value_fabric.layer1_ingestion.src.adapters.sec_edgar import SECEdgarAdapter
 
 
 class TestSECEdgarAdapter:
@@ -152,7 +152,7 @@ class TestXBRLParser:
     @pytest.fixture
     def parser(self):
         """Create parser instance."""
-        from src.adapters.xbrl_parser import XBRLParser
+        from value_fabric.layer1_ingestion.src.adapters.xbrl_parser import XBRLParser
         return XBRLParser()
     
     def test_parse_empty(self, parser):
@@ -216,17 +216,17 @@ class TestAdapterRegistry:
     @pytest.fixture
     def registry(self):
         """Create fresh registry for testing."""
-        from src.adapters.registry import AdapterRegistry
+        from value_fabric.layer1_ingestion.src.adapters.registry import AdapterRegistry
         return AdapterRegistry()
     
     def test_register_adapter(self, registry):
         """Test registering a new adapter."""
-        from src.adapters.base import DataSourceAdapter
+        from value_fabric.layer1_ingestion.src.adapters.base import DataSourceAdapter
         
         class TestAdapter(DataSourceAdapter):
             @property
             def adapter_type(self):
-                from src.adapters.base import AdapterType
+                from value_fabric.layer1_ingestion.src.adapters.base import AdapterType
                 return AdapterType.WEBSITE
             
             @property
@@ -242,14 +242,14 @@ class TestAdapterRegistry:
             async def fetch_document(self, document_id, **kwargs):
                 return None
         
-        from src.adapters.base import AdapterType
+        from value_fabric.layer1_ingestion.src.adapters.base import AdapterType
         registry.register(AdapterType.WEBSITE, TestAdapter)
         
         assert AdapterType.WEBSITE in registry.list_adapters()
     
     def test_get_sec_edgar_adapter(self, registry):
         """Test retrieving SEC EDGAR adapter."""
-        from src.adapters.base import AdapterType
+        from value_fabric.layer1_ingestion.src.adapters.base import AdapterType
         
         adapter = registry.get_adapter(AdapterType.SEC_EDGAR)
         
@@ -258,9 +258,10 @@ class TestAdapterRegistry:
     
     def test_get_adapter_caching(self, registry):
         """Test that adapter instances are cached."""
-        from src.adapters.base import AdapterType
+        from value_fabric.layer1_ingestion.src.adapters.base import AdapterType
         
         adapter1 = registry.get_adapter(AdapterType.SEC_EDGAR)
         adapter2 = registry.get_adapter(AdapterType.SEC_EDGAR)
         
         assert adapter1 is adapter2  # Same instance
+

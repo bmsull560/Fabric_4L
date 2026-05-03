@@ -14,9 +14,9 @@ pytest.importorskip("trafilatura")
 
 from pathlib import Path
 
-from src.crawler.smart_router import SmartRouter, RouteType, RoutingDecision
-from src.crawler.httpx_crawler import HttpxCrawler
-from src.crawler.quality_gate import QualityGate
+from value_fabric.layer1_ingestion.src.crawler.smart_router import SmartRouter, RouteType, RoutingDecision
+from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import HttpxCrawler
+from value_fabric.layer1_ingestion.src.crawler.quality_gate import QualityGate
 
 
 # Fixture loading helper
@@ -73,7 +73,7 @@ class TestStaticPageRouting:
         gate = QualityGate()
 
         # Simulate crawl result
-        from src.crawler.httpx_crawler import FastPathResult
+        from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult
         result = FastPathResult(
             url="https://example.com/empty",
             html=html,
@@ -127,8 +127,8 @@ class TestFailClosedBehavior:
 
     def test_borderline_timing_triggers_fallback(self):
         """Fetch timing near threshold should escalate to browser."""
-        from src.crawler.httpx_crawler import FastPathResult
-        from src.crawler.quality_gate import QualityGate
+        from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult
+        from value_fabric.layer1_ingestion.src.crawler.quality_gate import QualityGate
 
         # Create result with borderline timing
         result = FastPathResult(
@@ -154,8 +154,8 @@ class TestFailClosedBehavior:
 
     def test_indeterminate_quality_escalates(self):
         """Indeterminate content quality should escalate."""
-        from src.crawler.httpx_crawler import FastPathResult
-        from src.crawler.quality_gate import QualityGate
+        from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult
+        from value_fabric.layer1_ingestion.src.crawler.quality_gate import QualityGate
 
         # Result with no text and no SPA detection
         result = FastPathResult(
@@ -184,8 +184,8 @@ class TestContentRatioChecks:
 
     def test_heavy_markup_fails_ratio(self):
         """Page with heavy markup vs content should fail ratio check."""
-        from src.crawler.httpx_crawler import FastPathResult
-        from src.crawler.quality_gate import QualityGate
+        from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult
+        from value_fabric.layer1_ingestion.src.crawler.quality_gate import QualityGate
 
         html = load_fixture("static_pages/static_heavy_markup.html")
 
@@ -294,3 +294,4 @@ class TestPreviousCrawlConsistency:
 
         # Can continue with fast (no consistency enforcement for fast)
         assert decision.route in (RouteType.FAST, RouteType.FAST_WITH_FALLBACK)
+

@@ -16,10 +16,10 @@ import time
 import asyncio
 from uuid import uuid4
 
-from src.crawler.smart_router import SmartRouter, RouteType
-from src.crawler.httpx_crawler import HttpxCrawler, FastPathResult
-from src.crawler.quality_gate import QualityGate
-from src.crawler.decision_store import InMemoryCrawlDecisionRepository
+from value_fabric.layer1_ingestion.src.crawler.smart_router import SmartRouter, RouteType
+from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import HttpxCrawler, FastPathResult
+from value_fabric.layer1_ingestion.src.crawler.quality_gate import QualityGate
+from value_fabric.layer1_ingestion.src.crawler.decision_store import InMemoryCrawlDecisionRepository
 
 
 class TestStaticSiteSpeedup:
@@ -335,3 +335,4 @@ class TestFallbackRateTarget:
 
         # With smart routing, we expect reasonable fallback rate
         assert fallback_rate < 0.5, f"Fallback rate too high: {fallback_rate:.1%}"
+

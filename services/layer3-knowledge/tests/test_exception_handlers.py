@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from starlette.requests import Request
 
-from src.api.exceptions import ValueFabricException
-from src.api.main import global_exception_handler, value_fabric_exception_handler
+from value_fabric.layer3_knowledge.src.api.exceptions import ValueFabricException
+from value_fabric.layer3_knowledge.src.api.main import global_exception_handler, value_fabric_exception_handler
 
 
 def _make_request() -> Request:
@@ -64,3 +64,4 @@ async def test_global_exception_handler_logs_with_explicit_exc_info_tuple():
     assert len(exc_info) == 3
     assert exc_info[0] is RuntimeError
     assert exc_info[1] is exc
+

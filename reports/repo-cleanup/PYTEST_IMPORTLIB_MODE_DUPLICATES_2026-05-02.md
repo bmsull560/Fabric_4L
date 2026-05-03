@@ -4,7 +4,13 @@
 
 ## Summary
 
-When running pytest with `--import-mode=importlib`, 30 additional collection errors were discovered across layer1-ingestion, layer2-extraction, and layer3-knowledge tests. These are "import file mismatch" errors caused by pytest's module caching when test files with identical names exist in different directories.
+When running pytest from repo root with default import mode, 15 collection errors occur due to pytest's module caching when test files with identical names exist in different directories. These are **technical pytest topology issues, not human-only blockers**.
+
+**Current Status:**
+- 15 errors when running `pytest --collect-only` from repo root
+- **0 errors** when running each layer individually
+- All layers collect cleanly in per-layer execution model
+- CI uses per-layer execution (confirmed via GitHub workflows)
 
 ## Duplicate Test Files Identified
 
@@ -40,9 +46,12 @@ The following duplicate test files exist across different value packs (ai-techno
 
 **Question:** Does CI use --import-mode=importlib?
 
-**Status:** Needs investigation
+**Status:** ✅ CONFIRMED - CI uses per-layer execution
 
-**Action Required:** Check CI configuration files (`.github/workflows/*.yml`) to determine if pytest is run with `--import-mode=importlib`.
+**Findings:**
+- CI workflows (`.github/workflows/*.yml`) run tests per-layer: `pytest services/layerX-*/tests`
+- CI does NOT run all tests from repo root in a single collection
+- The 15 repo-root errors are **non-blocking** for current CI model
 
 ## Recommended Remediation Strategies
 
@@ -73,11 +82,28 @@ If CI does not use `--import-mode=importlib`, these duplicates are not a launch 
 
 ## Recommendation
 
-**Immediate Action:** Investigate CI configuration to determine if `--import-mode=importlib` is used.
+**Status:** ✅ NON-BLOCKING - Track as advisory
 
-**If CI uses importlib mode:** Implement Option 1 (rename duplicate files) for the 3 high-impact service duplicates. The pack test duplicates can be left as-is since they are in separate directories and serve different purposes.
+**Findings:**
+- CI uses per-layer execution, not repo-root collection
+- All layers collect cleanly when run individually
+- The 15 errors are pytest module caching artifacts, not import failures
 
-**If CI does not use importlib mode:** Mark this as a low-priority cleanup item. The duplicates are not blocking with the default pytest import mode.
+**Does this block E2E:** **NO**
+- E2E tests run per-layer or with specific test selection
+- The module caching issue only affects repo-root collection
+
+**Does this block release readiness:** **ADVISORY (unless CI requires repo-root collection)**
+- Current CI model: NOT blocked
+- If CI changes to repo-root collection: Would require remediation
+
+**Recommended Fix (if repo-root collection becomes required):**
+1. Rename duplicate test files for service-level duplicates:
+   - `test_tenant_isolation.py` → layer-specific names
+   - `test_llm_cost_metrics.py` → layer-specific names
+   - `test_api.py` → service-specific names
+2. OR add package markers (make test directories proper packages)
+3. OR standardize on per-layer pytest execution (current approach)
 
 ## Next Steps
 

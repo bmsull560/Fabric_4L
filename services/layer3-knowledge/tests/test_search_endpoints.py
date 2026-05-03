@@ -249,3 +249,4 @@ class TestSearchEndpoints:
         # Validate processing time
         assert isinstance(data["processing_time_ms"], (int, float))
         assert data["processing_time_ms"] >= 0
+

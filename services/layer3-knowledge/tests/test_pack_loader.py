@@ -15,7 +15,7 @@ from unittest.mock import patch
 import pytest
 
 import src.api.routes.pack_loader as pack_loader
-from src.api.routes.pack_loader import (
+from value_fabric.layer3_knowledge.src.api.routes.pack_loader import (
     VALID_PACK_ID_PATTERN,
     VERSION_SUFFIX_PATTERN,
     _extract_pack_slug,
@@ -267,3 +267,4 @@ class TestVariableLoading:
             first = variables[0]
             assert "name" in first
             assert "type" in first
+

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.crawler.telemetry import (
+from value_fabric.layer1_ingestion.src.crawler.telemetry import (
     CrawlMetrics,
     get_tracer,
     init_telemetry,
@@ -212,3 +212,4 @@ class TestTraceMethodDecorator:
         import asyncio
         result = asyncio.run(obj.test_method(5))
         assert result == 10
+

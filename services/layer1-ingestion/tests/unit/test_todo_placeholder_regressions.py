@@ -40,3 +40,4 @@ def test_task_extraction_time_not_hardcoded_zero() -> None:
     """Extraction timing in storage stage must not use a fixed 0 value."""
     source = TASKS_PATH.read_text(encoding="utf-8")
     assert "extraction_time_ms=0" not in source
+

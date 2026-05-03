@@ -2,7 +2,7 @@
 
 import os
 
-from src.config import Settings, get_settings
+from value_fabric.layer3_knowledge.src.config import Settings, get_settings
 
 
 def test_public_config_import_surface() -> None:
@@ -26,3 +26,4 @@ def test_get_settings_returns_settings_instance() -> None:
         os.environ.pop("NEO4J_PASSWORD", None)
     else:
         os.environ["NEO4J_PASSWORD"] = original_password
+

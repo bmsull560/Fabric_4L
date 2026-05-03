@@ -1,6 +1,6 @@
 """Unit tests for exception classes."""
 
-from src.api.exceptions import (
+from value_fabric.layer3_knowledge.src.api.exceptions import (
     AnalyticsError,
     AuthenticationError,
     AuthorizationError,
@@ -507,3 +507,4 @@ class TestHTTPExceptionHelpers:
         
         assert http_exc.status_code == 503
         assert "Retry-After" not in http_exc.headers
+

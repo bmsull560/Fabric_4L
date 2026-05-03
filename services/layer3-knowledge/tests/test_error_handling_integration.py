@@ -281,3 +281,4 @@ class TestL3AppMiddlewareRegistration:
             "/health", headers={"X-Request-ID": "l3-test-id-42"}
         )
         assert resp.headers.get("X-Request-ID") == "l3-test-id-42"
+

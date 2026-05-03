@@ -25,8 +25,8 @@ try:
 except Exception:
     TESSERACT_AVAILABLE = False
 
-from src.adapters.base import AdapterType, FilingDocument
-from src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
+from value_fabric.layer1_ingestion.src.adapters.base import AdapterType, FilingDocument
+from value_fabric.layer1_ingestion.src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
 
 
 class TestPDFAdapter:
@@ -570,3 +570,4 @@ class TestPDFAdapterConfig:
         assert config.rate_limit_per_second == 1.0
         assert config.user_agent == "ValueFabric/1.0"
         assert config.timeout_seconds == 30
+

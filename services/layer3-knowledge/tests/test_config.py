@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from src.config import Settings, get_settings
+from value_fabric.layer3_knowledge.src.config import Settings, get_settings
 
 
 class TestSettings:
@@ -368,3 +368,4 @@ class TestSettings:
         settings = Settings()
         
         assert settings.neo4j_password == "test"
+

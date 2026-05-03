@@ -12,8 +12,8 @@ import pytest
 
 pytest.importorskip("playwright")
 
-from src.crawler.crawler_config import CrawlerConfig
-from src.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
+from value_fabric.layer1_ingestion.src.crawler.crawler_config import CrawlerConfig
+from value_fabric.layer1_ingestion.src.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
@@ -460,3 +460,4 @@ class TestConcurrency:
             assert crawler._semaphore._value == 1
             
             await crawler.stop()
+

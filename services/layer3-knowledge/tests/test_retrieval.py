@@ -6,7 +6,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_graphrag_result_structure():
     """Test GraphRAG result dataclass."""
-    from src.retrieval.graph_rag import GraphRAGResult
+    from value_fabric.layer3_knowledge.src.retrieval.graph_rag import GraphRAGResult
 
     result = GraphRAGResult(
         query="test query",
@@ -26,7 +26,7 @@ async def test_graphrag_result_structure():
 @pytest.mark.asyncio
 async def test_hybrid_search_result():
     """Test hybrid search result dataclass."""
-    from src.retrieval.hybrid_search import HybridSearchResult
+    from value_fabric.layer3_knowledge.src.retrieval.hybrid_search import HybridSearchResult
 
     result = HybridSearchResult(
         entity_id="ent-1",
@@ -46,7 +46,8 @@ async def test_hybrid_search_result():
 @pytest.mark.asyncio
 async def test_vector_store_error():
     """Test vector store error handling."""
-    from src.retrieval.vector_store import VectorStoreError
+    from value_fabric.layer3_knowledge.src.retrieval.vector_store import VectorStoreError
 
     with pytest.raises(VectorStoreError):
         raise VectorStoreError("Test error")
+

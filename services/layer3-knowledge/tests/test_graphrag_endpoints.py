@@ -346,3 +346,4 @@ class TestGraphRAGEndpoints:
         if "answer" in data and data["answer"]:
             assert isinstance(data["answer"], str)
             assert len(data["answer"]) > 0
+

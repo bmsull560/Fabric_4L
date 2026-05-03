@@ -34,20 +34,20 @@ try:
 except ImportError:
     HAS_TESTCONTAINERS = False
 
-from src.api.dependencies import (
+from value_fabric.layer3_knowledge.src.api.dependencies import (
     get_graph_rag,
     get_hybrid_search,
     get_schema_initializer,
     get_sync_manager,
 )
-from src.api.main import app
-from src.config import Settings
-from src.ingestion.neo4j_loader import Neo4jLoader
-from src.ingestion.sync_manager import SyncManager
-from src.retrieval.graph_rag import GraphRAGEngine
-from src.retrieval.hybrid_search import HybridSearch
-from src.retrieval.vector_store import VectorStore
-from src.schema.initializer import SchemaInitializer
+from value_fabric.layer3_knowledge.src.api.main import app
+from value_fabric.layer3_knowledge.src.config import Settings
+from value_fabric.layer3_knowledge.src.ingestion.neo4j_loader import Neo4jLoader
+from value_fabric.layer3_knowledge.src.ingestion.sync_manager import SyncManager
+from value_fabric.layer3_knowledge.src.retrieval.graph_rag import GraphRAGEngine
+from value_fabric.layer3_knowledge.src.retrieval.hybrid_search import HybridSearch
+from value_fabric.layer3_knowledge.src.retrieval.vector_store import VectorStore
+from value_fabric.layer3_knowledge.src.schema.initializer import SchemaInitializer
 
 # Skip entire module if testcontainers not installed
 pytestmark = [
@@ -250,11 +250,11 @@ class TestSchemaInitialization:
         # Verify constraints match edition expectations
         if neo4j_edition == "community":
             # Community should have fewer constraints (no TENANT_CONSTRAINTS)
-            from src.schema.constraints import CONSTRAINTS, TENANT_CONSTRAINTS
+            from value_fabric.layer3_knowledge.src.schema.constraints import CONSTRAINTS, TENANT_CONSTRAINTS
             assert results["constraints"]["expected"] == len(CONSTRAINTS)
         else:
             # Enterprise should have all constraints
-            from src.schema.constraints import CONSTRAINTS, TENANT_CONSTRAINTS
+            from value_fabric.layer3_knowledge.src.schema.constraints import CONSTRAINTS, TENANT_CONSTRAINTS
             assert results["constraints"]["expected"] == len(CONSTRAINTS) + len(TENANT_CONSTRAINTS)
 
         # Schema should be valid
@@ -825,3 +825,4 @@ class TestIntegrationWithLayer2:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

@@ -10,8 +10,8 @@ import pytest
 
 pytest.importorskip("trafilatura")
 
-from src.crawler.httpx_crawler import FastPathResult
-from src.crawler.quality_gate import AdaptiveQualityGate, QualityGate, QualityThresholds
+from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult
+from value_fabric.layer1_ingestion.src.crawler.quality_gate import AdaptiveQualityGate, QualityGate, QualityThresholds
 
 
 class TestQualityGateBasic:
@@ -496,3 +496,4 @@ class TestEdgeCases:
 
         decision = gate.evaluate(result)
         assert decision.checks["text_length"] is False
+

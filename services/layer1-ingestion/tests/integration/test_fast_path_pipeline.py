@@ -13,11 +13,11 @@ pytest.importorskip("respx")
 import respx
 from httpx import Response
 
-from src.crawler.execution_logger import ExecutionLogger, ExecutionPath
-from src.crawler.httpx_crawler import HttpxCrawler
-from src.crawler.quality_gate import QualityGate
-from src.crawler.smart_router import RouteType, SmartRouter
-from src.shared.models import CrawlPath
+from value_fabric.layer1_ingestion.src.crawler.execution_logger import ExecutionLogger, ExecutionPath
+from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import HttpxCrawler
+from value_fabric.layer1_ingestion.src.crawler.quality_gate import QualityGate
+from value_fabric.layer1_ingestion.src.crawler.smart_router import RouteType, SmartRouter
+from value_fabric.layer1_ingestion.src.shared.models import CrawlPath
 
 
 class TestTargetLevelModes:
@@ -504,7 +504,7 @@ class TestPerformanceCharacteristics:
     def test_execution_logger_handles_invalid_utf8(self) -> None:
         """P1 Regression: ExecutionLogger handles binary/invalid UTF-8 content."""
         from unittest.mock import MagicMock
-        from src.crawler.execution_logger import ExecutionLogger
+        from value_fabric.layer1_ingestion.src.crawler.execution_logger import ExecutionLogger
 
         logger = ExecutionLogger()
 
@@ -536,7 +536,7 @@ class TestPerformanceCharacteristics:
     def test_content_ratio_uses_original_html_length(self) -> None:
         """P1 Regression: Content ratio uses original HTML length, not truncated."""
         from unittest.mock import MagicMock
-        from src.crawler.quality_gate import QualityGate, QualityThresholds
+        from value_fabric.layer1_ingestion.src.crawler.quality_gate import QualityGate, QualityThresholds
 
         # Use a high threshold that would fail if using truncated length
         thresholds = QualityThresholds(min_content_ratio=0.5)
@@ -559,3 +559,4 @@ class TestPerformanceCharacteristics:
         # If code incorrectly used truncated length (ratio 1.0), it would PASS
         assert not decision.passed, "Quality gate should fail with low content ratio"
         assert decision.checks["content_ratio"] is False, "content_ratio check should fail"
+

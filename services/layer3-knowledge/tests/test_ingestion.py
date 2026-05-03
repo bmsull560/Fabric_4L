@@ -3,7 +3,7 @@
 import pytest
 from rdflib import RDF, Graph, Literal, Namespace, URIRef
 
-from src.ingestion import Neo4jLoader
+from value_fabric.layer3_knowledge.src.ingestion import Neo4jLoader
 
 
 @pytest.fixture
@@ -84,3 +84,4 @@ async def test_load_turtle_string():
         assert len(g) > 0
     except Exception as e:
         pytest.fail(f"Turtle parsing failed: {e}")
+

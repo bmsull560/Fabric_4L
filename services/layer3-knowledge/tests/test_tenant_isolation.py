@@ -180,3 +180,4 @@ class TestTenantIsolation:
         # This would require integration test with actual Neo4j
         # For unit tests, we verify the tenant_id is included in queries
         pass
+

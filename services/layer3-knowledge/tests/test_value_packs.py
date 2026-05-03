@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from src.api.routes.value_packs import (
+from value_fabric.layer3_knowledge.src.api.routes.value_packs import (
     PackExecuteRequest,
     PackForkRequest,
     PackUpdateRequest,
@@ -391,3 +391,4 @@ class TestForkPackSemantics:
 
         # Version should be incremented
         assert params["version"] == "1.2.4"
+

@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from src.scheduler.priority_queue import PriorityScheduler, RoundRobinScheduler
+from value_fabric.layer1_ingestion.src.scheduler.priority_queue import PriorityScheduler, RoundRobinScheduler
 
 
 class TestPriorityScheduler:
@@ -108,3 +108,4 @@ class TestRoundRobinScheduler:
         # First two should be different domains
         assert item1.domain != item2.domain
         assert item3.domain in ['domain-a.com', 'domain-b.com']
+

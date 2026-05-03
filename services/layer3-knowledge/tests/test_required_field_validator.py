@@ -6,7 +6,7 @@ that Neo4j Enterprise Edition would enforce via property existence constraints.
 
 import pytest
 
-from src.ingestion.validators import RequiredFieldValidator, ValidationResult
+from value_fabric.layer3_knowledge.src.ingestion.validators import RequiredFieldValidator, ValidationResult
 
 
 class TestRequiredFieldValidator:
@@ -96,7 +96,7 @@ class TestRequiredFieldValidator:
 
     def test_validate_and_raise_raises_on_invalid(self):
         """validate_and_raise should raise IngestionError on invalid entity."""
-        from src.api.exceptions import IngestionError
+        from value_fabric.layer3_knowledge.src.api.exceptions import IngestionError
 
         validator = RequiredFieldValidator()
 
@@ -197,3 +197,4 @@ class TestValidationResult:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

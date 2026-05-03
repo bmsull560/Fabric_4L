@@ -307,3 +307,4 @@ class TestIngestionEndpoints:
         # Validate logical consistency
         assert data["triples_processed"] >= data["entities_loaded"]
         assert data["triples_processed"] >= data["relationships_loaded"]
+

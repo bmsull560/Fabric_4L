@@ -16,3 +16,4 @@ if shared_root not in sys.path:
 
 # Ensure PYTHONPATH includes src for subprocesses
 os.environ["PYTHONPATH"] = src_path + os.pathsep + shared_root + os.pathsep + os.environ.get("PYTHONPATH", "")
+

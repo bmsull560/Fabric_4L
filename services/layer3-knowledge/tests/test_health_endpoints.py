@@ -182,3 +182,4 @@ class TestHealthEndpoints:
         assert isinstance(indexes["missing"], list)
 
         assert isinstance(schema_status["valid"], bool)
+

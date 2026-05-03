@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.config import Settings
-from src.retrieval.hybrid_search import HybridSearch
+from value_fabric.layer3_knowledge.src.config import Settings
+from value_fabric.layer3_knowledge.src.retrieval.hybrid_search import HybridSearch
 
 
 @pytest.mark.asyncio
@@ -76,3 +76,4 @@ async def test_search_limit_alias_overrides_top_k() -> None:
 
     assert requested_limits == [4, 4, 4]
     assert result == ["r1", "r2"]
+

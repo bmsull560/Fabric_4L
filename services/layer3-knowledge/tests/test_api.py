@@ -50,3 +50,4 @@ def test_search_endpoint_validation(test_client: TestClient) -> None:
     payload: dict[str, Any] = {"query": "test", "search_type": "hybrid"}
     response = test_client.post("/v1/search", json=payload)
     assert response.status_code in {HTTPStatus.OK, HTTPStatus.INTERNAL_SERVER_ERROR, HTTPStatus.SERVICE_UNAVAILABLE}
+

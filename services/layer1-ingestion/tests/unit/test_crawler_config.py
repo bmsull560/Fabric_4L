@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from src.crawler.crawler_config import CrawlerConfig, load_config
+from value_fabric.layer1_ingestion.src.crawler.crawler_config import CrawlerConfig, load_config
 
 
 class TestCrawlerConfig:
@@ -147,3 +147,4 @@ class TestLoadConfig:
         # Should return defaults, not raise
         assert isinstance(config, CrawlerConfig)
         assert config.max_concurrent == 5  # Default value
+

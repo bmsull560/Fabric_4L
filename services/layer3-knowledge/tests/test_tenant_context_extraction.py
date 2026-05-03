@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # Import the helper under test
-from src.api.main import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
+from value_fabric.layer3_knowledge.src.api.main import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
 
 
 class TestExtractTenantId:
@@ -146,3 +146,4 @@ class TestExtractTenantIdDeterminism:
         # Assert - all results identical
         assert all(r == results[0] for r in results)
         assert results[0] == str(tenant_uuid)
+

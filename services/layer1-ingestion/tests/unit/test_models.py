@@ -2,7 +2,7 @@
 
 from uuid import UUID, uuid4
 
-from src.shared.models import (
+from value_fabric.layer1_ingestion.src.shared.models import (
     CrawlQueueItem,
     JobStatus,
     RawContent,
@@ -111,3 +111,4 @@ class TestRawContent:
         assert content.source_domain == 'example.com'
         assert content.source_http_status == 200
         assert content.content_hash == 'abc123'
+

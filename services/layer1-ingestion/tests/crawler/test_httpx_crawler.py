@@ -13,7 +13,7 @@ pytest.importorskip("respx")
 import respx
 from httpx import Response
 
-from src.crawler.httpx_crawler import FastPathResult, HttpxCrawler, HttpxCrawlerConfig
+from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult, HttpxCrawler, HttpxCrawlerConfig
 
 
 class TestHttpxCrawlerBasic:
@@ -414,3 +414,4 @@ class TestFastPathResult:
         assert result.links_found == []
         assert result.is_spa_detected is False
         assert result.fetch_time_ms == 0
+

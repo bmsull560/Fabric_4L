@@ -8,7 +8,7 @@ Validates that the query validator correctly identifies:
 
 import pytest
 
-from src.security.query_validator import (
+from value_fabric.layer3_knowledge.src.security.query_validator import (
     QueryValidator,
     ValidationFinding,
     ValidationSeverity,
@@ -382,3 +382,4 @@ class TestQueryValidatorEdgeCases:
         findings = validator.validate(query)
         
         assert len(findings) == 0
+

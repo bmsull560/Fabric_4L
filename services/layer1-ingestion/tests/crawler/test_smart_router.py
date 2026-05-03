@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.crawler.smart_router import (
+from value_fabric.layer1_ingestion.src.crawler.smart_router import (
     QualityDecision,
     RouteType,
     RoutingDecision,
@@ -407,3 +407,4 @@ class TestBrowserConfig:
         assert "scroll_percent" in config
         assert "wait_for" in config
         assert "timeout" in config
+
