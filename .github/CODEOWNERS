@@ -178,3 +178,37 @@ AGENTS.md @value-fabric/maintainers @value-fabric/architects
 
 # Documentation typo fixes (low risk)
 *.md @value-fabric/tech-writers
+
+# ============================================
+# DEPENDENCY UPDATE OWNERSHIP (H-07 Audit Fix)
+# Ensures every package manifest and Dockerfile has an update owner
+# Maps to dependabot.yml reviewer assignments
+# ============================================
+
+# Apps
+/apps/web/ @value-fabric/frontend-leads @value-fabric/sre-leads
+
+# Services
+/services/api/ @value-fabric/backend-leads
+/services/layer1-ingestion/ @value-fabric/data-engineering @value-fabric/backend-leads
+/services/layer2-extraction/ @value-fabric/ai-ml-leads @value-fabric/backend-leads
+/services/layer3-knowledge/ @value-fabric/graph-specialists @value-fabric/backend-leads
+/services/layer4-agents/ @value-fabric/ai-ml-leads @value-fabric/agent-team
+/services/layer5-ground-truth/ @value-fabric/data-engineering @value-fabric/qa-leads
+/services/layer6-benchmarks/ @value-fabric/qa-leads @value-fabric/backend-leads
+
+# Shared packages
+/packages/config/ @value-fabric/sre-leads @value-fabric/maintainers
+/packages/eslint-plugin-fabric-contracts/ @value-fabric/sre-leads @value-fabric/maintainers
+/packages/platform-contract/ @value-fabric/architects @value-fabric/sre-leads
+/packages/shared/ @value-fabric/backend-leads @value-fabric/architects
+
+# Package manifests and Dockerfiles (dependency update ownership)
+**/package.json @value-fabric/sre-leads
+**/pyproject.toml @value-fabric/sre-leads
+**/requirements.txt @value-fabric/sre-leads
+**/Dockerfile @value-fabric/sre-leads @value-fabric/backend-leads
+**/Dockerfile.* @value-fabric/sre-leads @value-fabric/backend-leads
+
+# Dependabot and dependency configuration
+/.github/dependabot.yml @value-fabric/sre-leads @value-fabric/security-leads

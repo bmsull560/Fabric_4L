@@ -77,12 +77,34 @@ jobs:
           name: eslint-plugin-coverage
 
   # ==========================================================================
+  # Validate Dependabot Coverage (H-07 Audit Fix)
+  # ==========================================================================
+  validate-dependabot-coverage:
+    name: Validate Dependabot Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate dependabot.yml coverage
+        run: python scripts/ci/validate_dependabot_coverage.py
+
+  # ==========================================================================
   # Lint Frontend with Contract Rules
   # ==========================================================================
   lint-frontend:
     name: Lint Frontend (Contract Rules)
     runs-on: ubuntu-latest
-    needs: plugin-tests
+    needs: [plugin-tests, validate-dependabot-coverage]
 
     steps:
       - name: Checkout code
@@ -528,7 +550,7 @@ jobs:
   summary:
     name: Contract Compliance Summary
     runs-on: ubuntu-latest
-    needs: [plugin-tests, lint-frontend, validate-canonical, platform-contract-tests, python-lint, generate-openapi, detect-drift, openapi-contract-tests, validate-deprecations]
+    needs: [plugin-tests, validate-dependabot-coverage, lint-frontend, validate-canonical, platform-contract-tests, python-lint, generate-openapi, detect-drift, openapi-contract-tests, validate-deprecations]
     if: always()
 
     steps:
@@ -543,6 +565,7 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Plugin Tests | ${{ needs.plugin-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Validate Dependabot Coverage | ${{ needs.validate-dependabot-coverage.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Lint Frontend | ${{ needs.lint-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Validate Canonical | ${{ needs.validate-canonical.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Platform Contract Tests | ${{ needs.platform-contract-tests.result }} |" >> $GITHUB_STEP_SUMMARY

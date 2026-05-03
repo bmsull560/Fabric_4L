@@ -17,13 +17,37 @@ spec:
         app: layer4-agents
         component: layer4
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-deps
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z redis 6379 && nc -z neo4j-db 7687 && nc -z postgres 5432; do echo waiting for dependencies; sleep 2; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
       containers:
         - name: api
           image: value-fabric/layer4-agents:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8000
               name: http
@@ -75,6 +99,8 @@ spec:
               value: "postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth"
             - name: LOG_LEVEL
               value: "info"
+            - name: TMPDIR
+              value: "/tmp"
           resources:
             requests:
               memory: "256Mi"
@@ -98,6 +124,20 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
