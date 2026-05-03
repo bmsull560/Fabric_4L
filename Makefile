@@ -160,6 +160,24 @@ test-e2e-journeys: ## Layer 2: Run Playwright chained user journeys (live or moc
 test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 	$(PYTEST) tests/contract/test_journey_contracts.py -v
 
+seed-e2e: ## Seed deterministic E2E fixture data into the local backend (requires running stack)
+	@echo "→ Seeding E2E test data..."
+	npx tsx scripts/db/seed-e2e-data.ts
+	@echo "✅  E2E seed complete"
+
+reset-e2e: ## Remove all E2E tenant data from the local backend
+	@echo "→ Resetting E2E test data..."
+	npx tsx scripts/db/reset-e2e-data.ts
+	@echo "✅  E2E reset complete"
+
+test-e2e-full: ## Run full E2E suite: seed → contracts → journeys → reset
+	@echo "→ Starting full E2E run..."
+	$(MAKE) seed-e2e
+	$(MAKE) test-e2e-contracts
+	$(MAKE) test-e2e-journeys
+	$(MAKE) reset-e2e
+	@echo "✅  Full E2E suite complete"
+
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
 	$(PYTEST) tests/contract/ -v --tb=short

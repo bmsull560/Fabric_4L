@@ -27,7 +27,7 @@ test.describe('Authentication Lifecycle', () => {
 
     test('should display SSO provider buttons', async ({ page }) => {
       await expect(page.getByTestId('sso-google')).toBeVisible();
-      await expect(page.getByTestId('sso-microsoft')).toBeVisible();
+      await expect(page.getByTestId('sso-apple')).toBeVisible();
     });
 
     test('should validate empty email submission', async ({ page }) => {
@@ -105,10 +105,11 @@ test.describe('Authentication Lifecycle', () => {
       // Prevent actual redirect to IdP
       await page.route('https://example.com/auth', (route) => route.abort());
 
+      // waitForRequest resolves deterministically once the route handler has run,
+      // avoiding the arbitrary timeout that was the previous synchronization point.
+      const requestPromise = page.waitForRequest('**/auth/oidc/**/login');
       await page.getByTestId('sso-google').click();
-
-      // Wait for route handler to complete
-      await page.waitForTimeout(100);
+      await requestPromise;
 
       expect(stateVerified).toBe(true);
     });

@@ -26,7 +26,11 @@
     "generate:api-types": "pnpm run generate:types",
     "test:a11y:components": "vitest run client/src/accessibility.a11y.spec.tsx",
     "test:a11y:pages": "node scripts/a11y/axe-critical-scan.mjs",
-    "test:a11y:gate": "node scripts/a11y/enforce-thresholds.mjs"
+    "test:a11y:gate": "node scripts/a11y/enforce-thresholds.mjs",
+    "test:e2e:contracts": "playwright test --project=contracts",
+    "test:e2e:journeys": "playwright test --project=journeys",
+    "seed:e2e": "npx tsx ../../scripts/db/seed-e2e-data.ts",
+    "reset:e2e": "npx tsx ../../scripts/db/reset-e2e-data.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
