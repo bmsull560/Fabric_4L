@@ -10,8 +10,7 @@ Verifies:
 
 import pytest
 
-# Skip test if email-validator is not available
-pytest.importorskip("email_validator", reason="email-validator not installed - run `pip install 'pydantic[email]'`")
+import email_validator  # noqa: F401 — mandatory dep; install via layer4-agents[dev] (email-validator)
 
 from datetime import datetime
 from unittest.mock import AsyncMock, patch

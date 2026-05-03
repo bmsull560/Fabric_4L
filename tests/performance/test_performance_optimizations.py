@@ -15,12 +15,24 @@ import time
 from collections import defaultdict
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import importlib.util
+import os
+
 import pytest
 
-# Import the optimized modules
-# These paths work when running from repo root with PYTHONPATH
-# or when installed as package
-pytest.importorskip("neo4j")
+# neo4j driver is a production dep (layer3-knowledge). Tests are infra-gated:
+# skip locally when the driver is absent, fail in CI where it must be present.
+_neo4j_missing = importlib.util.find_spec("neo4j") is None
+if _neo4j_missing and os.getenv("CI") == "true":
+    pytest.fail("neo4j driver not installed in CI — add neo4j to layer3-knowledge[dev]")
+
+pytestmark = [
+    pytest.mark.slow,
+    pytest.mark.skipif(
+        _neo4j_missing,
+        reason="neo4j driver not installed — optional infra dep (layer3-knowledge[dev])",
+    ),
+]
 
 from value_fabric.layer3.retrieval.hybrid_search import HybridSearch
 from value_fabric.layer3.retrieval.graph_rag import GraphRAGEngine

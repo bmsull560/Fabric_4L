@@ -7,8 +7,7 @@ adaptive threshold functionality.
 from __future__ import annotations
 
 import pytest
-
-pytest.importorskip("trafilatura")
+import trafilatura  # noqa: F401 — mandatory dep; install via layer1-ingestion[dev]
 
 from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult
 from value_fabric.layer1_ingestion.src.crawler.quality_gate import AdaptiveQualityGate, QualityGate, QualityThresholds

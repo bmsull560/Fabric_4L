@@ -4,8 +4,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
-pytest.importorskip("defusedxml")
+import defusedxml  # noqa: F401 — mandatory dep; already in layer1-ingestion dependencies
 
 from value_fabric.layer1_ingestion.src.adapters.base import AdapterType
 from value_fabric.layer1_ingestion.src.adapters.sec_edgar import SECEdgarAdapter
