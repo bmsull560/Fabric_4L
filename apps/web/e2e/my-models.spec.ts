@@ -146,48 +146,44 @@ test.describe("My Models E2E", () => {
     expect(hasSkeletons || hasContent).toBeTruthy();
   });
 
-  test("full CRUD flow - create model (requires backend)", async ({ page }) => {
-    // This test requires the backend to be running with the /v1/models endpoints
-    // Skip if backend returns 404
-    
-    try {
-      // Check if API is available by waiting for initial load
-      await page.waitForTimeout(2000);
-      
-      // Get initial model count if visible
-      const initialModels = await page.locator("text=drivers").count();
-      
-      // Open create dialog
-      await page.getByRole("button", { name: /New Model/i }).click();
-      await expect(page.getByText("New Value Model")).toBeVisible();
-      
-      // Fill form
-      const testModelName = `E2E Test Model ${Date.now()}`;
-      await page.getByPlaceholder("e.g. SaaS Revenue Optimization").fill(testModelName);
-      await page.locator("select").first().selectOption("SaaS / B2B");
-      await page.getByPlaceholder("Brief description").fill("Created by E2E test");
-      
-      // Submit
-      await page.getByRole("button", { name: "Create Model" }).click();
-      
-      // Wait for dialog to close
-      await expect(page.getByText("New Value Model")).not.toBeVisible({ timeout: 5000 });
-      
-      // If backend is working, should see success toast
-      const successToast = page.locator("text=Model created successfully").first();
-      const hasSuccess = await successToast.isVisible().catch(() => false);
-      
-      if (hasSuccess) {
-        // Verify new model appears in list
-        await expect(page.getByText(testModelName)).toBeVisible({ timeout: 5000 });
+  test("full CRUD flow - create model @backend", async ({ page }) => {
+    // Requires a live backend. Run with PLAYWRIGHT_BACKEND_URL set.
+    // In CI without a backend this test must not silently pass — it must be
+    // explicitly skipped via SKIP_BACKEND_TESTS=true, or it will fail.
+    const backendUrl = process.env.PLAYWRIGHT_BACKEND_URL;
+    const skipBackend = process.env.SKIP_BACKEND_TESTS === 'true';
+
+    if (!backendUrl) {
+      if (process.env.CI === 'true' && !skipBackend) {
+        throw new Error(
+          'PLAYWRIGHT_BACKEND_URL is not set in CI. ' +
+          'Either provide a backend URL or set SKIP_BACKEND_TESTS=true to ' +
+          'explicitly acknowledge this journey is not covered in this run.'
+        );
       }
-    } catch (e) {
-      // Backend may not be available - mark as requiring backend
-      if (process.env.CI === 'true') {
-        throw new Error('Backend API required in CI - full CRUD test must pass');
-      }
-      test.fixme(true, 'Backend API not available locally - tracked in #457');
+      test.skip(true, 'Backend not configured — set PLAYWRIGHT_BACKEND_URL to run this test');
+      return;
     }
+
+    // Open create dialog
+    await page.getByRole("button", { name: /New Model/i }).click();
+    await expect(page.getByText("New Value Model")).toBeVisible();
+
+    // Fill form
+    const testModelName = `E2E Test Model ${Date.now()}`;
+    await page.getByPlaceholder("e.g. SaaS Revenue Optimization").fill(testModelName);
+    await page.locator("select").first().selectOption("SaaS / B2B");
+    await page.getByPlaceholder("Brief description").fill("Created by E2E test");
+
+    // Submit
+    await page.getByRole("button", { name: "Create Model" }).click();
+
+    // Dialog must close — backend accepted the request
+    await expect(page.getByText("New Value Model")).not.toBeVisible({ timeout: 5000 });
+
+    // Success toast and new model in list
+    await expect(page.locator("text=Model created successfully").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(testModelName)).toBeVisible({ timeout: 5000 });
   });
 
   test("should be responsive - mobile view", async ({ page }) => {

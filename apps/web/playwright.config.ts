@@ -11,12 +11,19 @@ import { defineConfig, devices } from '@playwright/test';
  * Standards:
  * - Journey tests run against real backend when PLAYWRIGHT_BACKEND_URL is set
  * - Contract tests always use mocks (no backend required)
+ * - Tests tagged @backend only run in the `backend-integrated` project
  * - Parallel execution where safe
  * - Trace/screenshot on failure for debugging
  * - Accessibility-conscious selectors preferred
+ *
+ * Environment variables:
+ *   PLAYWRIGHT_BASE_URL      — Frontend dev server URL (default: http://localhost:3001)
+ *   PLAYWRIGHT_BACKEND_URL   — Backend API base URL; required for @backend tests
+ *   SKIP_BACKEND_TESTS       — Set to 'true' to skip @backend tests without failing CI
  */
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.PLAYWRIGHT_BACKEND_URL || '';
 const CI = process.env.CI === 'true';
 
 export default defineConfig({
@@ -70,36 +77,57 @@ export default defineConfig({
     {
       name: 'contracts',
       testDir: "./e2e",
+      // Exclude @backend tests — they require a live API and run separately
+      grep: /^(?!.*@backend)/,
       use: { ...devices['Desktop Chrome'] },
     },
     // ── Layer 2: Journey Tests (chained workflows, chromium-only in dev) ──
     {
       name: 'journeys',
       testDir: "./e2e",
+      grep: /^(?!.*@backend)/,
       use: { ...devices['Desktop Chrome'] },
+    },
+    // ── Layer 3: Backend-integrated Tests (require PLAYWRIGHT_BACKEND_URL) ─
+    // Only runs tests tagged @backend. Skipped when PLAYWRIGHT_BACKEND_URL
+    // is not set (unless CI=true and SKIP_BACKEND_TESTS!=true, which causes
+    // the individual tests to throw).
+    {
+      name: 'backend-integrated',
+      testDir: "./e2e",
+      grep: /@backend/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: BASE_URL,
+        extraHTTPHeaders: BACKEND_URL ? { 'X-Backend-URL': BACKEND_URL } : {},
+      },
     },
     // ── Cross-browser: Contracts on Firefox ──────────────────────────────
     {
       name: 'contracts-firefox',
       testDir: "./e2e",
+      grep: /^(?!.*@backend)/,
       use: { ...devices['Desktop Firefox'] },
     },
     // ── Cross-browser: Contracts on WebKit ───────────────────────────────
     {
       name: 'contracts-webkit',
       testDir: "./e2e",
+      grep: /^(?!.*@backend)/,
       use: { ...devices['Desktop Safari'] },
     },
     // ── Mobile: Contracts on Mobile Chrome ───────────────────────────────
     {
       name: 'contracts-mobile-chrome',
       testDir: "./e2e",
+      grep: /^(?!.*@backend)/,
       use: { ...devices['Pixel 5'] },
     },
     // ── Mobile: Contracts on Mobile Safari ───────────────────────────────
     {
       name: 'contracts-mobile-safari',
       testDir: "./e2e",
+      grep: /^(?!.*@backend)/,
       use: { ...devices['iPhone 12'] },
     },
   ],
