@@ -12,10 +12,55 @@ Validates:
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 import yaml
+
+
+APP_IMAGE_NAMES = [
+    "value-fabric/layer1-ingestion",
+    "value-fabric/layer2-extraction",
+    "value-fabric/layer3-knowledge",
+    "value-fabric/layer4-agents",
+    "value-fabric/layer5-ground-truth",
+    "value-fabric/layer6-benchmarks",
+    "value-fabric/frontend",
+]
+
+ZERO_SHA256_DIGEST = "sha256:" + ("0" * 64)
+
+
+def parse_kubernetes_quantity(value: object) -> Decimal:
+    """Parse CPU and memory quantities into comparable base units.
+
+    CPU values are returned in cores and memory values in bytes. This covers the
+    repository's manifest units and avoids false positives from lexicographic
+    comparisons such as ``1Gi`` being treated as smaller than ``256Mi``.
+    """
+
+    text = str(value).strip()
+    match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)([A-Za-z]*)", text)
+    if not match:
+        raise ValueError(f"unsupported Kubernetes quantity: {value!r}")
+
+    number = Decimal(match.group(1))
+    suffix = match.group(2)
+    multipliers = {
+        "": Decimal(1),
+        "m": Decimal("0.001"),
+        "Ki": Decimal(1024),
+        "Mi": Decimal(1024) ** 2,
+        "Gi": Decimal(1024) ** 3,
+        "Ti": Decimal(1024) ** 4,
+        "K": Decimal(1000),
+        "M": Decimal(1000) ** 2,
+        "G": Decimal(1000) ** 3,
+    }
+    if suffix not in multipliers:
+        raise ValueError(f"unsupported Kubernetes quantity suffix: {suffix!r}")
+    return number * multipliers[suffix]
 
 
 class TestRolloutStrategy:
@@ -264,16 +309,21 @@ class TestResourceConstraints:
                 requests = resources.get("requests", {})
                 limits = resources.get("limits", {})
                 
-                # Memory: limits must be >= requests
-                if "memory" in requests and "memory" in limits:
-                    req_mem = requests["memory"]
-                    lim_mem = limits["memory"]
-                    # Simple string comparison (e.g., "256Mi" vs "512Mi")
-                    # This is a basic check; production code should parse quantities
-                    if req_mem > lim_mem:  # Lexicographic comparison works for same units
-                        failures.append(
-                            f"{file_path}/{name}: memory limits ({lim_mem}) < requests ({req_mem})"
-                        )
+                for resource_name in ["memory", "cpu"]:
+                    if resource_name in requests and resource_name in limits:
+                        request = requests[resource_name]
+                        limit = limits[resource_name]
+                        try:
+                            request_value = parse_kubernetes_quantity(request)
+                            limit_value = parse_kubernetes_quantity(limit)
+                        except ValueError as exc:
+                            failures.append(f"{file_path}/{name}: {exc}")
+                            continue
+
+                        if limit_value < request_value:
+                            failures.append(
+                                f"{file_path}/{name}: {resource_name} limits ({limit}) < requests ({request})"
+                            )
         
         if failures:
             pytest.fail("Resource limit < request violations:\n" + "\n".join(failures))
@@ -330,18 +380,23 @@ class TestImagePinning:
             content = yaml.safe_load(f)
         
         images = content.get("images", [])
+        image_by_name = {img.get("name"): img for img in images}
         failures = []
-        
-        for img in images:
-            name = img.get("name", "unknown")
-            
-            # Application images should use digests
-            if name.startswith("value-fabric/"):
-                if "digest" not in img:
-                    failures.append(f"{name}: missing digest (must use SHA256)")
-                elif not img["digest"].startswith("sha256:"):
-                    failures.append(f"{name}: invalid digest format")
-        
+
+        for name in APP_IMAGE_NAMES:
+            img = image_by_name.get(name)
+            if img is None:
+                failures.append(f"{name}: missing production image override")
+                continue
+
+            digest = img.get("digest")
+            if not digest:
+                failures.append(f"{name}: missing digest (must use SHA256)")
+            elif not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+                failures.append(f"{name}: invalid digest format")
+            elif digest == ZERO_SHA256_DIGEST:
+                failures.append(f"{name}: uses placeholder zero digest")
+
         if failures:
             pytest.fail("Production image pinning violations:\n" + "\n".join(failures))
 

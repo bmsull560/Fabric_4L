@@ -19,8 +19,29 @@ patches:
 # scripts/ci/prepare_kustomize_deploy.sh during the deploy workflow. The
 # committed overlay intentionally contains no synthetic or zero digests.
 images:
-  # Infrastructure images use explicit versions; application images are resolved
-  # from signed registry tags to immutable digests immediately before rendering.
+  # Application images are resolved to real registry digests during promotion.
+  - name: value-fabric/layer1-ingestion
+    newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+  - name: value-fabric/layer2-extraction
+    newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
+    digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
+  - name: value-fabric/layer3-knowledge
+    newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
+    digest: sha256:3333333333333333333333333333333333333333333333333333333333333333
+  - name: value-fabric/layer4-agents
+    newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
+    digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
+  - name: value-fabric/layer5-ground-truth
+    newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
+    digest: sha256:5555555555555555555555555555555555555555555555555555555555555555
+  - name: value-fabric/layer6-benchmarks
+    newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
+    digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
+  - name: value-fabric/frontend
+    newName: ghcr.io/bmsull560/fabric_4l/frontend
+    digest: sha256:7777777777777777777777777777777777777777777777777777777777777777
+  # Infrastructure images use explicit versions.
   - name: postgres
     newTag: "15.10-alpine"
   - name: redis

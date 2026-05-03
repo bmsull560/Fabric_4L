@@ -18,6 +18,9 @@ import pytest
 import yaml
 
 
+ZERO_SHA256_DIGEST = "sha256:" + ("0" * 64)
+
+
 class TestKustomizeBaseLayer:
     """Test the base Kustomization layer (k8s/base/)."""
 
@@ -208,6 +211,7 @@ class TestKustomizeProdOverlay:
             assert img is not None, f"{layer} must have image configuration"
             assert "digest" in img, f"{layer} must use digest pinning (not tags)"
             assert img["digest"].startswith("sha256:"), f"{layer} digest must be sha256"
+            assert img["digest"] != ZERO_SHA256_DIGEST, f"{layer} must not use placeholder zero digest"
 
     def test_prod_infrastructure_image_tags(self, k8s_overlays_dir: Path) -> None:
         """Verify infrastructure images use specific versions (not :latest)."""
@@ -333,6 +337,7 @@ class TestKustomizeStagingOverlay:
             assert img is not None, f"{layer} must have image configuration"
             assert "digest" in img, f"{layer} must use digest pinning (not tags)"
             assert img["digest"].startswith("sha256:"), f"{layer} digest must be sha256"
+            assert img["digest"] != ZERO_SHA256_DIGEST, f"{layer} must not use placeholder zero digest"
 
     def test_staging_infrastructure_image_tags(self, k8s_overlays_dir: Path) -> None:
         """Verify infrastructure images use specific versions (not :latest)."""
