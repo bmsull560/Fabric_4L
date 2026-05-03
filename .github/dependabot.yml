@@ -1,26 +1,20 @@
 version: 2
 updates:
-  # ---------------------------------------------------------------------------
-  # Python — service layers and SDK
-  # ---------------------------------------------------------------------------
+  # ============================================================================
+  # Python Dependencies — Services and SDK (pip ecosystem)
+  # ============================================================================
+  - package-ecosystem: pip
+    directory: /services/api
+    schedule:
+      interval: weekly
+    labels: [dependencies, python, service-api]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-backend
+
   - package-ecosystem: pip
     directory: /services/layer1-ingestion
-    schedule:
-      interval: weekly
-    labels: [dependencies, python]
-    commit-message:
-      prefix: chore(deps)
-
-  - package-ecosystem: pip
-    directory: /services/layer2-extraction
-    schedule:
-      interval: weekly
-    labels: [dependencies, python]
-    commit-message:
-      prefix: chore(deps)
-
-  - package-ecosystem: pip
-    directory: /services/layer3-knowledge
     schedule:
       interval: weekly
     labels: [dependencies, python, service-layer1]
@@ -30,7 +24,7 @@ updates:
       - team-ingestion
 
   - package-ecosystem: pip
-    directory: /services/layer4-agents
+    directory: /services/layer2-extraction
     schedule:
       interval: weekly
     labels: [dependencies, python, service-layer2]
@@ -40,7 +34,7 @@ updates:
       - team-extraction
 
   - package-ecosystem: pip
-    directory: /services/layer5-ground-truth
+    directory: /services/layer3-knowledge
     schedule:
       interval: weekly
     labels: [dependencies, python, service-layer3]
@@ -50,7 +44,7 @@ updates:
       - team-knowledge
 
   - package-ecosystem: pip
-    directory: /services/layer6-benchmarks
+    directory: /services/layer4-agents
     schedule:
       interval: weekly
     labels: [dependencies, python, service-layer4]
@@ -60,7 +54,7 @@ updates:
       - team-agents
 
   - package-ecosystem: pip
-    directory: /services/api
+    directory: /services/layer5-ground-truth
     schedule:
       interval: weekly
     labels: [dependencies, python, service-layer5]
@@ -70,7 +64,61 @@ updates:
       - team-quality
 
   - package-ecosystem: pip
+    directory: /services/layer6-benchmarks
+    schedule:
+      interval: weekly
+    labels: [dependencies, python, service-layer6]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-research
+
+  - package-ecosystem: pip
     directory: /sdk/python
+    schedule:
+      interval: weekly
+    labels: [dependencies, python, sdk-python]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-platform
+
+  - package-ecosystem: pip
+    directory: /tests
+    schedule:
+      interval: weekly
+    labels: [dependencies, python, tests]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-backend
+      - team-qa
+
+  # ============================================================================
+  # Node.js Dependencies — Apps and Packages (npm ecosystem)
+  # ============================================================================
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+    labels: [dependencies, javascript, app-web]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-frontend
+
+  - package-ecosystem: npm
+    directory: /packages/config
+    schedule:
+      interval: weekly
+    labels: [dependencies, javascript, package-config]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-platform
+
+  - package-ecosystem: npm
+    directory: /packages/eslint-plugin-fabric-contracts
     schedule:
       interval: weekly
     labels: [dependencies, javascript, package-eslint]
@@ -78,33 +126,6 @@ updates:
       prefix: chore(deps)
     reviewers:
       - team-platform
-
-  # ---------------------------------------------------------------------------
-  # Node.js — frontend app and workspace packages
-  # ---------------------------------------------------------------------------
-  - package-ecosystem: npm
-    directory: /apps/web
-    schedule:
-      interval: weekly
-    labels: [dependencies, javascript]
-    commit-message:
-      prefix: chore(deps)
-
-  - package-ecosystem: npm
-    directory: /packages/config
-    schedule:
-      interval: weekly
-    labels: [dependencies, javascript]
-    commit-message:
-      prefix: chore(deps)
-
-  - package-ecosystem: npm
-    directory: /packages/eslint-plugin-fabric-contracts
-    schedule:
-      interval: weekly
-    labels: [dependencies, javascript]
-    commit-message:
-      prefix: chore(deps)
 
   - package-ecosystem: npm
     directory: /packages/platform-contract
@@ -116,11 +137,11 @@ updates:
     reviewers:
       - team-platform
 
-  # ---------------------------------------------------------------------------
-  # Docker base images — service layers and frontend
-  # ---------------------------------------------------------------------------
+  # ============================================================================
+  # Docker Base Images — Services, Apps, and Devcontainer (docker ecosystem)
+  # ============================================================================
   - package-ecosystem: docker
-    directory: /services/layer1-ingestion
+    directory: /apps/web
     schedule:
       interval: weekly
     labels: [dependencies, docker, app-web]
@@ -131,7 +152,7 @@ updates:
       - team-platform
 
   - package-ecosystem: docker
-    directory: /services/layer2-extraction
+    directory: /services/layer1-ingestion
     schedule:
       interval: weekly
     labels: [dependencies, docker, service-layer1]
@@ -142,7 +163,7 @@ updates:
       - team-platform
 
   - package-ecosystem: docker
-    directory: /services/layer3-knowledge
+    directory: /services/layer2-extraction
     schedule:
       interval: weekly
     labels: [dependencies, docker, service-layer2]
@@ -153,7 +174,7 @@ updates:
       - team-platform
 
   - package-ecosystem: docker
-    directory: /services/layer4-agents
+    directory: /services/layer3-knowledge
     schedule:
       interval: weekly
     labels: [dependencies, docker, service-layer3]
@@ -164,7 +185,7 @@ updates:
       - team-platform
 
   - package-ecosystem: docker
-    directory: /services/layer5-ground-truth
+    directory: /services/layer4-agents
     schedule:
       interval: weekly
     labels: [dependencies, docker, service-layer4]
@@ -175,7 +196,7 @@ updates:
       - team-platform
 
   - package-ecosystem: docker
-    directory: /services/layer6-benchmarks
+    directory: /services/layer5-ground-truth
     schedule:
       interval: weekly
     labels: [dependencies, docker, service-layer5]
@@ -186,7 +207,7 @@ updates:
       - team-platform
 
   - package-ecosystem: docker
-    directory: /apps/web
+    directory: /services/layer6-benchmarks
     schedule:
       interval: weekly
     labels: [dependencies, docker, service-layer6]
@@ -196,9 +217,19 @@ updates:
       - team-research
       - team-platform
 
-  # ---------------------------------------------------------------------------
-  # GitHub Actions
-  # ---------------------------------------------------------------------------
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker, devcontainer]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-platform
+
+  # ============================================================================
+  # GitHub Actions (github-actions ecosystem)
+  # ============================================================================
   - package-ecosystem: github-actions
     directory: /
     schedule:
