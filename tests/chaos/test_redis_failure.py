@@ -233,7 +233,10 @@ class TestRedisPartialFailure:
         import asyncio
         
         mock_redis = AsyncMock()
-        # Simulate very slow Redis (5 second delay)
+        mock_redis.zremrangebyscore = AsyncMock(return_value=0)
+        mock_redis.zcard = AsyncMock(return_value=0)
+        mock_redis.expire = AsyncMock(return_value=True)
+        # Simulate very slow Redis (5 second delay) on the write path.
         async def slow_response(*args, **kwargs):
             await asyncio.sleep(5)
             return 1
@@ -273,7 +276,21 @@ class TestRedisPartialFailure:
             return 1
         
         mock_redis = AsyncMock()
-        mock_redis.zadd = AsyncMock(side_effect=flapping_behavior)
+        mock_redis.zremrangebyscore = AsyncMock(return_value=0)
+        mock_redis.zcard = AsyncMock(return_value=0)
+        mock_redis.expire = AsyncMock(return_value=True)
+        # The rate limiter updates minute, hour, and day windows for a single
+        # accepted request. Model Redis flapping at request boundaries so the
+        # test verifies partial-write handling rather than a per-command toy
+        # pattern that can never permit a complete request.
+        mock_redis.zadd = AsyncMock(
+            side_effect=[
+                1, 1, 1,
+                RedisConnectionError("Flapping"),
+                1, 1, 1,
+                RedisConnectionError("Flapping"),
+            ]
+        )
         
         limiter = TenantRateLimiter(redis_client=mock_redis)
         

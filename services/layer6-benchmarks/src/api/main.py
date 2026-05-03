@@ -8,7 +8,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 # Logger defined early so lifespan() and module-level instrumentation can use it.
 logger = logging.getLogger(__name__)
@@ -45,7 +45,8 @@ try:
 except ImportError:  # pragma: no cover
     verify_metrics_access = None  # type: ignore[assignment]
 
-from ..database import close_driver, get_driver, health_check as neo4j_health_check
+from ..database import close_driver, get_driver
+from ..database import health_check as neo4j_health_check
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
     MANUFACTURING_BENCHMARK_SEED,

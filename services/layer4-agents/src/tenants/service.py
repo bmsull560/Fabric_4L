@@ -42,9 +42,9 @@ except ImportError as e:
     ) from e
 from typing import Any
 
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from .models.api_key import APIKey
 from .models.isolation_tier_history import TenantIsolationTierHistory

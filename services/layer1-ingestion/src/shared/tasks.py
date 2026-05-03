@@ -16,6 +16,7 @@ import httpx
 import structlog
 from celery import Celery, chain
 from jsonschema import Draft7Validator
+from sqlalchemy.orm import Session
 
 from ..compliance.pii_scanner import PIIScanner
 from ..compliance.robots_checker import RobotsChecker

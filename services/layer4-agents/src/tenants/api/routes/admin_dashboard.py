@@ -30,11 +30,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_tenant_admin
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....database import get_db_from_context
 from ...tier_enforcement import TierEnforcement

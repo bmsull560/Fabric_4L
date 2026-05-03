@@ -18,21 +18,21 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.jwt import encode_jwt
+from value_fabric.shared.identity.oidc import OIDCClient, map_role_from_claims
 from value_fabric.shared.identity.oidc_config import OIDCProviderConfig
 from value_fabric.shared.identity.permissions import Role
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from value_fabric.shared.identity.oidc import OIDCClient, map_role_from_claims
+from ....api.security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token
 
 # SECURITY: OIDC login/callback endpoints are pre-authentication flows.
 # The user does not yet have a JWT, so get_db (no tenant context) is
 # intentional here. Authentication is via OIDC provider + PKCE.
 from ....database import get_db_from_context
-from ....api.security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token
 from ....tenants.models.tenant import Tenant
 from ....tenants.models.user import User
 
@@ -484,8 +484,8 @@ async def auth_refresh(
 
     Returns 401 if the cookie is absent, expired, or invalid.
     """
-    from value_fabric.shared.identity.jwt import decode_jwt, encode_jwt
     from fastapi import HTTPException
+    from value_fabric.shared.identity.jwt import decode_jwt, encode_jwt
 
     if not vf_session:
         raise HTTPException(status_code=401, detail="No active session")
@@ -496,6 +496,7 @@ async def auth_refresh(
 
     # Re-fetch user to pick up any role changes since last login
     from uuid import UUID
+
     from sqlalchemy import select
 
     try:

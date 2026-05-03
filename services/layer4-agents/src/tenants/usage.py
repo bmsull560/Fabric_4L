@@ -8,9 +8,9 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
 class UsageTrackingService_get_current_month_usageResult(TypedDictModel):

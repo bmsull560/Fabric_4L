@@ -7,10 +7,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from value_fabric.shared.identity.context import RequestContext
-from value_fabric.shared.identity.dependencies import require_tenant_admin
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_tenant_admin
 
 from ....database import get_db_from_context
 from ...models.tenant import Tenant

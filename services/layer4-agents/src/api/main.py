@@ -33,13 +33,15 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from value_fabric.shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
+from value_fabric.shared.identity.feature_flags import (
+    init_feature_flags,
+    register_feature_flag_lookup,
+)
 
 # Hard imports - fail fast if security components unavailable
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.vault_check import is_vault_healthy
-
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
 
 from ..config.checkpoint import CheckpointConfig
@@ -62,8 +64,8 @@ except ImportError:
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
-from ..services.value_flow_facade import ValueFlowFacadeService
 from ..services.health_tracker import get_health_tracker
+from ..services.value_flow_facade import ValueFlowFacadeService
 from ..tenants import get_tenant_settings, lookup_api_key_by_hash
 from ..tenants.api import (
     admin_router,
@@ -83,13 +85,13 @@ from .routes.checkpoints import checkpoint_router
 from .routes.crm_webhooks import router as crm_webhooks_router
 from .routes.enrichment import router as enrichment_router
 from .routes.frontend_compat import router as frontend_compat_router
+from .routes.ground_truth_proxy import router as ground_truth_proxy_router
 from .routes.health_badges import health_badges_router
 from .routes.integrations import router as integrations_router
 from .routes.intelligence import router as intelligence_router
 from .routes.narratives import router as narratives_router
 from .routes.state_inspector import state_inspector_router
 from .routes.value_hypotheses import router as value_hypotheses_router
-from .routes.ground_truth_proxy import router as ground_truth_proxy_router
 from .websocket import get_ws_manager, websocket_router
 
 

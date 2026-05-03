@@ -6,7 +6,7 @@ set -uo pipefail
 
 PROFILE="${1:-release-candidate}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(dirname "$SCRIPT_DIR")"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ARTIFACT_DIR="${ROOT}/artifacts/release"
 LOG_DIR="${ARTIFACT_DIR}/logs"
 POLICY_FILE="${ROOT}/.fabric/prod-gates.policy.yaml"
@@ -183,20 +183,27 @@ else
     NEGATIVE_PASS=$((NEGATIVE_PASS + 1))
 fi
 
-# 4d: Placeholder gates in release-candidate must fail
+# 4d: Release-candidate profiles must not contain unclassified placeholder gates
 NEGATIVE_TOTAL=$((NEGATIVE_TOTAL + 1))
 if [ "$PROFILE" = "release-candidate" ]; then
     PLACEHOLDER_FAIL=0
+    PLACEHOLDER_TOTAL=0
     for gate in $GATES; do
-        if [ "${GATE_CLASS[$gate]}" = "placeholder" ] && [ "${GATE_STATUS[$gate]}" = "FAIL" ]; then
-            PLACEHOLDER_FAIL=$((PLACEHOLDER_FAIL + 1))
+        if [ "${GATE_CLASS[$gate]}" = "placeholder" ]; then
+            PLACEHOLDER_TOTAL=$((PLACEHOLDER_TOTAL + 1))
+            if [ "${GATE_STATUS[$gate]}" = "FAIL" ]; then
+                PLACEHOLDER_FAIL=$((PLACEHOLDER_FAIL + 1))
+            fi
         fi
     done
-    if [ "$PLACEHOLDER_FAIL" -gt 0 ]; then
-        echo "   ✅ Negative: Placeholder gates correctly fail in release-candidate ($PLACEHOLDER_FAIL)"
+    if [ "$PLACEHOLDER_TOTAL" -eq 0 ]; then
+        echo "   ✅ Negative: No unclassified placeholder gates remain in release-candidate"
+        NEGATIVE_PASS=$((NEGATIVE_PASS + 1))
+    elif [ "$PLACEHOLDER_FAIL" -eq "$PLACEHOLDER_TOTAL" ]; then
+        echo "   ✅ Negative: Placeholder gates fail closed in release-candidate ($PLACEHOLDER_FAIL/$PLACEHOLDER_TOTAL)"
         NEGATIVE_PASS=$((NEGATIVE_PASS + 1))
     else
-        echo "   ⚠️  Negative: No placeholder gates failed in release-candidate"
+        echo "   ⚠️  Negative: Some placeholder gates did not fail closed in release-candidate"
     fi
 else
     echo "   ℹ️  Negative: Placeholder enforcement only checked in release-candidate"
@@ -219,8 +226,8 @@ else
 fi
 
 # ── Step 5: Profile-specific enforcement ─────────────────────────────────────
-# release-candidate: placeholder gates must fail (they are not ready for prod)
-# If a placeholder passes, that's also suspicious — it means it was silently promoted
+# release-candidate: placeholder gates either must be absent after graduation or fail closed.
+# If a placeholder passes, that is suspicious — it means it was silently promoted.
 PLACEHOLDER_UNEXPECTED_PASS=0
 if [ "$PROFILE" = "release-candidate" ]; then
     for gate in $GATES; do
@@ -349,5 +356,15 @@ cat > "$ARTIFACT_DIR/gate-result.json" <<EOF
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
+
+# The summary gate may run before the final decision file exists. Re-render it
+# after gate-result.json is written so evidence records the current run instead
+# of stale prior-run PASS/FAIL data.
+if [ -f "$ROOT/scripts/ops/render-release-summary.sh" ]; then
+    bash "$ROOT/scripts/ops/render-release-summary.sh" >> "$LOG_DIR/gates-render-summary.log" 2>&1 || {
+        echo "❌ Final summary render failed after gate-result.json was written" | tee -a "$LOG_DIR/release-gate.log"
+        exit 1
+    }
+fi
 
 exit $HARD_FAIL

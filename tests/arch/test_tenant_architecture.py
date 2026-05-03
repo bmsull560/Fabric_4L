@@ -14,17 +14,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Models that are expected to remain tenant-scoped.
 TENANT_SCOPED_MODELS: dict[str, tuple[str, ...]] = {
-    "value-fabric/layer4-agents/src/tenants/models/api_key.py": ("APIKey",),
-    "value-fabric/layer4-agents/src/tenants/models/user.py": ("User",),
-    "value-fabric/layer4-agents/src/registry/models.py": ("ModelVersion",),
-    "value-fabric/layer4-agents/src/feature_flags/models.py": ("FeatureFlag",),
+    "services/layer4-agents/src/tenants/models/api_key.py": ("APIKey",),
+    "services/layer4-agents/src/tenants/models/user.py": ("User",),
+    "services/layer4-agents/src/registry/models.py": ("ModelVersion",),
+    "services/layer4-agents/src/feature_flags/models.py": ("FeatureFlag",),
 }
 
 # Service files where selects on tenant-scoped models must include tenant predicates.
 TENANT_QUERY_GUARD_FILES: dict[str, tuple[str, ...]] = {
-    "value-fabric/layer4-agents/src/tenants/service.py": ("User", "APIKey"),
-    "value-fabric/layer4-agents/src/registry/service.py": ("ModelVersion",),
-    "value-fabric/layer4-agents/src/feature_flags/service.py": ("FeatureFlag",),
+    "services/layer4-agents/src/tenants/service.py": ("User", "APIKey"),
+    "services/layer4-agents/src/registry/service.py": ("ModelVersion",),
+    "services/layer4-agents/src/feature_flags/service.py": ("FeatureFlag",),
 }
 
 
@@ -140,8 +140,8 @@ def test_tenant_scoped_sql_queries_are_guarded() -> None:
 
 def test_tenant_required_api_dependencies_reject_missing_and_invalid_tenant() -> None:
     """Auth helpers must enforce auth and treat invalid tenant IDs as unresolved."""
-    deps_tree = _parse(REPO_ROOT / "value-fabric/shared/identity/dependencies.py")
-    middleware_tree = _parse(REPO_ROOT / "value-fabric/shared/identity/middleware.py")
+    deps_tree = _parse(REPO_ROOT / "packages/shared/src/value_fabric/shared/identity/dependencies.py")
+    middleware_tree = _parse(REPO_ROOT / "packages/shared/src/value_fabric/shared/identity/middleware.py")
 
     require_authenticated = _get_function(deps_tree, "require_authenticated")
     assert require_authenticated is not None, "dependencies.py must define require_authenticated"

@@ -8,10 +8,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_any_permission
 from value_fabric.shared.identity.permissions import Permission
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db_from_context
 from ..service import ModelRegistryService

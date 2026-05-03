@@ -248,7 +248,7 @@ class BaseTool(ABC):
                 recoverable=True,
                 metadata=metadata,
             )
-        except Exception as e:
+        except Exception:
             # Log the full exception internally, return safe error to caller
             logger.exception("Tool execution failed: %s", self.name)
             elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
@@ -470,7 +470,6 @@ class ToolRegistry:
             request_hash = canonical_hash({"tool_name": tool_name, "input": input_dict})
             start_time = asyncio.get_running_loop().time()
 
-        outcome = "success"
         response_hash: str | None = None
 
         result = await tool.run(input_dict, trace_id=trace_id)

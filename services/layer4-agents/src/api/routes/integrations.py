@@ -11,10 +11,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db_from_context
 from ...models.account import CRMProvider

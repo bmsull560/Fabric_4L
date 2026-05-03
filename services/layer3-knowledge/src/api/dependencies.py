@@ -4,7 +4,6 @@ import logging
 
 from fastapi import FastAPI, HTTPException, Request
 from neo4j import AsyncDriver
-
 from value_fabric.layer3.agents import (
     NarrativeSynthesisAgent,
     ProvenanceTrackingAgent,
@@ -12,7 +11,11 @@ from value_fabric.layer3.agents import (
     ValueTreeProjectionAgent,
     WhitespaceAnalysisAgent,
 )
-from value_fabric.layer3.analytics import CentralityAnalyzer, CommunityDetector, SimilarityAnalyzer
+from value_fabric.layer3.analytics import (
+    CentralityAnalyzer,
+    CommunityDetector,
+    SimilarityAnalyzer,
+)
 from value_fabric.layer3.config import Settings, get_settings
 from value_fabric.layer3.db.driver import get_driver, reset_driver
 from value_fabric.layer3.ingestion import Neo4jLoader, SyncManager

@@ -7,11 +7,11 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditEmitter, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...config.settings import settings
 from ...database import get_db_from_context

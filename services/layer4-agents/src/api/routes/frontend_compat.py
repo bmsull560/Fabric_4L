@@ -31,9 +31,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....api.security.csrf import CSRF_COOKIE_NAME, validate_double_submit
 from ....database import get_db_from_context

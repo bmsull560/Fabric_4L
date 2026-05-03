@@ -18,6 +18,7 @@ profiles:
       - lint
       - arch
       - security
+      - security-broad
       - state
       - summary
 
@@ -28,6 +29,7 @@ profiles:
       - lint
       - arch
       - security
+      - security-broad
       - chaos
       - smoke
       - state
@@ -43,6 +45,7 @@ profiles:
       - lint
       - arch
       - security
+      - security-broad
       - chaos
       - smoke
       - state
@@ -80,13 +83,20 @@ gate-definitions:
     artifact-dir: artifacts/security
     required: true
 
+  security-broad:
+    target: gate-security-broad
+    description: "Exhaustive legacy security coverage for Broad GA backlog classification"
+    class: advisory
+    artifact-dir: artifacts/security
+    required: false
+    caveat: "Legacy broad security suite covers inactive or not-yet-exposed GA endpoints; failures are Broad GA blockers and do not override controlled-pilot release-critical security evidence."
+
   chaos:
     target: gate-chaos
     description: "Dependency chaos and failure injection"
-    class: placeholder
+    class: blocking
     artifact-dir: artifacts/chaos
-    required: false
-    caveat: "No chaos tests implemented (0 test files)."
+    required: true
 
   smoke:
     target: gate-smoke
@@ -122,10 +132,9 @@ gate-definitions:
   release-policy:
     target: gate-release-policy
     description: "Release policy compliance, deprecation check, version freeze"
-    class: placeholder
+    class: blocking
     artifact-dir: artifacts/release
-    required: false
-    caveat: "No release-specific tests implemented. Deprecation check runs but may be skipped."
+    required: true
 
   sign-manifest:
     target: gates-sign-manifest

@@ -185,16 +185,72 @@ def redis_client() -> Generator:
             client.close()
 
 
+class _CallableString(str):
+    """String proxy that also supports legacy ``response.text()`` calls."""
+
+    def __call__(self) -> str:
+        return str(self)
+
+
+class _AwaitableResponse:
+    """Proxy an HTTP response for both sync and legacy async security tests."""
+
+    def __init__(self, response):
+        self._response = response
+
+    def __await__(self):
+        async def _return_self():
+            return self
+
+        return _return_self().__await__()
+
+    def __getattr__(self, name: str):
+        if name == "text":
+            return _CallableString(self._response.text)
+        return getattr(self._response, name)
+
+
+class _HybridTestClient:
+    """Expose TestClient methods that work with or without ``await``."""
+
+    def __init__(self, client):
+        self._client = client
+
+    def __getattr__(self, name: str):
+        return getattr(self._client, name)
+
+    def _wrap(self, response):
+        return _AwaitableResponse(response)
+
+    def get(self, *args, **kwargs):
+        return self._wrap(self._client.get(*args, **kwargs))
+
+    def post(self, *args, **kwargs):
+        return self._wrap(self._client.post(*args, **kwargs))
+
+    def put(self, *args, **kwargs):
+        return self._wrap(self._client.put(*args, **kwargs))
+
+    def patch(self, *args, **kwargs):
+        return self._wrap(self._client.patch(*args, **kwargs))
+
+    def delete(self, *args, **kwargs):
+        return self._wrap(self._client.delete(*args, **kwargs))
+
+    def options(self, *args, **kwargs):
+        return self._wrap(self._client.options(*args, **kwargs))
+
+
 @pytest.fixture
 def client():
-    """TestClient fixture - L1 ingestion API client for security tests."""
+    """Hybrid L1 ingestion API client for sync and async security tests."""
     TestClient = _get_testclient()
     if TestClient is None:
         pytest.skip("fastapi not installed")
     
     try:
         from value_fabric.layer1.api.main import app
-        return TestClient(app)
+        return _HybridTestClient(TestClient(app))
     except ImportError:
         pytest.skip("FastAPI app not available for testing")
 
@@ -227,6 +283,24 @@ def invalid_signature_token() -> str:
 def malformed_token() -> str:
     """Completely malformed token."""
     return "not.a.valid.jwt.token"
+
+
+@pytest.fixture
+def auth_headers(auth_headers_a):
+    """Legacy alias for Tenant A JWT auth headers used by older security suites."""
+    return dict(auth_headers_a)
+
+
+@pytest.fixture
+def user_headers(auth_headers_a):
+    """Legacy alias for standard-user JWT auth headers used by older security suites."""
+    return dict(auth_headers_a)
+
+
+@pytest.fixture
+def admin_headers(auth_headers_admin):
+    """Legacy alias for admin JWT auth headers used by older security suites."""
+    return dict(auth_headers_admin)
 
 
 @pytest.fixture

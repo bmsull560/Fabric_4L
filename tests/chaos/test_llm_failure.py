@@ -281,11 +281,11 @@ class TestLLMRateLimiting:
         
         async def naive_retry_client():
             nonlocal request_count
-            for _ in range(3):  # Naive 3 retries
+            last_error = None
+            for _ in range(3):  # Naive 3 retries without backoff
                 request_count += 1
-                if request_count < 3:
-                    raise Exception("Rate limit")
-            return "success"
+                last_error = Exception("Rate limit")
+            raise last_error or Exception("Rate limit")
         
         # This test documents the anti-pattern
         # Production should use exponential backoff with jitter

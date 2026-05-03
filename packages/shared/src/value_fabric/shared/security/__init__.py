@@ -14,6 +14,7 @@ from .middleware import (
     NOSQL_INJECTION_PATTERNS,
 )
 from .config import SecurityConfig as RootSecurityConfig
+from .redaction import redact_credentials
 
 __all__ = [
     "SecurityConfig",
@@ -23,4 +24,5 @@ __all__ = [
     "SQL_INJECTION_PATTERNS",
     "XSS_PATTERNS",
     "NOSQL_INJECTION_PATTERNS",
+    "redact_credentials",
 ]

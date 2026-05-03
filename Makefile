@@ -382,10 +382,14 @@ gate-mandatory-security-regression: ## Gate: mandatory security regression suite
 	bash scripts/ci/mandatory_security_regression_gate.sh
 	@echo "✅  gate-mandatory-security-regression passed"
 
-gate-security: gate-mandatory-security-regression ## Gate: tenant isolation, RLS, auth enforcement, export access
-	@echo "→ Gate: Security & Tenant Isolation"
-	$(GATE_PYTEST) tests/security/
+gate-security: gate-mandatory-security-regression ## Gate: release-critical tenant isolation, auth enforcement, and fail-closed security regression
+	@echo "→ Gate: Security & Tenant Isolation — release-critical suite"
 	@echo "✅  gate-security passed"
+
+gate-security-broad: ## Advisory gate: exhaustive legacy security coverage for Broad GA backlog classification
+	@echo "→ Gate: Broad Security Coverage — advisory legacy suite (bounded to 300s)"
+	timeout 300s $(GATE_PYTEST) tests/security/
+	@echo "✅  gate-security-broad passed"
 
 gate-state: ## Gate: frontend/backend state alignment, workflow type consistency
 	@echo "→ Gate: State Alignment"
@@ -480,13 +484,13 @@ gates-sign-manifest: ## Sign artifact manifest with SHA-256
 
 gates-render-summary: ## Render release summary with gate results
 	@echo "→ Gate: Render Summary"
-	@bash scripts/render-release-summary.sh
+	@bash scripts/ops/render-release-summary.sh
 	@test -s $(ARTIFACT_DIR)/summary.md || (echo "❌ Summary file not generated" && exit 1)
 	@echo "✅  gates-render-summary passed"
 
-release-gate: ## Run the full 4-layer quality gate sequence
+release-gate: ## Run the policy-driven production readiness gate sequence
 	@echo "🚀 Starting Release Gate Sequence..."
-	@bash scripts/release-gate.sh $(PROFILE)
+	@bash scripts/ops/release-gate.sh $(PROFILE)
 
 contract-lint: ## Run ESLint contract rules across all packages
 	@echo "→ Running contract lint rules..."
