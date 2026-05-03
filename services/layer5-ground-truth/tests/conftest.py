@@ -25,6 +25,8 @@ from sqlalchemy.ext.asyncio import (
 
 # Override DATABASE_URL before any application code imports the engine
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+os.environ["ENVIRONMENT"] = "test"
+os.environ["APP_ENV"] = "test"
 os.environ["DATABASE_URL"] = TEST_DB_URL
 os.environ["DATABASE_URL_SYNC"] = "sqlite:///:memory:"
 os.environ["LAYER3_SYNC_ENABLED"] = "false"

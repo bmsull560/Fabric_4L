@@ -1,9 +1,63 @@
-"""Configuration for Layer 5 Ground Truth Layer."""
+"""Configuration for Layer 5 Ground Truth service."""
 
 from functools import lru_cache
+from urllib.parse import urlparse
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+LOCALHOST_HOSTS = {"localhost", "127.0.0.1", "::1"}
+WEAK_JWT_SECRETS = {
+    "changeme-in-production",
+    "changeme",
+    "password",
+    "password123",
+    "admin",
+    "secret",
+    "jwt-secret",
+    "default",
+    "test",
+    "",
+    "null",
+    "none",
+    "123456",
+    "12345678",
+    "qwerty",
+    "abc123",
+}
+
+
+def _normalize_environment(value: str | None) -> str:
+    """Normalize an environment name for production-policy decisions."""
+    return (value or "development").strip().lower()
+
+
+def is_production_like_environment(value: str | None) -> bool:
+    """Return whether a runtime environment must fail closed on unsafe config."""
+    return _normalize_environment(value) in PRODUCTION_LIKE_ENVIRONMENTS
+
+
+def _parse_cors_origins(raw: str) -> list[str]:
+    """Parse the comma-separated CORS origin contract used by deployment env vars."""
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+def _is_local_database_url(raw_url: str) -> bool:
+    """Return whether a database URL points at localhost or SQLite."""
+    parsed = urlparse(raw_url)
+    if parsed.scheme.startswith("sqlite"):
+        return True
+    return (parsed.hostname or "").strip().lower() in LOCALHOST_HOSTS
+
+
+def _has_default_database_credentials(raw_url: str) -> bool:
+    """Return whether a database URL still uses common placeholder credentials."""
+    parsed = urlparse(raw_url)
+    username = (parsed.username or "").strip().lower()
+    password = parsed.password or ""
+    return username in {"postgres", "valuefabric", "value_fabric"} or password in {"", "postgres", "password"}
 
 
 class Settings(BaseSettings):
@@ -15,6 +69,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Runtime Environment
+    environment: str = Field(default="development", alias="ENVIRONMENT")
+    app_env: str | None = Field(default=None, alias="APP_ENV")
+
     # API Configuration
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
     api_port: int = Field(default=8005, alias="API_PORT")
@@ -22,6 +80,7 @@ class Settings(BaseSettings):
     api_version: str = Field(default="v1", alias="API_VERSION")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     debug: bool = Field(default=False, alias="DEBUG")
+    cors_origins: str = Field(default="", alias="CORS_ORIGINS")
 
     # PostgreSQL Configuration
     database_url: str = Field(
@@ -111,6 +170,25 @@ class Settings(BaseSettings):
         default=False,
         alias="JWT_FALLBACK_TO_QUERY_PARAM",
     )
+    allow_insecure_dev_auth_bypass: bool = Field(
+        default=False,
+        alias="ALLOW_INSECURE_DEV_AUTH_BYPASS",
+    )
+
+    @property
+    def effective_environment(self) -> str:
+        """Return the environment value used for production-like policy checks."""
+        return _normalize_environment(self.app_env or self.environment)
+
+    @property
+    def is_production_like(self) -> bool:
+        """Whether this settings object represents a production-like runtime."""
+        return is_production_like_environment(self.effective_environment)
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Return parsed CORS origins after trimming empty entries."""
+        return _parse_cors_origins(self.cors_origins)
 
     @field_validator("database_url")
     @classmethod
@@ -119,6 +197,42 @@ class Settings(BaseSettings):
         if "postgresql://" in v and "asyncpg" not in v:
             v = v.replace("postgresql://", "postgresql+asyncpg://")
         return v
+
+    @model_validator(mode="after")
+    def validate_production_fail_closed(self) -> "Settings":
+        """Reject unsafe production-like configuration before app startup."""
+        if not self.is_production_like:
+            return self
+
+        errors: list[str] = []
+        if self.debug:
+            errors.append("DEBUG must be false")
+        if len(self.jwt_secret) < 32 or self.jwt_secret.strip().lower() in WEAK_JWT_SECRETS:
+            errors.append("JWT_SECRET must be a non-placeholder value of at least 32 characters")
+        if self.jwt_fallback_to_query_param:
+            errors.append("JWT_FALLBACK_TO_QUERY_PARAM must be false")
+        if self.allow_insecure_dev_auth_bypass:
+            errors.append("ALLOW_INSECURE_DEV_AUTH_BYPASS must be false")
+        if self.default_tenant_id.strip().lower() == "default":
+            errors.append("DEFAULT_TENANT_ID must not use the implicit 'default' fallback tenant")
+        if _is_local_database_url(self.database_url) or _has_default_database_credentials(self.database_url):
+            errors.append("DATABASE_URL must point to non-local PostgreSQL with non-default credentials")
+        if _is_local_database_url(self.database_url_sync) or _has_default_database_credentials(self.database_url_sync):
+            errors.append("DATABASE_URL_SYNC must point to non-local PostgreSQL with non-default credentials")
+
+        origins = _parse_cors_origins(self.cors_origins)
+        if not origins:
+            errors.append("CORS_ORIGINS must list exact trusted origins")
+        elif "*" in origins:
+            errors.append("CORS_ORIGINS must not contain wildcard '*' origins")
+
+        if errors:
+            raise ValueError(
+                "Layer 5 production configuration is not fail-closed for "
+                f"{self.effective_environment}: " + "; ".join(errors)
+            )
+
+        return self
 
 
 @lru_cache

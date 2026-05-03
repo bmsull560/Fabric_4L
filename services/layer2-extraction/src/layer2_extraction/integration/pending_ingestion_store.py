@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from dataclasses import dataclass
@@ -398,6 +399,24 @@ class PostgresPendingIngestionStore(PendingIngestionStore):
         }).model_dump()
 
 
+PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+
+
+def _current_environment() -> str:
+    """Return the normalized runtime environment name for persistence policy checks."""
+    return (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("APP_ENV")
+        or os.getenv("LAYER2_ENV")
+        or "development"
+    ).strip().lower()
+
+
+def _is_production_like() -> bool:
+    """Whether the current runtime must fail closed on SQLite persistence."""
+    return _current_environment() in PRODUCTION_LIKE_ENVIRONMENTS
+
+
 def _sqlite_path_from_url(database_url: str) -> str:
     if database_url.startswith("sqlite:///"):
         return database_url.replace("sqlite:///", "", 1)
@@ -409,7 +428,9 @@ def _sqlite_path_from_url(database_url: str) -> str:
 def build_pending_ingestion_store() -> PendingIngestionStore:
     """Resolve pending-ingestion persistence backend.
 
-    Uses Layer 2 service DB when configured; otherwise uses SQLite fallback.
+    Production-like environments require an explicit PostgreSQL URL and fail
+    closed before constructing SQLite fallback storage. Development and tests keep
+    the historical SQLite fallback for local workflows.
     """
     service_db_url = os.getenv("LAYER2_DATABASE_URL") or os.getenv("DATABASE_URL")
 
@@ -418,7 +439,18 @@ def build_pending_ingestion_store() -> PendingIngestionStore:
         if lower.startswith("postgresql://") or lower.startswith("postgresql+"):
             return PostgresPendingIngestionStore(service_db_url)
         if lower.startswith("sqlite://"):
+            if _is_production_like():
+                raise RuntimeError(
+                    "Layer 2 pending ingestion requires PostgreSQL in production-like "
+                    f"environment {_current_environment()!r}; refusing SQLite URL."
+                )
             return SqlitePendingIngestionStore(_sqlite_path_from_url(service_db_url))
+
+    if _is_production_like():
+        raise RuntimeError(
+            "LAYER2_DATABASE_URL or DATABASE_URL must point to PostgreSQL for Layer 2 "
+            f"pending-ingestion durability in production-like environment {_current_environment()!r}."
+        )
 
     fallback_path = os.getenv("PENDING_INGESTION_SQLITE_PATH", "./data/pending_ingestion.db")
     return SqlitePendingIngestionStore(fallback_path)

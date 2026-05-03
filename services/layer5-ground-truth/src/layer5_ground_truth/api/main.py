@@ -237,8 +237,8 @@ def create_app() -> FastAPI:
 
     # GovernanceMiddleware — provides auth and tenant context with rate limiting
     # Production/staging: fail closed if auth middleware is missing
-    allow_bypass = os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() == "true"
-    env = os.getenv("ENVIRONMENT", "development")
+    allow_bypass = settings.allow_insecure_dev_auth_bypass
+    env = settings.effective_environment
 
     # Get Redis rate limiter from app state (initialized in lifespan)
     redis_rate_limiter = getattr(app.state, 'redis_rate_limiter', None)
@@ -264,7 +264,7 @@ def create_app() -> FastAPI:
         )
         logger.info("L5: GovernanceMiddleware with rate limiting initialized (public paths: %s)", public_paths)
     except ImportError:
-        if env in ("production", "staging") and not allow_bypass:
+        if settings.is_production_like and not allow_bypass:
             logger.error(
                 "CRITICAL: GovernanceMiddleware not importable in production/staging. "
                 "Authentication is required. Set ALLOW_INSECURE_DEV_AUTH_BYPASS=true ONLY for local dev."
@@ -279,10 +279,11 @@ def create_app() -> FastAPI:
             "API endpoints are UNPROTECTED. This is only allowed in development with ALLOW_INSECURE_DEV_AUTH_BYPASS=true."
         )
 
-    # CORS — restrict in production via environment variable
-    # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
-    _cors_raw = os.getenv("CORS_ORIGINS", "")
-    _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] if _cors_raw else (["*"] if settings.debug else [])
+    # CORS — use validated settings so production-like runtimes fail closed before startup.
+    # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec.
+    _cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+    if not _cors_origins and settings.debug:
+        _cors_origins = ["*"]
     _cors_credentials = "*" not in _cors_origins  # Must be False when using wildcard origins
     app.add_middleware(
         CORSMiddleware,
