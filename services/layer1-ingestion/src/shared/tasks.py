@@ -164,7 +164,6 @@ def process_scraping_job(self, job_id: str):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             # Start job
             job.status = JobStatus.VALIDATING.value
@@ -210,7 +209,6 @@ def compliance_check_stage(self, job_id: str):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             # Update stage status
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "RUNNING")
@@ -234,7 +232,6 @@ def compliance_check_stage(self, job_id: str):
 
                 # Log compliance check
                 log = ComplianceLog(
-                    tenant_id=job.tenant_id,
                     job_id=job_id,
                     target_id=job.target_id,
                     event_type=ComplianceEventType.ROBOTS_TXT_CHECK.value,
@@ -256,8 +253,8 @@ def compliance_check_stage(self, job_id: str):
                     return compliance_check_stageResult.model_validate({"success": False, "error": "robots.txt blocked", "job_id": str(job_id)})
 
                 # Apply crawl delay
-                if result.crawl_delay:
-                    time.sleep(result.crawl_delay)
+                if crawl_delay:
+                    time.sleep(crawl_delay)
 
             # Complete stage
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "COMPLETED")
@@ -290,7 +287,6 @@ def browser_launch_stage(self, prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.BROWSER_LAUNCH, "RUNNING")
             job.status = JobStatus.BROWSER_ACQUIRING.value
@@ -326,7 +322,6 @@ def navigation_stage(self, prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.NAVIGATION, "RUNNING")
             job.status = JobStatus.NAVIGATING.value
@@ -388,7 +383,6 @@ def content_capture_stage(self, prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.CONTENT_CAPTURE, "RUNNING")
             job.status = JobStatus.EXTRACTING.value
@@ -434,7 +428,6 @@ def content_capture_stage(self, prev_result: dict):
             # Create RawContent record
             raw_content = RawContent(
                 job_id=job_id,
-                tenant_id=job.tenant_id,
                 target_id=job.target_id,
                 source_url=url,
                 source_final_url=capture_result.final_url,
@@ -496,7 +489,6 @@ def ai_extraction_stage(self, prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             config = job.configuration
             extraction_config = config.get("extraction_config", {})
@@ -528,7 +520,6 @@ def ai_extraction_stage(self, prev_result: dict):
                 "extraction_method": method.lower(),
                 "source_id": str(raw_content_id),
                 "job_id": str(job_id),
-                "tenant_id": str(job.tenant_id),  # Pass tenant for isolation
                 "options": {
                     "model": extraction_config.get("model", settings.openai_model),
                     "temperature": extraction_config.get("temperature", 0.0),
@@ -550,7 +541,6 @@ def ai_extraction_stage(self, prev_result: dict):
                         timeout=120.0,
                         headers={
                             "Content-Type": "application/json",
-                            "X-Tenant-ID": str(job.tenant_id),
                         },
                     )
                     response.raise_for_status()
@@ -612,7 +602,6 @@ def post_processing_stage(self, prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.POST_PROCESSING, "RUNNING")
             job.status = JobStatus.TRANSFORMING.value
@@ -635,7 +624,6 @@ def post_processing_stage(self, prev_result: dict):
                     # Log PII detection
                     if scan_result:
                         log = ComplianceLog(
-                            tenant_id=job.tenant_id,
                             job_id=job_id,
                             target_id=job.target_id,
                             event_type=ComplianceEventType.PII_DETECTED.value,
@@ -719,7 +707,6 @@ def validation_stage(self, prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.VALIDATION, "RUNNING")
             job.progress_stage = PipelineStage.VALIDATION.value
@@ -802,7 +789,6 @@ def storage_stage(self, prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.STORAGE, "RUNNING")
             job.status = JobStatus.STORING.value
@@ -819,7 +805,6 @@ def storage_stage(self, prev_result: dict):
                     # Create ExtractedData record
                     extracted = ExtractedData(
                         job_id=job_id,
-                        tenant_id=job.tenant_id,
                         target_id=job.target_id,
                         raw_content_id=raw_content.id,
                         extraction_method=config.get("extraction_config", {}).get(
@@ -873,7 +858,6 @@ def notification_stage(prev_result: dict):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 return
-            tenant_id = job.tenant_id
 
             _update_stage(session, job_id, PipelineStage.NOTIFICATION, "RUNNING")
             job.progress_stage = PipelineStage.NOTIFICATION.value
@@ -956,7 +940,6 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
         # Create error record
         error_record = JobError(
             job_id=job_id,
-            tenant_id=job.tenant_id if job else None,
             stage=stage.value,
             error_code="PIPELINE_ERROR",
             error_message=error,
@@ -1045,12 +1028,14 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
             job = session.query(ScrapingJob).get(job_id_uuid)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            tenant_id = str(job.tenant_id) if job.tenant_id else None
             target = session.query(ScrapingTarget).get(job.target_id)
             target_config = target.configuration if target else {}
 
             # Use target's crawl_path if available, otherwise use parameter
             effective_mode = target_config.get("crawl_path", target_mode)
+
+            # Capture tenant_id for later use
+            job_tenant_id = str(job.tenant_id) if job.tenant_id else None
 
         # Parse URL for domain extraction
         parsed_url = urlparse(url)
@@ -1064,7 +1049,7 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
         decision_record = CrawlDecisionRecord(
             decision_id=str(uuid4()),
             job_id=job_id,
-            tenant_id=tenant_id,
+            tenant_id=job_tenant_id,
             url=url,
             domain=domain,
             requested_path=effective_mode,

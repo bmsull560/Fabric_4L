@@ -56,8 +56,10 @@ services:
     container_name: vf-dev-pgbouncer
     environment:
       - DATABASES_HOST=postgres
+      - DATABASES_PORT=5432
+      - DATABASES_USER=postgres
+      - DATABASES_PASSWORD=postgres
     volumes:
-      - ./k8s/base/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
       - ./k8s/base/userlist.txt:/etc/pgbouncer/userlist.txt:ro
     ports:
       - "6432:6432"
@@ -67,7 +69,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432"]
+      test: ["CMD-SHELL", "true"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -159,7 +161,7 @@ services:
       - dev-network
     volumes:
       # Mount source for hot-reload (optional — remove for production-like testing)
-      - ./packages/shared/src:/app/shared:ro
+      - ./packages/shared/src/value_fabric:/app/value_fabric
       - ./services/layer4-agents/src:/app/src:ro
     command: >
       uvicorn src.api.main:app

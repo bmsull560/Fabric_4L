@@ -4,6 +4,7 @@ Provides distributed tracing for crawl operations, following the patterns
 established in Layer 4 agent tracing (per AGENTS.md).
 """
 
+import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import wraps
@@ -73,10 +74,20 @@ def init_telemetry(
     resource = Resource.create(resource_attrs)
     provider = TracerProvider(resource=resource)
 
-    # Use console exporter as default (production should use OTLP)
-    from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+    # Use OTLP exporter in production, console exporter in development
+    # Set TELEMETRY_EXPORTER=otlp to use OTLP, defaults to console
+    exporter_type = os.getenv("TELEMETRY_EXPORTER", "console").lower()
 
-    processor = BatchSpanProcessor(ConsoleSpanExporter())
+    if exporter_type == "otlp":
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+        exporter = OTLPSpanExporter()
+    else:
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+
+        exporter = ConsoleSpanExporter()
+
+    processor = BatchSpanProcessor(exporter)
     provider.add_span_processor(processor)
 
     trace.set_tracer_provider(provider)

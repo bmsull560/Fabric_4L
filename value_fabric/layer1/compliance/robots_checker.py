@@ -5,7 +5,7 @@ Uses Protego for fast parsing and respects crawl-delay directives.
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -43,12 +43,15 @@ class RobotsChecker:
     """
 
     def __init__(
-        self, user_agent: str = None, cache_ttl_hours: int = None, respect_crawl_delay: bool = True
+        self,
+        user_agent: Optional[str] = None,
+        cache_ttl_hours: Optional[int] = None,
+        respect_crawl_delay: bool = True,
     ):
         self.user_agent = user_agent or "ValueFabricBot/1.0"
         self.cache_ttl_hours = cache_ttl_hours or settings.robots_txt_cache_hours
         self.respect_crawl_delay = respect_crawl_delay
-        self._http_client: httpx.AsyncClient | None = None
+        self._http_client: Optional[httpx.AsyncClient] = None
         self.logger = logger
 
     async def _get_client(self) -> httpx.AsyncClient:

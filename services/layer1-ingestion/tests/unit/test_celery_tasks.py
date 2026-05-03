@@ -266,7 +266,8 @@ class TestComplianceCheckStage:
         with patch("src.shared.tasks.get_db_session", return_value=mock_session):
             with patch("src.shared.tasks._update_stage"):
                 # Use .run() to bypass Celery's task dispatch machinery
-                result = compliance_check_stage.run(job_id)
+                # Pass string job_id to match Celery JSON serialization
+                result = compliance_check_stage.run(str(job_id))
 
         # Job status must be updated to VALIDATING
         assert mock_job.status == "VALIDATING"
@@ -286,7 +287,8 @@ class TestComplianceCheckStage:
         with patch("src.shared.tasks.get_db_session", return_value=mock_session):
             with pytest.raises(ValueError, match="not found"):
                 # Use .run() to bypass Celery's task dispatch machinery
-                compliance_check_stage.run(job_id)
+                # Pass string job_id to match Celery JSON serialization
+                compliance_check_stage.run(str(job_id))
 
 
 # ── Retry / Error Path Tests ─────────────────────────────────────────────────
@@ -359,8 +361,9 @@ class TestCeleryRetryBehavior:
             with patch("src.shared.tasks._update_stage"):
                 # Should raise or handle gracefully (not crash silently)
                 # AttributeError because code does config.get() when config is None
+                # Pass string job_id to match Celery JSON serialization
                 with pytest.raises((ValueError, AttributeError)):
-                    compliance_check_stage.run(job_id)
+                    compliance_check_stage.run(str(job_id))
 
     def test_cleanup_old_content_handles_empty_result(self) -> None:
         """cleanup_old_content must return deleted_count=0 when no old content found."""
@@ -514,7 +517,7 @@ class TestCeleryRetrySemantics:
 
         with patch("src.shared.tasks.get_db_session", return_value=mock_session):
             with patch("src.shared.tasks._update_stage", side_effect=mock_update):
-                # First attempt
+                # First attempt - pass string job_id to match Celery JSON serialization
                 try:
                     compliance_check_stage.run(job_id)
                 except Exception:

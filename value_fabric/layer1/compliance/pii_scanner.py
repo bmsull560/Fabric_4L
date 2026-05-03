@@ -4,6 +4,7 @@ Detects personally identifiable information in crawled content
 and provides quarantine functionality for compliance.
 """
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
@@ -22,6 +23,7 @@ except ImportError:
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..shared.config import settings
+from ..shared.models import PIIStatus
 
 
 class PIIEntity_to_dictResult(TypedDictModel):
@@ -242,8 +244,6 @@ class PIIScanner:
         Returns:
             Classification: 'clean', 'flagged', or 'quarantined'
         """
-        from ..shared.models import PIIStatus
-
         if not scan_result.has_pii:
             return PIIStatus.CLEAN.value
 
@@ -308,9 +308,7 @@ class PIIScanner:
 
     def _hash_text(self, text: str) -> str:
         """Create a simple hash of text for identification."""
-        import hashlib
-
-        return hashlib.sha256(text.encode()).hexdigest()[:16]
+        return hashlib.md5(text.encode()).hexdigest()[:16]
 
     def get_summary_stats(self, scan_results: list[PIIScanResult]) -> dict[str, Any]:
         """Get summary statistics from multiple scan results.

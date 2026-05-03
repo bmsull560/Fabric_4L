@@ -15,7 +15,7 @@ import contextlib
 import random
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urljoin, urlparse
 
 import structlog

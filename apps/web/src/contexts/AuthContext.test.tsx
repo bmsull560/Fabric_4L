@@ -14,7 +14,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import { createWrapper } from '../test-utils';
+import { createWrapper, TestAuthComponent } from '../test-utils';
 import { AuthProvider, useAuthContext } from './AuthContext';
 import {
   applySessionServiceTestEnvironment,
@@ -23,30 +23,6 @@ import {
 } from '@/test/authSessionTestUtils';
 import { sessionService } from '../services/sessionService';
 
-// ---------------------------------------------------------------------------
-// Test component
-// ---------------------------------------------------------------------------
-
-function TestComponent() {
-  const auth = useAuthContext();
-  return (
-    <div>
-      <div data-testid="loading">{auth.isLoading ? 'loading' : 'ready'}</div>
-      <div data-testid="authenticated">{auth.isAuthenticated ? 'yes' : 'no'}</div>
-      <div data-testid="user-email">{auth.user?.email ?? 'none'}</div>
-      <div data-testid="access-token">{auth.accessToken ?? 'null'}</div>
-      <button data-testid="login-btn" onClick={() => auth.initiateLogin('test-tenant')}>Login</button>
-      <button data-testid="logout-btn" onClick={() => void auth.logout()}>Logout</button>
-      <button data-testid="refresh-btn" onClick={() => void auth.refreshToken()}>Refresh</button>
-      <button
-        data-testid="callback-btn"
-        onClick={() => void auth.handleCallback('test-code', 'oidc-state-123')}
-      >
-        Callback
-      </button>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -71,7 +47,7 @@ describe('AuthProvider', () => {
 
   describe('initialization', () => {
     it('starts unauthenticated when sessionStorage is empty', async () => {
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
 
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
@@ -83,7 +59,7 @@ describe('AuthProvider', () => {
       const user = authFixtures.user({ email: 'restored@example.com', tenantId: 'tenant-1', tenantSlug: 'tenant-1' });
       env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: 'tenant-1' }));
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
 
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
@@ -95,7 +71,7 @@ describe('AuthProvider', () => {
       const user = authFixtures.user();
       env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
 
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
@@ -105,7 +81,7 @@ describe('AuthProvider', () => {
     it('clears corrupted metadata and starts unauthenticated', async () => {
       env.sessionStorage.setItem('vf.auth.session.meta', 'not-valid-json{');
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
 
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
@@ -118,7 +94,7 @@ describe('AuthProvider', () => {
       localStorage.setItem('accessToken', 'old-token');
       localStorage.setItem('vf.auth.session', JSON.stringify(authFixtures.validSession()));
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
 
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
@@ -134,7 +110,7 @@ describe('AuthProvider', () => {
 
   describe('initiateLogin', () => {
     it('stores OIDC flow state and redirects to IdP', async () => {
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
       await act(async () => { screen.getByTestId('login-btn').click(); });
@@ -177,7 +153,7 @@ describe('AuthProvider', () => {
     });
 
     it('sets authenticated state and persists metadata to sessionStorage', async () => {
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
       await act(async () => { screen.getByTestId('callback-btn').click(); });
@@ -198,7 +174,7 @@ describe('AuthProvider', () => {
     });
 
     it('accessToken remains null after successful callback', async () => {
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
       await act(async () => { screen.getByTestId('callback-btn').click(); });
@@ -209,7 +185,7 @@ describe('AuthProvider', () => {
     });
 
     it('clears OIDC state from sessionStorage after callback', async () => {
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('ready'));
 
       await act(async () => { screen.getByTestId('callback-btn').click(); });
@@ -275,7 +251,7 @@ describe('AuthProvider', () => {
       const user = authFixtures.user({ email: 'active@example.com' });
       env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
       await act(async () => { screen.getByTestId('logout-btn').click(); });
@@ -294,7 +270,7 @@ describe('AuthProvider', () => {
       // Temporarily override the logout handler to simulate network failure
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
       await act(async () => { screen.getByTestId('logout-btn').click(); });
@@ -313,7 +289,7 @@ describe('AuthProvider', () => {
       const user = authFixtures.user({ email: 'active@example.com' });
       env.sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user, tenantId: user.tenantId }));
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
       await act(async () => { screen.getByTestId('refresh-btn').click(); });
@@ -332,7 +308,7 @@ describe('AuthProvider', () => {
         new Response(null, { status: 401 })
       );
 
-      render(<AuthProvider><TestComponent /></AuthProvider>, { wrapper: createWrapper() });
+      render(<AuthProvider><TestAuthComponent /></AuthProvider>, { wrapper: createWrapper() });
       await waitFor(() => expect(screen.getByTestId('authenticated')).toHaveTextContent('yes'));
 
       await act(async () => { screen.getByTestId('refresh-btn').click(); });

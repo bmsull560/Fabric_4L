@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -317,19 +318,19 @@ class HttpxCrawler:
         high_script_density = script_count > self.config.spa_script_threshold
 
         # Indicator 2: Low content ratio
-        import re
-
         text_content = re.sub(r"<[^>]+>", "", html)
         content_ratio = len(text_content) / max(len(html), 1)
         low_content = content_ratio < self.config.spa_content_ratio_threshold
 
-        # Indicator 3: SPA markers
+        # Indicator 3: SPA markers (synced with smart_router.py)
         spa_markers = [
             '<div id="root"></div>',
             '<div id="app"></div>',
             '<div id="__next"></div>',
             'data-reactroot',
             'ng-version=',
+            'data-server-rendered="false"',
+            'window.__INITIAL_STATE__',
         ]
         has_spa_markers = any(marker in html_lower for marker in spa_markers)
 
