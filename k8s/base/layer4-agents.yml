@@ -8,6 +8,11 @@ metadata:
     component: layer4
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: layer4-agents
@@ -45,9 +50,9 @@ spec:
             secretName: jwt-keys
             defaultMode: 0400  # Read-only
       containers:
-        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
+        # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: value-fabric/layer4-agents:latest
+          image: value-fabric/layer4-agents:main
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
