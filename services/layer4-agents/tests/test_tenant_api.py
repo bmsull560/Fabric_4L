@@ -333,3 +333,50 @@ class TestTenantAPIErrorHandling:
         """Verify 404 response when tenant not found."""
         # Non-existent tenant should return 404
         pass
+
+
+class _TenantEntityCountResult:
+    def __init__(self, value):
+        self._value = value
+
+    def scalar(self):
+        return self._value
+
+
+class _TenantEntityCountDb:
+    def __init__(self):
+        self.calls = []
+        self.exists = {
+            "entities": True,
+            "knowledge_entities": False,
+            "graph_entities": True,
+            "crm_accounts": False,
+            "accounts": False,
+        }
+        self.counts = {"entities": 3, "graph_entities": 4}
+
+    async def execute(self, statement, params):
+        sql = str(statement)
+        self.calls.append((sql, dict(params)))
+        if "to_regclass" in sql:
+            return _TenantEntityCountResult(self.exists[params["table_name"]])
+        for table_name, count in self.counts.items():
+            if f"FROM {table_name}" in sql:
+                return _TenantEntityCountResult(count)
+        return _TenantEntityCountResult(0)
+
+
+@pytest.mark.asyncio
+async def test_count_tenant_entities_queries_real_tenant_scoped_tables():
+    """H-01: tenant entity_count must be computed, not hard-coded to zero."""
+    from src.api.tenants import _count_tenant_entities
+
+    tenant_id = uuid4()
+    db = _TenantEntityCountDb()
+
+    count = await _count_tenant_entities(db, tenant_id)
+
+    assert count == 7
+    count_queries = [call for call in db.calls if "COUNT(*)" in call[0]]
+    assert len(count_queries) == 2
+    assert all(call[1]["tenant_id"] == tenant_id for call in count_queries)
