@@ -4,6 +4,7 @@ Tests corrupted state recovery, partial resume, missing dependencies,
 failed agent calls, and inconsistent state scenarios.
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

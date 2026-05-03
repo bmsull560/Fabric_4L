@@ -6,6 +6,7 @@ Validates:
 - Request ID flow: incoming X-Request-ID → request.state.trace_id → response header
 """
 
+from typing import Any
 from unittest.mock import patch
 
 import pytest

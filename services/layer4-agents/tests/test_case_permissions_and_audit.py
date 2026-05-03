@@ -1,5 +1,6 @@
 """Security and audit tests for case routes."""
 
+from typing import Any
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 

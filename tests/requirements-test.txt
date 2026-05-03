@@ -29,6 +29,7 @@ pytest-xdist>=3.6.0
 # ---------------------------------------------------------------------------
 httpx>=0.27.0
 anyio>=4.0.0
+aiohttp>=3.9.0        # Async HTTP client used by L4 notification tests at collection time
 respx>=0.21.0          # HTTP mocking for httpx — mandatory for L1 crawler tests
 
 # ---------------------------------------------------------------------------
@@ -44,6 +45,15 @@ testcontainers>=4.8.0  # Spins up Docker containers for integration tests
 trafilatura>=1.6.0
 defusedxml>=0.7.1
 beautifulsoup4>=4.12.0
+selectolax>=0.3.21
+pymupdf4llm>=0.0.17
+pytesseract>=0.3.13
+
+# ---------------------------------------------------------------------------
+# Layer 3 — graph/RDF dependencies required for reliable collection
+# ---------------------------------------------------------------------------
+rdflib>=7.0.0
+neo4j>=5.15.0
 
 # ---------------------------------------------------------------------------
 # Layer 4 — PostgreSQL driver and email validation
@@ -62,6 +72,7 @@ PyJWT>=2.8.0
 # ---------------------------------------------------------------------------
 schemathesis>=3.38.0
 hypothesis>=6.122.0
+jsonschema>=4.23.0
 
 # ---------------------------------------------------------------------------
 # HTML parsing (used by security tests)

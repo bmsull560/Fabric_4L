@@ -9,6 +9,7 @@ Tests the accounts-first CRM integration API contract:
 - GET /v1/accounts/sync-status (provider sync status)
 """
 
+from typing import Any
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace

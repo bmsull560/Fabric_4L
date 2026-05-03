@@ -1,4 +1,4 @@
-s"""Tests for ToolResult structured error handling (Contract §2.4).
+"""Tests for ToolResult structured error handling (Contract §2.4).
 
 Verifies that tools return structured ToolResult instead of raising exceptions.
 """
@@ -421,7 +421,6 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_validates_correct_json(self):
         """Test that valid LLM JSON response is parsed correctly."""
-        from value_fabric.layer4.tools.competitive_tools import (
         from value_fabric.layer4.tools.competitive_tools import (
             LLMDifferenceItem,
             LLMDifferencesResponse,

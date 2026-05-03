@@ -20,6 +20,69 @@ _SHARED_SRC = _REPO_ROOT / "packages" / "shared" / "src"
 if _SHARED_SRC.exists() and str(_SHARED_SRC) not in sys.path:
     sys.path.insert(0, str(_SHARED_SRC))
 
+# Non-ambiguous top-level service package roots needed by repository-level
+# contract tests.  Do not add every service ``src`` root here because several
+# services contain a top-level package named ``src``; those remain service-local
+# through their own conftest.py files.
+_LAYER2_SRC = _REPO_ROOT / "services" / "layer2-extraction" / "src"
+if _LAYER2_SRC.exists() and str(_LAYER2_SRC) not in sys.path:
+    sys.path.insert(0, str(_LAYER2_SRC))
+
+
+def _install_legacy_src_namespace() -> None:
+    """Expose legacy ``src.*`` imports deterministically for repo collection.
+
+    Historical Layer 3 and Layer 4 tests import modules through a top-level
+    ``src`` package.  Both services contain overlapping parents such as
+    ``src.api.routes``; importing one service's real ``__init__`` can therefore
+    hide the other service or run unrelated side effects during collection.  The
+    production test profile installs lightweight namespace packages for those
+    parents and points them at the real module directories.
+    """
+    import types
+
+    def namespace(name: str, paths: list[Path]) -> None:
+        module = sys.modules.get(name)
+        if module is None or not hasattr(module, "__path__"):
+            module = types.ModuleType(name)
+            module.__file__ = str(_REPO_ROOT / "<legacy-src-namespace>")
+            module.__package__ = name
+            module.__path__ = []
+            sys.modules[name] = module
+        for path in paths:
+            if path.exists():
+                value = str(path)
+                if value not in module.__path__:
+                    module.__path__.append(value)
+
+    layer4 = _REPO_ROOT / "services" / "layer4-agents" / "src"
+    layer3 = _REPO_ROOT / "services" / "layer3-knowledge" / "src"
+    namespace("src", [layer4, layer3])
+    namespace("src.api", [layer4 / "api", layer3 / "api"])
+    namespace("src.api.routes", [layer4 / "api" / "routes", layer3 / "api" / "routes"])
+    namespace("src.services", [layer4 / "services"])
+    namespace("src.engine", [layer4 / "engine"])
+    namespace("src.tools", [layer4 / "tools"])
+    namespace("src.workflows", [layer4 / "workflows"])
+
+
+_install_legacy_src_namespace()
+
+# Import core Layer 4 dependency modules after the legacy namespace is installed.
+# Several legacy tests add collection-time mocks only when these names are absent;
+# pre-importing the real modules prevents those mocks from poisoning later FastAPI
+# route collection under the repository-level production profile.
+try:
+    import importlib
+
+    for module_name in ("src.database", "src.models", "src.models.account", "src.models.billing"):
+        importlib.import_module(module_name)
+except Exception:
+    # The mandatory profile still fails closed on real collection/import errors;
+    # this guard only avoids making the root bootstrap itself unimportable before
+    # pytest can render a useful diagnostic.
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Mandatory dependency enforcement
@@ -34,18 +97,26 @@ if _SHARED_SRC.exists() and str(_SHARED_SRC) not in sys.path:
 
 # Maps import name → install instruction
 _MANDATORY_DEPS: dict[str, str] = {
-    # Layer 1 — HTTP mocking
+    # Layer 1 — HTTP mocking and async HTTP test clients
     "respx": "pip install 'respx>=0.21'  (layer1-ingestion[dev] or tests/requirements-test.txt)",
+    "aiohttp": "pip install 'aiohttp>=3.9'  (tests/requirements-test.txt)",
     # Layer 1 — content extraction (already a production dep)
     "trafilatura": "pip install 'trafilatura>=1.6'  (layer1-ingestion dependency)",
     # Layer 1 — XXE-safe XML (already a production dep)
     "defusedxml": "pip install 'defusedxml>=0.7'  (layer1-ingestion dependency)",
+    "pymupdf4llm": "pip install 'pymupdf4llm>=0.0.17'  (layer1-ingestion dependency)",
+    "pytesseract": "pip install 'pytesseract>=0.3.13'  (layer1-ingestion dependency)",
+    "selectolax": "pip install 'selectolax>=0.3'  (layer1-ingestion dependency)",
+    # Layer 3 — graph and RDF collection-time dependencies
+    "rdflib": "pip install 'rdflib>=7.0'  (layer3-knowledge dependency)",
+    "neo4j": "pip install 'neo4j>=5.15'  (layer3-knowledge dependency)",
     # Layer 4 — PostgreSQL driver for testcontainers integration tests
     "psycopg": "pip install 'psycopg[binary]>=3.1'  (layer4-agents[dev])",
     # Layer 4 — pydantic email validation
     "email_validator": "pip install 'email-validator>=2.1'  (layer4-agents[dev])",
     # Shared identity — JWT library (already a production dep in layer4)
     "jose": "pip install 'python-jose[cryptography]>=3.3'  (layer4-agents dependency)",
+    "jsonschema": "pip install 'jsonschema>=4.23'  (tests/requirements-test.txt)",
 }
 
 
@@ -133,3 +204,123 @@ def pytest_collection_modifyitems(config, items) -> None:
         # Mark as mandatory if it has any mandatory marker
         if item_markers & mandatory_markers:
             item.add_marker("mandatory")
+
+
+# ---------------------------------------------------------------------------
+# Repository-level collection compatibility
+#
+# Some Layer 3 tests historically used ``from conftest import ...``.  During
+# repository-level collection pytest resolves that import to this root module,
+# not necessarily the service-local conftest.  Expose the helper interfaces here
+# so collection is deterministic while those imports are normalized over time.
+# ---------------------------------------------------------------------------
+
+from typing import Any
+from unittest.mock import AsyncMock
+
+
+def create_mock_graphrag_response() -> AsyncMock:
+    """Create a mock GraphRAG response matching the Layer 3 helper."""
+    mock = AsyncMock()
+    mock.query.return_value = {
+        "entities": [{"id": "test_entity", "type": "Capability", "name": "Test"}],
+        "relationships": [{"source": "test", "target": "entity", "type": "has"}],
+        "context_graph": {"nodes": 1, "edges": 0},
+        "confidence_score": 0.8,
+        "sources": ["test_entity"],
+        "processing_time_ms": 100.0,
+    }
+    return mock
+
+
+def create_mock_search_response() -> AsyncMock:
+    """Create a mock search response matching the Layer 3 helper."""
+    mock = AsyncMock()
+    mock.search.return_value = {
+        "results": [
+            {
+                "entity_id": "test_entity",
+                "entity_type": "Capability",
+                "name": "Test Capability",
+                "bm25_score": 0.7,
+                "vector_score": 0.8,
+                "graph_score": 0.6,
+                "combined_score": 0.7,
+                "metadata": {},
+                "confidence": 0.75,
+            }
+        ],
+        "total_results": 1,
+        "search_type": "hybrid",
+        "processing_time_ms": 50.0,
+    }
+    return mock
+
+
+class TestUtils:
+    """Layer 3 response-shape assertions used by legacy bare imports."""
+
+    @staticmethod
+    def assert_valid_health_response(response_data: dict[str, Any]) -> None:
+        assert "status" in response_data
+        assert "version" in response_data
+        assert "timestamp" in response_data
+        assert "uptime_seconds" in response_data
+        assert "dependencies" in response_data
+        assert "metrics" in response_data
+        assert "neo4j" in response_data
+        assert "schema_status" in response_data
+        assert response_data["status"] in ["healthy", "unhealthy", "degraded"]
+        assert isinstance(response_data["uptime_seconds"], (int, float))
+        assert response_data["uptime_seconds"] >= 0
+
+    @staticmethod
+    def assert_valid_search_response(response_data: dict[str, Any]) -> None:
+        assert "query" in response_data
+        assert "results" in response_data
+        assert "total_results" in response_data
+        assert "search_type" in response_data
+        assert isinstance(response_data["results"], list)
+        assert isinstance(response_data["total_results"], int)
+        assert response_data["total_results"] >= 0
+        if response_data["results"]:
+            result = response_data["results"][0]
+            assert "entity_id" in result
+            assert "entity_type" in result
+            assert "name" in result
+            assert "combined_score" in result
+            assert "confidence" in result
+
+    @staticmethod
+    def assert_valid_graphrag_response(response_data: dict[str, Any]) -> None:
+        assert "query" in response_data
+        assert "entities" in response_data
+        assert "relationships" in response_data
+        assert "context_graph" in response_data
+        assert "confidence_score" in response_data
+        assert "sources" in response_data
+        assert isinstance(response_data["entities"], list)
+        assert isinstance(response_data["relationships"], list)
+        assert isinstance(response_data["sources"], list)
+        assert isinstance(response_data["confidence_score"], (int, float))
+        assert 0 <= response_data["confidence_score"] <= 1
+
+    @staticmethod
+    def assert_valid_ingestion_response(response_data: dict[str, Any]) -> None:
+        assert "status" in response_data
+        assert "source_id" in response_data
+        assert "entities_loaded" in response_data
+        assert "relationships_loaded" in response_data
+        assert "triples_processed" in response_data
+        assert response_data["status"] in ["success", "partial", "failed"]
+        assert isinstance(response_data["entities_loaded"], int)
+        assert isinstance(response_data["relationships_loaded"], int)
+        assert isinstance(response_data["triples_processed"], int)
+        assert all(
+            count >= 0
+            for count in [
+                response_data["entities_loaded"],
+                response_data["relationships_loaded"],
+                response_data["triples_processed"],
+            ]
+        )

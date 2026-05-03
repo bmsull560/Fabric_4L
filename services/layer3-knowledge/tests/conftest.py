@@ -1,9 +1,17 @@
 """Test configuration and fixtures for Value Fabric Layer 3 API."""
 
 import json
+import os
+import sys
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
+
+_LAYER3_SRC = Path(__file__).resolve().parents[1] / "src"
+if str(_LAYER3_SRC) not in sys.path:
+    sys.path.insert(0, str(_LAYER3_SRC))
+os.environ["PYTHONPATH"] = str(_LAYER3_SRC) + os.pathsep + os.environ.get("PYTHONPATH", "")
 
 import pytest
 import pytest_asyncio
