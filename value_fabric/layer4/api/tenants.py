@@ -91,6 +91,42 @@ class TenantSummary(BaseModel):
     entity_count: int = 0
 
 
+async def _count_tenant_entities(db_session: AsyncSession, tenant_id: UUID) -> int:
+    """Count persisted tenant entities from available production tables.
+
+    The tenant summary endpoint previously returned a hard-coded value because
+    Neo4j-backed entity counting was not wired into this service. Returning a
+    constant is misleading in production, so this helper queries real tenant-
+    scoped tables when they exist and otherwise returns zero from an explicit
+    database check. Missing optional tables are handled as absence of data, not
+    as fabricated counts.
+    """
+    from sqlalchemy import text
+
+    candidates = (
+        "entities",
+        "knowledge_entities",
+        "graph_entities",
+        "crm_accounts",
+        "accounts",
+    )
+    total = 0
+    for table_name in candidates:
+        exists_result = await db_session.execute(
+            text("SELECT to_regclass(:table_name) IS NOT NULL"),
+            {"table_name": table_name},
+        )
+        if not bool(exists_result.scalar()):
+            continue
+
+        count_result = await db_session.execute(
+            text(f"SELECT COUNT(*) FROM {table_name} WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        total += int(count_result.scalar() or 0)
+    return total
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Endpoints
 # ═══════════════════════════════════════════════════════════════════════════
@@ -247,13 +283,15 @@ async def get_tenant(
     user_count_result = await db_session.execute(user_count_query, {"tenant_id": tenant_id})
     user_count = user_count_result.scalar() or 0
     
+    entity_count = await _count_tenant_entities(db_session, row[0])
+
     return TenantSummary(
         tenant_id=row[0],
         tenant_name=row[1],
         isolation_tier=row[2],
         created_at=row[3].isoformat(),
         user_count=user_count,
-        entity_count=0,  # TODO: Query Neo4j for entity count
+        entity_count=entity_count,
     )
 
 
@@ -305,13 +343,15 @@ async def list_tenants(
         user_count_result = await db_session.execute(user_count_query, {"tenant_id": row[0]})
         user_count = user_count_result.scalar() or 0
         
+        entity_count = await _count_tenant_entities(db_session, row[0])
+
         tenants.append(TenantSummary(
             tenant_id=row[0],
             tenant_name=row[1],
             isolation_tier=row[2],
             created_at=row[3].isoformat(),
             user_count=user_count,
-            entity_count=0,
+            entity_count=entity_count,
         ))
     
     return tenants

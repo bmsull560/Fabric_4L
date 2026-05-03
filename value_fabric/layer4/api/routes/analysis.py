@@ -719,95 +719,29 @@ async def generate_workspace_intelligence(
 ) -> dict[str, Any]:
     """Generate workspace intelligence data for a case.
 
-    Triggers AI workflows to populate signals, drivers, evidence, and stakeholders
-    based on account enrichment data.
+    The previous implementation returned fabricated sample signals, drivers,
+    evidence, stakeholders, recommendations, value models, and narratives. That
+    made the endpoint appear production-ready while no AI workflow or persisted
+    generation pipeline was actually being invoked. Until the production
+    workflow is wired here, the endpoint fails closed with an explicit 501 after
+    verifying that the requested case and account exist.
     """
     from ...models.business_case_record import BusinessCaseRecord
 
-    # Get case and account info
     record = await db.get(BusinessCaseRecord, case_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
-    # Get account details
-    from ...services.account_service import AccountService
     account_service = AccountService(db)
     account = await account_service.get_account(record.account_id)
     if not account:
         raise HTTPException(status_code=404, detail=f"Account for case {case_id} not found")
 
-    # Generate sample intelligence data based on account info
-    # TODO: Replace with real AI workflow integration
-    industry = account.industry or "Technology"
-    name = account.name or "Company"
-
-    signals = [
-        {"id": "sig_1", "name": f"{name} - Operational inefficiency in {industry}", "category": "Operational", "confidence": 85, "impact": "High", "trend": "Increasing"},
-        {"id": "sig_2", "name": f"Rising costs in {industry} sector", "category": "Cost", "confidence": 78, "impact": "Medium", "trend": "Stable"},
-        {"id": "sig_3", "name": "Workforce productivity gaps", "category": "Workforce", "confidence": 72, "impact": "High", "trend": "Decreasing"},
-    ]
-
-    drivers = [
-        {"id": "drv_1", "name": "Manual process overhead", "contribution": 35, "parentSignal": "Operational inefficiency", "subDrivers": ["Data entry", "Approval delays"]},
-        {"id": "drv_2", "name": "Legacy system constraints", "contribution": 28, "parentSignal": "Operational inefficiency", "subDrivers": ["Integration gaps", "Maintenance cost"]},
-        {"id": "drv_3", "name": "Lack of real-time visibility", "contribution": 22, "parentSignal": "Rising costs", "subDrivers": ["Delayed decisions", "Missed opportunities"]},
-    ]
-
-    evidence = [
-        {"id": "ev_1", "source": "Industry Report 2024", "claim": f"{industry} sector averages 23% efficiency gap", "confidence": 88, "type": "benchmark"},
-        {"id": "ev_2", "source": "Internal Analysis", "claim": "Current process takes 3x industry average", "confidence": 75, "type": "internal"},
-    ]
-
-    stakeholders = [
-        {"id": "st_1", "name": "CFO", "role": "Economic Buyer", "priority": "High", "engagement": "Active"},
-        {"id": "st_2", "name": "VP Operations", "role": "Technical Champion", "priority": "High", "engagement": "Engaged"},
-        {"id": "st_3", "name": "IT Director", "role": "Influencer", "priority": "Medium", "engagement": "Monitoring"},
-    ]
-
-    # Generate Value Studio data
-    action_plan = [
-        {"id": "rec_1", "title": "Automate manual approval workflows", "priority": "critical", "projectedValue": "$2.4M annually", "confidence": "high", "horizon": "Q2-Q3", "prospectPain": "Manual routing causes 3-day delays", "rootDriver": "Manual process overhead", "ourCapability": "Workflow automation platform"},
-        {"id": "rec_2", "title": "Integrate legacy systems via API", "priority": "high", "projectedValue": "$1.8M annually", "confidence": "medium", "horizon": "Q3-Q4", "prospectPain": "Data silos require duplicate entry", "rootDriver": "Legacy system constraints", "ourCapability": "Enterprise integration suite"},
-        {"id": "rec_3", "title": "Deploy real-time analytics dashboard", "priority": "high", "projectedValue": "$980K annually", "confidence": "high", "horizon": "Q2", "prospectPain": "Delayed visibility into operations", "rootDriver": "Lack of real-time visibility", "ourCapability": "Analytics platform"},
-    ]
-
-    value_model = [
-        {"id": "vl_1", "driver": "Labor cost reduction", "category": "hard", "conservative": 800000, "expected": 1200000, "optimistic": 1600000, "source": "Process automation"},
-        {"id": "vl_2", "driver": "Error reduction", "category": "hard", "conservative": 200000, "expected": 400000, "optimistic": 600000, "source": "Data validation"},
-        {"id": "vl_3", "driver": "Time-to-market improvement", "category": "strategic", "conservative": 500000, "expected": 1000000, "optimistic": 2000000, "source": "Faster iteration"},
-        {"id": "vl_4", "driver": "Employee satisfaction", "category": "strategic", "conservative": 150000, "expected": 300000, "optimistic": 500000, "source": "Reduced toil"},
-    ]
-
-    narratives = [
-        {"id": "nar_1", "stakeholder": "CFO", "role": "Economic Buyer", "status": "ready", "headline": "$5.2M projected ROI over 3 years with 18-month payback", "summary": "Our financial analysis shows a compelling return on investment driven primarily by labor cost reduction and error elimination. Conservative estimates place 3-year NPV at $4.1M with sensitivity analysis supporting go-forward recommendation.", "keyMetrics": [{"label": "3-Year NPV", "value": "$4.1M"}, {"label": "Payback", "value": "18 months"}, {"label": "IRR", "value": "142%"}], "lastUpdated": "2024-01-15T10:30:00Z"},
-        {"id": "nar_2", "stakeholder": "VP Operations", "role": "Technical Champion", "status": "ready", "headline": "Eliminate 85% of manual touchpoints within 90 days", "summary": "The implementation roadmap addresses your critical pain points through phased rollout. Week 1-2: Discovery and mapping. Week 3-6: Pilot with one workflow. Week 7-12: Scale to full production with 24/7 support.", "keyMetrics": [{"label": "Manual touchpoints eliminated", "value": "85%"}, {"label": "Implementation time", "value": "90 days"}, {"label": "Uptime SLA", "value": "99.9%"}], "lastUpdated": "2024-01-14T16:45:00Z"},
-        {"id": "nar_3", "stakeholder": "IT Director", "role": "Influencer", "status": "draft", "headline": "Secure, SOC-2 compliant integration with existing stack", "summary": "Technical architecture review complete. Solution integrates with your existing identity provider and requires no infrastructure changes. Security assessment passed with no critical findings.", "keyMetrics": [{"label": "Security score", "value": "A+"}, {"label": "Integration points", "value": "12 APIs"}, {"label": "Audit findings", "value": "0 critical"}], "lastUpdated": "2024-01-13T09:20:00Z"},
-    ]
-
-    # Store the generated data
-    _workspace_data[case_id] = {
-        "signals": signals,
-        "drivers": drivers,
-        "evidence": evidence,
-        "stakeholders": stakeholders,
-        "action-plan": action_plan,
-        "value-model": value_model,
-        "narrative": narratives,
-    }
-
-    return generate_workspace_intelligenceResult.model_validate({
-        "case_id": case_id,
-        "account_id": str(record.account_id),
-        "generated": True,
-        "stats": {
-            "signals": len(signals),
-            "drivers": len(drivers),
-            "evidence": len(evidence),
-            "stakeholders": len(stakeholders),
-            "action_plan": len(action_plan),
-            "value_model": len(value_model),
-            "narratives": len(narratives),
-        },
-    })
-
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail=(
+            "Workspace intelligence generation requires the production AI workflow "
+            "integration and will not return sample data."
+        ),
+    )
 

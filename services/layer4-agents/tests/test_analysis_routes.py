@@ -329,3 +329,42 @@ async def test_update_workspace_tab_persists_data(analysis_app: FastAPI) -> None
     # Cleanup
     if test_case_id in analysis._workspace_data:
         del analysis._workspace_data[test_case_id]
+
+
+@pytest.mark.asyncio
+async def test_generate_workspace_intelligence_fails_closed_without_production_workflow(
+    analysis_app: FastAPI,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """POST /workspace/generate must not return fabricated sample intelligence."""
+
+    tenant_id = UUID("12345678-1234-1234-1234-123456789abc")
+
+    async def mock_require_authenticated():
+        from value_fabric.shared.identity.context import RequestContext
+
+        return RequestContext(tenant_id=tenant_id, user_id="analyst-user")
+
+    class FakeDb:
+        async def get(self, model: Any, key: str) -> Any:
+            return SimpleNamespace(id=key, account_id="account-1")
+
+    class FakeAccountService:
+        def __init__(self, db: Any) -> None:
+            self.db = db
+
+        async def get_account(self, account_id: str) -> Any:
+            return SimpleNamespace(id=account_id, name="Acme")
+
+    analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: FakeDb()
+    analysis_app.dependency_overrides[analysis.get_executor] = lambda: FakeExecutor(execute_response=None)
+    monkeypatch.setattr(analysis, "AccountService", FakeAccountService)
+
+    async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
+        response = await client.post("/v1/cases/case-501/workspace/generate")
+
+    assert response.status_code == 501
+    detail = response.json()["detail"]
+    assert "production AI workflow" in detail
+    assert "sample" in detail
