@@ -2,11 +2,13 @@ import os
 import warnings
 from functools import lru_cache
 
-from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_DEV_SECRET = "fabric-4l-dev-secret-key-change-in-production"
+
+_DEFAULT_DEV_SECRET = "fabric-4l-dev-secret-key-change-in-production"
 _DEV_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
+_PRODUCTION_ENVS = {"production", "prod", "staging"}
 
 
 def _detect_environment() -> str:
@@ -19,61 +21,77 @@ def _detect_environment() -> str:
 
 class Settings(BaseSettings):
     app_name: str = "Fabric_4L API"
+    app_env: str = Field(default_factory=_detect_environment, alias="APP_ENV")
     debug: bool = False
-    secret_key: str = _DEV_SECRET
+    secret_key: str = _DEFAULT_DEV_SECRET
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     mock_persistence: bool = True
+    database_url: str | None = None
+    llm_provider: str = "mock"
+    allow_mock_llm: bool = False
     # Empty list = no cross-origin requests allowed by default (fail-closed).
-    # Set CORS_ORIGINS to a comma-separated list of allowed origins.
+    # Development get_settings() supplies localhost defaults only after warning.
     cors_origins: list[str] = []
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+    @property
+    def is_production_like(self) -> bool:
+        env = self.app_env.lower()
+        return env in _PRODUCTION_ENVS or env not in _DEV_ENVIRONMENTS
 
     @field_validator("cors_origins", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: object) -> list[str]:
-        """Accept a comma-separated string or a list."""
-        if isinstance(v, str):
-            return [o.strip() for o in v.split(",") if o.strip()]
-        return v  # type: ignore[return-value]
+    def parse_cors_origins(cls, value: object) -> object:
+        """Accept a comma-separated string or a list of exact allowed origins."""
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    @model_validator(mode="after")
+    def validate_production_safety(self) -> "Settings":
+        if not self.is_production_like:
+            return self
+
+        errors: list[str] = []
+        if self.mock_persistence:
+            errors.append("mock_persistence must be false in production-like environments")
+        if not self.database_url:
+            errors.append("database_url must be configured in production-like environments")
+        if self.llm_provider.lower() == "mock" and not self.allow_mock_llm:
+            errors.append("llm_provider=mock is disabled in production-like environments")
+        if self.secret_key == _DEFAULT_DEV_SECRET or len(self.secret_key) < 32:
+            errors.append("secret_key must be replaced with a strong production secret")
+        if not self.cors_origins:
+            errors.append("cors_origins must be configured in production-like environments")
+        if "*" in self.cors_origins:
+            errors.append("cors_origins cannot include '*' in production-like environments")
+
+        if errors:
+            raise ValueError("Unsafe production configuration: " + "; ".join(errors))
+        return self
 
 
 @lru_cache()
 def get_settings() -> Settings:
     settings = Settings()
-    env = _detect_environment()
 
-    if env not in _DEV_ENVIRONMENTS:
-        # Fail-closed: require an explicit secret in non-dev environments.
-        if not settings.secret_key or settings.secret_key == _DEV_SECRET:
-            raise RuntimeError(
-                f"SECRET_KEY must be set to a non-default value in '{env}' environment. "
-                "Set the SECRET_KEY environment variable before starting the service."
-            )
-        # Fail-closed: require explicit CORS origins in non-dev environments.
-        if not settings.cors_origins:
-            raise RuntimeError(
-                f"CORS_ORIGINS must be set in '{env}' environment. "
-                "Set CORS_ORIGINS to a comma-separated list of allowed origins "
-                "(e.g. 'https://app.example.com')."
-            )
-        if "*" in settings.cors_origins:
-            raise RuntimeError(
-                f"CORS_ORIGINS cannot contain '*' in '{env}' environment. "
-                "Specify exact allowed origins."
-            )
-    else:
-        # Development: warn and fall back to localhost defaults when unset.
-        if not settings.cors_origins:
-            warnings.warn(
-                "CORS_ORIGINS not set — defaulting to localhost dev origins. "
-                "Set CORS_ORIGINS explicitly before deploying.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-            settings.cors_origins = ["http://localhost:5173", "http://localhost:3000"]
+    if settings.is_production_like:
+        return settings
+
+    if not settings.cors_origins:
+        warnings.warn(
+            "CORS_ORIGINS not set — defaulting to localhost dev origins. "
+            "Set CORS_ORIGINS explicitly before deploying.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        settings.cors_origins = ["http://localhost:5173", "http://localhost:3000"]
 
     return settings

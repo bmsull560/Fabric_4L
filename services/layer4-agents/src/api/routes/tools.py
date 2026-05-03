@@ -36,13 +36,23 @@ class get_tool_schemaResult(TypedDictModel):
 class list_tool_categoriesResult(TypedDictModel):
     categories: Any
 
+class _ToolGatewayUnavailable(RuntimeError):
+    """Raised when governance tool-gateway dependencies are unavailable."""
+
+
 try:
     from value_fabric.shared.governance.abom import AgentBillOfMaterials
     from value_fabric.shared.governance.tool_gateway import InvariantViolation, ToolGateway, ToolGatewayDenied
 
     _GATE_AVAILABLE = True
-except ImportError:
+    _GATE_IMPORT_ERROR: ImportError | None = None
+except ImportError as exc:
+    AgentBillOfMaterials = None  # type: ignore[assignment]
+    ToolGateway = None  # type: ignore[assignment]
+    InvariantViolation = _ToolGatewayUnavailable  # type: ignore[assignment]
+    ToolGatewayDenied = _ToolGatewayUnavailable  # type: ignore[assignment]
     _GATE_AVAILABLE = False
+    _GATE_IMPORT_ERROR = exc
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +98,19 @@ def get_executor() -> WorkflowExecutor:
     if workflow_executor is None:
         raise HTTPException(status_code=503, detail="Workflow executor not initialized")
     return workflow_executor
+
+
+def require_tool_gateway_available() -> None:
+    """Fail closed when mandatory tool-governance dependencies are unavailable."""
+    if not _GATE_AVAILABLE:
+        logger.error(
+            "Tool governance gateway unavailable; refusing ungoverned tool execution",
+            exc_info=_GATE_IMPORT_ERROR,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Tool governance gateway unavailable; refusing ungoverned tool execution.",
+        )
 
 
 @router.get("/tools", response_model=list[ToolListResponse])
@@ -171,29 +194,27 @@ async def invoke_tool(
         raise HTTPException(status_code=404, detail=f"Tool '{request.tool_name}' not found")
 
     try:
-        # ── GATE enforcement: route through ToolGateway when available ──
-        if _GATE_AVAILABLE:
-            abom = AgentBillOfMaterials.from_manifest_dir(
-                manifest_dir="value-fabric/layer4-agents/manifests",
-                agent_type="ConversationAgent",  # API routes act on behalf of ValuePilot
-            )
-            gateway = ToolGateway(
-                registry=registry,
-                abom=abom,
-                tenant_id=None,  # Populated from auth context when available
-            )
-            result = await gateway.execute(request.tool_name, request.input_data)
-        else:
-            # Fallback: direct registry call when GATE is not installed
-            logger.warning(
-                "GATE not available — tool '%s' invoked without policy enforcement",
-                request.tool_name,
-            )
-            result = await registry.execute(request.tool_name, request.input_data)
+        # ── GATE enforcement: route through ToolGateway; never fall back to ungoverned execution ──
+        require_tool_gateway_available()
+        assert AgentBillOfMaterials is not None
+        assert ToolGateway is not None
+        abom = AgentBillOfMaterials.from_manifest_dir(
+            manifest_dir="value-fabric/layer4-agents/manifests",
+            agent_type="ConversationAgent",  # API routes act on behalf of ValuePilot
+        )
+        gateway = ToolGateway(
+            registry=registry,
+            abom=abom,
+            tenant_id=str(ctx.tenant_id) if ctx else None,
+        )
+        result = await gateway.execute(request.tool_name, request.input_data)
 
         return ToolInvokeResponse(
             tool_name=request.tool_name, success=True, result=result, error=None
         )
+
+    except HTTPException:
+        raise
 
     except (ToolGatewayDenied, InvariantViolation) as e:
         logger.warning(
@@ -318,23 +339,20 @@ async def export_document_tool(
             "include_provenance": request.include_provenance,
         }
 
-        # Execute DocumentExportTool via GATE when available
-        if _GATE_AVAILABLE:
-            abom = AgentBillOfMaterials.from_manifest_dir(
-                manifest_dir="value-fabric/layer4-agents/manifests",
-                agent_type="NarrativeAgent",  # Export is owned by NarrativeAgent
-            )
-            gateway = ToolGateway(
-                registry=registry,
-                abom=abom,
-                tenant_id=str(context.tenant_id) if context else None,
-            )
-            tool_result = await gateway.execute("export_document", tool_input)
-        else:
-            logger.warning(
-                "GATE not available — export_document invoked without policy enforcement"
-            )
-            tool_result = await registry.execute("export_document", tool_input)
+        # Execute DocumentExportTool via GATE; never fall back to ungoverned execution.
+        require_tool_gateway_available()
+        assert AgentBillOfMaterials is not None
+        assert ToolGateway is not None
+        abom = AgentBillOfMaterials.from_manifest_dir(
+            manifest_dir="value-fabric/layer4-agents/manifests",
+            agent_type="NarrativeAgent",  # Export is owned by NarrativeAgent
+        )
+        gateway = ToolGateway(
+            registry=registry,
+            abom=abom,
+            tenant_id=str(context.tenant_id) if context else None,
+        )
+        tool_result = await gateway.execute("export_document", tool_input)
         export_id = str(uuid4())
         workflow_id = (
             result.get("workflow_id")

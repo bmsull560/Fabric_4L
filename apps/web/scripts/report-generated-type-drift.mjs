@@ -3,15 +3,15 @@
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
-const GENERATED_ROOT = 'frontend/client/src/api/generated';
+const GENERATED_ROOT = 'apps/web/src/api/generated';
 
 const OUTPUT_TO_SPEC = new Map([
-  ['frontend/client/src/api/generated/l1-types.ts', 'contracts/openapi/layer1-ingestion.json'],
-  ['frontend/client/src/api/generated/l2-types.ts', 'contracts/openapi/layer2-extraction.json'],
-  ['frontend/client/src/api/generated/l3-types.ts', 'contracts/openapi/layer3-knowledge.json'],
-  ['frontend/client/src/api/generated/l4-types.ts', 'contracts/openapi/layer4-agents.json'],
-  ['frontend/client/src/api/generated/l5-types.ts', 'contracts/openapi/layer5-ground-truth.json'],
-  ['frontend/client/src/api/generated/signals-types.ts', 'contracts/openapi/signals.json'],
+  ['apps/web/src/api/generated/l1-types.ts', 'contracts/openapi/layer1-ingestion.json'],
+  ['apps/web/src/api/generated/l2-types.ts', 'contracts/openapi/layer2-extraction.json'],
+  ['apps/web/src/api/generated/l3-types.ts', 'contracts/openapi/layer3-knowledge.json'],
+  ['apps/web/src/api/generated/l4-types.ts', 'contracts/openapi/layer4-agents.json'],
+  ['apps/web/src/api/generated/l5-types.ts', 'contracts/openapi/layer5-ground-truth.json'],
+  ['apps/web/src/api/generated/signals-types.ts', 'contracts/openapi/signals.json'],
 ]);
 
 function run(cmd) {
@@ -54,6 +54,6 @@ for (const file of changedFiles) {
 }
 
 console.error(`\nTo fix locally from ${repoRoot}:`);
-console.error('  pnpm --dir frontend run generate:types');
-console.error('  git add frontend/client/src/api/generated');
+console.error('  pnpm --dir apps/web run generate:types');
+console.error('  git add apps/web/src/api/generated');
 console.error('  git commit');

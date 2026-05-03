@@ -8,8 +8,8 @@
 set -euo pipefail
 
 MIN_COVERAGE=${1:-80}
-HOOKS_DIR="frontend/client/src/hooks"
-PAGES_DIR="frontend/client/src/pages"
+HOOKS_DIR="apps/web/src/hooks"
+PAGES_DIR="apps/web/src/pages"
 EXIT_CODE=0
 
 # Discover all hook families (files matching use*.ts)

@@ -59,27 +59,27 @@ verify-strict: verify contract-drift ## Full verification including contract dri
 
 lint-layer1: ## Lint Layer 1 only
 	@echo "→ Linting Layer 1..."
-	@cd value-fabric/layer1-ingestion && ruff check src/
+	@cd services/layer1-ingestion && ruff check src/
 
 lint-layer2: ## Lint Layer 2 only
 	@echo "→ Linting Layer 2..."
-	@cd value-fabric/layer2-extraction && ruff check src/
+	@cd services/layer2-extraction && ruff check src/
 
 lint-layer3: ## Lint Layer 3 only
 	@echo "→ Linting Layer 3..."
-	@cd value-fabric/layer3-knowledge && ruff check src/
+	@cd services/layer3-knowledge && ruff check src/
 
 lint-layer4: ## Lint Layer 4 only
 	@echo "→ Linting Layer 4..."
-	@cd value-fabric/layer4-agents && ruff check src/
+	@cd services/layer4-agents && ruff check src/
 
 lint-layer5: ## Lint Layer 5 only
 	@echo "→ Linting Layer 5..."
-	@cd value-fabric/layer5-ground-truth && ruff check src/
+	@cd services/layer5-ground-truth && ruff check src/
 
 lint-layer6: ## Lint Layer 6 only
 	@echo "→ Linting Layer 6..."
-	@cd value-fabric/layer6-benchmarks && ruff check src/
+	@cd services/layer6-benchmarks && ruff check src/
 
 lint: ## Lint all Python layers with ruff (fails fast on first error)
 	@$(MAKE) lint-layer1 && \
@@ -111,32 +111,32 @@ MYPY_OVERRIDES = --python-version 3.11
 typecheck-layer1: ## Type-check Layer 1 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 1..."
-	@cd value-fabric/layer1-ingestion && mypy src/ $(MYPY_LAYER1_FLAGS)
+	@cd services/layer1-ingestion && mypy src/ $(MYPY_LAYER1_FLAGS)
 
 typecheck-layer2: ## Type-check Layer 2 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 2..."
-	@cd value-fabric/layer2-extraction && mypy src/ $(MYPY_LAYER2_FLAGS)
+	@cd services/layer2-extraction && mypy src/ $(MYPY_LAYER2_FLAGS)
 
 typecheck-layer3: ## Type-check Layer 3 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 3..."
-	@cd value-fabric/layer3-knowledge && mypy src/ $(MYPY_LAYER3_FLAGS)
+	@cd services/layer3-knowledge && mypy src/ $(MYPY_LAYER3_FLAGS)
 
 typecheck-layer4: ## Type-check Layer 4 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 4..."
-	@cd value-fabric/layer4-agents && mypy src/ $(MYPY_LAYER4_FLAGS)
+	@cd services/layer4-agents && mypy src/ $(MYPY_LAYER4_FLAGS)
 
 typecheck-layer5: ## Type-check Layer 5 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 5..."
-	@cd value-fabric/layer5-ground-truth && mypy src/ $(MYPY_LAYER5_FLAGS)
+	@cd services/layer5-ground-truth && mypy src/ $(MYPY_LAYER5_FLAGS)
 
 typecheck-layer6: ## Type-check Layer 6 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 6..."
-	@cd value-fabric/layer6-benchmarks && mypy src/ $(MYPY_LAYER6_FLAGS)
+	@cd services/layer6-benchmarks && mypy src/ $(MYPY_LAYER6_FLAGS)
 
 typecheck: ## Type-check all Python layers with mypy (fails fast on first error)
 	@$(MAKE) typecheck-layer1 && \
@@ -190,40 +190,40 @@ contract-tests: ## Run cross-layer contract + architecture tests (fast, no secre
 
 test-unit: ## Run only unit tests (fast, no external deps)
 	@echo "→ Running unit tests (marked with @pytest.mark.unit)"
-	cd value-fabric/layer4-agents && $(PYTEST) -m unit tests/
+	cd services/layer4-agents && $(PYTEST) -m unit tests/
 
 test-integration: ## Run integration tests (real DB, cache, no containers)
 	@echo "→ Running integration tests (marked with @pytest.mark.integration)"
-	cd value-fabric/layer4-agents && $(PYTEST) -m integration tests/
+	cd services/layer4-agents && $(PYTEST) -m integration tests/
 
 test-e2e-docker: ## Run E2E tests with Docker containers
 	@echo "→ Running E2E tests (requires Docker)"
-	cd value-fabric/layer3-knowledge && $(PYTEST) -m e2e tests/ 2>/dev/null || true
+	cd services/layer3-knowledge && $(PYTEST) -m e2e tests/ 2>/dev/null || true
 
 test-fast: ## Run only fast tests (exclude slow and e2e)
 	@echo "→ Running fast tests only"
-	cd value-fabric/layer4-agents && $(PYTEST) -m "not slow and not e2e" tests/
+	cd services/layer4-agents && $(PYTEST) -m "not slow and not e2e" tests/
 
 # ─── Layer-Specific Tests ─────────────────────────────────────────────────────
 
 test-layer1: ## Run Layer 1 tests
-	cd value-fabric/layer1-ingestion && $(PYTEST) tests/
+	cd services/layer1-ingestion && $(PYTEST) tests/
 
 test-layer2: ## Run Layer 2 tests
-	cd value-fabric/layer2-extraction && $(PYTEST) tests/
+	cd services/layer2-extraction && $(PYTEST) tests/
 
 test-layer3: ## Run Layer 3 tests
-	cd value-fabric/layer3-knowledge && $(PYTEST) tests/
+	cd services/layer3-knowledge && $(PYTEST) tests/
 
 test-layer4: ## Run Layer 4 tests
-	cd value-fabric/layer4-agents && $(PYTEST) tests/
+	cd services/layer4-agents && $(PYTEST) tests/
 
 test-layer5: ## Run Layer 5 tests
-	cd value-fabric/layer5-ground-truth && python scripts/check_no_duplicate_modules.py
-	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/
+	cd services/layer5-ground-truth && python scripts/check_no_duplicate_modules.py
+	cd services/layer5-ground-truth && $(PYTEST) tests/
 
 test-layer6: ## Run Layer 6 tests
-	cd value-fabric/layer6-benchmarks && $(PYTEST) tests/
+	cd services/layer6-benchmarks && $(PYTEST) tests/
 
 test-frontend: ## Run frontend unit tests
 	cd apps/web && pnpm run test
@@ -299,11 +299,11 @@ build: ## Build frontend production bundle
 
 migrate: ## Run Alembic migrations for all layers
 	@echo "→ Migrating Layer 1..."
-	cd value-fabric/layer1-ingestion && alembic upgrade head
+	cd services/layer1-ingestion && alembic upgrade head
 	@echo "→ Migrating Layer 4..."
-	cd value-fabric/layer4-agents && alembic upgrade head
+	cd services/layer4-agents && alembic upgrade head
 	@echo "→ Migrating Layer 5..."
-	cd value-fabric/layer5-ground-truth && alembic upgrade head
+	cd services/layer5-ground-truth && alembic upgrade head
 
 # ─── Contracts ────────────────────────────────────────────────────────────────
 
@@ -330,13 +330,13 @@ preflight: ## Run pre-flight checks (Docker, env, ports)
 	@bash scripts/dev/dev-preflight.sh
 
 up: preflight ## Start all services with Docker Compose (runs preflight first)
-	cd value-fabric && docker compose up -d
+	docker compose -f docker-compose.dev.yml up -d
 
 down: ## Stop all services
-	cd value-fabric && docker compose down
+	docker compose -f docker-compose.dev.yml down
 
 logs: ## Tail logs for all services
-	cd value-fabric && docker compose logs -f
+	docker compose -f docker-compose.dev.yml logs -f
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 
@@ -361,7 +361,7 @@ check-deprecations: ## CI gate — check for overdue deprecations
 
 check-tool-contracts: ## CI gate — validate tool error structure (CONTRACT.md §2.4)
 	@echo "→ Checking tool contracts in Layer 4..."
-	$(PYTHON) scripts/ci/check_tool_contracts.py value-fabric/layer4-agents/src/tools/
+	$(PYTHON) scripts/ci/check_tool_contracts.py services/layer4-agents/src/tools/
 	@echo "✅ Tool contract check passed"
 
 # ─── Developer Setup ─────────────────────────────────────────────────────────
@@ -491,7 +491,7 @@ contract-lint: ## Run ESLint contract rules across all packages
 
 test-backup-drills: ## Run backup/DR drill tests (requires pytest-asyncio)
 	@echo "→ Running backup manager tests..."
-	cd value-fabric/layer3-knowledge && $(PYTEST) tests/test_backup_manager.py -v --tb=short
+	cd services/layer3-knowledge && $(PYTEST) tests/test_backup_manager.py -v --tb=short
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 

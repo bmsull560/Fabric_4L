@@ -28,10 +28,11 @@ import hashlib
 import hmac
 import logging
 import os
+import time
 from typing import Any, Callable, Optional
 from uuid import UUID
 
-from fastapi import Request, Response, status
+from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
 try:
     import jwt
@@ -45,6 +46,40 @@ from .rate_limiter import RedisRateLimiter, RateLimitResult
 from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LIMITS
 
 logger = logging.getLogger(__name__)
+
+# Process-local fallback used only by lightweight regression tests and single-worker
+# development paths. Production middleware should use RedisRateLimiter so quotas are
+# shared across workers and pods.
+_tenant_rate_limit_buckets: dict[str, tuple[float, int]] = {}
+_RATE_LIMIT_WINDOW_SECONDS = 60
+
+
+def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[bool, int]:
+    """Check a process-local per-tenant fixed-window rate limit.
+
+    This helper intentionally keeps tenant buckets separate and validates the
+    configured rate before consuming quota. It is suitable for unit tests and
+    single-worker development only; distributed deployments must use the Redis
+    backed ``RedisRateLimiter`` wired through ``GovernanceMiddleware``.
+    """
+    if requests_per_minute < 1:
+        raise ValueError("requests_per_minute must be >= 1")
+
+    now = time.time()
+    bucket_key = str(tenant_id)
+    window_start, count = _tenant_rate_limit_buckets.get(bucket_key, (now, 0))
+
+    if now - window_start >= _RATE_LIMIT_WINDOW_SECONDS:
+        window_start = now
+        count = 0
+
+    if count >= requests_per_minute:
+        retry_after = max(1, int(_RATE_LIMIT_WINDOW_SECONDS - (now - window_start)))
+        return False, retry_after
+
+    _tenant_rate_limit_buckets[bucket_key] = (window_start, count + 1)
+    return True, 0
+
 
 # Header names for service-to-service authentication (F-1 P0 fix)
 TENANT_ID_HEADER = "X-Tenant-ID"

@@ -15,33 +15,12 @@ labels:
 patches:
   - path: prod-replicas-patch.yml
 
-# Production images use SHA digest pinning (immutable).
-# CI updates digests via: kustomize edit set image "name@sha256:digest"
-# Example: kustomize edit set image "ghcr.io/bmsull560/fabric_4l/layer4-agents@sha256:abc123..."
+# Production application images are pinned to immutable SHA digests by
+# scripts/ci/prepare_kustomize_deploy.sh during the deploy workflow. The
+# committed overlay intentionally contains no synthetic or zero digests.
 images:
-  # Base images (resolved to digests in CI/CD)
-  - name: value-fabric/layer1-ingestion
-    newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - name: value-fabric/layer2-extraction
-    newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - name: value-fabric/layer3-knowledge
-    newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - name: value-fabric/layer4-agents
-    newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - name: value-fabric/layer5-ground-truth
-    newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - name: value-fabric/layer6-benchmarks
-    newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - name: value-fabric/frontend
-    newName: ghcr.io/bmsull560/fabric_4l/frontend
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  # Infrastructure images (use specific versions, not :latest)
+  # Infrastructure images use explicit versions; application images are resolved
+  # from signed registry tags to immutable digests immediately before rendering.
   - name: postgres
     newTag: "15.10-alpine"
   - name: redis

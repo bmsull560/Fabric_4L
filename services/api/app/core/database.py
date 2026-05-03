@@ -1,17 +1,27 @@
 """
-Mock database layer for MVP.
-Uses in-memory stores with RLS-ready patterns.
-In production, replace with PostgreSQL + SQLAlchemy/asyncpg.
+Development persistence layer for the standalone API.
+
+The in-memory implementation exists only for local demos and tests. Production-like
+runtime configuration is validated in app.core.config and will fail startup before
+this module can silently provide non-durable storage.
 """
 
-from typing import Dict, List, TypeVar, Generic, Optional, Callable
 from datetime import datetime, timezone
 import threading
+from typing import Callable, Dict, Generic, List, Optional, TypeVar
+
+from app.core.config import get_settings
 
 T = TypeVar("T")
 
 
-class MockTable(Generic[T]):
+class ProductionPersistenceNotConfigured(RuntimeError):
+    """Raised when the API is asked to run without a production persistence backend."""
+
+
+class InMemoryTable(Generic[T]):
+    """Thread-safe, tenant-aware table used for local development and tests only."""
+
     def __init__(self, name: str, tenant_field: str = "tenant_id"):
         self.name = name
         self.tenant_field = tenant_field
@@ -37,7 +47,11 @@ class MockTable(Generic[T]):
                 return None
             return obj
 
-    def list(self, tenant_id: Optional[str] = None, filter_fn: Optional[Callable[[T], bool]] = None) -> List[T]:
+    def list(
+        self,
+        tenant_id: Optional[str] = None,
+        filter_fn: Optional[Callable[[T], bool]] = None,
+    ) -> List[T]:
         with self._lock:
             items = list(self._store.values())
         if tenant_id:
@@ -57,8 +71,8 @@ class MockTable(Generic[T]):
                 obj.update(fields)
                 obj["updated_at"] = datetime.now(timezone.utc).isoformat()
             else:
-                for k, v in fields.items():
-                    setattr(obj, k, v)
+                for key, value in fields.items():
+                    setattr(obj, key, value)
                 if hasattr(obj, "updated_at"):
                     obj.updated_at = datetime.now(timezone.utc).isoformat()
             return obj
@@ -74,28 +88,51 @@ class MockTable(Generic[T]):
             return True
 
 
-class MockDatabase:
+class InMemoryDatabase:
+    """Development-only database facade matching the current repository API."""
+
     def __init__(self):
-        self.accounts = MockTable("accounts", "tenant_id")
-        self.stakeholders = MockTable("stakeholders", "tenant_id")
-        self.signals = MockTable("signals", "tenant_id")
-        self.evidence = MockTable("evidence", "tenant_id")
-        self.hypotheses = MockTable("hypotheses", "tenant_id")
-        self.drivers = MockTable("drivers", "tenant_id")
-        self.levers = MockTable("levers", "tenant_id")
-        self.formulas = MockTable("formulas", "tenant_id")
-        self.scenarios = MockTable("scenarios", "tenant_id")
-        self.roi_calculations = MockTable("roi_calculations", "tenant_id")
-        self.business_cases = MockTable("business_cases", "tenant_id")
-        self.ground_truth = MockTable("ground_truth", "tenant_id")
-        self.agent_runs = MockTable("agent_runs", "tenant_id")
-        self.tool_results = MockTable("tool_results", "tenant_id")
-        self.review_decisions = MockTable("review_decisions", "tenant_id")
-        self.audit_logs = MockTable("audit_logs", "tenant_id")
-        self.value_packs = MockTable("value_packs", "tenant_id")
-        self.governance_gates = MockTable("governance_gates", "tenant_id")
-        self.users = MockTable("users", "tenant_id")
-        self.tenants = MockTable("tenants", "id")
+        self.accounts = InMemoryTable("accounts", "tenant_id")
+        self.stakeholders = InMemoryTable("stakeholders", "tenant_id")
+        self.signals = InMemoryTable("signals", "tenant_id")
+        self.evidence = InMemoryTable("evidence", "tenant_id")
+        self.hypotheses = InMemoryTable("hypotheses", "tenant_id")
+        self.drivers = InMemoryTable("drivers", "tenant_id")
+        self.levers = InMemoryTable("levers", "tenant_id")
+        self.formulas = InMemoryTable("formulas", "tenant_id")
+        self.scenarios = InMemoryTable("scenarios", "tenant_id")
+        self.roi_calculations = InMemoryTable("roi_calculations", "tenant_id")
+        self.business_cases = InMemoryTable("business_cases", "tenant_id")
+        self.ground_truth = InMemoryTable("ground_truth", "tenant_id")
+        self.agent_runs = InMemoryTable("agent_runs", "tenant_id")
+        self.tool_results = InMemoryTable("tool_results", "tenant_id")
+        self.review_decisions = InMemoryTable("review_decisions", "tenant_id")
+        self.audit_logs = InMemoryTable("audit_logs", "tenant_id")
+        self.value_packs = InMemoryTable("value_packs", "tenant_id")
+        self.governance_gates = InMemoryTable("governance_gates", "tenant_id")
+        self.users = InMemoryTable("users", "tenant_id")
+        self.tenants = InMemoryTable("tenants", "id")
 
 
-db = MockDatabase()
+# Backward-compatible aliases for existing tests and imports. New code should use
+# the explicit InMemory* names to avoid implying production persistence.
+MockTable = InMemoryTable
+MockDatabase = InMemoryDatabase
+
+
+def create_database() -> InMemoryDatabase:
+    settings = get_settings()
+    if not settings.mock_persistence:
+        raise ProductionPersistenceNotConfigured(
+            "No production database repository is configured for services/api. "
+            "Set mock_persistence=true only for local/test use, or wire a durable "
+            "database implementation before enabling this service."
+        )
+    if settings.is_production_like:
+        raise ProductionPersistenceNotConfigured(
+            "In-memory persistence is disabled in production-like environments."
+        )
+    return InMemoryDatabase()
+
+
+db = create_database()

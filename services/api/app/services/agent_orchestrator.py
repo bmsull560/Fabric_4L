@@ -1,11 +1,27 @@
-from typing import Dict, Any, Optional
 from datetime import datetime, timezone
-from app.models.schemas import AgentRun, ToolResult
+from typing import Any, Dict, Optional, Protocol
+
+from app.core.config import get_settings
 from app.core.database import db
+from app.models.schemas import AgentRun, ToolResult
+
+
+class LLMProvider(Protocol):
+    def generate_structured(self, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]: ...
+    def summarize(self, text: str) -> str: ...
+    def extract(self, text: str, fields: list[str]) -> Dict[str, Any]: ...
+    def classify(self, text: str, labels: list[str]) -> str: ...
+    def reason(self, premise: str, question: str) -> str: ...
+
+
+class ProductionLLMNotConfigured(RuntimeError):
+    """Raised when production requests would otherwise use a mock LLM provider."""
 
 
 class MockLLMProvider:
-    """Mockable LLM provider for MVP. Replace with Together.ai or OpenAI later."""
+    """Development/test-only LLM provider used by local demos and fixtures."""
+
+    provider_name = "mock"
 
     def generate_structured(self, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
         return {"result": "mock structured output", "prompt_length": len(prompt)}
@@ -13,21 +29,44 @@ class MockLLMProvider:
     def summarize(self, text: str) -> str:
         return f"Summary: {text[:100]}..."
 
-    def extract(self, text: str, fields: list) -> Dict[str, Any]:
-        return {f: f"extracted_{f}" for f in fields}
+    def extract(self, text: str, fields: list[str]) -> Dict[str, Any]:
+        return {field: f"extracted_{field}" for field in fields}
 
-    def classify(self, text: str, labels: list) -> str:
+    def classify(self, text: str, labels: list[str]) -> str:
         return labels[0] if labels else "unknown"
 
     def reason(self, premise: str, question: str) -> str:
         return f"Reasoned answer to '{question}' based on premise."
 
 
-class AgentOrchestrator:
-    def __init__(self, llm: Optional[MockLLMProvider] = None):
-        self.llm = llm or MockLLMProvider()
+def create_llm_provider() -> LLMProvider:
+    settings = get_settings()
+    provider = settings.llm_provider.lower()
 
-    def create_run(self, tenant_id: str, workflow_type: str, account_id: Optional[str] = None, input_data: Optional[Dict[str, Any]] = None) -> AgentRun:
+    if provider == "mock":
+        if settings.is_production_like and not settings.allow_mock_llm:
+            raise ProductionLLMNotConfigured(
+                "Mock LLM provider is disabled in production-like environments."
+            )
+        return MockLLMProvider()
+
+    raise ProductionLLMNotConfigured(
+        f"LLM provider '{settings.llm_provider}' is selected, but no production "
+        "provider adapter is wired for services/api yet."
+    )
+
+
+class AgentOrchestrator:
+    def __init__(self, llm: Optional[LLMProvider] = None):
+        self.llm = llm or create_llm_provider()
+
+    def create_run(
+        self,
+        tenant_id: str,
+        workflow_type: str,
+        account_id: Optional[str] = None,
+        input_data: Optional[Dict[str, Any]] = None,
+    ) -> AgentRun:
         run_id = f"run-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{tenant_id[:4]}"
         run = AgentRun(
             id=run_id,
@@ -55,16 +94,27 @@ class AgentOrchestrator:
                 agent_run_id=run_id,
                 tool_name=tool_name,
                 status="success",
-                output={"mock": True, "step": step_name},
+                output={"provider": getattr(self.llm, "provider_name", "configured"), "step": step_name},
                 completed_at=datetime.now(timezone.utc).isoformat(),
             )
             db.tool_results.insert(tool_result.id, tool_result)
             run.tool_results.append(tool_result)
 
-        # Auto-complete for mock
+        # This MVP orchestrator only marks a single local/demo step complete. It is guarded
+        # by create_llm_provider() and app.core.config so production-like environments cannot
+        # accidentally run mock AI workflows.
         run.status = "completed"
-        run.output = {"completed_step": step_name, "mock": True}
-        db.agent_runs.update(run_id, status=run.status, current_step=run.current_step, output=run.output, tool_results=run.tool_results)
+        run.output = {
+            "completed_step": step_name,
+            "provider": getattr(self.llm, "provider_name", "configured"),
+        }
+        db.agent_runs.update(
+            run_id,
+            status=run.status,
+            current_step=run.current_step,
+            output=run.output,
+            tool_results=run.tool_results,
+        )
         return run
 
     def resume_run(self, run_id: str) -> AgentRun:

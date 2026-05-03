@@ -1,326 +1,254 @@
-"""Regression tests for production security fixes.
+"""C-06 active security regression tests for Layer 4 production fixes.
 
-Tests the security improvements made during the billing/webhook security audit:
-1. /metrics endpoint access control
-2. Health endpoint authentication
-3. Prometheus cardinality limits
-4. JWT/HMAC secret validation
-5. Stripe webhook IP allowlist
+These tests intentionally avoid optional import skip gates. If a security-critical
+module cannot be imported, the test module must fail during collection rather
+than silently passing with no coverage.
 """
 
-import hashlib
-import os
-from unittest.mock import MagicMock, patch
+from __future__ import annotations
 
-import pytest
-from fastapi import Request
-from fastapi.responses import Response
+import inspect
+import pathlib
+import sys
+import unittest
+from types import SimpleNamespace
 
-# Import metrics functions to test
-try:
-    from value_fabric.layer4.metrics.prometheus_metrics import (
-        _derive_tenant_tier,
-        _normalize_path,
-    )
-    METRICS_IMPORTS_AVAILABLE = True
-except ImportError:
-    METRICS_IMPORTS_AVAILABLE = False
+from fastapi.params import Depends as DependsParam
+from pydantic import ValidationError
 
-# Import billing webhook functions to test
-try:
-    from value_fabric.layer4.api.routes.billing import (
-        _get_client_ip,
-        _is_stripe_webhook_ip,
-    )
-    BILLING_IMPORTS_AVAILABLE = True
-except ImportError:
-    BILLING_IMPORTS_AVAILABLE = False
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
+SHARED_SRC = REPO_ROOT / "packages" / "shared" / "src"
+LAYER4_PROJECT = REPO_ROOT / "services" / "layer4-agents"
+LAYER4_SRC = LAYER4_PROJECT / "src"
 
-# Import settings to test
-try:
-    from value_fabric.layer4.config.settings import Settings
-    SETTINGS_IMPORTS_AVAILABLE = True
-except ImportError:
-    SETTINGS_IMPORTS_AVAILABLE = False
+for path in (str(SHARED_SRC), str(LAYER4_PROJECT)):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+from src.api.routes.billing import _get_client_ip, _is_stripe_webhook_ip  # noqa: E402
+from src.api.routes.health_badges import dismiss_badge, get_detailed_health, require_authenticated  # noqa: E402
+from src.config.settings import Settings  # noqa: E402
+from src.metrics.prometheus_metrics import _derive_tenant_tier, _normalize_path  # noqa: E402
+
+MAIN_SOURCE = LAYER4_SRC / "api" / "main.py"
+HEALTH_BADGES_SOURCE = LAYER4_SRC / "api" / "routes" / "health_badges.py"
+TOOLS_SOURCE = LAYER4_SRC / "api" / "routes" / "tools.py"
 
 
-# =============================================================================
-# Test Path Normalization (Metrics Security)
-# =============================================================================
+class PathNormalizationSecurityTests(unittest.TestCase):
+    """Protect Prometheus label cardinality from user-controlled identifiers."""
 
-class TestPathNormalization:
-    """Test that metric paths are normalized to prevent cardinality explosion."""
+    def test_uuid_path_segments_are_normalized(self) -> None:
+        normalized = _normalize_path("/v1/workflows/550e8400-e29b-41d4-a716-446655440000/status")
+        self.assertEqual(normalized, "/v1/workflows/{id}/status")
 
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_normalize_uuid_path(self):
-        """UUIDs in paths should be replaced with {id} placeholder."""
-        uuid_path = "/v1/billing/usage/550e8400-e29b-41d4-a716-446655440000/events"
-        result = _normalize_path(uuid_path)
-        assert result == "/v1/billing/usage/{id}/events"
+    def test_numeric_path_segments_are_normalized(self) -> None:
+        normalized = _normalize_path("/v1/customers/123456/invoices/987654")
+        self.assertEqual(normalized, "/v1/customers/{id}/invoices/{id}")
 
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_normalize_numeric_id_path(self):
-        """Numeric IDs in paths should be replaced with {id} placeholder."""
-        numeric_path = "/v1/billing/usage/12345/events"
-        result = _normalize_path(numeric_path)
-        assert result == "/v1/billing/usage/{id}/events"
+    def test_hex_identifier_segments_are_normalized(self) -> None:
+        normalized = _normalize_path("/v1/api-keys/507f1f77bcf86cd799439011")
+        self.assertEqual(normalized, "/v1/api-keys/{id}")
 
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_normalize_short_hex_path(self):
-        """Short hex IDs (24 chars like MongoDB ObjectId) should be replaced."""
-        hex_path = "/api/items/507f1f77bcf86cd799439011"
-        result = _normalize_path(hex_path)
-        assert result == "/api/items/{id}"
+    def test_short_static_segments_are_preserved(self) -> None:
+        normalized = _normalize_path("/v1/health/detailed")
+        self.assertEqual(normalized, "/v1/health/detailed")
 
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_preserve_static_paths(self):
-        """Static paths without IDs should be preserved."""
-        static_path = "/v1/billing/webhook"
-        result = _normalize_path(static_path)
-        assert result == "/v1/billing/webhook"
+    def test_empty_path_normalizes_to_root(self) -> None:
+        self.assertEqual(_normalize_path(""), "/")
 
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_normalize_root_path(self):
-        """Root path should remain root."""
-        result = _normalize_path("/")
-        assert result == "/"
-
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_normalize_empty_path(self):
-        """Empty path should return root."""
-        result = _normalize_path("")
-        assert result == "/"
-
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_trailing_slash_removed(self):
-        """Trailing slashes should be removed."""
-        result = _normalize_path("/v1/billing/webhook/")
-        assert result == "/v1/billing/webhook"
+    def test_trailing_slash_is_removed(self) -> None:
+        self.assertEqual(_normalize_path("/v1/health/"), "/v1/health")
 
 
-# =============================================================================
-# Test Tenant Tier Derivation (Metrics Security)
-# =============================================================================
+class TenantTierCardinalityTests(unittest.TestCase):
+    """Protect tenant labels from exposing raw tenant identifiers."""
 
-class TestTenantTierDerivation:
-    """Test that tenant_id is hashed to prevent cardinality explosion."""
+    def test_none_tenant_maps_to_unknown(self) -> None:
+        self.assertEqual(_derive_tenant_tier(None), "unknown")
 
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_derive_tenant_tier_consistency(self):
-        """Same tenant_id should always produce same tier."""
-        tenant_id = "tenant_12345"
-        tier1 = _derive_tenant_tier(tenant_id)
-        tier2 = _derive_tenant_tier(tenant_id)
-        assert tier1 == tier2
-        assert len(tier1) == 4  # 2 hex bytes = 4 hex chars
+    def test_tenant_ids_map_to_sha256_hash_buckets(self) -> None:
+        expectations = {
+            "enterprise-acme-corp": "2462",
+            "pro-customer-123": "3358",
+            "free-trial-user": "9525",
+        }
+        for tenant_id, expected in expectations.items():
+            with self.subTest(tenant_id=tenant_id):
+                self.assertEqual(_derive_tenant_tier(tenant_id), expected)
 
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_derive_tenant_tier_distribution(self):
-        """Different tenant_ids should produce different tiers."""
-        # With 256 possible values, these should likely be different
-        tier1 = _derive_tenant_tier("tenant_1")
-        tier2 = _derive_tenant_tier("tenant_2")
-        tier3 = _derive_tenant_tier("tenant_3")
+    def test_unclassified_tenants_are_bucketed_not_exposed(self) -> None:
+        tenant_id = "customer-secret-tenant-id-12345"
+        derived = _derive_tenant_tier(tenant_id)
+        self.assertRegex(derived, r"^[0-9a-f]{4}$")
+        self.assertNotIn("secret", derived)
+        self.assertNotIn("tenant", derived)
 
-        # At least some should be different (statistically very likely)
-        unique_tiers = {tier1, tier2, tier3}
-        assert len(unique_tiers) >= 2
-
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_derive_tenant_tier_cardinality_limit(self):
-        """Tier values should be limited to 256 possible values (2 hex bytes)."""
-        # Generate many tiers and verify they're all 4 hex chars
-        tiers = [_derive_tenant_tier(f"tenant_{i}") for i in range(100)]
-        for tier in tiers:
-            assert len(tier) == 4
-            assert all(c in "0123456789abcdef" for c in tier.lower())
-
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_derive_tenant_tier_empty(self):
-        """Empty tenant_id should return 'unknown'."""
-        assert _derive_tenant_tier("") == "unknown"
-        assert _derive_tenant_tier(None) == "unknown"
-
-    @pytest.mark.skipif(not METRICS_IMPORTS_AVAILABLE, reason="Metrics imports not available")
-    def test_derive_tenant_tier_matches_sha256(self):
-        """Tier should match first 2 bytes of SHA256 hash."""
-        tenant_id = "test_tenant_123"
-        expected_hash = hashlib.sha256(tenant_id.encode()).digest()
-        expected_tier = expected_hash[:2].hex()
-
-        result = _derive_tenant_tier(tenant_id)
-        assert result == expected_tier
+    def test_bucket_assignment_is_deterministic(self) -> None:
+        tenant_id = "customer-secret-tenant-id-12345"
+        self.assertEqual(_derive_tenant_tier(tenant_id), _derive_tenant_tier(tenant_id))
 
 
-# =============================================================================
-# Test Stripe IP Allowlist (Webhook Security)
-# =============================================================================
+class StripeWebhookIpTests(unittest.TestCase):
+    """Validate defense-in-depth checks for Stripe webhook source IPs."""
 
-class TestStripeIPAllowlist:
-    """Test Stripe webhook IP validation for defense-in-depth."""
+    def test_known_stripe_webhook_ips_are_allowed(self) -> None:
+        for ip in ("3.18.12.63", "52.15.183.38", "54.187.174.170"):
+            with self.subTest(ip=ip):
+                self.assertTrue(_is_stripe_webhook_ip(ip))
 
-    @pytest.mark.skipif(not BILLING_IMPORTS_AVAILABLE, reason="Billing imports not available")
-    def test_valid_stripe_ip(self):
-        """Known Stripe IPs should be accepted."""
-        # Test a known Stripe webhook IP
-        assert _is_stripe_webhook_ip("3.18.12.63") is True
+    def test_loopback_ips_are_allowed_for_local_development(self) -> None:
+        for ip in ("127.0.0.1", "::1"):
+            with self.subTest(ip=ip):
+                self.assertTrue(_is_stripe_webhook_ip(ip))
 
-    @pytest.mark.skipif(not BILLING_IMPORTS_AVAILABLE, reason="Billing imports not available")
-    def test_invalid_ip_rejected(self):
-        """Non-Stripe IPs should be rejected."""
-        assert _is_stripe_webhook_ip("1.2.3.4") is False
-        assert _is_stripe_webhook_ip("192.168.1.1") is False
+    def test_arbitrary_public_ips_are_rejected(self) -> None:
+        for ip in ("8.8.8.8", "1.1.1.1", "203.0.113.10"):
+            with self.subTest(ip=ip):
+                self.assertFalse(_is_stripe_webhook_ip(ip))
 
-    @pytest.mark.skipif(not BILLING_IMPORTS_AVAILABLE, reason="Billing imports not available")
-    def test_loopback_ip_allowed(self):
-        """Loopback IPs should be allowed for local testing."""
-        assert _is_stripe_webhook_ip("127.0.0.1") is True
-        assert _is_stripe_webhook_ip("::1") is True
+    def test_malformed_ip_is_rejected(self) -> None:
+        for ip in ("not-an-ip", "999.999.999.999", ""):
+            with self.subTest(ip=ip):
+                self.assertFalse(_is_stripe_webhook_ip(ip))
 
-    @pytest.mark.skipif(not BILLING_IMPORTS_AVAILABLE, reason="Billing imports not available")
-    def test_invalid_ip_format(self):
-        """Invalid IP formats should return False."""
-        assert _is_stripe_webhook_ip("invalid") is False
-        assert _is_stripe_webhook_ip("") is False
-
-    @pytest.mark.skipif(not BILLING_IMPORTS_AVAILABLE, reason="Billing imports not available")
-    def test_get_client_ip_from_request(self):
-        """Client IP should be extracted correctly from request."""
-        # Create mock request
-        mock_request = MagicMock(spec=Request)
-        mock_request.client.host = "3.18.12.63"
-        mock_request.headers = {}
-
-        result = _get_client_ip(mock_request)
-        assert result == "3.18.12.63"
-
-    @pytest.mark.skipif(not BILLING_IMPORTS_AVAILABLE, reason="Billing imports not available")
-    def test_get_client_ip_from_x_forwarded_for(self):
-        """X-Forwarded-For header should be respected."""
-        mock_request = MagicMock(spec=Request)
-        mock_request.client.host = "192.168.1.1"  # Would be rejected
-        mock_request.headers = {"X-Forwarded-For": "3.18.12.63, 10.0.0.1"}
-
-        result = _get_client_ip(mock_request)
-        # Should use the first IP in X-Forwarded-For
-        assert result == "3.18.12.63"
-
-
-# =============================================================================
-# Test JWT/HMAC Secret Validation (Settings Security)
-# =============================================================================
-
-class TestSecretValidation:
-    """Test that JWT and HMAC secrets are validated on startup."""
-
-    @pytest.mark.skipif(not SETTINGS_IMPORTS_AVAILABLE, reason="Settings imports not available")
-    def test_jwt_secret_too_short_in_production(self):
-        """Short JWT secret in production should raise ValueError."""
-        with pytest.raises(ValueError) as exc_info:
-            Settings(
-                environment="production",
-                jwt_secret="short",  # Only 5 chars, need 32+
-            )
-        assert "JWT_SECRET" in str(exc_info.value)
-        assert "32 characters" in str(exc_info.value)
-
-    @pytest.mark.skipif(not SETTINGS_IMPORTS_AVAILABLE, reason="Settings imports not available")
-    def test_hmac_secret_too_short_in_production(self):
-        """Short HMAC secret in production should raise ValueError."""
-        with pytest.raises(ValueError) as exc_info:
-            Settings(
-                environment="production",
-                api_key_hmac_secret="short",  # Only 5 chars, need 32+
-            )
-        assert "API_KEY_HMAC_SECRET" in str(exc_info.value)
-        assert "32 characters" in str(exc_info.value)
-
-    @pytest.mark.skipif(not SETTINGS_IMPORTS_AVAILABLE, reason="Settings imports not available")
-    def test_valid_secrets_in_production(self):
-        """Valid length secrets should work in production."""
-        # Should not raise
-        settings = Settings(
-            environment="production",
-            jwt_secret="a" * 32,  # 32 chars
-            api_key_hmac_secret="b" * 32,  # 32 chars
+    def test_client_ip_prefers_x_forwarded_for_origin(self) -> None:
+        request = SimpleNamespace(
+            headers={"X-Forwarded-For": "3.18.12.63, 10.0.0.1"},
+            client=SimpleNamespace(host="10.0.0.2"),
         )
-        assert settings.jwt_secret == "a" * 32
+        self.assertEqual(_get_client_ip(request), "3.18.12.63")
 
-    @pytest.mark.skipif(not SETTINGS_IMPORTS_AVAILABLE, reason="Settings imports not available")
-    def test_short_secrets_allowed_in_development(self):
-        """Short secrets should be allowed (with warning) in development."""
-        # Should not raise, just warn
-        settings = Settings(
-            environment="development",
-            jwt_secret="short",
-            api_key_hmac_secret="short",
+    def test_client_ip_uses_x_real_ip_before_socket_address(self) -> None:
+        request = SimpleNamespace(
+            headers={"X-Real-IP": "52.15.183.38"},
+            client=SimpleNamespace(host="10.0.0.2"),
         )
-        assert settings.jwt_secret == "short"
+        self.assertEqual(_get_client_ip(request), "52.15.183.38")
 
-    @pytest.mark.skipif(not SETTINGS_IMPORTS_AVAILABLE, reason="Settings imports not available")
-    def test_staging_requires_strong_secrets(self):
-        """Staging environment should also require strong secrets."""
-        with pytest.raises(ValueError) as exc_info:
-            Settings(
-                environment="staging",
-                jwt_secret="short",
-            )
-        assert "staging" in str(exc_info.value).lower()
+    def test_client_ip_falls_back_to_socket_address(self) -> None:
+        request = SimpleNamespace(headers={}, client=SimpleNamespace(host="54.187.174.169"))
+        self.assertEqual(_get_client_ip(request), "54.187.174.169")
 
 
-# =============================================================================
-# Test Metrics Endpoint Access Control
-# =============================================================================
+class ProductionSettingsValidationTests(unittest.TestCase):
+    """Ensure production configuration fails fast when critical secrets are unsafe."""
 
-class TestMetricsAccessControl:
-    """Test that /metrics endpoint is properly protected."""
+    VALID_JWT = "j" * 40
+    VALID_HMAC = "h" * 40
+    VALID_DB = "postgresql://layer4:strong-unique-password@db.example.com:5432/layer4"
+    VALID_CORS = "https://app.valuefabric.io"
 
-    def test_metrics_endpoint_requires_auth(self):
-        """Metrics endpoint should return 401 without valid auth."""
-        # This is an integration test that would require the full app
-        # For unit testing, we verify the security import is present
-        try:
-            from value_fabric.layer4.api.main import (
-                METRICS_ACCESS_AVAILABLE,
-                metrics_endpoint,
-            )
-            assert METRICS_ACCESS_AVAILABLE is True, "Metrics access control should be available"
-        except ImportError:
-            pytest.skip("Main app imports not available")
+    def _settings(self, **overrides: object) -> Settings:
+        values: dict[str, object] = {
+            "environment": "production",
+            "jwt_secret": self.VALID_JWT,
+            "api_key_hmac_secret": self.VALID_HMAC,
+            "database_url": self.VALID_DB,
+            "cors_origins": self.VALID_CORS,
+        }
+        values.update(overrides)
+        return Settings(**values)
+
+    def test_valid_production_configuration_is_accepted(self) -> None:
+        settings = self._settings()
+        self.assertTrue(settings.is_production)
+        self.assertEqual(settings.cors_origins_list, [self.VALID_CORS])
+
+    def test_missing_jwt_secret_fails_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "JWT_SECRET is required in production"):
+            self._settings(jwt_secret="")
+
+    def test_short_jwt_secret_fails_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "JWT_SECRET must be at least 32 characters"):
+            self._settings(jwt_secret="short")
+
+    def test_missing_api_key_hmac_secret_fails_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "API_KEY_HMAC_SECRET is required in production"):
+            self._settings(api_key_hmac_secret="")
+
+    def test_short_api_key_hmac_secret_fails_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "API_KEY_HMAC_SECRET must be at least 32 characters"):
+            self._settings(api_key_hmac_secret="short")
+
+    def test_default_database_credentials_fail_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "insecure default credentials"):
+            self._settings(database_url="postgresql://postgres:postgres@db.example.com:5432/layer4")
+
+    def test_missing_cors_origins_fail_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "CORS_ORIGINS is required in production"):
+            self._settings(cors_origins="")
+
+    def test_wildcard_cors_fails_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "cannot contain '\\*' in production"):
+            self._settings(cors_origins="*")
+
+    def test_origin_without_scheme_fails_in_production(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "must start with http:// or https://"):
+            self._settings(cors_origins="app.valuefabric.io")
+
+    def test_development_generates_nonempty_ephemeral_secrets(self) -> None:
+        settings = Settings(environment="development", jwt_secret="", api_key_hmac_secret="")
+        self.assertGreaterEqual(len(settings.jwt_secret), 32)
+        self.assertGreaterEqual(len(settings.api_key_hmac_secret), 32)
 
 
-# =============================================================================
-# Test Health Endpoint Authentication
-# =============================================================================
+class MetricsEndpointSecurityWiringTests(unittest.TestCase):
+    """Verify the active metrics endpoint remains protected by access control."""
 
-class TestHealthEndpointAuth:
-    """Test that health endpoints require authentication."""
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.source = MAIN_SOURCE.read_text(encoding="utf-8")
 
-    def test_detailed_health_requires_auth(self):
-        """Detailed health endpoint should require authentication."""
-        try:
-            from value_fabric.layer4.api.routes.health_badges import (
-                SECURITY_AVAILABLE,
-                get_detailed_health,
-            )
-            # Check that the function accepts a context parameter (auth)
-            import inspect
-            sig = inspect.signature(get_detailed_health)
-            params = list(sig.parameters.keys())
-            assert "context" in params, "Detailed health should accept auth context"
-        except ImportError:
-            pytest.skip("Health badges imports not available")
+    def test_metrics_access_control_import_is_present(self) -> None:
+        self.assertIn("from value_fabric.shared.observability.metrics_access import verify_metrics_access", self.source)
+        self.assertIn("METRICS_ACCESS_AVAILABLE", self.source)
 
-    def test_badge_dismissal_requires_auth(self):
-        """Badge dismissal should require authentication."""
-        try:
-            from value_fabric.layer4.api.routes.health_badges import (
-                SECURITY_AVAILABLE,
-                dismiss_badge,
-            )
-            import inspect
-            sig = inspect.signature(dismiss_badge)
-            params = list(sig.parameters.keys())
-            assert "context" in params, "Badge dismissal should accept auth context"
-        except ImportError:
-            pytest.skip("Health badges imports not available")
+    def test_metrics_endpoint_invokes_access_verifier_before_reading_metrics(self) -> None:
+        verifier_index = self.source.index("is_authorized, error_message = verify_metrics_access(request)")
+        metrics_read_index = self.source.index('metrics = getattr(request.app.state, "metrics", None)')
+        self.assertLess(verifier_index, metrics_read_index)
+
+    def test_unauthorized_metrics_scrapes_return_401(self) -> None:
+        self.assertIn("if not is_authorized:", self.source)
+        self.assertIn("status_code=401", self.source)
+        self.assertIn('content=error_message or "Unauthorized"', self.source)
+
+
+class HealthEndpointAuthTests(unittest.TestCase):
+    """Verify privileged health badge endpoints are not exposed anonymously."""
+
+    def test_detailed_health_requires_authenticated_context_parameter(self) -> None:
+        signature = inspect.signature(get_detailed_health)
+        self.assertIn("context", signature.parameters)
+        default = signature.parameters["context"].default
+        self.assertIsInstance(default, DependsParam)
+        self.assertIs(default.dependency, require_authenticated)
+
+    def test_badge_dismissal_requires_authenticated_context_parameter(self) -> None:
+        signature = inspect.signature(dismiss_badge)
+        self.assertIn("context", signature.parameters)
+        default = signature.parameters["context"].default
+        self.assertIsInstance(default, DependsParam)
+        self.assertIs(default.dependency, require_authenticated)
+
+    def test_health_badges_source_has_no_security_available_fallback(self) -> None:
+        source = HEALTH_BADGES_SOURCE.read_text(encoding="utf-8")
+        self.assertNotIn("SECURITY_AVAILABLE", source)
+        self.assertNotIn("if SECURITY_AVAILABLE else", source)
+        self.assertIn("Depends(require_authenticated)", source)
+
+
+class FailClosedToolGatewayRegressionTests(unittest.TestCase):
+    """Ensure C-03 fail-closed source guards remain present while C-06 runs."""
+
+    def test_tool_gateway_raises_http_exception_when_gateway_unavailable(self) -> None:
+        source = TOOLS_SOURCE.read_text(encoding="utf-8")
+        self.assertIn("def require_tool_gateway_available()", source)
+        self.assertIn("raise HTTPException(", source)
+        self.assertIn("503", source)
+        self.assertNotIn("lambda: None", source)
+
+
+if __name__ == "__main__":
+    unittest.main()

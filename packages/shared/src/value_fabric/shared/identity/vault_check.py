@@ -1,7 +1,7 @@
 """Async Vault health and secret-access verification helpers."""
 
 import os
-from typing import List
+from typing import Any, List
 
 import httpx
 
