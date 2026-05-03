@@ -24,15 +24,8 @@ class report_connection_qualityResult(TypedDictModel):
     received: bool
     timestamp: Any
 
-# Security imports
-try:
-    from value_fabric.shared.identity.context import RequestContext
-    from value_fabric.shared.identity.dependencies import require_authenticated
-    SECURITY_AVAILABLE = True
-except ImportError:
-    SECURITY_AVAILABLE = False
-    RequestContext = None  # type: ignore[misc,assignment]
-    require_authenticated = None  # type: ignore[misc,assignment]
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_authenticated
 
 logger = logging.getLogger(__name__)
 health_badges_router = APIRouter()
@@ -122,7 +115,7 @@ class ConnectionQualityRequest(BaseModel):
 @health_badges_router.get("/health/detailed", response_model=HealthStatusResponse, tags=["health"])
 async def get_detailed_health(
     tracker: HealthTracker = Depends(get_health_tracker),
-    context: RequestContext = Depends(require_authenticated) if SECURITY_AVAILABLE else Depends(get_health_tracker),
+    context: RequestContext = Depends(require_authenticated),
 ) -> HealthStatusResponse:
     """Get detailed health status of all system components.
 
@@ -203,6 +196,7 @@ async def get_detailed_health(
 async def get_active_badges(
     priority_filter: int | None = Query(None, description="Filter by max priority"),
     tracker: HealthTracker = Depends(get_health_tracker),
+    context: RequestContext = Depends(require_authenticated),
 ) -> list[HealthBadgeInfo]:
     """Get active health badges for UI display.
 
@@ -237,7 +231,9 @@ async def get_active_badges(
 @health_badges_router.get(
     "/health/websocket", response_model=WebSocketStatusResponse, tags=["health"]
 )
-async def get_websocket_status() -> WebSocketStatusResponse:
+async def get_websocket_status(
+    context: RequestContext = Depends(require_authenticated),
+) -> WebSocketStatusResponse:
     """Get WebSocket connection status.
 
     Returns real-time information about WebSocket infrastructure:
@@ -284,7 +280,7 @@ async def get_websocket_status() -> WebSocketStatusResponse:
 async def dismiss_badge(
     request: DismissBadgeRequest,
     tracker: HealthTracker = Depends(get_health_tracker),
-    context: RequestContext = Depends(require_authenticated) if SECURITY_AVAILABLE else Depends(get_health_tracker),
+    context: RequestContext = Depends(require_authenticated),
 ) -> DismissBadgeResponse:
     """Dismiss a health badge.
 
@@ -311,7 +307,9 @@ async def dismiss_badge(
 
 @health_badges_router.post("/health/report-connection-quality", tags=["health"])
 async def report_connection_quality(
-    request: ConnectionQualityRequest, tracker: HealthTracker = Depends(get_health_tracker)
+    request: ConnectionQualityRequest,
+    tracker: HealthTracker = Depends(get_health_tracker),
+    context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Report connection quality metrics from client.
 
@@ -371,7 +369,9 @@ async def report_connection_quality(
     "/health/components/{component_name}", response_model=ComponentHealthInfo, tags=["health"]
 )
 async def get_component_health(
-    component_name: str, tracker: HealthTracker = Depends(get_health_tracker)
+    component_name: str,
+    tracker: HealthTracker = Depends(get_health_tracker),
+    context: RequestContext = Depends(require_authenticated),
 ) -> ComponentHealthInfo:
     """Get detailed health status of a specific component.
 

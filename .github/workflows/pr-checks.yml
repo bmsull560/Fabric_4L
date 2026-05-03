@@ -95,7 +95,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: value-fabric/layer1-ingestion
+        working-directory: services/layer1-ingestion
 
     steps:
       - uses: actions/checkout@v4
@@ -139,9 +139,9 @@ jobs:
         with:
           name: test-results-layer1-ingestion
           path: |
-            value-fabric/layer1-ingestion/layer1-junit.xml
-            value-fabric/layer1-ingestion/layer1-results.json
-            value-fabric/layer1-ingestion/layer1-coverage.xml
+            services/layer1-ingestion/layer1-junit.xml
+            services/layer1-ingestion/layer1-results.json
+            services/layer1-ingestion/layer1-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -158,7 +158,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: value-fabric/layer2-extraction
+        working-directory: services/layer2-extraction
 
     steps:
       - uses: actions/checkout@v4
@@ -202,9 +202,9 @@ jobs:
         with:
           name: test-results-layer2-extraction
           path: |
-            value-fabric/layer2-extraction/layer2-junit.xml
-            value-fabric/layer2-extraction/layer2-results.json
-            value-fabric/layer2-extraction/layer2-coverage.xml
+            services/layer2-extraction/layer2-junit.xml
+            services/layer2-extraction/layer2-results.json
+            services/layer2-extraction/layer2-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -221,7 +221,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: value-fabric/layer3-knowledge
+        working-directory: services/layer3-knowledge
 
     steps:
       - uses: actions/checkout@v4
@@ -265,9 +265,9 @@ jobs:
         with:
           name: test-results-layer3-knowledge
           path: |
-            value-fabric/layer3-knowledge/layer3-junit.xml
-            value-fabric/layer3-knowledge/layer3-results.json
-            value-fabric/layer3-knowledge/layer3-coverage.xml
+            services/layer3-knowledge/layer3-junit.xml
+            services/layer3-knowledge/layer3-results.json
+            services/layer3-knowledge/layer3-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -284,7 +284,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: value-fabric/layer4-agents
+        working-directory: services/layer4-agents
 
     steps:
       - uses: actions/checkout@v4
@@ -328,9 +328,9 @@ jobs:
         with:
           name: test-results-layer4-agents
           path: |
-            value-fabric/layer4-agents/layer4-junit.xml
-            value-fabric/layer4-agents/layer4-results.json
-            value-fabric/layer4-agents/layer4-coverage.xml
+            services/layer4-agents/layer4-junit.xml
+            services/layer4-agents/layer4-results.json
+            services/layer4-agents/layer4-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -347,7 +347,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: value-fabric/layer5-ground-truth
+        working-directory: services/layer5-ground-truth
 
     steps:
       - uses: actions/checkout@v4
@@ -391,9 +391,9 @@ jobs:
         with:
           name: test-results-layer5-ground-truth
           path: |
-            value-fabric/layer5-ground-truth/layer5-junit.xml
-            value-fabric/layer5-ground-truth/layer5-results.json
-            value-fabric/layer5-ground-truth/layer5-coverage.xml
+            services/layer5-ground-truth/layer5-junit.xml
+            services/layer5-ground-truth/layer5-results.json
+            services/layer5-ground-truth/layer5-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -410,7 +410,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: value-fabric/layer6-benchmarks
+        working-directory: services/layer6-benchmarks
 
     steps:
       - uses: actions/checkout@v4
@@ -454,9 +454,9 @@ jobs:
         with:
           name: test-results-layer6-benchmarks
           path: |
-            value-fabric/layer6-benchmarks/layer6-junit.xml
-            value-fabric/layer6-benchmarks/layer6-results.json
-            value-fabric/layer6-benchmarks/layer6-coverage.xml
+            services/layer6-benchmarks/layer6-junit.xml
+            services/layer6-benchmarks/layer6-results.json
+            services/layer6-benchmarks/layer6-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -518,7 +518,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+          cache-dependency-path: 'apps/web/pnpm-lock.yaml'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -532,7 +532,7 @@ jobs:
           set -euo pipefail
           if ! git diff --quiet apps/web/src/api/generated/; then
             echo "❌ Generated API type drift detected."
-            node frontend/scripts/report-generated-type-drift.mjs
+            node apps/web/scripts/report-generated-type-drift.mjs
           fi
           git diff --exit-code apps/web/src/api/generated/
 
@@ -577,8 +577,8 @@ jobs:
         with:
           name: test-results-frontend
           path: |
-            frontend/frontend-junit.xml
-            frontend/coverage/
+            apps/web/frontend-junit.xml
+            apps/web/coverage/
           retention-days: 14
 
       - name: Install Playwright browser
@@ -682,12 +682,12 @@ jobs:
 
       - name: Run tool contract validation
         run: |
-          python scripts/ci/check_tool_contracts.py value-fabric/layer4-agents/src/tools/
+          python scripts/ci/check_tool_contracts.py services/layer4-agents/src/tools/
 
       - name: Run endpoint-hook coverage validation
         run: |
           python scripts/ci/check_endpoint_coverage.py \
-            --registry frontend/contracts/endpoint-hook-registry.json \
+            --registry apps/web/contracts/endpoint-hook-registry.json \
             --openapi-dir contracts/openapi
 
       - name: Upload test results
@@ -911,7 +911,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p artifacts/logs
-          docker compose -f value-fabric/docker-compose.yml logs > artifacts/logs/docker-compose.log || true
+          docker compose -f docker-compose.test.yml logs > artifacts/logs/docker-compose.log || true
 
       - name: Upload smoke report
         if: always()

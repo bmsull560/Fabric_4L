@@ -140,22 +140,22 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+          cache-dependency-path: 'apps/web/pnpm-lock.yaml'
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm install --frozen-lockfile
 
       - name: Run unit tests
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm test -- --reporter=default --coverage
 
       - name: Run lint
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm run lint
 
       - name: Type check
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm tsc --noEmit
 
   e2e-tests:

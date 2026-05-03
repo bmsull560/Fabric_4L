@@ -53,7 +53,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ matrix.layer }}:scan-target value-fabric/${{ matrix.layer }}
+          docker build -t ${{ matrix.layer }}:scan-target services/${{ matrix.layer }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.35.0
@@ -86,17 +86,17 @@ jobs:
       matrix:
         artifact:
           - name: layer1-ingestion
-            context: value-fabric/layer1-ingestion
+            context: services/layer1-ingestion
           - name: layer2-extraction
-            context: value-fabric/layer2-extraction
+            context: services/layer2-extraction
           - name: layer3-knowledge
-            context: value-fabric/layer3-knowledge
+            context: services/layer3-knowledge
           - name: layer4-agents
-            context: value-fabric/layer4-agents
+            context: services/layer4-agents
           - name: layer5-ground-truth
-            context: value-fabric/layer5-ground-truth
+            context: services/layer5-ground-truth
           - name: layer6-benchmarks
-            context: value-fabric/layer6-benchmarks
+            context: services/layer6-benchmarks
 
     steps:
       - uses: actions/checkout@v4
@@ -249,7 +249,7 @@ jobs:
         run: pip install bandit
 
       - name: Run bandit scan
-        working-directory: value-fabric/${{ matrix.layer }}
+        working-directory: services/${{ matrix.layer }}
         run: |
           bandit -r src/ -ll -ii --format json --output bandit-report.json || true
           bandit -r src/ -ll -ii --format screen
@@ -276,7 +276,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bandit-report-${{ matrix.layer }}
-          path: value-fabric/${{ matrix.layer }}/bandit-report.json
+          path: services/${{ matrix.layer }}/bandit-report.json
           retention-days: 14
 
   # Python dependency vulnerability scan with pip-audit
@@ -301,7 +301,7 @@ jobs:
         run: pip install pip-audit
 
       - name: Run pip-audit
-        working-directory: value-fabric/${{ matrix.layer }}
+        working-directory: services/${{ matrix.layer }}
         run: |
           pip install -e ".[dev]" || pip install -e .
           pip-audit --format json --output pip-audit-report.json || true
@@ -313,7 +313,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pip-audit-report-${{ matrix.layer }}
-          path: value-fabric/${{ matrix.layer }}/pip-audit-report.json
+          path: services/${{ matrix.layer }}/pip-audit-report.json
           retention-days: 14
 
   # Frontend security audit
@@ -323,7 +323,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/web
 
     steps:
       - uses: actions/checkout@v4
@@ -338,7 +338,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+          cache-dependency-path: 'apps/web/pnpm-lock.yaml'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -395,13 +395,13 @@ jobs:
         run: |
           # Files that must have USER directive (runtime stages)
           REQUIRED_FILES="
-            frontend/Dockerfile
-            value-fabric/layer1-ingestion/Dockerfile
-            value-fabric/layer2-extraction/Dockerfile
-            value-fabric/layer3-knowledge/Dockerfile
-            value-fabric/layer4-agents/Dockerfile
-            value-fabric/layer5-ground-truth/Dockerfile
-            value-fabric/layer6-benchmarks/Dockerfile
+            apps/web/Dockerfile
+            services/layer1-ingestion/Dockerfile
+            services/layer2-extraction/Dockerfile
+            services/layer3-knowledge/Dockerfile
+            services/layer4-agents/Dockerfile
+            services/layer5-ground-truth/Dockerfile
+            services/layer6-benchmarks/Dockerfile
           "
 
           FAILED=0
@@ -429,10 +429,10 @@ jobs:
       - name: Test image runs as non-root
         run: |
           # Build test images and verify user
-          docker build -t test-frontend frontend/
-          docker build -t test-layer3 value-fabric/layer3-knowledge/
-          docker build -t test-layer4 value-fabric/layer4-agents/
-          docker build -t test-layer6 value-fabric/layer6-benchmarks/
+          docker build -t test-frontend apps/web/
+          docker build -t test-layer3 services/layer3-knowledge/
+          docker build -t test-layer4 services/layer4-agents/
+          docker build -t test-layer6 services/layer6-benchmarks/
 
           # Check running user (should not be root/0)
           for image in test-frontend test-layer3 test-layer4 test-layer6; do
@@ -520,7 +520,7 @@ jobs:
 
     strategy:
       matrix:
-        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
       - uses: actions/checkout@v4
@@ -529,7 +529,7 @@ jobs:
         run: |
           docker build \
             -t ${{ matrix.layer }}:sbom-target \
-            ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
+            ${{ matrix.layer == 'apps-web' && 'apps/web' || format('services/{0}', matrix.layer) }}
 
       - name: Generate CycloneDX SBOM
         uses: anchore/sbom-action@v0

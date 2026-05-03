@@ -429,8 +429,12 @@ data needed to calculate it later.
 
 
 class NoOpExecutionLogger(ExecutionLogger):
-    """No-op logger for testing or when logging is disabled."""
+    """No-op logger for testing or when logging is disabled.
+
+    WARNING: This is an intentional null object for testing/dev use only.
+    Never bind to this implementation in production.
+    """
 
     def _write_log(self, entry: ExecutionLogEntry, event_type: str) -> None:
-        """Do nothing - log entry is silently discarded."""
+        """Do nothing - log entry is intentionally discarded for test scenarios."""
         pass

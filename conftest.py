@@ -95,3 +95,41 @@ def pytest_addoption(parser) -> None:
         dest="no_mandatory_dep_check",
         help="Skip mandatory dependency enforcement (for --collect-only dry runs).",
     )
+
+
+def pytest_collection_modifyitems(config, items) -> None:
+    """Automatically mark tests as mandatory based on their other markers.
+
+    Tests marked with: unit, contract, security, or tenant_boundary
+    are automatically considered mandatory unless they also have:
+    - slow
+    - requires_postgres
+    - requires_redis
+    - requires_neo4j
+    - requires_openai
+    - e2e
+    - integration
+    - performance
+
+    This allows selecting mandatory tests with: pytest -m mandatory
+    """
+    mandatory_markers = {"unit", "contract", "security", "tenant_boundary"}
+    exclusion_markers = {
+        "slow", "requires_postgres", "requires_redis", "requires_neo4j",
+        "requires_openai", "e2e", "integration", "performance", "flaky", "quarantine"
+    }
+
+    for item in items:
+        item_markers = {m.name for m in item.iter_markers()}
+
+        # Skip if already has mandatory marker
+        if "mandatory" in item_markers:
+            continue
+
+        # Skip if has any exclusion marker
+        if item_markers & exclusion_markers:
+            continue
+
+        # Mark as mandatory if it has any mandatory marker
+        if item_markers & mandatory_markers:
+            item.add_marker("mandatory")

@@ -1,8 +1,4 @@
 # Layer 5 Ground Truth Deployment
-# Secret sources:
-# - jwt-secret: Provided by vault-integration.yml (jwt-signing-secret ExternalSecret)
-# - layer5-db-credentials: Provided by layer5-secrets.yaml (layer5-database-credentials ExternalSecret)
-# - layer5-interlayer: Provided by layer5-secrets.yaml (layer5-interlayer-secrets ExternalSecret)
 apiVersion: apps/v1
 kind: Deployment
 metadata:

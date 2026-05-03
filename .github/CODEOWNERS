@@ -188,6 +188,9 @@ AGENTS.md @value-fabric/maintainers @value-fabric/architects
 # Apps
 /apps/web/ @value-fabric/frontend-leads @value-fabric/sre-leads
 
+# SDK
+/sdk/python/ @value-fabric/backend-leads @value-fabric/architects
+
 # Services
 /services/api/ @value-fabric/backend-leads
 /services/layer1-ingestion/ @value-fabric/data-engineering @value-fabric/backend-leads
@@ -209,6 +212,12 @@ AGENTS.md @value-fabric/maintainers @value-fabric/architects
 **/requirements.txt @value-fabric/sre-leads
 **/Dockerfile @value-fabric/sre-leads @value-fabric/backend-leads
 **/Dockerfile.* @value-fabric/sre-leads @value-fabric/backend-leads
+
+# Test dependencies
+/tests/ @value-fabric/backend-leads @value-fabric/qa-leads
+
+# Devcontainer
+/.devcontainer/ @value-fabric/sre-leads @value-fabric/maintainers
 
 # Dependabot and dependency configuration
 /.github/dependabot.yml @value-fabric/sre-leads @value-fabric/security-leads

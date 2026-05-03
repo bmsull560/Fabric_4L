@@ -126,7 +126,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          command: ["celery", "-A", "src.shared.tasks", "worker", "-l", "info"]
+          command: ["celery", "-A", "layer1_ingestion.src.shared.tasks", "worker", "-l", "info"]
           envFrom:
             - configMapRef:
                 name: value-fabric-config
@@ -151,6 +151,45 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - layer1_ingestion.src.shared.tasks
+                - inspect
+                - --timeout
+                - "5"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - layer1_ingestion.src.shared.tasks
+                - inspect
+                - --timeout
+                - "5"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - layer1_ingestion.src.shared.tasks
+                - inspect
+                - --timeout
+                - "5"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           volumeMounts:
             - name: tmp
               mountPath: /tmp

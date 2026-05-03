@@ -220,8 +220,16 @@ try:
 
     if redis_client is not None:
         redis_rate_limiter = RedisRateLimiter(redis_client)
-except Exception:
-    pass
+except Exception as e:
+    logger.warning(
+        "redis_init_failed",
+        error=str(e),
+        degraded_mode=True,
+        message="Rate limiting disabled - Redis unavailable",
+    )
+    metrics = get_metrics()
+    if metrics:
+        metrics.increment_errors(error_type="redis_init_failed", component="api")
 
 
 class cancel_jobResult(TypedDictModel):
@@ -313,10 +321,9 @@ def get_tenant_id(request: Request) -> UUID:
         try:
             return UUID(header_value)
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail="Invalid X-Organization-ID header format")
 
     # P0-3 FIX: Never fall back to a hardcoded tenant — require authentication
-    from fastapi import HTTPException
     raise HTTPException(status_code=401, detail="Authentication required")
 
 
@@ -327,9 +334,17 @@ def get_current_user_id(request: Request) -> UUID:
         try:
             return UUID(ctx.user_id)
         except ValueError:
-            pass
+            logger.error(
+                "invalid_user_id_format",
+                user_id=ctx.user_id,
+                path=request.url.path,
+                error="UUID parsing failed",
+            )
+            metrics = get_metrics()
+            if metrics:
+                metrics.increment_errors(error_type="invalid_uuid", component="auth")
+            raise HTTPException(status_code=401, detail="Invalid user ID format")
     # P0 FIX: Never fall back to a hardcoded user — require authentication
-    from fastapi import HTTPException
     raise HTTPException(status_code=401, detail="Authentication required")
 
 

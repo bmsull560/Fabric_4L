@@ -14,6 +14,8 @@ from typing import Any
 import structlog
 from defusedxml.ElementTree import fromstring
 
+from ..metrics import get_metrics
+
 logger = structlog.get_logger()
 
 
@@ -322,7 +324,17 @@ class XBRLParser:
                 try:
                     scale = int(decimals)
                 except ValueError:
-                    pass
+                    logger.warning(
+                        "xbrl_decimals_parse_failed",
+                        concept=tag_name,
+                        decimals_value=decimals,
+                        context_ref=context_ref,
+                        fallback="using_scale_0",
+                    )
+                    metrics = get_metrics()
+                    if metrics:
+                        metrics.increment_errors(error_type="xbrl_parse_fallback", component="xbrl_parser")
+                    scale = 0
 
             # Apply scale if needed
             if scale != 0 and isinstance(value, (int, float, Decimal)):
@@ -474,13 +486,19 @@ class XBRLParser:
         try:
             return int(value)
         except ValueError:
-            pass
+            logger.debug("xbrl_value_parse_fallback", target_type="int", value_preview=value[:50] if len(value) > 50 else value)
+            metrics = get_metrics()
+            if metrics:
+                metrics.increment_errors(error_type="xbrl_value_parse_fallback", component="xbrl_parser")
 
         # Try decimal
         try:
             return Decimal(value)
         except Exception:
-            pass
+            logger.debug("xbrl_value_parse_fallback", target_type="decimal", value_preview=value[:50] if len(value) > 50 else value)
+            metrics = get_metrics()
+            if metrics:
+                metrics.increment_errors(error_type="xbrl_value_parse_fallback", component="xbrl_parser")
 
         # Return as string
         return value
