@@ -1,312 +1,253 @@
 /**
  * Contract tests: Workspace Tab API
  *
- * These tests verify the API contract between frontend and backend
- * for the workspace tab endpoints (/analysis/cases/{case_id}/workspace/{tab_key}).
- *
- * CRITICAL: These tests prevent regression of the Pydantic validation issue
- * where dynamic tab data (signals, drivers, evidence, stakeholders) was
- * being stripped from responses due to extra="forbid" in the response model.
- *
- * The fix applied: get_workspace_tabResult now uses model_config = ConfigDict(extra="allow")
+ * The checked-in OpenAPI contract for these endpoints is intentionally sparse,
+ * so these tests codify the frontend/backend contract with shared Zod schemas
+ * and canonical fixtures. They specifically prevent the prior regression where
+ * dynamic workspace tab payloads were accepted by mocks but stripped or reshaped
+ * by the backend response model.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
+import {
+  ApiErrorSchema,
+  WorkspaceActionPlanItemSchema,
+  WorkspaceDriverSchema,
+  WorkspaceEvidenceSchema,
+  WorkspaceGenerateResponseSchema,
+  WorkspaceNarrativeItemSchema,
+  WorkspaceSignalSchema,
+  WorkspaceStakeholderSchema,
+  WorkspaceTabKeySchema,
+  WorkspaceValueModelItemSchema,
+  WorkspaceTabResponseSchema,
+  WorkspaceUpdateResponseSchema,
+  assertSchema,
+  assertSchemaRejects,
+  fixtures,
+} from './_helpers';
 
-/**
- * Expected response shape for workspace tab endpoints.
- * Each tab returns its data under a key matching the tab name.
- */
-interface WorkspaceTabResponse {
-  // Intelligence tabs
-  signals?: Array<{
-    id: string;
-    name: string;
-    category: string;
-    confidence: number;
-    impact: string;
-    trend?: string;
-  }>;
-  drivers?: Array<{
-    id: string;
-    name: string;
-    contribution: number;
-    parentSignal?: string;
-    subDrivers?: string[];
-  }>;
-  evidence?: Array<{
-    id: string;
-    source: string;
-    claim: string;
-    confidence: number;
-    type?: string;
-  }>;
-  stakeholders?: Array<{
-    id: string;
-    name: string;
-    role: string;
-    priority?: string;
-    engagement?: string;
-  }>;
-  // Value Studio tabs
-  'action-plan'?: Array<{
-    id: string;
-    title: string;
-    priority: string;
-    projectedValue?: string;
-    confidence?: string;
-    horizon?: string;
-  }>;
-  'value-model'?: Array<{
-    id: string;
-    driver: string;
-    category: string;
-    conservative: number;
-    expected: number;
-    optimistic: number;
-  }>;
-  narrative?: Array<{
-    id: string;
-    stakeholder: string;
-    role: string;
-    status: string;
-    headline: string;
-    summary: string;
-  }>;
-}
-
-describe('Contract: Workspace Tab API', () => {
-  describe('GET /analysis/cases/{case_id}/workspace/{tab_key}', () => {
-    it('should return signals with all fields intact', () => {
-      /**
-       * Expected response shape for signals tab:
-       * { signals: [...] }
-       *
-       * Regression protection: Response must contain the 'signals' key
-       * with full signal objects, not an empty object.
-       */
-      const expectedResponse: WorkspaceTabResponse = {
-        signals: [
-          {
-            id: 'sig_1',
-            name: 'Operational inefficiency in Manufacturing',
-            category: 'Operational',
-            confidence: 85,
-            impact: 'High',
-            trend: 'Increasing',
-          },
-        ],
-      };
-
-      expect(expectedResponse.signals).toBeDefined();
-      expect(expectedResponse.signals![0]).toHaveProperty('id');
-      expect(expectedResponse.signals![0]).toHaveProperty('name');
-      expect(expectedResponse.signals![0]).toHaveProperty('category');
-      expect(expectedResponse.signals![0]).toHaveProperty('confidence');
-      expect(expectedResponse.signals![0]).toHaveProperty('impact');
-    });
-
-    it('should return drivers with all fields intact', () => {
-      const expectedResponse: WorkspaceTabResponse = {
-        drivers: [
-          {
-            id: 'drv_1',
-            name: 'Manual process overhead',
-            contribution: 35,
-            parentSignal: 'Operational inefficiency',
-            subDrivers: ['Data entry', 'Approval delays'],
-          },
-        ],
-      };
-
-      expect(expectedResponse.drivers).toBeDefined();
-      expect(expectedResponse.drivers![0]).toHaveProperty('id');
-      expect(expectedResponse.drivers![0]).toHaveProperty('name');
-      expect(expectedResponse.drivers![0]).toHaveProperty('contribution');
-    });
-
-    it('should return evidence with all fields intact', () => {
-      const expectedResponse: WorkspaceTabResponse = {
-        evidence: [
-          {
-            id: 'ev_1',
-            source: 'Industry Report 2024',
-            claim: 'Sector averages 23% efficiency gap',
-            confidence: 88,
-            type: 'benchmark',
-          },
-        ],
-      };
-
-      expect(expectedResponse.evidence).toBeDefined();
-      expect(expectedResponse.evidence![0]).toHaveProperty('id');
-      expect(expectedResponse.evidence![0]).toHaveProperty('source');
-      expect(expectedResponse.evidence![0]).toHaveProperty('claim');
-    });
-
-    it('should return stakeholders with all fields intact', () => {
-      const expectedResponse: WorkspaceTabResponse = {
-        stakeholders: [
-          {
-            id: 'st_1',
-            name: 'CFO',
-            role: 'Economic Buyer',
-            priority: 'High',
-            engagement: 'Active',
-          },
-        ],
-      };
-
-      expect(expectedResponse.stakeholders).toBeDefined();
-      expect(expectedResponse.stakeholders![0]).toHaveProperty('id');
-      expect(expectedResponse.stakeholders![0]).toHaveProperty('name');
-      expect(expectedResponse.stakeholders![0]).toHaveProperty('role');
-    });
-
-    it('should return action-plan with all fields intact', () => {
-      const expectedResponse: WorkspaceTabResponse = {
-        'action-plan': [
-          {
-            id: 'rec_1',
-            title: 'Automate manual approval workflows',
-            priority: 'critical',
-            projectedValue: '$2.4M annually',
-            confidence: 'high',
-            horizon: 'Q2-Q3',
-          },
-        ],
-      };
-
-      expect(expectedResponse['action-plan']).toBeDefined();
-      expect(expectedResponse['action-plan']![0]).toHaveProperty('id');
-      expect(expectedResponse['action-plan']![0]).toHaveProperty('title');
-    });
-
-    it('should return value-model with all fields intact', () => {
-      const expectedResponse: WorkspaceTabResponse = {
-        'value-model': [
-          {
-            id: 'vl_1',
-            driver: 'Labor cost reduction',
-            category: 'hard',
-            conservative: 800000,
-            expected: 1200000,
-            optimistic: 1600000,
-          },
-        ],
-      };
-
-      expect(expectedResponse['value-model']).toBeDefined();
-      expect(expectedResponse['value-model']![0]).toHaveProperty('id');
-      expect(expectedResponse['value-model']![0]).toHaveProperty('driver');
-    });
-
-    it('should return narrative with all fields intact', () => {
-      const expectedResponse: WorkspaceTabResponse = {
-        narrative: [
-          {
-            id: 'nar_1',
-            stakeholder: 'CFO',
-            role: 'Economic Buyer',
-            status: 'ready',
-            headline: '$5.2M projected ROI over 3 years',
-            summary: 'Our financial analysis shows a compelling return...',
-          },
-        ],
-      };
-
-      expect(expectedResponse.narrative).toBeDefined();
-      expect(expectedResponse.narrative![0]).toHaveProperty('id');
-      expect(expectedResponse.narrative![0]).toHaveProperty('headline');
-    });
-
-    /**
-     * REGRESSION TEST: This is the critical test that would have caught
-     * the bug where Pydantic stripped dynamic fields.
-     *
-     * The bug: get_workspace_tabResult had `pass` (no fields) and inherited
-     * extra="forbid" from TypedDictModel, causing all dynamic fields to be
-     * stripped during validation.
-     *
-     * The fix: get_workspace_tabResult now has `model_config = ConfigDict(extra="allow")`
-     */
-    it('must preserve dynamic fields in response (regression guard)', () => {
-      // Simulate what the backend returns - a dictionary with the tab key
-      const backendResponse = {
-        signals: [{ id: '1', name: 'Test', category: 'Cost', confidence: 80, impact: 'Medium' }],
-      };
-
-      // After Pydantic validation, the response should STILL have the signals field
-      // If extra="forbid" is set, this field would be stripped
-      const validatedResponse = { ...backendResponse };
-
-      expect(validatedResponse).toHaveProperty('signals');
-      expect(Array.isArray(validatedResponse.signals)).toBe(true);
-      expect(validatedResponse.signals).toHaveLength(1);
-      expect(validatedResponse.signals[0].name).toBe('Test');
-    });
-  });
-
-  describe('Valid tab keys', () => {
-    it('should accept all valid intelligence tab keys', () => {
-      const validIntelligenceTabs = ['signals', 'drivers', 'evidence', 'stakeholders'];
-
-      validIntelligenceTabs.forEach((tab) => {
-        // These are the valid tab keys that should be accepted by the API
-        expect(['signals', 'drivers', 'evidence', 'stakeholders', 'action-plan', 'value-model', 'narrative']).toContain(tab);
-      });
-    });
-
-    it('should accept all valid value studio tab keys', () => {
-      const validStudioTabs = ['action-plan', 'value-model', 'narrative'];
-
-      validStudioTabs.forEach((tab) => {
-        expect(['signals', 'drivers', 'evidence', 'stakeholders', 'action-plan', 'value-model', 'narrative']).toContain(tab);
-      });
-    });
-  });
-
-  describe('Error responses', () => {
-    it('should return 400 for invalid tab key', () => {
-      const invalidTabs = ['invalid', 'random', 'test123', ''];
-      const validTabs = ['signals', 'drivers', 'evidence', 'stakeholders', 'action-plan', 'value-model', 'narrative'];
-
-      invalidTabs.forEach((tab) => {
-        expect(validTabs).not.toContain(tab);
-      });
-    });
-
-    it('should return empty array for unknown case', () => {
-      // For unknown cases, the API should return an empty array under the tab key
-      const responseForUnknownCase = {
-        signals: [],
-      };
-
-      expect(responseForUnknownCase.signals).toEqual([]);
-    });
-  });
+const tenantScopedHeadersSchema = z.object({
+  authorization: z.string().regex(/^Bearer\s+\S+$/),
+  'x-tenant-id': z.string().uuid(),
 });
 
-describe('Contract: Workspace Generate Endpoint', () => {
-  describe('POST /analysis/cases/{case_id}/workspace/generate', () => {
-    it('should return generation stats', () => {
-      const expectedResponse = {
-        case_id: 'case-123',
-        account_id: 'acc-123',
-        generated: true,
-        stats: {
-          signals: 3,
-          drivers: 3,
-          evidence: 2,
-          stakeholders: 3,
-        },
-      };
+const workspaceTabPayloadCases = [
+  {
+    tab: 'signals',
+    itemSchema: WorkspaceSignalSchema,
+    response: { signals: [fixtures.workspaceSignal()] },
+  },
+  {
+    tab: 'drivers',
+    itemSchema: WorkspaceDriverSchema,
+    response: { drivers: [fixtures.workspaceDriver()] },
+  },
+  {
+    tab: 'evidence',
+    itemSchema: WorkspaceEvidenceSchema,
+    response: { evidence: [fixtures.workspaceEvidence()] },
+  },
+  {
+    tab: 'stakeholders',
+    itemSchema: WorkspaceStakeholderSchema,
+    response: { stakeholders: [fixtures.workspaceStakeholder()] },
+  },
+  {
+    tab: 'action-plan',
+    itemSchema: WorkspaceActionPlanItemSchema,
+    response: { 'action-plan': [fixtures.workspaceActionPlanItem()] },
+  },
+  {
+    tab: 'value-model',
+    itemSchema: WorkspaceValueModelItemSchema,
+    response: { 'value-model': [fixtures.workspaceValueModelItem()] },
+  },
+  {
+    tab: 'narrative',
+    itemSchema: WorkspaceNarrativeItemSchema,
+    response: { narrative: [fixtures.workspaceNarrativeItem()] },
+  },
+] as const;
 
-      expect(expectedResponse.generated).toBe(true);
-      expect(expectedResponse.stats).toHaveProperty('signals');
-      expect(expectedResponse.stats).toHaveProperty('drivers');
-      expect(expectedResponse.stats).toHaveProperty('evidence');
-      expect(expectedResponse.stats).toHaveProperty('stakeholders');
+describe('Contract: Workspace Tab API', () => {
+  describe('GET /v1/cases/{case_id}/workspace/{tab_key}', () => {
+    it.each(workspaceTabPayloadCases.map((contract) => [contract.tab, contract] as const))(
+      'validates the %s tab response with its schema-backed payload',
+      (_label, { tab, itemSchema, response }) => {
+        const parsed = assertSchema(
+          WorkspaceTabResponseSchema,
+          response,
+          `GET workspace ${tab} response`
+        );
+        const payload = parsed[tab];
+
+        expect(Array.isArray(payload)).toBe(true);
+        expect(payload).toHaveLength(1);
+        assertSchema(itemSchema, payload?.[0], `GET workspace ${tab} item`);
+      }
+    );
+
+    it('preserves dynamic tab keys instead of accepting stripped empty responses', () => {
+      assertSchema(
+        WorkspaceTabResponseSchema,
+        { signals: [fixtures.workspaceSignal()] },
+        'dynamic workspace tab response'
+      );
+
+      assertSchemaRejects(
+        WorkspaceTabResponseSchema,
+        {},
+        'stripped workspace tab response'
+      );
+    });
+
+    it('rejects payloads that contain multiple workspace tabs in one response', () => {
+      assertSchemaRejects(
+        WorkspaceTabResponseSchema,
+        {
+          signals: [fixtures.workspaceSignal()],
+          drivers: [fixtures.workspaceDriver()],
+        },
+        'multi-tab workspace response'
+      );
+    });
+
+    it('validates empty arrays for known cases with no data while preserving the tab key', () => {
+      const parsed = assertSchema(
+        WorkspaceTabResponseSchema,
+        { signals: [] },
+        'empty workspace signals response'
+      );
+
+      expect(parsed.signals).toEqual([]);
+    });
+
+    it('rejects invalid tab keys before a request is sent', () => {
+      expect(WorkspaceTabKeySchema.options).toEqual([
+        'signals',
+        'drivers',
+        'evidence',
+        'stakeholders',
+        'action-plan',
+        'value-model',
+        'narrative',
+      ]);
+      assertSchemaRejects(WorkspaceTabKeySchema, 'invalid', 'invalid workspace tab key');
+      assertSchemaRejects(WorkspaceTabKeySchema, '', 'empty workspace tab key');
+    });
+
+    it('validates tenant-scoped authenticated request metadata', () => {
+      const parsed = assertSchema(
+        tenantScopedHeadersSchema,
+        {
+          authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.test.signature',
+          'x-tenant-id': '550e8400-e29b-41d4-a716-446655440000',
+        },
+        'workspace tenant-scoped headers'
+      );
+
+      expect(parsed['x-tenant-id']).toBe('550e8400-e29b-41d4-a716-446655440000');
+      assertSchemaRejects(
+        tenantScopedHeadersSchema,
+        { authorization: 'Bearer token' },
+        'workspace request without tenant context'
+      );
+    });
+
+    it('validates auth and invalid-tab error response shapes', () => {
+      assertSchema(
+        ApiErrorSchema,
+        {
+          message: 'Authentication required',
+          code: 'unauthorized',
+          trace_id: 'trace-workspace-401',
+        },
+        'workspace auth failure response'
+      );
+
+      assertSchema(
+        ApiErrorSchema,
+        {
+          message: 'Invalid tab_key. Must be one of the allowed workspace tabs.',
+          code: 'bad_request',
+        },
+        'workspace invalid-tab error response'
+      );
+    });
+  });
+
+  describe('PUT /v1/cases/{case_id}/workspace/{tab_key}', () => {
+    it.each(workspaceTabPayloadCases.map((contract) => [contract.tab, contract] as const))(
+      'validates the %s update request body against the same tab payload contract',
+      (_label, { tab, response }) => {
+        assertSchema(
+          WorkspaceTabResponseSchema,
+          response,
+          `PUT workspace ${tab} request body`
+        );
+      }
+    );
+
+    it('validates the update acknowledgement response', () => {
+      const parsed = assertSchema(
+        WorkspaceUpdateResponseSchema,
+        {
+          case_id: 'case-123',
+          tab: 'signals',
+          updated: true,
+        },
+        'workspace update response'
+      );
+
+      expect(parsed.updated).toBe(true);
+    });
+  });
+
+  describe('POST /v1/cases/{case_id}/workspace/generate', () => {
+    it('validates the production generation response shape when generation is implemented', () => {
+      const parsed = assertSchema(
+        WorkspaceGenerateResponseSchema,
+        {
+          case_id: 'case-123',
+          account_id: '550e8400-e29b-41d4-a716-446655440000',
+          generated: true,
+          stats: {
+            signals: 3,
+            drivers: 3,
+            evidence: 2,
+            stakeholders: 3,
+          },
+        },
+        'workspace generation response'
+      );
+
+      expect(parsed.stats.signals + parsed.stats.drivers).toBeGreaterThan(0);
+    });
+
+    it('rejects sample-like generation responses that omit required tenant/account context', () => {
+      assertSchemaRejects(
+        WorkspaceGenerateResponseSchema,
+        {
+          case_id: 'case-123',
+          generated: true,
+          stats: { signals: 3, drivers: 3, evidence: 2, stakeholders: 3 },
+        },
+        'workspace generation response without account context'
+      );
+    });
+
+    it('validates explicit fail-closed not-implemented errors without accepting fabricated sample data', () => {
+      assertSchema(
+        ApiErrorSchema,
+        {
+          message: 'Workspace intelligence generation requires the production AI workflow integration and will not return sample data.',
+          code: 'not_implemented',
+          trace_id: 'trace-workspace-501',
+        },
+        'workspace generation fail-closed response'
+      );
     });
   });
 });

@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:prod-auth-bypass": "pnpm run build && node scripts/security/assert-no-dev-auth-bypass-in-production.mjs",
+    "test:contracts": "vitest run src/api/__tests__/contract && node scripts/security/assert-no-placeholder-contract-tests.mjs",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

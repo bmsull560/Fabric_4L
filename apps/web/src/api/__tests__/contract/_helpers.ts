@@ -59,7 +59,7 @@ export const GraphNodeSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   type: z.string().min(1),
-  properties: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
   confidence_score: z.number().min(0).max(1).optional(),
 });
 
@@ -67,7 +67,7 @@ export const GraphEdgeSchema = z.object({
   source: z.string().min(1),
   target: z.string().min(1),
   relationship: z.string().min(1),
-  properties: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const SubgraphResponseSchema = z.object({
@@ -128,7 +128,7 @@ export const WorkflowStatusResponseSchema = z.object({
   completed_at: z.string().nullable(),
   error_count: z.number().int().nonnegative(),
   has_output: z.boolean(),
-  results: z.record(z.unknown()).nullable(),
+  results: z.record(z.string(), z.unknown()).nullable(),
   tenant_id: z.string().nullable(),
   user_id: z.string().nullable(),
 });
@@ -136,7 +136,7 @@ export const WorkflowStatusResponseSchema = z.object({
 export const WorkflowResultResponseSchema = z.object({
   workflow_id: z.string().min(1),
   status: z.string().min(1),
-  output: z.record(z.unknown()).nullable(),
+  output: z.record(z.string(), z.unknown()).nullable(),
   errors: z.array(z.string()),
   completed_at: z.string().nullable(),
 });
@@ -169,6 +169,113 @@ export const FeatureFlagResponseSchema = z.object({
   rollout_percentage: z.number().int().min(0).max(100),
 });
 
+
+export const WorkspaceTabKeySchema = z.enum([
+  'signals',
+  'drivers',
+  'evidence',
+  'stakeholders',
+  'action-plan',
+  'value-model',
+  'narrative',
+]);
+
+export const WorkspaceSignalSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  category: z.string().min(1),
+  confidence: z.number().min(0).max(100),
+  impact: z.string().min(1),
+  trend: z.string().min(1).optional(),
+});
+
+export const WorkspaceDriverSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  contribution: z.number(),
+  parentSignal: z.string().min(1).optional(),
+  subDrivers: z.array(z.string().min(1)).optional(),
+});
+
+export const WorkspaceEvidenceSchema = z.object({
+  id: z.string().min(1),
+  source: z.string().min(1),
+  claim: z.string().min(1),
+  confidence: z.number().min(0).max(100),
+  type: z.string().min(1).optional(),
+});
+
+export const WorkspaceStakeholderSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  role: z.string().min(1),
+  priority: z.string().min(1).optional(),
+  engagement: z.string().min(1).optional(),
+});
+
+export const WorkspaceActionPlanItemSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  priority: z.string().min(1),
+  projectedValue: z.string().min(1).optional(),
+  confidence: z.string().min(1).optional(),
+  horizon: z.string().min(1).optional(),
+});
+
+export const WorkspaceValueModelItemSchema = z.object({
+  id: z.string().min(1),
+  driver: z.string().min(1),
+  category: z.string().min(1),
+  conservative: z.number(),
+  expected: z.number(),
+  optimistic: z.number(),
+});
+
+export const WorkspaceNarrativeItemSchema = z.object({
+  id: z.string().min(1),
+  stakeholder: z.string().min(1),
+  role: z.string().min(1),
+  status: z.string().min(1),
+  headline: z.string().min(1),
+  summary: z.string().min(1),
+});
+
+export const WorkspaceTabResponseSchema = z.object({
+  signals: z.array(WorkspaceSignalSchema).optional(),
+  drivers: z.array(WorkspaceDriverSchema).optional(),
+  evidence: z.array(WorkspaceEvidenceSchema).optional(),
+  stakeholders: z.array(WorkspaceStakeholderSchema).optional(),
+  'action-plan': z.array(WorkspaceActionPlanItemSchema).optional(),
+  'value-model': z.array(WorkspaceValueModelItemSchema).optional(),
+  narrative: z.array(WorkspaceNarrativeItemSchema).optional(),
+}).superRefine((value, ctx) => {
+  const presentKeys = Object.keys(value).filter((key) => value[key as keyof typeof value] !== undefined);
+  if (presentKeys.length !== 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Workspace tab response must contain exactly one tab payload key',
+    });
+  }
+});
+
+export const WorkspaceUpdateResponseSchema = z.object({
+  case_id: z.string().min(1),
+  tab: WorkspaceTabKeySchema,
+  updated: z.literal(true),
+});
+
+export const WorkspaceGenerateResponseSchema = z.object({
+  account_id: z.string().min(1),
+  case_id: z.string().min(1),
+  generated: z.literal(true),
+  stats: z.object({
+    signals: z.number().int().nonnegative(),
+    drivers: z.number().int().nonnegative(),
+    evidence: z.number().int().nonnegative(),
+    stakeholders: z.number().int().nonnegative(),
+  }),
+});
+
 // ---------------------------------------------------------------------------
 // L5 Ground Truth  (contracts/openapi/layer5-ground-truth.json)
 // ---------------------------------------------------------------------------
@@ -187,7 +294,7 @@ export const TruthObjectResponseSchema = z.object({
   maturity_level: z.number().int().nonnegative(),
   freshness: z.string(),
   is_stale: z.boolean(),
-  applies_to: z.record(z.unknown()).nullable().optional(),
+  applies_to: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 export const TruthObjectListResponseSchema = z.object({
@@ -274,6 +381,67 @@ export const fixtures = {
     flag_key: 'advanced_analytics',
     enabled: true,
     rollout_percentage: 100,
+  }),
+
+
+  workspaceSignal: (): z.infer<typeof WorkspaceSignalSchema> => ({
+    id: 'sig-001',
+    name: 'Operational inefficiency in Manufacturing',
+    category: 'Operational',
+    confidence: 85,
+    impact: 'High',
+    trend: 'Increasing',
+  }),
+
+  workspaceDriver: (): z.infer<typeof WorkspaceDriverSchema> => ({
+    id: 'drv-001',
+    name: 'Manual process overhead',
+    contribution: 35,
+    parentSignal: 'Operational inefficiency in Manufacturing',
+    subDrivers: ['Data entry', 'Approval delays'],
+  }),
+
+  workspaceEvidence: (): z.infer<typeof WorkspaceEvidenceSchema> => ({
+    id: 'ev-001',
+    source: 'Industry Report 2024',
+    claim: 'Sector averages 23% efficiency gap',
+    confidence: 88,
+    type: 'benchmark',
+  }),
+
+  workspaceStakeholder: (): z.infer<typeof WorkspaceStakeholderSchema> => ({
+    id: 'st-001',
+    name: 'CFO',
+    role: 'Economic Buyer',
+    priority: 'High',
+    engagement: 'Active',
+  }),
+
+  workspaceActionPlanItem: (): z.infer<typeof WorkspaceActionPlanItemSchema> => ({
+    id: 'rec-001',
+    title: 'Automate manual approval workflows',
+    priority: 'critical',
+    projectedValue: '$2.4M annually',
+    confidence: 'high',
+    horizon: 'Q2-Q3',
+  }),
+
+  workspaceValueModelItem: (): z.infer<typeof WorkspaceValueModelItemSchema> => ({
+    id: 'val-001',
+    driver: 'Labor cost reduction',
+    category: 'hard',
+    conservative: 800000,
+    expected: 1200000,
+    optimistic: 1600000,
+  }),
+
+  workspaceNarrativeItem: (): z.infer<typeof WorkspaceNarrativeItemSchema> => ({
+    id: 'nar-001',
+    stakeholder: 'CFO',
+    role: 'Economic Buyer',
+    status: 'ready',
+    headline: '$5.2M projected ROI over 3 years',
+    summary: 'Financial analysis shows a compelling return profile.',
   }),
 
   truthObject: (overrides?: Partial<z.infer<typeof TruthObjectResponseSchema>>): z.infer<typeof TruthObjectResponseSchema> => ({
