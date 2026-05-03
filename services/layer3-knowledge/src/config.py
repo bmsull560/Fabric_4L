@@ -82,7 +82,7 @@ class Settings(BaseSettings):
 
     # Security Configuration
     jwt_secret: str = Field(default="changeme", alias="JWT_SECRET")
-    cors_origins: list[str] = Field(default=["*"], alias="CORS_ORIGINS")
+    cors_origins: list[str] = Field(default=[], alias="CORS_ORIGINS")
 
     @field_validator("jwt_secret")
     @classmethod
@@ -103,6 +103,8 @@ class Settings(BaseSettings):
         if os.getenv("ENVIRONMENT") == "production":
             if "*" in v:
                 raise ValueError("Wildcard CORS origin not allowed in production")
+            if not v or all(not origin.strip() for origin in v):
+                raise ValueError("CORS_ORIGINS must be set to at least one specific origin in production")
         return v
 
     # Pinecone Configuration

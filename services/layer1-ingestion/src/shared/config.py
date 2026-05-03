@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # JWT and Security
     jwt_secret: str = Field(default="changeme", description="JWT signing secret")
-    cors_origins: list[str] = Field(default=["*"], description="CORS allowed origins")
+    cors_origins: list[str] = Field(default=[], description="CORS allowed origins")
 
     @field_validator("jwt_secret")
     @classmethod
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
             if "*" in v:
                 raise ValueError("Wildcard CORS origin not allowed in production")
             if not v or all(not origin.strip() for origin in v):
-                raise ValueError("At least one specific CORS origin must be configured in production")
+                raise ValueError("CORS_ORIGINS must be set to at least one specific origin in production")
         return v
 
     @field_validator("database_url")
