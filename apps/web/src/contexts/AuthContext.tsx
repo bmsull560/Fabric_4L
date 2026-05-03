@@ -200,45 +200,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Development bypass — instant mock authentication for local testing.
-   * Blocked in production by NODE_ENV and VITE_APP_ENV checks.
+   * Local auth shortcut is compiled only into development and test bundles.
+   * Production builds do not receive the implementation, mock identity, flag path,
+   * or context field; this makes bypass leakage detectable by bundle scanning.
    */
-  const devBypass = useCallback(() => {
-    const nodeEnv = process.env.NODE_ENV;
-    const appEnv = (import.meta.env?.VITE_APP_ENV ?? import.meta.env?.APP_ENV ?? nodeEnv) as string | undefined;
-    const bypassFlag = (import.meta.env?.VITE_AUTH_BYPASS ?? 'false') as string;
+  let devBypass: AuthContextType['devBypass'];
 
-    const isProductionLike = nodeEnv === 'production' || appEnv === 'production' || appEnv === 'prod';
-    const isBypassExplicitlyEnabled = bypassFlag === 'true' || bypassFlag === '1';
+  if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+    devBypass = () => {
+      const mockUser: UserInfo = {
+        id: 'sarah-chen-001',
+        email: 'sarah.chen@axiomrobotics.com',
+        role: 'admin',
+        tenantId: 'demo-acme',
+        tenantSlug: 'acme',
+      };
 
-    if (isProductionLike) {
-      log.error('Auth bypass blocked in production environment', { authPhase: 'dev-bypass', nodeEnv, appEnv });
-      throw new AuthError('Auth bypass is disabled in production.', AuthErrorCategory.AUTHENTICATION);
-    }
-
-    const isDevLike = nodeEnv === 'development' || nodeEnv === 'test';
-    if (!isDevLike && !isBypassExplicitlyEnabled) {
-      log.warn('devBypass is only available in development/test mode unless VITE_AUTH_BYPASS is explicitly enabled', {
-        authPhase: 'dev-bypass',
-        nodeEnv,
-        bypassFlag,
-      });
-      return;
-    }
-
-    const mockUser: UserInfo = {
-      id: 'sarah-chen-001',
-      email: 'sarah.chen@axiomrobotics.com',
-      role: 'admin',
-      tenantId: 'demo-acme',
-      tenantSlug: 'acme',
+      sessionService.persistSessionMeta(mockUser, 'demo-acme');
+      setAuthState({ state: 'authenticated', user: mockUser, error: null });
+      useUserTierStore.getState().setUserRole('admin');
+      useAccountContextStore.getState().setSelectedAccountId('axiom-robotics');
     };
-
-    sessionService.persistSessionMeta(mockUser, 'demo-acme');
-    setAuthState({ state: 'authenticated', user: mockUser, error: null });
-    useUserTierStore.getState().setUserRole('admin');
-    useAccountContextStore.getState().setSelectedAccountId('axiom-robotics');
-  }, []);
+  }
 
   const value: AuthContextType = {
     isAuthenticated: authState.state === 'authenticated',
@@ -249,9 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     handleCallback,
     logout,
     refreshToken,
-    // Expose devBypass in non-production builds (dev + test).
-    // The function itself enforces the production guard at call time.
-    devBypass: import.meta.env.PROD ? undefined : devBypass,
+    ...(import.meta.env.DEV || import.meta.env.MODE === 'test' ? { devBypass } : {}),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

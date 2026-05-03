@@ -8,7 +8,7 @@
  * - CSRF state mismatch rejection
  * - Logout: calls backend, clears metadata, redirects
  * - Refresh: calls backend, updates metadata on success, clears on 401
- * - devBypass: works in development, throws in production
+ * - devBypass: works in test/dev builds; production omission is enforced by a bundle gate
  * - accessToken is always null on the context value
  */
 import React from 'react';
@@ -360,45 +360,6 @@ describe('AuthProvider', () => {
       render(<AuthProvider><Inspector /></AuthProvider>, { wrapper: createWrapper() });
       // In test mode (PROD=false) devBypass is exposed on the context
       await waitFor(() => expect(screen.getByTestId('bypass-defined')).toHaveTextContent('defined'));
-    });
-
-    it('throws AuthError when called with production env vars', async () => {
-      // vi.stubEnv overrides import.meta.env values at runtime.
-      // process.env.NODE_ENV alone does not affect import.meta.env.DEV,
-      // which Vite bakes in at build time.
-      vi.stubEnv('VITE_APP_ENV', 'production');
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      function BypassTrigger() {
-        const auth = useAuthContext();
-        const [err, setErr] = React.useState('');
-        return (
-          <div>
-            <button data-testid="btn" onClick={() => {
-              try { auth.devBypass?.(); }
-              catch (e) { setErr((e as Error).message); }
-            }}>go</button>
-            <div data-testid="err">{err}</div>
-          </div>
-        );
-      }
-
-      render(<AuthProvider><BypassTrigger /></AuthProvider>, { wrapper: createWrapper() });
-
-      await act(async () => { screen.getByTestId('btn').click(); });
-
-      await waitFor(() =>
-        expect(screen.getByTestId('err')).toHaveTextContent('Auth bypass is disabled in production.')
-      );
-
-      // No session metadata written
-      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
-      // No token in localStorage
-      expect(localStorage.getItem('accessToken')).toBeNull();
-
-      consoleSpy.mockRestore();
-      vi.unstubAllEnvs();
     });
 
     it('sets mock authenticated state in development', async () => {

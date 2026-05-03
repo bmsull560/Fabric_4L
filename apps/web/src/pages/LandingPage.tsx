@@ -101,7 +101,8 @@ const ValueVisualization = () => (
 
 export default function LandingPage() {
   const { navigateTo } = useNavigation();
-  const { isAuthenticated, isLoading, devBypass } = useAuthContext();
+  const auth = useAuthContext();
+  const { isAuthenticated, isLoading } = auth;
 
   // Redirect if already authenticated
   if (isAuthenticated && !isLoading) {
@@ -110,8 +111,10 @@ export default function LandingPage() {
   }
 
   const handleDevBypass = () => {
-    devBypass?.();
-    navigateTo('home');
+    if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+      auth.devBypass?.();
+      navigateTo('home');
+    }
   };
 
   return (
