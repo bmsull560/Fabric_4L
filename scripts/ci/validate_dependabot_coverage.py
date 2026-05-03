@@ -5,10 +5,11 @@ Validate Dependabot Coverage (H-07 Audit Fix)
 Ensures every package manifest and Dockerfile has:
 1. A corresponding entry in dependabot.yml
 2. An owner defined in CODEOWNERS
+3. No stale Dependabot entry pointing at a missing or non-manifest directory
 
 Exit codes:
     0 - All packages have coverage
-    1 - Missing dependabot entries or CODEOWNERS ownership
+    1 - Missing dependabot entries, stale dependabot entries, or CODEOWNERS ownership
 """
 
 import os
@@ -95,6 +96,45 @@ def get_dependabot_entries(config: Dict) -> Dict[str, Set[str]]:
     return entries
 
 
+def entry_path_exists(path_str: str) -> bool:
+    """Return True when a normalized Dependabot directory exists in the repository."""
+    if path_str in {"", "."}:
+        return REPO_ROOT.exists()
+
+    return (REPO_ROOT / path_str).is_dir()
+
+
+def validate_stale_dependabot_entries(
+    packages: Dict[str, Set[Path]], dependabot_entries: Dict[str, Set[str]]
+) -> List[str]:
+    """
+    Validate that Dependabot entries target real, active package directories.
+
+    A directory can exist but still be stale for a specific ecosystem when it no
+    longer contains that ecosystem's manifest, so pip/npm/docker entries are
+    checked against discovered package locations rather than filesystem
+    existence alone. The GitHub Actions ecosystem is directory-scoped and is
+    therefore validated by directory existence.
+    """
+    stale_entries: List[str] = []
+
+    for ecosystem, dirs in dependabot_entries.items():
+        if ecosystem == "github-actions":
+            for path_str in sorted(dirs):
+                if not entry_path_exists(path_str):
+                    stale_entries.append(f"{ecosystem}: {path_str or '/'} (directory does not exist)")
+            continue
+
+        active_dirs = {normalize_path(str(path)) for path in packages.get(ecosystem, set())}
+        for path_str in sorted(dirs):
+            if not entry_path_exists(path_str):
+                stale_entries.append(f"{ecosystem}: {path_str or '/'} (directory does not exist)")
+            elif path_str not in active_dirs:
+                stale_entries.append(f"{ecosystem}: {path_str or '/'} (no active {ecosystem} manifest found)")
+
+    return stale_entries
+
+
 def discover_packages() -> Dict[str, Set[Path]]:
     """
     Discover all packages in the repository by ecosystem.
@@ -177,10 +217,10 @@ def check_codeowners_ownership(codeowners: str, path_str: str) -> bool:
 
 def validate_coverage(
     packages: Dict[str, Set[Path]], dependabot_entries: Dict[str, Set[str]], codeowners: str
-) -> Tuple[List[str], List[str]]:
+) -> Tuple[List[str], List[str], List[str]]:
     """
     Validate that all packages have dependabot entries and CODEOWNERS ownership.
-    Returns: (missing_dependabot, missing_ownership)
+    Returns: (missing_dependabot, missing_ownership, stale_dependabot)
     """
     missing_dependabot = []
     missing_ownership = []
@@ -202,7 +242,9 @@ def validate_coverage(
             if not check_codeowners_ownership(codeowners, path_str):
                 missing_ownership.append(f"{ecosystem}: {path_str}")
 
-    return missing_dependabot, missing_ownership
+    stale_dependabot = validate_stale_dependabot_entries(packages, dependabot_entries)
+
+    return missing_dependabot, missing_ownership, stale_dependabot
 
 
 def main():
@@ -242,7 +284,7 @@ def main():
     # Validate coverage
     print()
     print("Validating coverage...")
-    missing_dependabot, missing_ownership = validate_coverage(
+    missing_dependabot, missing_ownership, stale_dependabot = validate_coverage(
         packages, dependabot_entries, codeowners
     )
 
@@ -259,6 +301,16 @@ def main():
         print()
         print("[PASS] All packages have dependabot.yml entries")
 
+    if stale_dependabot:
+        print()
+        print("::error::Stale dependabot.yml entries:")
+        for item in stale_dependabot:
+            print(f"  [FAIL] {item}")
+        exit_code = 1
+    else:
+        print()
+        print("[PASS] No stale dependabot.yml entries found")
+
     if missing_ownership:
         print()
         print("::error::Missing CODEOWNERS ownership:")
@@ -274,10 +326,10 @@ def main():
     print("=" * 60)
     if exit_code == 0:
         print("[SUCCESS] VALIDATION PASSED")
-        print("All package manifests and Dockerfiles have update owners.")
+        print("All package manifests and Dockerfiles have current update owners.")
     else:
         print("[ERROR] VALIDATION FAILED")
-        print("Some packages are missing dependabot coverage or ownership.")
+        print("Some packages are missing dependabot coverage, have stale dependabot entries, or lack ownership.")
     print("=" * 60)
 
     sys.exit(exit_code)
