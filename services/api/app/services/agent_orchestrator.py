@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import json
+import os
 from typing import Any, Dict, Optional, Protocol
 
 from app.core.config import get_settings
@@ -39,20 +41,101 @@ class MockLLMProvider:
         return f"Reasoned answer to '{question}' based on premise."
 
 
+class OpenAILLMProvider:
+    """OpenAI-compatible production provider for standalone API orchestration.
+
+    The adapter is intentionally contained inside ``services/api`` so the unified
+    API does not bypass Layer 2 extraction or Layer 4 orchestration contracts.
+    Network calls are made only when a workflow method is invoked; construction
+    fails closed if the package or API key is unavailable.
+    """
+
+    provider_name = "openai"
+
+    def __init__(self, model: str | None = None, api_key: str | None = None, timeout: float = 60.0):
+        try:
+            from openai import OpenAI
+        except ImportError as exc:
+            raise ProductionLLMNotConfigured(
+                "openai package is required when llm_provider=openai."
+            ) from exc
+
+        resolved_api_key = api_key or os.getenv("OPENAI_API_KEY")
+        if not resolved_api_key:
+            raise ProductionLLMNotConfigured(
+                "OPENAI_API_KEY must be configured when llm_provider=openai."
+            )
+
+        self.model = model or os.getenv("OPENAI_MODEL") or "gpt-4.1-mini"
+        self._client = OpenAI(api_key=resolved_api_key, timeout=timeout)
+
+    def _complete(self, system_prompt: str, user_prompt: str) -> str:
+        response = self._client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0,
+        )
+        content = response.choices[0].message.content
+        return content or ""
+
+    def generate_structured(self, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        content = self._complete(
+            "Return only a valid JSON object that conforms to the requested schema.",
+            f"Prompt:\n{prompt}\n\nJSON schema or field description:\n{json.dumps(schema, sort_keys=True)}",
+        )
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            return {"result": content}
+        if not isinstance(parsed, dict):
+            return {"result": parsed}
+        return parsed
+
+    def summarize(self, text: str) -> str:
+        return self._complete("Summarize the supplied business context concisely.", text)
+
+    def extract(self, text: str, fields: list[str]) -> Dict[str, Any]:
+        return self.generate_structured(
+            f"Extract these fields from the text: {', '.join(fields)}\n\n{text}",
+            {"type": "object", "properties": {field: {"type": "string"} for field in fields}},
+        )
+
+    def classify(self, text: str, labels: list[str]) -> str:
+        if not labels:
+            return "unknown"
+        content = self._complete(
+            "Classify the text using exactly one of the supplied labels. Return only the label.",
+            f"Labels: {', '.join(labels)}\n\nText:\n{text}",
+        ).strip()
+        return content if content in labels else labels[0]
+
+    def reason(self, premise: str, question: str) -> str:
+        return self._complete(
+            "Answer the question using only the supplied premise. Be concise and explicit about uncertainty.",
+            f"Premise:\n{premise}\n\nQuestion:\n{question}",
+        )
+
+
 def create_llm_provider() -> LLMProvider:
     settings = get_settings()
     provider = settings.llm_provider.lower()
 
     if provider == "mock":
-        if settings.is_production_like and not settings.allow_mock_llm:
+        if settings.is_production_like:
             raise ProductionLLMNotConfigured(
                 "Mock LLM provider is disabled in production-like environments."
             )
         return MockLLMProvider()
 
+    if provider == "openai":
+        return OpenAILLMProvider(model=settings.llm_model)
+
     raise ProductionLLMNotConfigured(
-        f"LLM provider '{settings.llm_provider}' is selected, but no production "
-        "provider adapter is wired for services/api yet."
+        f"LLM provider '{settings.llm_provider}' is not supported by services/api. "
+        "Supported production providers: openai."
     )
 
 

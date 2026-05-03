@@ -211,12 +211,20 @@ class TestProductionSecretGuard:
     def test_custom_secret_accepted_in_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("SECRET_KEY", "a-sufficiently-long-production-secret-value-xyz")
+        monkeypatch.setenv("MOCK_PERSISTENCE", "false")
+        monkeypatch.setenv("DATABASE_URL", "sqlite:////var/lib/fabric_4l/api.db")
+        monkeypatch.setenv("LLM_PROVIDER", "openai")
+        monkeypatch.setenv("SEED_DEMO_DATA", "false")
+        monkeypatch.setenv("CORS_ORIGINS", "https://app.example.com")
 
         from app.core.config import get_settings
         get_settings.cache_clear()
 
         settings = get_settings()
         assert settings.secret_key == "a-sufficiently-long-production-secret-value-xyz"
+        assert settings.is_production_like is True
+        assert settings.mock_persistence is False
+        assert settings.seed_demo_data is False
 
         get_settings.cache_clear()
 

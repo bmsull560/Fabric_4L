@@ -3,7 +3,7 @@ import warnings
 from functools import lru_cache
 from urllib.parse import urlparse
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -72,7 +72,10 @@ def build_cors_policy(origins: list[str], *, production_like: bool) -> dict[str,
 
 class Settings(BaseSettings):
     app_name: str = "Fabric_4L API"
-    app_env: str = Field(default_factory=_detect_environment, alias="APP_ENV")
+    app_env: str = Field(
+        default_factory=_detect_environment,
+        validation_alias=AliasChoices("ENVIRONMENT", "ENV", "APP_ENV"),
+    )
     debug: bool = False
     secret_key: str = _DEFAULT_DEV_SECRET
     algorithm: str = "HS256"
@@ -80,10 +83,12 @@ class Settings(BaseSettings):
     mock_persistence: bool = True
     database_url: str | None = None
     llm_provider: str = "mock"
+    llm_model: str | None = None
     allow_mock_llm: bool = False
+    seed_demo_data: bool = True
     # Empty list = no cross-origin requests allowed by default (fail-closed).
     # Development get_settings() supplies localhost defaults only after warning.
-    cors_origins: list[str] = []
+    cors_origins: list[str] | str = []
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -112,10 +117,14 @@ class Settings(BaseSettings):
                 errors.append("mock_persistence must be false in production-like environments")
             if not self.database_url:
                 errors.append("database_url must be configured in production-like environments")
-            if self.llm_provider.lower() == "mock" and not self.allow_mock_llm:
+            elif urlparse(self.database_url).scheme != "sqlite":
+                errors.append("database_url must use a supported durable sqlite:// URL for services/api")
+            if self.llm_provider.lower() == "mock":
                 errors.append("llm_provider=mock is disabled in production-like environments")
+            if self.seed_demo_data:
+                errors.append("seed_demo_data must be false in production-like environments")
             if self.secret_key == _DEFAULT_DEV_SECRET or len(self.secret_key) < 32:
-                errors.append("secret_key must be replaced with a strong production secret")
+                errors.append("SECRET_KEY must be replaced with a strong production secret")
 
         try:
             _validate_exact_cors_origins(self.cors_origins, production_like=self.is_production_like)
@@ -133,7 +142,12 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    settings = Settings()
+    try:
+        settings = Settings()
+    except Exception as exc:
+        if "Unsafe production configuration" in str(exc):
+            raise RuntimeError(str(exc)) from exc
+        raise
 
     if settings.is_production_like:
         return settings

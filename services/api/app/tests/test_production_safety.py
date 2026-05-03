@@ -3,6 +3,7 @@ import importlib
 import pytest
 
 from app.core.config import Settings
+from app.models.schemas import Account
 
 
 def test_production_like_environment_rejects_mock_persistence_and_mock_llm():
@@ -12,6 +13,7 @@ def test_production_like_environment_rejects_mock_persistence_and_mock_llm():
             mock_persistence=True,
             database_url=None,
             llm_provider="mock",
+            seed_demo_data=True,
             secret_key="fabric-4l-dev-secret-key-change-in-production",
             cors_origins=["*"],
         )
@@ -21,31 +23,45 @@ def test_production_like_environment_accepts_durable_configuration():
     settings = Settings(
         app_env="production",
         mock_persistence=False,
-        database_url="postgresql://fabric:example@db.internal:5432/fabric",
+        database_url="sqlite:////var/lib/fabric_4l/api.db",
         llm_provider="openai",
+        seed_demo_data=False,
         secret_key="x" * 48,
         cors_origins=["https://app.example.com"],
     )
 
     assert settings.is_production_like is True
     assert settings.mock_persistence is False
+    assert settings.seed_demo_data is False
 
 
-def test_database_factory_fails_when_mock_persistence_is_disabled(monkeypatch):
+def test_database_factory_uses_durable_persistence_when_mock_persistence_is_disabled(monkeypatch, tmp_path):
     monkeypatch.setenv("APP_ENV", "development")
     database = importlib.import_module("app.core.database")
 
+    db_file = tmp_path / "fabric_api.db"
     safe_dev_settings = Settings(
         app_env="development",
         mock_persistence=False,
-        database_url="postgresql://fabric:example@localhost:5432/fabric",
+        database_url=f"sqlite:///{db_file}",
         llm_provider="mock",
+        seed_demo_data=False,
         secret_key="fabric-4l-dev-secret-key-change-in-production",
     )
     monkeypatch.setattr(database, "get_settings", lambda: safe_dev_settings)
 
-    with pytest.raises(database.ProductionPersistenceNotConfigured):
-        database.create_database()
+    durable = database.create_database()
+    account = Account(
+        id="acc-durable",
+        tenant_id="tenant-alpha",
+        name="Durable Account",
+        industry="technology",
+    )
+    durable.accounts.insert(account.id, account)
+
+    assert durable.accounts.get("acc-durable", tenant_id="tenant-alpha") == account
+    assert durable.accounts.get("acc-durable", tenant_id="tenant-beta") is None
+    durable.close()
 
 
 def test_unknown_environment_is_treated_as_production_like_and_fails_closed():
@@ -53,8 +69,9 @@ def test_unknown_environment_is_treated_as_production_like_and_fails_closed():
         Settings(
             app_env="qa",
             mock_persistence=False,
-            database_url="postgresql://fabric:example@db.internal:5432/fabric",
+            database_url="sqlite:////var/lib/fabric_4l/api.db",
             llm_provider="openai",
+            seed_demo_data=False,
             secret_key="x" * 48,
             cors_origins=[],
         )
@@ -67,8 +84,9 @@ def test_production_like_environment_rejects_placeholder_and_wildcard_cors():
         Settings(
             app_env="production",
             mock_persistence=False,
-            database_url="postgresql://fabric:example@db.internal:5432/fabric",
+            database_url="sqlite:////var/lib/fabric_4l/api.db",
             llm_provider="openai",
+            seed_demo_data=False,
             secret_key="x" * 48,
             cors_origins=["https://*.example.com", "CHANGE_ME"],
         )
@@ -82,8 +100,9 @@ def test_standalone_api_cors_policy_is_explicit_and_credentials_safe():
     settings = Settings(
         app_env="production",
         mock_persistence=False,
-        database_url="postgresql://fabric:example@db.internal:5432/fabric",
+        database_url="sqlite:////var/lib/fabric_4l/api.db",
         llm_provider="openai",
+        seed_demo_data=False,
         secret_key="x" * 48,
         cors_origins=["https://app.example.com"],
     )
