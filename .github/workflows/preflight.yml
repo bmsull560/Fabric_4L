@@ -33,15 +33,15 @@ jobs:
       - name: Verify lockfile freshness
         run: |
           # Check frontend lockfile
-          if [ -f frontend/pnpm-lock.yaml ]; then
-            echo "✓ Frontend pnpm-lock.yaml exists"
+          if [ -f apps/web/pnpm-lock.yaml ] || [ -f pnpm-lock.yaml ]; then
+            echo "✓ pnpm-lock.yaml exists"
           else
-            echo "✗ Missing frontend/pnpm-lock.yaml"
+            echo "✗ Missing pnpm-lock.yaml"
             exit 1
           fi
 
           # Check for Python lockfiles in all layers
-          for layer in value-fabric/layer{1..6}-*; do
+          for layer in services/layer{1..6}-*; do
             if [ -d "$layer" ]; then
               if [ -f "$layer/uv.lock" ] || [ -f "$layer/poetry.lock" ]; then
                 echo "✓ $layer has lockfile"
@@ -96,7 +96,7 @@ jobs:
         run: |
           # Check for license headers in source files
           missing_headers=0
-          for file in $(find value-fabric -name "*.py" -type f | head -20); do
+          for file in $(find services -name "*.py" -type f | head -20); do
             if ! head -5 "$file" | grep -q "SPDX-License-Identifier\|Copyright\|License"; then
               echo "Missing license header: $file"
               missing_headers=$((missing_headers + 1))
@@ -162,7 +162,6 @@ jobs:
         run: |
           large_files=$(find . -type f -size +500k \
             ! -path "./.git/*" \
-            ! -path "./frontend/pnpm-lock.yaml" \
             ! -path "./**/*.lock" \
             ! -path "./**/*.pdf" \
             ! -path "./**/*.png" \
@@ -188,3 +187,25 @@ jobs:
             echo "$crlf_files"
             exit 1
           fi
+
+  # ============================================
+  # Dependabot Coverage
+  # ============================================
+  dependabot-coverage:
+    name: Dependabot Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate every manifest and Dockerfile has a Dependabot entry
+        run: python scripts/ci/check_dependabot_coverage.py

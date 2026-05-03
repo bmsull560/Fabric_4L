@@ -249,3 +249,21 @@ export const TIER_REDIRECTS: Record<UserTier, string> = {
   advanced: '/home',
   admin: '/home',
 };
+
+/**
+ * Navigate to a route, ensuring the page is on a same-origin URL first.
+ */
+export async function navigateToRoute(page: Page, route: string): Promise<void> {
+  await page.goto(route, { waitUntil: 'domcontentloaded' });
+}
+
+/**
+ * Wait for the DOM to stabilise (no pending network activity).
+ * Falls back gracefully if networkidle times out (e.g. long-polling pages).
+ */
+export async function waitForStableDOM(page: Page): Promise<void> {
+  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {
+    // networkidle can be unreliable on pages with persistent connections;
+    // domcontentloaded is already satisfied at this point.
+  });
+}

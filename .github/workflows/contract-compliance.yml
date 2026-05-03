@@ -16,6 +16,7 @@ on:
     branches: [main, develop]
     paths:
       - 'apps/web/**'
+      - 'apps/web/**'
       - 'examples/canonical/**'
       - 'packages/eslint-plugin-fabric-contracts/**'
       - 'packages/shared/**'
@@ -96,6 +97,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: apps/web
+        working-directory: apps/web
         run: npm ci
 
       - name: Link plugin to frontend
@@ -106,6 +108,7 @@ jobs:
           npm link eslint-plugin-fabric-contracts
 
       - name: Run contract linting (all contract rules as errors)
+        working-directory: apps/web
         working-directory: apps/web
         run: |
           # Uses .eslintrc.js which now enforces all contract rules as "error"
@@ -118,6 +121,8 @@ jobs:
         with:
           name: eslint-contract-violations
           path: |
+            apps/web/.eslintcache
+            apps/web/eslint-report.json
             apps/web/.eslintcache
             apps/web/eslint-report.json
         # No continue-on-error: contract violations must block CI
@@ -222,12 +227,14 @@ jobs:
           echo "Scanning for tenantId parameter violations (CONTRACT.md §2.1)..."
           # Count but don't fail yet - we're tracking toward zero
           VIOLATIONS=$(grep -rn "def.*tenant_id\|def.*tenantId" services/*/src/ --include="*.py" | wc -l || true)
+          VIOLATIONS=$(grep -rn "def.*tenant_id\|def.*tenantId" services/*/src/ --include="*.py" | wc -l || true)
           echo "tenant_id parameter violations found: $VIOLATIONS"
           echo "tenant_violations=$VIOLATIONS" >> $GITHUB_ENV
 
       - name: Contract scan - Raw SQL tenant filtering
         run: |
           echo "Scanning for raw SQL tenant_id filtering (CONTRACT.md §2.2)..."
+          VIOLATIONS=$(grep -rn "WHERE.*tenant_id\|tenant_id.*=" services/*/src/ --include="*.py" | grep -v "migrations/" | wc -l || true)
           VIOLATIONS=$(grep -rn "WHERE.*tenant_id\|tenant_id.*=" services/*/src/ --include="*.py" | grep -v "migrations/" | wc -l || true)
           echo "raw SQL tenant violations found: $VIOLATIONS"
           echo "sql_violations=$VIOLATIONS" >> $GITHUB_ENV
@@ -250,7 +257,7 @@ jobs:
           pip install pytest pytest-asyncio
           python -m pytest tests/security/test_tenant_boundary_fails_closed.py -v
         env:
-          PYTHONPATH: "value-fabric/shared:shared"
+          PYTHONPATH: "packages/shared/src"
         # NO continue-on-error: Tests must pass
 
       - name: Upload contract scan results
@@ -301,6 +308,7 @@ jobs:
 
       - name: Generate OpenAPI spec from code
         working-directory: ./services/${{ matrix.layer }}
+        working-directory: ./services/${{ matrix.layer }}
         run: |
           python -c "
           import sys
@@ -331,6 +339,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-openapi-${{ matrix.layer }}
+          path: services/${{ matrix.layer }}/generated-openapi.json
           path: services/${{ matrix.layer }}/generated-openapi.json
           retention-days: 7
 

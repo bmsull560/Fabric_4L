@@ -1,7 +1,235 @@
-import { describe, it } from 'vitest';
-
 /**
  * Contract tests: Governance / Admin / Settings (L4)
+ *
+ * Validates shapes for tenant management and feature-flag endpoints against
+ * contracts/openapi/layer4-agents.json (TenantModel, TenantCreateRequest,
+ * FeatureFlagResponse, FeatureFlagUpsertRequest).
  */
 
-it('contract placeholder', () => { expect(true).toBe(true) });
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
+import {
+  TenantModelSchema,
+  FeatureFlagResponseSchema,
+  ApiErrorSchema,
+  assertSchema,
+  assertSchemaRejects,
+  fixtures,
+} from './_helpers';
+
+// ── Local request schemas ────────────────────────────────────────────────────
+
+const TenantCreateRequestSchema = z.object({
+  name: z.string().min(1).max(200),
+  slug: z.string().min(1).max(63).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  settings: z.record(z.unknown()).optional(),
+});
+
+const TenantUpdateRequestSchema = z.object({
+  name: z.string().min(1).max(200).nullable().optional(),
+  status: z.enum(['active', 'suspended', 'deleted']).nullable().optional(),
+});
+
+const FeatureFlagUpsertRequestSchema = z.object({
+  enabled: z.boolean(),
+  rollout_percentage: z.number().int().min(0).max(100),
+  description: z.string().nullable().optional(),
+  metadata: z.record(z.unknown()).nullable().optional(),
+});
+
+// ── POST /v1/tenants ─────────────────────────────────────────────────────────
+
+describe('Contract: POST /v1/tenants', () => {
+  it('accepts a valid create request', () => {
+    assertSchema(
+      TenantCreateRequestSchema,
+      { name: 'Acme Corp', slug: 'acme-corp' },
+      'TenantCreateRequest'
+    );
+  });
+
+  it('accepts optional settings object', () => {
+    assertSchema(
+      TenantCreateRequestSchema,
+      { name: 'Acme Corp', slug: 'acme-corp', settings: { timezone: 'UTC', locale: 'en-US' } },
+      'TenantCreateRequest (with settings)'
+    );
+  });
+
+  it('rejects slug with uppercase letters', () => {
+    assertSchemaRejects(
+      TenantCreateRequestSchema,
+      { name: 'Acme', slug: 'Acme-Corp' },
+      'TenantCreateRequest with uppercase slug'
+    );
+  });
+
+  it('rejects slug with spaces', () => {
+    assertSchemaRejects(
+      TenantCreateRequestSchema,
+      { name: 'Acme', slug: 'acme corp' },
+      'TenantCreateRequest with space in slug'
+    );
+  });
+
+  it('rejects name exceeding 200 characters', () => {
+    assertSchemaRejects(
+      TenantCreateRequestSchema,
+      { name: 'a'.repeat(201), slug: 'acme' },
+      'TenantCreateRequest with name > 200 chars'
+    );
+  });
+});
+
+// ── GET /v1/tenants/{tenant_id} ──────────────────────────────────────────────
+
+describe('Contract: GET /v1/tenants/{tenant_id}', () => {
+  it('response matches TenantModel shape', () => {
+    const tenant = assertSchema(TenantModelSchema, fixtures.tenant(), 'TenantModel');
+    expect(tenant.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    );
+    expect(tenant.slug).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  });
+
+  it('all valid status values are accepted', () => {
+    for (const status of ['active', 'suspended', 'deleted'] as const) {
+      assertSchema(
+        TenantModelSchema,
+        { ...fixtures.tenant(), status },
+        `TenantModel (${status})`
+      );
+    }
+  });
+
+  it('rejects unknown status', () => {
+    assertSchemaRejects(
+      TenantModelSchema,
+      { ...fixtures.tenant(), status: 'pending' },
+      'TenantModel with unknown status'
+    );
+  });
+
+  it('rejects invalid UUID for id', () => {
+    assertSchemaRejects(
+      TenantModelSchema,
+      { ...fixtures.tenant(), id: 'not-a-uuid' },
+      'TenantModel with non-UUID id'
+    );
+  });
+});
+
+// ── PATCH /v1/tenants/{tenant_id} ────────────────────────────────────────────
+
+describe('Contract: PATCH /v1/tenants/{tenant_id}', () => {
+  it('accepts partial update with name only', () => {
+    assertSchema(
+      TenantUpdateRequestSchema,
+      { name: 'Acme Corporation' },
+      'TenantUpdateRequest (name only)'
+    );
+  });
+
+  it('accepts status change to suspended', () => {
+    assertSchema(
+      TenantUpdateRequestSchema,
+      { status: 'suspended' },
+      'TenantUpdateRequest (suspend)'
+    );
+  });
+
+  it('accepts empty patch (no-op)', () => {
+    assertSchema(TenantUpdateRequestSchema, {}, 'TenantUpdateRequest (empty)');
+  });
+});
+
+// ── GET /v1/feature-flags ────────────────────────────────────────────────────
+
+describe('Contract: GET /v1/feature-flags', () => {
+  it('individual flag matches FeatureFlagResponse shape', () => {
+    const flag = assertSchema(
+      FeatureFlagResponseSchema,
+      fixtures.featureFlag(),
+      'FeatureFlagResponse'
+    );
+    expect(flag.flag_key).toBeTruthy();
+    expect(typeof flag.enabled).toBe('boolean');
+    expect(flag.rollout_percentage).toBeGreaterThanOrEqual(0);
+    expect(flag.rollout_percentage).toBeLessThanOrEqual(100);
+  });
+
+  it('global flag has null tenant_id', () => {
+    const flag = assertSchema(
+      FeatureFlagResponseSchema,
+      { ...fixtures.featureFlag(), tenant_id: null },
+      'FeatureFlagResponse (global)'
+    );
+    expect(flag.tenant_id).toBeNull();
+  });
+
+  it('rejects rollout_percentage > 100', () => {
+    assertSchemaRejects(
+      FeatureFlagResponseSchema,
+      { ...fixtures.featureFlag(), rollout_percentage: 101 },
+      'FeatureFlagResponse with rollout > 100'
+    );
+  });
+
+  it('rejects rollout_percentage < 0', () => {
+    assertSchemaRejects(
+      FeatureFlagResponseSchema,
+      { ...fixtures.featureFlag(), rollout_percentage: -1 },
+      'FeatureFlagResponse with rollout < 0'
+    );
+  });
+});
+
+// ── PUT /v1/feature-flags/{flag_key} ─────────────────────────────────────────
+
+describe('Contract: PUT /v1/feature-flags/{flag_key}', () => {
+  it('accepts a valid upsert request', () => {
+    assertSchema(
+      FeatureFlagUpsertRequestSchema,
+      { enabled: true, rollout_percentage: 50, description: 'Gradual rollout' },
+      'FeatureFlagUpsertRequest'
+    );
+  });
+
+  it('accepts minimal upsert (no description)', () => {
+    assertSchema(
+      FeatureFlagUpsertRequestSchema,
+      { enabled: false, rollout_percentage: 0 },
+      'FeatureFlagUpsertRequest (minimal)'
+    );
+  });
+
+  it('rejects non-integer rollout_percentage', () => {
+    assertSchemaRejects(
+      FeatureFlagUpsertRequestSchema,
+      { enabled: true, rollout_percentage: 50.5 },
+      'FeatureFlagUpsertRequest with float percentage'
+    );
+  });
+});
+
+// ── Auth failures ─────────────────────────────────────────────────────────────
+
+describe('Contract: governance auth failures', () => {
+  it('non-admin 403 matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'super_admin role required', code: 'FORBIDDEN' },
+      'ApiError (403 governance)'
+    );
+    expect(err.code).toBe('FORBIDDEN');
+  });
+
+  it('tenant not found 404 matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Tenant not found', code: 'NOT_FOUND' },
+      'ApiError (404 tenant)'
+    );
+    expect(err.message).toBeTruthy();
+  });
+});

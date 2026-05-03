@@ -1,11 +1,237 @@
-import { describe, it } from 'vitest';
-
 /**
  * Contract tests: Knowledge Graph (L3)
  *
- * These tests assert frontend API expectations against the documented
- * backend contract. They may be skipped or marked todo until the contract
- * is fully ratified and stable.
+ * Validates request/response shapes against contracts/openapi/layer3-knowledge.json.
+ * Covers: GET /v1/value-trees/{entity_id}, GET /v1/value-trees/{entity_id}/paths,
+ * and the entity/subgraph shapes used by the graph visualisation.
  */
 
-it('contract placeholder', () => { expect(true).toBe(true) });
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
+import {
+  GraphNodeSchema,
+  GraphEdgeSchema,
+  SubgraphResponseSchema,
+  ApiErrorSchema,
+  assertSchema,
+  assertSchemaRejects,
+  fixtures,
+} from './_helpers';
+
+// ── Value Tree schemas ────────────────────────────────────────────────────────
+
+const ValueTreeNodeSchema: z.ZodType<{
+  id: string;
+  label: string;
+  type: string;
+  layer: number;
+  confidence: number;
+  properties: Record<string, unknown>;
+  children?: unknown[];
+}> = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  type: z.string().min(1),
+  layer: z.number().int().min(1).max(4),
+  confidence: z.number().min(0).max(1),
+  properties: z.record(z.unknown()),
+  children: z.lazy(() => z.array(ValueTreeNodeSchema)).optional(),
+});
+
+const ValueTreeEdgeSchema = z.object({
+  source: z.string().min(1),
+  target: z.string().min(1),
+  type: z.enum(['ENABLES', 'BENEFITS', 'DRIVES']),
+  weight: z.number().min(0).max(1),
+});
+
+const ValueTreeResponseSchema = z.object({
+  root_entity_id: z.string().min(1),
+  direction: z.enum(['upward', 'downward']),
+  nodes: z.array(ValueTreeNodeSchema),
+  edges: z.array(ValueTreeEdgeSchema),
+  paths: z.array(
+    z.object({
+      length: z.number().int().positive(),
+      nodes: z.array(z.string()),
+    })
+  ),
+  stats: z.object({
+    total_nodes: z.number().int().nonnegative(),
+    total_edges: z.number().int().nonnegative(),
+    by_layer: z.record(z.number()),
+    max_depth: z.number().int().nonnegative(),
+  }),
+});
+
+const ValueTreePathSchema = z.object({
+  nodes: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      type: z.string().min(1),
+    })
+  ),
+  length: z.number().int().positive(),
+});
+
+// ── GET /v1/value-trees/{entity_id} ──────────────────────────────────────────
+
+describe('Contract: GET /v1/value-trees/{entity_id}', () => {
+  it('upward tree response has root_entity_id and nodes', () => {
+    const resp = assertSchema(
+      ValueTreeResponseSchema,
+      {
+        root_entity_id: 'cap-001',
+        direction: 'upward',
+        nodes: [
+          { id: 'cap-001', label: 'Cloud Migration', type: 'Capability', layer: 1, confidence: 0.95, properties: {} },
+          { id: 'vd-001', label: 'Cost Reduction', type: 'ValueDriver', layer: 4, confidence: 0.88, properties: {} },
+        ],
+        edges: [
+          { source: 'cap-001', target: 'vd-001', type: 'ENABLES', weight: 0.8 },
+        ],
+        paths: [{ length: 2, nodes: ['cap-001', 'vd-001'] }],
+        stats: { total_nodes: 2, total_edges: 1, by_layer: { '1': 1, '4': 1 }, max_depth: 2 },
+      },
+      'ValueTreeResponse (upward)'
+    );
+    expect(resp.root_entity_id).toBe('cap-001');
+    expect(resp.direction).toBe('upward');
+    expect(resp.nodes).toHaveLength(2);
+  });
+
+  it('layer values are constrained to 1–4', () => {
+    assertSchemaRejects(
+      ValueTreeNodeSchema,
+      { id: 'n1', label: 'Test', type: 'Capability', layer: 5, confidence: 0.9, properties: {} },
+      'ValueTreeNode with layer > 4'
+    );
+  });
+
+  it('edge type must be one of ENABLES, BENEFITS, DRIVES', () => {
+    assertSchemaRejects(
+      ValueTreeEdgeSchema,
+      { source: 'n1', target: 'n2', type: 'RELATES_TO', weight: 0.5 },
+      'ValueTreeEdge with unknown type'
+    );
+  });
+
+  it('confidence is in [0,1]', () => {
+    assertSchemaRejects(
+      ValueTreeNodeSchema,
+      { id: 'n1', label: 'Test', type: 'Capability', layer: 1, confidence: 1.5, properties: {} },
+      'ValueTreeNode with confidence > 1'
+    );
+  });
+
+  it('empty tree (no nodes) is valid', () => {
+    assertSchema(
+      ValueTreeResponseSchema,
+      {
+        root_entity_id: 'cap-999',
+        direction: 'downward',
+        nodes: [],
+        edges: [],
+        paths: [],
+        stats: { total_nodes: 0, total_edges: 0, by_layer: {}, max_depth: 0 },
+      },
+      'ValueTreeResponse (empty)'
+    );
+  });
+});
+
+// ── GET /v1/value-trees/{entity_id}/paths ────────────────────────────────────
+
+describe('Contract: GET /v1/value-trees/{entity_id}/paths', () => {
+  it('path list has nodes with id, name, type', () => {
+    const paths = z.array(ValueTreePathSchema);
+    const resp = assertSchema(
+      paths,
+      [
+        {
+          nodes: [
+            { id: 'cap-001', name: 'Cloud Migration', type: 'Capability' },
+            { id: 'uc-001', name: 'Cost Optimisation', type: 'UseCase' },
+            { id: 'vd-001', name: 'Cost Reduction', type: 'ValueDriver' },
+          ],
+          length: 3,
+        },
+      ],
+      'ValueTreePathList'
+    );
+    expect(resp[0].length).toBe(3);
+    expect(resp[0].nodes).toHaveLength(3);
+  });
+
+  it('path length must be positive', () => {
+    assertSchemaRejects(
+      ValueTreePathSchema,
+      { nodes: [{ id: 'n1', name: 'Node', type: 'Capability' }], length: 0 },
+      'ValueTreePath with length 0'
+    );
+  });
+});
+
+// ── Subgraph / entity shapes ──────────────────────────────────────────────────
+
+describe('Contract: subgraph and entity shapes', () => {
+  it('graph node has required id, name, type', () => {
+    const node = assertSchema(GraphNodeSchema, fixtures.graphNode(), 'GraphNode');
+    expect(node.id).toBeTruthy();
+    expect(node.name).toBeTruthy();
+    expect(node.type).toBeTruthy();
+  });
+
+  it('graph edge has source, target, relationship', () => {
+    assertSchema(
+      GraphEdgeSchema,
+      { source: 'node-001', target: 'node-002', relationship: 'ENABLES' },
+      'GraphEdge'
+    );
+  });
+
+  it('subgraph response has stats with density', () => {
+    const resp = assertSchema(
+      SubgraphResponseSchema,
+      {
+        root_entity_id: 'node-001',
+        nodes: [fixtures.graphNode()],
+        edges: [],
+        depth: 2,
+        stats: { total_nodes: 1, total_edges: 0, density: 0.0 },
+      },
+      'SubgraphResponse'
+    );
+    expect(resp.stats.density).toBeGreaterThanOrEqual(0);
+  });
+
+  it('confidence_score is optional on graph nodes', () => {
+    assertSchema(
+      GraphNodeSchema,
+      { id: 'n1', name: 'Test', type: 'capability' },
+      'GraphNode (no confidence_score)'
+    );
+  });
+});
+
+// ── Auth failures ─────────────────────────────────────────────────────────────
+
+describe('Contract: graph auth failures', () => {
+  it('entity not found 404 matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Entity not found', code: 'NOT_FOUND' },
+      'ApiError (404)'
+    );
+    expect(err.code).toBe('NOT_FOUND');
+  });
+
+  it('401 matches ApiError shape', () => {
+    assertSchema(
+      ApiErrorSchema,
+      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      'ApiError (401)'
+    );
+  });
+});
