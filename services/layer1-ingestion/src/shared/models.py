@@ -291,7 +291,7 @@ class ScrapingTarget(Base):
     status = Column(String(50), nullable=False, default=TargetStatus.ACTIVE.value)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
     )
     created_by = Column(UUID(as_uuid=True), nullable=False)
     last_success_at = Column(DateTime(timezone=True), nullable=True)
@@ -618,7 +618,7 @@ class ExtractedData(Base):
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
     )
 
     # Relationships
@@ -757,7 +757,7 @@ class ProxyPool(Base):
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
     )
 
     __table_args__ = (

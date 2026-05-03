@@ -9,7 +9,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from uuid import UUID
 
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -264,8 +264,6 @@ def get_db_with_tenant_from_context(
 # ---------------------------------------------------------------------------
 # Sprint 5: Context-aware database session for sync layers (Task 5.2.1)
 # ---------------------------------------------------------------------------
-
-from fastapi import Depends
 
 try:
     from value_fabric.shared.identity.middleware_sync import (

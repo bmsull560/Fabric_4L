@@ -43,7 +43,10 @@ class RobotsChecker:
     """
 
     def __init__(
-        self, user_agent: str = None, cache_ttl_hours: int = None, respect_crawl_delay: bool = True
+        self,
+        user_agent: str | None = None,
+        cache_ttl_hours: int | None = None,
+        respect_crawl_delay: bool = True,
     ):
         self.user_agent = user_agent or "ValueFabricBot/1.0"
         self.cache_ttl_hours = cache_ttl_hours or settings.robots_txt_cache_hours

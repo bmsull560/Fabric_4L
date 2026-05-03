@@ -4,6 +4,7 @@ All data source adapters (SEC EDGAR, USPTO, News) must implement
 the DataSourceAdapter abstract base class.
 """
 
+import asyncio
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -167,8 +168,6 @@ class DataSourceAdapter(ABC):
         Yields:
             FilingDocument instances
         """
-        import asyncio
-
         for doc_id in document_ids:
             try:
                 document = await self.fetch_document(doc_id, **kwargs)
@@ -192,8 +191,6 @@ class DataSourceAdapter(ABC):
         Returns:
             Seconds to sleep (0 if no limit needed)
         """
-        from datetime import datetime
-
         if self.config.rate_limit_per_second <= 0:
             return 0.0
 

@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
+from urllib.parse import urlparse
 
 import structlog
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -148,7 +149,6 @@ data needed to calculate it later.
         Returns:
             ExecutionLogEntry that was logged
         """
-        from urllib.parse import urlparse
 
         entry = ExecutionLogEntry(
             timestamp=datetime.now(UTC).isoformat(),
@@ -199,7 +199,6 @@ data needed to calculate it later.
         Returns:
             ExecutionLogEntry that was logged
         """
-        from urllib.parse import urlparse
 
         entry = ExecutionLogEntry(
             timestamp=datetime.now(UTC).isoformat(),
@@ -252,7 +251,6 @@ data needed to calculate it later.
         Returns:
             ExecutionLogEntry that was logged
         """
-        from urllib.parse import urlparse
 
         entry = ExecutionLogEntry(
             timestamp=datetime.now(UTC).isoformat(),
@@ -303,7 +301,6 @@ data needed to calculate it later.
         Returns:
             ExecutionLogEntry that was logged
         """
-        from urllib.parse import urlparse
 
         entry = ExecutionLogEntry(
             timestamp=datetime.now(UTC).isoformat(),
