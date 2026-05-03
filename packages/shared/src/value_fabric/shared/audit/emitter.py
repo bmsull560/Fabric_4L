@@ -59,10 +59,13 @@ _SENSITIVE_KEYS: Set[str] = {
 
 def _scrub_details(details: Dict[str, Any]) -> Dict[str, Any]:
     """Return a copy of *details* with sensitive keys replaced by '[REDACTED]'."""
-    return _scrub_detailsResult.model_validate({
+    # Keep the public emitter contract as a plain mapping.  The lightweight
+    # TypedDictModel wrapper is useful for generated typing, but AuditEvent and
+    # downstream DB serialization expect a concrete dict.
+    return {
         k: "[REDACTED]" if k.lower() in _SENSITIVE_KEYS else v
         for k, v in details.items()
-    })
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +86,7 @@ def emit_audit_event(
     request_id: Optional[str] = None,
     outcome: AuditOutcome = AuditOutcome.SUCCESS,
     details: Optional[Dict[str, Any]] = None,
+    chain_id: Optional[str] = None,
 ) -> AuditEvent:
     """Create and emit an audit event.
 
@@ -136,6 +140,7 @@ def emit_audit_event(
                 "request_id": event.request_id,
                 "timestamp": event.timestamp.isoformat(),
                 "details": event.details,
+                "chain_id": chain_id,
             }
         )
     )

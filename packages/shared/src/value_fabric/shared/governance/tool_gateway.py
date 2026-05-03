@@ -123,6 +123,13 @@ class ToolGateway:
         # ── Step 1: ABOM allow/deny ──
         if not self._abom.is_tool_allowed(tool_name):
             reason = f"ABOM denies tool '{tool_name}' for {self._abom.agent_type}"
+            await self._emit_policy_decision_audit(
+                tool_name=tool_name,
+                allowed=False,
+                reason=reason,
+                obligations=["abom_denied"],
+                policy_bundle_hash=self._abom.manifest_hash(),
+            )
             await self._emit_denied_audit(tool_name, request_hash, reason, "denied")
             raise ToolGatewayDenied(tool_name, reason)
 
@@ -132,6 +139,13 @@ class ToolGateway:
             tool_name=tool_name,
             input_data=input_data,
             tenant_id=self._tenant_id,
+        )
+        await self._emit_policy_decision_audit(
+            tool_name=tool_name,
+            allowed=policy_decision.allowed,
+            reason=policy_decision.reason,
+            obligations=policy_decision.obligations,
+            policy_bundle_hash=policy_decision.policy_bundle_hash or self._abom.manifest_hash(),
         )
         if not policy_decision.allowed:
             reason = policy_decision.reason or "Policy denied"
@@ -144,9 +158,26 @@ class ToolGateway:
             input_data=input_data,
             estimated_cost_usd=estimated_cost_usd,
         )
+        invariant_bundle_hash = canonical_hash({
+            "abom_manifest_hash": self._abom.manifest_hash(),
+            "invariants": self._abom.invariants.model_dump(),
+        })
         if not inv_result.passed:
             reason = "; ".join(inv_result.violations)
-            await self._emit_denied_audit(tool_name, request_hash, reason, "invariant_blocked")
+            await self._emit_policy_decision_audit(
+                tool_name=tool_name,
+                allowed=False,
+                reason=reason,
+                obligations=["invariant_blocked", *inv_result.violations],
+                policy_bundle_hash=invariant_bundle_hash,
+            )
+            await self._emit_denied_audit(
+                tool_name,
+                request_hash,
+                reason,
+                "invariant_blocked",
+                invariant_checks=inv_result.violations,
+            )
             raise InvariantViolation(inv_result.violations)
 
         for warning in inv_result.warnings:
@@ -176,6 +207,8 @@ class ToolGateway:
             "response_hash": response_hash,
             "execution_time_ms": elapsed_ms,
             "policy_decision": "allowed",
+            "policy_bundle_hash": policy_decision.policy_bundle_hash or self._abom.manifest_hash(),
+            "invariant_checks": inv_result.warnings,
         }
         self._invocation_log.append(log_entry)
 
@@ -186,6 +219,7 @@ class ToolGateway:
             response_hash=response_hash,
             elapsed_ms=elapsed_ms,
             policy_decision=policy_decision,
+            invariant_checks=inv_result.warnings,
         )
 
         return result
@@ -197,6 +231,7 @@ class ToolGateway:
         response_hash: str,
         elapsed_ms: int,
         policy_decision: PolicyDecision,
+        invariant_checks: list[str] | None = None,
     ) -> None:
         """Emit TOOL_INVOCATION audit event for successful execution."""
         record = ToolInvocationRecord(
@@ -205,6 +240,7 @@ class ToolGateway:
             request_hash=request_hash,
             response_hash=response_hash,
             policy_decision="allowed",
+            invariant_checks=invariant_checks or [],
             execution_time_ms=elapsed_ms,
             tenant_id=self._tenant_id,
             trace_id=self._trace_id,
@@ -214,7 +250,7 @@ class ToolGateway:
             outcome=AuditOutcome.SUCCESS,
             resource_type="tool",
             resource_id=tool_name,
-            tenant_id=UUID(self._tenant_id) if self._tenant_id else None,
+            tenant_id=self._tenant_uuid(),
             request_id=self._trace_id,
             details=record.model_dump(),
             chain_id=f"{self._tenant_id or 'global'}:{tool_name}",
@@ -226,6 +262,7 @@ class ToolGateway:
         request_hash: str,
         reason: str,
         decision_type: str,
+        invariant_checks: list[str] | None = None,
     ) -> None:
         """Emit TOOL_INVOCATION audit event for denied execution."""
         record = ToolInvocationRecord(
@@ -233,6 +270,7 @@ class ToolGateway:
             tool_manifest_hash=self._abom.manifest_hash(),
             request_hash=request_hash,
             policy_decision=decision_type,
+            invariant_checks=invariant_checks or [],
             tenant_id=self._tenant_id,
             trace_id=self._trace_id,
         )
@@ -241,11 +279,46 @@ class ToolGateway:
             outcome=AuditOutcome.DENIED,
             resource_type="tool",
             resource_id=tool_name,
-            tenant_id=UUID(self._tenant_id) if self._tenant_id else None,
+            tenant_id=self._tenant_uuid(),
             request_id=self._trace_id,
             details={**record.model_dump(), "denial_reason": reason},
             chain_id=f"{self._tenant_id or 'global'}:{tool_name}",
         )
+
+    async def _emit_policy_decision_audit(
+        self,
+        tool_name: str,
+        allowed: bool,
+        reason: str | None,
+        obligations: list[str] | None,
+        policy_bundle_hash: str | None,
+    ) -> None:
+        """Emit the stage-1/stage-2 runtime policy decision for audit replay."""
+        record = PolicyDecisionRecord(
+            decision=allowed,
+            reason=reason,
+            obligations=obligations or [],
+            policy_bundle_hash=policy_bundle_hash,
+        )
+        await emit_audit_event(
+            action=AuditAction.POLICY_DECISION,
+            outcome=AuditOutcome.SUCCESS if allowed else AuditOutcome.DENIED,
+            resource_type="tool",
+            resource_id=tool_name,
+            tenant_id=self._tenant_uuid(),
+            request_id=self._trace_id,
+            details=record.model_dump(),
+            chain_id=f"{self._tenant_id or 'global'}:policy:{tool_name}",
+        )
+
+    def _tenant_uuid(self) -> UUID | None:
+        """Return a UUID tenant for audit storage when the tenant ID is canonical."""
+        if not self._tenant_id:
+            return None
+        try:
+            return UUID(self._tenant_id)
+        except (TypeError, ValueError):
+            return None
 
     def reset_for_new_run(self) -> None:
         """Reset gateway state for a new agent run."""

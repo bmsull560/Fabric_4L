@@ -5,10 +5,14 @@ continue-on-error that would allow violations to pass silently.
 """
 
 import os
+import re
 from pathlib import Path
 
+import jsonschema
 import pytest
 import yaml
+
+from value_fabric.shared.audit.models import PolicyDecisionRecord
 
 
 class TestContractGatePolicy:
@@ -106,6 +110,54 @@ class TestContractGatePolicy:
         assert "bash scripts/ci/mandatory_security_regression_gate.sh" in content, (
             "Makefile target must invoke the canonical mandatory security regression script"
         )
+
+    def test_policy_decision_record_schema_matches_shared_contract(self):
+        """Sprint 3 runtime policy decisions must have explicit schema coverage."""
+        schema_path = Path("packages/platform-contract/schemas/gate/policy-decision-record.schema.json")
+        assert schema_path.exists(), "policy-decision detail schema is missing"
+        schema = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+
+        allowed = PolicyDecisionRecord(
+            decision=True,
+            reason="OPA allowed tool",
+            obligations=["log_invocation"],
+            policy_bundle_hash="a" * 64,
+        ).model_dump()
+        denied = PolicyDecisionRecord(
+            decision=False,
+            reason="invariant_blocked",
+            obligations=["invariant_blocked"],
+            policy_bundle_hash="b" * 64,
+        ).model_dump()
+
+        validator = jsonschema.Draft202012Validator(schema)
+        validator.validate(allowed)
+        validator.validate(denied)
+
+    def test_backend_integrated_product_confidence_guard_is_structural(self):
+        """Critical frontend journeys must fail closed and keep backend seeding wired."""
+        guard = Path("apps/web/scripts/security/assert-no-skipped-critical-e2e.mjs")
+        config = Path("apps/web/playwright.config.ts")
+        crud = Path("apps/web/e2e/my-models.spec.ts")
+        setup = Path("apps/web/e2e/global-setup.ts")
+        package_json = Path("apps/web/package.json")
+
+        assert guard.exists(), "critical E2E guard is missing"
+        guard_text = guard.read_text(encoding="utf-8")
+        config_text = config.read_text(encoding="utf-8")
+        crud_text = crud.read_text(encoding="utf-8")
+        setup_text = setup.read_text(encoding="utf-8")
+        package_text = package_json.read_text(encoding="utf-8")
+
+        assert "requiredEvidence" in guard_text, "guard must assert required backend wiring, not only skipped tests"
+        assert "backend-integrated" in guard_text, "guard must protect the backend-integrated project"
+        assert re.search(r"name:\s*['\"]backend-integrated['\"]", config_text)
+        assert re.search(r"grep:\s*/@backend/", config_text)
+        assert "globalSetup: './e2e/global-setup.ts'" in config_text
+        assert "PLAYWRIGHT_BACKEND_URL is required for the @backend My Models CRUD journey" in crud_text
+        assert "seed-e2e-data" in setup_text
+        assert '"test:e2e:guard": "node scripts/security/assert-no-skipped-critical-e2e.mjs"' in package_text
+        assert '"test:e2e:backend": "pnpm run test:e2e:guard && playwright test --project=backend-integrated"' in package_text
 
     def test_mandatory_security_regression_gate_covers_launch_blocker_surfaces(self):
         """Mandatory gate must cover the Sprint 2 launch-blocker surfaces."""

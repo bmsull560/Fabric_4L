@@ -7,7 +7,17 @@ Provides:
 """
 
 from .emitter import AuditEmitter, emit_audit_event
-from .models import AuditAction, AuditEvent, AuditOutcome, TenantResolvedDetails, TenantContextSetDetails
+from .models import (
+    AuditAction,
+    AuditEvent,
+    AuditOutcome,
+    TenantResolvedDetails,
+    TenantContextSetDetails,
+    ToolInvocationRecord,
+    PolicyDecisionRecord,
+    MemoryAccessRecord,
+    ReplaySnapshotRecord,
+)
 
 __all__ = [
     "TenantResolvedDetails",
@@ -17,4 +27,8 @@ __all__ = [
     "AuditOutcome",
     "AuditEmitter",
     "emit_audit_event",
+    "ToolInvocationRecord",
+    "PolicyDecisionRecord",
+    "MemoryAccessRecord",
+    "ReplaySnapshotRecord",
 ]
