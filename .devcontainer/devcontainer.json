@@ -67,6 +67,10 @@
     "7474": {
       "label": "Neo4j Browser",
       "onAutoForward": "notify"
+    },
+    "7687": {
+      "label": "Neo4j Bolt",
+      "onAutoForward": "silent"
     }
   },
   "remoteUser": "vscode"
