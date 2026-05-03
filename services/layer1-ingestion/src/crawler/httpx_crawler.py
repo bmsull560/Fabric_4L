@@ -26,6 +26,11 @@ class HttpxCrawler_get_statsResult(TypedDictModel):
 
 logger = structlog.get_logger()
 
+# Constants for content processing
+MAX_STORAGE_HTML_LENGTH = 100_000  # Truncate stored HTML to prevent memory bloat
+CONTENT_HASH_PREFIX_LENGTH = 16  # First 16 chars of SHA256 for deduplication
+SPA_DETECTION_THRESHOLD = 2  # Minimum indicators needed for SPA detection
+
 
 @dataclass(frozen=True)
 class FastPathResult:
@@ -198,13 +203,13 @@ class HttpxCrawler:
             # P1 Fix: Extract links from FULL HTML before truncation
             links = self._extract_links(full_html, url)
 
-            # Content hash for deduplication
-            content_hash = hashlib.sha256(text_content.encode()).hexdigest()[:16]
+            # Content hash for deduplication (truncated for efficiency)
+            content_hash = hashlib.sha256(text_content.encode()).hexdigest()[:CONTENT_HASH_PREFIX_LENGTH]
 
             return FastPathResult(
                 url=url,
                 status_code=response.status_code,
-                html=html[:100000],  # Truncate for storage
+                html=html[:MAX_STORAGE_HTML_LENGTH],  # Truncate for storage
                 title=title,
                 text_content=text_content,
                 content_hash=content_hash,
@@ -346,8 +351,8 @@ class HttpxCrawler:
             has_empty_root,
         ]
 
-        # Require 2+ indicators to reduce false positives
-        return sum(indicators) >= 2
+        # Require multiple indicators to reduce false positives
+        return sum(indicators) >= SPA_DETECTION_THRESHOLD
 
     def _extract_links(self, html: str, base_url: str) -> list[str]:
         """Extract all links from HTML content.

@@ -678,18 +678,17 @@ if SHARED_ERROR_HANDLING_AVAILABLE:
     app.add_middleware(RequestIDMiddleware)
     logger.info("RequestIDMiddleware enabled for trace correlation")
 
-# Security middleware — runs before auth to validate input (only if shared package available)
+# Security middleware — runs before auth to validate input
 # P1-14 FIX: Removed /v1/query paths from skip list
 # All untrusted input must pass through SecurityMiddleware validation
-if SecurityConfig and add_security_middleware:
-    _security_config_l3 = SecurityConfig.from_env(
-        skip_validation_paths=frozenset({
-            "/health",
-            "/metrics",
-        }),
-        strict_mode=True,
-    )
-    add_security_middleware(app, config=_security_config_l3)
+_security_config_l3 = SecurityConfig.from_env(
+    skip_validation_paths=frozenset({
+        "/health",
+        "/metrics",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l3)
 
 # GovernanceMiddleware — provides verified JWT + API-key auth for L3 (mandatory)
 from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported

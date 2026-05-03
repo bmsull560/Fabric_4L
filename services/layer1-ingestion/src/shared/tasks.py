@@ -225,13 +225,17 @@ def compliance_check_stage(self, job_id: str):
             if compliance_config.get("respect_robots_txt", True):
                 user_agent = compliance_config.get("user_agent_string", "ValueFabricBot")
                 checker = RobotsChecker(user_agent=user_agent)
-                domain = url.split("/")[2] if "/" in url else url
+                parsed = urlparse(url)
+                domain = parsed.netloc
+                if not domain:
+                    raise ValueError(f"Invalid URL for robots.txt check: {url}")
 
-                allowed, reason, rules = asyncio.run(checker.check_url(domain, url))
+                allowed, reason, rules = asyncio.run(checker.check_url(url))
                 crawl_delay = rules.get("crawl_delay") if rules else None
 
                 # Log compliance check
                 log = ComplianceLog(
+                    tenant_id=job.tenant_id,
                     job_id=job_id,
                     target_id=job.target_id,
                     event_type=ComplianceEventType.ROBOTS_TXT_CHECK.value,
@@ -902,8 +906,12 @@ def notification_stage(prev_result: dict):
 
 
 def _update_stage(
-    session, job_id: UUID, stage: PipelineStage, status: str, error_message: str = None
-):
+    session: Session,
+    job_id: UUID,
+    stage: PipelineStage,
+    status: str,
+    error_message: str | None = None,
+) -> None:
     """Update pipeline stage status."""
     stage_detail = (
         session.query(JobStageDetail)

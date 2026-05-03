@@ -118,17 +118,19 @@ Maximum {max_length} words.""",
         ctx = require_context()
         tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
 
-        metrics = get_metrics()
-        if metrics:
-            metrics.record_llm_cost(
-                provider="openai",
-                model=decision.model,
-                tenant_id=tenant_id,
-                cost=cost,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                status="throttled" if decision.escalation_required else "success",
-            )
+        from ..models.cost_record import CostRecord
+        from ..metrics.llm_cost_metrics import record_cost
+
+        record = CostRecord(
+            model=decision.model,
+            provider="openai",
+            input_tokens=prompt_tokens,
+            output_tokens=completion_tokens,
+            cost_usd=cost,
+            tenant_id=tenant_id,
+            metadata={"status": "throttled" if decision.escalation_required else "success"},
+        )
+        record_cost(record)
 
         if decision.escalation_required:
             logger.warning(

@@ -1,7 +1,7 @@
 """Migration: Add invoice and charge record tables for billing history.
 
-Revision ID: 016
-Revises: 015
+Revision ID: 024
+Revises: 023
 Create Date: 2026-04-23
 
 This migration creates:
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # Revision identifiers
-revision = '016'
-down_revision = '015'
+revision = '024'
+down_revision = '023'
 branch_labels = None
 depends_on = None
 

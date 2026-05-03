@@ -44,12 +44,16 @@ class CheckpointConfig:
     """
 
     @classmethod
-    def get_database_url(cls) -> str:
+    def get_database_url(cls) -> str | None:
         """Get checkpoint database URL from environment."""
-        return os.getenv(
-            "CHECKPOINT_DATABASE_URL",
-            "postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth",
-        )
+        url = os.getenv("CHECKPOINT_DATABASE_URL")
+        if url:
+            return url
+        if os.getenv("ENVIRONMENT") in ("production", "staging"):
+            raise RuntimeError(
+                "CHECKPOINT_DATABASE_URL must be set in production/staging"
+            )
+        return None
 
     @classmethod
     def _clean_url(cls, url: str) -> str:

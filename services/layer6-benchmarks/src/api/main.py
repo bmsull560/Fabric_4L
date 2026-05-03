@@ -37,11 +37,15 @@ except ImportError:
     add_security_middleware = None
     SecurityConfig = None
 
+if not SecurityConfig and os.getenv("ENVIRONMENT") in ("production", "staging"):
+    raise RuntimeError("SecurityMiddleware required in production")
+
 try:
     from value_fabric.shared.observability import verify_metrics_access
 except ImportError:  # pragma: no cover
     verify_metrics_access = None  # type: ignore[assignment]
 
+from ..database import close_driver, get_driver, health_check as neo4j_health_check
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
     MANUFACTURING_BENCHMARK_SEED,
@@ -49,10 +53,11 @@ from ..models.benchmark_dataset import (
     BenchmarkMetric,
     StatisticalProfile,
 )
+from ..repositories.benchmark_repository import BenchmarkRepository
 from .routes import benchmarks, system
 
-# In-memory storage (replace with Neo4j in production)
-_benchmark_store: Dict[str, BenchmarkDataset] = {}
+# Neo4j-backed repository (initialized in lifespan)
+_benchmark_repo: BenchmarkRepository | None = None
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
 _tracer_provider: TracerProvider | None = None
@@ -80,7 +85,7 @@ def init_telemetry() -> TracerProvider | None:
     return provider
 
 
-def _init_seed_data():
+async def _init_seed_data():
     """Initialize with manufacturing benchmark dataset."""
     seed = MANUFACTURING_BENCHMARK_SEED
     dataset = BenchmarkDataset(
@@ -112,7 +117,8 @@ def _init_seed_data():
         )
         dataset.add_metric(metric)
 
-    _benchmark_store[dataset.dataset_id] = dataset
+    if _benchmark_repo is not None:
+        await _benchmark_repo.save_dataset(dataset)
 
 
 @asynccontextmanager
@@ -137,15 +143,25 @@ async def lifespan(app: FastAPI):
         app.middleware("http")(metrics_middleware)
         logger.info("L6: Metrics middleware installed")
 
-    # Startup
-    _init_seed_data()
-    dataset_count = len(_benchmark_store)
+    # Startup: initialize Neo4j and seed data
+    global _benchmark_repo
+    try:
+        driver = await get_driver()
+        _benchmark_repo = BenchmarkRepository(driver)
+        await _init_seed_data()
+        datasets = await _benchmark_repo.list_datasets()
+        dataset_count = len(datasets)
+        logger.info("Layer 6 Benchmark Service started with %d datasets", dataset_count)
+    except Exception as exc:
+        logger.error("Failed to initialize Neo4j benchmark store: %s", exc)
+        raise
+
     if metrics:
         metrics.set_datasets_loaded(dataset_count)
-    logger.info(f"Layer 6 Benchmark Service started with {dataset_count} datasets")
     yield
     # Shutdown
-    _benchmark_store.clear()
+    await close_driver()
+    _benchmark_repo = None
 
 
 app = FastAPI(
@@ -281,20 +297,35 @@ async def health_check(request: Request = None):
 
     start_time = time.time()
 
-    dataset_count = len(_benchmark_store)
+    # Neo4j connectivity check
+    neo4j_status = await neo4j_health_check()
+    neo4j_healthy = neo4j_status.get("status") == "healthy"
+
+    dataset_count = 0
+    if _benchmark_repo is not None:
+        try:
+            datasets = await _benchmark_repo.list_datasets()
+            dataset_count = len(datasets)
+        except Exception as exc:
+            logger.warning("Health check: failed to list datasets: %s", exc)
 
     # System metrics
     memory_info = psutil.virtual_memory()
     cpu_percent = psutil.cpu_percent(interval=None)
 
-    # Layer 6 uses benchmark dataset store as a runtime dependency.
     dependencies = [
+        {
+            "name": "neo4j",
+            "status": "healthy" if neo4j_healthy else "degraded",
+            "response_time_ms": 0,
+            "error": None if neo4j_healthy else neo4j_status.get("error"),
+        },
         {
             "name": "benchmark_dataset_store",
             "status": "healthy" if dataset_count > 0 else "degraded",
             "response_time_ms": 0,
             "error": None if dataset_count > 0 else "No benchmark datasets are loaded",
-        }
+        },
     ]
 
     overall_status = "healthy" if all(d["status"] == "healthy" for d in dependencies) else "degraded"
@@ -326,28 +357,27 @@ async def list_datasets(
     segment: Optional[str] = None,
 ):
     """List available benchmark datasets."""
-    datasets = []
-    for dataset in _benchmark_store.values():
-        if industry and dataset.industry != industry:
-            continue
-        if segment and dataset.segment != segment:
-            continue
-        datasets.append(
-            DatasetSummary(
-                dataset_id=dataset.dataset_id,
-                name=dataset.name,
-                industry=dataset.industry,
-                segment=dataset.segment,
-                metrics=list(dataset.metrics.keys()),
-                version=dataset.version,
-            )
+    if _benchmark_repo is None:
+        raise HTTPException(status_code=503, detail="Benchmark store not initialized")
+    datasets = await _benchmark_repo.list_datasets(industry=industry, segment=segment)
+    return [
+        DatasetSummary(
+            dataset_id=d.dataset_id,
+            name=d.name,
+            industry=d.industry,
+            segment=d.segment,
+            metrics=list(d.metrics.keys()),
+            version=d.version,
         )
-    return datasets
+        for d in datasets
+    ]
 
 
 async def get_dataset(dataset_id: str):
     """Get benchmark dataset by ID."""
-    dataset = _benchmark_store.get(dataset_id)
+    if _benchmark_repo is None:
+        raise HTTPException(status_code=503, detail="Benchmark store not initialized")
+    dataset = await _benchmark_repo.get_dataset(dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
@@ -374,7 +404,9 @@ async def get_dataset(dataset_id: str):
 
 async def compare(payload: ComparisonRequestPayload):
     """Execute peer comparison."""
-    dataset = _benchmark_store.get(payload.dataset_id)
+    if _benchmark_repo is None:
+        raise HTTPException(status_code=503, detail="Benchmark store not initialized")
+    dataset = await _benchmark_repo.get_dataset(payload.dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
@@ -435,7 +467,9 @@ async def compare(payload: ComparisonRequestPayload):
 
 async def validate(payload: ValidationRequestPayload):
     """Validate value against benchmark range."""
-    dataset = _benchmark_store.get(payload.dataset_id)
+    if _benchmark_repo is None:
+        raise HTTPException(status_code=503, detail="Benchmark store not initialized")
+    dataset = await _benchmark_repo.get_dataset(payload.dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
@@ -493,9 +527,10 @@ async def validate(payload: ValidationRequestPayload):
 
 async def list_industries():
     """List available industries."""
-    industries = set()
-    for dataset in _benchmark_store.values():
-        industries.add(dataset.industry)
+    if _benchmark_repo is None:
+        raise HTTPException(status_code=503, detail="Benchmark store not initialized")
+    datasets = await _benchmark_repo.list_datasets()
+    industries = {d.industry for d in datasets}
     return list_industriesResult.model_validate({"industries": sorted(industries)})
 
 app.include_router(system.router)

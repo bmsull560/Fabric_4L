@@ -299,6 +299,13 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 
 ---
 
+## Field Deprecations
+
+- [P2] graph-node-legacy-fields: GraphNode alias fields (name, entity_type, confidence_score) are deprecated in favor of canonical fields (label, type, confidence). Target removal: 2026-07-01.
+- [P2] graph-edge-legacy-field: GraphEdge alias field (relationship_type) is deprecated in favor of canonical field (type). Target removal: 2026-07-01.
+
+---
+
 ## Weekly Report Command
 
 ```bash

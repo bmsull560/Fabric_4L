@@ -1,7 +1,7 @@
 """Fix unsafe tenant_id IS NULL pattern in RLS policies from migrations 007/013.
 
-Revision ID: 018
-Revises: 017
+Revision ID: 026
+Revises: 025
 Create Date: 2026-04-24
 
 SECURITY FIX: Migrations 007 and 013 created RLS policies with:
@@ -27,8 +27,8 @@ from typing import Union
 from alembic import op
 
 
-revision: str = "018"
-down_revision: Union[str, None] = "017"
+revision: str = "026"
+down_revision: Union[str, None] = "025"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

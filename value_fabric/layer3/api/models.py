@@ -1003,16 +1003,34 @@ class GraphNode(BaseModel):
     @property
     def name(self) -> str:
         """Frontend-compatible alias for 'label'."""
+        import warnings
+        warnings.warn(
+            "GraphNode.name is deprecated; use GraphNode.label instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.label
 
     @property
     def entity_type(self) -> str:
         """Frontend-compatible alias for 'type'."""
+        import warnings
+        warnings.warn(
+            "GraphNode.entity_type is deprecated; use GraphNode.type instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.type
 
     @property
     def confidence_score(self) -> float:
         """Frontend-compatible alias for 'confidence'."""
+        import warnings
+        warnings.warn(
+            "GraphNode.confidence_score is deprecated; use GraphNode.confidence instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.confidence
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
@@ -1052,6 +1070,12 @@ class GraphEdge(BaseModel):
     @property
     def relationship_type(self) -> str:
         """Frontend-compatible alias for 'type'."""
+        import warnings
+        warnings.warn(
+            "GraphEdge.relationship_type is deprecated; use GraphEdge.type instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.type
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:

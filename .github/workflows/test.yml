@@ -116,12 +116,17 @@ jobs:
           NEO4J_PASSWORD: test
 
       - name: Generate coverage report
-        run: pytest --cov=src --cov-report=xml --cov-fail-under=80
+        run: |
+          for svc in services/layer1-ingestion services/layer2-extraction services/layer3-knowledge services/layer4-agents services/layer5-ground-truth services/layer6-benchmarks; do
+            echo "=== Coverage for $svc ==="
+            (cd "$svc" && pytest --cov=src --cov-report=xml --cov-fail-under=80)
+            cp "$svc/coverage.xml" "coverage-$(basename "$svc").xml"
+          done
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.xml
+          files: ./coverage-*.xml
           fail_ci_if_error: false
 
   frontend-tests:

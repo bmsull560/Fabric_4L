@@ -6,7 +6,9 @@ against evidence sources (case studies, benchmarks, etc.).
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from functools import lru_cache
 from typing import Any
 
 from neo4j import AsyncDriver
@@ -17,6 +19,25 @@ except ImportError:
     require_context = None
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_embedding_model():
+    """Load and cache the sentence-transformers model.
+
+    Uses the EMBEDDING_MODEL setting (default: sentence-transformers/all-MiniLM-L6-v2).
+    """
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError as exc:
+        raise RuntimeError(
+            "sentence-transformers is not installed. "
+            "Install it to use real embeddings."
+        ) from exc
+    from ..config import get_settings
+
+    settings = get_settings()
+    return SentenceTransformer(settings.embedding_model)
 
 
 def _get_tenant_id() -> str:
@@ -313,10 +334,7 @@ class EvidenceSearchService:
             return record["evidence_id"] if record else evidence_id
 
     async def _generate_embedding(self, text: str) -> list[float]:
-        """Generate embedding vector for text.
-
-        In production, this calls an embedding service.
-        For now, returns a placeholder.
+        """Generate embedding vector for text using sentence-transformers.
 
         Args:
             text: Input text to embed
@@ -324,11 +342,9 @@ class EvidenceSearchService:
         Returns:
             Embedding vector (384 dimensions)
         """
-        # TODO: Integrate with actual embedding service
-        # This is a placeholder that returns zeros
-        # In production, call OpenAI, Cohere, or local embedding model
-        logger.warning("Using placeholder embeddings - integrate with embedding service")
-        return [0.0] * self.VECTOR_DIMENSIONS
+        model = _get_embedding_model()
+        embedding = await asyncio.to_thread(model.encode, text)
+        return embedding.tolist()
 
     def _generate_reasoning(
         self,

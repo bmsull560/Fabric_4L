@@ -31,6 +31,9 @@ except ImportError:
     add_security_middleware = None
     SecurityConfig = None
 
+if not SecurityConfig and os.getenv("ENVIRONMENT") in ("production", "staging"):
+    raise RuntimeError("SecurityMiddleware required in production")
+
 try:
     from value_fabric.shared.identity.vault_check import is_vault_healthy
 except ImportError:

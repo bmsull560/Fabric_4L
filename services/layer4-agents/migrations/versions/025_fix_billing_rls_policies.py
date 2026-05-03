@@ -1,7 +1,7 @@
 """Fix billing RLS policies to use consistent app.tenant_id setting.
 
-Revision ID: 017
-Revises: 016
+Revision ID: 025
+Revises: 024
 Create Date: 2026-04-24
 
 SECURITY FIX: Migration 016 created RLS policies on billing_invoices,
@@ -33,8 +33,8 @@ from typing import Union
 from alembic import op
 
 
-revision: str = "017"
-down_revision: Union[str, None] = "016"
+revision: str = "025"
+down_revision: Union[str, None] = "024"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

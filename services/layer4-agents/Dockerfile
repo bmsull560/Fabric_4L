@@ -20,6 +20,9 @@ COPY uv.lock .
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project
 
+# Ensure email-validator is installed (runtime dep for pydantic email validation)
+RUN uv pip install email-validator>=2.1.0
+
 # Stage 2: Runtime - minimal image with only runtime libraries
 FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
 

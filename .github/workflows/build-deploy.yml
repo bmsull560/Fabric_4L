@@ -84,7 +84,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
+          context: ${{ matrix.layer == 'frontend' && 'apps/web' || format('services/{0}', matrix.layer) }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
