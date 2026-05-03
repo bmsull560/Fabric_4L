@@ -9,8 +9,7 @@ Validates routing decisions against real-world HTML patterns:
 """
 
 import pytest
-
-pytest.importorskip("trafilatura")
+import trafilatura  # noqa: F401 — mandatory dep; install via layer1-ingestion[dev]
 
 from pathlib import Path
 

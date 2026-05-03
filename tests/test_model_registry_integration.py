@@ -13,9 +13,6 @@ from uuid import uuid4
 
 import httpx
 import pytest
-
-pytest.importorskip("respx")
-
 import respx
 
 # Add layer2-extraction to path

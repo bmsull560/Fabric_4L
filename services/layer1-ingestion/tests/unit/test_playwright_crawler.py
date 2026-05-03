@@ -8,9 +8,18 @@ import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
+import importlib.util
+
 import pytest
 
-pytest.importorskip("playwright")
+# Playwright is an optional slow dependency (browser automation).
+# Tests are collected but skipped when playwright is not installed.
+# Install with: pip install playwright && playwright install chromium
+_playwright_missing = importlib.util.find_spec("playwright") is None
+pytestmark = [
+    pytest.mark.slow,
+    pytest.mark.skipif(_playwright_missing, reason="playwright not installed — optional slow dep"),
+]
 
 from value_fabric.layer1_ingestion.src.crawler.crawler_config import CrawlerConfig
 from value_fabric.layer1_ingestion.src.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler

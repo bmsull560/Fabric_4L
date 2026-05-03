@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-# Skip test if psycopg is not available
-pytest.importorskip("psycopg", reason="psycopg wrapper not installed - requires psycopg[binary]")
+import psycopg  # noqa: F401 — mandatory dep; install via layer4-agents[dev] (psycopg[binary])
 
 from fastapi.testclient import TestClient
 

@@ -274,9 +274,10 @@ class TestPackLoaderIntegration:
 
     def test_pack_loader_formulas(self) -> None:
         """Pack loader must return correctly formatted formulas."""
-        pytest.importorskip("api.routes.pack_loader", reason="Layer 3 API not available")
-        
-        from api.routes.pack_loader import load_pack_formulas
+        try:
+            from api.routes.pack_loader import load_pack_formulas
+        except ImportError:
+            pytest.skip("Layer 3 API not available - pack_loader module not found")
         
         formulas = load_pack_formulas("financial-services-v1")
         assert len(formulas) > 0, "No formulas returned for financial-services-v1"

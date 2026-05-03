@@ -8,8 +8,7 @@ Measures:
 """
 
 import pytest
-
-pytest.importorskip("trafilatura")
+import trafilatura  # noqa: F401 — mandatory dep; already in layer1-ingestion dependencies
 
 import statistics
 import time

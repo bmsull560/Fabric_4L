@@ -5,10 +5,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
+import importlib.util
+
 import httpx
 import pytest
 
-pytest.importorskip("pymupdf4llm", reason="pymupdf4llm not installed")
+# pymupdf4llm is an optional heavy dependency (PDF extraction).
+# Tests are collected but skipped when it is not installed.
+# Install with: pip install pymupdf4llm
+_pymupdf4llm_missing = importlib.util.find_spec("pymupdf4llm") is None
+pytestmark = [
+    pytest.mark.slow,
+    pytest.mark.skipif(_pymupdf4llm_missing, reason="pymupdf4llm not installed — optional slow dep"),
+]
 
 try:
     import pdf2image  # noqa: F401
