@@ -1,8 +1,10 @@
 version: 2
 updates:
-  # Python dependencies — all layers
+  # ---------------------------------------------------------------------------
+  # Python — service layers and SDK
+  # ---------------------------------------------------------------------------
   - package-ecosystem: pip
-    directory: /value-fabric/layer1-ingestion
+    directory: /services/layer1-ingestion
     schedule:
       interval: weekly
     labels: [dependencies, python]
@@ -10,7 +12,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer2-extraction
+    directory: /services/layer2-extraction
     schedule:
       interval: weekly
     labels: [dependencies, python]
@@ -18,7 +20,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer3-knowledge
+    directory: /services/layer3-knowledge
     schedule:
       interval: weekly
     labels: [dependencies, python]
@@ -26,7 +28,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer4-agents
+    directory: /services/layer4-agents
     schedule:
       interval: weekly
     labels: [dependencies, python]
@@ -34,7 +36,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer5-ground-truth
+    directory: /services/layer5-ground-truth
     schedule:
       interval: weekly
     labels: [dependencies, python]
@@ -42,25 +44,69 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer6-benchmarks
+    directory: /services/layer6-benchmarks
     schedule:
       interval: weekly
     labels: [dependencies, python]
     commit-message:
       prefix: chore(deps)
 
-  # Node.js — frontend
+  - package-ecosystem: pip
+    directory: /services/api
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: pip
+    directory: /sdk/python
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  # ---------------------------------------------------------------------------
+  # Node.js — frontend app and workspace packages
+  # ---------------------------------------------------------------------------
   - package-ecosystem: npm
-    directory: /frontend/client
+    directory: /apps/web
     schedule:
       interval: weekly
     labels: [dependencies, javascript]
     commit-message:
       prefix: chore(deps)
 
-  # Docker base images — all layers
+  - package-ecosystem: npm
+    directory: /packages/config
+    schedule:
+      interval: weekly
+    labels: [dependencies, javascript]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: npm
+    directory: /packages/eslint-plugin-fabric-contracts
+    schedule:
+      interval: weekly
+    labels: [dependencies, javascript]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: npm
+    directory: /packages/platform-contract
+    schedule:
+      interval: weekly
+    labels: [dependencies, javascript]
+    commit-message:
+      prefix: chore(deps)
+
+  # ---------------------------------------------------------------------------
+  # Docker base images — service layers and frontend
+  # ---------------------------------------------------------------------------
   - package-ecosystem: docker
-    directory: /value-fabric/layer1-ingestion
+    directory: /services/layer1-ingestion
     schedule:
       interval: weekly
     labels: [dependencies, docker]
@@ -68,7 +114,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: docker
-    directory: /value-fabric/layer2-extraction
+    directory: /services/layer2-extraction
     schedule:
       interval: weekly
     labels: [dependencies, docker]
@@ -76,7 +122,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: docker
-    directory: /value-fabric/layer3-knowledge
+    directory: /services/layer3-knowledge
     schedule:
       interval: weekly
     labels: [dependencies, docker]
@@ -84,7 +130,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: docker
-    directory: /value-fabric/layer4-agents
+    directory: /services/layer4-agents
     schedule:
       interval: weekly
     labels: [dependencies, docker]
@@ -92,7 +138,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: docker
-    directory: /value-fabric/layer5-ground-truth
+    directory: /services/layer5-ground-truth
     schedule:
       interval: weekly
     labels: [dependencies, docker]
@@ -100,7 +146,7 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: docker
-    directory: /value-fabric/layer6-benchmarks
+    directory: /services/layer6-benchmarks
     schedule:
       interval: weekly
     labels: [dependencies, docker]
@@ -108,14 +154,16 @@ updates:
       prefix: chore(deps)
 
   - package-ecosystem: docker
-    directory: /frontend
+    directory: /apps/web
     schedule:
       interval: weekly
     labels: [dependencies, docker]
     commit-message:
       prefix: chore(deps)
 
+  # ---------------------------------------------------------------------------
   # GitHub Actions
+  # ---------------------------------------------------------------------------
   - package-ecosystem: github-actions
     directory: /
     schedule:
