@@ -1,121 +1,204 @@
 version: 2
 updates:
-  # Python dependencies — all layers
+  # ============================================================================
+  # Python Dependencies — Services (pip ecosystem)
+  # ============================================================================
   - package-ecosystem: pip
-    directory: /value-fabric/layer1-ingestion
+    directory: /services/api
     schedule:
       interval: weekly
-    labels: [dependencies, python]
+    labels: [dependencies, python, service-api]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-backend
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer2-extraction
+    directory: /services/layer1-ingestion
     schedule:
       interval: weekly
-    labels: [dependencies, python]
+    labels: [dependencies, python, service-layer1]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-ingestion
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer3-knowledge
+    directory: /services/layer2-extraction
     schedule:
       interval: weekly
-    labels: [dependencies, python]
+    labels: [dependencies, python, service-layer2]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-extraction
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer4-agents
+    directory: /services/layer3-knowledge
     schedule:
       interval: weekly
-    labels: [dependencies, python]
+    labels: [dependencies, python, service-layer3]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-knowledge
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer5-ground-truth
+    directory: /services/layer4-agents
     schedule:
       interval: weekly
-    labels: [dependencies, python]
+    labels: [dependencies, python, service-layer4]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-agents
 
   - package-ecosystem: pip
-    directory: /value-fabric/layer6-benchmarks
+    directory: /services/layer5-ground-truth
     schedule:
       interval: weekly
-    labels: [dependencies, python]
+    labels: [dependencies, python, service-layer5]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-quality
 
-  # Node.js — frontend
+  - package-ecosystem: pip
+    directory: /services/layer6-benchmarks
+    schedule:
+      interval: weekly
+    labels: [dependencies, python, service-layer6]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-research
+
+  # ============================================================================
+  # Node.js Dependencies — Apps and Packages (npm ecosystem)
+  # ============================================================================
   - package-ecosystem: npm
-    directory: /frontend/client
+    directory: /apps/web
     schedule:
       interval: weekly
-    labels: [dependencies, javascript]
+    labels: [dependencies, javascript, app-web]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-frontend
 
-  # Docker base images — all layers
-  - package-ecosystem: docker
-    directory: /value-fabric/layer1-ingestion
+  - package-ecosystem: npm
+    directory: /packages/config
     schedule:
       interval: weekly
-    labels: [dependencies, docker]
+    labels: [dependencies, javascript, package-config]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-platform
 
-  - package-ecosystem: docker
-    directory: /value-fabric/layer2-extraction
+  - package-ecosystem: npm
+    directory: /packages/eslint-plugin-fabric-contracts
     schedule:
       interval: weekly
-    labels: [dependencies, docker]
+    labels: [dependencies, javascript, package-eslint]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-platform
 
-  - package-ecosystem: docker
-    directory: /value-fabric/layer3-knowledge
+  - package-ecosystem: npm
+    directory: /packages/platform-contract
     schedule:
       interval: weekly
-    labels: [dependencies, docker]
+    labels: [dependencies, javascript, package-contract]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-platform
 
+  # ============================================================================
+  # Docker Base Images — Services and Apps (docker ecosystem)
+  # ============================================================================
   - package-ecosystem: docker
-    directory: /value-fabric/layer4-agents
+    directory: /apps/web
     schedule:
       interval: weekly
-    labels: [dependencies, docker]
+    labels: [dependencies, docker, app-web]
     commit-message:
       prefix: chore(deps)
-
-  - package-ecosystem: docker
-    directory: /value-fabric/layer5-ground-truth
-    schedule:
-      interval: weekly
-    labels: [dependencies, docker]
-    commit-message:
-      prefix: chore(deps)
-
-  - package-ecosystem: docker
-    directory: /value-fabric/layer6-benchmarks
-    schedule:
-      interval: weekly
-    labels: [dependencies, docker]
-    commit-message:
-      prefix: chore(deps)
+    reviewers:
+      - team-frontend
+      - team-platform
 
   - package-ecosystem: docker
-    directory: /frontend
+    directory: /services/layer1-ingestion
     schedule:
       interval: weekly
-    labels: [dependencies, docker]
+    labels: [dependencies, docker, service-layer1]
     commit-message:
       prefix: chore(deps)
+    reviewers:
+      - team-ingestion
+      - team-platform
 
-  # GitHub Actions
+  - package-ecosystem: docker
+    directory: /services/layer2-extraction
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker, service-layer2]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-extraction
+      - team-platform
+
+  - package-ecosystem: docker
+    directory: /services/layer3-knowledge
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker, service-layer3]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-knowledge
+      - team-platform
+
+  - package-ecosystem: docker
+    directory: /services/layer4-agents
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker, service-layer4]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-agents
+      - team-platform
+
+  - package-ecosystem: docker
+    directory: /services/layer5-ground-truth
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker, service-layer5]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-quality
+      - team-platform
+
+  - package-ecosystem: docker
+    directory: /services/layer6-benchmarks
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker, service-layer6]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - team-research
+      - team-platform
+
+  # ============================================================================
+  # GitHub Actions (github-actions ecosystem)
+  # ============================================================================
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -123,3 +206,5 @@ updates:
     labels: [dependencies, github-actions]
     commit-message:
       prefix: chore(ci)
+    reviewers:
+      - team-platform

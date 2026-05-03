@@ -15,13 +15,13 @@ on:
   pull_request:
     branches: [main, develop]
     paths:
-      - 'frontend/**'
+      - 'apps/web/**'
       - 'examples/canonical/**'
-      - 'eslint-plugin-fabric-contracts/**'
-      - 'shared/**'
-      - 'value-fabric/**/src/**'
-      - 'value-fabric/**/src/api/**'
-      - 'value-fabric/**/api/**'
+      - 'packages/eslint-plugin-fabric-contracts/**'
+      - 'packages/shared/**'
+      - 'services/**/src/**'
+      - 'services/**/src/api/**'
+      - 'services/**/api/**'
       - 'packages/platform-contract/**'
       - 'contracts/openapi/**'
       - 'tests/contracts/**'
@@ -95,22 +95,22 @@ jobs:
           cache-dependency-path: apps/web/package.json
 
       - name: Install frontend dependencies
-        working-directory: frontend
+        working-directory: apps/web
         run: npm ci
 
       - name: Link plugin to frontend
         run: |
-          cd eslint-plugin-fabric-contracts
+          cd packages/eslint-plugin-fabric-contracts
           npm link
-          cd ../frontend
+          cd ../../apps/web
           npm link eslint-plugin-fabric-contracts
 
       - name: Run contract linting (all contract rules as errors)
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           # Uses .eslintrc.js which now enforces all contract rules as "error"
           # CONTRACT.md §3.3 - All 6 canonical contracts enforced
-          npx eslint src/ --ext .ts,.tsx --max-warnings 0
+          npx eslint client/src/ server/ --ext .ts,.tsx --max-warnings 0
 
       - name: Upload lint results
         uses: actions/upload-artifact@v4
@@ -118,8 +118,8 @@ jobs:
         with:
           name: eslint-contract-violations
           path: |
-            frontend/.eslintcache
-            frontend/eslint-report.json
+            apps/web/.eslintcache
+            apps/web/eslint-report.json
         # No continue-on-error: contract violations must block CI
 
   # ==========================================================================
@@ -221,14 +221,14 @@ jobs:
         run: |
           echo "Scanning for tenantId parameter violations (CONTRACT.md §2.1)..."
           # Count but don't fail yet - we're tracking toward zero
-          VIOLATIONS=$(grep -rn "def.*tenant_id\|def.*tenantId" value-fabric/*/src/ --include="*.py" | wc -l || true)
+          VIOLATIONS=$(grep -rn "def.*tenant_id\|def.*tenantId" services/*/src/ --include="*.py" | wc -l || true)
           echo "tenant_id parameter violations found: $VIOLATIONS"
           echo "tenant_violations=$VIOLATIONS" >> $GITHUB_ENV
 
       - name: Contract scan - Raw SQL tenant filtering
         run: |
           echo "Scanning for raw SQL tenant_id filtering (CONTRACT.md §2.2)..."
-          VIOLATIONS=$(grep -rn "WHERE.*tenant_id\|tenant_id.*=" value-fabric/*/src/ --include="*.py" | grep -v "migrations/" | wc -l || true)
+          VIOLATIONS=$(grep -rn "WHERE.*tenant_id\|tenant_id.*=" services/*/src/ --include="*.py" | grep -v "migrations/" | wc -l || true)
           echo "raw SQL tenant violations found: $VIOLATIONS"
           echo "sql_violations=$VIOLATIONS" >> $GITHUB_ENV
 
@@ -300,7 +300,7 @@ jobs:
           fi
 
       - name: Generate OpenAPI spec from code
-        working-directory: ./value-fabric/${{ matrix.layer }}
+        working-directory: ./services/${{ matrix.layer }}
         run: |
           python -c "
           import sys
@@ -331,7 +331,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-openapi-${{ matrix.layer }}
-          path: value-fabric/${{ matrix.layer }}/generated-openapi.json
+          path: services/${{ matrix.layer }}/generated-openapi.json
           retention-days: 7
 
   detect-drift:
