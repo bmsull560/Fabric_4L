@@ -36,7 +36,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
-from ..shared.config import settings
+from ..shared.config import is_production_like_environment, settings
 from ..shared.database import get_db_from_context_sync
 from ..shared.models import (
     AuthenticationType,
@@ -267,7 +267,7 @@ _VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production wit
 @app.on_event("startup")
 async def startup_event() -> None:
     """Verify Vault connectivity in production."""
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    if is_production_like_environment():
         vault_addr = os.getenv("VAULT_ADDR")
         if vault_addr and is_vault_healthy:
             logger.info("L1: Checking Vault connectivity", vault_addr=vault_addr)

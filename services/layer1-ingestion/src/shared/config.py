@@ -1,10 +1,14 @@
 """Configuration management for Layer 1 Ingestion Service."""
 
+import logging
 import os
 from urllib.parse import urlparse
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
+from value_fabric.shared.secrets import load_infisical_secrets
+
+logger = logging.getLogger(__name__)
 
 _DEV_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
 _PRODUCTION_ENVS = {"production", "prod", "staging"}
@@ -22,6 +26,13 @@ def detect_environment() -> str:
 
 
 def is_production_like_environment(environment: str | None = None) -> bool:
+    """Check if the environment is production-like (requires strict security validation).
+
+    Explicitly listed production environments are treated as production-like.
+    Unknown/custom environments are also treated as production-like for security
+    (fail-safe: better to be too strict than too permissive).
+    Only known development environments are treated as non-production.
+    """
     env = (environment or detect_environment()).strip().lower()
     return env in _PRODUCTION_ENVS or env not in _DEV_ENVIRONMENTS
 
@@ -33,7 +44,7 @@ def parse_cors_origins(value: object) -> list[str]:
         return [origin.strip() for origin in value.split(",") if origin.strip()]
     if isinstance(value, (list, tuple, set)):
         return [str(origin).strip() for origin in value if str(origin).strip()]
-    return value  # type: ignore[return-value]
+    raise TypeError(f"Unsupported type for CORS origins: {type(value).__name__}. Expected str, list, tuple, set, or None.")
 
 
 def validate_exact_cors_origins(origins: list[str], *, production_like: bool) -> list[str]:
@@ -68,8 +79,6 @@ def build_cors_policy(origins: list[str], *, production_like: bool) -> dict[str,
 
 
 # Load secrets from Infisical if available (optional in dev, required in prod-like envs)
-from value_fabric.shared.secrets import load_infisical_secrets
-
 try:
     load_infisical_secrets()
 except Exception:
@@ -139,6 +148,11 @@ class Settings(BaseSettings):
     def cors_policy(self) -> dict[str, object]:
         origins = self.cors_origins
         if not origins and not self.is_production_like:
+            logger.warning(
+                "CORS_ORIGINS not configured in non-production environment, "
+                f"falling back to dev defaults: {_DEV_CORS_ORIGINS}. "
+                "Set CORS_ORIGINS environment variable to avoid this warning."
+            )
             origins = list(_DEV_CORS_ORIGINS)
         return build_cors_policy(origins, production_like=self.is_production_like)
 

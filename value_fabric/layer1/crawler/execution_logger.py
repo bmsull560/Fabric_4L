@@ -73,11 +73,11 @@ class ExecutionLogEntry:
     browser_steps: int = 0
 
     # Result metadata
-    status_code: int | None
-    content_hash: str | None
-    text_length: int
-    link_count: int
-    spa_detected: bool
+    status_code: int | None = None
+    content_hash: str | None = None
+    text_length: int = 0
+    link_count: int = 0
+    spa_detected: bool = False
 
     # Error tracking
     error_type: str | None = None

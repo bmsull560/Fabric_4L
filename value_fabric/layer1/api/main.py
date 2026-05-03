@@ -36,7 +36,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
-from ..shared.config import settings
+from ..shared.config import is_production_like_environment, settings
 from ..shared.database import get_db_from_context_sync
 from ..shared.models import (
     AuthenticationType,
@@ -177,29 +177,11 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS middleware with production validation (P0-20) — OUTERMOST
-# Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
-_environment = os.getenv("ENVIRONMENT", "development")
-_cors_origins_env = os.getenv("CORS_ORIGINS", "")
-
-if _environment == "production" and not _cors_origins_env:
-    raise RuntimeError(
-        "FATAL: CORS_ORIGINS environment variable must be set in production. "
-        "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
-    )
-
-# Parse CORS origins, filtering out empty strings from trailing commas
-allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
-# Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
-allow_credentials = "*" not in allow_origins and len(allow_origins) > 0
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allow_origins,
-    allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS middleware with production validation (P0-20) — OUTERMOST.
+# The policy comes from Settings so production-like environments fail before
+# middleware installation, and credentials are never combined with wildcard
+# origins or broad method/header exposure.
+app.add_middleware(CORSMiddleware, **settings.cors_policy)
 
 # SecurityMiddleware — input validation and security headers (mandatory)
 _security_config_l1 = SecurityConfig.from_env(
@@ -285,7 +267,7 @@ _VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production wit
 @app.on_event("startup")
 async def startup_event() -> None:
     """Verify Vault connectivity in production."""
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    if is_production_like_environment():
         vault_addr = os.getenv("VAULT_ADDR")
         if vault_addr and is_vault_healthy:
             logger.info("L1: Checking Vault connectivity", vault_addr=vault_addr)

@@ -35,7 +35,7 @@ def _parse_cors_origins(value: object) -> list[str]:
         return [origin.strip() for origin in value.split(",") if origin.strip()]
     if isinstance(value, (list, tuple, set)):
         return [str(origin).strip() for origin in value if str(origin).strip()]
-    return value  # type: ignore[return-value]
+    raise TypeError(f"Unsupported type for CORS origins: {type(value).__name__}. Expected str, list, tuple, set, or None.")
 
 
 def _validate_exact_cors_origins(origins: list[str], *, production_like: bool) -> list[str]:
