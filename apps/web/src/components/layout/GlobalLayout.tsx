@@ -1,13 +1,15 @@
 "use client";
 
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { Outlet, useMatch } from "react-router-dom";
 import { Spinner } from "@/components/ui/spinner";
 import { LeftNavigation } from "./LeftNavigation";
 import { AppHeader } from "./AppHeader";
 import { AgentChat } from "./AgentChat";
 import { AgentSidePanel } from "./AgentSidePanel";
+import { MobileNavigation } from "./MobileNavigation";
 import type { AgentChatMode } from "@/types/layout";
+import type { UserTier } from "@/navigation/navHelpers";
 
 // ── Workspace Layout Wrapper ──────────────────────────────────────────────────
 // Workspace routes (intelligence, hypothesis, drivers, calculator, etc.) need
@@ -74,6 +76,8 @@ export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode
 export function GlobalLayout() {
   const [leftNavCollapsed, setLeftNavCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [currentTier, setCurrentTier] = useState<UserTier>("standard");
+  const [isAdvancedModeEnabled, setIsAdvancedModeEnabled] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentChatMode>("closed");
 
   const toggleLeftNav = useCallback(() => {
@@ -113,6 +117,15 @@ export function GlobalLayout() {
         mobileOpen={mobileNavOpen}
         onToggle={toggleLeftNav}
         onMobileOpenChange={setMobileNavOpen}
+      />
+
+      <MobileNavigation
+        open={mobileNavOpen}
+        onOpenChange={setMobileNavOpen}
+        currentTier={currentTier}
+        onTierChange={setCurrentTier}
+        isAdvancedModeEnabled={isAdvancedModeEnabled}
+        onAdvancedModeToggle={setIsAdvancedModeEnabled}
       />
 
       <div className="flex min-w-0 flex-col overflow-hidden">

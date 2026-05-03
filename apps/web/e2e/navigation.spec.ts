@@ -1,6 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { AppShellPage } from './pages';
-import { setUserTier, clearUserTier, enableAdvancedMode, disableAdvancedMode, ROUTES_BY_TIER } from './fixtures';
+import {
+  setUserTier,
+  clearUserTier,
+  enableAdvancedMode,
+  disableAdvancedMode,
+  ROUTES_BY_TIER,
+  seedAuthState,
+  clearAuthState,
+} from './fixtures';
 
 /**
  * Navigation and Access Control E2E Tests
@@ -19,6 +27,7 @@ test.describe('Navigation & Access Control', () => {
 
   test.afterEach(async ({ page }) => {
     await clearUserTier(page);
+    await clearAuthState(page);
   });
 
   test.describe('Standard Tier', () => {
@@ -265,6 +274,7 @@ test.describe('Navigation & Access Control', () => {
 
   test.describe('Mobile Navigation', () => {
     test.beforeEach(async ({ page }) => {
+      await seedAuthState(page);
       await setUserTier(page, 'advanced');
       // Set mobile viewport — triggers MobilePersistentSidebar (w-20 icon rail)
       await page.setViewportSize({ width: 375, height: 667 });
@@ -290,13 +300,14 @@ test.describe('Navigation & Access Control', () => {
     test('mobile nav rail link navigates correctly', async ({ page }) => {
       await page.goto('/home');
       const mobileNav = page.getByRole('navigation', { name: /mobile navigation/i });
-      // Click the first nav link in the mobile rail and verify navigation occurs
-      const firstLink = mobileNav.getByRole('link').first();
-      const href = await firstLink.getAttribute('href');
-      await firstLink.click();
-      if (href) {
-        await expect(page).toHaveURL(new RegExp(href.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-      }
+      await expect(mobileNav).toBeVisible();
+
+      // Click a deterministic non-current route so this critical journey proves
+      // real mobile navigation rather than exercising a same-page remount race.
+      const accountsLink = mobileNav.locator('a[href="/accounts"]').first();
+      await expect(accountsLink).toBeVisible();
+      await accountsLink.click();
+      await expect(page).toHaveURL(/\/accounts/);
     });
 
     test('desktop sidebar is hidden on mobile viewport', async ({ page }) => {
