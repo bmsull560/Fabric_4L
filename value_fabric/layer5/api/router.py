@@ -688,30 +688,15 @@ async def freshness_summary(
     summary="Health check",
     tags=["system"],
 )
-async def health_check(db: AsyncSession = Depends(get_db_from_context)) -> HealthResponse:
-    """Public health check - returns minimal safe information only."""
-    # Check DB connectivity
-    db_status = "ok"
-    try:
-        from sqlalchemy import text
-
-        await db.execute(text("SELECT 1"))
-    except Exception:
-        db_status = "error"
-
-    # Check Layer 3 connectivity
-    client = get_layer3_client()
-    l3_connected = await client.ping()
-
-    # Determine overall status - do not expose internal details
-    overall_status = "ok" if db_status == "ok" else "degraded"
-    if not l3_connected:
-        overall_status = "degraded"
-
-    # Public response: only status, version, timestamp
-    # Do NOT expose: database connection details, layer3 URL, internal endpoints
+async def health_check() -> HealthResponse:
+    """Public health check - returns minimal safe information only.
+    
+    Note: This is a liveness check only. It does not check database or Layer 3 connectivity
+    to avoid requiring tenant context headers.
+    """
+    # Liveness check only - service is running
     return HealthResponse(
-        status=overall_status,
+        status="ok",
         version="0.1.0",
         timestamp=datetime.now(UTC),
         # Internal fields omitted for security - public health checks 
