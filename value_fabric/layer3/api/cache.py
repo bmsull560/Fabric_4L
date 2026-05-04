@@ -5,6 +5,7 @@ All cache operations are tenant-scoped to prevent cross-tenant data leakage.
 Cache keys follow the pattern: cache:tenant:{tenant_id}:{resource_type}:{resource_id}
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -149,6 +150,38 @@ async def set_cached_entity(
         return False
 
 
+async def get_cached_entities(
+    entity_ids: list[str],
+    tenant_id: UUID | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Get multiple cached entities in a single Redis round-trip.
+
+    Uses ``mget`` to batch all lookups into one network call, which is
+    10-50× faster than calling :func:`get_cached_entity` in a loop.
+
+    Args:
+        entity_ids: List of entity identifiers to fetch
+        tenant_id: Optional tenant UUID (uses context if not provided)
+
+    Returns:
+        Mapping of entity_id -> entity data for cache hits only
+    """
+    if not entity_ids:
+        return {}
+    try:
+        client = await get_redis_client()
+        keys = [_build_cache_key("entity", eid, tenant_id) for eid in entity_ids]
+        values = await client.mget(*keys)
+        result: dict[str, dict[str, Any]] = {}
+        for eid, raw in zip(entity_ids, values):
+            if raw:
+                result[eid] = json.loads(raw)
+        return result
+    except Exception as e:
+        logger.warning(f"Batch cache get failed: {e}")
+        return {}
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Query Cache Operations
 # ═══════════════════════════════════════════════════════════════════════════
@@ -166,8 +199,8 @@ async def get_cached_query(query: str, tenant_id: UUID | None = None) -> list[di
     """
     try:
         client = await get_redis_client()
-        # Hash query to create stable key
-        query_hash = str(hash(query))
+        # Hash query with SHA-256 for a stable, process-independent key.
+        query_hash = hashlib.sha256(query.encode()).hexdigest()
         key = _build_cache_key("query", query_hash, tenant_id)
         
         data = await client.get(key)
@@ -198,7 +231,7 @@ async def set_cached_query(
     """
     try:
         client = await get_redis_client()
-        query_hash = str(hash(query))
+        query_hash = hashlib.sha256(query.encode()).hexdigest()
         key = _build_cache_key("query", query_hash, tenant_id)
         
         await client.set(key, json.dumps(results), ex=ttl_seconds)

@@ -74,22 +74,22 @@ async def list_entities(
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        # Get total count
-        count_query = f"""
-            MATCH (e:Entity)
-            WHERE {where_clause}
-            RETURN count(e) as total
-        """
-        count_result = await neo4j_driver.execute_query(count_query, params)
-        total = count_result[0]["total"] if count_result else 0
-
         # Validate sort parameters
         valid_sort_fields = {"confidence": "e.confidence_score", "name": "e.name", "created_at": "e.created_at"}
         sort_field = valid_sort_fields.get(sort_by, "e.confidence_score")
         sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
 
-        # Get entities
-        query_cypher = f"""
+        # Single query: count and paginated data in one round-trip.
+        # The CALL {} subquery is evaluated independently; the outer MATCH
+        # returns paginated rows each carrying the pre-computed total.
+        params["offset"] = offset
+        params["limit"] = limit
+        combined_query = f"""
+            CALL {{
+                MATCH (e:Entity)
+                WHERE {where_clause}
+                RETURN count(e) as total
+            }}
             MATCH (e:Entity)
             WHERE {where_clause}
             RETURN e.id as id,
@@ -97,15 +97,15 @@ async def list_entities(
                    e.description as description,
                    e.entity_type as entity_type,
                    e.confidence_score as confidence_score,
-                   e.created_at as created_at
+                   e.created_at as created_at,
+                   total
             ORDER BY {sort_field} {sort_direction}
             SKIP $offset
             LIMIT $limit
         """
-        params["offset"] = offset
-        params["limit"] = limit
 
-        results = await neo4j_driver.execute_query(query_cypher, params)
+        results = await neo4j_driver.execute_query(combined_query, params)
+        total = results[0]["total"] if results else 0
 
         entities = [
             EntitySummary(
