@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useCallback, type ReactNode } from 'react';
 import { useBilling, useEntitlements, Subscription, EntitlementsResponse } from '@/hooks/useBilling';
 
 interface BillingContextType {
@@ -35,14 +35,14 @@ export function BillingProvider({ children, customerId }: BillingProviderProps) 
   const billing = useBilling(customerId);
   const entitlementsQuery = useEntitlements(customerId);
 
-  const hasFeature = (featureId: string): boolean => {
+  const hasFeature = useCallback((featureId: string): boolean => {
     if (!entitlementsQuery.data) return false;
     return entitlementsQuery.data.features[featureId]?.enabled ?? false;
-  };
+  }, [entitlementsQuery.data]);
 
   const canUpgrade = billing.subscription?.plan_id !== 'enterprise';
 
-  const value: BillingContextType = {
+  const value = useMemo((): BillingContextType => ({
     customerId,
     subscription: billing.subscription,
     isLoading: billing.isLoading,
@@ -54,7 +54,19 @@ export function BillingProvider({ children, customerId }: BillingProviderProps) 
     isOpeningPortal: billing.isOpeningPortal,
     hasFeature,
     canUpgrade,
-  };
+  }), [
+    customerId,
+    billing.subscription,
+    billing.isLoading,
+    billing.error,
+    entitlementsQuery.data,
+    billing.openCustomerPortal,
+    billing.subscribe,
+    billing.isSubscribing,
+    billing.isOpeningPortal,
+    hasFeature,
+    canUpgrade,
+  ]);
 
   return (
     <BillingContext.Provider value={value}>
