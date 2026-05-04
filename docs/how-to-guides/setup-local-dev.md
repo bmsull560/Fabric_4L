@@ -2,7 +2,7 @@
 title: "Local Development Setup"
 category: "how-to-guides"
 audience: "intermediate"
-last-reviewed: "2026-04-19"
+last-reviewed: "2026-05-04"
 freshness: "current"
 related: ["../getting-started/quickstart", "../getting-started/environment", "../core-concepts/architecture", "../core-concepts/security-model", "../troubleshooting/index", "../troubleshooting/runbooks/infrastructure/service-down"]
 ---
@@ -341,9 +341,9 @@ find . -type f -name "*.pyc" -delete
 
 - [Quickstart Guide](../getting-started/quickstart.md) — Get running in 15 minutes
 - [Contributing Guidelines](../contributing/guidelines.md) — Code and documentation standards
-- [Architecture Overview](../core-concepts/architecture.md) — Understanding the 4-layer system
+- [Architecture Overview](../core-concepts/architecture.md) — Understanding the 6-layer system
 - [Troubleshooting Index](../troubleshooting/index.md) — Common development issues
 
 ---
 
-*Last updated: 2026-04-19 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/how-to-guides/setup-local-dev.md)*
+*Last updated: 2026-05-04 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/how-to-guides/setup-local-dev.md)*

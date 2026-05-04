@@ -2,7 +2,7 @@
 title: "Value Fabric Architecture"
 category: "core-concepts"
 audience: "intermediate"
-last-reviewed: "2026-04-19"
+last-reviewed: "2026-05-04"
 freshness: "current"
 related: ["../getting-started/quickstart", "../getting-started/environment", "../reference/layer1-ingestion-api", "security-model", "ontology-system", "../explanations/adr/ADR-001-six-layer-architecture", "../explanations/adr/ADR-002-hybrid-graph-database"]
 ---
@@ -10,7 +10,7 @@ related: ["../getting-started/quickstart", "../getting-started/environment", "..
 # Value Fabric System Architecture
 
 > **In this guide, you will:**
-> - Understand the 4-layer pipeline architecture
+> - Understand the 6-layer pipeline architecture
 > - Learn how data flows through the system
 > - Explore container and component-level designs
 > - See deployment topology for production
@@ -70,7 +70,7 @@ graph TB
 
 ## Container Architecture (C4 Level 2)
 
-The system follows a 4-layer pipeline architecture with clear separation of concerns:
+The system follows a 6-layer pipeline architecture with clear separation of concerns:
 
 ```mermaid
 graph TB
@@ -88,6 +88,8 @@ graph TB
         L2[Layer 2: Extraction<br/>FastAPI + LLM<br/>Port 8002]
         L3[Layer 3: Knowledge<br/>FastAPI + Neo4j<br/>Port 8003]
         L4[Layer 4: Agents<br/>FastAPI + LangGraph<br/>Port 8004]
+        L5[Layer 5: Ground Truth<br/>FastAPI + Model Registry<br/>Port 8005]
+        L6[Layer 6: Benchmarks<br/>FastAPI + Harness<br/>Port 8006]
     end
     
     subgraph "Data Layer"
@@ -108,6 +110,8 @@ graph TB
     GW -->|Route + Auth| L2
     GW -->|Route + Auth| L3
     GW -->|Route + Auth| L4
+    GW -->|Route + Auth| L5
+    GW -->|Route + Auth| L6
     
     L1 -->|Ingest jobs| RED
     L1 -->|Metadata| PG
@@ -125,15 +129,22 @@ graph TB
     L4 -->|LLM calls| OPENAI
     L4 -->|Workflows| PG
     
+    L5 -->|Truth objects| PG
+    L6 -->|Benchmark results| PG
+    
     L1 -.->|Progress updates| L4
     L2 -.->|Extractions| L3
     L3 -.->|Context| L4
+    L4 -.->|Agent outputs| L5
+    L5 -.->|Validated truth| L6
     
     style FE fill:#4a90d9,color:white
     style L1 fill:#2ecc71,color:white
     style L2 fill:#2ecc71,color:white
     style L3 fill:#2ecc71,color:white
     style L4 fill:#2ecc71,color:white
+    style L5 fill:#2ecc71,color:white
+    style L6 fill:#2ecc71,color:white
     style GW fill:#e74c3c,color:white
     style PG fill:#9b59b6,color:white
     style NEO fill:#9b59b6,color:white
@@ -492,7 +503,7 @@ graph TB
 
 | Decision | Rationale | Trade-off |
 |----------|-----------|-----------|
-| 4-layer separation | Clear boundaries, independent scaling | Network overhead between layers |
+| 6-layer separation | Clear boundaries, independent scaling | Network overhead between layers |
 | Neo4j for knowledge | Native graph operations, Cypher | Operational complexity |
 | PostgreSQL + pgvector | Unified relational + vector store | Not specialized vector DB |
 | LangGraph for agents | Stateful orchestration, pause/resume | Learning curve |
@@ -535,4 +546,4 @@ See [Architecture Decision Records](../explanations/adr/) for detailed rationale
 
 ---
 
-*Last updated: 2026-04-19 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/core-concepts/architecture.md)*
+*Last updated: 2026-05-04 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/core-concepts/architecture.md)*

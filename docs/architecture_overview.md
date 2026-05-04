@@ -2,21 +2,27 @@
 
 ## System Architecture
 
-Value Fabric employs a **4-layer pipeline architecture** that progressively transforms raw data into actionable business intelligence:
+Value Fabric employs a **6-layer pipeline architecture** that progressively transforms raw data into actionable business intelligence:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     LAYER 4: AGENTS                        │
+│                     LAYER 6: BENCHMARKS                     │
+│         (Peer Comparison, Statistical Validation)           │
+├─────────────────────────────────────────────────────────────┤
+│                   LAYER 5: GROUND TRUTH                     │
+│     (TruthObject Validation, Maturity Ladder, Evidence)     │
+├─────────────────────────────────────────────────────────────┤
+│                     LAYER 4: AGENTS                         │
 │         (AI Skills, Workflows, Business Logic)              │
 ├─────────────────────────────────────────────────────────────┤
-│                   LAYER 3: KNOWLEDGE                         │
+│                   LAYER 3: KNOWLEDGE                        │
 │       (Knowledge Graph, Embeddings, Query Engine)           │
 ├─────────────────────────────────────────────────────────────┤
-│                  LAYER 2: EXTRACTION                         │
-│     (Entity Extraction, Relationship Mapping, NLP)        │
+│                  LAYER 2: EXTRACTION                        │
+│     (Entity Extraction, Relationship Mapping, NLP)          │
 ├─────────────────────────────────────────────────────────────┤
-│                   LAYER 1: INGESTION                         │
-│    (Document Processing, OCR, Chunking, Vectorization)    │
+│                   LAYER 1: INGESTION                        │
+│    (Document Processing, OCR, Chunking, Vectorization)      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -199,6 +205,8 @@ Each layer runs as independent container:
 - Layer 2: LLM-based extraction (GPU-enabled)
 - Layer 3: API server + graph database
 - Layer 4: Agent runtime
+- Layer 5: Ground truth validation service
+- Layer 6: Benchmark harness
 
 ### Communication
 - Layer-to-layer: gRPC APIs
@@ -224,10 +232,12 @@ Each layer runs as independent container:
 | Ingestion | Python, PyPDF, Tesseract, sentence-transformers |
 | Extraction | Python, OpenAI/Anthropic APIs, spaCy, Pydantic |
 | Knowledge | PostgreSQL, pgvector, Neo4j, SQLAlchemy |
-| Agents | Python, FastAPI, LangChain, Pydantic |
+| Agents | Python, FastAPI, LangGraph, Pydantic |
+| Ground Truth | Python, FastAPI, PostgreSQL |
+| Benchmarks | Python, FastAPI, statistical libraries |
 | Infrastructure | Docker, Docker Compose, Redis |
 
 ---
 
-*Document Version: 1.0*  
-*Last Updated: April 2026*
+*Document Version: 1.1*  
+*Last Updated: May 2026*

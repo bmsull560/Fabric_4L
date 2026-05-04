@@ -2,7 +2,7 @@
 title: "Value Fabric Quickstart Guide"
 category: "getting-started"
 audience: "beginner"
-last-reviewed: "2026-04-19"
+last-reviewed: "2026-05-04"
 freshness: "current"
 related: ["environment", "../core-concepts/architecture", "../how-to-guides/setup-local-dev", "../troubleshooting/index", "../core-concepts/security-model"]
 ---
@@ -43,6 +43,8 @@ graph TB
         A --> C[Layer 2: Extraction<br/>Port 8002]
         A --> D[Layer 3: Knowledge Graph<br/>Port 8003]
         A --> E[Layer 4: Agents<br/>Port 8004]
+        A --> K[Layer 5: Ground Truth<br/>Port 8005]
+        A --> L[Layer 6: Benchmarks<br/>Port 8006]
         A --> F[Frontend UI<br/>Port 5173]
         A --> G[(PostgreSQL)]
         A --> H[(Neo4j)]
@@ -56,7 +58,7 @@ graph TB
     style J fill:#95a5a6,color:white
 ```
 
-**Data Flow:** Documents → L1 (Ingest) → L2 (Extract) → L3 (Store) → L4 (Agent Analysis)
+**Data Flow:** Documents → L1 (Ingest) → L2 (Extract) → L3 (Store) → L4 (Agent Analysis) → L5 (Ground Truth) → L6 (Benchmarks)
 
 ---
 
@@ -286,9 +288,9 @@ See [Troubleshooting Index](../troubleshooting/index.md) for more solutions.
 
 - [Prerequisites](./prerequisites.md) — Detailed requirement checklist
 - [Installation](./installation.md) — Full installation with all options
-- [Architecture Overview](../core-concepts/architecture.md) — Understanding the 4-layer system
+- [Architecture Overview](../core-concepts/architecture.md) — Understanding the 6-layer system
 - [API Reference](../reference/api-reference.md) — Complete endpoint documentation
 
 ---
 
-*Last updated: 2026-04-19 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/getting-started/quickstart.md)*
+*Last updated: 2026-05-04 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/getting-started/quickstart.md)*
