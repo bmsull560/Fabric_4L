@@ -89,6 +89,8 @@ open http://localhost:5173
 
 📚 **[Complete Documentation →](docs/README.md)**
 
+🚀 **[Platform Launch Checklist →](docs/launch-checklists/platform-launch.md)** (Sprint 4 Release Hardening)
+
 Our documentation follows the [Diátaxis Framework](https://diataxis.fr/) with tutorials, how-to guides, reference, and explanations.
 
 ### Getting Started

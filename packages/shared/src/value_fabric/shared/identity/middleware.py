@@ -128,6 +128,7 @@ _PUBLIC_PATHS: frozenset[str] = frozenset(
     {
         "/health",
         "/health/detailed",
+        "/api/v1/health",
         "/metrics",
         "/docs",
         "/openapi.json",

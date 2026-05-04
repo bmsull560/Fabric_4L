@@ -1,4 +1,4 @@
-# Security Gates: DAST + SBOM
+# Security Gates: DAST + SBOM + Regression
 
 This document explains the CI security gates enforced by `.github/workflows/security-gates.yml` and how to run equivalent checks locally.
 
@@ -24,11 +24,21 @@ The `Security Gates` workflow now includes:
    - Scans each SBOM and fails on `HIGH,CRITICAL` vulnerabilities.
    - Uploads SBOM and vulnerability SARIF per artifact.
 
-4. **Release evidence bundle**
+4. **Mandatory Security Regression Gate** (Sprint 4 enhancement)
+   - Runs `scripts/ci/mandatory_security_regression_gate.sh`
+   - Includes I-02 production fail-closed tests for Layer 2 and Layer 5
+   - Includes tenant boundary, auth regression, and rate limit checks
+   - Includes frontend contract guards and critical E2E skip-valve guards
+   - Includes Kubernetes hardening checks
+   - Fails closed if required suites are missing
+   - Evidence written to `fabric_audit/` (repo-relative)
+   - See [I-04 Evidence](fabric_audit/i04_mandatory_security_regression_gate_evidence.md)
+
+5. **Release evidence bundle**
    - Collects DAST + SBOM + security scan artifacts.
    - Publishes `release-security-evidence-<sha>` for release/audit evidence.
 
-5. **Required merge gate check**
+6. **Required merge gate check**
    - A dedicated PR job named **`Security Gates Required`** depends on:
      - `DAST (OWASP ZAP baseline)`
      - all matrix runs in `SBOM + Policy (...)`

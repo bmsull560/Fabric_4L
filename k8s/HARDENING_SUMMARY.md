@@ -91,3 +91,25 @@ Post-implementation fixes applied (2026-05-03):
 Image digests (SHA256) should be pinned in CI/CD for reproducible deployments:
 - Current: `value-fabric/layer1-ingestion:latest`
 - Target: `value-fabric/layer1-ingestion@sha256:...`
+
+### Image Provenance Strategy (Sprint 3)
+
+**Current State:**
+- Development: Uses `imagePullPolicy: Always` for all layer services
+- Production: CI/CD should override branch tags with immutable digests (documented in layer1-ingestion.yml)
+- No admission controller validation for image signatures or digests
+
+**Recommended Approach:**
+1. **Development**: Continue using branch tags (`:main`, `:staging`) with `imagePullPolicy: Always`
+2. **Staging**: Use digest-pinned images from CI/CD build pipeline
+3. **Production**: Require digest-pinned images with admission controller validation
+4. **Admission Controller**: Implement Kyverno or OPA Gatekeeper policy to:
+   - Enforce image digest format for production namespaces
+   - Verify image signatures from trusted registry
+   - Block images from untrusted registries
+
+**Implementation Path:**
+1. Add image digest validation script (placeholder for future admission controller)
+2. Update CI/CD pipeline to output image digests
+3. Configure admission controller policy for production namespace
+4. Update manifests to reference digest-pinned images in production overlay

@@ -96,3 +96,40 @@ jobs:
             exit 1
           fi
           echo "✅ No placeholder tests found"
+
+  # ============================================================================
+  # Mandatory Security Regression Gate
+  # ============================================================================
+  mandatory-security-regression-gate:
+    name: Mandatory Security Regression Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install gate dependencies
+        run: |
+          uv pip install -r tests/requirements-test.txt --system
+
+      - name: Run mandatory security regression gate
+        run: |
+          bash scripts/ci/mandatory_security_regression_gate.sh
+
+      - name: Upload gate evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-gate-evidence
+          path: .fabric/audit/security_regression_gate/
+          retention-days: 30

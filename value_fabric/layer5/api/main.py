@@ -120,20 +120,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
             logger.info("L5: Vault connectivity verified")
 
-    # Initialize Prometheus metrics and install the metrics middleware here —
-    # NOT in create_app() — because app.state is only writable after the
-    # lifespan begins. Installing the middleware in create_app() previously
-    # raised AttributeError on `app.state.metrics`.
-    metrics = initialize_metrics()
-    if metrics:
-        logger.info("L5: Prometheus metrics initialized")
-        app.state.metrics = metrics
-        metrics_middleware = MetricsMiddleware(metrics)
-        app.middleware("http")(metrics_middleware)
-        logger.info("L5: Metrics middleware installed")
-    else:
-        app.state.metrics = None
-
     # Initialize Redis client for rate limiting (async context)
     app.state.redis_rate_limiter = None
     try:
@@ -226,6 +212,13 @@ def create_app() -> FastAPI:
         ],
     )
 
+    # Initialize Prometheus metrics and middleware at module level (before app starts)
+    _metrics_instance = initialize_metrics()
+    if _metrics_instance:
+        app.state.metrics = _metrics_instance
+        app.middleware("http")(MetricsMiddleware(_metrics_instance))
+        logger.info("L5: Metrics middleware installed")
+
     # SecurityMiddleware — input validation and security headers (before CORS)
     # L5 has no skip paths — all endpoints require strict validation
     if SecurityConfig and add_security_middleware:
@@ -259,9 +252,8 @@ def create_app() -> FastAPI:
             GovernanceMiddleware,
             api_key_resolver=None,
             rate_limiter=redis_rate_limiter,
-            skip_paths=public_paths,
         )
-        logger.info("L5: GovernanceMiddleware with rate limiting initialized (public paths: %s)", public_paths)
+        logger.info("L5: GovernanceMiddleware with rate limiting initialized")
     except ImportError:
         if settings.is_production_like and not allow_bypass:
             logger.error(

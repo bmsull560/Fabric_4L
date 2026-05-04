@@ -284,8 +284,12 @@ test.describe('Contract: Account-Scoped Workspaces', () => {
       const hasAccountInUrl = url.includes(TEST_ACCOUNTS.meridian.id);
       const hasContent = await page.locator('main, [role="main"], .flex-1').first().isVisible();
 
-      // One of these must be true
-      expect(hasAccountInUrl || hasContent).toBe(true);
+      // Verify route behavior: should either have account in URL or render content
+      if (!hasAccountInUrl) {
+        expect(hasContent, 'Route should render content when account not in URL').toBe(true);
+      } else {
+        expect(hasAccountInUrl, 'Route should include account ID in URL').toBe(true);
+      }
     });
 
     test('should use selected account from store for /studio/value-model', async ({ page }) => {
@@ -298,7 +302,12 @@ test.describe('Contract: Account-Scoped Workspaces', () => {
       const hasAccountInUrl = url.includes(TEST_ACCOUNTS.meridian.id);
       const hasContent = await page.locator('main, [role="main"], .flex-1').first().isVisible();
 
-      expect(hasAccountInUrl || hasContent).toBe(true);
+      // Verify route behavior: should either have account in URL or render content
+      if (!hasAccountInUrl) {
+        expect(hasContent, 'Route should render content when account not in URL').toBe(true);
+      } else {
+        expect(hasAccountInUrl, 'Route should include account ID in URL').toBe(true);
+      }
     });
 
     test('should handle missing account gracefully', async ({ page }) => {
@@ -313,7 +322,14 @@ test.describe('Contract: Account-Scoped Workspaces', () => {
       const hasPrompt = await page.getByText(/select.*account/i).isVisible().catch(() => false);
       const hasContent = await page.locator('main, [role="main"], .flex-1').first().isVisible();
 
-      expect(hasRedirect || hasPrompt || hasContent).toBe(true);
+      // Verify one of the expected behaviors occurs
+      if (!hasRedirect && !hasPrompt) {
+        expect(hasContent, 'Missing account should redirect, show prompt, or render content').toBe(true);
+      } else if (hasRedirect) {
+        expect(hasRedirect, 'Missing account should redirect to accounts/home').toBe(true);
+      } else if (hasPrompt) {
+        expect(hasPrompt, 'Missing account should show selection prompt').toBe(true);
+      }
     });
   });
 

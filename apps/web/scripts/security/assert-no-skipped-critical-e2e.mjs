@@ -31,6 +31,7 @@ const criticalFiles = [
   'e2e/journeys/j11-golden-path-business-lifecycle.spec.ts',
   'e2e/integrations/crm-external-integrations.spec.ts',
   'e2e/journeys/j1-golden-path-deep.spec.ts',
+  'e2e/journeys/j1-golden-path-backend-integrated.spec.ts',
   'e2e/journeys/j7-calculation-evidence-deep.spec.ts',
   'e2e/journeys/j8-approval-review-deep.spec.ts',
   'e2e/journeys/j9-agent-grounding-deep.spec.ts',
@@ -43,6 +44,7 @@ const forbidden = [
   { pattern: /test\.(skip|fixme)\s*\(/, label: 'test.skip/test.fixme' },
   { pattern: /\btest\.skip\s*\(/, label: 'test.skip' },
   { pattern: /\btest\.fixme\s*\(/, label: 'test.fixme' },
+  { pattern: /\bjourneyTest\.skip\s*\(/, label: 'journeyTest.skip' },
   { pattern: /\bSKIP_BACKEND_TESTS\b/, label: 'SKIP_BACKEND_TESTS backend skip valve' },
   { pattern: /Mobile navigation.*skipped|not yet implemented in AppShell/i, label: 'stale mobile-navigation skipped claim' },
 ];

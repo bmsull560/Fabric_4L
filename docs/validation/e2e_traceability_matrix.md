@@ -1,4 +1,36 @@
-# Fabric_4L Frontend E2E Traceability Matrix
+# Fabric_4L Frontend# E2E Validation Traceability Matrix
+
+**Last Updated:** 2026-05-04 (Sprint 4 - Release Hardening)
+
+## Phase 2 Deep Tests (Sprint 4)
+
+Phase 2 of the E2E validation milestone added 7 new `-deep.spec.ts` files with 78 interaction-level tests across all P0 production-gate suites:
+
+| Deep Test File | Test Count | Test IDs | Status |
+|----------------|------------|----------|--------|
+| j1-golden-path-deep.spec.ts | 15 | GP-DEEP-001–015 | 74.4% pass rate |
+| j10-layer-ui-validation-deep.spec.ts | 12 | L1-DEEP–L6-DEEP | Partial |
+| tenant-isolation-deep.spec.ts | 12 | SEC-DEEP-001–012 | Partial |
+| j9-agent-grounding-deep.spec.ts | 10 | AG-DEEP-001–010 | Partial |
+| j7-calculation-evidence-deep.spec.ts | 12 | CALC-DEEP-001–012 | Full suite passing (12/12) |
+| j8-approval-review-deep.spec.ts | 10 | APPROVAL-DEEP-001–010 | Full suite passing (10/10) |
+| export-workflows-deep.spec.ts | 7 | EXPORT-DEEP-001–008 | Full suite passing (7/7) |
+
+**TDD Red Phase Results:** 58 passed, 18 failed, 2 flaky (74.4% pass rate)
+
+**Full Suites Passing:**
+- Calculation/Evidence (12/12)
+- Approval Gates (10/10)
+- Export (7/7)
+
+**Failure Report:** [docs/validation/deep_validation_initial_failures.md](deep_validation_initial_failures.md)
+
+**Supporting Infrastructure:**
+- e2e/helpers/validation-program.ts — 10 new deep-test helpers
+- e2e/fixtures/deep-test-data.ts — rich mock data factories
+- package.json: test:e2e:validation:deep and test:e2e:validation:p0:deep commands
+- Anti-skip guard extended with 7 deep files + 5 required evidence entries
+
 
 **Scope.** This matrix converts the master workflow inventory into an executable frontend E2E validation program for Fabric_4L. The source-of-truth workflow contract is `/home/ubuntu/upload/Pasted_content_04.txt`, and the existing repository evidence comes from the Playwright title inventory, route inventory, router configuration, journey fixture, and current canonical journey suites audited during Phase 1–2.
 
@@ -82,3 +114,24 @@ Deep validation adds 78 interaction-level tests in 7 new `-deep.spec.ts` files t
 **Supporting files:**
 - `e2e/helpers/validation-program.ts` — deep-test utility helpers (form submission, workflow steps, disabled actions, API call tracking, audit events, sequential mocks, role switching)
 - `e2e/fixtures/deep-test-data.ts` — rich mock data factories (accounts, business cases, signals, drivers, evidence, ROI scenarios, approvals, benchmarks, ground truth, agent responses)
+
+## Backend-Integrated Validation Coverage (Phase 3 — Sprint 3)
+
+**Date:** 2026-05-04 | **Status:** Infrastructure Complete, Tests Created
+
+Backend-integrated tests use real backend data seeded by `scripts/db/seed-e2e-data.ts` instead of mock data. Tests require `PLAYWRIGHT_BACKEND_URL` to be set and fail closed if the backend is unavailable.
+
+| Backend Test File | Suite | Tests | Traceability | Backend Data Source |
+|---|---|---|---|---|
+| `e2e/journeys/j1-golden-path-backend-integrated.spec.ts` | Golden Path E2E | 12 (3 skipped) | GP-BI-001–015 | `scripts/fixtures/meridian-automotive.ts` |
+
+**Seeded Data:**
+- Account: acct-meridian-001 (Meridian Automotive)
+- Case: case-meridian-e2e-001
+- Tenant: 00000000-0000-4000-e2e0-000000000001
+- 5 signals, 3 drivers, 4 evidence items, 4 stakeholders
+
+**Commands:**
+- `pnpm run test:e2e:backend` — backend-integrated tests only
+- Requires: `PLAYWRIGHT_BACKEND_URL=http://localhost:8004` (or other backend URL)
+- Auto-seeds data via global-setup.ts before test execution

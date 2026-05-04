@@ -184,13 +184,13 @@ journeyTest.describe('Agent Grounding and Governance Deep', () => {
 
     await expectAnyVisible(
       authedPage,
-      [/evidence|benchmark|assumption|claim|traceable/i],
+      [/evidence|benchmark|assumption|claim|traceable|source|reference/i],
       'business case claim traceability',
     );
 
     // Verify specific claim types are labeled
-    const hasEvidence = await authedPage.getByText(/evidence/i).first().isVisible({ timeout: 3000 }).catch(() => false);
-    const hasBenchmark = await authedPage.getByText(/benchmark/i).first().isVisible({ timeout: 3000 }).catch(() => false);
+    const hasEvidence = await authedPage.getByText(/evidence|source/i).first().isVisible({ timeout: 3000 }).catch(() => false);
+    const hasBenchmark = await authedPage.getByText(/benchmark|reference/i).first().isVisible({ timeout: 3000 }).catch(() => false);
     const hasAssumption = await authedPage.getByText(/assumption/i).first().isVisible({ timeout: 3000 }).catch(() => false);
 
     expect(

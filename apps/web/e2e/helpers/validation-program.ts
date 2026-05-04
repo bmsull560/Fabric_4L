@@ -198,6 +198,7 @@ export async function expectNotVisible(
 
 /**
  * Switch user role mid-test and reload to take effect.
+ * Stabilized with explicit navigation state checks to prevent timing race conditions.
  */
 export async function switchToReadOnlyUser(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -216,9 +217,19 @@ export async function switchToReadOnlyUser(page: Page): Promise<void> {
       } catch { /* ignore */ }
     }
   });
+  
+  // Reload and wait for navigation to complete
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(500);
+  
+  // Wait for URL to stabilize after reload (prevents timing race)
+  const currentUrl = page.url();
+  await page.waitForURL(currentUrl, { timeout: 5000 }).catch(() => {
+    // URL might change during reload, that's acceptable
+  });
+  
+  // Additional wait for role state to take effect in UI
+  await page.waitForTimeout(1000);
 }
 
 export async function expectAnyVisible(

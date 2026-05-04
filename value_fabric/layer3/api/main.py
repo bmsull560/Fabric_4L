@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import httpx
 import psutil
@@ -348,7 +348,7 @@ async def lifespan(app: FastAPI):
     # P1-29: Initialize OpenTelemetry
     _tracer_provider = init_telemetry()
     if _tracer_provider:
-            logger.info("L3: OpenTelemetry tracing initialized")
+        logger.info("L3: OpenTelemetry tracing initialized")
 
     # Setup structured logging
     settings = get_settings()
@@ -1214,7 +1214,8 @@ async def health_check(
 
     if schema_initializer is not None:
         try:
-            neo4j_health = (await schema_initializer.health_check()).model_dump()
+            health_result = await schema_initializer.health_check()
+            neo4j_health = health_result.model_dump() if health_result else None
             schema_status = await schema_initializer.verify_schema()
         except Exception:
             logger.warning(

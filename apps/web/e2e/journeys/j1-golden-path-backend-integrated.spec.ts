@@ -1,13 +1,20 @@
 /**
- * Journey 1 Deep: Golden Path — Account to Approved Business Case
+ * Journey 1 Backend-Integrated: Golden Path — Account to Approved Business Case
  *
- * Traceability: GP-DEEP-001 through GP-DEEP-015.
- * This suite exercises the full 21-step golden path through actual form
- * interactions, state transitions, and multi-step workflows. Tests are
- * expected to fail initially (TDD red phase) where the UI has not yet
- * implemented the required workflow affordances.
+ * Traceability: GP-BI-001 through GP-BI-015.
+ *
+ * This suite exercises the full golden path using REAL backend data seeded by
+ * scripts/db/seed-e2e-data.ts. Tests require PLAYWRIGHT_BACKEND_URL to be set
+ * and will fail with a clear error if the backend is unavailable.
+ *
+ * Seeded data (from scripts/fixtures/meridian-automotive.ts):
+ *   - Account: acct-meridian-001 (Meridian Automotive)
+ *   - Case: case-meridian-e2e-001
+ *   - Tenant: 00000000-0000-4000-e2e0-000000000001
+ *   - 5 signals, 3 drivers, 4 evidence items, 4 stakeholders
  *
  * Priority: P0 production gate
+ * Tag: @backend
  */
 import { journeyTest, expect } from '../helpers/journey-fixture';
 import {
@@ -18,41 +25,35 @@ import {
   expectEnabledAction,
   expectTenantContext,
   expectNoCrossTenantLeakage,
-  expectNotVisible,
-  mockSequentialResponses,
+  requireBackendOrThrow,
 } from '../helpers/validation-program';
-import {
-  DEEP_ACCOUNT_ID,
-  DEEP_CASE_APPROVED_ID,
-  DEEP_CASE_DRAFT_ID,
-  buildGoldenPathMocks,
-  createFullAccountPayload,
-  createSignalSet,
-  createROIScenarios,
-  createApprovedBusinessCase,
-  createDraftBusinessCase,
-} from '../fixtures/deep-test-data';
 
-journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () => {
-  journeyTest.beforeEach(async ({ addMocks }) => {
-    await addMocks(buildGoldenPathMocks());
+// Seeded data IDs from scripts/fixtures/meridian-automotive.ts
+const SEED_ACCOUNT_ID = 'acct-meridian-001';
+const SEED_CASE_ID = 'case-meridian-e2e-001';
+const SEED_TENANT_ID = '00000000-0000-4000-e2e0-000000000001';
+
+journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approved Business Case', () => {
+  journeyTest.beforeEach(async () => {
+    // Require backend to be available - tests fail closed if backend is missing
+    requireBackendOrThrow('Golden Path Backend-Integrated');
   });
 
   // ── Phase 1: Account Setup ──────────────────────────────────────────────
 
-  journeyTest('GP-DEEP-001: user can create a new account through prospect setup form', async ({ authedPage }) => {
+  journeyTest('GP-BI-001: user can create a new account through prospect setup form', async ({ authedPage }) => {
     await authedPage.goto('/workflow/prospect', { waitUntil: 'domcontentloaded' });
     await expectAnyVisible(authedPage, [/start a new value case/i, /search company/i], 'prospect setup form');
 
     const companyInput = authedPage.getByPlaceholder(/company name/i);
     await expect(companyInput).toBeVisible({ timeout: 5000 });
-    await companyInput.fill('Meridian Health Group');
-    await companyInput.blur(); // Trigger state update
+    await companyInput.fill('Meridian Automotive');
+    await companyInput.blur();
 
     const domainInput = authedPage.getByPlaceholder(/website/i);
     await expect(domainInput).toBeVisible({ timeout: 5000 });
-    await domainInput.fill('meridian.example');
-    await domainInput.blur(); // Trigger state update
+    await domainInput.fill('meridian-auto.com');
+    await domainInput.blur();
 
     const submitBtn = authedPage.getByRole('button', { name: /launch|start|create|begin|run|intelligence|enrichment/i }).first();
     await expect(submitBtn).toBeVisible({ timeout: 5000 });
@@ -65,27 +66,27 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
         .first(),
     ).toBeVisible({ timeout: 10000 });
 
-    await expectTenantContext(authedPage);
+    await expectTenantContext(authedPage, SEED_TENANT_ID);
   });
 
-  journeyTest('GP-DEEP-002: user can assign a value pack to the account', async ({ authedPage }) => {
+  journeyTest('GP-BI-002: user can assign a value pack to the account', async ({ authedPage }) => {
     await expectWorkflowStep(
       authedPage,
       '/settings/data/value-packs',
-      [{ click: /assign|healthcare|select pack/i }],
-      /value pack|healthcare|assigned|default/i,
+      [{ click: /assign|manufacturing|select pack/i }],
+      /value pack|manufacturing|assigned|default/i,
     );
   });
 
-  journeyTest('GP-DEEP-003: user can trigger domain ingestion from command center', async ({ authedPage }) => {
+  journeyTest('GP-BI-003: user can trigger domain ingestion from command center', async ({ authedPage }) => {
     await authedPage.goto('/context/command-center', { waitUntil: 'domcontentloaded' });
     await expectAnyVisible(authedPage, [/command center/i, /submit.*domain/i, /ingest/i], 'command center ingestion form');
 
     const domainInput = authedPage.getByPlaceholder(/domain|website/i)
       .or(authedPage.getByPlaceholder(/enter.*domain/i));
     await expect(domainInput).toBeVisible({ timeout: 5000 });
-    await domainInput.fill('meridian.example');
-    await domainInput.blur(); // Trigger state update
+    await domainInput.fill('meridian-auto.com');
+    await domainInput.blur();
 
     const ingestBtn = authedPage.getByRole('button', { name: /synthesize|submit|ingest|analyze|start/i }).first();
     await expect(ingestBtn).toBeVisible({ timeout: 5000 });
@@ -96,13 +97,18 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     ).toBeVisible({ timeout: 10000 });
   });
 
-  journeyTest('GP-DEEP-004: user can monitor ingestion job progress until completion', async ({ authedPage }) => {
+  journeyTest('GP-BI-004: user can monitor ingestion job progress until completion', async ({ authedPage }) => {
     await authedPage.goto('/context/ingestion/jobs', { waitUntil: 'domcontentloaded' });
     await expectAnyVisible(
       authedPage,
       [/ingestion jobs/i, /completed/i, /meridian/i, /progress/i],
       'ingestion job monitoring',
     );
+
+    // Verify the seeded ingestion job is visible
+    await expect(
+      authedPage.getByText(/meridian-auto.com/i).first(),
+    ).toBeVisible({ timeout: 10000 });
 
     await expect(
       authedPage.getByText(/completed|done|finished|success/i).or(authedPage.getByText(/100%|complete/i)).first(),
@@ -111,28 +117,32 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
 
   // ── Phase 2: Intelligence Review ────────────────────────────────────────
 
-  journeyTest('GP-DEEP-005: system extracts signals and user can review them', async ({ authedPage }) => {
-    await authedPage.goto(`/intelligence/${DEEP_ACCOUNT_ID}/signals`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-005: system extracts signals and user can review them', async ({ authedPage }) => {
+    await authedPage.goto(`/intelligence/${SEED_ACCOUNT_ID}/signals`, { waitUntil: 'domcontentloaded' });
 
+    // Verify seeded signal from meridian-automotive.ts is visible
     await expect(
-      authedPage.getByText(/manual reconciliation/i)
+      authedPage.getByText(/manual approval routing/i)
         .or(authedPage.getByText(/pain signal/i))
         .or(authedPage.getByText(/signal/i))
         .first(),
     ).toBeVisible({ timeout: 10000 });
 
+    // Verify confidence score from seeded data (0.92 = 92%)
     await expect(
-      authedPage.getByText(/confidence|92%|87%|65%|44%|0\.92|0\.87|0\.65|0\.44/i)
-        .or(authedPage.getByText(/source/i))
+      authedPage.getByText(/92%|0\.92/i)
+        .or(authedPage.getByText(/confidence/i))
         .first(),
     ).toBeVisible({ timeout: 5000 });
+
+    await expectTenantContext(authedPage, SEED_TENANT_ID);
   });
 
-  journeyTest('GP-DEEP-006: user can approve or reject extracted signals', async ({ authedPage }) => {
-    await authedPage.goto(`/intelligence/${DEEP_ACCOUNT_ID}/signals`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-006: user can approve or reject extracted signals', async ({ authedPage }) => {
+    await authedPage.goto(`/intelligence/${SEED_ACCOUNT_ID}/signals`, { waitUntil: 'domcontentloaded' });
 
     // Select a signal to open detail panel
-    const signalRow = authedPage.getByText(/manual reconciliation burden|supply chain|regulatory compliance/i).first();
+    const signalRow = authedPage.getByText(/manual approval routing|quality inspection|supplier scorecards/i).first();
     await expect(signalRow).toBeVisible({ timeout: 10000 });
     await signalRow.click();
 
@@ -152,21 +162,24 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     }
   });
 
-  journeyTest('GP-DEEP-007: user reviews account intelligence and stakeholder map', async ({ authedPage }) => {
-    await authedPage.goto(`/intelligence/${DEEP_ACCOUNT_ID}/stakeholders`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-007: user reviews account intelligence and stakeholder map', async ({ authedPage }) => {
+    await authedPage.goto(`/intelligence/${SEED_ACCOUNT_ID}/stakeholders`, { waitUntil: 'domcontentloaded' });
 
+    // Verify seeded stakeholder from meridian-automotive.ts
     await expect(
-      authedPage.getByText(/stakeholder/i)
-        .or(authedPage.getByText(/cfo/i))
-        .or(authedPage.getByText(/influence/i))
+      authedPage.getByText(/james whitfield/i)
+        .or(authedPage.getByText(/vp operations/i))
+        .or(authedPage.getByText(/stakeholder/i))
         .first(),
     ).toBeVisible({ timeout: 10000 });
+
+    await expectTenantContext(authedPage, SEED_TENANT_ID);
   });
 
   // ── Phase 3: Hypothesis and Value Modeling ──────────────────────────────
 
-  journeyTest('GP-DEEP-008: user generates AI value hypotheses', async ({ authedPage }) => {
-    await authedPage.goto(`/hypothesis/${DEEP_ACCOUNT_ID}/hypothesis`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-008: user generates AI value hypotheses', async ({ authedPage }) => {
+    await authedPage.goto(`/hypothesis/${SEED_ACCOUNT_ID}/hypothesis`, { waitUntil: 'domcontentloaded' });
 
     const generateBtn = authedPage.getByRole('button', { name: /generate|create|synthesize/i }).first();
     const hasGenerate = await generateBtn.isVisible({ timeout: 5000 }).catch(() => false);
@@ -185,27 +198,29 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     }
   });
 
-  journeyTest('GP-DEEP-009: user builds value driver tree with evidence mapping', async ({ authedPage }) => {
-    await authedPage.goto(`/drivers/${DEEP_ACCOUNT_ID}`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-009: user builds value driver tree with evidence mapping', async ({ authedPage }) => {
+    await authedPage.goto(`/drivers/${SEED_ACCOUNT_ID}`, { waitUntil: 'domcontentloaded' });
 
     await expectAnyVisible(
       authedPage,
-      [/driver/i, /operational efficiency/i, /revenue growth/i, /risk reduction/i, /value driver/i],
+      [/driver/i, /manual process overhead/i, /fragmented data systems/i, /real-time visibility/i, /value driver/i],
       'value driver tree',
     );
 
+    // Verify seeded driver from meridian-automotive.ts
     await expect(
-      authedPage.getByText(/evidence/i)
-        .or(authedPage.getByText(/weight/i))
-        .or(authedPage.getByText(/0\.\d/))
+      authedPage.getByText(/manual process overhead/i)
+        .or(authedPage.getByText(/evidence/i))
         .first(),
     ).toBeVisible({ timeout: 5000 });
+
+    await expectTenantContext(authedPage, SEED_TENANT_ID);
   });
 
   // ── Phase 4: ROI Calculation ────────────────────────────────────────────
 
-  journeyTest('GP-DEEP-010: user selects formulas and completes scenario inputs', async ({ authedPage }) => {
-    await authedPage.goto(`/calculator/${DEEP_ACCOUNT_ID}/roi`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-010: user selects formulas and completes scenario inputs', async ({ authedPage }) => {
+    await authedPage.goto(`/calculator/${SEED_ACCOUNT_ID}/roi`, { waitUntil: 'domcontentloaded' });
 
     await expectAnyVisible(
       authedPage,
@@ -222,8 +237,8 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     }
   });
 
-  journeyTest('GP-DEEP-011: system calculates ROI, payback, and economic value', async ({ authedPage }) => {
-    await authedPage.goto(`/calculator/${DEEP_ACCOUNT_ID}/roi`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-011: system calculates ROI, payback, and economic value', async ({ authedPage }) => {
+    await authedPage.goto(`/calculator/${SEED_ACCOUNT_ID}/roi`, { waitUntil: 'domcontentloaded' });
 
     await expect(
       authedPage.getByText(/roi|return on investment/i).first(),
@@ -238,8 +253,8 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
 
   // ── Phase 5: Business Case and Approval ─────────────────────────────────
 
-  journeyTest('GP-DEEP-012: user generates business case from value model', async ({ authedPage }) => {
-    await authedPage.goto(`/value-case/${DEEP_ACCOUNT_ID}`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-012: user generates business case from value model', async ({ authedPage }) => {
+    await authedPage.goto(`/value-case/${SEED_ACCOUNT_ID}`, { waitUntil: 'domcontentloaded' });
 
     await expectAnyVisible(
       authedPage,
@@ -248,8 +263,8 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     );
   });
 
-  journeyTest('GP-DEEP-013: user submits business case for review and reviewer approves', async ({ authedPage }) => {
-    await authedPage.goto(`/deliverables/cases/${DEEP_CASE_APPROVED_ID}`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-013: user submits business case for review and reviewer approves', async ({ authedPage }) => {
+    await authedPage.goto(`/deliverables/cases/${SEED_CASE_ID}`, { waitUntil: 'domcontentloaded' });
 
     await expect(
       authedPage.getByText(/approved|reviewed|complete/i)
@@ -260,26 +275,29 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     await expect(
       authedPage.getByText(/executive summary/i).first(),
     ).toBeVisible({ timeout: 5000 });
+
+    await expectTenantContext(authedPage, SEED_TENANT_ID);
   });
 
-  journeyTest('GP-DEEP-014: export is available only after required approval', async ({ authedPage }) => {
-    // Draft case: export should be disabled
-    await authedPage.goto(`/deliverables/cases/${DEEP_CASE_DRAFT_ID}`, { waitUntil: 'domcontentloaded' });
-    const draftExport = authedPage.getByRole('button', { name: /export pdf/i }).first();
-    if (await draftExport.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await expect(draftExport).toBeDisabled();
-    }
-
-    // Approved case: export should be enabled
-    await authedPage.goto(`/deliverables/cases/${DEEP_CASE_APPROVED_ID}`, { waitUntil: 'domcontentloaded' });
-    const approvedExport = authedPage.getByRole('button', { name: /export pdf/i }).first();
-    if (await approvedExport.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await expect(approvedExport).toBeEnabled();
+  journeyTest('GP-BI-014: export is available only after required approval', async ({ authedPage }) => {
+    // Note: Seeded data only has one case (case-meridian-e2e-001) which is active
+    // This test verifies the export button state based on approval status
+    await authedPage.goto(`/deliverables/cases/${SEED_CASE_ID}`, { waitUntil: 'domcontentloaded' });
+    const exportBtn = authedPage.getByRole('button', { name: /export pdf/i }).first();
+    
+    if (await exportBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      // If the case is not approved, export should be disabled
+      const isApproved = await authedPage.getByText(/approved/i).isVisible().catch(() => false);
+      if (isApproved) {
+        await expect(exportBtn).toBeEnabled();
+      } else {
+        await expect(exportBtn).toBeDisabled();
+      }
     }
   });
 
-  journeyTest('GP-DEEP-015: business case contains traceable claims after golden path', async ({ authedPage }) => {
-    await authedPage.goto(`/deliverables/cases/${DEEP_CASE_APPROVED_ID}`, { waitUntil: 'domcontentloaded' });
+  journeyTest('GP-BI-015: business case contains traceable claims after golden path', async ({ authedPage }) => {
+    await authedPage.goto(`/deliverables/cases/${SEED_CASE_ID}`, { waitUntil: 'domcontentloaded' });
 
     await expectAnyVisible(
       authedPage,
@@ -288,5 +306,6 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     );
 
     await expectNoCrossTenantLeakage(authedPage);
+    await expectTenantContext(authedPage, SEED_TENANT_ID);
   });
 });

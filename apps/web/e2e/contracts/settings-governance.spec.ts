@@ -385,12 +385,11 @@ test.describe('Contract: Settings & Governance Admin Surface', () => {
 
       // Contract: settings pages have a sub-navigation structure
       // Either tabs, sidebar links, or section headers
-      const hasSubNav =
-        (await page.getByRole('tab').count()) > 0 ||
-        (await page.getByRole('link').filter({ hasText: /system|content|data|access/i }).count()) > 0 ||
-        (await page.locator('[class*="tab"], [class*="nav"]').count()) > 0;
+      const hasTabs = (await page.getByRole('tab').count()) > 0;
+      const hasLinks = (await page.getByRole('link').filter({ hasText: /system|content|data|access/i }).count()) > 0;
+      const hasNavElements = (await page.locator('[class*="tab"], [class*="nav"]').count()) > 0;
 
-      expect(hasSubNav).toBe(true);
+      expect(hasTabs || hasLinks || hasNavElements, 'Settings page should have sub-navigation').toBe(true);
     });
   });
 
@@ -428,10 +427,10 @@ test.describe('Contract: Settings & Governance Admin Surface', () => {
         const contentVisible = await contentArea.isVisible().catch(() => false);
 
         // Contract: at minimum, the route renders something (not blank/redirect)
-        expect(headingVisible || contentVisible).toBe(true);
-
-        // Contract: if heading is visible, it matches expected pattern
-        if (headingVisible) {
+        if (!headingVisible) {
+          expect(contentVisible, 'Governance route should render content when heading not visible').toBe(true);
+        } else {
+          expect(headingVisible, 'Governance route should render heading or content').toBe(true);
           await expect(pageHeading).toHaveText(heading);
         }
       });
@@ -496,7 +495,13 @@ test.describe('Contract: Settings & Governance Admin Surface', () => {
       const hasList = (await page.locator('[class*="list"], [class*="card"]').count()) > 0;
       const hasContent = ((await content.textContent())?.length ?? 0) > 50;
 
-      expect(hasTable || hasList || hasContent).toBe(true);
+      if (!hasTable && !hasList) {
+        expect(hasContent, 'Roles page should have table, list, or content').toBe(true);
+      } else if (hasTable) {
+        expect(hasTable, 'Roles page should display role table').toBe(true);
+      } else if (hasList) {
+        expect(hasList, 'Roles page should display role list').toBe(true);
+      }
     });
 
     test('should display team management', async ({ page }) => {
@@ -519,7 +524,13 @@ test.describe('Contract: Settings & Governance Admin Surface', () => {
       const hasKeyList = (await page.locator('table, [class*="list"]').count()) > 0;
       const hasContent = ((await content.textContent())?.length ?? 0) > 50;
 
-      expect(hasCreateButton || hasKeyList || hasContent).toBe(true);
+      if (!hasCreateButton && !hasKeyList) {
+        expect(hasContent, 'API key page should have create button, key list, or content').toBe(true);
+      } else if (hasCreateButton) {
+        expect(hasCreateButton, 'API key page should have create button').toBe(true);
+      } else if (hasKeyList) {
+        expect(hasKeyList, 'API key page should display key list').toBe(true);
+      }
     });
   });
 
@@ -545,7 +556,13 @@ test.describe('Contract: Settings & Governance Admin Surface', () => {
       const hasList = (await page.locator('[class*="list"], [class*="log"]').count()) > 0;
       const hasEntries = ((await content.textContent())?.length ?? 0) > 50;
 
-      expect(hasTable || hasList || hasEntries).toBe(true);
+      if (!hasTable && !hasList) {
+        expect(hasEntries, 'Audit log should have table, list, or entries').toBe(true);
+      } else if (hasTable) {
+        expect(hasTable, 'Audit log should display table').toBe(true);
+      } else if (hasList) {
+        expect(hasList, 'Audit log should display list').toBe(true);
+      }
     });
 
     test('should display change history', async ({ page }) => {
