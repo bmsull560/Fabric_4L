@@ -71,7 +71,7 @@ export default function CommandCenter() {
 
         {/* Advanced config panel — hidden by default */}
         {showAdvanced && (
-          <div className="px-4 py-4 bg-muted/20 border-t border-border/50 grid grid-cols-3 gap-4">
+          <div className="px-4 py-4 bg-muted/20 border-t border-border/50 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1.5">
                 Extraction Profile
@@ -108,7 +108,7 @@ export default function CommandCenter() {
                 {["1","2","3","4","5"].map(d => <option key={d}>{d}</option>)}
               </select>
             </div>
-            <div className="col-span-3 pt-1">
+            <div className="col-span-1 sm:col-span-3 pt-1">
               <p className="text-[11px] text-muted-foreground/60">
                 Value Pack context: <span className="font-medium text-muted-foreground">SaaS / B2B — Enterprise Security</span>
                 <button className="ml-2 text-blue-600 underline underline-offset-2">Change</button>
@@ -140,9 +140,9 @@ export default function CommandCenter() {
       </div>
 
       {/* ── Two-column lower section ───────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Recent maps table — spans 2 cols */}
-        <div className="col-span-2 bg-card border border-border rounded-lg shadow-sm">
+        <div className="col-span-1 md:col-span-2 bg-card border border-border rounded-lg shadow-sm">
           <div className="px-4 pt-4 pb-3 border-b border-border/50 flex items-center justify-between">
             <h2 className="text-[14px] font-bold text-foreground">Recent Maps</h2>
             <button className="text-[11px] text-blue-600 hover:underline">View all</button>

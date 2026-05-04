@@ -14,6 +14,9 @@ import { Slider } from "@/components/ui/slider";
 import { useBusinessCase } from "@/hooks/useDocuments";
 import { useC1Stream } from "@/hooks/useC1Stream";
 import { isC1Enabled, C1Component, getScenarios } from "@/api/thesysClient";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('InteractiveBusinessCase');
 
 // Types for C1-generated components
 interface MetricCardProps {
@@ -308,7 +311,7 @@ export default function InteractiveBusinessCase() {
     const allScenarios = getScenarios(businessCaseId);
     const scenario = allScenarios.find(s => s.id === scenarioId);
     if (!scenario) {
-      console.warn(`[InteractiveBusinessCase] Scenario ${scenarioId} not found`);
+      log.warn(`Scenario ${scenarioId} not found`);
       return;
     }
 

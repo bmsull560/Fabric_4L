@@ -114,8 +114,11 @@ module.exports = {
     ],
 
     // TypeScript
-    "@typescript-eslint/no-explicit-any": "off", // Allow gradual migration
+    "@typescript-eslint/no-explicit-any": "error", // Enforced — use specific types
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+
+    // Logging — use createFeatureLogger from @/lib/telemetry instead
+    "no-console": "error",
 
     // Fabric Contract overrides for frontend
     // Phase 2: Enforced - violations block CI (see CONTRACT.md §3.3)
@@ -144,6 +147,13 @@ module.exports = {
       files: wfPrimitivesAllowlist,
       rules: {
         "no-restricted-imports": "off",
+      },
+    },
+    {
+      // telemetry.ts IS the logging implementation — console calls are intentional here
+      files: ["src/lib/telemetry.ts"],
+      rules: {
+        "no-console": "off",
       },
     },
   ],

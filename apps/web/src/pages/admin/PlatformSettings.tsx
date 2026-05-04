@@ -28,6 +28,9 @@ import {
   type TenantSettings,
   type UpdateSettingsPayload,
 } from "@/hooks/usePlatformSettings";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('PlatformSettings');
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -465,7 +468,7 @@ function PlatformSettingsContent() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      console.error("Failed to update settings:", err);
+      log.error('Failed to update settings', { errorCode: String(err) });
     }
   };
 

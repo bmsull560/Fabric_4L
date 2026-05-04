@@ -119,4 +119,65 @@ journeyTest.describe('Journey 5: Tier-Gated Access & Security', () => {
     await navigateAndWait(authedPage, '/settings/content/formulas');
     await expect(authedPage).toHaveURL(/\/settings\/content\/formulas/);
   });
+
+  // ── Deep-Link Security ───────────────────────────────────────────────────
+
+  journeyTest('SEC-001: deep link to protected route while unauthenticated redirects to login', async ({ page }) => {
+    // Use a fresh, unauthenticated page (not `authedPage` which is pre-seeded)
+    await page.goto('/deliverables/cases', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
+
+    // Without auth, the app should redirect to /login
+    const url = page.url();
+    expect(url).toMatch(/login|auth|sign.?in/i);
+  });
+
+  journeyTest('SEC-002: deep link to admin route as standard user redirects to home', async ({ authedPage, switchTier }) => {
+    await switchTier('standard');
+    await authedPage.goto('/organization-admin', { waitUntil: 'domcontentloaded' });
+    await authedPage.waitForTimeout(1000);
+
+    // Standard user should be redirected away from the admin route
+    await expect(authedPage).toHaveURL(/home|login/);
+  });
+
+  journeyTest('SEC-003: deep link to governance-center as standard user redirects to home', async ({ authedPage, switchTier }) => {
+    await switchTier('standard');
+    await authedPage.goto('/governance-center', { waitUntil: 'domcontentloaded' });
+    await authedPage.waitForTimeout(1000);
+
+    await expect(authedPage).toHaveURL(/home|login/);
+  });
+
+  journeyTest('SEC-004: deep link to platform-configuration as standard user redirects to home', async ({ authedPage, switchTier }) => {
+    await switchTier('standard');
+    await authedPage.goto('/platform-configuration', { waitUntil: 'domcontentloaded' });
+    await authedPage.waitForTimeout(1000);
+
+    await expect(authedPage).toHaveURL(/home|login/);
+  });
+
+  journeyTest('SEC-005: deep link to developer-console as standard user redirects to home', async ({ authedPage, switchTier }) => {
+    await switchTier('standard');
+    await authedPage.goto('/developer-console', { waitUntil: 'domcontentloaded' });
+    await authedPage.waitForTimeout(1000);
+
+    await expect(authedPage).toHaveURL(/home|login/);
+  });
+
+  journeyTest('SEC-006: deep link to account-specific route for an account the user cannot access shows safe error', async ({ authedPage, switchTier }) => {
+    // Switch to read-only user (most restricted role)
+    await switchTier('standard');
+    // Navigate to a route with an account they may not have explicit access to
+    await authedPage.goto('/context/formulas', { waitUntil: 'domcontentloaded' });
+    await authedPage.waitForTimeout(1000);
+
+    // Standard user should be redirected or see a forbidden state, not raw data
+    const url = authedPage.url();
+    const isRedirected = /home|login/.test(url);
+    const hasErrorState = await authedPage.getByText(/forbidden|access denied|not.*authorized|permission/i)
+      .first().isVisible({ timeout: 3000 }).catch(() => false);
+
+    expect(isRedirected || hasErrorState, 'Restricted route must redirect or show safe error state').toBe(true);
+  });
 });

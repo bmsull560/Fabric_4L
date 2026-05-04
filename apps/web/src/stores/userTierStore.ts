@@ -10,6 +10,9 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('userTierStore');
 
 export type UserTier = 'standard' | 'advanced' | 'admin' | 'unknown';
 
@@ -161,11 +164,7 @@ export const normalizeRoleToTier = (role: string): UserTier => {
 
   if (!tier) {
     // SECURITY: Fail-safe to standard tier for unknown roles
-    // Log in development to help catch role mapping gaps
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.warn(`[normalizeRoleToTier] Unknown role "${role}" - defaulting to standard tier`);
-    }
+    log.warn(`Unknown role "${role}" - defaulting to standard tier`);
     return 'standard';
   }
 

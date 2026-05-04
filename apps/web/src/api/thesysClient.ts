@@ -4,6 +4,9 @@
  */
 
 import { apiClient } from './client';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('thesysClient');
 
 /**
  * Validate if a string is valid JSON without throwing
@@ -116,10 +119,7 @@ export async function* streamC1Response(
             const data = JSON.parse(trimmed.slice(6)) as C1StreamChunk;
             yield data;
           } catch (err) {
-            // Log malformed chunks in development for debugging
-            if (import.meta.env.DEV) {
-              console.warn('[thesysClient] Malformed SSE chunk:', trimmed.slice(0, 100), err);
-            }
+            log.warn('Malformed SSE chunk', { errorCode: String(err) });
           }
         }
       }
@@ -135,10 +135,10 @@ export async function* streamC1Response(
           const data = JSON.parse(jsonPart) as C1StreamChunk;
           yield data;
         } catch (err) {
-          console.warn('[thesysClient] Failed to parse final SSE chunk:', err);
+          log.warn('Failed to parse final SSE chunk', { errorCode: String(err) });
         }
       } else {
-        console.warn('[thesysClient] Discarding incomplete final chunk:', remaining.slice(0, 100));
+        log.warn('Discarding incomplete final chunk');
       }
     }
 
