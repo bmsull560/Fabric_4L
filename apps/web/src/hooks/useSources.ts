@@ -128,6 +128,9 @@ export interface TestConnectionResult {
 
 // ── Payload Builder ──────────────────────────────────────────────────────────
 
+/** Backend target_type values understood by the L1 scraping API */
+type BackendTargetType = 'SINGLE_PAGE' | 'PAGINATED' | 'SPIDER' | 'API_ENDPOINT';
+
 /**
  * Map frontend SourceType (WHAT the source is) to backend target_type (HOW to scrape).
  *
@@ -137,7 +140,7 @@ export interface TestConnectionResult {
  * These are different axes. The backend scraping method is inferred from source
  * category until the backend exposes an explicit source_category field.
  */
-const FRONTEND_TO_BACKEND_TARGET_TYPE: Record<SourceType, string> = {
+const FRONTEND_TO_BACKEND_TARGET_TYPE: Record<SourceType, BackendTargetType> = {
   crm:           'API_ENDPOINT',    // CRM platforms expose REST/SOAP APIs
   database:      'API_ENDPOINT',    // Databases accessed via query adapter API
   file:          'SINGLE_PAGE',     // Direct file downloads (CSV, JSON, etc.)

@@ -40,7 +40,14 @@ function extractDetailMessage(detail: ErrorResponse['detail']): string | null {
   if (!detail) return null;
   if (typeof detail === 'string') return detail;
   if (Array.isArray(detail)) {
-    return detail.map((d) => (typeof d === 'object' && d !== null && 'msg' in d ? String((d as { msg: unknown }).msg) : JSON.stringify(d))).join('; ');
+    return detail
+      .map((d) => {
+        if (typeof d === 'object' && d !== null && 'msg' in d) {
+          return String((d as { msg: unknown }).msg);
+        }
+        return JSON.stringify(d);
+      })
+      .join('; ');
   }
   return null;
 }
