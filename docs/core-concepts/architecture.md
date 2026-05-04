@@ -88,8 +88,8 @@ graph TB
         L2[Layer 2: Extraction<br/>FastAPI + LLM<br/>Port 8002]
         L3[Layer 3: Knowledge<br/>FastAPI + Neo4j<br/>Port 8003]
         L4[Layer 4: Agents<br/>FastAPI + LangGraph<br/>Port 8004]
-        L5[Layer 5: Ground Truth<br/>FastAPI + Model Registry<br/>Port 8005]
-        L6[Layer 6: Benchmarks<br/>FastAPI + Harness<br/>Port 8006]
+        L5[Layer 5: Ground Truth<br/>FastAPI + PostgreSQL<br/>Port 8005]
+        L6[Layer 6: Benchmarks<br/>FastAPI + Statistical Libraries<br/>Port 8006]
     end
     
     subgraph "Data Layer"
