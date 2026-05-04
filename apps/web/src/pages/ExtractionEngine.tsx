@@ -138,7 +138,7 @@ export default function ExtractionEngine() {
     return (
       <div className="flex flex-col h-full items-center justify-center">
         <AlertCircle className="w-8 h-8 text-red-500 mb-3" />
-        <span className="text-sm text-red-600">{(streamError as Error).message || 'Failed to load job'}</span>
+        <span className="text-sm text-red-600">{streamError.message || 'Failed to load job'}</span>
       </div>
     );
   }
