@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 
 import pytest
-from fastapi.testclient import TestClient
 
 
 def _clear_layer3_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -29,10 +28,6 @@ class TestLayer3VariablesProductionFailClosed:
         from src.api.routes.variables import _is_production_like
 
         assert _is_production_like() is True
-
-        # The actual endpoint test would require a full Neo4j setup
-        # For now, we test the environment detection function
-        # Integration tests would verify the HTTPException is raised
 
     def test_staging_rejects_mock_formula_calculation(monkeypatch: pytest.MonkeyPatch) -> None:
         """Staging environments must fail closed on formula_calculation without integration."""

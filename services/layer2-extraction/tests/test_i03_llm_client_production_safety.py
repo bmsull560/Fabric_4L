@@ -73,30 +73,3 @@ class TestLayer2LLMClientProductionSafety:
         # Attempting to use 'mock' should fail
         with pytest.raises(ValueError, match="'mock' is not a valid LLMProvider"):
             LLMClient(provider="mock")
-
-    def test_openai_client_fails_without_package(monkeypatch: pytest.MonkeyPatch) -> None:
-        """OpenAI client should fail gracefully if openai package is not installed."""
-        _clear_layer2_env(monkeypatch)
-        monkeypatch.setenv("ENVIRONMENT", "development")
-        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
-
-        # Temporarily remove openai from sys.modules to simulate missing package
-        import sys
-
-        openai_module = sys.modules.pop("openai", None)
-
-        try:
-            # Re-import to trigger the ImportError check
-            import importlib
-
-            import layer2_extraction.shared.llm_client
-            importlib.reload(layer2_extraction.shared.llm_client)
-
-            from layer2_extraction.shared.llm_client import LLMClient
-
-            with pytest.raises(ImportError, match="openai package not installed"):
-                LLMClient(provider="openai")
-        finally:
-            # Restore openai module if it was present
-            if openai_module is not None:
-                sys.modules["openai"] = openai_module

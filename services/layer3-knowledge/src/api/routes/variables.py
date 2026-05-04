@@ -21,6 +21,20 @@ logger = get_logger(__name__)
 # Production-like environment detection
 _PRODUCTION_ENVS = {"production", "prod", "staging", "stage"}
 
+# Development-only mock values (not for production use)
+_DEV_MOCK_BENCHMARK_VALUE = 75.5
+_DEV_MOCK_FORMULA_VALUE = 100.0
+
+# Error messages for production fail-closed scenarios
+_ERROR_BENCHMARK_NOT_CONFIGURED = (
+    "Benchmark integration not configured. Configure BENCHMARK_API_URL and "
+    "BENCHMARK_API_KEY for production-like environments."
+)
+_ERROR_FORMULA_NOT_CONFIGURED = (
+    "Formula calculation service not configured. Configure FORMULA_SERVICE_URL "
+    "for production-like environments."
+)
+
 
 def _is_production_like() -> bool:
     """Whether the current runtime must fail closed on mock data."""
@@ -533,18 +547,18 @@ async def resolve_variable(
         if _is_production_like():
             raise HTTPException(
                 status_code=503,
-                detail="Benchmark integration not configured. Configure BENCHMARK_API_URL and BENCHMARK_API_KEY for production-like environments."
+                detail=_ERROR_BENCHMARK_NOT_CONFIGURED
             )
         logger.warning("Using mock benchmark value in development environment")
-        value = 75.5  # Mock benchmark value for development only
+        value = _DEV_MOCK_BENCHMARK_VALUE
     elif source_type == "formula_calculation":
         if _is_production_like():
             raise HTTPException(
                 status_code=503,
-                detail="Formula calculation service not configured. Configure FORMULA_SERVICE_URL for production-like environments."
+                detail=_ERROR_FORMULA_NOT_CONFIGURED
             )
         logger.warning("Using mock formula calculation value in development environment")
-        value = 100.0  # Mock calculated value for development only
+        value = _DEV_MOCK_FORMULA_VALUE
     else:
         value = v.get("fallbackValue")
 
