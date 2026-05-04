@@ -221,13 +221,14 @@ export async function switchToReadOnlyUser(page: Page): Promise<void> {
   // Reload and wait for navigation to complete
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle');
-  
+
   // Wait for URL to stabilize after reload (prevents timing race)
   const currentUrl = page.url();
-  await page.waitForURL(currentUrl, { timeout: 5000 }).catch(() => {
-    // URL might change during reload, that's acceptable
+  await page.waitForURL(currentUrl, { timeout: 5000 }).catch((err) => {
+    // URL might change during reload, that's acceptable - log for debugging
+    console.debug(`URL changed from ${currentUrl} to ${page.url()} during role switch: ${err.message}`);
   });
-  
+
   // Additional wait for role state to take effect in UI
   await page.waitForTimeout(1000);
 }

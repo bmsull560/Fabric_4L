@@ -604,7 +604,6 @@ app.include_router(formulas.router, prefix="/v1")
 app.include_router(value_packs.router, prefix="/v1")
 app.include_router(formula_governance.router, prefix="/v1")
 app.include_router(variables.router, prefix="/v1")
-app.include_router(benchmarks.router, prefix="/v1")
 app.include_router(models.router, prefix="/v1")
 app.include_router(entities.router, prefix="/v1")  # Refactored from main.py
 app.include_router(products.router, prefix="/v1")  # Data Intelligence Layer Phase 1

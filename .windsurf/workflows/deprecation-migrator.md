@@ -113,3 +113,10 @@ After successful migration:
 ```bash
 python scripts/ci/check_deprecations.py --format markdown
 ```
+
+## See Also
+
+- **Skill:** `skills/deprecation-migrator/SKILL.md` — Programmatic agent skill for anti-pattern migration
+- **Related Workflows:**
+  - `/contract-enforcement-auditor` — Identify anti-pattern violations before migration
+  - `/dead-code-sweeper` — Remove code after successful migration

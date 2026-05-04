@@ -203,3 +203,10 @@ Produce a summary:
 - **Never delete `contracts/`** manifests without confirming the tool is also deleted
 - **Check git stash/branches** before deleting recently-created files — they may be work-in-progress
 - **Prefer commenting over deleting** for MEDIUM confidence candidates
+
+## See Also
+
+- **Skill:** `skills/dead-code-sweeper/SKILL.md` — Programmatic agent skill for dead code identification
+- **Related Workflows:**
+  - `/facade-page-connector` — Rewire pages from mock data to real backend hooks before removing
+  - `/deprecation-migrator` — Fix anti-patterns before removing code

@@ -185,11 +185,11 @@ For each enforcement gap found, create a concrete fix:
 ## Key Files
 
 - `contract.md` — Canonical contract definitions (§2.1-§2.6)
-- `DEPRECATIONS.md` — Anti-pattern instance tracking
-- `CONTRACT_ENFORCEMENT_ASSESSMENT.md` — Previous audit results
-- `eslint-plugin-fabric-contracts/src/rules/` — ESLint rule implementations
-- `frontend/.eslintrc.js` — ESLint configuration
-- `.github/workflows/pr-checks.yml` — CI pipeline
-- `tests/contract/` — Contract test suite (20 files)
-- `examples/canonical/` — Reference implementations
+
+## See Also
+
+- **Skill:** `skills/contract-enforcement-auditor/SKILL.md` — Programmatic agent skill for contract enforcement auditing
+- **Related Workflows:**
+  - `/deprecation-migrator` — Fix anti-pattern instances identified during audit
+  - `/tool-contract-sync` — Ensure tools, skills, and manifests stay in sync
 - `shared/identity/middleware.py` — Runtime auth middleware
