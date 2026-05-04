@@ -161,44 +161,59 @@ class SemanticAligner:
         aligned_entities = []
         alignment_results = []
 
+        # Pre-compute lookup structures for O(1) exact and normalized-name matching.
+        # These are rebuilt incrementally as entities are added to aligned_entities.
+        exact_name_index: dict[str, Any] = {}      # lower(name) -> entity
+        normalized_name_index: dict[str, Any] = {} # normalized(name) -> entity
+        # Parallel list of pre-normalized names matching aligned_entities order.
+        aligned_normalized_names: list[str] = []
+
         for entity, embedding in zip(entities, embeddings):
             # Check cache
             cache_key = self._compute_cache_key(entity)
             if cache_key in self.alignment_cache:
                 alignment_results.append(self.alignment_cache[cache_key])
+                # Keep index structures in sync even for cached entities.
+                entity_name = self._get_entity_name(entity)
+                lower_name = entity_name.lower()
+                normalized = self._normalize_name(entity_name)
+                exact_name_index.setdefault(lower_name, entity)
+                normalized_name_index.setdefault(normalized, entity)
+                aligned_normalized_names.append(normalized)
                 aligned_entities.append(entity)
                 continue
 
-            # Check for exact/normalized matches within the same batch
+            entity_name = self._get_entity_name(entity)
+            lower_name = entity_name.lower()
+            normalized_name = self._normalize_name(entity_name)
+
+            # Check for exact/normalized matches within the same batch.
+            # Exact and normalized lookups are O(1) via pre-built dicts.
             best_match = None
             best_score = 0.0
             best_method = AlignmentMethod.BELOW_THRESHOLD
 
-            entity_name = self._get_entity_name(entity)
-            normalized_name = self._normalize_name(entity_name)
+            # 1. Exact name match (O(1))
+            if lower_name in exact_name_index:
+                best_match = exact_name_index[lower_name]
+                best_score = 1.0
+                best_method = AlignmentMethod.EXACT_MATCH
 
-            # Check exact matches first
-            for other_entity, other_embedding in zip(
-                aligned_entities, embeddings[: len(aligned_entities)]
-            ):
-                other_name = self._get_entity_name(other_entity)
+            # 2. Normalized name match (O(1)), only if no exact match yet
+            if best_match is None and normalized_name in normalized_name_index:
+                best_match = normalized_name_index[normalized_name]
+                best_score = 0.95
+                best_method = AlignmentMethod.NORMALIZED_MATCH
 
-                # Exact name match
-                if entity_name.lower() == other_name.lower():
-                    best_match = other_entity
-                    best_score = 1.0
-                    best_method = AlignmentMethod.EXACT_MATCH
-                    break
-
-                # Normalized name match
-                if normalized_name == self._normalize_name(other_name):
-                    best_score = max(best_score, 0.95)
-                    if best_score >= 0.95:
-                        best_match = other_entity
-                        best_method = AlignmentMethod.NORMALIZED_MATCH
-
-                # Vector similarity
-                if other_embedding is not None and embedding is not None:
+            # 3. Vector similarity – only needed when no name-based match found
+            if best_match is None and embedding is not None:
+                for other_entity, other_embedding, _other_norm in zip(
+                    aligned_entities,
+                    embeddings[: len(aligned_entities)],
+                    aligned_normalized_names,
+                ):
+                    if other_embedding is None:
+                        continue
                     similarity = self._compute_similarity(embedding, other_embedding)
                     if similarity > best_score:
                         best_score = similarity
@@ -229,6 +244,10 @@ class SemanticAligner:
 
             self.alignment_cache[cache_key] = alignment_result
             alignment_results.append(alignment_result)
+            # Update O(1) lookup indexes before moving to the next entity.
+            exact_name_index.setdefault(lower_name, entity)
+            normalized_name_index.setdefault(normalized_name, entity)
+            aligned_normalized_names.append(normalized_name)
             aligned_entities.append(entity)
 
         return aligned_entities, alignment_results
