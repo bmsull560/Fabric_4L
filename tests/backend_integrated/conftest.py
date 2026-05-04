@@ -7,6 +7,7 @@ are unavailable.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 import uuid
@@ -203,7 +204,7 @@ class BackendValidationHarness:
             last_body, _ = await self.request(layer, "GET", path, expected=(200,))
             if any(state in str(last_body).lower() for state in desired):
                 return last_body
-            time.sleep(0.2)
+            await asyncio.sleep(0.2)
         raise AssertionError(f"Job state at {layer.upper()} {path} did not reach {desired}; last body={last_body!r}")
 
 
