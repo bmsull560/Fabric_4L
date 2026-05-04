@@ -68,6 +68,7 @@ class AccountService:
         provider: CRMProvider,
         provider_record_id: str,
         name: str,
+        tenant_id: str,
         domain: str | None = None,
         industry: str | None = None,
         region: str | None = None,
@@ -77,15 +78,17 @@ class AccountService:
         owner_email: str | None = None,
         stage: str | None = None,
         segment: str | None = None,
+        account_id: UUID | None = None,
     ) -> Account:
-        """Create a new account record."""
-        existing = await self.get_account_by_provider_id(provider, provider_record_id)
+        """Create a new account record scoped to the authenticated tenant."""
+        existing = await self.get_account_by_provider_id(provider, provider_record_id, tenant_id=tenant_id)
         if existing:
             raise ValueError(
                 f"Account already exists for provider={provider.value} provider_record_id={provider_record_id}"
             )
 
         account = Account(
+            id=account_id,
             provider=provider.value,
             provider_record_id=provider_record_id,
             name=name,
@@ -99,6 +102,7 @@ class AccountService:
             owner_email=owner_email,
             stage=stage,
             segment=segment,
+            tenant_id=tenant_id,
             sync_status=SyncStatus.PENDING.value,
             opportunities=[],
             contacts=[],
@@ -122,6 +126,7 @@ class AccountService:
         page_size: int = 20,
         sort_by: str = "updated_at",
         sort_order: str = "desc",
+        tenant_id: str | None = None,
     ) -> tuple[list[Account], int]:
         """List accounts with filtering and pagination.
 
@@ -134,6 +139,8 @@ class AccountService:
 
         # Apply filters
         filters = []
+        if tenant_id:
+            filters.append(Account.tenant_id == tenant_id)
         if provider:
             filters.append(Account.provider == provider.value)
         if stage:
@@ -187,6 +194,7 @@ class AccountService:
         page_size: int = 20,
         sort_by: str = "updated_at",
         sort_order: str = "desc",
+        tenant_id: str | None = None,
     ) -> tuple[list[Account], int]:
         """Search accounts across name, domain, and owner."""
         # Build base query
@@ -194,6 +202,8 @@ class AccountService:
         count_query = select(func.count(Account.id))
 
         filters = []
+        if tenant_id:
+            filters.append(Account.tenant_id == tenant_id)
 
         # Text search across name, domain, owner_name
         if query_str:
@@ -249,25 +259,29 @@ class AccountService:
     # Detail & Activity
     # ========================================================================
 
-    async def get_account(self, account_id: UUID) -> Account | None:
-        """Get single account by ID."""
-        result = await self.db.execute(select(Account).where(Account.id == account_id))
+    async def get_account(self, account_id: UUID, *, tenant_id: str | None = None) -> Account | None:
+        """Get a single account by ID, optionally scoped to a tenant."""
+        filters = [Account.id == account_id]
+        if tenant_id:
+            filters.append(Account.tenant_id == tenant_id)
+        result = await self.db.execute(select(Account).where(and_(*filters)))
         return result.scalar_one_or_none()
 
     async def get_account_by_provider_id(
         self,
         provider: CRMProvider,
         provider_record_id: str,
+        *,
+        tenant_id: str | None = None,
     ) -> Account | None:
-        """Get account by provider-specific ID."""
-        result = await self.db.execute(
-            select(Account).where(
-                and_(
-                    Account.provider == provider.value,
-                    Account.provider_record_id == provider_record_id,
-                )
-            )
-        )
+        """Get account by provider-specific ID, optionally scoped to a tenant."""
+        filters = [
+            Account.provider == provider.value,
+            Account.provider_record_id == provider_record_id,
+        ]
+        if tenant_id:
+            filters.append(Account.tenant_id == tenant_id)
+        result = await self.db.execute(select(Account).where(and_(*filters)))
         return result.scalar_one_or_none()
 
     async def get_account_activity(
@@ -275,12 +289,13 @@ class AccountService:
         account_id: UUID,
         limit: int = 50,
         since_days: int = 90,
+        tenant_id: str | None = None,
     ) -> dict:
         """Fetch account activity via CRM tools.
 
         Uses fetch_interaction_history tool to get recent activity.
         """
-        account = await self.get_account(account_id)
+        account = await self.get_account(account_id, tenant_id=tenant_id)
         if not account:
             raise ValueError(f"Account not found: {account_id}")
 

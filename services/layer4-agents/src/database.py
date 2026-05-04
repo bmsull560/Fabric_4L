@@ -295,6 +295,19 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
     return normalized
 
 
+async def _set_local_tenant_context(session: AsyncSession, tenant_id: str) -> None:
+    """Set the transaction-local tenant context using an asyncpg-safe statement."""
+    await session.execute(
+        text("SELECT set_config('app.tenant_id', :tenant_id, true)"),
+        {"tenant_id": tenant_id},
+    )
+
+
+async def _clear_local_tenant_context(session: AsyncSession) -> None:
+    """Clear the transaction-local tenant context using an asyncpg-safe statement."""
+    await session.execute(text("SELECT set_config('app.tenant_id', '', true)"))
+
+
 async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None) -> None:
     """P0-08: Set PostgreSQL app.tenant_id for RLS policies.
     
@@ -317,10 +330,7 @@ async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None
     
     # Set tenant context for RLS policies
     # Empty string only allowed for admin roles (enforced by RLS policy TO clause)
-    await session.execute(
-        text("SET LOCAL app.tenant_id = :tenant_id"),
-        {"tenant_id": normalized_id}
-    )
+    await _set_local_tenant_context(session, normalized_id)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -341,7 +351,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     factory = get_session_factory()
     async with factory() as session:
         # Clear tenant context - RLS bypass only works for admin/system roles
-        await session.execute(text("SET LOCAL app.tenant_id = ''"))
+        await _clear_local_tenant_context(session)
         try:
             yield session
             await session.commit()
@@ -393,10 +403,7 @@ async def get_db_with_tenant(
     factory = get_session_factory()
     async with factory() as session:
         # P0-08: Set tenant context for RLS (already validated above)
-        await session.execute(
-            text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": x_tenant_id}
-        )
+        await _set_local_tenant_context(session, x_tenant_id)
         try:
             yield session
             await session.commit()
@@ -449,10 +456,7 @@ async def get_db_from_context(
         # P0-08: Set tenant context for RLS with isolation tier awareness
         # Currently only 'shared' tier is supported (RLS-based)
         if context.isolation_tier == "shared":
-            await session.execute(
-                text("SET LOCAL app.tenant_id = :tenant_id"),
-                {"tenant_id": tenant_id}
-            )
+            await _set_local_tenant_context(session, tenant_id)
         else:
             # Future: handle 'schema' and 'database' tiers
             raise HTTPException(
@@ -513,7 +517,7 @@ async def get_db_with_optional_tenant(
         effective_tenant_id = None
 
         if context.is_super_admin():
-            await session.execute(text("SET LOCAL app.tenant_id = ''"))
+            await _clear_local_tenant_context(session)
             is_bypass = True
             bypass_reason = "super_admin_bypass"
             effective_tenant_id = ""
@@ -526,10 +530,7 @@ async def get_db_with_optional_tenant(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=str(e),
                 ) from e
-            await session.execute(
-                text("SET LOCAL app.tenant_id = :tenant_id"),
-                {"tenant_id": effective_tenant_id}
-            )
+            await _set_local_tenant_context(session, effective_tenant_id)
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -596,10 +597,7 @@ async def get_tiered_db_session(
     if isolation_tier == "shared":
         factory = get_session_factory()
         async with factory() as session:
-            await session.execute(
-                text("SET LOCAL app.tenant_id = :tenant_id"),
-                {"tenant_id": validated_id}
-            )
+            await _set_local_tenant_context(session, validated_id)
 
             # Emit audit event if context provided
             if request_context and AUDIT_AVAILABLE:
@@ -684,10 +682,7 @@ async def db_session(
         # P0-08: Set tenant context for RLS
         # Empty string for admin bypass, validated tenant_id otherwise
         normalized = str(tenant_id) if tenant_id is not None else ""
-        await session.execute(
-            text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": normalized}
-        )
+        await _set_local_tenant_context(session, normalized)
         try:
             yield session
             await session.commit()
@@ -729,10 +724,7 @@ async def db_session_for_context(
     factory = get_session_factory()
     async with factory() as session:
         if context.isolation_tier == "shared":
-            await session.execute(
-                text("SET LOCAL app.tenant_id = :tenant_id"),
-                {"tenant_id": tenant_id}
-            )
+            await _set_local_tenant_context(session, tenant_id)
         else:
             raise HTTPException(
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,

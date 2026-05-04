@@ -121,6 +121,7 @@ class AccountSearchRequest(BaseModel):
 class CreateAccountRequest(BaseModel):
     """Account creation request."""
 
+    id: UUID | None = Field(None, description="Optional deterministic account UUID for validation seeding")
     provider: CRMProvider
     provider_record_id: str = Field(..., min_length=1, max_length=100)
     name: str = Field(..., min_length=1, max_length=255)

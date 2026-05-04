@@ -90,6 +90,30 @@ class RegisterTenantResponse(BaseModel):
     verification_required: bool
 
 
+class AuthSessionResponse(BaseModel):
+    """Minimal authenticated session profile for compatibility smoke checks."""
+
+    authenticated: bool
+    user_id: str
+    tenant_id: str
+    roles: list[str]
+    permissions: list[str]
+
+
+@router.get("/auth/session", response_model=AuthSessionResponse)
+async def get_auth_session_frontend_alias(
+    ctx: RequestContext = Depends(require_authenticated),
+) -> AuthSessionResponse:
+    """Compatibility alias exposing the current request context as a session profile."""
+    return AuthSessionResponse(
+        authenticated=True,
+        user_id=str(ctx.user_id),
+        tenant_id=str(ctx.tenant_id),
+        roles=[getattr(role, "value", str(role)) for role in ctx.roles],
+        permissions=[getattr(permission, "value", str(permission)) for permission in ctx.permissions],
+    )
+
+
 @router.get("/tenant/settings", response_model=TenantSettingsResponse, deprecated=True, openapi_extra={"x-deprecated-removal-date": "2026-08-01", "x-canonical-path": "/v1/tenants/current/settings"})
 async def get_current_tenant_settings(
     db: AsyncSession = Depends(get_db_from_context),
