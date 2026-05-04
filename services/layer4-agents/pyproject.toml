@@ -83,6 +83,25 @@ dev = [
     "psycopg[binary]>=3.1.0",   # Required by testcontainers postgres integration tests
 ]
 
+[dependency-groups]
+dev = [
+    "aiohttp>=3.13.5",
+    "beautifulsoup4>=4.14.3",
+    "defusedxml>=0.7.1",
+    "email-validator>=2.3.0",
+    "hypothesis>=6.152.4",
+    "jsonschema>=4.26.0",
+    "neo4j>=6.1.0",
+    "pymupdf4llm>=1.27.2.3",
+    "pytesseract>=0.3.13",
+    "python-jose>=3.5.0",
+    "rdflib>=7.6.0",
+    "respx>=0.23.1",
+    "schemathesis>=4.17.0",
+    "selectolax>=0.4.7",
+    "trafilatura>=2.0.0",
+]
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]

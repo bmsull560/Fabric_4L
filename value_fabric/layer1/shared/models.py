@@ -569,6 +569,27 @@ class JobError(Base):
     occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
 
+class RobotsTxtCache(Base):
+    """Cache for fetched robots.txt files, keyed by domain.
+
+    Stores raw robots.txt content and parsed rules with a TTL so that
+    the compliance checker can avoid redundant network requests.
+    """
+
+    __tablename__ = "robots_txt_cache"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    domain = Column(String(255), nullable=False, unique=True, index=True)
+    url = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
+    rules = Column(JSONB, default=dict)
+    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    http_status = Column(Integer, nullable=True)
+    is_valid = Column(Boolean, default=True)
+    parse_error = Column(Text, nullable=True)
+
+
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
