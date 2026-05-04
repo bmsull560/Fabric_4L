@@ -67,9 +67,6 @@ class ContentExtractor:
         ],
     }
 
-    def __init__(self):
-        pass
-
     def extract(self, html: str, url: str, extract_links: bool = True) -> ExtractedContent:
         """Extract clean content from HTML.
 
@@ -316,8 +313,9 @@ class ContentExtractor:
         best_score = 0
         for content_type, patterns in self._CONTENT_TYPE_PATTERNS.items():
             if len(patterns) <= best_score:
-                # This type has at most as many patterns as the current best score,
-                # so it cannot produce a strictly higher score — skip it.
+                # Even if every pattern in this type matched it would not
+                # produce a score strictly greater than best_score, so
+                # computing it cannot change the winner — skip it.
                 continue
             score = sum(1 for p in patterns if p.search(combined_text))
             if score > best_score:

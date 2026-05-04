@@ -32,7 +32,7 @@ export default function Calculator() {
     A: levers.reduce((s, l) => s + l.annual * (values[l.id].a / l.base), 0),
     B: levers.reduce((s, l) => s + l.annual * (values[l.id].b / l.base), 0),
     C: levers.reduce((s, l) => s + l.annual * 1.25, 0),
-  }), [values]);
+  }), [values, levers]);
   const current = totals[scenario];
 
   const handleContinue = useCallback(() => {

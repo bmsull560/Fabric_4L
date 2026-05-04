@@ -378,6 +378,11 @@ class PlaywrightCrawler:
 
             await asyncio.gather(*(_crawl_domain(indices) for indices in domain_indices.values()))
 
+            # asyncio.gather ensures all tasks completed before we reach here,
+            # so every slot in results has been assigned.
+            assert all(r is not None for r in results), (
+                "Internal error: not all URLs were crawled"
+            )
             ordered: list[CrawlResult] = results  # type: ignore[assignment]
             success_count = sum(1 for r in ordered if r.error is None)
 
