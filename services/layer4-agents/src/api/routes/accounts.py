@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
@@ -189,6 +190,7 @@ async def list_accounts(
         page_size=page_size,
         sort_by=sort_by,
         sort_order=sort_order,
+        tenant_id=str(_ctx.tenant_id),
     )
 
     return AccountListResponse(
@@ -213,6 +215,7 @@ async def create_account(
             provider=request.provider,
             provider_record_id=request.provider_record_id,
             name=request.name,
+            tenant_id=str(_ctx.tenant_id),
             domain=request.domain,
             industry=request.industry,
             region=request.region,
@@ -222,9 +225,13 @@ async def create_account(
             owner_email=request.owner_email,
             stage=request.stage,
             segment=request.segment,
+            account_id=request.id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists") from exc
     return to_detail_schema(account)
 
 
@@ -250,6 +257,7 @@ async def search_accounts(
         page_size=request.page_size,
         sort_by=request.sort_by,
         sort_order=request.sort_order,
+        tenant_id=str(_ctx.tenant_id),
     )
 
     return AccountListResponse(
@@ -346,7 +354,7 @@ async def get_account(
     """Get full account detail."""
     service = AccountService(db)
 
-    account = await service.get_account(account_id)
+    account = await service.get_account(account_id, tenant_id=str(_ctx.tenant_id))
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -368,18 +376,20 @@ async def get_account_activity(
     service = AccountService(db)
 
     # Verify account exists
-    account = await service.get_account(account_id)
+    account = await service.get_account(account_id, tenant_id=str(_ctx.tenant_id))
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Account not found: {account_id}",
         )
 
-    activity = await service.get_account_activity(
-        account_id=account_id,
-        limit=limit,
-        since_days=since_days,
-    )
+        activity = await service.get_account_activity(
+            account_id=account_id,
+            limit=limit,
+            since_days=since_days,
+            tenant_id=str(_ctx.tenant_id),
+        )
+
 
     return AccountActivityResponse(**activity)
 
@@ -394,7 +404,7 @@ async def refresh_account(
     service = AccountService(db)
 
     # Verify account exists
-    account = await service.get_account(account_id)
+    account = await service.get_account(account_id, tenant_id=str(_ctx.tenant_id))
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

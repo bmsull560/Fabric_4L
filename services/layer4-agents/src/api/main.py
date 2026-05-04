@@ -6,6 +6,8 @@ P1-29: OpenTelemetry tracing integration for observability.
 import logging
 import os
 import time
+
+import redis.asyncio as redis
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
@@ -187,7 +189,9 @@ async def lifespan(app: FastAPI):
             logger.info("L4: Vault connectivity verified")
 
     tool_registry = create_default_registry()
-    state_manager = StateManager()  # Add Redis client if configured
+    redis_url = os.getenv("REDIS_URL")
+    startup_redis_client = redis.from_url(redis_url, decode_responses=True) if redis_url else None
+    state_manager = StateManager(startup_redis_client)
 
     # P0: Verify Redis connectivity (required for rate limiting, feature flags, and WebSocket)
     redis_client = getattr(state_manager, "redis", None)
@@ -291,6 +295,9 @@ async def lifespan(app: FastAPI):
     # Close checkpoint saver connection
     if checkpoint_saver:
         await CheckpointConfig.close_saver(checkpoint_saver)
+
+    if state_manager is not None and getattr(state_manager, "redis_client", None):
+        await state_manager.redis_client.aclose()
 
     # Close database connection pool
     await close_db()
