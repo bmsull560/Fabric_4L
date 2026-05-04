@@ -18,6 +18,24 @@ import pytest
 from httpx import AsyncClient
 from uuid import uuid4
 
+# Constants
+TENANT_A = "tenant-a"
+TENANT_B = "tenant-b"
+PUBLIC_TENANT = "public"
+
+# HTTP Status Codes
+HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_ACCEPTED = 202
+HTTP_BAD_REQUEST = 400
+HTTP_UNAUTHORIZED = 401
+HTTP_FORBIDDEN = 403
+HTTP_NOT_FOUND = 404
+HTTP_UNPROCESSABLE_ENTITY = 422
+HTTP_REQUEST_TIMEOUT = 408
+HTTP_GATEWAY_TIMEOUT = 504
+HTTP_INTERNAL_SERVER_ERROR = 500
+
 
 pytestmark = [
     pytest.mark.security,
@@ -36,11 +54,13 @@ class TestLayer1TenantIsolation:
             "/v1/targets",
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         # Verify only tenant A's targets are returned
         targets = response.json()
         for target in targets.get("items", []):
-            assert target.get("tenant_id") == "tenant-a" or "tenant_id" not in target
+            target_tenant_id = target.get("tenant_id")
+            # Either tenant_id matches or is implicit (not present)
+            assert target_tenant_id == TENANT_A or target_tenant_id is None
 
     @pytest.mark.asyncio
     async def test_cross_tenant_target_access_denied(self, client: AsyncClient, tenant_a_token: str):
@@ -50,7 +70,7 @@ class TestLayer1TenantIsolation:
             f"/v1/targets/{target_id}",
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
-        assert response.status_code in {403, 404}
+        assert response.status_code in {HTTP_FORBIDDEN, HTTP_NOT_FOUND}
 
     @pytest.mark.asyncio
     async def test_target_creation_enforces_tenant_context(self, client: AsyncClient, tenant_a_token: str):
@@ -65,10 +85,11 @@ class TestLayer1TenantIsolation:
             headers={"Authorization": f"Bearer {tenant_a_token}"},
             json=payload
         )
-        assert response.status_code == 201
+        assert response.status_code == HTTP_CREATED
         created = response.json()
         # Verify tenant_id is set correctly (either explicitly or implicitly)
-        assert created.get("tenant_id") in ["tenant-a", None]  # None if implicit from context
+        created_tenant_id = created.get("tenant_id")
+        assert created_tenant_id in [TENANT_A, None]  # None if implicit from context
 
     @pytest.mark.asyncio
     async def test_cannot_spoof_tenant_id_in_target_creation(self, client: AsyncClient, tenant_a_token: str):
@@ -76,7 +97,7 @@ class TestLayer1TenantIsolation:
         payload = {
             "name": "Malicious Target",
             "url": "https://example.com",
-            "tenant_id": "tenant-b"  # Attempt to spoof
+            "tenant_id": TENANT_B  # Attempt to spoof
         }
         response = await client.post(
             "/v1/targets",
@@ -84,10 +105,14 @@ class TestLayer1TenantIsolation:
             json=payload
         )
         # Should either reject the field or override with token tenant
-        assert response.status_code in {400, 403, 201}
-        if response.status_code == 201:
+        assert response.status_code in {HTTP_BAD_REQUEST, HTTP_FORBIDDEN, HTTP_CREATED}
+        if response.status_code == HTTP_CREATED:
             created = response.json()
-            assert created.get("tenant_id") != "tenant-b" or created.get("tenant_id") == "tenant-a"
+            created_tenant_id = created.get("tenant_id")
+            # Verify tenant_id was not set to spoofed value
+            assert created_tenant_id != TENANT_B
+            # Verify it was set to the correct tenant (or implicit)
+            assert created_tenant_id in [TENANT_A, None]
 
 
 class TestLayer1Authentication:

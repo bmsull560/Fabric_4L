@@ -7,7 +7,7 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -48,12 +48,12 @@ class PriorityScheduler:
 
     def __init__(
         self,
-        per_domain_delay: float = None,
-        jitter_percent: float = None,
+        per_domain_delay: float | None = None,
+        jitter_percent: float | None = None,
         clock: Clock | None = None,
     ):
-        self.per_domain_delay = per_domain_delay or settings.per_domain_delay_seconds
-        self.jitter_percent = jitter_percent or settings.jitter_percent
+        self.per_domain_delay: float = per_domain_delay or settings.per_domain_delay_seconds
+        self.jitter_percent: float = jitter_percent or settings.jitter_percent
         self._clock: Clock = clock or SystemClock()
 
         # Domain rate limiting
@@ -173,24 +173,24 @@ class PriorityScheduler:
 
     def get_queue_stats(self) -> dict:
         """Get queue statistics."""
-        domain_counts = defaultdict(int)
+        domain_counts: defaultdict[str, int] = defaultdict(int)
         for item in self._queue:
             domain_counts[item.domain] += 1
 
-        return PriorityScheduler_get_queue_statsResult.model_validate({
+        return cast(dict[str, Any], PriorityScheduler_get_queue_statsResult.model_validate({
             "total_pending": len(self._queue),
             "domains_pending": len(domain_counts),
             "in_progress": dict(self._in_progress),
             "top_domains": dict(
                 sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)[:10]
             ),
-        }).model_dump()
+        }).model_dump())
 
 
     def get_estimated_wait_time(self, domain: str) -> float:
         """Estimate wait time before a domain can be crawled again."""
         last_request = self._last_request_time.get(domain, 0)
-        elapsed = self._clock.monotonic() - last_request
+        elapsed: float = cast(float, self._clock.monotonic()) - last_request
         delay = self.per_domain_delay
 
         if elapsed >= delay:

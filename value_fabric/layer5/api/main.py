@@ -235,16 +235,6 @@ def create_app() -> FastAPI:
     # Get Redis rate limiter from app state (initialized in lifespan)
     redis_rate_limiter = getattr(app.state, 'redis_rate_limiter', None)
 
-    # Public paths that skip auth (metrics has its own token/IP-based access control)
-    public_paths = frozenset({
-        "/metrics",
-        "/api/v1/health",
-        "/docs",
-        "/redoc",
-        "/openapi.json",
-        "/",
-    })
-
     try:
         from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
