@@ -132,6 +132,9 @@ class TenantSecretsService:
     ) -> str:
         """Generate and store a fresh JWT signing secret for the tenant.
 
+        The secret is generated after a successful write to Infisical so the
+        caller only receives it when storage is confirmed.
+
         Args:
             tenant_id: UUID string identifying the tenant.
             environment: Infisical environment to update.
@@ -140,11 +143,11 @@ class TenantSecretsService:
             The newly generated secret (caller should distribute securely).
         """
         manager = self._get_manager()
-        new_secret = secrets.token_hex(32)  # 256-bit secret
 
         try:
             from value_fabric.shared.secrets.infisical_client import Secret
 
+            new_secret = secrets.token_hex(32)  # 256-bit secret
             await manager.client.create_secrets(
                 environment,
                 f"/tenants/{tenant_id}",
@@ -166,36 +169,65 @@ class TenantSecretsService:
     ) -> dict[str, Any]:
         """Remove all Infisical secrets for a deleted tenant.
 
+        Attempts concurrent deletion across environments.  Each environment's
+        result is recorded independently so partial failures are surfaced
+        accurately.
+
         Args:
             tenant_id: UUID string identifying the tenant.
 
         Returns:
             Dict mapping environment to deletion outcome.
         """
-        manager = self._get_manager()
-        results: dict[str, Any] = {}
+        import asyncio
 
-        for env in self._environments:
+        manager = self._get_manager()
+
+        async def _delete_env(env: str) -> tuple[str, dict[str, Any]]:
+            path = f"/tenants/{tenant_id}"
+            deleted = 0
+            failed: list[str] = []
             try:
-                path = f"/tenants/{tenant_id}"
-                # List secrets at path and delete each one
                 secret_list = await manager.client.list_secrets(env, path)
-                for secret in secret_list:
-                    await manager.client.delete_secret(env, path, secret.key)
-                results[env] = {"success": True, "deleted": len(secret_list)}
+                delete_tasks = [
+                    manager.client.delete_secret(env, path, secret.key)
+                    for secret in secret_list
+                ]
+                results = await asyncio.gather(*delete_tasks, return_exceptions=True)
+                for secret, result in zip(secret_list, results):
+                    if isinstance(result, Exception):
+                        failed.append(secret.key)
+                        logger.warning(
+                            "Failed to delete secret %s for tenant %s in %s: %s",
+                            secret.key,
+                            tenant_id,
+                            env,
+                            result,
+                        )
+                    else:
+                        deleted += 1
+                outcome: dict[str, Any] = {"deleted": deleted}
+                if failed:
+                    outcome["success"] = False
+                    outcome["failed_keys"] = failed
+                else:
+                    outcome["success"] = True
                 logger.info(
-                    "Deleted %d secrets for tenant %s in %s",
+                    "Deleted %d/%d secrets for tenant %s in %s",
+                    deleted,
                     len(secret_list),
                     tenant_id,
                     env,
                 )
             except Exception as exc:
-                results[env] = {"success": False, "error": str(exc)}
+                outcome = {"success": False, "error": str(exc)}
                 logger.error(
-                    "Failed to delete secrets for tenant %s in %s: %s",
+                    "Failed to list/delete secrets for tenant %s in %s: %s",
                     tenant_id,
                     env,
                     exc,
                 )
+            return env, outcome
 
-        return results
+        env_results = await asyncio.gather(*[_delete_env(env) for env in self._environments])
+        return dict(env_results)
