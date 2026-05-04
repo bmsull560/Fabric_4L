@@ -41,6 +41,12 @@ htmlcov/
 .tox/
 .mypy_cache/
 
+# Playwright / E2E test outputs (traces, screenshots, videos, reports)
+**/e2e-results/
+**/playwright-report/
+**/blob-report/
+**/.playwright-artifacts*/
+
 # CI runtime artifacts
 artifacts/
 

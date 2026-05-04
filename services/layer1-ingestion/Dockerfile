@@ -21,6 +21,9 @@ COPY uv.lock .
 # Install dependencies using uv (creates .venv)
 RUN uv sync --frozen --no-install-project
 
+# Make venv available for subsequent commands in builder stage
+ENV PATH="/app/.venv/bin:$PATH"
+
 # Install Playwright browsers
 RUN python -m playwright install chromium
 RUN python -m playwright install-deps chromium

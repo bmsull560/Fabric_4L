@@ -55,3 +55,30 @@
 The next implementation phase should create the **P0 production-gate executable tests first**, then add P1 suites that expose the biggest readiness gaps. The recommended order is: `j6` account/prospect lifecycle, `j8` approval/review gates, `j9` agent grounding/refusal, `j7` calculation/evidence/value-realization, security tenant isolation, layer UI validation, collaboration/tasks, operational resilience, export workflows, and persona journeys.
 
 No critical-path test should use `test.skip`, `test.fixme`, or silent conditional bypassing. If a workflow is not implemented, the test should fail with a useful user-visible assertion and be recorded in the failure report rather than weakened.
+
+## Deep Validation Coverage (Phase 2 — Interaction-Level Tests)
+
+**Date:** 2026-05-28 | **Status:** TDD Red Phase Complete
+
+Deep validation adds 78 interaction-level tests in 7 new `-deep.spec.ts` files that exercise form submissions, state transitions, approval workflows, security boundaries, and agent behavior. These complement the existing 60+ route-surface tests.
+
+| Deep Test File | Suite | Tests | Passed | Failed | Flaky | Traceability |
+|---|---|---|---|---|---|---|
+| `e2e/journeys/j1-golden-path-deep.spec.ts` | Golden Path E2E | 15 | 7 | 8 | 0 | GP-DEEP-001–015 |
+| `e2e/journeys/j10-layer-ui-validation-deep.spec.ts` | Layer UI | 12 | 9 | 3 | 0 | L1-DEEP–L6-DEEP |
+| `e2e/security/tenant-isolation-deep.spec.ts` | Security | 12 | 9 | 1 | 2 | SEC-DEEP-001–012 |
+| `e2e/journeys/j9-agent-grounding-deep.spec.ts` | Agent Grounding | 10 | 7 | 3 | 0 | AG-DEEP-001–010 |
+| `e2e/journeys/j7-calculation-evidence-deep.spec.ts` | Calculation | 12 | 12 | 0 | 0 | CALC-DEEP-001–012 |
+| `e2e/journeys/j8-approval-review-deep.spec.ts` | Approval Gates | 10 | 10 | 0 | 0 | APPROVAL-DEEP-001–010 |
+| `e2e/export/export-workflows-deep.spec.ts` | Export Gates | 7 | 7 | 0 | 0 | EXPORT-DEEP-001–008 |
+| **Total** | | **78** | **58** | **18** | **2** | |
+
+**Pass rate:** 74.4% first-attempt (76.9% including flaky). See `docs/validation/deep_validation_initial_failures.md` for classified failure report.
+
+**Commands:**
+- `pnpm run test:e2e:validation:deep` — all deep tests
+- `pnpm run test:e2e:validation:p0:deep` — P0 deep tests only
+
+**Supporting files:**
+- `e2e/helpers/validation-program.ts` — deep-test utility helpers (form submission, workflow steps, disabled actions, API call tracking, audit events, sequential mocks, role switching)
+- `e2e/fixtures/deep-test-data.ts` — rich mock data factories (accounts, business cases, signals, drivers, evidence, ROI scenarios, approvals, benchmarks, ground truth, agent responses)
