@@ -125,13 +125,13 @@ class TestLayer1Authentication:
             "/v1/targets",
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
 
     @pytest.mark.asyncio
     async def test_missing_token_rejected(self, client: AsyncClient):
         """Negative test: Missing authentication token is rejected."""
         response = await client.get("/v1/targets")
-        assert response.status_code == 401
+        assert response.status_code == HTTP_UNAUTHORIZED
 
     @pytest.mark.asyncio
     async def test_invalid_token_rejected(self, client: AsyncClient):
@@ -140,7 +140,7 @@ class TestLayer1Authentication:
             "/v1/targets",
             headers={"Authorization": "Bearer invalid-token"}
         )
-        assert response.status_code == 401
+        assert response.status_code == HTTP_UNAUTHORIZED
 
     @pytest.mark.asyncio
     async def test_expired_token_rejected(self, client: AsyncClient, expired_token: str):
@@ -149,7 +149,7 @@ class TestLayer1Authentication:
             "/v1/targets",
             headers={"Authorization": f"Bearer {expired_token}"}
         )
-        assert response.status_code == 401
+        assert response.status_code == HTTP_UNAUTHORIZED
 
     @pytest.mark.asyncio
     async def test_malformed_token_rejected(self, client: AsyncClient):
@@ -158,7 +158,7 @@ class TestLayer1Authentication:
             "/v1/targets",
             headers={"Authorization": "Bearer not.a.valid.jwt"}
         )
-        assert response.status_code in {401, 403}
+        assert response.status_code in {HTTP_UNAUTHORIZED, HTTP_FORBIDDEN}
 
 
 class TestLayer1InputValidation:
@@ -177,7 +177,7 @@ class TestLayer1InputValidation:
             headers={"Authorization": f"Bearer {tenant_a_token}"},
             json=payload
         )
-        assert response.status_code == 201
+        assert response.status_code == HTTP_CREATED
 
     @pytest.mark.asyncio
     async def test_missing_required_field_rejected(self, client: AsyncClient, tenant_a_token: str):
@@ -191,7 +191,7 @@ class TestLayer1InputValidation:
             headers={"Authorization": f"Bearer {tenant_a_token}"},
             json=payload
         )
-        assert response.status_code == 422
+        assert response.status_code == HTTP_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
     async def test_invalid_url_format_rejected(self, client: AsyncClient, tenant_a_token: str):
@@ -206,7 +206,7 @@ class TestLayer1InputValidation:
             headers={"Authorization": f"Bearer {tenant_a_token}"},
             json=payload
         )
-        assert response.status_code == 422
+        assert response.status_code == HTTP_UNPROCESSABLE_ENTITY
 
     @pytest.mark.asyncio
     async def test_sql_injection_in_name_blocked(self, client: AsyncClient, tenant_a_token: str):
@@ -222,8 +222,8 @@ class TestLayer1InputValidation:
             json=payload
         )
         # Should either accept as literal string or reject
-        assert response.status_code in {201, 422}
-        if response.status_code == 201:
+        assert response.status_code in {HTTP_CREATED, HTTP_UNPROCESSABLE_ENTITY}
+        if response.status_code == HTTP_CREATED:
             # Verify it was stored as literal, not executed
             created = response.json()
             assert created.get("name") == "'; DROP TABLE targets; --"
@@ -241,7 +241,7 @@ class TestLayer1InputValidation:
             headers={"Authorization": f"Bearer {tenant_a_token}"},
             json=payload
         )
-        assert response.status_code in {201, 422}
+        assert response.status_code in {HTTP_CREATED, HTTP_UNPROCESSABLE_ENTITY}
 
 
 class TestLayer1Authorization:
@@ -254,7 +254,7 @@ class TestLayer1Authorization:
             "/api/admin/users",
             headers={"Authorization": f"Bearer {admin_user_token}"}
         )
-        assert response.status_code in {200, 403}  # May not exist yet
+        assert response.status_code in {HTTP_OK, HTTP_FORBIDDEN}  # May not exist yet
 
     @pytest.mark.asyncio
     async def test_regular_user_denied_admin_access(self, client: AsyncClient, tenant_a_token: str):
@@ -263,7 +263,7 @@ class TestLayer1Authorization:
             "/api/admin/users",
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
-        assert response.status_code == 403
+        assert response.status_code == HTTP_FORBIDDEN
 
     @pytest.mark.asyncio
     async def test_role_escalation_blocked(self, client: AsyncClient, tenant_a_token: str):
@@ -274,7 +274,7 @@ class TestLayer1Authorization:
             "/api/admin/config",
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
-        assert response.status_code == 403
+        assert response.status_code == HTTP_FORBIDDEN
 
 
 class TestLayer1ErrorHandling:
@@ -287,11 +287,12 @@ class TestLayer1ErrorHandling:
             f"/v1/targets/{uuid4()}",
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
-        assert response.status_code == 404
+        assert response.status_code == HTTP_NOT_FOUND
         # Verify error message doesn't leak implementation details
         error = response.json()
-        assert "stack trace" not in str(error).lower()
-        assert "sql" not in str(error).lower()
+        error_str = str(error).lower()
+        assert "stack trace" not in error_str
+        assert "sql" not in error_str
 
     @pytest.mark.asyncio
     async def test_validation_errors_are_sanitized(self, client: AsyncClient, tenant_a_token: str):
@@ -305,11 +306,12 @@ class TestLayer1ErrorHandling:
             headers={"Authorization": f"Bearer {tenant_a_token}"},
             json=payload
         )
-        assert response.status_code == 422
+        assert response.status_code == HTTP_UNPROCESSABLE_ENTITY
         error = response.json()
+        error_str = str(error).lower()
         # Verify no sensitive data in error
-        assert "password" not in str(error).lower()
-        assert "secret" not in str(error).lower()
+        assert "password" not in error_str
+        assert "secret" not in error_str
 
     @pytest.mark.asyncio
     async def test_database_errors_masked(self, client: AsyncClient, tenant_a_token: str):
@@ -321,9 +323,10 @@ class TestLayer1ErrorHandling:
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
         # If error occurs, verify it's masked
-        if response.status_code >= 500:
+        if response.status_code >= HTTP_INTERNAL_SERVER_ERROR:
             error = response.json()
-            assert "stack trace" not in str(error).lower()
+            error_str = str(error).lower()
+            assert "stack trace" not in error_str
 
 
 class TestLayer1RLSEnforcement:
@@ -368,12 +371,13 @@ class TestLayer1RLSEnforcement:
             "/v1/targets",
             headers={"Authorization": f"Bearer {tenant_a_token}"}
         )
-        assert response.status_code == 200
+        assert response.status_code == HTTP_OK
         targets = response.json()
         # Verify no cross-tenant data
         for target in targets.get("items", []):
+            target_tenant_id = target.get("tenant_id")
             # Either tenant_id matches or is implicit
-            assert target.get("tenant_id") in ["tenant-a", None]
+            assert target_tenant_id in [TENANT_A, None]
 
 
 class TestLayer1SecretsProtection:
@@ -383,7 +387,7 @@ class TestLayer1SecretsProtection:
     async def test_secrets_not_in_error_responses(self, client: AsyncClient):
         """Positive test: Secrets are not leaked in error responses."""
         response = await client.get("/v1/targets")
-        if response.status_code >= 400:
+        if response.status_code >= HTTP_BAD_REQUEST:
             error = response.json()
             error_str = str(error).lower()
             assert "password" not in error_str
@@ -405,4 +409,4 @@ class TestLayer1SecretsProtection:
             json=payload
         )
         # If logging exists, verify no secrets in logs
-        assert response.status_code in {201, 422}
+        assert response.status_code in {HTTP_CREATED, HTTP_UNPROCESSABLE_ENTITY}
