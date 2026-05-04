@@ -1158,36 +1158,47 @@ async def health_check():
     dependencies = []
     overall_status = "healthy"
 
-    try:
-        from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
-
-        l3_start = time.time()
-        l3_client = Layer3KnowledgeClient()
-        l3_healthy = await l3_client.health_check()
-        l3_response_ms = round((time.time() - l3_start) * 1000, 2)
-        await l3_client.close()
-
+    if os.getenv("LAYER2_HEALTH_SKIP_LAYER3", "").lower() in {"1", "true", "yes"}:
         dependencies.append(
             {
                 "name": "layer3_knowledge",
-                "status": "healthy" if l3_healthy else "unhealthy",
-                "response_time_ms": l3_response_ms,
-                "error": None if l3_healthy else "Layer 3 returned unhealthy status",
-            }
-        )
-
-        if not l3_healthy:
-            overall_status = "degraded"
-    except Exception as e:
-        dependencies.append(
-            {
-                "name": "layer3_knowledge",
-                "status": "unhealthy",
+                "status": "degraded",
                 "response_time_ms": None,
-                "error": str(e),
+                "error": "Release-smoke readiness skips downstream Layer 3 probe; live smoke tests validate cross-service contracts after startup",
             }
         )
         overall_status = "degraded"
+    else:
+        try:
+            from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
+
+            l3_start = time.time()
+            l3_client = Layer3KnowledgeClient()
+            l3_healthy = await l3_client.health_check()
+            l3_response_ms = round((time.time() - l3_start) * 1000, 2)
+            await l3_client.close()
+
+            dependencies.append(
+                {
+                    "name": "layer3_knowledge",
+                    "status": "healthy" if l3_healthy else "unhealthy",
+                    "response_time_ms": l3_response_ms,
+                    "error": None if l3_healthy else "Layer 3 returned unhealthy status",
+                }
+            )
+
+            if not l3_healthy:
+                overall_status = "degraded"
+        except Exception as e:
+            dependencies.append(
+                {
+                    "name": "layer3_knowledge",
+                    "status": "unhealthy",
+                    "response_time_ms": None,
+                    "error": str(e),
+                }
+            )
+            overall_status = "degraded"
 
     total_response_ms = round((time.time() - start_time) * 1000, 2)
 

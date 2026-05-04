@@ -940,34 +940,54 @@ async def get_metrics(request: Request):
         )
 
 
-async def check_dependencies() -> list[DependencyStatus]:
-    """Check health of all dependencies."""
+async def check_dependencies(schema_initializer: Any | None = None) -> list[DependencyStatus]:
+    """Check health of all dependencies.
+
+    When startup has already placed the service in degraded mode because Neo4j
+    is unavailable, avoid creating a new SchemaInitializer during the health
+    probe. Docker health checks must be lightweight and must not spend the
+    entire retry window opening fresh Bolt connections.
+    """
     dependencies = []
     settings = _get_settings_with_fallback()
 
     # Check Neo4j
     try:
-        from ..schema.initializer import SchemaInitializer
-
-        neo4j_checker = SchemaInitializer()
-        # Mark as non-owning so close() won't destroy the shared singleton driver
-        neo4j_checker._owned_driver = False
-        start_time = time.time()
-        neo4j_health = await neo4j_checker.health_check()
-        response_time = (time.time() - start_time) * 1000
-
-        dependencies.append(
-            DependencyStatus(
-                name="neo4j",
-                status=neo4j_health["status"],
-                response_time_ms=response_time,
-                error=neo4j_health.get("error"),
-                details={
-                    "uri": settings.neo4j_uri,
-                    "database": settings.neo4j_database,
-                },
+        if schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None:
+            dependencies.append(
+                DependencyStatus(
+                    name="neo4j",
+                    status="degraded",
+                    error="Neo4j not initialized",
+                    details={
+                        "uri": settings.neo4j_uri,
+                        "database": settings.neo4j_database,
+                    },
+                )
             )
-        )
+        else:
+            from ..schema.initializer import SchemaInitializer
+
+            neo4j_checker = schema_initializer if schema_initializer is not None else SchemaInitializer()
+            # Mark ad-hoc checkers as non-owning so close() won't destroy the shared singleton driver
+            if schema_initializer is None:
+                neo4j_checker._owned_driver = False
+            start_time = time.time()
+            neo4j_health = await neo4j_checker.health_check()
+            response_time = (time.time() - start_time) * 1000
+
+            dependencies.append(
+                DependencyStatus(
+                    name="neo4j",
+                    status=neo4j_health["status"],
+                    response_time_ms=response_time,
+                    error=neo4j_health.get("error"),
+                    details={
+                        "uri": settings.neo4j_uri,
+                        "database": settings.neo4j_database,
+                    },
+                )
+            )
     except Exception as e:
         dependencies.append(
             DependencyStatus(
@@ -1201,7 +1221,7 @@ async def health_check(
     request_id = getattr(request.state, "request_id", "unknown")
 
     # Check dependencies
-    dependencies = await check_dependencies()
+    dependencies = await check_dependencies(schema_initializer=schema_initializer)
 
     # Get metrics
     metrics = get_system_metrics()
@@ -1212,9 +1232,13 @@ async def health_check(
 
     if schema_initializer is not None:
         try:
-            health_result = await schema_initializer.health_check()
-            neo4j_health = health_result.model_dump() if health_result else None
-            schema_status = await schema_initializer.verify_schema()
+            if getattr(schema_initializer, "_driver", None) is None:
+                neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
+                schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
+            else:
+                health_result = await schema_initializer.health_check()
+                neo4j_health = health_result.model_dump() if health_result else None
+                schema_status = await schema_initializer.verify_schema()
         except Exception:
             logger.warning(
                 "Health check failed for Neo4j",
@@ -1227,7 +1251,7 @@ async def health_check(
 
     # Determine overall status (priority: unhealthy > degraded > healthy)
     overall_status = "healthy"
-    if schema_initializer is None:
+    if schema_initializer is None or (schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None):
         overall_status = "degraded"
     elif any(dep.status == "unhealthy" for dep in dependencies):
         overall_status = "unhealthy"
@@ -1364,10 +1388,14 @@ async def detailed_health_check(
     time.time()
 
     # Basic health check
-    dependencies = await check_dependencies()
+    dependencies = await check_dependencies(schema_initializer=schema_initializer)
     metrics = get_system_metrics()
-    neo4j_health = await schema_initializer.health_check()
-    schema_status = await schema_initializer.verify_schema()
+    if getattr(schema_initializer, "_driver", None) is None:
+        neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
+        schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
+    else:
+        neo4j_health = await schema_initializer.health_check()
+        schema_status = await schema_initializer.verify_schema()
 
     # Determine overall status
     overall_status = "healthy"

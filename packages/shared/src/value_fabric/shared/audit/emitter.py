@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Callable, Dict, Optional, Set
 from uuid import UUID
 
@@ -33,6 +34,8 @@ except ImportError:
     _METRICS_AVAILABLE = False
     _AUDIT_WRITE_FAILURES = None
 
+import httpx
+
 from .models import AuditAction, AuditEvent, AuditOutcome
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
@@ -41,6 +44,66 @@ class _scrub_detailsResult(TypedDictModel):
     pass
 
 logger = logging.getLogger("vf.audit")
+
+
+class _AuditConfigValidation:
+    """Awaitable result for startup audit-sink validation.
+
+    The historical startup gate calls ``validate_audit_config()`` synchronously for
+    fail-fast missing-production configuration and awaits it for optional
+    reachability checks. This lightweight awaitable preserves both call patterns
+    without forcing synchronous callers to manage an event loop.
+    """
+
+    def __init__(self, audit_sink_url: str, timeout: float) -> None:
+        self.audit_sink_url = audit_sink_url
+        self.timeout = timeout
+
+    def __await__(self):
+        return self._run().__await__()
+
+    async def _run(self) -> None:
+        if not self.audit_sink_url:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    self.audit_sink_url,
+                    json={"event": "startup_audit_validation", "status": "probe"},
+                )
+                response.raise_for_status()
+        except Exception as exc:
+            raise ValueError(f"Audit sink is unreachable: {exc}") from exc
+        return None
+
+
+def validate_audit_config() -> _AuditConfigValidation:
+    """Validate audit-sink startup configuration.
+
+    Production must be configured fail-closed with an explicit audit sink. In
+    development, a missing sink is allowed but logged as a degraded control so
+    local startup remains usable while the operator-visible warning contract is
+    preserved.
+    """
+
+    environment = os.getenv("ENVIRONMENT", "development").lower()
+    audit_sink_url = os.getenv("AUDIT_SINK_URL", "")
+    timeout_raw = os.getenv("AUDIT_SINK_TIMEOUT", "5")
+    try:
+        timeout = float(timeout_raw)
+    except ValueError:
+        timeout = 5.0
+
+    if environment == "production" and not audit_sink_url:
+        raise ValueError("AUDIT_SINK_URL is required in production")
+
+    if environment == "development" and not audit_sink_url:
+        logger.warning(
+            "Audit sink is not configured in development mode; audit events are "
+            "limited to structured logs until AUDIT_SINK_URL is set."
+        )
+
+    return _AuditConfigValidation(audit_sink_url=audit_sink_url, timeout=timeout)
 
 # Keys that must never appear in the structured log (scrubbed from ``details``).
 _SENSITIVE_KEYS: Set[str] = {

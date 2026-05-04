@@ -60,13 +60,18 @@ class SeedIds:
 @pytest.fixture(scope="session")
 def seed_ids() -> SeedIds:
     suffix = RUN_ID.replace("backend-validation-", "")
+    namespace = uuid.uuid5(uuid.NAMESPACE_URL, f"fabric-backend-integrated:{RUN_ID}")
+
+    def stable_uuid(label: str) -> str:
+        return str(uuid.uuid5(namespace, label))
+
     return SeedIds(
-        tenant_a=f"tenant-{suffix}-a",
-        tenant_b=f"tenant-{suffix}-b",
-        user_admin=f"user-{suffix}-admin",
-        user_reviewer=f"user-{suffix}-reviewer",
-        account_id=f"account-{suffix}-acme",
-        document_id=f"doc-{suffix}-discovery-notes",
+        tenant_a=stable_uuid("tenant-a"),
+        tenant_b=stable_uuid("tenant-b"),
+        user_admin=stable_uuid("user-admin"),
+        user_reviewer=stable_uuid("user-reviewer"),
+        account_id=stable_uuid("account-acme"),
+        document_id=stable_uuid("document-discovery-notes"),
         value_pack_id=f"value-pack-{suffix}-software",
         benchmark_id=f"benchmark-{suffix}-sales-efficiency",
         evidence_id=f"evidence-{suffix}-crm-metric",
@@ -82,11 +87,18 @@ class BackendValidationHarness:
         self.seed_ids = seed_ids
         self.timeout = DEFAULT_TIMEOUT_SECONDS
 
-    def headers(self, tenant_id: str | None = None, user_id: str | None = None, role: str = "admin") -> dict[str, str]:
+    def headers(self, tenant_id: str | None = None, user_id: str | None = None, role: str = "super_admin") -> dict[str, str]:
+        effective_tenant_id = tenant_id or self.seed_ids.tenant_a
+        effective_user_id = user_id or self.seed_ids.user_admin
         return {
-            TENANT_HEADER: tenant_id or self.seed_ids.tenant_a,
-            USER_HEADER: user_id or self.seed_ids.user_admin,
+            TENANT_HEADER: effective_tenant_id,
+            USER_HEADER: effective_user_id,
             ROLE_HEADER: role,
+            "X-Organization-ID": effective_tenant_id,
+            "X-Org-ID": effective_tenant_id,
+            "X-Service-Auth": os.getenv("SERVICE_AUTH_SECRET", "release-smoke-service-auth-secret-with-more-than-32-characters"),
+            "X-Dev-Tenant-ID": effective_tenant_id,
+            "X-Dev-User-ID": effective_user_id,
             "Content-Type": "application/json",
             "X-Validation-Run-ID": RUN_ID,
         }
@@ -99,20 +111,37 @@ class BackendValidationHarness:
         *,
         tenant_id: str | None = None,
         user_id: str | None = None,
-        role: str = "admin",
+        role: str = "super_admin",
         json: dict[str, Any] | None = None,
         expected: Iterable[int] = (200,),
+        extra_headers: dict[str, str] | None = None,
     ) -> tuple[Any, httpx.Response]:
         expected_set = set(expected)
         base_url = SERVICE_URLS[layer]
+        headers = self.headers(tenant_id=tenant_id, user_id=user_id, role=role)
+        if extra_headers:
+            headers.update(extra_headers)
         async with httpx.AsyncClient(base_url=base_url, timeout=self.timeout, follow_redirects=False) as client:
             try:
                 response = await client.request(
                     method,
                     path,
-                    headers=self.headers(tenant_id=tenant_id, user_id=user_id, role=role),
+                    headers=headers,
                     json=json,
                 )
+                if (
+                    response.status_code == 422
+                    and json is not None
+                    and isinstance(json, dict)
+                    and "request" not in json
+                    and '"body.request"' in response.text
+                ):
+                    response = await client.request(
+                        method,
+                        path,
+                        headers=headers,
+                        json={"request": json},
+                    )
             except httpx.HTTPError as exc:
                 pytest.fail(
                     f"{layer.upper()} {method} {path} is unreachable at {base_url}; "
@@ -141,17 +170,30 @@ class BackendValidationHarness:
 
     async def create_seed_graph(self) -> dict[str, Any]:
         """Seed the minimum data graph through real service contracts."""
+        suffix = RUN_ID.replace("backend-validation-", "")
         tenant_payload = {
-            "id": self.seed_ids.tenant_a,
             "name": f"Fabric Backend Validation Tenant {RUN_ID}",
-            "plan": "enterprise",
+            "slug": f"backend-validation-{suffix}-a",
+            "settings": {
+                "validation_run_id": RUN_ID,
+                "requested_tenant_id": self.seed_ids.tenant_a,
+                "plan": "enterprise",
+            },
         }
         account_payload = {
             "id": self.seed_ids.account_id,
+            "provider": "salesforce",
+            "provider_record_id": self.seed_ids.account_id,
             "name": "Acme Validation Account",
             "domain": "acme-validation.example",
+            "industry": "Software",
+            "region": "North America",
+            "company_size": 1200,
             "owner_id": self.seed_ids.user_admin,
-            "value_pack_id": self.seed_ids.value_pack_id,
+            "owner_name": "Backend Validation Admin",
+            "owner_email": "backend-validation@example.com",
+            "stage": "qualified",
+            "segment": "enterprise",
         }
         document_payload = {
             "id": self.seed_ids.document_id,

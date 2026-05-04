@@ -19,9 +19,48 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+from collections.abc import Mapping
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage", "release", "uat"}
+
+
+def _header_get(headers: Any, name: str) -> str:
+    """Return a header value using case-insensitive lookup semantics.
+
+    Starlette/FastAPI ``Headers`` already implements case-insensitive ``get``;
+    this helper preserves that behavior while also protecting tests and adapters
+    that pass a plain ``dict`` with lower-case or mixed-case keys.
+    """
+    value = headers.get(name, "") if hasattr(headers, "get") else ""
+    if value:
+        return str(value)
+    if isinstance(headers, Mapping):
+        wanted = name.lower()
+        for key, candidate in headers.items():
+            if str(key).lower() == wanted:
+                return str(candidate)
+    return ""
+
+
+def _runtime_environment() -> str:
+    """Resolve deployment environment consistently across service conventions.
+
+    A production-like value in any supported variable wins over a permissive
+    development value, preventing accidental metrics exposure in mixed runtime
+    configurations such as ``ENVIRONMENT=development`` plus ``APP_ENV=production``.
+    """
+    candidates = [
+        value.lower()
+        for value in (os.getenv("ENVIRONMENT"), os.getenv("APP_ENV"), os.getenv("NODE_ENV"))
+        if value
+    ]
+    for value in candidates:
+        if value in PRODUCTION_LIKE_ENVIRONMENTS:
+            return value
+    return candidates[0] if candidates else "development"
 
 
 def is_internal_ip(ip: str) -> bool:
@@ -65,7 +104,7 @@ def verify_metrics_access(request: Any) -> bool:
     """
     expected_token = os.getenv("METRICS_INTERNAL_SCRAPE_TOKEN", "")
     headers = request.headers
-    auth_header = headers.get("Authorization", "")
+    auth_header = _header_get(headers, "Authorization")
 
     # 1. Bearer token
     if expected_token and auth_header.startswith("Bearer "):
@@ -73,7 +112,7 @@ def verify_metrics_access(request: Any) -> bool:
         return secrets.compare_digest(provided, expected_token)
 
     # 2. Custom scrape token header
-    scrape_header = headers.get("X-Prometheus-Scrape-Token", "")
+    scrape_header = _header_get(headers, "X-Prometheus-Scrape-Token")
     if expected_token and scrape_header:
         return secrets.compare_digest(scrape_header, expected_token)
 
@@ -83,7 +122,7 @@ def verify_metrics_access(request: Any) -> bool:
         return True
 
     # 4. Development bypass (explicit opt-in only)
-    env = os.getenv("ENVIRONMENT", "development")
+    env = _runtime_environment()
     allow_bypass = os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() == "true"
     if env == "development" and allow_bypass:
         logger.debug("Metrics access granted via ALLOW_INSECURE_DEV_AUTH_BYPASS")

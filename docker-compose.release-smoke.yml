@@ -20,6 +20,7 @@ x-common-env: &common-env
   LOG_LEVEL: warning
   PYTHONUNBUFFERED: "1"
   JWT_SECRET: release-smoke-secret-with-more-than-32-characters
+  SERVICE_AUTH_SECRET: release-smoke-service-auth-secret-with-more-than-32-characters
   DEV_AUTH_BYPASS: "true"
   ALLOW_INSECURE_DEV_AUTH_BYPASS: "true"
   DEFAULT_TENANT_ID: tenant-release-smoke-a
@@ -37,12 +38,15 @@ x-python-healthcheck: &python-healthcheck
   retries: 18
   start_period: 30s
 
+x-shared-code-volumes: &shared-code-volumes
+  - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
+
 services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: release_smoke_app
+      POSTGRES_PASSWORD: release_smoke_strong_credential
       POSTGRES_DB: valuefabric
       POSTGRES_MULTIPLE_DATABASES: ingestion,extraction,layer4_agents,ground_truth,benchmarks
     volumes:
@@ -52,7 +56,7 @@ services:
     networks:
       - release-smoke
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d valuefabric"]
+      test: ["CMD-SHELL", "pg_isready -U release_smoke_app -d valuefabric"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -91,13 +95,23 @@ services:
     build:
       context: ./services/layer1-ingestion
       dockerfile: Dockerfile
+      args:
+        INSTALL_PLAYWRIGHT_BROWSERS: "false"
     environment:
       <<: *common-env
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ingestion
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@postgres:5432/ingestion
+      DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/ingestion
+      DATABASE_URL_SYNC: postgresql://release_smoke_app:release_smoke_strong_credential@postgres:5432/ingestion
       REDIS_URL: redis://redis:6379/0
       LAYER2_API_URL: http://layer2-extraction:8000
       LAYER3_API_URL: http://layer3-knowledge:8001
+      LAYER1_DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/ingestion
+      LAYER1_REDIS_URL: redis://redis:6379/0
+      LAYER1_JWT_SECRET: layer1-release-smoke-secret-with-more-than-32-characters
+      LAYER1_CORS_ORIGINS: '["http://localhost:5173"]'
+      LAYER1_S3_ACCESS_KEY: release-smoke-access-key
+      LAYER1_S3_SECRET_KEY: release-smoke-secret-key-with-more-than-32-characters
+      LAYER1_RELEASE_SMOKE_LIGHT_HEALTH: "true"
+    volumes: *shared-code-volumes
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,7 +123,9 @@ services:
       - release-smoke
     healthcheck:
       <<: *python-healthcheck
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=10)"]
+      timeout: 12s
+      start_period: 60s
 
   layer2-extraction:
     build:
@@ -117,10 +133,12 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/extraction
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@postgres:5432/extraction
+      DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/extraction
+      DATABASE_URL_SYNC: postgresql://release_smoke_app:release_smoke_strong_credential@postgres:5432/extraction
       REDIS_URL: redis://redis:6379/1
       LAYER3_API_URL: http://layer3-knowledge:8001
+      LAYER2_HEALTH_SKIP_LAYER3: "true"
+    volumes: *shared-code-volumes
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,7 +150,9 @@ services:
       - release-smoke
     healthcheck:
       <<: *python-healthcheck
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=10)"]
+      timeout: 12s
+      start_period: 60s
 
   layer3-knowledge:
     build:
@@ -140,12 +160,13 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/valuefabric
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@postgres:5432/valuefabric
+      DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/valuefabric
+      DATABASE_URL_SYNC: postgresql://release_smoke_app:release_smoke_strong_credential@postgres:5432/valuefabric
       REDIS_URL: redis://redis:6379/2
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: devpassword
+    volumes: *shared-code-volumes
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,9 +188,10 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@postgres:5432/ground_truth
+      DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/ground_truth
+      DATABASE_URL_SYNC: postgresql://release_smoke_app:release_smoke_strong_credential@postgres:5432/ground_truth
       REDIS_URL: redis://redis:6379/5
+    volumes: *shared-code-volumes
     depends_on:
       postgres:
         condition: service_healthy
@@ -181,7 +203,7 @@ services:
       - release-smoke
     healthcheck:
       <<: *python-healthcheck
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health', timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/api/v1/health', timeout=3)"]
 
   layer6-benchmarks:
     build:
@@ -189,12 +211,13 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/benchmarks
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@postgres:5432/benchmarks
+      DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/benchmarks
+      DATABASE_URL_SYNC: postgresql://release_smoke_app:release_smoke_strong_credential@postgres:5432/benchmarks
       REDIS_URL: redis://redis:6379/6
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: devpassword
+    volumes: *shared-code-volumes
     depends_on:
       postgres:
         condition: service_healthy
@@ -216,9 +239,10 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *common-env
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents
-      DATABASE_URL_SYNC: postgresql://postgres:postgres@postgres:5432/layer4_agents
-      CHECKPOINT_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
+      DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/layer4_agents
+      DATABASE_URL_SYNC: postgresql://release_smoke_app:release_smoke_strong_credential@postgres:5432/layer4_agents
+      LAYER4_DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/layer4_agents
+      CHECKPOINT_DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/ground_truth
       REDIS_URL: redis://redis:6379/4
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
@@ -231,6 +255,7 @@ services:
       LAYER3_API_URL: http://layer3-knowledge:8001
       LAYER5_GROUND_TRUTH_URL: http://layer5-ground-truth:8005
       LAYER6_BENCHMARKS_URL: http://layer6-benchmarks:8006
+    volumes: *shared-code-volumes
     depends_on:
       postgres:
         condition: service_healthy
