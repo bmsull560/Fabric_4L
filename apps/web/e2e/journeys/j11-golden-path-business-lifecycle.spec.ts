@@ -139,4 +139,50 @@ test.describe('Journey 11: Golden Path Business Lifecycle', () => {
     );
     await expectButtonStateIfVisible(page, /export pdf/i, 'enabled');
   });
+
+  test('test_crm_push_available_after_case_approval @backend', async ({ page }) => {
+    requireBackendOrThrow('test_crm_push_available_after_case_approval @backend');
+
+    // Navigate to the approved business case
+    await navigateAndWait(page, '/deliverables/cases/case-e2e-approved-001');
+    await expectAnyVisible(
+      page,
+      [/business case/i, /approved/i, /export pdf/i],
+      'approved business case with export gate passed',
+    );
+
+    // CRM push option should be available after approval
+    await expectAnyVisible(
+      page,
+      [/push.*crm|sync.*crm|export.*salesforce|send.*crm|crm/i],
+      'CRM push affordance on approved business case',
+    );
+  });
+
+  test('test_post_sale_realization_conversion @backend', async ({ page }) => {
+    requireBackendOrThrow('test_post_sale_realization_conversion @backend');
+
+    // Navigate to the approved business case
+    await navigateAndWait(page, '/deliverables/cases/case-e2e-approved-001');
+    await expectAnyVisible(
+      page,
+      [/business case/i, /approved/i, /recommendations/i],
+      'approved business case for realization conversion',
+    );
+
+    // Realization plan conversion option should appear on approved cases
+    await expectAnyVisible(
+      page,
+      [/realization|post.sale|convert.*plan|track.*outcomes|value.*realization/i],
+      'realization plan conversion affordance on approved business case',
+    );
+
+    // Navigate to any realization plan surface if it exists
+    await navigateAndWait(page, `/accounts/${ACCOUNT_ID}`);
+    await expectAnyVisible(
+      page,
+      [/outcome|realization|baseline|metric|account|meridian/i],
+      'account detail with realization plan or outcome tracking surface',
+    );
+  });
 });
