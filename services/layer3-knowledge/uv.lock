@@ -940,7 +940,6 @@ dependencies = [
     { name = "rdflib" },
     { name = "redis" },
     { name = "scikit-learn" },
-    { name = "sentence-transformers" },
     { name = "sqlalchemy" },
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
@@ -956,6 +955,9 @@ dev = [
     { name = "ruff" },
     { name = "sentence-transformers" },
     { name = "testcontainers", extra = ["neo4j"] },
+]
+embeddings = [
+    { name = "sentence-transformers" },
 ]
 
 [package.metadata]
@@ -978,7 +980,7 @@ requires-dist = [
     { name = "psutil", specifier = ">=5.9" },
     { name = "pydantic", specifier = ">=2.5" },
     { name = "pydantic-settings", specifier = ">=2.1" },
-    { name = "pyjwt", specifier = ">=2.8" },
+    { name = "pyjwt", specifier = ">=2.8.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
@@ -987,14 +989,14 @@ requires-dist = [
     { name = "redis", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2" },
     { name = "scikit-learn", specifier = ">=1.4" },
-    { name = "sentence-transformers", specifier = ">=2.3" },
     { name = "sentence-transformers", marker = "extra == 'dev'", specifier = ">=2.3" },
+    { name = "sentence-transformers", marker = "extra == 'embeddings'", specifier = ">=2.3" },
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "structlog", specifier = ">=24.1" },
     { name = "testcontainers", extras = ["neo4j"], marker = "extra == 'dev'", specifier = ">=4.8" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.27" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["embeddings", "dev"]
 
 [[package]]
 name = "librt"

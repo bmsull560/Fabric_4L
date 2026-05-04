@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from urllib.parse import urlsplit
 
 
 class PathNormalizer:
@@ -47,6 +48,8 @@ class PathNormalizer:
         if not path or path == "/":
             return "/"
 
+        parsed = urlsplit(path)
+        path = parsed.path or "/"
         path = path.rstrip("/") or "/"
         if path in self._known_routes:
             return self._known_routes[path]

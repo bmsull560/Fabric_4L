@@ -58,9 +58,10 @@ def validate_redis_config() -> None:
                 "Must start with redis:// or rediss://"
             )
     elif environment == "development" and not redis_url:
-        raise ValueError(
-            "REDIS_URL is required in development mode. "
-            "Configure Redis or set REDIS_URL=redis://localhost:6379"
+        logger.warning(
+            "Redis is not configured in development mode; using degraded in-memory "
+            "rate-limit behavior. Set REDIS_URL=redis://localhost:6379 to exercise "
+            "production-like tenant-scoped rate limiting locally."
         )
 
 

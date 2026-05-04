@@ -51,9 +51,23 @@ class TestLayer2ProductionPersistenceFailClosed:
 
         assert isinstance(build_job_store(), InMemoryJobStore)
 
-    def test_staging_requires_postgres_pending_ingestion_store(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize(
+        ("env_key", "env_value"),
+        (
+            ("APP_ENV", "staging"),
+            ("ENVIRONMENT", "staging"),
+            ("APP_ENV", "production"),
+            ("ENVIRONMENT", "production"),
+        ),
+    )
+    def test_production_like_env_requires_postgres_pending_ingestion_store(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        env_key: str,
+        env_value: str,
+    ) -> None:
         _clear_layer2_env(monkeypatch)
-        monkeypatch.setenv("APP_ENV", "staging")
+        monkeypatch.setenv(env_key, env_value)
 
         with pytest.raises(RuntimeError, match="must point to PostgreSQL"):
             build_pending_ingestion_store()

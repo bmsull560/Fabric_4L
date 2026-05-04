@@ -304,7 +304,7 @@ class TestExportProvenanceUsesCanonicalHash:
             L4_SRC / "services" / "export_provenance.py"
         )
         source = source_path.read_text()
-        assert "from shared.crypto.canonical import canonical_hash" in source
+        assert "from value_fabric.shared.crypto.canonical import canonical_hash" in source
         assert "return canonical_hash(payload)" in source
         assert "import hashlib" not in source
 

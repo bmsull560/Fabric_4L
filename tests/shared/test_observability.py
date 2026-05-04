@@ -73,6 +73,15 @@ class TestPathNormalizer:
         # 6 segments retained
         assert result.count("/") == 7  # leading slash + 6 segments + truncation segment
 
+    def test_query_strings_and_fragments_are_removed_from_metric_labels(self, normalizer: PathNormalizer) -> None:
+        result = normalizer.normalize(
+            "/api/v1/accounts/12345/documents/3fa85f64-5717-4562-b3fc-2c963f66afa6?tenant=acme&token=secret#download"
+        )
+        assert result == "/api/v1/accounts/{id}/documents/{id}"
+        assert "secret" not in result
+        assert "?" not in result
+        assert "#" not in result
+
     def test_no_known_routes_still_works(self) -> None:
         n = PathNormalizer()
         uuid = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
@@ -143,6 +152,8 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "METRICS_INTERNAL_SCRAPE_TOKEN",
         "ENVIRONMENT",
         "ALLOW_INSECURE_DEV_AUTH_BYPASS",
+        "APP_ENV",
+        "NODE_ENV",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -169,6 +180,13 @@ class TestVerifyMetricsAccess:
         req = _make_request(headers={"X-Prometheus-Scrape-Token": "secret-token"})
         assert verify_metrics_access(req) is True
 
+    def test_token_headers_are_case_insensitive_for_plain_mapping_adapters(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("METRICS_INTERNAL_SCRAPE_TOKEN", "secret-token")
+        assert verify_metrics_access(_make_request(headers={"authorization": "Bearer secret-token"})) is True
+        assert verify_metrics_access(_make_request(headers={"x-prometheus-scrape-token": "secret-token"})) is True
+
     def test_internal_network_grants_access_without_token(self) -> None:
         req = _make_request(client_host="10.0.0.5")
         assert verify_metrics_access(req) is True
@@ -187,6 +205,24 @@ class TestVerifyMetricsAccess:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "true")
+        req = _make_request(client_host="8.8.8.8")
+        assert verify_metrics_access(req) is False
+
+    @pytest.mark.parametrize("env_var,env_value", [("APP_ENV", "production"), ("NODE_ENV", "staging")])
+    def test_dev_bypass_disabled_in_production_like_runtime_aliases(
+        self, monkeypatch: pytest.MonkeyPatch, env_var: str, env_value: str
+    ) -> None:
+        monkeypatch.setenv(env_var, env_value)
+        monkeypatch.setenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "true")
+        req = _make_request(client_host="8.8.8.8")
+        assert verify_metrics_access(req) is False
+
+    def test_production_like_alias_wins_over_development_when_both_are_set(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("APP_ENV", "production")
         monkeypatch.setenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "true")
         req = _make_request(client_host="8.8.8.8")
         assert verify_metrics_access(req) is False

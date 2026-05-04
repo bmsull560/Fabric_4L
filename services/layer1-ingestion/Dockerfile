@@ -24,9 +24,16 @@ RUN uv sync --frozen --no-install-project
 # Make venv available for subsequent commands in builder stage
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install Playwright browsers
-RUN python -m playwright install chromium
-RUN python -m playwright install-deps chromium
+# Install Playwright browsers by default. Release-smoke builds can set
+# INSTALL_PLAYWRIGHT_BROWSERS=false to keep the image lightweight when the
+# validation path only needs the API process and health endpoints.
+ARG INSTALL_PLAYWRIGHT_BROWSERS=true
+RUN if [ "$INSTALL_PLAYWRIGHT_BROWSERS" = "true" ]; then \
+        python -m playwright install chromium && \
+        python -m playwright install-deps chromium; \
+    else \
+        mkdir -p /root/.cache/ms-playwright; \
+    fi
 
 # Stage 2: Runtime - minimal image with only runtime dependencies
 FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime

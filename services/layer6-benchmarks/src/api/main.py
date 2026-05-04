@@ -59,6 +59,7 @@ from .routes import benchmarks, system
 
 # Neo4j-backed repository (initialized in lifespan)
 _benchmark_repo: BenchmarkRepository | None = None
+_neo4j_startup_error: str | None = None
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
 _tracer_provider: TracerProvider | None = None
@@ -138,18 +139,30 @@ async def lifespan(app: FastAPI):
         logger.info("Prometheus metrics initialized")
     app.state.metrics = metrics
 
-    # Startup: initialize Neo4j and seed data
-    global _benchmark_repo
+    # Startup: initialize Neo4j and seed data. Neo4j can be slow to accept
+    # Bolt connections in constrained release-smoke environments even after the
+    # HTTP health endpoint reports healthy. Keep the API process alive in a
+    # degraded state so Docker Compose readiness and explicit service probes can
+    # observe the service instead of treating a transient graph-store delay as a
+    # process crash. Request handlers that need benchmarks still return 503 while
+    # the repository is unavailable.
+    global _benchmark_repo, _neo4j_startup_error
+    dataset_count = 0
     try:
         driver = await get_driver()
         _benchmark_repo = BenchmarkRepository(driver)
         await _init_seed_data()
         datasets = await _benchmark_repo.list_datasets()
         dataset_count = len(datasets)
+        _neo4j_startup_error = None
         logger.info("Layer 6 Benchmark Service started with %d datasets", dataset_count)
     except Exception as exc:
-        logger.error("Failed to initialize Neo4j benchmark store: %s", exc)
-        raise
+        _benchmark_repo = None
+        _neo4j_startup_error = str(exc)
+        logger.warning(
+            "Layer 6 Benchmark Service starting degraded; Neo4j benchmark store unavailable: %s",
+            exc,
+        )
 
     if metrics:
         metrics.set_datasets_loaded(dataset_count)
@@ -299,8 +312,13 @@ async def health_check(request: Request = None):
 
     start_time = time.time()
 
-    # Neo4j connectivity check
-    neo4j_status = await neo4j_health_check()
+    # Neo4j connectivity check. Avoid opening a fresh blocking Bolt retry loop
+    # on lightweight health requests after startup already established that the
+    # benchmark store is unavailable.
+    if _benchmark_repo is None and _neo4j_startup_error:
+        neo4j_status = {"status": "unavailable", "error": _neo4j_startup_error}
+    else:
+        neo4j_status = await neo4j_health_check()
     neo4j_healthy = neo4j_status.get("status") == "healthy"
 
     dataset_count = 0
