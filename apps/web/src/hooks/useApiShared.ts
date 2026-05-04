@@ -160,7 +160,7 @@ export async function withApiError<T, E extends BaseApiError>(
         apiErr.statusCode,
         { code: apiErr.errorCode, traceId: apiErr.traceId }
       );
-      (newError as Error).cause = err;
+      newError.cause = err;
       throw newError;
     }
     // Handle axios-style errors
@@ -171,12 +171,12 @@ export async function withApiError<T, E extends BaseApiError>(
         axiosErr.response?.status,
         axiosErr.response?.data
       );
-      (newError as Error).cause = err;
+      newError.cause = err;
       throw newError;
     }
     const newError = new ErrorClass(err instanceof Error ? err.message : 'Unknown error');
     if (err instanceof Error) {
-      (newError as Error).cause = err;
+      newError.cause = err;
     }
     throw newError;
   }

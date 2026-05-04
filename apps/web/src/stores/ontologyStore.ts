@@ -278,11 +278,10 @@ export const useOntologyStore = create<OntologyEditorState & OntologyEditorActio
       },
 
       undo: () => {
-        const { historyIndex, history, canUndo } = get();
+        const { historyIndex, canUndo } = get();
         if (!canUndo || historyIndex < 0) return;
 
-        const change = history[historyIndex];
-        // TODO: Apply inverse of the change to draft state
+        // TODO: Apply inverse of history[historyIndex] to draft state
         // This would need more sophisticated state management
 
         set({
@@ -297,8 +296,7 @@ export const useOntologyStore = create<OntologyEditorState & OntologyEditorActio
         if (!canRedo || historyIndex >= history.length - 1) return;
 
         const newIndex = historyIndex + 1;
-        const change = history[newIndex];
-        // TODO: Reapply the change to draft state
+        // TODO: Reapply history[newIndex] to draft state
 
         set({
           historyIndex: newIndex,
