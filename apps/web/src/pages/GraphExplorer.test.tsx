@@ -13,7 +13,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../test/mocks/server';
+import { server } from '../test/mocks/server';
 import GraphExplorer from './GraphExplorer';
 
 // P0 Fix: Standard timeout configuration for flaky async tests
@@ -46,7 +46,7 @@ describe('GraphExplorer', () => {
   it('handles empty graph state', async () => {
     // P0 Fix: Override handler BEFORE rendering with no delay for deterministic response
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', async () => {
+      http.get('/api/v1/graph/subgraph', async () => {
         return HttpResponse.json({
           root_entity_id: '',
           nodes: [],
@@ -79,7 +79,7 @@ describe('GraphExplorer', () => {
   it('handles graph error state', async () => {
     server.resetHandlers();
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () => {
+      http.get('/api/v1/graph/subgraph', () => {
         return HttpResponse.json({ error: 'Neo4j connection failed' }, { status: 500 });
       })
     );
@@ -154,7 +154,7 @@ describe('GraphExplorer', () => {
 
   it('renders coherent graph with nodes and edges from subgraph endpoint', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () => {
+      http.get('/api/v1/graph/subgraph', () => {
         return HttpResponse.json({
           root_entity_id: 'ent-1',
           nodes: [

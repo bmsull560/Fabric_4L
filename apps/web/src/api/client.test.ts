@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server } from "../../../test/mocks/server";
+import { server } from "../test/mocks/server";
 import { apiClient } from "./client";
 import {
   applySessionServiceTestEnvironment,
@@ -9,10 +9,10 @@ import {
 } from "@/test/authSessionTestUtils";
 
 describe("ApiClient", () => {
-  let testLocalStorage: MemoryStorage;
+  let testSessionStorage: MemoryStorage;
 
   beforeEach(() => {
-    ({ localStorage: testLocalStorage } = applySessionServiceTestEnvironment());
+    ({ sessionStorage: testSessionStorage } = applySessionServiceTestEnvironment());
   });
 
   describe("layer routing", () => {
@@ -58,18 +58,18 @@ describe("ApiClient", () => {
 
   describe("request configuration", () => {
     beforeEach(() => {
-      testLocalStorage.clear();
+      testSessionStorage.clear();
     });
 
     afterEach(() => {
       vi.restoreAllMocks();
     });
 
-    it("should include tenant ID header from localStorage", async () => {
-      testLocalStorage.setItem(
-        "vf.auth.session",
+    it("should include tenant ID header from session metadata", async () => {
+      testSessionStorage.setItem(
+        "vf.auth.session.meta",
         JSON.stringify(
-          authFixtures.validSession({
+          authFixtures.sessionMeta({
             tenantId: "test-tenant-123",
             user: authFixtures.user({ tenantId: "test-tenant-123" }),
           })
@@ -88,10 +88,10 @@ describe("ApiClient", () => {
 
       await apiClient.get("l3", "/test");
       expect(capturedHeaders["x-tenant-id"]).toBe("test-tenant-123");
-      expect(capturedHeaders.authorization).toMatch(/^Bearer /);
+      expect(capturedHeaders.authorization).toBeUndefined();
     });
 
-    it("should use default tenant ID when not in localStorage", async () => {
+    it("should use default tenant ID when session metadata is absent", async () => {
       let capturedHeaders: Record<string, string> = {};
 
       server.use(

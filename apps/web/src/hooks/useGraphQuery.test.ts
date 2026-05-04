@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../test/mocks/server';
 import {
   useGraphQuery,
   useEntityContext,
@@ -200,7 +200,7 @@ describe('useFullGraph', () => {
   it('handles empty subgraph', async () => {
     // Override handler for this test
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () => {
+      http.get('/api/v1/graph/subgraph', () => {
         return HttpResponse.json({
           root_entity_id: '',
           nodes: [],

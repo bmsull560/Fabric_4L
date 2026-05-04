@@ -5,9 +5,11 @@
         test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
-        test-backend-integrated-validation test-backend-integrated-release-smoke \
-        gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
-        platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency
+	test-backend-integrated-validation test-backend-integrated-release-smoke \
+	gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
+	collect-95-plus-evidence collect-95-plus-evidence-focused \
+	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency
+
 
 # Strict shell settings for production safety
 .ONESHELL:
@@ -417,6 +419,12 @@ gate-config: ## Gate: startup validation, security config hardening
 
 gate-all: gate-security gate-state gate-arch gate-config ## Run all production readiness gates
 	@echo "✅  All production gates passed — ship/no-ship: SHIP"
+
+collect-95-plus-evidence-focused: ## Collect focused 95+ evidence for P0, frontend, and mandatory gate recovery
+	$(PYTHON) scripts/ci/collect_95_plus_evidence.py --profile focused
+
+collect-95-plus-evidence: ## Collect full 95+ production-readiness evidence pack
+	$(PYTHON) scripts/ci/collect_95_plus_evidence.py --profile full
 
 # ─── Extended Gate Targets (referenced by prod-readiness.yml) ────────────────
 

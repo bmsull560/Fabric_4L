@@ -15,7 +15,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../test/mocks/server';
 
 import {
   useSubgraph,
@@ -127,7 +127,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
     const mockResponse = generateSubgraphResponse();
 
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(mockResponse))
+      http.get('/api/v1/graph/subgraph', () => HttpResponse.json(mockResponse))
     );
 
     const wrapper = createWrapper();
@@ -165,7 +165,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
       const query = randomString(0, 100);
 
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () =>
+        http.get('/api/v1/graph/subgraph', () =>
           HttpResponse.json(generateSubgraphResponse(randomInt(0, limit)))
         )
       );
@@ -199,7 +199,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
       const nodeIds = new Set(response.nodes.map((n) => n.id));
 
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(response))
+        http.get('/api/v1/graph/subgraph', () => HttpResponse.json(response))
       );
 
       const wrapper = createWrapper();
@@ -227,7 +227,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
       const response = generateSubgraphResponse(randomInt(1, 100));
 
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(response))
+        http.get('/api/v1/graph/subgraph', () => HttpResponse.json(response))
       );
 
       const wrapper = createWrapper();
@@ -249,7 +249,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
    */
   it('property: empty result is valid', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () =>
+      http.get('/api/v1/graph/subgraph', () =>
         HttpResponse.json({
           root_entity_id: '',
           nodes: [],

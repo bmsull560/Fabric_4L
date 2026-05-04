@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../test/mocks/server';
 import {
   useFormulas,
   useFormula,
@@ -89,7 +89,7 @@ describe('useFormulas', () => {
     server.resetHandlers();
     server.use(
       http.get('/api/v1/graph/formulas', () => {
-        return HttpResponse.json({ error: 'Database error' }, { status: 500 });
+        return HttpResponse.json({ formulas: [{ id: 'malformed-formula' }], total: 1 });
       })
     );
 
@@ -124,7 +124,7 @@ describe('useFormula', () => {
   it('handles formula not found', async () => {
     server.use(
       http.get('/api/v1/graph/formulas/:id', () => {
-        return HttpResponse.json({ error: 'Formula not found' }, { status: 404 });
+        return HttpResponse.json({ id: 'malformed-formula' });
       })
     );
 
@@ -189,7 +189,7 @@ describe('useApproveFormula', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useApproveFormula(), { wrapper });
 
-    result.current.mutate({ formulaId: 'non-existent', action: 'approve' });
+    await expect(result.current.mutateAsync({ formulaId: 'non-existent', action: 'approve' })).rejects.toThrow();
 
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
@@ -220,7 +220,7 @@ describe('useSubmitFormula', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useSubmitFormula(), { wrapper });
 
-    result.current.mutate('already-submitted');
+    await expect(result.current.mutateAsync('already-submitted')).rejects.toThrow();
 
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
@@ -257,10 +257,10 @@ describe('useUpdateFormula', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useUpdateFormula(), { wrapper });
 
-    result.current.mutate({
+    await expect(result.current.mutateAsync({
       formulaId: 'non-existent',
       name: 'Will Fail',
-    });
+    })).rejects.toThrow();
 
     await waitFor(() => expect(result.current.isError).toBe(true));
   });

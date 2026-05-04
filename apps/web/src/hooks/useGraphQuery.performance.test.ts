@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../test/mocks/server';
 
 import {
   useSubgraph,
@@ -99,7 +99,7 @@ describe('useSubgraph Performance [L4-Performance]', () => {
    */
   it('loads small graph (<50 nodes) in < 200ms', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () =>
+      http.get('/api/v1/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(25))
       )
     );
@@ -127,7 +127,7 @@ describe('useSubgraph Performance [L4-Performance]', () => {
    */
   it('loads medium graph (100-500 nodes) in < 200ms', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () =>
+      http.get('/api/v1/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(250))
       )
     );
@@ -154,7 +154,7 @@ describe('useSubgraph Performance [L4-Performance]', () => {
    */
   it('loads large graph (500+ nodes) in < 500ms', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () =>
+      http.get('/api/v1/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(750))
       )
     );
@@ -181,7 +181,7 @@ describe('useSubgraph Performance [L4-Performance]', () => {
    */
   it('has consistent timing (stdDev < 50% of mean)', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () =>
+      http.get('/api/v1/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(100))
       )
     );
@@ -273,7 +273,7 @@ describe('Memory Leak Detection [L4-Performance]', () => {
    */
   it('query cache does not grow unbounded', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () =>
+      http.get('/api/v1/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(50))
       )
     );
@@ -307,7 +307,7 @@ describe('Memory Leak Detection [L4-Performance]', () => {
    */
   it('cleans up event listeners on unmount', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () =>
+      http.get('/api/v1/graph/subgraph', () =>
         HttpResponse.json(generateLargeGraph(10))
       )
     );
@@ -410,7 +410,7 @@ describe('Performance Baseline Summary [L4-Performance]', () => {
     const benchmarks: Record<string, { mean: number; p95: number; target: number }> = {};
 
     // Small graph
-    server.use(http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(generateLargeGraph(25))));
+    server.use(http.get('/api/v1/graph/subgraph', () => HttpResponse.json(generateLargeGraph(25))));
     const small = await benchmark(async () => {
       const wrapper = createWrapper();
       const { result } = renderHook(() => useSubgraph({ query: 'small' }), { wrapper });

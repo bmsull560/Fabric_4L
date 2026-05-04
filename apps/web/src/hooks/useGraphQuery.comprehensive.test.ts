@@ -14,7 +14,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { createWrapper, createWrapperWithRetry } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../test/mocks/server';
 import { QueryClient } from '@tanstack/react-query';
 
 // Module under test
@@ -307,7 +307,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
     it('fetches subgraph with query mode', async () => {
       const mockResponse = createMockSubgraphResponse(3, 2);
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(mockResponse))
+        http.get('/api/v1/graph/subgraph', () => HttpResponse.json(mockResponse))
       );
 
       const wrapper = createWrapper();
@@ -326,7 +326,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
     it('fetches subgraph with center entity mode', async () => {
       const mockResponse = createMockSubgraphResponse(5, 4);
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(mockResponse))
+        http.get('/api/v1/graph/subgraph', () => HttpResponse.json(mockResponse))
       );
 
       const wrapper = createWrapper();
@@ -342,7 +342,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
 
     it('handles empty subgraph response', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(EMPTY_SUBGRAPH))
+        http.get('/api/v1/graph/subgraph', () => HttpResponse.json(EMPTY_SUBGRAPH))
       );
 
       const wrapper = createWrapper();
@@ -375,7 +375,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
     it('handles single node subgraph', async () => {
       const singleNode = createMockSubgraphResponse(1, 0);
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(singleNode))
+        http.get('/api/v1/graph/subgraph', () => HttpResponse.json(singleNode))
       );
 
       const wrapper = createWrapper();
@@ -393,7 +393,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
     it('handles maximum limit parameter', async () => {
       const mockResponse = createMockSubgraphResponse(500, 100);
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(mockResponse))
+        http.get('/api/v1/graph/subgraph', () => HttpResponse.json(mockResponse))
       );
 
       const wrapper = createWrapper();
@@ -408,7 +408,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
 
     it('handles minimum depth of 1', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () =>
+        http.get('/api/v1/graph/subgraph', () =>
           HttpResponse.json({ ...createMockSubgraphResponse(), depth: 1 })
         )
       );
@@ -426,7 +426,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
   describe('error cases', () => {
     it('handles 404 not found', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () =>
+        http.get('/api/v1/graph/subgraph', () =>
           HttpResponse.json({ error: 'Not found' }, { status: 404 })
         )
       );
@@ -443,7 +443,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
 
     it('handles 500 server error', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () =>
+        http.get('/api/v1/graph/subgraph', () =>
           HttpResponse.json({ error: 'Internal error' }, { status: 500 })
         )
       );
@@ -459,7 +459,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
 
     it('handles network timeout', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', async () => {
+        http.get('/api/v1/graph/subgraph', async () => {
           await new Promise((resolve) => setTimeout(resolve, 10000));
           return HttpResponse.json({});
         })
@@ -477,7 +477,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
 
     it('handles malformed response (validation error)', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () =>
+        http.get('/api/v1/graph/subgraph', () =>
           HttpResponse.json({ invalid: 'missing required fields' })
         )
       );
@@ -498,7 +498,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
       const response2 = createMockSubgraphResponse(4, 3);
 
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', ({ request }) => {
+        http.get('/api/v1/graph/subgraph', ({ request }) => {
           const url = new URL(request.url);
           const query = url.searchParams.get('query');
           return HttpResponse.json(query === 'query1' ? response1 : response2);
@@ -526,7 +526,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
     it('cancels in-flight requests on unmount', async () => {
       let requestCount = 0;
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', async () => {
+        http.get('/api/v1/graph/subgraph', async () => {
           requestCount++;
           await new Promise((resolve) => setTimeout(resolve, 100));
           return HttpResponse.json(createMockSubgraphResponse());
@@ -552,7 +552,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
     it('returns cached data on subsequent calls', async () => {
       let requestCount = 0;
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => {
+        http.get('/api/v1/graph/subgraph', () => {
           requestCount++;
           return HttpResponse.json(createMockSubgraphResponse());
         })
@@ -991,7 +991,7 @@ describe('useEntityTraversal [L1-Unit-Async]', () => {
 describe('useFullGraph [L1-Unit-Async]', () => {
   it('delegates to useSubgraph with empty query', async () => {
     server.use(
-      http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(createMockSubgraphResponse()))
+      http.get('/api/v1/graph/subgraph', () => HttpResponse.json(createMockSubgraphResponse()))
     );
 
     const wrapper = createWrapper();

@@ -71,6 +71,64 @@ vi.mock('@/hooks/useValuePacks', () => ({
   }),
 }));
 
+vi.mock('@/hooks/useVariables', () => ({
+  useVariables: () => ({
+    data: [
+      {
+        variable_id: 'var-1',
+        name: 'contract_value',
+        display_name: 'Contract Value',
+        description: 'Total signed contract value.',
+        type: 'currency',
+        unit: 'USD',
+        source: 'CRM',
+        binding: 'opportunity.amount',
+        binding_path: 'crm.opportunity.amount',
+        used_in_count: 3,
+        validation_status: 'validated',
+        version: '1.0.0',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-02T00:00:00Z',
+      },
+    ],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useSourceBindings: () => ({
+    data: [
+      {
+        id: 'binding-1',
+        name: 'Salesforce CRM',
+        source: 'CRM',
+        status: 'connected',
+        variables_bound: 1,
+        connection_string: 'salesforce://tenant/test',
+        last_sync: '2026-01-02T00:00:00Z',
+      },
+    ],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useVariableStats: () => ({
+    data: {
+      total: 1,
+      validated: 1,
+      pending: 0,
+      failed: 0,
+      avg_usage: 3,
+    },
+    isLoading: false,
+    error: null,
+  }),
+  useValidateVariable: () => ({
+    mutate: vi.fn(),
+    mutateAsync: async () => ({}),
+    isPending: false,
+  }),
+}));
+
 vi.mock('@/hooks/useGovernance', () => ({
   useUsers: () => ({
     data: [
