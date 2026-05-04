@@ -560,9 +560,9 @@ function Accounts() {
           <FilterChipBar filters={filters} filterOptions={filterOptions} onChange={updateFilters} />
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Account List */}
-          <div className={cn("transition-all", selectedAccountId ? "col-span-9" : "col-span-12")}>
+          <div className={cn("transition-all", selectedAccountId ? "md:col-span-9" : "md:col-span-12")}>
             {/* Search */}
             <div className="mb-4">
               <div className="relative">
@@ -689,8 +689,8 @@ function Accounts() {
 
           {/* Account Detail Panel */}
           {selectedAccountId && (
-            <div className="col-span-3">
-              <div className="bg-card border border-border rounded-lg h-[calc(100vh-200px)] sticky top-8">
+            <div className="col-span-1 md:col-span-3">
+              <div className="bg-card border border-border rounded-lg md:h-[calc(100vh-200px)] md:sticky md:top-8">
                 <AccountDetailPanel
                   accountId={selectedAccountId}
                   onClose={() => handleSelectAccount(null)}

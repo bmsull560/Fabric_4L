@@ -129,18 +129,28 @@ export interface TestConnectionResult {
 // ── Payload Builder ──────────────────────────────────────────────────────────
 
 /**
+ * Map frontend SourceType (WHAT the source is) to backend target_type (HOW to scrape).
+ *
+ * Frontend SourceType: 'crm' | 'database' | 'file' | 'api' | 'cloud_storage'
+ * Backend target_type: 'SINGLE_PAGE' | 'PAGINATED' | 'SPIDER' | 'API_ENDPOINT'
+ *
+ * These are different axes. The backend scraping method is inferred from source
+ * category until the backend exposes an explicit source_category field.
+ */
+const FRONTEND_TO_BACKEND_TARGET_TYPE: Record<SourceType, string> = {
+  crm:           'API_ENDPOINT',    // CRM platforms expose REST/SOAP APIs
+  database:      'API_ENDPOINT',    // Databases accessed via query adapter API
+  file:          'SINGLE_PAGE',     // Direct file downloads (CSV, JSON, etc.)
+  api:           'API_ENDPOINT',    // Generic REST/GraphQL endpoints
+  cloud_storage: 'API_ENDPOINT',    // S3/GCS/Azure Blob accessed via SDK API
+};
+
+/**
  * Build API payload from CreateSourceRequest.
  * Centralizes snake_case conversion and field mapping.
  */
 function buildTargetPayload(request: CreateSourceRequest): Record<string, unknown> {
-  // Valid backend target types
-  const validTargetTypes = ['SINGLE_PAGE', 'PAGINATED', 'SPIDER', 'API_ENDPOINT'];
-  const targetTypeUpper = request.targetType.toUpperCase();
-
-  // Validate or default to API_ENDPOINT
-  const backendTargetType = validTargetTypes.includes(targetTypeUpper)
-    ? targetTypeUpper
-    : 'API_ENDPOINT';
+  const backendTargetType = FRONTEND_TO_BACKEND_TARGET_TYPE[request.targetType] ?? 'API_ENDPOINT';
 
   return {
     name: request.name,
