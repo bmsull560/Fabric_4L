@@ -303,6 +303,259 @@ export function createCRMIntegration(status: 'idle' | 'syncing' | 'error' = 'idl
   };
 }
 
+// ── Stakeholder Data ─────────────────────────────────────────────────────────
+
+export function createStakeholderSet() {
+  return {
+    status: 'ready',
+    generated_at: '2026-05-01T12:00:00Z',
+    content: {
+      stakeholders: [
+        { id: 'sh-001', name: 'Dr. Sarah Chen', title: 'Chief Financial Officer', department: 'Finance', influence: 'high', buying_role: 'economic_buyer', pains: ['sig-001'], initiatives: ['initiative-cost-reduction'], value_drivers: ['driver-001'], evidence_sources: ['ev-001'] },
+        { id: 'sh-002', name: 'Marcus Rivera', title: 'VP of Operations', department: 'Operations', influence: 'medium', buying_role: 'technical_buyer', pains: ['sig-002'], initiatives: ['initiative-automation'], value_drivers: ['driver-001a'], evidence_sources: ['ev-002'] },
+        { id: 'sh-003', name: 'Priya Kapoor', title: 'Director of IT', department: 'Information Technology', influence: 'medium', buying_role: 'champion', pains: ['sig-003'], initiatives: ['initiative-compliance'], value_drivers: ['driver-003a'], evidence_sources: ['ev-003'] },
+        { id: 'sh-004', name: 'Tom Walsh', title: 'Head of Procurement', department: 'Finance', influence: 'low', buying_role: 'blocker', pains: [], initiatives: [], value_drivers: [], evidence_sources: [] },
+      ],
+    },
+  };
+}
+
+export function createStakeholderDetail(id = 'sh-001') {
+  const set = createStakeholderSet();
+  return set.content.stakeholders.find((s) => s.id === id) ?? set.content.stakeholders[0];
+}
+
+// ── Value Pack Data ──────────────────────────────────────────────────────────
+
+export function createValuePackList() {
+  return [
+    {
+      id: 'pack-healthcare-001', name: 'Healthcare Operations', version: '3.1.0', status: 'active',
+      industries: ['Healthcare'], description: 'Formulas, benchmarks, and personas for healthcare operational efficiency.',
+      formulas: ['formula-reconciliation', 'formula-claim-processing'],
+      benchmarks: ['bench-001', 'bench-002'],
+      personas: ['persona-cfo', 'persona-coo'],
+      ontology_terms: ['manual-reconciliation', 'claim-cycle-time', 'compliance-overhead'],
+      evidence_requirements: ['customer_data', 'audit_report'],
+      published_by: 'Platform Admin',
+      published_at: '2026-03-01T12:00:00Z',
+    },
+    {
+      id: 'pack-saas-001', name: 'SaaS Growth', version: '2.4.0', status: 'active',
+      industries: ['Technology', 'SaaS'], description: 'ARR growth, churn reduction, and expansion revenue drivers.',
+      formulas: ['formula-arr-uplift', 'formula-churn-reduction'],
+      benchmarks: ['bench-saas-001'],
+      personas: ['persona-cro', 'persona-cmo'],
+      ontology_terms: ['annual-recurring-revenue', 'net-revenue-retention', 'expansion-rate'],
+      evidence_requirements: ['customer_data', 'crm_data'],
+      published_by: 'Platform Admin',
+      published_at: '2026-01-15T12:00:00Z',
+    },
+    {
+      id: 'pack-deprecated-001', name: 'Legacy ERP', version: '1.0.0', status: 'deprecated',
+      industries: ['Manufacturing'], description: 'Deprecated ERP value drivers — use Manufacturing Operations v2 instead.',
+      formulas: [],
+      benchmarks: [],
+      personas: [],
+      ontology_terms: [],
+      evidence_requirements: [],
+      published_by: 'Platform Admin',
+      published_at: '2024-01-01T12:00:00Z',
+      deprecated_at: '2025-06-01T12:00:00Z',
+      deprecation_note: 'Superseded by Manufacturing Operations v2.0.0.',
+    },
+  ];
+}
+
+// ── Narrative Versions Data ──────────────────────────────────────────────────
+
+export function createNarrativeVersions() {
+  return {
+    current_version: 3,
+    versions: [
+      { version: 3, created_at: '2026-05-01T14:00:00Z', created_by: 'Avery Stone', summary: 'Added CFO-specific ROI framing and tightened cycle time claims.' },
+      { version: 2, created_at: '2026-04-30T10:00:00Z', created_by: 'Avery Stone', summary: 'Removed unsupported 500% ROI claim. Evidence citations added to all value claims.' },
+      { version: 1, created_at: '2026-04-28T09:00:00Z', created_by: 'system', summary: 'Initial AI-generated narrative.' },
+    ],
+    narrative_types: ['executive_summary', 'discovery_recap', 'executive_email', 'mutual_action_plan', 'renewal_narrative', 'expansion_narrative', 'proposal_section'],
+  };
+}
+
+export function createNarrativeContent(type = 'executive_email') {
+  const contents: Record<string, string> = {
+    executive_email: 'Subject: Meridian Health Group — Projected $700K in Annual Operational Savings\n\nDear Dr. Chen,\n\nBased on our discovery conversations and your Q3 reconciliation data, we have modeled three outcome scenarios...',
+    executive_summary: 'Meridian Health Group can recapture $700K in annual operational costs by automating its manual reconciliation workflow. This case is grounded in customer-validated baseline hours and industry benchmark data...',
+    discovery_recap: 'Key findings from our April 28 discovery session with the Meridian Finance and Operations teams...',
+    mutual_action_plan: 'Shared success milestones and owner assignments for the Meridian automation initiative...',
+    renewal_narrative: 'In Year 1, Meridian achieved $640K in realized savings against a projected $700K target. The variance is attributable to...',
+    expansion_narrative: 'With reconciliation automation stabilized, Meridian is positioned to extend the platform to its four regional billing centers...',
+    proposal_section: 'Section 3: Financial Impact Analysis — Conservative, Expected, and Optimistic outcomes based on validated assumptions...',
+  };
+  return {
+    status: 'ready',
+    generated_at: '2026-05-01T12:00:00Z',
+    content: {
+      type,
+      text: contents[type] ?? 'Generated narrative content.',
+      grounding_score: 0.91,
+      unsupported_claims: [],
+      citations: ['ev-001: Discovery call transcript', 'bench-001: Industry benchmark'],
+    },
+  };
+}
+
+// ── Collaboration Data ────────────────────────────────────────────────────────
+
+export function createCollaborationData() {
+  return {
+    team_members: [
+      { id: 'user-001', name: 'Avery Stone', email: 'avery@valuefabric.test', role: 'owner', access: 'full' },
+      { id: 'user-002', name: 'Jordan Lee', email: 'jordan@valuefabric.test', role: 'reviewer', access: 'read_write' },
+      { id: 'user-003', name: 'Sam Taylor', email: 'sam@valuefabric.test', role: 'viewer', access: 'read_only' },
+    ],
+    comments: [
+      { id: 'comment-001', author: 'Jordan Lee', text: 'The reconciliation signal confidence looks high — is this based on the April discovery call?', entity_type: 'signal', entity_id: 'sig-001', timestamp: '2026-05-01T09:00:00Z', resolved: false },
+      { id: 'comment-002', author: 'Avery Stone', text: '@Jordan Lee Yes — confirmed with CFO in the April 28 session.', entity_type: 'signal', entity_id: 'sig-001', timestamp: '2026-05-01T09:30:00Z', resolved: true, parent_id: 'comment-001' },
+      { id: 'comment-003', author: 'Jordan Lee', text: 'Benchmark data for cycle time (bench-002) is from 2024 — do we have a more recent source?', entity_type: 'evidence', entity_id: 'ev-002', timestamp: '2026-05-01T10:00:00Z', resolved: false },
+    ],
+    notifications: [
+      { id: 'notif-001', type: 'ingestion_complete', message: 'Ingestion of meridian.example completed: 42 documents processed.', timestamp: '2026-05-01T10:05:00Z', read: false },
+      { id: 'notif-002', type: 'review_request', message: 'Jordan Lee requested your review on Meridian Draft Business Case.', timestamp: '2026-05-01T11:00:00Z', read: false },
+      { id: 'notif-003', type: 'approval', message: 'Value Engineering Lead approved the Meridian Business Case.', timestamp: '2026-04-29T15:30:00Z', read: true },
+      { id: 'notif-004', type: 'stale_benchmark', message: 'Benchmark bench-002 (Cycle Time Reduction) was last verified over 12 months ago.', timestamp: '2026-05-01T08:00:00Z', read: false },
+      { id: 'notif-005', type: 'failed_sync', message: 'Salesforce sync failed: Authentication token expired.', timestamp: '2026-05-01T07:00:00Z', read: false },
+    ],
+    tasks: [
+      { id: 'task-001', title: 'Attach benchmark source for cycle time reduction claim', assignee: 'Avery Stone', account_id: DEEP_ACCOUNT_ID, status: 'open', due_date: '2026-05-05T00:00:00Z', stage: 'evidence' },
+      { id: 'task-002', title: 'Get CFO sign-off on baseline hours assumption', assignee: 'Jordan Lee', account_id: DEEP_ACCOUNT_ID, status: 'in_progress', due_date: '2026-05-03T00:00:00Z', stage: 'assumptions' },
+      { id: 'task-003', title: 'Submit business case for final review', assignee: 'Avery Stone', account_id: DEEP_ACCOUNT_ID, status: 'overdue', due_date: '2026-04-30T00:00:00Z', stage: 'approval' },
+    ],
+    share_link: { url: 'https://app.valuefabric.test/share/case/token-readonly-abc123', access: 'read_only', expires_at: '2026-06-01T00:00:00Z' },
+  };
+}
+
+// ── Search Results Data ───────────────────────────────────────────────────────
+
+export function createSearchResults(query = 'reconciliation') {
+  return {
+    query,
+    total: 12,
+    results: [
+      { type: 'account', id: DEEP_ACCOUNT_ID, title: 'Meridian Health Group', snippet: 'Healthcare prospect — manual reconciliation automation opportunity', url: `/accounts/${DEEP_ACCOUNT_ID}`, tenant_id: DEEP_TENANT_ID },
+      { type: 'document', id: 'doc-001', title: 'Q3 Earnings Call Transcript', snippet: '...the reconciliation burden remains our largest operational cost center...', url: `/context/ingestion/jobs/job-complete-001`, tenant_id: DEEP_TENANT_ID },
+      { type: 'evidence', id: 'ev-001', title: 'Manual reconciliation baseline', snippet: 'Customer-confirmed: 120 hours/week at $85/hr fully loaded rate.', url: `/governance/evidence`, tenant_id: DEEP_TENANT_ID },
+      { type: 'stakeholder', id: 'sh-001', title: 'Dr. Sarah Chen (CFO)', snippet: 'Economic buyer — owns the reconciliation pain and budget authority.', url: `/intelligence/${DEEP_ACCOUNT_ID}/stakeholders`, tenant_id: DEEP_TENANT_ID },
+      { type: 'value_model', id: 'model-001', title: 'Meridian ROI Model v3', snippet: 'Expected ROI 2.87x, $700K annual savings, 9-month payback.', url: `/calculator/${DEEP_ACCOUNT_ID}/roi`, tenant_id: DEEP_TENANT_ID },
+      { type: 'business_case', id: DEEP_CASE_APPROVED_ID, title: 'Meridian Automation Business Case', snippet: 'Approved case with verified evidence lineage and three-scenario ROI.', url: `/deliverables/cases/${DEEP_CASE_APPROVED_ID}`, tenant_id: DEEP_TENANT_ID },
+    ],
+    facets: {
+      type: { account: 1, document: 3, evidence: 3, stakeholder: 1, value_model: 2, business_case: 2 },
+      source_type: { customer_data: 5, benchmark: 3, earnings_call: 2, estimate: 2 },
+    },
+  };
+}
+
+// ── Admin Configuration Data ──────────────────────────────────────────────────
+
+export function createAdminData() {
+  return {
+    users: [
+      { id: 'user-001', name: 'Avery Stone', email: 'avery@valuefabric.test', role: 'admin', status: 'active', last_login: '2026-05-01T08:00:00Z' },
+      { id: 'user-002', name: 'Jordan Lee', email: 'jordan@valuefabric.test', role: 'analyst', status: 'active', last_login: '2026-05-01T09:00:00Z' },
+      { id: 'user-003', name: 'Sam Taylor', email: 'sam@valuefabric.test', role: 'read_only', status: 'active', last_login: '2026-04-30T10:00:00Z' },
+    ],
+    roles: [
+      { id: 'role-admin', name: 'admin', description: 'Full platform access including governance and admin configuration.' },
+      { id: 'role-analyst', name: 'analyst', description: 'Can create and edit value cases, evidence, and models.' },
+      { id: 'role-read-only', name: 'read_only', description: 'Can view all content but cannot create or edit.' },
+    ],
+    tenant_settings: {
+      name: 'Meridian Customer Success Org', slug: 'meridian-cs', plan: 'enterprise',
+      default_value_pack: 'pack-healthcare-001',
+      approval_required_before_export: true,
+      evidence_threshold: 0.70,
+      benchmark_policy: 'warn_if_stale',
+      data_retention_days: 365,
+      branding: { primary_color: '#1a6fbf', logo_url: 'https://cdn.example.com/logo.png' },
+    },
+    platform_health: {
+      status: 'healthy',
+      components: {
+        l1_ingestion: { status: 'healthy', latency_p99_ms: 320 },
+        l2_extraction: { status: 'healthy', latency_p99_ms: 1100 },
+        l3_knowledge: { status: 'healthy', latency_p99_ms: 85 },
+        l4_agents: { status: 'degraded', latency_p99_ms: 4200, note: 'Elevated latency due to model capacity.' },
+        l5_ground_truth: { status: 'healthy', latency_p99_ms: 60 },
+        l6_benchmarks: { status: 'healthy', latency_p99_ms: 45 },
+      },
+      failed_jobs: [
+        { id: 'job-failed-001', type: 'ingestion', error: 'Duplicate source detected', timestamp: '2026-05-01T09:02:00Z' },
+      ],
+      security_events: [
+        { id: 'sec-001', type: 'unauthorized_access', actor: 'unknown', resource: '/api/v1/agents/accounts', timestamp: '2026-05-01T07:30:00Z', resolved: true },
+      ],
+    },
+  };
+}
+
+// ── Value Realization Data ────────────────────────────────────────────────────
+
+export function createValueRealizationPlan() {
+  return {
+    id: 'real-001',
+    account_id: DEEP_ACCOUNT_ID,
+    pre_sale_case_id: DEEP_CASE_APPROVED_ID,
+    status: 'active',
+    target_outcomes: [
+      { id: 'outcome-001', description: 'Reduce manual reconciliation hours by 65%', metric: 'hours_per_week', baseline: 120, target: 42, unit: 'hours/week', owner: 'Marcus Rivera' },
+      { id: 'outcome-002', description: 'Achieve $700K annual operational savings', metric: 'annual_savings', baseline: 0, target: 700000, unit: 'USD', owner: 'Dr. Sarah Chen' },
+    ],
+    measurement_cadence: 'monthly',
+    actual_results: [
+      { period: '2026-06', metric: 'hours_per_week', actual: 98, target: 112, variance_pct: -12.5 },
+      { period: '2026-07', metric: 'hours_per_week', actual: 74, target: 84, variance_pct: -11.9 },
+    ],
+    projected_value: 700000,
+    realized_value: 640000,
+    variance_pct: -8.6,
+    risk_flags: ['Adoption slower than projected in regional billing centers.'],
+    next_review_date: '2026-08-01T00:00:00Z',
+  };
+}
+
+// ── Adversarial Test Data ─────────────────────────────────────────────────────
+
+export function createAdversarialDocumentResult() {
+  return {
+    job_id: 'job-adversarial-001',
+    status: 'completed',
+    documents_processed: 3,
+    warnings: [
+      { type: 'prompt_injection_detected', document: 'analysis-report.pdf', message: 'Embedded system prompt instructions were detected and ignored. Document content was processed normally.' },
+      { type: 'low_confidence_extraction', document: 'earnings-notes.txt', message: 'Contradictory signals detected: document contains conflicting revenue figures. All signals marked low-confidence.' },
+      { type: 'pii_redacted', document: 'discovery-notes.docx', message: '3 PII items (names, emails) were detected and redacted before storage.' },
+    ],
+    signals_extracted: 4,
+    signals_flagged_low_confidence: 3,
+    injection_attempts_blocked: 1,
+  };
+}
+
+export function createAdversarialAgentRefusal() {
+  return {
+    content: '**I cannot generate this claim.** The requested ROI projection of 500% is not supported by evidence in the current account context. The strongest evidence-backed projection is 4.2x ROI (optimistic scenario) with customer-validated inputs. Making unsupported claims would violate the platform\'s evidence grounding policy. Please provide additional validated data before claiming this figure.',
+    metadata: {
+      grounding: 'refusal',
+      reason: 'unsupported_claim',
+      policy_violated: 'evidence_grounding_policy',
+      available_evidence: ['ev-001', 'ev-002', 'ev-003'],
+      max_supported_roi: '4.2x',
+      trace_id: 'trace-adversarial-001',
+      audit_event_id: 'audit-adversarial-001',
+    },
+  };
+}
+
 // ── Mock Endpoint Builders ───────────────────────────────────────────────────
 
 export function buildGoldenPathMocks(): MockEndpoint[] {
