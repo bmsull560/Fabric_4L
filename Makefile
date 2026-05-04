@@ -5,6 +5,7 @@
         test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
+        test-backend-integrated-validation test-backend-integrated-release-smoke \
         gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
         platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency
 
@@ -159,6 +160,12 @@ test-e2e-journeys: ## Layer 2: Run Playwright chained user journeys (live or moc
 
 test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 	$(PYTEST) tests/contract/test_journey_contracts.py -v
+
+test-backend-integrated-validation: ## Backend milestone: run live-service workflow, persistence, tenant, agent, and resilience validation
+	$(PYTEST) tests/backend_integrated -m backend_integrated -v
+
+test-backend-integrated-release-smoke: ## Backend milestone: run release-environment smoke validation only
+	$(PYTEST) tests/backend_integrated/test_release_smoke_backend.py -m release_smoke -v
 
 seed-e2e: ## Seed deterministic E2E fixture data into the local backend (requires running stack)
 	@echo "→ Seeding E2E test data..."
