@@ -16,6 +16,7 @@ import httpx
 import structlog
 from celery import Celery, chain
 from jsonschema import Draft7Validator
+from sqlalchemy.orm import Session
 
 from ..compliance.pii_scanner import PIIScanner
 from ..compliance.robots_checker import RobotsChecker
@@ -225,8 +226,12 @@ def compliance_check_stage(self, job_id: str):
             if compliance_config.get("respect_robots_txt", True):
                 user_agent = compliance_config.get("user_agent_string", "ValueFabricBot")
                 checker = RobotsChecker(user_agent=user_agent)
-                parsed = urlparse(url)
-                domain = parsed.netloc
+                try:
+                    parsed = urlparse(url)
+                    domain = parsed.netloc
+                except ValueError:
+                    raise ValueError(f"Invalid URL for robots.txt check: {url}")
+
                 if not domain:
                     raise ValueError(f"Invalid URL for robots.txt check: {url}")
 

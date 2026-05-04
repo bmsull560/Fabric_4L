@@ -227,13 +227,15 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy import text
 
 try:
-    from value_fabric.shared.identity.context import RequestContext
-    from value_fabric.shared.identity.dependencies import get_request_context
+    from value_fabric.shared.identity.context import RequestContext, get_request_context
     SHARED_IDENTITY_AVAILABLE = True
 except ImportError:
     SHARED_IDENTITY_AVAILABLE = False
     RequestContext = None  # type: ignore
-    get_request_context = None  # type: ignore
+
+    def get_request_context():  # type: ignore
+        """Fail-closed fallback used when the shared identity package is unavailable."""
+        return None
 
 
 class TenantContextError(Exception):

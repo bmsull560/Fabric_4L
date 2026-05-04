@@ -17,8 +17,8 @@ import yaml
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "options", "head"}
 DEFAULT_TARGETS = [
-    "value-fabric/layer3-knowledge/src/api/main.py",
-    "value-fabric/layer4-agents/src/api/main.py",
+    "services/layer3-knowledge/src/api/main.py",
+    "services/layer4-agents/src/api/main.py",
 ]
 AUTH_CALL_NAMES = {
     "Depends",

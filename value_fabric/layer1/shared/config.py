@@ -130,6 +130,8 @@ class Settings(BaseSettings):
                 errors.append("JWT secret must be >= 32 characters in production-like environments")
             if "postgres:postgres@" in self.database_url or "password" in self.database_url.lower():
                 errors.append("Database URL contains default/insecure credentials")
+            if self.s3_access_key == "minioadmin" or self.s3_secret_key == "minioadmin":
+                errors.append("S3/MinIO credentials contain default 'minioadmin' value")
 
         try:
             validate_exact_cors_origins(self.cors_origins, production_like=production_like)

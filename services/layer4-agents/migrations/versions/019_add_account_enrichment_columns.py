@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSON
 
 revision = "019"
-down_revision = "018_fix_rls_null_tenant_policy"
+down_revision = "018"
 branch_labels = None
 depends_on = None
 

@@ -1,6 +1,6 @@
 """Initial Ground Truth schema — four tables
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 001
 Revises:
 Create Date: 2024-01-01 00:00:00.000000
 
@@ -18,7 +18,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers
-revision: str = "a1b2c3d4e5f6"
+revision: str = "001"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

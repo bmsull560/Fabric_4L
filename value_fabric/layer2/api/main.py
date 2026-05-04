@@ -49,8 +49,14 @@ from layer2_extraction.api.deps import RequestContext
 try:
     load_infisical_secrets()
 except Exception:
-    if os.getenv("ENVIRONMENT") == "production":
-        raise RuntimeError("Failed to load Infisical secrets in production")
+    _secret_env = (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("APP_ENV")
+        or os.getenv("LAYER2_ENV")
+        or "development"
+    ).strip().lower()
+    if _secret_env in {"production", "prod", "staging", "stage"}:
+        raise RuntimeError("Failed to load Infisical secrets in production-like Layer 2 runtime")
 
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
@@ -83,6 +89,24 @@ from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 
 logger = logging.getLogger(__name__)
+
+PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+
+
+def _current_environment() -> str:
+    """Return the normalized runtime environment for production fail-closed policy checks."""
+    return (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("APP_ENV")
+        or os.getenv("LAYER2_ENV")
+        or "development"
+    ).strip().lower()
+
+
+def _is_production_like() -> bool:
+    """Whether the current Layer 2 runtime must fail closed on unsafe defaults."""
+    return _current_environment() in PRODUCTION_LIKE_ENVIRONMENTS
+
 
 # App start time for uptime calculation
 _app_start_time = time.time()
@@ -131,18 +155,21 @@ app = FastAPI(
 )
 
 # CORS middleware with production validation (P0-20) — OUTERMOST
-# Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
-_environment = os.getenv("ENVIRONMENT", "development")
+# Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec.
 _cors_origins_env = os.getenv("CORS_ORIGINS", "")
+allow_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
 
-if _environment == "production" and not _cors_origins_env:
-    raise RuntimeError(
-        "FATAL: CORS_ORIGINS environment variable must be set in production. "
-        "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
-    )
+if _is_production_like():
+    if not allow_origins:
+        raise RuntimeError(
+            "FATAL: CORS_ORIGINS environment variable must be set in production-like Layer 2 runtimes. "
+            "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
+        )
+    if "*" in allow_origins:
+        raise RuntimeError("FATAL: wildcard CORS_ORIGINS is not allowed in production-like Layer 2 runtimes")
+else:
+    allow_origins = allow_origins or ["*"]
 
-# Parse CORS origins, filtering out empty strings from trailing commas
-allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
 # Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
 allow_credentials = "*" not in allow_origins
 
@@ -187,6 +214,11 @@ async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
         logger.info("L2: Redis rate limiter initialized")
         return limiter
     except Exception as e:
+        if _is_production_like():
+            logger.error("L2: Redis rate limiting is required in %s but unavailable: %s", _current_environment(), e)
+            raise RuntimeError(
+                f"Redis rate limiting is required in {_current_environment()} but unavailable: {e}"
+            ) from e
         logger.warning(f"L2: Redis not available for rate limiting: {e}")
         return None
 
@@ -339,6 +371,11 @@ _UNSET = object()
 try:
     pending_ingestion_store: PendingIngestionStore = build_pending_ingestion_store()
 except Exception as exc:
+    if _is_production_like():
+        logger.error("Layer 2 pending-ingestion store is required in %s: %s", _current_environment(), exc)
+        raise RuntimeError(
+            f"Layer 2 pending-ingestion store is required in {_current_environment()}: {exc}"
+        ) from exc
     logger.warning(
         "Failed to initialize configured pending-ingestion store, falling back to SQLite: %s",
         exc,
