@@ -25,11 +25,17 @@ branch_labels = None
 depends_on = None
 
 
+def _drop_index_if_exists(index_name: str) -> None:
+    """Drop an index defensively so rename steps tolerate earlier name drift."""
+    op.execute(f'DROP INDEX IF EXISTS {index_name}')
+
+
 def upgrade():
     """Rename organization_id columns to tenant_id."""
     
     # truth_objects
-    op.drop_index('ix_truth_objects_organization_id', table_name='truth_objects')
+    _drop_index_if_exists('ix_truth_objects_organization_id')
+    _drop_index_if_exists('ix_truth_objects_org_id')
     op.alter_column(
         'truth_objects',
         'organization_id',
@@ -44,7 +50,8 @@ def upgrade():
     )
     
     # truth_sources
-    op.drop_index('ix_truth_sources_organization_id', table_name='truth_sources')
+    _drop_index_if_exists('ix_truth_sources_organization_id')
+    _drop_index_if_exists('ix_truth_sources_org_id')
     op.alter_column(
         'truth_sources',
         'organization_id',
@@ -59,8 +66,8 @@ def upgrade():
     )
     
     # model_versions - drop composite indexes first
-    op.drop_index('ix_model_versions_org_provider_name', table_name='model_versions')
-    op.drop_index('ix_model_versions_org_default', table_name='model_versions')
+    _drop_index_if_exists('ix_model_versions_org_provider_name')
+    _drop_index_if_exists('ix_model_versions_org_default')
     op.alter_column(
         'model_versions',
         'organization_id',
@@ -81,9 +88,9 @@ def upgrade():
     )
     
     # model_deployments
-    op.drop_index('ix_model_deployments_organization_id', table_name='model_deployments')
-    op.drop_index('ix_model_deployments_org_env_default', table_name='model_deployments')
-    op.drop_index('ix_model_deployments_org_env_status', table_name='model_deployments')
+    _drop_index_if_exists('ix_model_deployments_organization_id')
+    _drop_index_if_exists('ix_model_deployments_org_env_default')
+    _drop_index_if_exists('ix_model_deployments_org_env_status')
     op.alter_column(
         'model_deployments',
         'organization_id',
@@ -108,9 +115,9 @@ def upgrade():
     )
     
     # model_evaluations
-    op.drop_index('ix_model_evaluations_organization_id', table_name='model_evaluations')
-    op.drop_index('ix_model_evaluations_org_benchmark', table_name='model_evaluations')
-    op.drop_index('ix_model_evaluations_org_model', table_name='model_evaluations')
+    _drop_index_if_exists('ix_model_evaluations_organization_id')
+    _drop_index_if_exists('ix_model_evaluations_org_benchmark')
+    _drop_index_if_exists('ix_model_evaluations_org_model')
     op.alter_column(
         'model_evaluations',
         'organization_id',

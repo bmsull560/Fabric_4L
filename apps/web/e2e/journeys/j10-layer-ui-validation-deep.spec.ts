@@ -56,10 +56,12 @@ journeyTest.describe('Layer-by-Layer UI Validation Deep', () => {
   journeyTest('L1-DEEP-002: failed ingestion job exposes retry button that triggers re-ingestion', async ({ authedPage }) => {
     await authedPage.goto('/context/ingestion/jobs', { waitUntil: 'domcontentloaded' });
 
-    await expect(
-      authedPage.getByText(/failed/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    // Find and click on the failed job row to select it
+    const failedJobRow = authedPage.getByText(/duplicate\.example|failed/i).first();
+    await expect(failedJobRow).toBeVisible({ timeout: 10000 });
+    await failedJobRow.click();
 
+    // Retry button should now be visible in the detail panel
     const retryBtn = authedPage.getByRole('button', { name: /retry/i }).first();
     await expect(retryBtn).toBeVisible({ timeout: 5000 });
     await retryBtn.click();

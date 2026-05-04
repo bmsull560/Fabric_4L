@@ -58,6 +58,21 @@ function StatusBadge({ status }: { status: BenchmarkStatus }) {
   );
 }
 
+function StaleWarningBadge({ lastVerified }: { lastVerified?: string }) {
+  if (!lastVerified) return null;
+  const lastVerifiedDate = new Date(lastVerified);
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  
+  if (lastVerifiedDate > oneYearAgo) return null;
+  
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 ml-2">
+      <AlertTriangle size={10}/> Stale — Last verified {lastVerifiedDate.getFullYear()}
+    </span>
+  );
+}
+
 function BenchmarkPoliciesSkeleton() {
   return (
     <div className="p-6 max-w-6xl">
@@ -268,7 +283,12 @@ function BenchmarkPoliciesContent() {
                       {b.vertical && <span className="text-neutral-400"> / {b.vertical}</span>}
                     </td>
                     <td className="px-4 py-3 font-mono text-[11px] text-neutral-700">{b.value_range}</td>
-                    <td className="px-4 py-3"><ConfidenceBadge level={b.confidence}/></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center">
+                        <ConfidenceBadge level={b.confidence}/>
+                        <StaleWarningBadge lastVerified={b.last_verified} />
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-neutral-500">
                       <div className="flex items-center gap-1">
                         <Globe size={10}/>

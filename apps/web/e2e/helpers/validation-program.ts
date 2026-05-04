@@ -217,6 +217,8 @@ export async function switchToReadOnlyUser(page: Page): Promise<void> {
     }
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(500);
 }
 
 export async function expectAnyVisible(
@@ -258,7 +260,10 @@ export async function expectRouteSupportsWorkflow(
   await expectAnyVisible(page, candidates, description);
 }
 
-export async function expectTenantContext(page: Page, expectedTenantId = 'tenant-e2e-001'): Promise<void> {
+export async function expectTenantContext(
+  page: Page,
+  expectedTenantId = 'tenant-e2e-001',
+): Promise<void> {
   const tenantId = await page.evaluate(() => localStorage.getItem('tenantId'));
   expect(tenantId).toBe(expectedTenantId);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Filter, Activity } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
@@ -76,6 +76,16 @@ export default function SignalsTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
+  const [signalStatuses, setSignalStatuses] = useState<Record<string, 'pending_review' | 'approved' | 'rejected'>>({});
+
+  const handleApproveSignal = (signalId: string) => {
+    setSignalStatuses(prev => ({ ...prev, [signalId]: 'approved' }));
+  };
+
+  const handleRejectSignal = (signalId: string) => {
+    setSignalStatuses(prev => ({ ...prev, [signalId]: 'rejected' }));
+  };
+
   const detailContent = selectedSignal ? (
     <div className="space-y-4">
       <h3 className="text-[14px] font-bold text-foreground">{selectedSignal.name}</h3>
@@ -83,6 +93,25 @@ export default function SignalsTab() {
         <div className="text-center p-2 bg-muted/50 rounded-md"><div className="text-[10px]">Confidence</div><div className="text-[14px] font-bold">{selectedSignal.confidence}%</div></div>
         <div className="text-center p-2 bg-muted/50 rounded-md"><div className="text-[10px]">Impact</div><div className="text-[14px] font-bold">{selectedSignal.impact}</div></div>
         <div className="text-center p-2 bg-muted/50 rounded-md"><div className="text-[10px]">Trend</div><div className="text-[14px] font-bold">{selectedSignal.trend ?? "—"}</div></div>
+      </div>
+      {/* Signal Review Actions */}
+      <div className="flex gap-2 pt-2">
+        <Btn 
+          variant="outline" 
+          className="flex-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+          onClick={() => handleApproveSignal(selectedSignal.id)}
+          disabled={signalStatuses[selectedSignal.id] === 'approved'}
+        >
+          {signalStatuses[selectedSignal.id] === 'approved' ? 'Approved' : 'Approve'}
+        </Btn>
+        <Btn 
+          variant="outline" 
+          className="flex-1 bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+          onClick={() => handleRejectSignal(selectedSignal.id)}
+          disabled={signalStatuses[selectedSignal.id] === 'rejected'}
+        >
+          {signalStatuses[selectedSignal.id] === 'rejected' ? 'Rejected' : 'Reject'}
+        </Btn>
       </div>
     </div>
   ) : null;

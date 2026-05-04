@@ -37,6 +37,7 @@ interface Recommendation {
   prospectPain: string;
   rootDriver: string;
   ourCapability: string;
+  grounding_type?: "evidence_backed" | "assumption" | "inference" | "fact";
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -50,6 +51,14 @@ const STATUS_COLORS: Record<string, string> = {
   validated: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-600",
   converted: "bg-blue-100 text-blue-700",
+};
+
+// Grounding label styles for assumption vs fact distinction
+const GROUNDING_LABELS: Record<string, { class: string; text: string }> = {
+  evidence_backed: { class: "bg-emerald-50 text-emerald-700 border border-emerald-200", text: "Evidence-backed" },
+  assumption: { class: "bg-amber-50 text-amber-700 border border-amber-200", text: "Assumption" },
+  inference: { class: "bg-blue-50 text-blue-700 border border-blue-200", text: "Inference" },
+  fact: { class: "bg-emerald-50 text-emerald-700 border border-emerald-200", text: "Fact" },
 };
 
 // ── Hypothesis Card ────────────────────────────────────────────────────────────
@@ -242,7 +251,14 @@ export default function ActionPlanTab() {
                     {rec.priority}
                   </span>
                   <div className="flex-1">
-                    <h3 className="text-[13px] font-bold">{rec.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-[13px] font-bold">{rec.title}</h3>
+                      {rec.grounding_type && GROUNDING_LABELS[rec.grounding_type] && (
+                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded", GROUNDING_LABELS[rec.grounding_type].class)}>
+                          {GROUNDING_LABELS[rec.grounding_type].text}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {rec.horizon} · {rec.projectedValue}
                     </div>

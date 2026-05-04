@@ -97,10 +97,10 @@ export function createSignalSet() {
     generated_at: '2026-05-01T12:00:00Z',
     content: {
       signals: [
-        { id: 'sig-001', name: 'Manual reconciliation burden', confidence: 0.92, source: 'Discovery call transcript', status: 'approved' },
-        { id: 'sig-002', name: 'Supply chain visibility gaps', confidence: 0.87, source: 'Q3 earnings call', status: 'pending_review' },
-        { id: 'sig-003', name: 'Regulatory compliance overhead', confidence: 0.65, source: 'Industry report', status: 'pending_review' },
-        { id: 'sig-004', name: 'Customer churn from manual processes', confidence: 0.44, source: 'Internal estimate', status: 'low_confidence' },
+        { id: 'sig-001', name: 'Manual reconciliation burden', confidence: 0.92, confidence_display: '92%', source: 'Discovery call transcript', source_type: 'customer_data', status: 'approved' },
+        { id: 'sig-002', name: 'Supply chain visibility gaps', confidence: 0.87, confidence_display: '87%', source: 'Q3 earnings call', source_type: 'earnings_call', status: 'pending_review' },
+        { id: 'sig-003', name: 'Regulatory compliance overhead', confidence: 0.65, confidence_display: '65%', source: 'Industry report', source_type: 'industry_report', status: 'pending_review' },
+        { id: 'sig-004', name: 'Customer churn from manual processes', confidence: 0.44, confidence_display: '44%', source: 'Internal estimate', source_type: 'estimate', status: 'low_confidence' },
       ],
     },
   };
@@ -202,9 +202,9 @@ export function createApprovalWorkflow(state: 'pending_review' | 'changes_reques
 
 export function createIngestionJobs() {
   return [
-    { id: 'job-complete-001', domain: 'meridian.example', status: 'completed', progress: 100, documents_found: 42, documents_processed: 42 },
-    { id: 'job-failed-001', domain: 'duplicate.example', status: 'failed', progress: 33, error: 'Duplicate source detected', documents_found: 8, documents_processed: 3 },
-    { id: 'job-running-001', domain: 'newclient.example', status: 'processing', progress: 67, documents_found: 20, documents_processed: 13 },
+    { id: 'job-complete-001', domain: 'meridian.example', status: 'completed', progress: 100, documents_found: 42, documents_processed: 42, createdAt: '2026-05-01T10:00:00Z', updatedAt: '2026-05-01T10:05:00Z' },
+    { id: 'job-failed-001', domain: 'duplicate.example', status: 'failed', progress: 33, error: 'Duplicate source detected', documents_found: 8, documents_processed: 3, createdAt: '2026-05-01T09:00:00Z', updatedAt: '2026-05-01T09:02:00Z' },
+    { id: 'job-running-001', domain: 'newclient.example', status: 'processing', progress: 67, documents_found: 20, documents_processed: 13, createdAt: '2026-05-01T08:00:00Z', updatedAt: '2026-05-01T08:30:00Z' },
   ];
 }
 
@@ -306,6 +306,7 @@ export function createCRMIntegration(status: 'idle' | 'syncing' | 'error' = 'idl
 // ── Mock Endpoint Builders ───────────────────────────────────────────────────
 
 export function buildGoldenPathMocks(): MockEndpoint[] {
+  const jobs = createIngestionJobs();
   return [
     { pattern: '**/api/v1/agents/accounts', body: [createFullAccountPayload()] },
     { pattern: `**/api/v1/agents/accounts/${DEEP_ACCOUNT_ID}`, body: createFullAccountPayload() },
@@ -316,7 +317,16 @@ export function buildGoldenPathMocks(): MockEndpoint[] {
     { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/stakeholders`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: { stakeholders: [{ id: 'sh-001', name: 'CFO', influence: 'high' }] } } },
     { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/value-model`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: createROICalculatorMock() } },
     { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/narrative`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: { narrative: 'Generated executive narrative for Meridian Health Group.' } } },
-    { pattern: '**/api/v1/ingest/jobs', body: createIngestionJobs() },
+    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/action-plan`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: { recommendations: [
+      { id: 'rec-001', title: 'Automate reconciliation workflow', priority: 'high', projectedValue: '$273K annually', confidence: 'high', horizon: 'Q2 2026', prospectPain: 'Manual reconciliation takes 120 hours/week', rootDriver: 'Operational Efficiency', ourCapability: 'Workflow automation platform', grounding_type: 'evidence_backed' },
+      { id: 'rec-002', title: 'Deploy cycle time analytics', priority: 'medium', projectedValue: '$180K annually', confidence: 'medium', horizon: 'Q3 2026', prospectPain: 'Visibility into cycle times', rootDriver: 'Process Optimization', ourCapability: 'Analytics dashboard', grounding_type: 'assumption' },
+      { id: 'rec-003', title: 'Integrate compliance reporting', priority: 'critical', projectedValue: '$95K annually', confidence: 'high', horizon: 'Q2 2026', prospectPain: 'Regulatory audit overhead', rootDriver: 'Risk Reduction', ourCapability: 'Compliance module', grounding_type: 'fact' },
+    ] } } },
+    // Ingestion jobs — support both old and L1 patterns
+    { pattern: '**/api/v1/ingest/jobs', body: jobs },
+    { pattern: '**/l1/jobs**', body: { data: jobs, pagination: { page: 1, limit: 15, total: jobs.length, totalPages: 1 } } },
+    { pattern: '**/l1/jobs/*/retry', method: 'POST', status: 200, body: { status: 'retrying', job_id: 'job-failed-001' } },
+    { pattern: '**/l1/jobs/*', body: { ...jobs[0], stages: [{ stage: 'Extract', status: 'COMPLETED' }, { stage: 'Transform', status: 'COMPLETED' }, { stage: 'Load', status: 'COMPLETED' }], progress: { percentComplete: 100, processedPages: 42, totalPages: 42 } } },
     { pattern: '**/agent-stream/chat', method: 'POST', body: createGroundedAgentResponse() },
     { pattern: `**/api/v1/agents/cases/${DEEP_CASE_APPROVED_ID}`, body: createApprovedBusinessCase() },
     { pattern: `**/api/v1/agents/cases/${DEEP_CASE_DRAFT_ID}`, body: createDraftBusinessCase() },

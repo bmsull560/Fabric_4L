@@ -16,7 +16,7 @@ import {
   requireBackendOrThrow,
 } from '../helpers/validation-program';
 import { navigateAndWait } from '../helpers/journey-fixture';
-import { seedAuthState } from '../fixtures/auth-helpers';
+import { BACKEND_E2E_TENANT_ID, seedAuthState } from '../fixtures/auth-helpers';
 import { setSelectedAccount, TEST_ACCOUNTS } from '../fixtures/account-helpers';
 import { setUserTier } from '../fixtures/tier-helpers';
 
@@ -24,7 +24,13 @@ const ACCOUNT_ID = TEST_ACCOUNTS.meridian.id;
 
 test.describe('Journey 11: Golden Path Business Lifecycle', () => {
   test.beforeEach(async ({ page }) => {
-    await seedAuthState(page);
+    await seedAuthState(page, {
+      id: 'test-user-e2e',
+      email: 'e2e@valuefabric.test',
+      role: 'admin',
+      tenantId: BACKEND_E2E_TENANT_ID,
+      tenantSlug: 'e2e-test',
+    });
     await setUserTier(page, 'admin', 'admin');
     await setSelectedAccount(page, TEST_ACCOUNTS.meridian);
   });
@@ -38,7 +44,7 @@ test.describe('Journey 11: Golden Path Business Lifecycle', () => {
       [/start a new value case/i, /launch intelligence/i, /attach source material/i, /discovery/i],
       'prospect intake and launch workflow',
     );
-    await expectTenantContext(page);
+    await expectTenantContext(page, BACKEND_E2E_TENANT_ID);
 
     const promptField = page
       .getByLabel(/new value case prompt/i)

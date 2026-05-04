@@ -23,6 +23,8 @@ export interface TestUserInfo {
   tenantSlug: string;
 }
 
+export const BACKEND_E2E_TENANT_ID = '00000000-0000-4000-e2e0-000000000001';
+
 /**
  * Default test user — admin role for maximum access in contract tests.
  * Individual tests override tier via setUserTier() after this.

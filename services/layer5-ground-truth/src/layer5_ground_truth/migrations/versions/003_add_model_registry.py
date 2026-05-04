@@ -2,7 +2,7 @@
 Add Model Registry tables.
 
 Revision ID: 003
-Revises: 002_add_rls_policies
+Revises: 002
 Create Date: 2026-04-19 14:51:00.000000+00:00
 
 """
@@ -16,7 +16,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "003"
-down_revision: Union[str, None] = "002_add_rls_policies"
+down_revision: Union[str, None] = "002"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

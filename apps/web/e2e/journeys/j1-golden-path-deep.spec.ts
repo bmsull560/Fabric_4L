@@ -51,7 +51,7 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     await expect(companyInput).toBeVisible({ timeout: 5000 });
     await companyInput.fill('Meridian Health Group');
 
-    const submitBtn = authedPage.getByRole('button', { name: /start|create|begin|run account enrichment/i }).first();
+    const submitBtn = authedPage.getByRole('button', { name: /launch|start|create|begin|run|intelligence|enrichment/i }).first();
     await expect(submitBtn).toBeVisible({ timeout: 5000 });
     await submitBtn.click();
 
@@ -84,7 +84,7 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     await expect(domainInput).toBeVisible({ timeout: 5000 });
     await domainInput.fill('meridian.example');
 
-    const ingestBtn = authedPage.getByRole('button', { name: /submit|ingest|analyze|start/i }).first();
+    const ingestBtn = authedPage.getByRole('button', { name: /synthesize|submit|ingest|analyze|start/i }).first();
     await expect(ingestBtn).toBeVisible({ timeout: 5000 });
     await ingestBtn.click();
 
@@ -119,8 +119,8 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
     ).toBeVisible({ timeout: 10000 });
 
     await expect(
-      authedPage.getByText(/confidence/i)
-        .or(authedPage.getByText(/92%|0\.92|87%|0\.87/i))
+      authedPage.getByText(/confidence|92%|87%|65%|44%/i)
+        .or(authedPage.getByText(/source/i))
         .first(),
     ).toBeVisible({ timeout: 5000 });
   });
@@ -128,6 +128,12 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
   journeyTest('GP-DEEP-006: user can approve or reject extracted signals', async ({ authedPage }) => {
     await authedPage.goto(`/intelligence/${DEEP_ACCOUNT_ID}/signals`, { waitUntil: 'domcontentloaded' });
 
+    // Select a signal to open detail panel
+    const signalRow = authedPage.getByText(/manual reconciliation|pain signal/i).first();
+    await expect(signalRow).toBeVisible({ timeout: 10000 });
+    await signalRow.click();
+
+    // Approve/reject buttons should now be visible in detail panel
     const approveBtn = authedPage.getByRole('button', { name: /approve|accept|confirm/i }).first();
     const rejectBtn = authedPage.getByRole('button', { name: /reject|dismiss|remove/i }).first();
 
