@@ -1,109 +1,118 @@
-"""Release Policy: Version and release metadata validation.
+"""Release metadata tests.
 
-Verifies that release metadata exists and is current for release-candidate.
+These checks intentionally avoid skip valves. A release-policy gate must either pass with
+evidence or fail closed so missing traceability cannot be mistaken for readiness.
 """
 
+from __future__ import annotations
+
 import json
+import re
 import subprocess
 from pathlib import Path
 
-import pytest
+
+SEMVER_PATTERN = re.compile(r"^v?\d+\.\d+\.\d+(-[A-Za-z0-9_.-]+)?$")
 
 
 class TestReleaseMetadata:
-    """Enforce: Release metadata exists and is current."""
+    """Enforce release metadata and traceability for release candidates."""
 
-    def test_changelog_or_release_notes_exist(self):
-        """CHANGELOG or release notes must exist."""
+    def test_changelog_or_release_notes_exist(self) -> None:
+        """A release candidate must ship with a changelog or release notes."""
         candidates = [
-            "CHANGELOG.md",
-            "RELEASE_NOTES.md",
-            "docs/CHANGELOG.md",
-            "docs/releases/",
+            Path("CHANGELOG.md"),
+            Path("RELEASE_NOTES.md"),
+            Path("docs/CHANGELOG.md"),
+            Path("docs/releases"),
         ]
+        found = [path for path in candidates if path.exists()]
+        assert found, "Missing CHANGELOG.md, RELEASE_NOTES.md, docs/CHANGELOG.md, or docs/releases/"
 
-        found = any(Path(c).exists() for c in candidates)
+        readable = [path for path in found if path.is_dir() or path.stat().st_size > 0]
+        assert readable, "Release metadata path exists but is empty"
 
-        if not found:
-            pytest.skip(
-                "No changelog or release notes found — recommended for release-candidate"
-            )
+    def test_version_metadata_exists_and_is_semver(self) -> None:
+        """Version metadata must be present and semver-compatible."""
+        candidates = [Path("version.txt"), Path("VERSION"), Path("package.json"), Path("pyproject.toml")]
+        assert any(path.exists() for path in candidates), "Missing version.txt, VERSION, package.json, or pyproject.toml"
 
-    def test_version_file_or_package_json_exists(self):
-        """Version metadata should exist in repository."""
-        candidates = [
-            "version.txt",
-            "VERSION",
-            "package.json",
-            "pyproject.toml",
-        ]
+        version: str | None = None
+        if Path("version.txt").exists():
+            version = Path("version.txt").read_text(encoding="utf-8").strip()
+        elif Path("VERSION").exists():
+            version = Path("VERSION").read_text(encoding="utf-8").strip()
+        elif Path("package.json").exists():
+            package = json.loads(Path("package.json").read_text(encoding="utf-8"))
+            version = package.get("version")
+        elif Path("pyproject.toml").exists():
+            content = Path("pyproject.toml").read_text(encoding="utf-8")
+            match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+            version = match.group(1) if match else None
 
-        found = any(Path(c).exists() for c in candidates)
+        assert version, "Release version metadata exists but does not define a version"
+        assert SEMVER_PATTERN.match(version), f"Release version '{version}' is not semver-compatible"
 
-        if not found:
-            pytest.skip("No version file found — recommended for traceability")
-
-    def test_contracts_current_if_generation_command_exists(self):
-        """If contract generation command exists, contracts should be current."""
+    def test_contracts_are_generated_and_non_empty(self) -> None:
+        """Committed OpenAPI contracts must exist when contract drift tooling is present."""
         makefile = Path("Makefile")
-        if not makefile.exists():
-            pytest.skip("No Makefile to check for contract generation")
-
+        assert makefile.exists(), "Makefile is required for contract generation targets"
         content = makefile.read_text(encoding="utf-8")
+        assert "contract-drift" in content or "contracts:" in content, "Contract generation target is missing"
 
-        # If there's a contract generation target, note that contracts should be current
-        if "contracts:" in content or "contract-drift" in content:
-            # This is informational - actually running the check might be expensive
-            pytest.skip(
-                "Contract generation target exists - run 'make contract-drift' "
-                "to verify contracts are current"
-            )
+        expected_contracts = [
+            Path("contracts/openapi/layer1-ingestion.json"),
+            Path("contracts/openapi/layer2-extraction.json"),
+            Path("contracts/openapi/layer3-knowledge.json"),
+            Path("contracts/openapi/layer4-agents.json"),
+            Path("contracts/openapi/layer5-ground-truth.json"),
+        ]
+        missing = [str(path) for path in expected_contracts if not path.is_file() or path.stat().st_size == 0]
+        assert not missing, f"Missing or empty OpenAPI contracts: {missing}"
 
-    def test_git_tag_follows_semver_if_tags_exist(self):
-        """If git tags exist, they should follow semantic versioning."""
-        try:
-            result = subprocess.run(
-                ["git", "describe", "--tags", "--abbrev=0"],
-                capture_output=True,
-                text=True
-            )
-            if result.returncode != 0:
-                pytest.skip("No git tags found")
-
+    def test_git_tag_or_version_follows_semver(self) -> None:
+        """A release must be traceable through a semver tag or semver version file."""
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
             latest_tag = result.stdout.strip()
+            assert SEMVER_PATTERN.match(latest_tag), f"Latest tag '{latest_tag}' is not semver-compatible"
+            return
 
-            # Simple semver check: vX.Y.Z or X.Y.Z
-            import re
-            semver_pattern = r'^v?\d+\.\d+\.\d+(-[\w.]+)?$'
+        # Untagged development branches may still pass release-policy if the
+        # committed version metadata is semver-compatible. The release publish
+        # workflow should create the immutable tag before external deployment.
+        package_json = Path("package.json")
+        package_version = None
+        if package_json.exists():
+            package_version = json.loads(package_json.read_text(encoding="utf-8")).get("version")
+        version_file = Path("version.txt")
+        file_version = version_file.read_text(encoding="utf-8").strip() if version_file.exists() else None
+        fallback_version = file_version or package_version
+        assert fallback_version, "No git tag exists and no fallback release version is defined"
+        assert SEMVER_PATTERN.match(fallback_version), f"Fallback release version '{fallback_version}' is not semver-compatible"
 
-            if not re.match(semver_pattern, latest_tag):
-                pytest.skip(f"Latest tag '{latest_tag}' does not follow semver (informational)")
+    def test_release_candidate_branch_naming(self) -> None:
+        """Release branches must follow the documented convention; main is allowed."""
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, f"Could not determine current branch: {result.stderr}"
+        branch = result.stdout.strip()
+        assert branch, "Detached HEAD is not acceptable for release-policy validation"
 
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            pytest.skip("Git not available")
-
-    def test_release_candidate_branch_naming(self):
-        """If on a release branch, naming should follow convention."""
-        try:
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True,
-                text=True
+        if branch.startswith("release/"):
+            assert re.match(r"^release/(v?\d+\.\d+\.\d+|\d{4}-\d{2}-\d{2})$", branch), (
+                f"Release branch '{branch}' does not follow release/vX.Y.Z or release/YYYY-MM-DD"
             )
-            if result.returncode != 0:
-                pytest.skip("Could not determine current branch")
-
-            branch = result.stdout.strip()
-
-            # Release branches should follow naming convention
-            if branch.startswith("release/"):
-                # Should be release/YYYY-MM-DD or release/vX.Y.Z
-                import re
-                if not re.match(r'^release/(v?\d+\.\d+\.\d+|\d{4}-\d{2}-\d{2})$', branch):
-                    pytest.skip(
-                        f"Release branch '{branch}' does not follow recommended naming "
-                        f"(release/vX.Y.Z or release/YYYY-MM-DD)"
-                    )
-
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            pytest.skip("Git not available")
+        else:
+            assert branch in {"main", "master"} or branch.startswith(("feature/", "fix/", "hotfix/")), (
+                f"Branch '{branch}' is not an allowed release-policy validation branch"
+            )

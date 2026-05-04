@@ -164,8 +164,8 @@ test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 test-backend-integrated-validation: ## Backend milestone: run live-service workflow, persistence, tenant, agent, and resilience validation
 	$(PYTEST) tests/backend_integrated -m backend_integrated -v
 
-test-backend-integrated-release-smoke: ## Backend milestone: run release-environment smoke validation only
-	$(PYTEST) tests/backend_integrated/test_release_environment_smoke_validation.py -m release_smoke -v
+test-backend-integrated-release-smoke: ## Backend milestone: boot full L1-L6 release stack and run release-environment smoke validation
+	bash scripts/ci/run_release_smoke.sh
 
 seed-e2e: ## Seed deterministic E2E fixture data into the local backend (requires running stack)
 	@echo "→ Seeding E2E test data..."
@@ -383,6 +383,8 @@ setup-hooks: ## Configure git to use .githooks/ (run once after clone)
 # No runners, no policy engines, no simulation.
 
 GATE_PYTEST := $(PYTEST) --tb=short -q -n 0
+GATE_TIMEOUT_SECONDS ?= 180
+GATE_JUNIT_DIR := $(ARTIFACT_DIR)/junit
 
 gate-mandatory-security-regression: ## Gate: mandatory security regression suite for launch readiness
 	@echo "→ Gate: Mandatory Security Regression"
@@ -434,16 +436,17 @@ gate-chaos: ## Gate: dependency chaos and failure injection
 		echo "❌ PLACEHOLDER: No chaos tests implemented (0 test files)."; \
 		exit 1; \
 	fi
-	$(GATE_PYTEST) tests/chaos/ -v --tb=short -q
+	@mkdir -p $(GATE_JUNIT_DIR)
+	timeout $(GATE_TIMEOUT_SECONDS)s $(GATE_PYTEST) tests/chaos/ --junitxml=$(GATE_JUNIT_DIR)/gate-chaos.xml
+	python scripts/ci/assert_no_pytest_skips.py $(GATE_JUNIT_DIR)/gate-chaos.xml
 	@echo "✅  gate-chaos passed"
 
 gate-smoke: ## Gate: cross-domain smoke tests
 	@echo "→ Gate: Smoke"
-	@if [ ! -d tests/e2e ] || [ -z "$$(find tests/e2e -name 'test_*.py' -print -quit)" ]; then \
-		echo "❌ PLACEHOLDER: No smoke tests implemented."; \
-		exit 1; \
-	fi
-	$(GATE_PYTEST) tests/e2e/ -v --tb=short -q -m "not runtime_contract"
+	@test -s tests/e2e/test_value_engine_smoke_contract.py || (echo "❌ Smoke contract test is missing" && exit 1)
+	@mkdir -p $(GATE_JUNIT_DIR)
+	timeout $(GATE_TIMEOUT_SECONDS)s $(GATE_PYTEST) tests/e2e/test_value_engine_smoke_contract.py --junitxml=$(GATE_JUNIT_DIR)/gate-smoke.xml
+	python scripts/ci/assert_no_pytest_skips.py $(GATE_JUNIT_DIR)/gate-smoke.xml
 	@echo "✅  gate-smoke passed"
 
 gate-agent: ## Gate: agent provenance and behavior regression
@@ -452,7 +455,9 @@ gate-agent: ## Gate: agent provenance and behavior regression
 		echo "❌ PLACEHOLDER: No agent tests implemented."; \
 		exit 1; \
 	fi
-	$(GATE_PYTEST) tests/agents/ -v --tb=short -q
+	@mkdir -p $(GATE_JUNIT_DIR)
+	timeout $(GATE_TIMEOUT_SECONDS)s $(GATE_PYTEST) tests/agents/ --junitxml=$(GATE_JUNIT_DIR)/gate-agent.xml
+	python scripts/ci/assert_no_pytest_skips.py $(GATE_JUNIT_DIR)/gate-agent.xml
 	@echo "✅  gate-agent passed"
 
 gate-obs: ## Gate: observability, metrics, and SLO validation
@@ -461,7 +466,9 @@ gate-obs: ## Gate: observability, metrics, and SLO validation
 		echo "❌ PLACEHOLDER: No performance tests implemented."; \
 		exit 1; \
 	fi
-	$(GATE_PYTEST) tests/performance/ -v --tb=short -q
+	@mkdir -p $(GATE_JUNIT_DIR)
+	timeout $(GATE_TIMEOUT_SECONDS)s $(GATE_PYTEST) tests/performance/ --junitxml=$(GATE_JUNIT_DIR)/gate-obs.xml
+	python scripts/ci/assert_no_pytest_skips.py $(GATE_JUNIT_DIR)/gate-obs.xml
 	@echo "✅  gate-obs passed"
 
 gate-release-policy: ## Gate: release policy compliance
@@ -470,7 +477,9 @@ gate-release-policy: ## Gate: release policy compliance
 		echo "❌ PLACEHOLDER: No release-policy tests implemented."; \
 		exit 1; \
 	fi
-	$(GATE_PYTEST) tests/release/ -v --tb=short -q
+	@mkdir -p $(GATE_JUNIT_DIR)
+	timeout $(GATE_TIMEOUT_SECONDS)s $(GATE_PYTEST) tests/release/ --junitxml=$(GATE_JUNIT_DIR)/gate-release-policy.xml
+	python scripts/ci/assert_no_pytest_skips.py $(GATE_JUNIT_DIR)/gate-release-policy.xml
 	python scripts/ci/check_deprecations.py
 	@echo "✅  gate-release-policy passed"
 

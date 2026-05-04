@@ -23,9 +23,9 @@ const __dirname = dirname(__filename);
 
 // ── Configuration ──────────────────────────────────────────────────────────
 
-const ROOT = resolve(__dirname, '..', '..');
+const ROOT = resolve(__dirname, '..', '..', '..');
 const OPENAPI_DIR = resolve(ROOT, 'contracts', 'openapi');
-const OUTPUT_DIR = resolve(ROOT, 'frontend', 'client', 'src', 'api', 'generated');
+const OUTPUT_DIR = resolve(ROOT, 'apps', 'web', 'src', 'api', 'generated');
 
 interface LayerSpec {
   key: string;
@@ -64,6 +64,12 @@ const LAYERS: LayerSpec[] = [
     specFile: 'layer5-ground-truth.json',
     outputFile: 'l5-types.ts',
     description: 'Layer 5 — Ground Truth',
+  },
+  {
+    key: 'l6',
+    specFile: 'layer6-benchmarks.json',
+    outputFile: 'l6-types.ts',
+    description: 'Layer 6 — Benchmarks',
   },
   {
     key: 'signals',
@@ -121,7 +127,7 @@ async function main(): Promise<void> {
       execSync(
         `npx openapi-typescript "${specPath}" -o "${outputPath}"`,
         {
-          cwd: resolve(ROOT, 'frontend'),
+          cwd: resolve(ROOT, 'apps', 'web'),
           stdio: 'pipe',
           timeout: 60_000,
         }

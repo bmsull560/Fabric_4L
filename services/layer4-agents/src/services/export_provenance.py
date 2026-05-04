@@ -6,7 +6,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from value_fabric.shared.crypto.canonical import canonical_hash
+from shared.crypto.canonical import canonical_hash
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.models.typed_dict import TypedDictModel
 

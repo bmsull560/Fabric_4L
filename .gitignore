@@ -112,8 +112,10 @@ artifacts/performance/
 .vite/
 test-results/
 
-# Generated files directory (generated output should not be tracked)
+# Generated files directory (most generated output should not be tracked)
 generated/
+!apps/web/src/api/generated/
+!apps/web/src/api/generated/*.ts
 
 # Root-level generated outputs (conservative cleanup)
 valuepacks_output.txt

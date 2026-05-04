@@ -55,17 +55,20 @@ class TestLLMProviderUnavailable:
         """When Anthropic API returns error, system returns structured failure."""
         try:
             from anthropic import APIError as AnthropicAPIError
-        except ImportError:
-            pytest.skip("Anthropic not installed")
-        
-        mock_client = AsyncMock()
-        mock_client.messages.create = AsyncMock(
-            side_effect=AnthropicAPIError(
+
+            failure = AnthropicAPIError(
                 message="Overloaded",
                 request=None,  # type: ignore
-                body=None
+                body=None,
             )
-        )
+        except ImportError:
+            class AnthropicAPIError(RuntimeError):
+                """Release-safe substitute for the optional Anthropic SDK error."""
+
+            failure = AnthropicAPIError("Overloaded")
+        
+        mock_client = AsyncMock()
+        mock_client.messages.create = AsyncMock(side_effect=failure)
         
         with pytest.raises(Exception):
             await mock_client.messages.create(

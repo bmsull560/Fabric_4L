@@ -31,7 +31,7 @@ class TestDeprecationBudget:
         for loc in DEPRECATION_LOCATIONS:
             if loc.exists() and loc.stat().st_size > 0:
                 return loc
-        pytest.skip("No deprecation tracking file found — skip budget check")
+        pytest.fail("No deprecation tracking file found — release-policy gate requires canonical deprecation evidence")
 
     def _parse_deprecations(self) -> list[dict[str, Any]]:
         """Parse deprecations from canonical source."""
@@ -132,13 +132,10 @@ class TestDeprecationBudget:
         # Budget threshold from environment or default
         budget = int(os.getenv("P1_DEPRECATION_BUDGET", "10"))
 
-        # Informational warning if over budget, not hard fail
-        # This allows teams to set policy on acceptable P1 debt
-        if len(p1_items) > budget:
-            pytest.skip(
-                f"P1 deprecations ({len(p1_items)}) exceed budget ({budget}). "
-                f"This is a warning only — set P1_DEPRECATION_BUDGET to adjust."
-            )
+        assert len(p1_items) <= budget, (
+            f"P1 deprecations ({len(p1_items)}) exceed release-policy budget ({budget}). "
+            "Resolve items or adjust P1_DEPRECATION_BUDGET only through an approved policy change."
+        )
 
     def test_no_expired_deprecation_exceptions(self):
         """No deprecation waivers with expired target dates.
@@ -200,24 +197,20 @@ class TestDeprecationBudget:
         """
         deprecation_file = self._find_deprecation_file()
 
-        if deprecation_file.suffix != ".json":
-            pytest.skip("Compliance score only checked for JSON deprecation files")
+        assert deprecation_file.suffix == ".json", "Compliance score requires the canonical JSON deprecation register"
 
         with open(deprecation_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        if not isinstance(data, dict) or "compliance" not in data:
-            pytest.skip("No compliance section in deprecation file")
+        assert isinstance(data, dict) and "compliance" in data, "Deprecation register must include compliance metadata"
 
         compliance = data.get("compliance", {})
         current_score = compliance.get("overallScore")
         target_score = compliance.get("targetScore")
         target_date = compliance.get("targetDate")
 
-        if current_score is None or target_score is None:
-            pytest.skip("Compliance scores not defined")
+        assert current_score is not None and target_score is not None, "Compliance scores must be defined"
 
-        # Soft check: warn if below target but not past target date
         if current_score < target_score:
             today = date.today()
             try:
@@ -225,13 +218,8 @@ class TestDeprecationBudget:
             except (ValueError, TypeError):
                 target = None
 
-            if target and today > target:
-                pytest.fail(
-                    f"Deprecation compliance {current_score}% below target {target_score}% "
-                    f"and target date {target_date} has passed"
-                )
-            else:
-                pytest.skip(
-                    f"Deprecation compliance {current_score}% below target {target_score}% "
-                    f"but target date {target_date} not yet reached"
-                )
+            assert target is not None, "Below-target compliance must have a parseable target date"
+            assert today <= target, (
+                f"Deprecation compliance {current_score}% below target {target_score}% "
+                f"and target date {target_date} has passed"
+            )

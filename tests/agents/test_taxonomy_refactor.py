@@ -23,8 +23,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 # Resolve paths
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-L4_SRC = PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src"
-MANIFEST_DIR = PROJECT_ROOT / "value-fabric" / "layer4-agents" / "manifests"
+L4_SRC = PROJECT_ROOT / "services" / "layer4-agents" / "src"
+MANIFEST_DIR = PROJECT_ROOT / "services" / "layer4-agents" / "manifests"
 
 
 # ---------------------------------------------------------------------------

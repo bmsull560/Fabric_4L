@@ -6,6 +6,10 @@ entrypoints can import ``value_fabric.layer4.main`` without duplicating route,
 authentication, tenant-isolation, or orchestration logic.
 """
 
+from value_fabric.shared.security.config import validate_all_controls
+
+validate_all_controls()
+
 from .api.main import app
 
 __all__ = ["app"]
