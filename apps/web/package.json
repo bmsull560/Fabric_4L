@@ -31,6 +31,8 @@
     "test:a11y:gate": "node scripts/a11y/enforce-thresholds.mjs",
     "test:e2e:contracts": "pnpm run test:e2e:guard && playwright test --project=contracts",
     "test:e2e:journeys": "pnpm run test:e2e:guard && playwright test --project=journeys",
+    "test:e2e:validation": "pnpm run test:e2e:guard && playwright test --project=journeys e2e/journeys/j6-account-prospect-lifecycle.spec.ts e2e/journeys/j7-value-realization-and-calculation.spec.ts e2e/journeys/j8-approval-review-gates.spec.ts e2e/journeys/j9-agent-grounding-governance.spec.ts e2e/journeys/j10-layer-ui-validation.spec.ts e2e/security/tenant-isolation-validation.spec.ts e2e/resilience/operational-resilience.spec.ts e2e/collaboration/collaboration-notifications-tasks.spec.ts e2e/export-workflows.spec.ts e2e/personas/persona-journeys.spec.ts",
+    "test:e2e:validation:p0": "pnpm run test:e2e:guard && playwright test --project=journeys e2e/journeys/j6-account-prospect-lifecycle.spec.ts e2e/journeys/j7-value-realization-and-calculation.spec.ts e2e/journeys/j8-approval-review-gates.spec.ts e2e/journeys/j9-agent-grounding-governance.spec.ts e2e/journeys/j10-layer-ui-validation.spec.ts e2e/security/tenant-isolation-validation.spec.ts e2e/export-workflows.spec.ts",
     "seed:e2e": "npx tsx ../../scripts/db/seed-e2e-data.ts",
     "reset:e2e": "npx tsx ../../scripts/db/reset-e2e-data.ts",
     "test:e2e:guard": "node scripts/security/assert-no-skipped-critical-e2e.mjs",

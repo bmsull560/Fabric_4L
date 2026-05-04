@@ -16,6 +16,18 @@ const criticalFiles = [
   'e2e/my-models.spec.ts',
   'playwright.config.ts',
   'e2e/global-setup.ts',
+  'package.json',
+  'e2e/helpers/validation-program.ts',
+  'e2e/journeys/j6-account-prospect-lifecycle.spec.ts',
+  'e2e/journeys/j7-value-realization-and-calculation.spec.ts',
+  'e2e/journeys/j8-approval-review-gates.spec.ts',
+  'e2e/journeys/j9-agent-grounding-governance.spec.ts',
+  'e2e/journeys/j10-layer-ui-validation.spec.ts',
+  'e2e/security/tenant-isolation-validation.spec.ts',
+  'e2e/resilience/operational-resilience.spec.ts',
+  'e2e/collaboration/collaboration-notifications-tasks.spec.ts',
+  'e2e/export-workflows.spec.ts',
+  'e2e/personas/persona-journeys.spec.ts',
 ];
 
 const forbidden = [
@@ -52,6 +64,26 @@ const requiredEvidence = [
     pattern: /seed-e2e-data/,
     label: 'deterministic backend seed execution',
   },
+  {
+    file: 'package.json',
+    pattern: /test:e2e:validation/,
+    label: 'dedicated validation-program E2E command',
+  },
+  {
+    file: 'e2e/journeys/j9-agent-grounding-governance.spec.ts',
+    pattern: /SECURITY-PROMPT-INJECTION-001/,
+    label: 'agent prompt-injection validation coverage',
+  },
+  {
+    file: 'e2e/security/tenant-isolation-validation.spec.ts',
+    pattern: /SEC-TENANT-001/,
+    label: 'tenant isolation validation coverage',
+  },
+  {
+    file: 'e2e/export-workflows.spec.ts',
+    pattern: /EXPORT-GATE-001/,
+    label: 'approval-gated export validation coverage',
+  },
 ];
 
 const failures = [];
@@ -81,4 +113,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('Critical E2E journey guard passed: no skipped mobile or backend CRUD journeys, and backend-integrated product-confidence wiring is present.');
+console.log('Critical E2E journey guard passed: no skipped mobile, backend CRUD, or validation-program journeys, and product-confidence wiring is present.');
