@@ -10,6 +10,7 @@ This report records the completion state of the backend-integrated validation mi
 | `grep -RInE 'pytest\\.skip|@pytest\\.mark\\.skip|@pytest\\.mark\\.skipif|@pytest\\.mark\\.xfail|unittest\\.skip' tests/backend_integrated || true` | Verify the backend-integrated milestone does not contain skip or xfail weakening markers | No offenders found after correcting the release smoke guard to avoid self-matching its own token construction |
 | `BACKEND_VALIDATION_HTTP_TIMEOUT=0.2 pytest tests/backend_integrated -m backend_integrated -q --tb=short` | Execute the backend-integrated milestone against the current sandbox service environment | 0 passed, 61 failed, 0 skipped; expected red state because live L1-L6 services are not available at configured URLs |
 | `grep -n 'test-backend-integrated' Makefile` | Confirm dedicated milestone commands are exposed | Found `test-backend-integrated-validation` and `test-backend-integrated-release-smoke` |
+| `BACKEND_VALIDATION_HTTP_TIMEOUT=0.5 make test-backend-integrated-release-smoke` | Verify the dedicated release-smoke target invokes the canonical committed smoke suite | Target now runs `tests/backend_integrated/test_release_environment_smoke_validation.py`; failed closed with 8 live-service connection failures because L1-L6 services are not running in the sandbox |
 
 ## Test Counts
 
@@ -45,6 +46,7 @@ This report records the completion state of the backend-integrated validation mi
 | Implementation summary | `docs/validation/backend_integrated/implementation_summary.md` |
 | Final evidence report | `docs/validation/backend_integrated/final_evidence_report.md` |
 | Dedicated validation commands | `Makefile`, `pytest.ini` |
+| Release-smoke target verification output | `/tmp/backend_release_smoke_target_verify.txt` |
 
 ## Remaining Known Gaps
 

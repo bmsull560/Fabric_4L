@@ -165,7 +165,7 @@ test-backend-integrated-validation: ## Backend milestone: run live-service workf
 	$(PYTEST) tests/backend_integrated -m backend_integrated -v
 
 test-backend-integrated-release-smoke: ## Backend milestone: run release-environment smoke validation only
-	$(PYTEST) tests/backend_integrated/test_release_smoke_backend.py -m release_smoke -v
+	$(PYTEST) tests/backend_integrated/test_release_environment_smoke_validation.py -m release_smoke -v
 
 seed-e2e: ## Seed deterministic E2E fixture data into the local backend (requires running stack)
 	@echo "→ Seeding E2E test data..."
