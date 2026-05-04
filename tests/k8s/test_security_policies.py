@@ -9,6 +9,7 @@ Validates:
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -29,16 +30,26 @@ class TestRegoPolicies:
         """Verify Rego policy syntax is valid."""
         policy = k8s_policy_dir / "security-hardening.rego"
         
-        if shutil.which("opa") is None:
-            pytest.skip("opa CLI not available")
+        if shutil.which("opa") is not None:
+            result = subprocess.run(
+                ["opa", "parse", str(policy)],
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0, f"Rego syntax error: {result.stderr}"
+            return
 
-        result = subprocess.run(
-            ["opa", "parse", str(policy)],
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0, f"Rego syntax error: {result.stderr}"
+        content = policy.read_text()
+        brace_depth = 0
+        for char in content:
+            if char == "{":
+                brace_depth += 1
+            elif char == "}":
+                brace_depth -= 1
+            assert brace_depth >= 0, "Rego policy has unmatched closing brace"
+        assert brace_depth == 0, "Rego policy has unmatched opening brace"
+        assert re.search(r"(?m)^\s*package\s+main\b", content), "Rego policy must declare package main"
+        assert "deny[" in content, "Rego policy must declare deny rules"
 
     def test_rego_has_run_as_non_root_check(self, k8s_policy_dir: Path) -> None:
         """Verify Rego policy checks for runAsNonRoot."""
@@ -124,18 +135,29 @@ class TestRegoPolicies:
             }
         }
         
-        if shutil.which("conftest") is None:
-            pytest.skip("conftest not available")
+        if shutil.which("conftest") is not None:
+            result = subprocess.run(
+                ["conftest", "test", "-", "-p", str(k8s_policy_dir), "--policy", "main"],
+                input=yaml.dump(test_deployment),
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0, f"Valid deployment failed policy check: {result.stdout}"
+            return
 
-        result = subprocess.run(
-            ["conftest", "test", "-", "-p", str(k8s_policy_dir), "--policy", "main"],
-            input=yaml.dump(test_deployment),
-            capture_output=True,
-            text=True,
+        policy_content = policy.read_text()
+        required_runtime_checks = (
+            "runAsNonRoot",
+            "RuntimeDefault",
+            "allowPrivilegeEscalation",
+            "readOnlyRootFilesystem",
+            "capabilities",
+            "drop",
+            "ALL",
+            "privileged",
         )
-        
-        # Should pass (exit code 0)
-        assert result.returncode == 0, f"Valid deployment failed policy check: {result.stdout}"
+        missing = [token for token in required_runtime_checks if token not in policy_content]
+        assert not missing, "Rego policy is missing release-critical checks: " + ", ".join(missing)
 
 
 class TestKyvernoPolicies:
@@ -358,6 +380,4 @@ class TestNetworkPolicies:
                         found = True
                         break
         
-        # This is a soft assertion - default-deny is recommended but not strictly required
-        if not found:
-            pytest.skip("No explicit default-deny policy found (consider adding one)")
+        assert found, "A production baseline must include an explicit default-deny NetworkPolicy"

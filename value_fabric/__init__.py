@@ -12,19 +12,26 @@ import pkgutil
 from pathlib import Path
 
 
-def _append_namespace_root(candidate: Path) -> None:
+def _append_namespace_root(candidate: Path, *, prioritize: bool = False) -> None:
     if not candidate.exists():
         return
 
     resolved = str(candidate.resolve())
-    if resolved not in __path__:
+    if resolved in __path__:
+        if prioritize:
+            __path__.remove(resolved)
+            __path__.insert(0, resolved)
+        return
+    if prioritize:
+        __path__.insert(0, resolved)
+    else:
         __path__.append(resolved)
 
 
 __path__ = pkgutil.extend_path(__path__, __name__)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_append_namespace_root(_REPO_ROOT / "packages" / "shared" / "src" / "value_fabric")
+_append_namespace_root(_REPO_ROOT / "packages" / "shared" / "src" / "value_fabric", prioritize=True)
 _append_namespace_root(_REPO_ROOT / "services" / "layer4-agents" / "src")
 _append_namespace_root(_REPO_ROOT / "services" / "layer3-knowledge" / "src")
 _append_namespace_root(_REPO_ROOT / "services" / "layer2-extraction" / "src")

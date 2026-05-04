@@ -44,8 +44,8 @@ class TestProductionJWTSecretValidation:
                 assert "JWT_SECRET is required" in str(exc_info.value), (
                     "Production should require JWT_SECRET"
                 )
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
     def test_production_rejects_weak_jwt_secret(self):
         """P0: Production startup fails with weak JWT_SECRET (<32 chars)."""
@@ -64,8 +64,8 @@ class TestProductionJWTSecretValidation:
                 assert "at least 32 characters" in str(exc_info.value), (
                     "Production should reject weak JWT_SECRET"
                 )
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
     def test_production_rejects_31_char_secret(self):
         """P0: 31-character secret is rejected (need 32+)."""
@@ -82,8 +82,8 @@ class TestProductionJWTSecretValidation:
                     validate_jwt_config()
                 
                 assert "at least 32 characters" in str(exc_info.value)
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
     def test_production_accepts_32_char_secret(self):
         """POSITIVE: 32-character secret is accepted."""
@@ -98,8 +98,8 @@ class TestProductionJWTSecretValidation:
                 
                 # Should not raise
                 validate_jwt_config()
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
 
 class TestProductionJWTIssuerValidation:
@@ -122,8 +122,8 @@ class TestProductionJWTIssuerValidation:
                 assert "JWT_ISSUER is required" in str(exc_info.value), (
                     "Production should require JWT_ISSUER"
                 )
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
     def test_production_rejects_missing_issuer(self):
         """P0: Production startup fails when JWT_ISSUER not set."""
@@ -142,8 +142,8 @@ class TestProductionJWTIssuerValidation:
                     validate_jwt_config()
                 
                 assert "JWT_ISSUER is required" in str(exc_info.value)
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
 
 class TestProductionJWTAudienceValidation:
@@ -166,8 +166,8 @@ class TestProductionJWTAudienceValidation:
                 assert "JWT_AUDIENCE is required" in str(exc_info.value), (
                     "Production should require JWT_AUDIENCE"
                 )
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
 
 class TestDevelopmentEnvironment:
@@ -184,8 +184,8 @@ class TestDevelopmentEnvironment:
                 
                 # Should not raise in development
                 validate_jwt_config()
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
     def test_development_allows_weak_jwt_secret(self):
         """Development allows weak JWT_SECRET."""
@@ -198,8 +198,8 @@ class TestDevelopmentEnvironment:
                 
                 # Should not raise in development
                 validate_jwt_config()
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
 
 class TestStagingEnvironment:
@@ -221,8 +221,8 @@ class TestStagingEnvironment:
                     validate_jwt_config()
                 
                 assert "JWT_SECRET is required" in str(exc_info.value)
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
 
 class TestEdgeCases:
@@ -241,8 +241,8 @@ class TestEdgeCases:
                 
                 # Should not raise - special chars should be fine
                 validate_jwt_config()
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
     def test_very_long_jwt_secret_accepted(self):
         """Very long JWT secrets are accepted."""
@@ -257,8 +257,8 @@ class TestEdgeCases:
                 
                 # Should not raise
                 validate_jwt_config()
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
 
     def test_unicode_jwt_secret_handled(self):
         """Unicode characters in JWT secret are handled."""
@@ -273,5 +273,5 @@ class TestEdgeCases:
                 
                 # Should not raise or crash
                 validate_jwt_config()
-            except ImportError:
-                pytest.skip("shared.identity.dependencies not available")
+            except ImportError as exc:
+                raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc

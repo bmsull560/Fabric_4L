@@ -12,6 +12,7 @@ Import these in route files instead of writing per-endpoint auth logic:
 
 from __future__ import annotations
 
+import importlib
 import logging
 import os
 import sys
@@ -29,7 +30,10 @@ from .context import RequestContext
 from .permissions import Permission, Role
 
 logger = logging.getLogger(__name__)
-_shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
+try:
+    _shared_compat_module = importlib.import_module("shared")
+except Exception:  # pragma: no cover - fallback for non-checkout package installs
+    _shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
 _identity_compat_module = sys.modules.setdefault("shared.identity", types.ModuleType("shared.identity"))
 setattr(_shared_compat_module, "identity", _identity_compat_module)
 setattr(_identity_compat_module, "dependencies", sys.modules[__name__])

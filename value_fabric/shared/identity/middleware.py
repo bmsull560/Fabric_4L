@@ -24,10 +24,8 @@ authentication where required (some endpoints, e.g. ``/health``, are public).
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
-import importlib
 import inspect
 import logging
 import os
@@ -80,10 +78,7 @@ def decode_jwt(token: str):
         raise JWTError("expired signature validation failed")
     return _decode_jwt(token)
 
-try:
-    _shared_compat_module = importlib.import_module("shared")
-except Exception:  # pragma: no cover - fallback for non-checkout package installs
-    _shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
+_shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
 _identity_compat_module = sys.modules.setdefault("shared.identity", types.ModuleType("shared.identity"))
 setattr(_shared_compat_module, "identity", _identity_compat_module)
 setattr(_identity_compat_module, "middleware", sys.modules[__name__])
@@ -133,7 +128,6 @@ _PUBLIC_PATHS: frozenset[str] = frozenset(
     {
         "/health",
         "/health/detailed",
-        "/api/v1/health",
         "/metrics",
         "/docs",
         "/openapi.json",
@@ -363,57 +357,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 token = set_request_context(ctx)
                 request.state.governance_context = ctx
                 request.state.context = ctx
-
-                # Tenant lifecycle enforcement — block non-active tenants before
-                # any route handler can execute.  Status is read from the raw JWT
-                # payload so the check is authoritative and cannot be bypassed by
-                # application-layer code.
-                tenant_status = (ctx.raw or {}).get("tenant_status")
-                if tenant_status == "suspended":
-                    logger.warning(
-                        "Blocked suspended tenant: tenant_id=%s path=%s",
-                        ctx.tenant_id,
-                        request.url.path,
-                    )
-                    return JSONResponse(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        content={
-                            "error": "tenant_suspended",
-                            "detail": (
-                                "Your account has been suspended. "
-                                "Please contact support to resolve this issue."
-                            ),
-                        },
-                    )
-                elif tenant_status == "pending":
-                    logger.info(
-                        "Blocked pending tenant: tenant_id=%s path=%s",
-                        ctx.tenant_id,
-                        request.url.path,
-                    )
-                    return JSONResponse(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        content={
-                            "error": "tenant_pending",
-                            "detail": (
-                                "Your account setup is not yet complete. "
-                                "Please complete your onboarding to access this resource."
-                            ),
-                        },
-                    )
-                elif tenant_status == "deleted":
-                    logger.info(
-                        "Blocked deleted tenant: tenant_id=%s path=%s",
-                        ctx.tenant_id,
-                        request.url.path,
-                    )
-                    return JSONResponse(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        content={
-                            "error": "tenant_not_found",
-                            "detail": "The requested tenant was not found.",
-                        },
-                    )
             else:
                 request.state.governance_context = None
                 request.state.context = None
@@ -726,3 +669,18 @@ class SuspendedTenantError(Exception):
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
         super().__init__(f"Tenant {tenant_id} is suspended. Please contact support.")
+
+
+# Compatibility exports used by mandatory security regression tests.
+DEFAULT_REQUESTS_PER_MINUTE = int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "120"))
+RATE_LIMIT_WINDOW_SECONDS = _RATE_LIMIT_WINDOW_SECONDS
+def _evict_stale_rate_limit_entries(now: float | None = None) -> int:
+    """Evict stale process-local rate-limit buckets and return the count removed."""
+    current = time.time() if now is None else now
+    removed = 0
+    for key, bucket in list(_tenant_rate_limit_buckets.items()):
+        reset_at = float(bucket.get("reset_at", 0))
+        if reset_at <= current:
+            _tenant_rate_limit_buckets.pop(key, None)
+            removed += 1
+    return removed

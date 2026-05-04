@@ -56,8 +56,8 @@ class TestAuthSourceUnknownRejected:
                 "AUTH_SOURCE_UNKNOWN should not be valid"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity modules not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity modules are unavailable") from exc
 
     def test_middleware_sets_auth_source_correctly_for_jwt(
         self, client: TestClient, tenant_a_token: str
@@ -95,8 +95,8 @@ class TestValidAuthSources:
                 "JWT auth source should be valid"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity.context not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity.context import is unavailable") from exc
 
     def test_api_key_auth_source_valid(self):
         """API key auth source is valid."""
@@ -113,8 +113,8 @@ class TestValidAuthSources:
                 "API key auth source should be valid"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity.context not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity.context import is unavailable") from exc
 
     def test_service_account_auth_source_valid(self):
         """Service account auth source is valid."""
@@ -133,8 +133,8 @@ class TestValidAuthSources:
                 "Service account auth source should be valid"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity.context not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity.context import is unavailable") from exc
 
 
 class TestAuthSourceValidationErrors:
@@ -156,8 +156,8 @@ class TestAuthSourceValidationErrors:
                 "Validation should catch invalid auth_source"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity.context not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity.context import is unavailable") from exc
 
     def test_empty_auth_source_in_validation(self):
         """Empty auth_source produces validation error."""
@@ -175,8 +175,8 @@ class TestAuthSourceValidationErrors:
                 "Validation should catch empty auth_source"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity.context not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity.context import is unavailable") from exc
 
 
 class TestAuthSourceInRequestFlow:
@@ -198,10 +198,17 @@ class TestAuthSourceInRequestFlow:
         )
 
     def test_api_key_request_has_correct_auth_source(self):
-        """P0: API key authenticated requests have correct auth_source."""
-        # This would require an API key fixture
-        # Documenting the test requirement
-        pytest.skip("Requires API key fixture")
+        """P0: API key authenticated requests have a valid deterministic auth_source."""
+        from value_fabric.shared.identity.context import AUTH_SOURCE_API_KEY, RequestContext
+
+        context = RequestContext(
+            tenant_id="tenant-a",
+            user_id="api-key-subject",
+            auth_source=AUTH_SOURCE_API_KEY,
+        )
+
+        assert context.is_auth_source_valid()
+        assert context.validate() == []
 
 
 class TestAuthSourceConsistency:
@@ -225,8 +232,8 @@ class TestAuthSourceConsistency:
                 "Service account auth should require service_account_id"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity.context not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity.context import is unavailable") from exc
 
     def test_service_account_without_scopes_invalid(self):
         """Service account must have scopes."""
@@ -246,8 +253,8 @@ class TestAuthSourceConsistency:
                 "Service account should require non-empty scopes"
             )
             
-        except ImportError:
-            pytest.skip("shared.identity.context not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity.context import is unavailable") from exc
 
 
 class TestRequireAuthenticatedDependency:
@@ -270,5 +277,5 @@ class TestRequireAuthenticatedDependency:
             # We can't directly await it, but we verify the logic exists
             assert context.auth_source == AUTH_SOURCE_UNKNOWN
             
-        except ImportError:
-            pytest.skip("shared.identity modules not available")
+        except ImportError as exc:
+            raise AssertionError("Required shared.identity modules are unavailable") from exc

@@ -421,10 +421,7 @@ class TestLayer5MigrationGuardrails:
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             init_containers = spec.get("initContainers", [])
             
-            # Layer 5 should have at least one init container
-            if not init_containers:
-                # This is a warning, not a hard failure
-                pytest.skip(f"{file_path}/{name}: Consider adding init container for migrations")
+            assert init_containers, f"{file_path}/{name}: must define an init container for migrations"
 
     def test_migration_init_uses_alembic(
         self, workload_documents: list[tuple[str, dict]]
@@ -503,6 +500,5 @@ class TestServiceAccounts:
                 name = doc.get("metadata", {}).get("name", "unknown")
                 failures.append(f"{file_path}/{name}: uses 'default' service account")
         
-        # This is a soft check for now
         if failures:
-            pytest.skip("Using default service account:\n" + "\n".join(failures))
+            pytest.fail("Using default service account:\n" + "\n".join(failures))
