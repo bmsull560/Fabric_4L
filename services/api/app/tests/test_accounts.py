@@ -1,7 +1,10 @@
 """Account endpoint tests — updated for JWT-authenticated requests."""
+
 from fastapi.testclient import TestClient
+
 from app.main import app
-from .conftest import auth_headers, TENANT_ALPHA
+
+from .conftest import TENANT_ALPHA, auth_headers
 
 HEADERS = auth_headers(TENANT_ALPHA)
 
@@ -39,7 +42,7 @@ def test_create_account():
             "tenant_id": TENANT_ALPHA,
         }
         response = client.post("/v1/accounts", json=payload, headers=HEADERS)
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["name"] == "Test Account"
 

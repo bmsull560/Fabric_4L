@@ -9,12 +9,14 @@ contract used by the standalone API routers.
 
 from __future__ import annotations
 
+import builtins
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -29,8 +31,8 @@ from app.models.schemas import (
     Formula,
     GovernanceGate,
     GroundTruthObject,
-    ROICalculation,
     ReviewDecision,
+    ROICalculation,
     Scenario,
     Signal,
     Stakeholder,
@@ -54,7 +56,7 @@ class UnsupportedDatabaseURL(ProductionPersistenceNotConfigured):
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _json_default(value: Any) -> Any:
@@ -73,7 +75,7 @@ def _to_payload(obj: Any) -> dict[str, Any]:
     raise TypeError(f"Unsupported persistence object type: {type(obj).__name__}")
 
 
-def _tenant_from_obj(obj: Any, tenant_field: str) -> Optional[str]:
+def _tenant_from_obj(obj: Any, tenant_field: str) -> str | None:
     if isinstance(obj, dict):
         value = obj.get(tenant_field)
     else:
@@ -87,10 +89,10 @@ class InMemoryTable(Generic[T]):
     def __init__(self, name: str, tenant_field: str = "tenant_id"):
         self.name = name
         self.tenant_field = tenant_field
-        self._store: Dict[str, T] = {}
+        self._store: dict[str, T] = {}
         self._lock = threading.Lock()
 
-    def _get_tenant_id(self, obj: T) -> Optional[str]:
+    def _get_tenant_id(self, obj: T) -> str | None:
         return _tenant_from_obj(obj, self.tenant_field)
 
     def insert(self, id: str, obj: T) -> T:
@@ -98,7 +100,7 @@ class InMemoryTable(Generic[T]):
             self._store[id] = obj
         return obj
 
-    def get(self, id: str, tenant_id: Optional[str] = None) -> Optional[T]:
+    def get(self, id: str, tenant_id: str | None = None) -> T | None:
         with self._lock:
             obj = self._store.get(id)
             if obj is None:
@@ -109,9 +111,9 @@ class InMemoryTable(Generic[T]):
 
     def list(
         self,
-        tenant_id: Optional[str] = None,
-        filter_fn: Optional[Callable[[T], bool]] = None,
-    ) -> List[T]:
+        tenant_id: str | None = None,
+        filter_fn: Callable[[T], bool] | None = None,
+    ) -> builtins.list[T]:
         with self._lock:
             items = list(self._store.values())
         if tenant_id:
@@ -120,7 +122,7 @@ class InMemoryTable(Generic[T]):
             items = [i for i in items if filter_fn(i)]
         return items
 
-    def update(self, id: str, tenant_id: Optional[str] = None, **fields: Any) -> Optional[T]:
+    def update(self, id: str, tenant_id: str | None = None, **fields: Any) -> T | None:
         with self._lock:
             obj = self._store.get(id)
             if obj is None:
@@ -137,7 +139,7 @@ class InMemoryTable(Generic[T]):
                     obj.updated_at = _now_iso()
             return obj
 
-    def delete(self, id: str, tenant_id: Optional[str] = None) -> bool:
+    def delete(self, id: str, tenant_id: str | None = None) -> bool:
         with self._lock:
             obj = self._store.get(id)
             if obj is None:
@@ -177,7 +179,7 @@ class SQLiteTable(Generic[T]):
             return self._model_cls.model_validate(data)  # type: ignore[return-value]
         return data  # type: ignore[return-value]
 
-    def _get_tenant_id(self, obj: T) -> Optional[str]:
+    def _get_tenant_id(self, obj: T) -> str | None:
         return _tenant_from_obj(obj, self.tenant_field)
 
     def insert(self, id: str, obj: T) -> T:
@@ -199,7 +201,7 @@ class SQLiteTable(Generic[T]):
             )
         return obj
 
-    def get(self, id: str, tenant_id: Optional[str] = None) -> Optional[T]:
+    def get(self, id: str, tenant_id: str | None = None) -> T | None:
         query = "SELECT payload FROM fabric_api_records WHERE table_name = ? AND id = ?"
         params: list[Any] = [self.name, id]
         if tenant_id:
@@ -213,9 +215,9 @@ class SQLiteTable(Generic[T]):
 
     def list(
         self,
-        tenant_id: Optional[str] = None,
-        filter_fn: Optional[Callable[[T], bool]] = None,
-    ) -> List[T]:
+        tenant_id: str | None = None,
+        filter_fn: Callable[[T], bool] | None = None,
+    ) -> builtins.list[T]:
         query = "SELECT payload FROM fabric_api_records WHERE table_name = ?"
         params: list[Any] = [self.name]
         if tenant_id:
@@ -229,7 +231,7 @@ class SQLiteTable(Generic[T]):
             items = [item for item in items if filter_fn(item)]
         return items
 
-    def update(self, id: str, tenant_id: Optional[str] = None, **fields: Any) -> Optional[T]:
+    def update(self, id: str, tenant_id: str | None = None, **fields: Any) -> T | None:
         obj = self.get(id, tenant_id=tenant_id)
         if obj is None:
             return None
@@ -244,7 +246,7 @@ class SQLiteTable(Generic[T]):
         self.insert(id, obj)
         return obj
 
-    def delete(self, id: str, tenant_id: Optional[str] = None) -> bool:
+    def delete(self, id: str, tenant_id: str | None = None) -> bool:
         obj = self.get(id, tenant_id=tenant_id)
         if obj is None:
             return False

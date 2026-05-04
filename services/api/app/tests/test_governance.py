@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
-from .conftest import auth_headers, TENANT_ALPHA
+
 from app.main import app
+
+from .conftest import TENANT_ALPHA, auth_headers
 
 HEADERS = auth_headers(TENANT_ALPHA)
 
@@ -35,6 +37,6 @@ def test_create_review_decision():
             "reason": "Validated with customer",
         }
         response = client.post("/v1/governance/review-decisions", json=payload, headers=HEADERS)
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["decision"] == "approve"

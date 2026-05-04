@@ -94,6 +94,17 @@ class Settings(BaseSettings):
     db_max_overflow: int = Field(default=20, alias="DB_MAX_OVERFLOW")
     db_pool_pre_ping: bool = Field(default=True, alias="DB_POOL_PRE_PING")
 
+    # Redis Configuration
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        alias="REDIS_URL",
+    )
+    redis_cache_ttl_seconds: int = Field(
+        default=3600,
+        alias="REDIS_CACHE_TTL_SECONDS",
+        description="Default TTL for cached reference data in seconds (1 hour)",
+    )
+
     # Layer 3 Knowledge Graph Integration
     layer3_base_url: str = Field(
         default="http://localhost:8001",

@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
 import json
 import os
-from typing import Any, Dict, Optional, Protocol
+from datetime import UTC, datetime
+from typing import Any, Protocol
 
 from app.core.config import get_settings
 from app.core.database import db
@@ -9,9 +9,9 @@ from app.models.schemas import AgentRun, ToolResult
 
 
 class LLMProvider(Protocol):
-    def generate_structured(self, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]: ...
+    def generate_structured(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]: ...
     def summarize(self, text: str) -> str: ...
-    def extract(self, text: str, fields: list[str]) -> Dict[str, Any]: ...
+    def extract(self, text: str, fields: list[str]) -> dict[str, Any]: ...
     def classify(self, text: str, labels: list[str]) -> str: ...
     def reason(self, premise: str, question: str) -> str: ...
 
@@ -25,13 +25,13 @@ class MockLLMProvider:
 
     provider_name = "mock"
 
-    def generate_structured(self, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_structured(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         return {"result": "mock structured output", "prompt_length": len(prompt)}
 
     def summarize(self, text: str) -> str:
         return f"Summary: {text[:100]}..."
 
-    def extract(self, text: str, fields: list[str]) -> Dict[str, Any]:
+    def extract(self, text: str, fields: list[str]) -> dict[str, Any]:
         return {field: f"extracted_{field}" for field in fields}
 
     def classify(self, text: str, labels: list[str]) -> str:
@@ -81,7 +81,7 @@ class OpenAILLMProvider:
         content = response.choices[0].message.content
         return content or ""
 
-    def generate_structured(self, prompt: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_structured(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         content = self._complete(
             "Return only a valid JSON object that conforms to the requested schema.",
             f"Prompt:\n{prompt}\n\nJSON schema or field description:\n{json.dumps(schema, sort_keys=True)}",
@@ -97,7 +97,7 @@ class OpenAILLMProvider:
     def summarize(self, text: str) -> str:
         return self._complete("Summarize the supplied business context concisely.", text)
 
-    def extract(self, text: str, fields: list[str]) -> Dict[str, Any]:
+    def extract(self, text: str, fields: list[str]) -> dict[str, Any]:
         return self.generate_structured(
             f"Extract these fields from the text: {', '.join(fields)}\n\n{text}",
             {"type": "object", "properties": {field: {"type": "string"} for field in fields}},
@@ -140,17 +140,17 @@ def create_llm_provider() -> LLMProvider:
 
 
 class AgentOrchestrator:
-    def __init__(self, llm: Optional[LLMProvider] = None):
+    def __init__(self, llm: LLMProvider | None = None):
         self.llm = llm or create_llm_provider()
 
     def create_run(
         self,
         tenant_id: str,
         workflow_type: str,
-        account_id: Optional[str] = None,
-        input_data: Optional[Dict[str, Any]] = None,
+        account_id: str | None = None,
+        input_data: dict[str, Any] | None = None,
     ) -> AgentRun:
-        run_id = f"run-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{tenant_id[:4]}"
+        run_id = f"run-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{tenant_id[:4]}"
         run = AgentRun(
             id=run_id,
             tenant_id=tenant_id,
@@ -162,14 +162,14 @@ class AgentOrchestrator:
         db.agent_runs.insert(run_id, run)
         return run
 
-    def execute_step(self, run_id: str, step_name: str, tool_name: Optional[str] = None) -> AgentRun:
+    def execute_step(self, run_id: str, step_name: str, tool_name: str | None = None) -> AgentRun:
         run = db.agent_runs.get(run_id)
         if not run:
             raise ValueError(f"Run {run_id} not found")
 
         run.status = "running"
         run.current_step = step_name
-        run.updated_at = datetime.now(timezone.utc).isoformat()
+        run.updated_at = datetime.now(UTC).isoformat()
 
         if tool_name:
             tool_result = ToolResult(
@@ -177,8 +177,11 @@ class AgentOrchestrator:
                 agent_run_id=run_id,
                 tool_name=tool_name,
                 status="success",
-                output={"provider": getattr(self.llm, "provider_name", "configured"), "step": step_name},
-                completed_at=datetime.now(timezone.utc).isoformat(),
+                output={
+                    "provider": getattr(self.llm, "provider_name", "configured"),
+                    "step": step_name,
+                },
+                completed_at=datetime.now(UTC).isoformat(),
             )
             db.tool_results.insert(tool_result.id, tool_result)
             run.tool_results.append(tool_result)
@@ -206,7 +209,7 @@ class AgentOrchestrator:
             raise ValueError(f"Run {run_id} not found")
         if run.status == "paused":
             run.status = "running"
-            run.updated_at = datetime.now(timezone.utc).isoformat()
+            run.updated_at = datetime.now(UTC).isoformat()
             db.agent_runs.update(run_id, status=run.status)
         return run
 
@@ -215,7 +218,7 @@ class AgentOrchestrator:
         if not run:
             raise ValueError(f"Run {run_id} not found")
         run.status = "cancelled"
-        run.updated_at = datetime.now(timezone.utc).isoformat()
+        run.updated_at = datetime.now(UTC).isoformat()
         db.agent_runs.update(run_id, status=run.status)
         return run
 

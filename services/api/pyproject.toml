@@ -38,3 +38,16 @@ warn_unused_configs = true
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # Pyflakes
+    "I",    # isort
+    "W",    # pycodestyle warnings
+    "UP",   # pyupgrade
+    "E741", # ambiguous variable names
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]

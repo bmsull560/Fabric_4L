@@ -13,15 +13,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv from official image
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
-# Copy dependency files
-COPY pyproject.toml .
-COPY uv.lock .
+# Copy dependency files first (for better layer caching)
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project
 
 # Ensure email-validator is installed (runtime dep for pydantic email validation)
 RUN uv pip install "email-validator>=2.1.0"
+
+# Copy source code (separate layer for better caching)
+COPY src/ ./src/
 
 # Stage 2: Runtime - minimal image with only runtime libraries
 FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
@@ -41,8 +43,8 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
 
-# Copy source code
-COPY src/ ./src/
+# Copy source code from builder (separate layer for better caching)
+COPY --from=builder /app/src ./src/
 
 # Change ownership
 RUN chown -R appuser:appgroup /app /home/appuser
