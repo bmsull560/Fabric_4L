@@ -36,7 +36,7 @@ export default function Evidence() {
       if (search && !e.statement.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-    const selected = evidenceItems.find((e) => e.id === selectedId) ?? null;
+    const selected = evidenceItems.find((e) => e.id === selectedId);
     let aiMappedCount = 0;
     let proofCount = 0;
     let confidenceSum = 0;
