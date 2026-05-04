@@ -6,6 +6,8 @@ calculation, and the list_active_workflows helper — all without Redis.
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from value_fabric.layer4.engine.state_manager import StateManager
@@ -123,8 +125,6 @@ class TestStateManagerTTL:
     @pytest.mark.asyncio
     async def test_expired_state_returns_none(self):
         """State saved with TTL of -1 second is treated as expired."""
-        import time
-
         manager = StateManager()
         state = _roi_state("wf-expired")
 

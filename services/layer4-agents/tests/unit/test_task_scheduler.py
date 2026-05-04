@@ -18,7 +18,6 @@ from value_fabric.layer4.engine.scheduler import (
     TaskStatus,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -378,8 +377,13 @@ class TestTaskSchedulerCallbacks:
     def test_set_callbacks_registers_callables(self):
         """set_callbacks() stores the provided callables."""
         scheduler = TaskScheduler()
-        on_complete = lambda t: None  # noqa: E731
-        on_fail = lambda t, e: None  # noqa: E731
+
+        def on_complete(t):
+            pass
+
+        def on_fail(t, e):
+            pass
+
         scheduler.set_callbacks(on_complete=on_complete, on_fail=on_fail)
         assert scheduler._on_task_complete is on_complete
         assert scheduler._on_task_fail is on_fail
@@ -388,7 +392,11 @@ class TestTaskSchedulerCallbacks:
     def test_set_callbacks_with_none_clears_them(self):
         """set_callbacks() with None arguments clears the registered callables."""
         scheduler = TaskScheduler()
-        scheduler.set_callbacks(on_complete=lambda t: None)
+
+        def on_complete(t):
+            pass
+
+        scheduler.set_callbacks(on_complete=on_complete)
         scheduler.set_callbacks(on_complete=None, on_fail=None)
         assert scheduler._on_task_complete is None
         assert scheduler._on_task_fail is None
