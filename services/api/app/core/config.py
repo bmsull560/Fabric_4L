@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 _DEFAULT_DEV_SECRET = "fabric-4l-dev-secret-key-change-in-production"
 _DEV_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
 _PRODUCTION_ENVS = {"production", "prod", "staging"}
@@ -35,7 +34,9 @@ def _parse_cors_origins(value: object) -> list[str]:
         return [origin.strip() for origin in value.split(",") if origin.strip()]
     if isinstance(value, (list, tuple, set)):
         return [str(origin).strip() for origin in value if str(origin).strip()]
-    raise TypeError(f"Unsupported type for CORS origins: {type(value).__name__}. Expected str, list, tuple, set, or None.")
+    raise TypeError(
+        f"Unsupported type for CORS origins: {type(value).__name__}. Expected str, list, tuple, set, or None."
+    )
 
 
 def _validate_exact_cors_origins(origins: list[str], *, production_like: bool) -> list[str]:
@@ -46,7 +47,9 @@ def _validate_exact_cors_origins(origins: list[str], *, production_like: bool) -
     for origin in origins:
         if origin == "*" or "*" in origin:
             if production_like:
-                errors.append("cors_origins cannot include wildcard origins in production-like environments")
+                errors.append(
+                    "cors_origins cannot include wildcard origins in production-like environments"
+                )
             continue
         parsed = urlparse(origin)
         if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -118,7 +121,9 @@ class Settings(BaseSettings):
             if not self.database_url:
                 errors.append("database_url must be configured in production-like environments")
             elif urlparse(self.database_url).scheme != "sqlite":
-                errors.append("database_url must use a supported durable sqlite:// URL for services/api")
+                errors.append(
+                    "database_url must use a supported durable sqlite:// URL for services/api"
+                )
             if self.llm_provider.lower() == "mock":
                 errors.append("llm_provider=mock is disabled in production-like environments")
             if self.seed_demo_data:
@@ -140,7 +145,7 @@ class Settings(BaseSettings):
         return build_cors_policy(self.cors_origins, production_like=self.is_production_like)
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     try:
         settings = Settings()

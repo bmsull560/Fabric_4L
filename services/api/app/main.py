@@ -1,21 +1,22 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.services.seed_data import seed_all
 from app.routers import (
     accounts,
-    intelligence,
-    hypotheses,
+    agents,
+    calculator,
+    context_engine,
     drivers,
     evidence,
-    calculator,
-    value_cases,
-    context_engine,
     governance,
-    agents,
+    hypotheses,
+    intelligence,
+    value_cases,
 )
+from app.services.seed_data import seed_all
 
 settings = get_settings()
 

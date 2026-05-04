@@ -6,9 +6,10 @@ Provides:
   - auth_headers(tenant_id, subject) — Authorization header dict
   - TENANT_ALPHA / TENANT_BETA — stable tenant IDs for isolation tests
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from jose import jwt
@@ -27,7 +28,7 @@ def mint_token(
     expires_delta: timedelta = timedelta(hours=1),
 ) -> str:
     """Return a signed JWT accepted by the test app."""
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     payload = {
         "sub": subject,
         "tenant_id": tenant_id,
