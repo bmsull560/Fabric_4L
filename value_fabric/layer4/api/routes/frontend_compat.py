@@ -35,11 +35,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 
-from src.api.security.csrf import CSRF_COOKIE_NAME, validate_double_submit
-from src.database import get_db_from_context
-from src.tenants.email_verification import EmailVerificationService
-from src.tenants.service import get_tenant, update_tenant_settings
-from src.tenants.tiers import get_tier_config
+from ..security.csrf import CSRF_COOKIE_NAME, validate_double_submit
+from ...database import get_db_from_context
+from ...tenants.email_verification import EmailVerificationService
+from ...tenants.service import get_tenant, update_tenant_settings
+from ...tenants.tiers import get_tier_config
 
 router = APIRouter(tags=["Frontend Compatibility"])
 
