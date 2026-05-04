@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -12,6 +13,12 @@ from prometheus_client import CollectorRegistry
 
 from value_fabric.layer4.metrics.llm_cost_calculator import LLMCostCalculator
 from value_fabric.layer4.metrics.prometheus_metrics import MetricsConfig, PrometheusMetrics
+
+
+def _expected_tenant_tier(tenant_id: str) -> str:
+    """Reproduce the tier derivation logic used by PrometheusMetrics."""
+    hash_bytes = hashlib.sha256(tenant_id.encode()).digest()
+    return hash_bytes[:2].hex()
 
 
 class TestLLMCostCalculator:
@@ -86,6 +93,8 @@ class TestLLMMetricEmission:
 
     def test_record_llm_cost_increments_all_counters(self, metrics):
         tenant_id = str(uuid4())
+        # Metrics use tenant_tier (a cardinality-limited hash bucket) not tenant_id
+        expected_tier = _expected_tenant_tier(tenant_id)
         metrics.record_llm_cost(
             provider="openai",
             model="gpt-4o",
@@ -99,7 +108,7 @@ class TestLLMMetricEmission:
         cost_samples = list(
             metrics.config.registry.collect()
         )
-        # Find vf_llm_cost_usd_total sample
+        # Find vf_llm_cost_usd_total sample – labels use tenant_tier, not tenant_id
         cost_value = None
         prompt_value = None
         completion_value = None
@@ -108,16 +117,16 @@ class TestLLMMetricEmission:
         for metric in cost_samples:
             for sample in metric.samples:
                 if sample.name == "vf_llm_cost_usd_total":
-                    if sample.labels.get("tenant_id") == tenant_id:
+                    if sample.labels.get("tenant_tier") == expected_tier:
                         cost_value = sample.value
                 if sample.name == "vf_llm_tokens_total":
-                    if sample.labels.get("tenant_id") == tenant_id:
+                    if sample.labels.get("tenant_tier") == expected_tier:
                         if sample.labels.get("token_type") == "prompt":
                             prompt_value = sample.value
                         elif sample.labels.get("token_type") == "completion":
                             completion_value = sample.value
                 if sample.name == "vf_llm_requests_total":
-                    if sample.labels.get("tenant_id") == tenant_id:
+                    if sample.labels.get("tenant_tier") == expected_tier:
                         request_value = sample.value
 
         assert cost_value == pytest.approx(0.025)
@@ -127,6 +136,7 @@ class TestLLMMetricEmission:
 
     def test_record_llm_cost_failure_status(self, metrics):
         tenant_id = str(uuid4())
+        expected_tier = _expected_tenant_tier(tenant_id)
         metrics.record_llm_cost(
             provider="anthropic",
             model="claude-3-opus",
@@ -142,7 +152,7 @@ class TestLLMMetricEmission:
             for sample in metric.samples:
                 if sample.name == "vf_llm_requests_total":
                     if (
-                        sample.labels.get("tenant_id") == tenant_id
+                        sample.labels.get("tenant_tier") == expected_tier
                         and sample.labels.get("status") == "failure"
                     ):
                         request_value = sample.value
