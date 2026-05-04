@@ -137,7 +137,7 @@ class ContentExtractor:
 
     def _extract_metadata(self, soup: BeautifulSoup, url: str) -> dict[str, Any]:
         """Extract metadata from HTML head and structured data."""
-        metadata = {
+        metadata: dict[str, Any] = {
             "url": url,
             "domain": urlparse(url).netloc,
         }
@@ -249,9 +249,9 @@ class ContentExtractor:
             main_content = soup.body
 
         if main_content:
-            return main_content.get_text(separator="\n", strip=True)
+            return str(main_content.get_text(separator="\n", strip=True))
 
-        return soup.get_text(separator="\n", strip=True)
+        return str(soup.get_text(separator="\n", strip=True))
 
     def _convert_to_markdown(self, text_or_html: str, soup: BeautifulSoup | None = None) -> str:
         """Convert HTML or text to clean Markdown."""
@@ -273,7 +273,7 @@ class ContentExtractor:
                 logger.warning("Markdown conversion failed", error=str(e))
                 # Return text content as fallback
                 if soup:
-                    return soup.get_text(separator="\n", strip=True)
+                    return str(soup.get_text(separator="\n", strip=True))
                 return text_or_html
 
         # Input is already text
@@ -320,7 +320,7 @@ class ContentExtractor:
                 scores[content_type] = score
 
         if scores:
-            return max(scores, key=scores.get)
+            return max(scores, key=lambda k: scores[k])
 
         return "unknown"
 
