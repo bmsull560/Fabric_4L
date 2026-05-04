@@ -3,6 +3,7 @@
 Provides endpoints for variable definitions, search, and resolution.
 """
 
+import os
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -16,6 +17,15 @@ from ...db.driver import get_driver
 from ...logging_config import get_logger
 
 logger = get_logger(__name__)
+
+# Production-like environment detection
+_PRODUCTION_ENVS = {"production", "prod", "staging", "stage"}
+
+
+def _is_production_like() -> bool:
+    """Whether the current runtime must fail closed on mock data."""
+    env = (os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "development").strip().lower()
+    return env in _PRODUCTION_ENVS
 
 router = APIRouter()
 
@@ -512,17 +522,29 @@ async def resolve_variable(
         source_type = v.get("sourceType", "user_input")
         source_location = v.get("sourceLocation")
 
-    # Simulate resolution based on source type
-    # In production, this would query CRM, benchmarks, formulas, etc.
+    # Resolve variable value based on source type
+    # In production, this queries CRM, benchmarks, formulas, etc.
     value = None
     if source_type == "user_input":
         value = f"input_value_for_{request.workspace_id}"
     elif source_type == "crm_field":
         value = f"crm_value_for_{request.entity_id or 'unknown'}"
     elif source_type == "benchmark_lookup":
-        value = 75.5  # Mock benchmark value
+        if _is_production_like():
+            raise HTTPException(
+                status_code=503,
+                detail="Benchmark integration not configured. Configure BENCHMARK_API_URL and BENCHMARK_API_KEY for production-like environments."
+            )
+        logger.warning("Using mock benchmark value in development environment")
+        value = 75.5  # Mock benchmark value for development only
     elif source_type == "formula_calculation":
-        value = 100.0  # Mock calculated value
+        if _is_production_like():
+            raise HTTPException(
+                status_code=503,
+                detail="Formula calculation service not configured. Configure FORMULA_SERVICE_URL for production-like environments."
+            )
+        logger.warning("Using mock formula calculation value in development environment")
+        value = 100.0  # Mock calculated value for development only
     else:
         value = v.get("fallbackValue")
 

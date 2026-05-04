@@ -669,7 +669,7 @@ class ScenarioResponse(BaseModel):
         default_factory=list, description="Step-by-step breakdown"
     )
     warnings: list[str] = Field(
-        default_factory=list, description="Warning messages (e.g., mock data usage)"
+        default_factory=list, description="Warning messages (e.g., incomplete data, calculation warnings)"
     )
 
 
