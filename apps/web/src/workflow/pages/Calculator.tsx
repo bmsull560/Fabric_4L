@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Save, RotateCcw, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import { ProgressBar } from "@/components/blocks";
@@ -28,10 +28,11 @@ export default function Calculator() {
     setValues((p) => ({ ...p, [id]: { ...p[id], [field]: val } }));
   };
 
-  const totalA = levers.reduce((s, l) => s + l.annual * (values[l.id].a / l.base), 0);
-  const totalB = levers.reduce((s, l) => s + l.annual * (values[l.id].b / l.base), 0);
-  const totalC = levers.reduce((s, l) => s + l.annual * 1.25, 0);
-  const totals = { A: totalA, B: totalB, C: totalC };
+  const totals = useMemo(() => ({
+    A: levers.reduce((s, l) => s + l.annual * (values[l.id].a / l.base), 0),
+    B: levers.reduce((s, l) => s + l.annual * (values[l.id].b / l.base), 0),
+    C: levers.reduce((s, l) => s + l.annual * 1.25, 0),
+  }), [values]);
   const current = totals[scenario];
 
   const handleContinue = useCallback(() => {
@@ -104,8 +105,8 @@ export default function Calculator() {
               <p className="text-3xl font-bold text-primary">${(current / 1_000_000).toFixed(2)}M</p>
               <p className="text-xs text-muted-foreground">Total Annual Value</p>
               <div className="space-y-1 text-xs mt-3 pt-3 border-t border-border/60">
-                <div className="flex justify-between"><span className="text-muted-foreground">vs. Conservative</span><span className="font-medium text-emerald-500">+${((current - totalA) / 1_000_000).toFixed(2)}M</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">vs. Optimistic</span><span className="font-medium text-muted-foreground">-${((totalC - current) / 1_000_000).toFixed(2)}M gap</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">vs. Conservative</span><span className="font-medium text-emerald-500">+${((current - totals.A) / 1_000_000).toFixed(2)}M</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">vs. Optimistic</span><span className="font-medium text-muted-foreground">-${((totals.C - current) / 1_000_000).toFixed(2)}M gap</span></div>
               </div>
             </div>
 
@@ -127,9 +128,9 @@ export default function Calculator() {
             <div className="bg-card rounded-xl border border-border p-4">
               <h4 className="text-sm font-semibold text-foreground mb-2">Confidence Range</h4>
               <div className="space-y-1 text-xs">
-                <div className="flex justify-between"><span className="text-muted-foreground">Low</span><span className="font-mono font-semibold text-foreground">${(totalA / 1_000_000).toFixed(2)}M</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Expected</span><span className="font-mono font-semibold text-primary">${(totalB / 1_000_000).toFixed(2)}M</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">High</span><span className="font-mono font-semibold text-foreground">${(totalC / 1_000_000).toFixed(2)}M</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Low</span><span className="font-mono font-semibold text-foreground">${(totals.A / 1_000_000).toFixed(2)}M</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Expected</span><span className="font-mono font-semibold text-primary">${(totals.B / 1_000_000).toFixed(2)}M</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">High</span><span className="font-mono font-semibold text-foreground">${(totals.C / 1_000_000).toFixed(2)}M</span></div>
               </div>
               <div className="mt-2 h-2 rounded-full overflow-hidden flex"><div className="flex-1 bg-amber-500/30" /><div className="flex-1 bg-primary" /><div className="flex-1 bg-emerald-500/30" /></div>
             </div>

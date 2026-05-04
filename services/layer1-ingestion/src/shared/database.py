@@ -212,7 +212,7 @@ def get_db_with_tenant(
     try:
         # SECURITY: Fail-safe validation via validate_tenant_id
         # This checks for empty values and validates UUID format
-        validate_tenant_id(x_tenant_id)
+        normalized_tenant_id = validate_tenant_id(x_tenant_id)
     except TenantContextError as e:
         # Convert TenantContextError to HTTP 400 for FastAPI
         raise HTTPException(
@@ -226,7 +226,7 @@ def get_db_with_tenant(
     try:
         session.execute(
             text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": x_tenant_id}
+            {"tenant_id": normalized_tenant_id}
         )
         yield session
         session.commit()

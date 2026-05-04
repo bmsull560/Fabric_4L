@@ -35,38 +35,40 @@ class ExtractedContent:
 class ContentExtractor:
     """Extract and clean content from HTML."""
 
+    _CONTENT_TYPE_PATTERNS: dict[str, list[re.Pattern]] = {
+        "product_page": [
+            re.compile(r"product", re.IGNORECASE),
+            re.compile(r"solution", re.IGNORECASE),
+            re.compile(r"feature", re.IGNORECASE),
+            re.compile(r"pricing", re.IGNORECASE),
+        ],
+        "press_release": [
+            re.compile(r"press.?release", re.IGNORECASE),
+            re.compile(r"news.?release", re.IGNORECASE),
+            re.compile(r"media.?kit", re.IGNORECASE),
+        ],
+        "blog_post": [
+            re.compile(r"blog", re.IGNORECASE),
+            re.compile(r"article", re.IGNORECASE),
+            re.compile(r"post", re.IGNORECASE),
+        ],
+        "documentation": [
+            re.compile(r"docs?", re.IGNORECASE),
+            re.compile(r"documentation", re.IGNORECASE),
+            re.compile(r"api.?reference", re.IGNORECASE),
+            re.compile(r"guide", re.IGNORECASE),
+            re.compile(r"tutorial", re.IGNORECASE),
+        ],
+        "financial_filing": [
+            re.compile(r"10-[KQ]", re.IGNORECASE),
+            re.compile(r"8-K", re.IGNORECASE),
+            re.compile(r"annual.?report", re.IGNORECASE),
+            re.compile(r"quarterly.?report", re.IGNORECASE),
+        ],
+    }
+
     def __init__(self):
-        self.content_type_patterns = {
-            "product_page": [
-                r"product",
-                r"solution",
-                r"feature",
-                r"pricing",
-            ],
-            "press_release": [
-                r"press.?release",
-                r"news.?release",
-                r"media.?kit",
-            ],
-            "blog_post": [
-                r"blog",
-                r"article",
-                r"post",
-            ],
-            "documentation": [
-                r"docs?",
-                r"documentation",
-                r"api.?reference",
-                r"guide",
-                r"tutorial",
-            ],
-            "financial_filing": [
-                r"10-[KQ]",
-                r"8-K",
-                r"annual.?report",
-                r"quarterly.?report",
-            ],
-        }
+        pass
 
     def extract(self, html: str, url: str, extract_links: bool = True) -> ExtractedContent:
         """Extract clean content from HTML.
@@ -310,19 +312,19 @@ class ContentExtractor:
         url_lower = url.lower()
         combined_text = f"{url_lower} {metadata.get('title', '').lower()} {content[:1000].lower()}"
 
-        scores = {}
-        for content_type, patterns in self.content_type_patterns.items():
-            score = 0
-            for pattern in patterns:
-                if re.search(pattern, combined_text, re.IGNORECASE):
-                    score += 1
-            if score > 0:
-                scores[content_type] = score
+        best_type: str | None = None
+        best_score = 0
+        for content_type, patterns in self._CONTENT_TYPE_PATTERNS.items():
+            if len(patterns) <= best_score:
+                # This type has at most as many patterns as the current best score,
+                # so it cannot produce a strictly higher score — skip it.
+                continue
+            score = sum(1 for p in patterns if p.search(combined_text))
+            if score > best_score:
+                best_score = score
+                best_type = content_type
 
-        if scores:
-            return max(scores, key=lambda k: scores[k])
-
-        return "unknown"
+        return best_type or "unknown"
 
     def _extract_links(self, soup: BeautifulSoup, base_url: str) -> list[dict[str, Any]]:
         """Extract all links from the page."""

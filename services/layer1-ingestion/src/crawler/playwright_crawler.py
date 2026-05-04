@@ -324,12 +324,16 @@ class PlaywrightCrawler:
     async def crawl_urls(self, urls: list[str], delay_seconds: float | None = None) -> list[CrawlResult]:
         """Crawl multiple URLs with rate limiting and batch tracing.
 
+        URLs from different domains are crawled concurrently; URLs from the
+        same domain are crawled sequentially with the configured per-domain
+        delay so that rate limiting is always respected.
+
         Args:
             urls: List of URLs to crawl
             delay_seconds: Delay between requests to same domain
 
         Returns:
-            List of CrawlResult objects
+            List of CrawlResult objects in the same order as ``urls``.
         """
         delay = delay_seconds or self.config.per_domain_delay_seconds
 
@@ -338,42 +342,44 @@ class PlaywrightCrawler:
             if self.enable_telemetry
             else contextlib.nullcontext() as span
         ):
-            results = []
-            last_request_time: dict[str, float] = {}
-            success_count = 0
-
+            # Group URL indices by domain so each domain's URLs are visited
+            # sequentially (rate-limited) while different domains run in parallel.
+            domain_indices: dict[str, list[int]] = {}
             for i, url in enumerate(urls):
                 domain = urlparse(url).netloc
+                domain_indices.setdefault(domain, []).append(i)
 
-                # Rate limiting with telemetry
-                if delay and domain in last_request_time:
-                    elapsed = time.time() - last_request_time[domain]
-                    if elapsed < delay:
-                        wait_time = delay - elapsed
-                        # Add jitter
-                        jitter = wait_time * (self.config.jitter_percent / 100)
-                        wait_time += random.uniform(-jitter, jitter)
+            results: list[CrawlResult | None] = [None] * len(urls)
 
-                        logger.debug(
-                            "Rate limiting delay",
-                            domain=domain,
-                            wait_seconds=wait_time,
-                            url_index=i,
-                        )
-                        if span:
-                            span.set_attribute(f"crawl.url_{i}.rate_limited", True)
-                            span.set_attribute(f"crawl.url_{i}.wait_ms", int(wait_time * 1000))
+            async def _crawl_domain(indices: list[int]) -> None:
+                last_time: float = 0.0
+                for idx in indices:
+                    url = urls[idx]
+                    domain = urlparse(url).netloc
+                    if delay and last_time:
+                        elapsed = time.time() - last_time
+                        if elapsed < delay:
+                            wait_time = delay - elapsed
+                            jitter = wait_time * (self.config.jitter_percent / 100)
+                            wait_time += random.uniform(-jitter, jitter)
+                            logger.debug(
+                                "Rate limiting delay",
+                                domain=domain,
+                                wait_seconds=wait_time,
+                                url_index=idx,
+                            )
+                            if span:
+                                span.set_attribute(f"crawl.url_{idx}.rate_limited", True)
+                                span.set_attribute(f"crawl.url_{idx}.wait_ms", int(wait_time * 1000))
+                            await asyncio.sleep(max(0, wait_time))
 
-                        await asyncio.sleep(max(0, wait_time))
+                    results[idx] = await self.crawl_url(url)
+                    last_time = time.time()
 
-                # Crawl the URL
-                result = await self.crawl_url(url)
-                results.append(result)
+            await asyncio.gather(*(_crawl_domain(indices) for indices in domain_indices.values()))
 
-                if result.error is None:
-                    success_count += 1
-
-                last_request_time[domain] = time.time()
+            ordered: list[CrawlResult] = results  # type: ignore[assignment]
+            success_count = sum(1 for r in ordered if r.error is None)
 
             # Record batch metrics
             if span:
@@ -388,7 +394,7 @@ class PlaywrightCrawler:
                 error_count=len(urls) - success_count,
             )
 
-            return results
+            return ordered
 
     async def _scroll_page(self, page: Page) -> bool:
         """Scroll page to trigger lazy loading with config-driven parameters.

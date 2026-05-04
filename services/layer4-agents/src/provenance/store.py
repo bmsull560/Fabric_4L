@@ -365,10 +365,19 @@ class JenaTripleStore(TripleStore):
 
         results = await self.query(query)
 
+        upstream: list[dict] = []
+        downstream: list[dict] = []
+        for r in results:
+            direction_val = r.get("direction")
+            if direction_val == "upstream":
+                upstream.append(r)
+            elif direction_val == "downstream":
+                downstream.append(r)
+
         return JenaTripleStore_get_lineageResult.model_validate({
             "entity_id": entity_id,
-            "upstream": [r for r in results if r.get("direction") == "upstream"],
-            "downstream": [r for r in results if r.get("direction") == "downstream"],
+            "upstream": upstream,
+            "downstream": downstream,
         })
 
 

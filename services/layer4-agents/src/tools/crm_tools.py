@@ -1,5 +1,6 @@
 """CRM tools for Salesforce/HubSpot integration."""
 
+import asyncio
 import logging
 import re
 import urllib.parse
@@ -314,29 +315,31 @@ class GetProspectDataTool(BaseTool):
                 assoc_data = assoc_response.json()
                 deal_ids = [r.get("toObjectId") for r in assoc_data.get("results", [])]
 
-                # Fetch each deal's details
-                opportunities = []
-                for deal_id in deal_ids[:50]:  # Limit to 50 deals
+                # Fetch all deal details concurrently instead of sequentially
+                async def _fetch_deal(deal_id: str) -> dict | None:
                     deal_url = f"https://api.hubapi.com/crm/v3/objects/deals/{deal_id}"
                     deal_response = await client.get(deal_url)
-                    if deal_response.status_code == 200:
-                        deal_data = deal_response.json()
-                        props = deal_data.get("properties", {})
-                        opportunities.append(
-                            {
-                                "id": str(deal_id),
-                                "name": props.get("dealname", "Untitled Deal"),
-                                "stage": props.get("dealstage", "unknown"),
-                                "value": float(props.get("amount", 0))
-                                if props.get("amount")
-                                else 0,
-                                "probability": float(props.get("probability", 0)) / 100
-                                if props.get("probability")
-                                else 0,
-                                "close_date": props.get("closedate"),
-                                "pipeline": props.get("pipeline"),
-                            }
-                        )
+                    if deal_response.status_code != 200:
+                        return None
+                    props = deal_response.json().get("properties", {})
+                    return {
+                        "id": str(deal_id),
+                        "name": props.get("dealname", "Untitled Deal"),
+                        "stage": props.get("dealstage", "unknown"),
+                        "value": float(props.get("amount", 0))
+                        if props.get("amount")
+                        else 0,
+                        "probability": float(props.get("probability", 0)) / 100
+                        if props.get("probability")
+                        else 0,
+                        "close_date": props.get("closedate"),
+                        "pipeline": props.get("pipeline"),
+                    }
+
+                deal_responses = await asyncio.gather(
+                    *[_fetch_deal(str(did)) for did in deal_ids[:50]]
+                )
+                opportunities = [d for d in deal_responses if d is not None]
 
                 result.opportunities = opportunities
 
