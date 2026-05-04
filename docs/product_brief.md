@@ -15,7 +15,7 @@ Enterprise B2B sales teams struggle to:
 
 ## Solution Overview
 
-Value Fabric provides a **4-layer architecture** that ingests unstructured data, extracts structured knowledge, builds queryable intelligence, and powers AI agents that generate business-ready deliverables.
+Value Fabric provides a **6-layer architecture** that ingests unstructured data, extracts structured knowledge, builds queryable intelligence, powers AI agents that generate business-ready deliverables, validates outputs against ground truth, and benchmarks performance across industry peers.
 
 ### Key Capabilities
 

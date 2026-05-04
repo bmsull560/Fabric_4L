@@ -1,7 +1,7 @@
 # Value Fabric Documentation
 
 > **Organization Version:** 2.0  
-> **Last Updated:** 2026-04-19  
+> **Last Updated:** 2026-05-04  
 > **Pattern:** Diátaxis Framework (Tutorial-HowTo-Reference-Explanation)
 
 ---
@@ -65,7 +65,7 @@ This documentation follows the **Diátaxis Framework**, organizing content by us
 
 | Document | Description | Audience |
 |----------|-------------|----------|
-| `architecture.md` | 4-layer pipeline architecture | All users |
+| `architecture.md` | 6-layer pipeline architecture | All users |
 | `security-model.md` | Authentication, authorization, audit | Developers |
 | `ontology-system.md` | Entity types, relationships, extraction | Data scientists |
 | `agent-framework.md` | How agents reason and orchestrate | AI engineers |
