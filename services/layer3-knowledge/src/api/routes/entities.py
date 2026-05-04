@@ -13,7 +13,6 @@ architectural decomposition effort (Weakness #3).
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-
 from value_fabric.shared.identity import RequestContext, require_authenticated
 
 from ...logging_config import get_logger
