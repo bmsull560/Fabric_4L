@@ -43,6 +43,7 @@ dependencies = [
     "opentelemetry-sdk>=1.21.0",
     "opentelemetry-instrumentation>=0.42b0",
     "opentelemetry-exporter-otlp>=1.21.0",
+    "pyjwt>=2.8.0",
     "pyyaml>=6.0.0",
     "protego>=0.3.0",
     "defusedxml>=0.7.1",  # P1-20: XXE protection for XML parsing

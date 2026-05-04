@@ -138,12 +138,6 @@ async def lifespan(app: FastAPI):
         logger.info("Prometheus metrics initialized")
     app.state.metrics = metrics
 
-    # Add metrics middleware if available
-    if metrics:
-        metrics_middleware = MetricsMiddleware(metrics)
-        app.middleware("http")(metrics_middleware)
-        logger.info("L6: Metrics middleware installed")
-
     # Startup: initialize Neo4j and seed data
     global _benchmark_repo
     try:
@@ -176,6 +170,13 @@ app = FastAPI(
 if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
     FastAPIInstrumentor.instrument_app(app)
     logger.info("L6: FastAPI instrumented with OpenTelemetry")
+
+# Initialize Prometheus metrics and middleware at module level (before app starts)
+_metrics_instance = initialize_metrics()
+if _metrics_instance:
+    app.state.metrics = _metrics_instance
+    app.middleware("http")(MetricsMiddleware(_metrics_instance))
+    logger.info("L6: Metrics middleware installed")
 
 # SecurityMiddleware — input validation and security headers (before CORS)
 # L6 has no skip paths — all endpoints require strict validation

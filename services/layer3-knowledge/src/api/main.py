@@ -25,23 +25,16 @@ from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 # P1-29: OpenTelemetry imports for distributed tracing
-try:
-    from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    OTEL_AVAILABLE = True
-except ImportError:
-    OTEL_AVAILABLE = False
-    trace = None  # type: ignore
-    OTLPSpanExporter = None  # type: ignore
-    FastAPIInstrumentor = None  # type: ignore
-    SERVICE_NAME = None  # type: ignore
-    Resource = None  # type: ignore
-    TracerProvider = None  # type: ignore
-    BatchSpanProcessor = None  # type: ignore
+from .main_fix import (
+    OTEL_AVAILABLE,
+    OTLPSpanExporter,
+    BatchSpanProcessor,
+    FastAPIInstrumentor,
+    Resource,
+    SERVICE_NAME,
+    TracerProvider,
+    trace,
+)
 
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger, setup_logging
@@ -318,10 +311,10 @@ def _get_settings_with_fallback() -> Any:
 
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
-_tracer_provider: Any = None
+_tracer_provider: TracerProvider | None = None
 
 
-def init_telemetry() -> Optional[Any]:
+def init_telemetry() -> TracerProvider | None:
     """Initialize OpenTelemetry tracing if endpoint configured.
 
     P1-29: OpenTelemetry integration for distributed tracing.
@@ -353,9 +346,8 @@ async def lifespan(app: FastAPI):
     global _tracer_provider
 
     # P1-29: Initialize OpenTelemetry
-    if OTEL_AVAILABLE:
-        _tracer_provider = init_telemetry()
-        if _tracer_provider:
+    _tracer_provider = init_telemetry()
+    if _tracer_provider:
             logger.info("L3: OpenTelemetry tracing initialized")
 
     # Setup structured logging
@@ -1222,7 +1214,7 @@ async def health_check(
 
     if schema_initializer is not None:
         try:
-            neo4j_health = await schema_initializer.health_check()
+            neo4j_health = (await schema_initializer.health_check()).model_dump()
             schema_status = await schema_initializer.verify_schema()
         except Exception:
             logger.warning(
