@@ -18,6 +18,9 @@ import { useRunExtraction } from "@/hooks/useRunExtraction";
 import { useExtractionResults, useExtractedEntities } from "@/hooks/useExtractionResults";
 import { useJobStream } from "@/hooks/useJobStream";
 import { StatusBadge } from "@/components/WfPrimitives";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('ExtractionEngine');
 
 // Types for log entries
 type LogType = 'sys' | 'info' | 'warn' | 'extract' | 'map' | 'plain';
@@ -122,7 +125,7 @@ export default function ExtractionEngine() {
 
   // Handle pause all (stub - no backend support yet)
   const handlePauseAll = () => {
-    console.warn('[ExtractionEngine] Pause All not yet implemented in backend');
+    log.warn('Pause All not yet implemented in backend');
   };
 
   // Loading state

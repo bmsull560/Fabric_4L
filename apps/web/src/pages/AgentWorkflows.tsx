@@ -180,7 +180,7 @@ export default function AgentWorkflows() {
       />
 
       {/* KPI row */}
-      <div className="flex gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <MetricCard
           label="Active Workflows"
           value={activeWorkflows.filter((w: Workflow) => w.status === 'running').length.toString()}

@@ -7,6 +7,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from '@/hooks/queryKeys';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useRunExtraction');
 
 export interface RunExtractionParams {
   /** Source URL to extract from */
@@ -68,7 +71,7 @@ export function useRunExtraction() {
       queryClient.invalidateQueries({ queryKey: QK.extraction.all });
     },
     onError: (error) => {
-      console.error('[useRunExtraction] Failed to start extraction:', error);
+      log.error('Failed to start extraction', { errorCode: String(error) });
     },
   });
 }

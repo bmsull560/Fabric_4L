@@ -5,6 +5,9 @@
  * All schemas should match the OpenAPI contracts in /contracts/openapi/
  */
 import { z } from 'zod';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('api-schemas');
 
 // ===== Shared Base Schemas =====
 
@@ -217,7 +220,7 @@ export function safeParseResponse<T>(
 ): T | null {
   const result = schema.safeParse(data);
   if (!result.success) {
-    console.error(`[API Validation Error] ${endpoint}:`, result.error.format());
+    log.error(`API Validation Error: ${endpoint}`);
     return null;
   }
   return result.data;
@@ -233,7 +236,7 @@ export function parseResponseOrThrow<T>(
 ): T {
   const result = schema.safeParse(data);
   if (!result.success) {
-    console.error(`[API Validation Error] ${endpoint}:`, result.error.format());
+    log.error(`API Validation Error: ${endpoint}`);
     throw new Error(`Invalid API response from ${endpoint}`);
   }
   return result.data;

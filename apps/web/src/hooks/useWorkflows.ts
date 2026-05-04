@@ -5,6 +5,9 @@ import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import { API_BASE, L4_PREFIX } from '@/lib/apiConfig';
 import { POLL_INTERVALS } from './usePolling';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useWorkflows');
 
 // Constants for workflow SSE
 // POLL_INTERVAL_MS removed — use POLL_INTERVALS.workflows from usePolling
@@ -291,7 +294,7 @@ export function useWorkflowSSE(workflowId: string | null) {
         }
       } catch (err) {
         // Log parse errors for debugging but don't break the connection
-        console.warn('[WorkflowSSE] Failed to parse SSE message:', err);
+        log.warn('Failed to parse SSE message', { errorCode: String(err) });
       }
     };
 

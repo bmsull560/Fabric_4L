@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import { apiClient } from '@/api/client';
 import { withApiError, BaseApiError, STALE_TIME } from './useApiShared';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useBilling');
 
 // Types
 export interface Subscription {
@@ -79,9 +82,7 @@ export function useBilling(customerId: string) {
     },
     onError: (error) => {
       setCheckoutError(error instanceof Error ? error : new Error(String(error)));
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Checkout mutation failed:', error);
-      }
+      log.error('Checkout mutation failed', { errorCode: String(error) });
     },
   });
 
@@ -98,9 +99,7 @@ export function useBilling(customerId: string) {
     },
     onError: (error) => {
       setPortalError(error instanceof Error ? error : new Error(String(error)));
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Portal mutation failed:', error);
-      }
+      log.error('Portal mutation failed', { errorCode: String(error) });
     },
   });
 

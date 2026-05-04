@@ -25,9 +25,32 @@ const ErrorResponseSchema = z.object({
   message: z.string().optional(),
   code: z.string().optional(),
   trace_id: z.string().optional(),
+  // FastAPI validation errors use `detail` — may be a string or array of issues
+  detail: z.union([
+    z.string(),
+    z.array(z.object({ loc: z.array(z.unknown()), msg: z.string(), type: z.string() })),
+    z.unknown(),
+  ]).optional(),
 });
 
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+/** Extract a human-readable message from a FastAPI detail field */
+function extractDetailMessage(detail: ErrorResponse['detail']): string | null {
+  if (!detail) return null;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d) => {
+        if (typeof d === 'object' && d !== null && 'msg' in d) {
+          return String((d as { msg: unknown }).msg);
+        }
+        return JSON.stringify(d);
+      })
+      .join('; ');
+  }
+  return null;
+}
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -248,9 +271,11 @@ class ApiClient {
             message: error.message,
           });
 
-          // Transform to ApiError with trace ID for ErrorBoundary
+          // Transform to ApiError with trace ID for ErrorBoundary.
+          // Prefer `detail` (FastAPI format) over generic `message` for richer error messages.
+          const detailMessage = extractDetailMessage(errorData.detail);
           const apiError = new ApiError(
-            errorData.message ?? error.message ?? 'API request failed',
+            detailMessage ?? errorData.message ?? error.message ?? 'API request failed',
             error.response?.status ?? 500,
             errorData.code ?? 'INTERNAL_ERROR',
             traceId

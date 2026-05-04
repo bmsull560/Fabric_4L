@@ -55,6 +55,9 @@ import {
 import { WorkflowLayout } from "../components/WorkflowLayout"
 import { useWorkflowStore } from "../store/workflowStore"
 import { STEPS } from "../constants"
+import { createFeatureLogger } from "@/lib/telemetry"
+
+const log = createFeatureLogger('ProspectSetup')
 
 type PromptMode = "Fast" | "Balanced" | "Deep"
 type DeliverableType =
@@ -1329,9 +1332,7 @@ export default function ProspectSetup({
       const attachments = createAttachmentItems(result, state.attachments.length)
       dispatch({ type: "ATTACHMENTS_ADDED", attachments })
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("[ProspectSetup] Attach content failed:", error)
-      }
+      log.error('Attach content failed', { errorCode: String(error) })
       dispatch({ type: "SUBMIT_ERROR", message: "Unable to attach content. Please try again." })
     }
   }, [onAttachContent, state.attachments.length])
@@ -1381,9 +1382,7 @@ export default function ProspectSetup({
           navigateTo('workflow-intelligence')
         }
       } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("[ProspectSetup] Form submission failed:", error)
-        }
+        log.error('Form submission failed', { errorCode: String(error) })
         dispatch({ type: "SUBMIT_ERROR", message: "Unable to launch intelligence. Please review the input and try again." })
       }
     },

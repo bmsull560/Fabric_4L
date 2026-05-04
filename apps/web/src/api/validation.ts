@@ -6,6 +6,9 @@
  */
 
 import { z } from 'zod';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('api-validation');
 
 // Re-export formula schemas for unified API validation access
 export {
@@ -156,8 +159,7 @@ export function validate<T>(schema: z.ZodType<T>, data: unknown, path: string): 
   if (!result.success) {
     const errorMessage = `Validation failed for ${path}: ${result.error.issues.map(i => i.message).join(', ')}`;
     if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.error('[API Validation]', errorMessage, result.error.format());
+      log.error('API Validation failed', { errorCode: errorMessage });
     }
     throw new ValidationError(errorMessage, result.error, path);
   }
@@ -176,8 +178,7 @@ export function validateWithFallback<T>(
   const result = schema.safeParse(data);
   if (!result.success) {
     if (process.env.NODE_ENV === 'development' && context) {
-      // eslint-disable-next-line no-console
-      console.warn(`[API Validation] ${context} failed validation, using fallback`, result.error.issues);
+      log.warn(`${context} failed validation, using fallback`);
     }
     return fallback;
   }

@@ -12,6 +12,9 @@
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { FormulaApiError } from './useApiShared';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useFormulaScenario');
 
 // ── Types (aligned to L3 OpenAPI ScenarioRequest / ScenarioResponse) ────────
 
@@ -77,9 +80,7 @@ export function useFormulaScenario() {
       return (response as { data: ScenarioResponse }).data;
     },
     onError: (error) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Formula scenario calculation failed:', error.message);
-      }
+      log.error('Formula scenario calculation failed', { errorCode: error.message });
     },
   });
 }

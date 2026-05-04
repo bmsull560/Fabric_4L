@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { withApiError, BenchmarkApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useBenchmarks');
 
 
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
@@ -148,7 +151,7 @@ export function useUpdateBenchmarkPolicy() {
       queryClient.invalidateQueries({ queryKey: QK.benchmarks.policies });
     },
     onError: (error) => {
-      console.error('Benchmark policy update failed:', error.message);
+      log.error('Benchmark policy update failed', { errorCode: error.message });
     },
   });
 }
