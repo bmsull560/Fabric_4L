@@ -14,7 +14,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../test/mocks/server';
+import { sessionService } from '@/services/sessionService';
+import { applySessionServiceTestEnvironment, authFixtures } from '../test/authSessionTestUtils';
 
 import {
   useSubgraph,
@@ -74,20 +76,32 @@ const testStore = {
 // ============================================================================
 
 const ROLES = {
-  admin: { token: 'admin-token', permissions: ['read', 'write', 'delete'] },
-  analyst: { token: 'analyst-token', permissions: ['read'] },
-  viewer: { token: 'viewer-token', permissions: ['read'] },
-  guest: { token: null, permissions: [] },
+  admin: { tenantId: 'tenant-admin', role: 'tenant_admin', canRead: true },
+  analyst: { tenantId: 'tenant-analyst', role: 'analyst', canRead: true },
+  viewer: { tenantId: 'tenant-viewer', role: 'read_only', canRead: true },
+  guest: { tenantId: null, role: null, canRead: false },
 } as const;
 
 type Role = keyof typeof ROLES;
+
+let sessionEnv: ReturnType<typeof applySessionServiceTestEnvironment> | undefined;
 
 // ============================================================================
 // INTEGRATION TESTS
 // ============================================================================
 
 describe('useSubgraph Integration [L2-Integration]', () => {
+  beforeAll(() => {
+    sessionEnv = applySessionServiceTestEnvironment();
+  });
+
+  afterAll(() => {
+    sessionEnv?.reset();
+    sessionService.resetEnvironment();
+  });
+
   beforeEach(() => {
+    sessionEnv?.reset();
     testStore.reset();
     testStore.seedTestGraph();
     server.resetHandlers();
@@ -97,7 +111,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
     it('fetches coherent subgraph from simulated backend', async () => {
       // Setup backend simulation
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => {
+        http.get('/api/v1/graph/subgraph', () => {
           const entities = Array.from(testStore.entities.values());
           const edges = Array.from(testStore.relationships.values()).flat();
 
@@ -134,7 +148,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
 
     it('handles database connectivity issues gracefully', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () =>
+        http.get('/api/v1/graph/subgraph', () =>
           HttpResponse.json(
             { error: 'Database connection failed' },
             { status: 503 }
@@ -162,22 +176,33 @@ describe('useSubgraph Integration [L2-Integration]', () => {
     ] as [Role, boolean][])('role %s can query: %s', async (role, shouldSucceed) => {
       const roleConfig = ROLES[role];
 
-      // Set up localStorage with the role's token (apiClient reads from localStorage)
-      if (roleConfig.token) {
-        window.localStorage.setItem('accessToken', roleConfig.token);
+      if (roleConfig.tenantId && roleConfig.role) {
+        const user = authFixtures.user({
+          id: `${role}-user`,
+          email: `${role}@example.com`,
+          role: roleConfig.role,
+          tenantId: roleConfig.tenantId,
+          tenantSlug: roleConfig.tenantId,
+        });
+        sessionService.persistSessionMeta(user, roleConfig.tenantId);
       } else {
-        window.localStorage.removeItem('accessToken');
+        sessionService.clearSession();
       }
 
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', ({ request }) => {
-          const auth = request.headers.get('Authorization');
+        http.get('/api/v1/graph/subgraph', ({ request }) => {
+          const tenantId = request.headers.get('x-tenant-id');
+          const auth = request.headers.get('authorization');
 
-          if (!roleConfig.token) {
+          if (auth !== null) {
+            return HttpResponse.json({ error: 'Unexpected bearer token' }, { status: 403 });
+          }
+
+          if (!roleConfig.canRead || !roleConfig.tenantId || tenantId === 'default') {
             return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
           }
 
-          if (auth !== `Bearer ${roleConfig.token}`) {
+          if (tenantId !== roleConfig.tenantId) {
             return HttpResponse.json({ error: 'Forbidden' }, { status: 403 });
           }
 
@@ -191,7 +216,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
         })
       );
 
-      // Create wrapper with auth context
+      // Create wrapper with cookie-backed session metadata
       const wrapper = createWrapper();
       const { result } = renderHook(
         () => useSubgraph({ query: 'test' }),
@@ -211,7 +236,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
       let entityVersion = 1;
 
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => {
+        http.get('/api/v1/graph/subgraph', () => {
           return HttpResponse.json({
             root_entity_id: 'entity-1',
             nodes: [
@@ -256,7 +281,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
   describe('cascade tests', () => {
     it('returns related entities when querying by relationship', async () => {
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => {
+        http.get('/api/v1/graph/subgraph', () => {
           const driver = testStore.entities.get('driver-integration-1');
           const cap = testStore.entities.get('cap-integration-1');
           const useCase = testStore.entities.get('usecase-integration-1');
@@ -293,7 +318,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
       const responses: any[] = [];
 
       server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => {
+        http.get('/api/v1/graph/subgraph', () => {
           const response = {
             root_entity_id: 'test',
             nodes: Array.from(testStore.entities.values()),

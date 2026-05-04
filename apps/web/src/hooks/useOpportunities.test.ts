@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper, createWrapperWithRetry } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
+import { server } from '../test/mocks/server';
 import {
   useOpportunities,
   OpportunitiesApiError,

@@ -23,10 +23,11 @@
 export function formatDate(dateStr: string | undefined, fallback = "—"): string {
   if (!dateStr) return fallback;
   const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", { 
-    month: "short", 
-    day: "numeric", 
-    year: "numeric" 
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
   });
 }
 

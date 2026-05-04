@@ -122,6 +122,8 @@ export function ProcessSteps({ steps, className }: ProcessStepsProps) {
       const timer = setTimeout(() => setCollapsed(true), AUTOCOLLAPSE_DELAY_MS);
       return () => clearTimeout(timer);
     }
+
+    return undefined;
   }, [allDone, hasError]);
 
   // Don't render if there are no steps

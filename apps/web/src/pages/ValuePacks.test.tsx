@@ -12,9 +12,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createWrapper, createWrapperWithRetry } from '../test-utils';
+import { createWrapper, createWrapperWithRetry, createMockResponse } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../test/mocks/server';
+import { server } from '../test/mocks/server';
 import ValuePacks from './ValuePacks';
 import { apiClient } from '@/api/client';
 import { ValuePackApiError } from '@/hooks/useValuePacks';
@@ -22,12 +22,16 @@ import { ValuePackApiError } from '@/hooks/useValuePacks';
 // Mock the API client for error state tests - preserves actual implementation by default
 vi.mock('@/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/client')>();
+  const passthroughGet = (...args: Parameters<typeof actual.apiClient.get>) => actual.apiClient.get(...args);
+  const passthroughPost = (...args: Parameters<typeof actual.apiClient.post>) => actual.apiClient.post(...args);
   return {
     ...actual,
     apiClient: {
       ...actual.apiClient,
-      get: vi.fn((...args: Parameters<typeof actual.apiClient.get>) => actual.apiClient.get(...args)),
-      post: vi.fn((...args: Parameters<typeof actual.apiClient.post>) => actual.apiClient.post(...args)),
+      get: vi.fn(passthroughGet),
+      post: vi.fn(passthroughPost),
+      __testPassthroughGet: passthroughGet,
+      __testPassthroughPost: passthroughPost,
     },
   };
 });
@@ -50,6 +54,12 @@ Object.defineProperty(window, 'matchMedia', {
 describe('ValuePacks', () => {
   beforeEach(() => {
     server.resetHandlers();
+    const testClient = apiClient as typeof apiClient & {
+      __testPassthroughGet?: typeof apiClient.get;
+      __testPassthroughPost?: typeof apiClient.post;
+    };
+    vi.mocked(apiClient.get).mockImplementation(testClient.__testPassthroughGet ?? apiClient.get);
+    vi.mocked(apiClient.post).mockImplementation(testClient.__testPassthroughPost ?? apiClient.post);
   });
 
   // ── Page Load ──────────────────────────────────────────────────────────────
@@ -130,35 +140,37 @@ describe('ValuePacks', () => {
     });
 
     it('displays error state with retry button when API fails and retries successfully', async () => {
-      let requestCount = 0;
-      server.use(
-        http.get('/api/v1/graph/packs', () => {
-          requestCount += 1;
-          if (requestCount <= 3) {
-            return HttpResponse.json({ message: 'Service unavailable' }, { status: 500 });
+      const recoveredPack = {
+        id: 'recovered-pack',
+        pack_id: 'recovered-pack',
+        name: 'Recovered Pack',
+        industry: 'SaaS / B2B',
+        status: 'active' as const,
+        category: 'Revenue',
+        description: 'Recovered after retry',
+        version: '1.0.1',
+        scope: 'global' as const,
+        driver_count: 1,
+        formula_count: 1,
+        benchmark_count: 1,
+        workflow_count: 1,
+        updated_at: '2026-01-10T00:00:00Z',
+        created_at: '2026-01-01T00:00:00Z',
+      };
+      let packListCalls = 0;
+      vi.mocked(apiClient.get).mockImplementation(async (layer, path, config) => {
+        if (layer === 'l3' && (path === '/packs' || path.startsWith('/packs?'))) {
+          packListCalls += 1;
+          if (packListCalls === 1) {
+            throw new ValuePackApiError('HTTP 500: Service unavailable', 500);
           }
-
-          return HttpResponse.json([
-            {
-              id: 'recovered-pack',
-              pack_id: 'recovered-pack',
-              name: 'Recovered Pack',
-              industry: 'SaaS / B2B',
-              status: 'active',
-              category: 'Revenue',
-              description: 'Recovered after retry',
-              version: '1.0.1',
-              scope: 'global',
-              driver_count: 1,
-              formula_count: 1,
-              benchmark_count: 1,
-              workflow_count: 1,
-              updated_at: '2026-01-10T00:00:00Z',
-              created_at: '2026-01-01T00:00:00Z',
-            },
-          ]);
-        })
-      );
+          return createMockResponse([recoveredPack]);
+        }
+        const testClient = apiClient as typeof apiClient & { __testPassthroughGet?: typeof apiClient.get };
+        return testClient.__testPassthroughGet
+          ? testClient.__testPassthroughGet(layer, path, config)
+          : createMockResponse([]);
+      });
 
       const wrapper = createWrapper();
       render(<ValuePacks />, { wrapper });
@@ -166,7 +178,7 @@ describe('ValuePacks', () => {
       // Wait for error state to appear
       const errorBanner = await screen.findByText(/Failed to load value packs/i);
       expect(errorBanner).toBeInTheDocument();
-      expect(screen.getByText(/(HTTP|unexpected error|failed)/i)).toBeInTheDocument();
+      expect(screen.getByText('HTTP 500: Service unavailable')).toBeInTheDocument();
 
       const retryButton = screen.getByRole('button', { name: /Try again/i });
       expect(retryButton).toBeInTheDocument();
@@ -174,7 +186,7 @@ describe('ValuePacks', () => {
       const user = userEvent.setup();
       await user.click(retryButton);
 
-      expect(await screen.findByText('Recovered Pack')).toBeInTheDocument();
+      expect((await screen.findAllByText('Recovered Pack')).length).toBeGreaterThan(0);
       await waitFor(() => {
         expect(screen.queryByText(/Failed to load value packs/i)).not.toBeInTheDocument();
       });

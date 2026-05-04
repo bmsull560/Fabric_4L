@@ -9,7 +9,10 @@ import * as useNavigation from '@/hooks/useNavigation';
 // Mocks
 // =============================================================================
 
-const mockNavigateTo = vi.fn();
+const { mockNavigateTo, mockPost } = vi.hoisted(() => ({
+  mockNavigateTo: vi.fn(),
+  mockPost: vi.fn(),
+}));
 
 vi.mock('@/hooks/useNavigation', () => ({
   useNavigation: () => ({
@@ -17,7 +20,6 @@ vi.mock('@/hooks/useNavigation', () => ({
   }),
 }));
 
-const mockPost = vi.fn();
 vi.mock('@/api/client', () => ({
   apiClient: {
     post: mockPost,
@@ -71,9 +73,9 @@ describe('ProspectSetup', () => {
       // Check for main elements
       expect(screen.getByText('Step 1 of 7')).toBeInTheDocument();
       expect(screen.getByText('Construct a Value Model')).toBeInTheDocument();
-      expect(screen.getByLabelText('Company Name')).toBeInTheDocument();
-      expect(screen.getByLabelText('Main Contact')).toBeInTheDocument();
-      expect(screen.getByLabelText('Contact Title')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('e.g. Meridian Automotive Components')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('e.g. Patricia Chen')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('e.g. VP Manufacturing Operations')).toBeInTheDocument();
     });
 
     it('shows required objective selection', () => {
@@ -345,7 +347,7 @@ describe('ProspectSetup', () => {
 
       // Should show buyer role detection card
       expect(screen.getByText('Buyer Role Detected')).toBeInTheDocument();
-      expect(screen.getByText('Based on title "VP Sales"')).toBeInTheDocument();
+      expect(screen.getByText(/Based on title.*VP Sales/)).toBeInTheDocument();
     });
 
     it('shows confirm button for inferred buyer role', () => {

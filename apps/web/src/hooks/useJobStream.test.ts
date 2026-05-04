@@ -8,8 +8,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
-import { server } from '../../../test/mocks/server';
-import { getLastEventSource } from '../../../test/setup';
+import { server } from '../test/mocks/server';
+import { getLastEventSource } from '../../test/setup';
 import { useJobStream } from './useJobStream';
 
 async function getEventSourceOrThrow() {
@@ -74,6 +74,12 @@ describe('useJobStream', () => {
   }, 5000);
 
   it('handles connection errors gracefully', async () => {
+    server.use(
+      http.get('/api/v1/extract/jobs/non-existent-job', () => {
+        return HttpResponse.json({ detail: 'Job not found' }, { status: 404 });
+      })
+    );
+
     const wrapper = createWrapper();
     const { result } = renderHook(() => useJobStream('non-existent-job'), { wrapper });
 

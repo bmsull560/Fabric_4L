@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import AccountPickerModal from "./AccountPickerModal";
 import type { Account, AccountListResponse } from "@/hooks/useAccounts";
 
@@ -56,6 +57,10 @@ const sampleResponse: AccountListResponse = {
   has_more: false,
 };
 
+function renderModal(ui: React.ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
+
 describe("AccountPickerModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -63,7 +68,7 @@ describe("AccountPickerModal", () => {
 
   it("renders loading skeleton when accounts are loading", () => {
     mockUseAccounts.mockReturnValue({ data: null, isLoading: true, error: null });
-    render(<AccountPickerModal workspace="intelligence" tab="signals" />);
+    renderModal(<AccountPickerModal workspace="intelligence" tab="signals" />);
 
     expect(screen.getByText("Select an Account")).toBeInTheDocument();
     expect(screen.getAllByRole("generic").some(el => el.className.includes("animate-pulse"))).toBe(true);
@@ -72,7 +77,7 @@ describe("AccountPickerModal", () => {
   it("renders accounts and navigates on selection", async () => {
     const user = userEvent.setup();
     mockUseAccounts.mockReturnValue({ data: sampleResponse, isLoading: false, error: null });
-    render(<AccountPickerModal workspace="intelligence" tab="signals" />);
+    renderModal(<AccountPickerModal workspace="intelligence" tab="signals" />);
 
     expect(screen.getByText("Acme Corp")).toBeInTheDocument();
     expect(screen.getByText(/acme.com/)).toBeInTheDocument();
@@ -81,7 +86,7 @@ describe("AccountPickerModal", () => {
     if (item) await user.click(item);
 
     expect(mockSetSelectedAccountId).toHaveBeenCalledWith("acc-001");
-    expect(mockNavigate).toHaveBeenCalledWith("/intelligence/acc-001/signals");
+    expect(mockNavigate).toHaveBeenCalledWith("/intelligence/acc-001/signals", undefined);
   });
 
   it("shows error state when accounts fail to load", () => {
@@ -90,7 +95,7 @@ describe("AccountPickerModal", () => {
       isLoading: false,
       error: { message: "Network error" },
     });
-    render(<AccountPickerModal workspace="studio" />);
+    renderModal(<AccountPickerModal workspace="studio" />);
 
     expect(screen.getByText("Failed to load accounts.")).toBeInTheDocument();
     expect(screen.getByText("Network error")).toBeInTheDocument();
@@ -99,9 +104,9 @@ describe("AccountPickerModal", () => {
   it("navigates to /accounts when Manage Accounts is clicked", async () => {
     const user = userEvent.setup();
     mockUseAccounts.mockReturnValue({ data: sampleResponse, isLoading: false, error: null });
-    render(<AccountPickerModal workspace="intelligence" />);
+    renderModal(<AccountPickerModal workspace="intelligence" />);
 
     await user.click(screen.getByRole("button", { name: "Manage Accounts" }));
-    expect(mockNavigate).toHaveBeenCalledWith("/accounts");
+    expect(mockNavigate).toHaveBeenCalledWith("/accounts", undefined);
   });
 });

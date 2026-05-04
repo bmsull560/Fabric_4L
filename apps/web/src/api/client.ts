@@ -281,7 +281,7 @@ class ApiClient {
             traceId
           );
 
-          return Promise.reject(apiError);
+          throw apiError;
         }
       );
 
@@ -336,10 +336,10 @@ class ApiClient {
       timestamp: Date.now(),
     });
 
-    // Cleanup when complete
-    promise.finally(() => {
+    // Cleanup when complete without creating a secondary unhandled rejection
+    void promise.finally(() => {
       this.inFlightRequests.delete(requestKey);
-    });
+    }).catch(() => undefined);
 
     return promise;
   }
@@ -365,10 +365,10 @@ class ApiClient {
       timestamp: Date.now(),
     });
 
-    // Cleanup when complete
-    promise.finally(() => {
+    // Cleanup when complete without creating a secondary unhandled rejection
+    void promise.finally(() => {
       this.inFlightRequests.delete(requestKey);
-    });
+    }).catch(() => undefined);
 
     return promise;
   }

@@ -60,3 +60,67 @@ window.ResizeObserver = mockResizeObserver;
 // Suppress console errors/warnings in tests (optional - remove if you want to see them)
 // vi.spyOn(console, 'error').mockImplementation(() => {});
 // vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+// Deterministic EventSource mock for SSE hook tests.
+class MockEventSource {
+  static instances: MockEventSource[] = [];
+
+  readonly url: string;
+  readonly withCredentials = false;
+  readyState = 1;
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+
+  constructor(url: string) {
+    this.url = url;
+    MockEventSource.instances.push(this);
+  }
+
+  close(): void {
+    this.readyState = 2;
+  }
+
+  addEventListener(): void {
+    // The application assigns onmessage/onerror directly; addEventListener is present for API compatibility.
+  }
+
+  removeEventListener(): void {
+    // No-op API compatibility shim.
+  }
+
+  dispatchEvent(): boolean {
+    return true;
+  }
+
+  _emitMessage(payload: unknown): void {
+    this.onmessage?.({ data: JSON.stringify(payload) } as MessageEvent);
+  }
+
+  _simulateProgress(progress: number): void {
+    this._emitMessage({ type: 'progress', data: progress });
+  }
+
+  _emitError(): void {
+    this.onerror?.(new Event('error'));
+  }
+}
+
+export function getLastEventSource(): MockEventSource | undefined {
+  return MockEventSource.instances.at(-1);
+}
+
+Object.defineProperty(globalThis, 'EventSource', {
+  configurable: true,
+  writable: true,
+  value: MockEventSource,
+});
+Object.defineProperty(window, 'EventSource', {
+  configurable: true,
+  writable: true,
+  value: MockEventSource,
+});
+
+beforeEach(() => {
+  MockEventSource.instances = [];
+});
