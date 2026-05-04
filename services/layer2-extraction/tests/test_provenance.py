@@ -11,7 +11,7 @@ Covers:
 """
 
 import importlib
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 
@@ -63,7 +63,7 @@ def _make_llm_call(tokens_in: int = 1000, tokens_out: int = 500) -> LLMCall:
 
 
 def _make_step(name: str = "chunking", entities: int = 5) -> ExtractionStep:
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     return ExtractionStep(
         step_name=name,
         started_at=now,
@@ -132,15 +132,15 @@ class TestExtractionStep:
         assert step.duration_ms == 1000
 
     def test_duration_ms_none_when_not_completed(self):
-        step = ExtractionStep(step_name="test", started_at=datetime.utcnow())
+        step = ExtractionStep(step_name="test", started_at=datetime.now(UTC))
         assert step.duration_ms is None
 
     def test_llm_calls_list_default_empty(self):
-        step = ExtractionStep(step_name="test", started_at=datetime.utcnow())
+        step = ExtractionStep(step_name="test", started_at=datetime.now(UTC))
         assert step.llm_calls == []
 
     def test_errors_list_default_empty(self):
-        step = ExtractionStep(step_name="test", started_at=datetime.utcnow())
+        step = ExtractionStep(step_name="test", started_at=datetime.now(UTC))
         assert step.errors == []
 
 
@@ -179,7 +179,7 @@ class TestExtractionActivity:
 
     def test_fail_appends_error_to_last_step(self):
         act = _make_activity()
-        step = ExtractionStep(step_name="extraction", started_at=datetime.utcnow())
+        step = ExtractionStep(step_name="extraction", started_at=datetime.now(UTC))
         act.add_step(step)
         act.fail("Processing error")
         assert "Processing error" in act.steps[-1].errors
