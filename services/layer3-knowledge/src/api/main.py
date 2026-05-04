@@ -20,24 +20,11 @@ import psutil
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
-
+from value_fabric.layer3.config import get_settings
+from value_fabric.layer3.logging_config import get_logger, setup_logging
 from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-# P1-29: OpenTelemetry imports for distributed tracing
-from .main_fix import (
-    OTEL_AVAILABLE,
-    OTLPSpanExporter,
-    BatchSpanProcessor,
-    FastAPIInstrumentor,
-    Resource,
-    SERVICE_NAME,
-    TracerProvider,
-    trace,
-)
-
-from value_fabric.layer3.config import get_settings
-from value_fabric.layer3.logging_config import get_logger, setup_logging
 from .dependencies import (
     AppState,
     close_app_state,
@@ -56,6 +43,18 @@ from .dependencies import (
     get_value_tree_projection_agent,
     get_whitespace_analysis_agent,
     init_app_state,
+)
+
+# P1-29: OpenTelemetry imports for distributed tracing
+from .main_fix import (
+    OTEL_AVAILABLE,
+    SERVICE_NAME,
+    BatchSpanProcessor,
+    FastAPIInstrumentor,
+    OTLPSpanExporter,
+    Resource,
+    TracerProvider,
+    trace,
 )
 
 # Neo4j tenant-aware dependencies (Sprint 5)
