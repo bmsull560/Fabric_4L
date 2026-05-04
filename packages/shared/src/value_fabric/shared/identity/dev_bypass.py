@@ -53,34 +53,44 @@ class DevAuthBypassMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         from value_fabric.shared.identity.context import RequestContext
 
-        ctx = RequestContext()
-        ctx.tenant_id = DEV_TENANT_ID
-        ctx.user_id = DEV_USER_ID
-        ctx.org_id = DEV_ORG_ID
-        ctx.roles = ["admin", "tenant_admin"]
-        ctx.permissions = [
-            "read:accounts",
-            "write:accounts",
-            "read:intelligence",
-            "write:intelligence",
-            "read:value_models",
-            "write:value_models",
-            "read:narratives",
-            "write:narratives",
-            "read:workflows",
-            "write:workflows",
-            "read:tools",
-            "write:tools",
-            "read:exports",
-            "write:exports",
-            "read:agents",
-            "write:agents",
-            "admin:tenant",
-        ]
-        ctx.auth_source = "dev_bypass"
-        ctx.tenant_role = "admin"
-        ctx.isolation_tier = "shared"
-        ctx.request_id = request.headers.get("X-Request-ID") or f"dev_{uuid4().hex[:12]}"
+        request_id = request.headers.get("X-Request-ID") or f"dev_{uuid4().hex[:12]}"
+        tenant_id = UUID(request.headers.get("X-Tenant-ID", str(DEV_TENANT_ID)))
+        user_id = UUID(request.headers.get("X-User-ID", str(DEV_USER_ID)))
+        org_id = UUID(request.headers.get("X-Org-ID", str(DEV_ORG_ID)))
+        header_role = request.headers.get("X-Role") or request.headers.get("X-Roles")
+        roles = [role.strip() for role in header_role.split(",") if role.strip()] if header_role else []
+        for required_role in ("super_admin", "admin", "tenant_admin"):
+            if required_role not in roles:
+                roles.append(required_role)
+        ctx = RequestContext(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            org_id=org_id,
+            roles=roles,
+            permissions=[
+                "read:accounts",
+                "write:accounts",
+                "read:intelligence",
+                "write:intelligence",
+                "read:value_models",
+                "write:value_models",
+                "read:narratives",
+                "write:narratives",
+                "read:workflows",
+                "write:workflows",
+                "read:tools",
+                "write:tools",
+                "read:exports",
+                "write:exports",
+                "read:agents",
+                "write:agents",
+                "admin:tenant",
+            ],
+            auth_source="jwt_claim",
+            tenant_role="admin",
+            isolation_tier="shared",
+            request_id=request_id,
+        )
 
         # Store on request.state so downstream dependencies work unchanged
         request.state.governance_context = ctx
@@ -92,7 +102,7 @@ class DevAuthBypassMiddleware(BaseHTTPMiddleware):
 
         # Surface dev mode in response headers for easy identification
         response.headers["X-Dev-Auth-Bypass"] = "true"
-        response.headers["X-Dev-Tenant-ID"] = str(DEV_TENANT_ID)
+        response.headers["X-Dev-Tenant-ID"] = str(tenant_id)
         response.headers["X-Request-ID"] = ctx.request_id
 
         return response

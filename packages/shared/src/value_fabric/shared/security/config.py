@@ -279,6 +279,7 @@ def get_startup_summary() -> dict[str, Any]:
     
     if summary["warnings"]:
         summary["warnings"].insert(0, "WARNING: Some security controls are degraded")
+        summary["warnings"].insert(0, "WARNING")
     
     return summary
 

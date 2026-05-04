@@ -47,6 +47,7 @@ except ImportError:
     jwt = None  # type: ignore
 
 from .context import (
+    AUTH_SOURCE_SERVICE_ACCOUNT,
     RequestContext,
     clear_current_context,
     get_current_context,
@@ -594,12 +595,16 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             except ValueError:
                 logger.debug("Invalid X-Tenant-ID header: %r", x_tenant)
                 return None
-            return _build_context_from_role(
-                tenant_id,
+            return RequestContext(
+                tenant_id=tenant_id,
                 user_id="service",
                 roles=[Role.SYSTEM.value],
-                source="header",
-                raw={},
+                permissions=frozenset(ROLE_PERMISSIONS[Role.SYSTEM].permissions),
+                auth_source=AUTH_SOURCE_SERVICE_ACCOUNT,
+                source=AUTH_SOURCE_SERVICE_ACCOUNT,
+                service_account_id="service-auth-header",
+                service_account_scopes=["internal:service-to-service"],
+                raw={"service_auth_header": True},
             )
 
         # P0 FIX: Query param tenant authentication removed entirely — never trust client-supplied identity

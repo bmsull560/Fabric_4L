@@ -55,10 +55,22 @@ def get_optional_context(request: Request) -> Optional[RequestContext]:
     return get_current_context(request)
 
 
+def _no_explicit_context() -> Optional[RequestContext]:
+    """FastAPI dependency placeholder for programmatic context overrides.
+
+    ``require_authenticated`` and ``require_tenant_context`` support direct unit-test
+    calls with ``context=...``.  When used as FastAPI dependencies, however, that
+    implementation-only parameter must not be treated as a request body field; doing
+    so lets arbitrary JSON be coerced into an empty ``RequestContext`` and mask the
+    validated middleware context.
+    """
+    return None
+
+
 async def require_authenticated(
     ctx: Optional[RequestContext] = Depends(get_current_context),
     *,
-    context: Optional[RequestContext] = None,
+    context: Optional[RequestContext] = Depends(_no_explicit_context),
 ) -> RequestContext:
     """Require that the request is authenticated (any identity source).
 
@@ -106,7 +118,7 @@ async def require_tenant(
 async def require_tenant_context(
     ctx: Optional[RequestContext] = Depends(get_current_context),
     *,
-    context: Optional[RequestContext] = None,
+    context: Optional[RequestContext] = Depends(_no_explicit_context),
 ) -> RequestContext:
     """Require that tenant context is present in the request.
 
