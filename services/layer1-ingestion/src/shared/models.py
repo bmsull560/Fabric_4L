@@ -5,6 +5,8 @@ Defines: ScrapingTarget, ScrapingJob, RawContent, ExtractedData,
 ComplianceLog, ProxyPool, JobStageDetail, JobError entities.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import UTC, datetime
 from enum import Enum as PyEnum
@@ -19,6 +21,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -448,6 +451,11 @@ class ScrapingTarget(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Merge repair: the truncated crawl-queue __table_args__ block previously left
+    # dangling Index entries here, which made the module unloadable and prevented
+    # tenant-boundary security tests from importing Layer 1.  The complete model
+    # definitions should be restored in the dedicated L1 schema-hardening track.
+
 
 # =============================================================================
 # RESTORED ENTITY DECLARATIONS
@@ -458,7 +466,7 @@ class ScrapingJob(Base):
     """Scraping job execution record.
 
     This declaration restores the Layer 1 ORM contract consumed by the API,
-    crawler, and security-test import path. It is intentionally minimal and
+    crawler, and security-test import path.  It is intentionally minimal and
     tenant-scoped; deeper schema normalization remains in the Layer 1 schema
     hardening track.
     """

@@ -4,14 +4,16 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Header, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
 from pydantic import BaseModel, Field
+
+from value_fabric.shared.identity import require_authenticated
 
 from .. import main as handlers
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1", tags=["extraction"])
+router = APIRouter(prefix="/v1", tags=["extraction"], dependencies=[Depends(require_authenticated)])
 
 
 # ============================================================================

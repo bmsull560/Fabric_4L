@@ -28,7 +28,7 @@ export function isLiveMode(): boolean {
 
 type LayerKey = 'l1' | 'l2' | 'l3' | 'l4' | 'l5' | 'l6';
 
-interface MockEndpoint {
+export interface MockEndpoint {
   /** HTTP method (GET, POST, etc.) */
   method?: string;
   /** URL glob pattern for Playwright route matching */

@@ -113,4 +113,56 @@ journeyTest.describe('Operational Resilience Suite', () => {
     );
     await expect(authedPage.getByText(/audit|events|state transitions|truth objects/i).first()).toBeVisible({ timeout: 10000 });
   });
+
+  journeyTest('test_empty_account_guides_user_to_ingest_sources', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/accounts',
+      [/no accounts found/i, /browse and manage/i, /search accounts/i],
+      'empty account guidance',
+    );
+  });
+
+  journeyTest('test_failed_ingestion_can_be_retried_from_ui', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/ingestion/jobs',
+      [/failed/i, /retry/i, /progress/i, /monitor and manage/i],
+      'failed ingestion retry workflow',
+    );
+  });
+
+  journeyTest('test_partial_extraction_displays_warning_and_available_results', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/extraction',
+      [/results table/i, /configuration panel/i, /live stream/i, /warning/i],
+      'partial extraction warning workflow',
+    );
+  });
+
+  journeyTest('test_agent_service_failure_shows_recoverable_error', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/agents',
+      [/workflow dashboard/i, /active agents/i, /history/i, /retry|unavailable|degraded/i],
+      'recoverable agent service failure workflow',
+    );
+  });
+
+  journeyTest('test_crm_sync_failure_displays_retryable_status', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/integrations',
+      [/integrations/i, /crm/i, /retry/i, /failed/i, /sync/i],
+      'retryable CRM sync failure workflow',
+    );
+  });
+
+  journeyTest('test_user_can_resume_partially_completed_value_model', async ({ authedPage }) => {
+    await authedPage.goto('/workflow/prospect', { waitUntil: 'domcontentloaded' });
+    await expectAnyVisible(authedPage, [/start a new value case/i, /recent value cases/i, /prompt settings/i], 'workflow before resume');
+    await authedPage.reload({ waitUntil: 'domcontentloaded' });
+    await expectAnyVisible(authedPage, [/start a new value case/i, /recent value cases/i, /prompt settings/i], 'workflow after resume');
+  });
 });

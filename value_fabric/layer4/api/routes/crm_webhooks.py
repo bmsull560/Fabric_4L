@@ -23,9 +23,9 @@ from fastapi import (
     status,
 )
 from pydantic import BaseModel, Field, TypeAdapter
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # SECURITY: CRM webhook endpoints are server-to-server calls from
 # Salesforce/HubSpot. Authentication is via HMAC signature verification,

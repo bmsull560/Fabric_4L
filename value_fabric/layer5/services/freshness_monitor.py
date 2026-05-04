@@ -16,9 +16,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import get_settings
 from ..models.truth_object import ClaimType, TruthObject, ValidationEvent

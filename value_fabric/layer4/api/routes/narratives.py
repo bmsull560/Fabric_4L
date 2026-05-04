@@ -18,7 +18,6 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from value_fabric.shared.models.typed_dict import TypedDictModel
-
 from value_fabric.shared.security.dil_auth import (
     VALID_NARRATIVE_AUDIENCES,
     VALID_NARRATIVE_STATUSES,

@@ -19,10 +19,9 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from value_fabric.shared.models.typed_dict import TypedDictModel
 from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
 from ...database import get_db_from_context

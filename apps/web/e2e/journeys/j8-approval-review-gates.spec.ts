@@ -6,7 +6,12 @@
  * closed when approvals, evidence, or reviewer roles are missing.
  */
 import { journeyTest, expect } from '../helpers/journey-fixture';
-import { expectAnyVisible, expectRouteSupportsWorkflow, attemptOptionalAction } from '../helpers/validation-program';
+import {
+  attemptOptionalAction,
+  expectAnyVisible,
+  expectButtonStateIfVisible,
+  expectRouteSupportsWorkflow,
+} from '../helpers/validation-program';
 
 const ACCOUNT_ID = 'acct-meridian';
 const CASE_ID = 'case-e2e-approved-001';
@@ -128,5 +133,15 @@ journeyTest.describe('Journey 8: Approval and Review Gates', () => {
     if (attempted) {
       await expectAnyVisible(authedPage, [/approval/i, /sync/i, /started/i, /failed/i, /permission/i], 'CRM sync status or approval gate feedback');
     }
+  });
+
+  journeyTest('test_export_is_available_only_after_required_approval', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      `/deliverables/cases/${CASE_ID}`,
+      [/business case/i, /draft/i, /executive summary/i, /export pdf/i],
+      'export gate before approval',
+    );
+    await expectButtonStateIfVisible(authedPage, /export pdf/i, 'disabled');
   });
 });

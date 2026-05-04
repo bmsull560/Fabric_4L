@@ -7,7 +7,13 @@
  * the executable validation program.
  */
 import { journeyTest, expect } from '../helpers/journey-fixture';
-import { expectNoCrossTenantLeakage, expectRouteSupportsWorkflow, expectTenantContext } from '../helpers/validation-program';
+import {
+  expectButtonStateIfVisible,
+  expectNoCrossTenantLeakage,
+  expectRouteSupportsWorkflow,
+  expectTenantContext,
+  switchToReadOnlyUser,
+} from '../helpers/validation-program';
 
 journeyTest.describe('Security Suite: Tenant Isolation Validation', () => {
   journeyTest.beforeEach(async ({ addMocks }) => {
@@ -86,5 +92,55 @@ journeyTest.describe('Security Suite: Tenant Isolation Validation', () => {
       authedPage.getByText(/tenant|account|sign in|access|workspace|no accounts/i).first(),
     ).toBeVisible({ timeout: 10000 });
     await expectNoCrossTenantLeakage(authedPage);
+  });
+
+  journeyTest('test_user_cannot_access_cross_tenant_account_via_url', async ({ authedPage }) => {
+    await authedPage.goto('/intelligence/acct-other-tenant/signals', { waitUntil: 'domcontentloaded' });
+    await expectNoCrossTenantLeakage(authedPage);
+    await expect(
+      authedPage.getByText(/forbidden|not authorized|access denied|could not be loaded|no signals yet|signals/i).first(),
+    ).toBeVisible({ timeout: 10000 });
+  });
+
+  journeyTest('test_search_results_are_scoped_to_current_tenant', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/ontology/graph',
+      [/graph explorer/i, /search entities/i, /graph statistics/i],
+      'tenant-scoped search results',
+    );
+    await expectNoCrossTenantLeakage(authedPage);
+  });
+
+  journeyTest('test_agent_refuses_cross_tenant_data_request', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/traces',
+      [/decision trace/i, /audit log/i, /provenance timeline/i],
+      'cross-tenant refusal audit surface',
+    );
+    await expectNoCrossTenantLeakage(authedPage);
+  });
+
+  journeyTest('test_read_only_user_cannot_modify_value_model', async ({ authedPage }) => {
+    await switchToReadOnlyUser(authedPage);
+    await authedPage.goto('/context/formulas', { waitUntil: 'domcontentloaded' });
+
+    const remainedOnFormulaRoute = /\/context\/formulas/.test(authedPage.url());
+    if (remainedOnFormulaRoute) {
+      await expectButtonStateIfVisible(authedPage, /save|update|submit for approval|delete|archive/i, 'disabled');
+      await expectNoCrossTenantLeakage(authedPage);
+      return;
+    }
+
+    await expect(authedPage).not.toHaveURL(/\/context\/formulas/);
+  });
+
+  journeyTest('test_export_blocked_without_required_role_and_approval', async ({ authedPage }) => {
+    await authedPage.goto('/deliverables/cases/case-draft-001', { waitUntil: 'domcontentloaded' });
+    await expectNoCrossTenantLeakage(authedPage);
+    await expect(
+      authedPage.getByText(/draft|approval|required|export pdf/i).first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 });

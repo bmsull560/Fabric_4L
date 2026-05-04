@@ -8,11 +8,11 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 from value_fabric.shared.audit import AuditAction, AuditEmitter, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from sqlalchemy import text
 
 from ...config.settings import settings
 from ...database import get_db_from_context
@@ -42,7 +42,11 @@ class _ToolGatewayUnavailable(RuntimeError):
 
 try:
     from value_fabric.shared.governance.abom import AgentBillOfMaterials
-    from value_fabric.shared.governance.tool_gateway import InvariantViolation, ToolGateway, ToolGatewayDenied
+    from value_fabric.shared.governance.tool_gateway import (
+        InvariantViolation,
+        ToolGateway,
+        ToolGatewayDenied,
+    )
 
     _GATE_AVAILABLE = True
     _GATE_IMPORT_ERROR: ImportError | None = None

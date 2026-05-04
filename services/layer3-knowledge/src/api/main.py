@@ -21,6 +21,9 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
+from value_fabric.shared.identity import RequestContext, require_authenticated
+from value_fabric.shared.models.typed_dict import TypedDictModel
+
 # P1-29: OpenTelemetry imports for distributed tracing
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -28,10 +31,9 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger, setup_logging
-from value_fabric.shared.models.typed_dict import TypedDictModel
-
 from .dependencies import (
     AppState,
     close_app_state,
@@ -1994,6 +1996,7 @@ async def list_entities(
     offset: int = Query(0, ge=0, description="Results to skip"),
     sort_by: str = Query("updated_at", description="Field to sort by: name, updated_at, confidence, entity_type, status"),
     sort_order: str = Query("desc", description="Sort direction: asc or desc"),
+    _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
     request: Request = None,  # Sprint 5: For tenant context extraction
 ):
@@ -2184,6 +2187,7 @@ async def get_entity_detail(
     entity_id: str,
     include_provenance: bool = Query(True, description="Include provenance chain"),
     include_relationships: bool = Query(True, description="Include related entities"),
+    _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
     request: Request = None,  # Sprint 5: For tenant context extraction
 ):
@@ -2361,6 +2365,7 @@ async def get_entity_detail(
 @app.post("/v1/entities/query", response_model=EntityListResponse)
 async def query_entities(
     request: EntityFilterRequest,
+    _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
 ):
     """Advanced entity filtering with complex criteria.

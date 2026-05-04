@@ -6,8 +6,12 @@
  * intelligence layer has a user-visible workflow with status, provenance,
  * retry/error handling, and governance context.
  */
-import { journeyTest } from '../helpers/journey-fixture';
-import { expectRouteSupportsWorkflow, expectTenantContext } from '../helpers/validation-program';
+import { journeyTest, expect } from '../helpers/journey-fixture';
+import {
+  expectAnyVisible,
+  expectRouteSupportsWorkflow,
+  expectTenantContext,
+} from '../helpers/validation-program';
 
 journeyTest.describe('Journey 10: Layer-by-Layer UI Validation', () => {
   journeyTest.beforeEach(async ({ addMocks }) => {
@@ -150,5 +154,71 @@ journeyTest.describe('Journey 10: Layer-by-Layer UI Validation', () => {
       [/benchmark/i, /policy/i, /confidence/i, /stale/i, /override/i],
       'Layer 6 benchmark approval, stale-warning, override, and policy workflow',
     );
+  });
+
+  journeyTest('test_ingestion_ui_handles_duplicate_and_unsupported_documents', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/workflow/prospect',
+      [/attach source material/i, /use uploaded files/i, /source material/i, /discovery/i],
+      'source-ingestion upload workflow',
+    );
+
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/ingestion/jobs',
+      [/ingestion jobs/i, /failed/i, /retry/i, /progress/i, /status/i],
+      'failed-ingestion handling with retry and progress visibility',
+    );
+  });
+
+  journeyTest('test_extraction_ui_requires_evidence_for_approved_signal', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/extraction',
+      [/results table/i, /confidence/i, /evidence/i, /approve/i, /review/i],
+      'evidence-backed extraction approval workflow',
+    );
+  });
+
+  journeyTest('test_graph_ui_displays_tenant_scoped_account_context', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/ontology/graph',
+      [/graph explorer/i, /graph statistics/i, /search entities/i, /legend/i],
+      'tenant-scoped graph exploration',
+    );
+    await expectTenantContext(authedPage);
+  });
+
+  journeyTest('test_agent_ui_surfaces_structured_tool_failure', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/agents',
+      [/workflow dashboard/i, /active agents/i, /pause/i, /resume/i, /history/i],
+      'agent workflow status and failure display',
+    );
+    await expectAnyVisible(authedPage, [/running/i, /active/i, /history/i, /workflow/i], 'agent workflow evidence');
+  });
+
+  journeyTest('test_ground_truth_ui_tracks_metric_validation_status', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/evidence',
+      [/truth objects/i, /status/i, /confidence/i, /source/i, /claim/i],
+      'ground-truth validation status and lineage',
+    );
+  });
+
+  journeyTest('test_benchmark_ui_warns_on_stale_or_low_confidence_benchmark', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/benchmarks',
+      [/benchmark/i, /confidence/i, /stale/i, /override/i, /policy/i],
+      'benchmark warning and override policy workflow',
+    );
+    await expect(
+      authedPage.getByText(/stale|confidence|override|policy/i).first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 });

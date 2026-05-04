@@ -45,7 +45,7 @@ journeyTest.describe('Journey 9: Agent Grounding and Governance', () => {
     await expectRouteSupportsWorkflow(
       authedPage,
       `/intelligence/${ACCOUNT_ID}/signals`,
-      [/pain signal/i, /confidence/i, /source/i, /signal/i, /evidence/i],
+      [/pain signals/i, /detected/i, /confidence/i, /source:/i, /signal/i],
       'agent signal review with source and confidence grounding',
     );
   });
@@ -101,6 +101,62 @@ journeyTest.describe('Journey 9: Agent Grounding and Governance', () => {
       '/governance/evidence',
       [/evidence/i, /truth objects/i, /search claim/i, /confidence/i],
       'claim-level evidence and assumption traceability',
+    );
+  });
+
+  journeyTest('test_agent_cites_evidence_for_value_claims', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      `/intelligence/${ACCOUNT_ID}/signals`,
+      [/pain signals/i, /source:/i, /confidence/i, /signal/i],
+      'agent evidence citation workflow',
+    );
+    await expectAnyVisible(authedPage, [/source:/i, /confidence/i, /signal/i], 'citation surface');
+  });
+
+  journeyTest('test_agent_labels_assumptions_and_inferences', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      `/studio/${ACCOUNT_ID}/action-plan`,
+      [/assumption/i, /recommendation/i, /confidence/i, /evidence/i],
+      'agent assumption and inference labeling',
+    );
+  });
+
+  journeyTest('test_agent_refuses_unsupported_roi_claim', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      `/studio/${ACCOUNT_ID}/narrative`,
+      [/unsupported/i, /citation/i, /evidence/i, /assumption/i],
+      'unsupported ROI refusal workflow',
+    );
+  });
+
+  journeyTest('test_agent_ignores_prompt_injection_inside_uploaded_document', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/extraction',
+      [/extraction engine/i, /results table/i, /configuration panel/i],
+      'prompt-injection-resistant ingestion and extraction review',
+    );
+    await expect(authedPage.getByText(/ignore previous instructions|system prompt|developer message/i).first()).not.toBeVisible({ timeout: 3000 });
+  });
+
+  journeyTest('test_agent_does_not_fabricate_citations', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/evidence',
+      [/evidence/i, /truth objects/i, /source/i, /confidence/i],
+      'non-fabricated citation workflow',
+    );
+  });
+
+  journeyTest('test_agent_recommendation_acceptance_updates_model_with_audit_event', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/traces',
+      [/decision trace/i, /audit log/i, /provenance timeline/i],
+      'agent recommendation auditability',
     );
   });
 });

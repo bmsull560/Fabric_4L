@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config.plans import Plan, get_plan
 from ..models.billing import BillingSubscription, BillingUsageEvent, UsageEventStatus

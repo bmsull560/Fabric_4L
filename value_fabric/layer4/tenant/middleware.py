@@ -9,7 +9,9 @@ migration. New code should use GovernanceMiddleware directly.
 
 import logging
 
-from value_fabric.shared.identity.middleware import GovernanceMiddleware as TenantMiddleware  # noqa: F401
+from value_fabric.shared.identity.middleware import (
+    GovernanceMiddleware as TenantMiddleware,  # noqa: F401
+)
 
 logger = logging.getLogger(__name__)
 logger.warning(

@@ -17,11 +17,11 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit.emitter import emit_audit_event
 from value_fabric.shared.audit.models import AuditAction, AuditOutcome
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TenantProvisioningService__get_tenant_by_nameResult(TypedDictModel):

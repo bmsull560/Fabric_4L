@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 
-from ...integration.layer5_client import get_layer5_client, Layer5GroundTruthClient
+from ...integration.layer5_client import Layer5GroundTruthClient, get_layer5_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/ground-truth", tags=["ground-truth-proxy"])

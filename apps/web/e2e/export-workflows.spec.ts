@@ -6,7 +6,12 @@
  * through the UI while unapproved cases remain blocked from final export.
  */
 import { journeyTest, expect } from './helpers/journey-fixture';
-import { expectAnyVisible, expectRouteSupportsWorkflow, expectNoCrossTenantLeakage } from './helpers/validation-program';
+import {
+  expectAnyVisible,
+  expectButtonStateIfVisible,
+  expectNoCrossTenantLeakage,
+  expectRouteSupportsWorkflow,
+} from './helpers/validation-program';
 
 const CASE_ID = 'case-e2e-approved-001';
 
@@ -116,5 +121,15 @@ journeyTest.describe('Export Workflow Validation Suite', () => {
       'provenance export and audit-context workflow',
     );
     await expectAnyVisible(authedPage, [/export prov-o/i, /audit log/i], 'provenance export controls');
+  });
+
+  journeyTest('test_export_blocked_without_required_role_and_approval', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/deliverables/cases/case-draft-001',
+      [/business case/i, /draft/i, /export pdf/i, /executive summary/i],
+      'draft export governance workflow',
+    );
+    await expectButtonStateIfVisible(authedPage, /export pdf/i, 'disabled');
   });
 });

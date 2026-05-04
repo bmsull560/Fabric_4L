@@ -19,7 +19,6 @@ except (ImportError, OSError):
     HTML = None  # type: ignore
     CSS = None  # type: ignore
 
-from ..metrics import get_metrics
 from ..metrics.llm_cost_calculator import LLMCostCalculator
 from ..models.tool_schemas import (
     AssembleDocumentInput,
@@ -118,8 +117,8 @@ Maximum {max_length} words.""",
         ctx = require_context()
         tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
 
-        from ..models.cost_record import CostRecord
         from ..metrics.llm_cost_metrics import record_cost
+        from ..models.cost_record import CostRecord
 
         record = CostRecord(
             model=decision.model,

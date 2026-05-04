@@ -28,6 +28,15 @@ const criticalFiles = [
   'e2e/collaboration/collaboration-notifications-tasks.spec.ts',
   'e2e/export-workflows.spec.ts',
   'e2e/personas/persona-journeys.spec.ts',
+  'e2e/journeys/j11-golden-path-business-lifecycle.spec.ts',
+  'e2e/integrations/crm-external-integrations.spec.ts',
+  'e2e/journeys/j1-golden-path-deep.spec.ts',
+  'e2e/journeys/j7-calculation-evidence-deep.spec.ts',
+  'e2e/journeys/j8-approval-review-deep.spec.ts',
+  'e2e/journeys/j9-agent-grounding-deep.spec.ts',
+  'e2e/journeys/j10-layer-ui-validation-deep.spec.ts',
+  'e2e/security/tenant-isolation-deep.spec.ts',
+  'e2e/export/export-workflows-deep.spec.ts',
 ];
 
 const forbidden = [
@@ -70,6 +79,16 @@ const requiredEvidence = [
     label: 'dedicated validation-program E2E command',
   },
   {
+    file: 'package.json',
+    pattern: /j11-golden-path-business-lifecycle\.spec\.ts/,
+    label: 'golden-path validation suite wiring',
+  },
+  {
+    file: 'package.json',
+    pattern: /crm-external-integrations\.spec\.ts/,
+    label: 'CRM validation suite wiring',
+  },
+  {
     file: 'e2e/journeys/j9-agent-grounding-governance.spec.ts',
     pattern: /SECURITY-PROMPT-INJECTION-001/,
     label: 'agent prompt-injection validation coverage',
@@ -83,6 +102,36 @@ const requiredEvidence = [
     file: 'e2e/export-workflows.spec.ts',
     pattern: /EXPORT-GATE-001/,
     label: 'approval-gated export validation coverage',
+  },
+  {
+    file: 'e2e/journeys/j11-golden-path-business-lifecycle.spec.ts',
+    pattern: /test_golden_path_account_to_approved_business_case @backend/,
+    label: 'backend-integrated golden path validation coverage',
+  },
+  {
+    file: 'package.json',
+    pattern: /test:e2e:validation:deep/,
+    label: 'dedicated deep validation-program E2E command',
+  },
+  {
+    file: 'e2e/journeys/j1-golden-path-deep.spec.ts',
+    pattern: /GP-DEEP-001/,
+    label: 'deep golden path validation coverage',
+  },
+  {
+    file: 'e2e/security/tenant-isolation-deep.spec.ts',
+    pattern: /SEC-DEEP-001/,
+    label: 'deep tenant isolation validation coverage',
+  },
+  {
+    file: 'e2e/journeys/j9-agent-grounding-deep.spec.ts',
+    pattern: /AG-DEEP-001/,
+    label: 'deep agent grounding validation coverage',
+  },
+  {
+    file: 'e2e/export/export-workflows-deep.spec.ts',
+    pattern: /EXPORT-DEEP-001/,
+    label: 'deep export gate validation coverage',
   },
 ];
 

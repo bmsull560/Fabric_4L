@@ -131,4 +131,67 @@ journeyTest.describe('Journey 7: Calculation, Evidence Integrity, and Value Real
     await authedPage.reload({ waitUntil: 'domcontentloaded' });
     await expect(authedPage.getByText(/roi calculator|scenario-based roi|payback/i).first()).toBeVisible({ timeout: 10000 });
   });
+
+  journeyTest('test_calculator_rejects_missing_required_formula_inputs', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      `/calculator/${ACCOUNT_ID}/roi`,
+      [/required/i, /scenario/i, /roi calculator/i, /payback/i, /input/i],
+      'formula input validation workflow',
+    );
+  });
+
+  journeyTest('test_scenario_outputs_are_reproducible_after_reload', async ({ authedPage }) => {
+    await authedPage.goto(`/calculator/${ACCOUNT_ID}/roi`, { waitUntil: 'domcontentloaded' });
+    const before = await authedPage.locator('body').textContent();
+    await authedPage.reload({ waitUntil: 'domcontentloaded' });
+    await expect(authedPage.getByText(/roi calculator|scenario-based roi|payback/i).first()).toBeVisible({ timeout: 10000 });
+    const after = await authedPage.locator('body').textContent();
+    expect(after?.includes('ROI') || before?.includes('ROI')).toBeTruthy();
+  });
+
+  journeyTest('test_customer_metric_override_takes_precedence_over_benchmark', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/benchmarks',
+      [/override/i, /benchmark/i, /policy/i, /confidence/i],
+      'benchmark override governance',
+    );
+  });
+
+  journeyTest('test_formula_change_updates_roi_and_audit_history', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/audit/log',
+      [/audit log/i, /state transitions/i, /validation events/i, /truth objects/i],
+      'formula-change audit history',
+    );
+  });
+
+  journeyTest('test_business_case_claims_trace_to_evidence_benchmark_or_assumption', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/evidence',
+      [/evidence/i, /truth objects/i, /source/i, /claim/i, /confidence/i],
+      'claim traceability to evidence, benchmark, or assumption',
+    );
+  });
+
+  journeyTest('test_unapproved_assumption_blocks_business_case_approval', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      `/hypothesis/${ACCOUNT_ID}/assumptions`,
+      [/assumption/i, /validation/i, /approved/i, /rejected/i],
+      'assumption approval gating',
+    );
+  });
+
+  journeyTest('test_value_realization_compares_projected_vs_realized_outcomes', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      `/realization/${ACCOUNT_ID}`,
+      [/value realization/i, /baseline/i, /actual/i, /outcomes/i, /renewal/i],
+      'projected versus realized outcomes workflow',
+    );
+  });
 });

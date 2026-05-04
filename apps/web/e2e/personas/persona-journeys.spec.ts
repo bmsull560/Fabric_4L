@@ -74,4 +74,20 @@ journeyTest.describe('Persona Journey Validation Suite', () => {
       'executive buyer shared business-case workflow',
     );
   });
+
+  journeyTest('test_sales_rep_to_crm_push_persona_journey', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/workflow/prospect',
+      [/start a new value case/i, /launch intelligence/i, /attach source material/i],
+      'sales rep account creation and discovery workflow',
+    );
+
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/context/integrations',
+      [/crm/i, /salesforce/i, /push/i, /sync/i],
+      'sales rep CRM handoff workflow',
+    );
+  });
 });

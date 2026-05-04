@@ -11,7 +11,6 @@ Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Request
-
 from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
 router = APIRouter(prefix="/intelligence", tags=["Intelligence"])

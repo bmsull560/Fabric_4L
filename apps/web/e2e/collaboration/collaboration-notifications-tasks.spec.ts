@@ -73,4 +73,20 @@ journeyTest.describe('Collaboration, Notifications, and Tasks Suite', () => {
       'reviewer-accessible evidence-review context for comment and mention workflow integration',
     );
   });
+
+  journeyTest('test_reviewer_assignment_comments_and_tasks_are_user_visible', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/settings/team',
+      [/team members/i, /invite user/i, /manage/i, /active/i],
+      'reviewer assignment workflow',
+    );
+
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/personal/notifications',
+      [/notification channels/i, /review/i, /ingestion/i, /event subscriptions/i],
+      'collaboration notification workflow',
+    );
+  });
 });

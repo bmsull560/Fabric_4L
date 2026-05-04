@@ -127,4 +127,27 @@ journeyTest.describe('Journey 6: Account and Prospect Lifecycle Validation', () 
     );
     await expectAnyVisible(authedPage, [/audit/i, /events/i, /state/i], 'audit event evidence');
   });
+
+  journeyTest('test_account_lifecycle_create_edit_archive_merge_and_readiness', async ({ authedPage }) => {
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/accounts',
+      [/accounts/i, /search accounts/i, /browse and manage/i, /export/i],
+      'account lifecycle workspace',
+    );
+
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/settings/data/value-packs',
+      [/value packs/i, /default/i, /tenant/i, /pack/i],
+      'value-pack assignment and override workflow',
+    );
+
+    await expectRouteSupportsWorkflow(
+      authedPage,
+      '/governance/audit/log',
+      [/audit log/i, /events/i, /state transitions/i, /value_pack_assigned/i],
+      'account lifecycle audit workflow',
+    );
+  });
 });
