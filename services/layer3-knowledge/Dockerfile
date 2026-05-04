@@ -10,9 +10,9 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app \
     UVICORN_CMD="uvicorn src.api.main:app --host 0.0.0.0 --port 8001"
-COPY src/ ./src/
+COPY src/ ./value_fabric/layer3/
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 USER appuser
 EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD curl -f http://localhost:8001/health || exit 1
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "value_fabric.layer3.api.main:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -140,7 +140,7 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
       - dev-network
     healthcheck:
@@ -165,7 +165,7 @@ services:
       LAYER1_S3_SECRET_KEY: minioadmin
       PYTHONPATH: /app
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -200,7 +200,7 @@ services:
       LLM_MODEL: gpt-4o
       LOG_LEVEL: info
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -234,7 +234,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: info
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     depends_on:
       neo4j:
         condition: service_healthy
@@ -296,7 +296,7 @@ services:
       layer6:
         condition: service_healthy
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
       - dev-network
     healthcheck:
@@ -334,7 +334,7 @@ services:
       layer3:
         condition: service_healthy
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
       - dev-network
     healthcheck:
@@ -356,7 +356,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
       - dev-network
     restart: "no"
@@ -376,7 +376,7 @@ services:
       PORT: 8006
       LOG_LEVEL: info
     volumes:
-      - ./packages/shared/src/value_fabric:/app/value_fabric:ro
+      - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
       - dev-network
     healthcheck:

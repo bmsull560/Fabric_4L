@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import httpx
 import psutil
@@ -25,12 +25,23 @@ from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 # P1-29: OpenTelemetry imports for distributed tracing
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+try:
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    OTEL_AVAILABLE = True
+except ImportError:
+    OTEL_AVAILABLE = False
+    trace = None  # type: ignore
+    OTLPSpanExporter = None  # type: ignore
+    FastAPIInstrumentor = None  # type: ignore
+    SERVICE_NAME = None  # type: ignore
+    Resource = None  # type: ignore
+    TracerProvider = None  # type: ignore
+    BatchSpanProcessor = None  # type: ignore
 
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger, setup_logging
@@ -307,14 +318,18 @@ def _get_settings_with_fallback() -> Any:
 
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
-_tracer_provider: TracerProvider | None = None
+_tracer_provider: Any = None
 
 
-def init_telemetry() -> TracerProvider | None:
+def init_telemetry() -> Optional[Any]:
     """Initialize OpenTelemetry tracing if endpoint configured.
 
     P1-29: OpenTelemetry integration for distributed tracing.
     """
+    if not OTEL_AVAILABLE:
+        logger.debug("OpenTelemetry not available (module not installed)")
+        return None
+
     otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if not otel_endpoint:
         return None
@@ -338,9 +353,10 @@ async def lifespan(app: FastAPI):
     global _tracer_provider
 
     # P1-29: Initialize OpenTelemetry
-    _tracer_provider = init_telemetry()
-    if _tracer_provider:
-        logger.info("L3: OpenTelemetry tracing initialized")
+    if OTEL_AVAILABLE:
+        _tracer_provider = init_telemetry()
+        if _tracer_provider:
+            logger.info("L3: OpenTelemetry tracing initialized")
 
     # Setup structured logging
     settings = get_settings()
@@ -569,7 +585,7 @@ app = FastAPI(
 )
 
 # P1-29: Instrument FastAPI with OpenTelemetry (after app creation)
-if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+if OTEL_AVAILABLE and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
     FastAPIInstrumentor.instrument_app(app)
     logger.info("L3: FastAPI instrumented with OpenTelemetry")
 

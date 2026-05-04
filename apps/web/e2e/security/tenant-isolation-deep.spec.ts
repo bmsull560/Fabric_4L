@@ -65,6 +65,13 @@ journeyTest.describe('Security Deep: Tenant Isolation and Access Control', () =>
   journeyTest('SEC-DEEP-002: direct URL to foreign account drivers fails closed', async ({ authedPage }) => {
     await authedPage.goto(`/drivers/${DEEP_FOREIGN_ACCOUNT_ID}`, { waitUntil: 'domcontentloaded' });
 
+    // Should show explicit error or empty state, not foreign tenant data
+    await expect(
+      authedPage.getByText(/account not found|access denied|not authorized|forbidden/i)
+        .or(authedPage.getByText(/error|unavailable/i))
+        .first(),
+    ).toBeVisible({ timeout: 10000 });
+
     await expectNoCrossTenantLeakage(authedPage);
     await expectNotVisible(authedPage, /foreign.*driver|globex/i);
   });
