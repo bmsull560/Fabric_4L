@@ -416,14 +416,14 @@ class GraphRAGEngine:
                 item.setdefault("id", item.get("entity_id", ""))
                 results.append(item)
 
+        enriched_results = []
+        if not results:
+            return enriched_results
+
         # PERF: Replace N+1 queries with single batched query
         # Before: O(n) round trips, one per entity
         # After: O(1) round trip with UNWIND batching
         driver = await self._get_driver()
-        enriched_results = []
-
-        if not results:
-            return enriched_results
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Batch all entity lookups in a single query

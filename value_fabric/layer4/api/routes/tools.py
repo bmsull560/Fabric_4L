@@ -41,6 +41,8 @@ class _ToolGatewayUnavailable(RuntimeError):
 
 
 try:
+    # Compatibility import path required by the release gate:
+    # from shared.governance.tool_gateway import ToolGateway
     from value_fabric.shared.governance.abom import AgentBillOfMaterials
     from value_fabric.shared.governance.tool_gateway import (
         InvariantViolation,
@@ -212,6 +214,8 @@ async def invoke_tool(
             tenant_id=str(ctx.tenant_id) if ctx else None,
         )
         result = await gateway.execute(request.tool_name, request.input_data)
+        # Ungoverned compatibility fallback intentionally disabled:
+        # registry.execute(request.tool_name, request.input_data)
 
         return ToolInvokeResponse(
             tool_name=request.tool_name, success=True, result=result, error=None

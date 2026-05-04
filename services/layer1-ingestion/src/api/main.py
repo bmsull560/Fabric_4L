@@ -229,16 +229,24 @@ async def layer1_http_exception_handler(request: Request, exc: HTTPException) ->
     handler exposes both shapes only for the missing-authentication boundary.
     """
     content: dict[str, Any] = {"detail": exc.detail}
-    if (
-        exc.status_code == 401
-        and isinstance(exc.detail, dict)
-        and exc.detail.get("error") == "AUTHENTICATION_REQUIRED"
-    ):
-        content["error"] = "authentication_required"
+    if exc.status_code == 401:
+        missing_auth_detail = (
+            isinstance(exc.detail, dict)
+            and exc.detail.get("error") in {"AUTHENTICATION_REQUIRED", "authentication_required"}
+        ) or (
+            isinstance(exc.detail, str)
+            and exc.detail in {"Authentication context is required", "Authentication required"}
+        )
+        if missing_auth_detail:
+            content["error"] = "authentication_required"
+        headers = dict(exc.headers or {})
+        headers.setdefault("WWW-Authenticate", "Bearer")
+    else:
+        headers = dict(exc.headers or {})
     return JSONResponse(
         status_code=exc.status_code,
         content=content,
-        headers=exc.headers,
+        headers=headers,
     )
 
 
