@@ -1,7 +1,10 @@
 """Tenant isolation tests — updated for JWT-authenticated requests."""
+
 from fastapi.testclient import TestClient
+
 from app.main import app
-from .conftest import auth_headers, TENANT_ALPHA, TENANT_BETA
+
+from .conftest import TENANT_ALPHA, TENANT_BETA, auth_headers
 
 
 def test_cross_tenant_access_blocked():

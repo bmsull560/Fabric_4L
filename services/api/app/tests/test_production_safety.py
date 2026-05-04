@@ -35,7 +35,9 @@ def test_production_like_environment_accepts_durable_configuration():
     assert settings.seed_demo_data is False
 
 
-def test_database_factory_uses_durable_persistence_when_mock_persistence_is_disabled(monkeypatch, tmp_path):
+def test_database_factory_uses_durable_persistence_when_mock_persistence_is_disabled(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("APP_ENV", "development")
     database = importlib.import_module("app.core.database")
 
