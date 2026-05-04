@@ -291,13 +291,18 @@ class GraphRAGEngine:
             center = _serialize_entity(dict(record["center"]))
             neighbors = [_serialize_entity(dict(n)) for n in record["neighbors"]]
 
-            # Extract relationships from paths
+            # Extract relationships from paths, deduplicating by element_id so
+            # the same relationship traversed in multiple paths is only returned once.
+            seen_rel_ids: set[str] = set()
             relationships = []
             for path_info in record["paths"]:
                 rels = path_info["rel"]
                 if isinstance(rels, list):
                     for rel in rels:
-                        relationships.append(_serialize_relationship(rel))
+                        rel_id = getattr(rel, "element_id", None) or str(id(rel))
+                        if rel_id not in seen_rel_ids:
+                            seen_rel_ids.add(rel_id)
+                            relationships.append(_serialize_relationship(rel))
 
             return GraphRAGEngine_get_entity_contextResult.model_validate({
                 "center": center,

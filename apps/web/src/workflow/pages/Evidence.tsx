@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import {
   Database, Search, CheckCircle2, AlertTriangle,
@@ -28,14 +28,26 @@ export default function Evidence() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
 
-  const filtered = evidenceItems.filter((e) => {
-    if (filter !== "all" && !e.aiMapped) return false;
-    if (search && !e.statement.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const selected = evidenceItems.find((e) => e.id === selectedId);
-  const aiMappedCount = evidenceItems.filter((e) => e.aiMapped).length;
+  // Derive all read-only computed values in a single memoized pass to avoid
+  // scanning the array multiple times on every render.
+  const { filtered, selected, aiMappedCount, proofCount, avgConfidence } = useMemo(() => {
+    const filtered = evidenceItems.filter((e) => {
+      if (filter !== "all" && !e.aiMapped) return false;
+      if (search && !e.statement.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+    const selected = evidenceItems.find((e) => e.id === selectedId) ?? null;
+    let aiMappedCount = 0;
+    let proofCount = 0;
+    let confidenceSum = 0;
+    for (const e of evidenceItems) {
+      if (e.aiMapped) aiMappedCount++;
+      if (e.tier === "proof") proofCount++;
+      confidenceSum += e.confidence;
+    }
+    const avgConfidence = Math.round(confidenceSum / evidenceItems.length);
+    return { filtered, selected, aiMappedCount, proofCount, avgConfidence };
+  }, [search, filter, selectedId]);
 
   const handleContinue = () => {
     setCurrentStep(STEPS.CALCULATOR);
@@ -61,8 +73,8 @@ export default function Evidence() {
         <section className="grid grid-cols-4 gap-3">
           <StatCard label="Total Evidence" value={evidenceItems.length} icon={Database} />
           <StatCard label="AI Mapped" value={aiMappedCount} sub={`${evidenceItems.length - aiMappedCount} unmapped`} icon={Sparkles} iconClassName="text-primary" iconBgClassName="bg-primary/10" />
-          <StatCard label="Proof Points" value={evidenceItems.filter((e) => e.tier === "proof").length} icon={CheckCircle2} iconClassName="text-emerald-500" iconBgClassName="bg-emerald-500/10" />
-          <StatCard label="Avg Confidence" value={`${Math.round(evidenceItems.reduce((s, e) => s + e.confidence, 0) / evidenceItems.length)}%`} icon={Zap} iconClassName="text-amber-500" iconBgClassName="bg-amber-500/10" />
+          <StatCard label="Proof Points" value={proofCount} icon={CheckCircle2} iconClassName="text-emerald-500" iconBgClassName="bg-emerald-500/10" />
+          <StatCard label="Avg Confidence" value={`${avgConfidence}%`} icon={Zap} iconClassName="text-amber-500" iconBgClassName="bg-amber-500/10" />
         </section>
 
         <div className="flex items-center gap-3">
