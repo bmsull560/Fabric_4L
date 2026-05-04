@@ -18,6 +18,7 @@ from uuid import UUID
 
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import get_settings
@@ -129,12 +130,16 @@ class FreshnessMonitor:
         now = datetime.now(UTC)
 
         # Build query to find non-deleted, non-stale truths that have expired
-        stmt = select(TruthObject).where(
-            and_(
-                TruthObject.deleted_at.is_(None),
-                TruthObject.is_stale.is_(False),
-                TruthObject.expires_at.isnot(None),
-                TruthObject.expires_at < now,
+        stmt = (
+            select(TruthObject)
+            .options(selectinload(TruthObject.sources))
+            .where(
+                and_(
+                    TruthObject.deleted_at.is_(None),
+                    TruthObject.is_stale.is_(False),
+                    TruthObject.expires_at.isnot(None),
+                    TruthObject.expires_at < now,
+                )
             )
         )
 
@@ -231,9 +236,10 @@ class FreshnessMonitor:
         count_result = await db.execute(count_stmt)
         total = count_result.scalar() or 0
 
-        # Get paginated results
+        # Get paginated results with eager-loaded sources
         stmt = (
             select(TruthObject)
+            .options(selectinload(TruthObject.sources))
             .where(
                 and_(
                     TruthObject.tenant_id == tenant_id,

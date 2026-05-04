@@ -1,0 +1,78 @@
+"""Shared tenant validation utilities for Value Fabric services.
+
+Provides common tenant ID validation and context management
+to reduce code duplication across services and ensure
+consistent tenant isolation security policies.
+"""
+
+import logging
+from uuid import UUID
+
+logger = logging.getLogger(__name__)
+
+# Reserved tenant keywords for system/admin operations
+RESERVED_TENANT_KEYWORDS = frozenset({"system", "admin", "internal"})
+
+
+class TenantContextError(Exception):
+    """Raised when tenant context is missing or invalid."""
+
+    pass
+
+
+def validate_tenant_id(
+    tenant_id: UUID | str | None,
+    fail_safe_mode: bool = True,
+    reserved_keywords: frozenset[str] = RESERVED_TENANT_KEYWORDS,
+) -> str:
+    """
+    Validate tenant_id format and return normalized string.
+
+    SECURITY: Strict validation to prevent tenant confusion attacks.
+
+    Args:
+        tenant_id: Tenant identifier to validate (UUID object, UUID string, or None)
+        fail_safe_mode: If True, reject missing tenant_id. If False, return empty string.
+        reserved_keywords: Set of reserved keywords allowed (e.g., 'system', 'admin')
+
+    Returns:
+        Normalized tenant ID string (lowercase UUID format or reserved keyword)
+
+    Raises:
+        TenantContextError: If tenant_id is invalid or missing in fail-safe mode
+
+    Examples:
+        >>> validate_tenant_id(UUID('550e8400-e29b-41d4-a716-446655440000'))
+        '550e8400-e29b-41d4-a716-446655440000'
+        >>> validate_tenant_id('system')
+        'system'
+    """
+    if tenant_id is None:
+        if fail_safe_mode:
+            raise TenantContextError(
+                "Tenant context is mandatory. Ensure request includes valid tenant_id "
+                "in JWT token or X-Tenant-ID header. For admin operations, use "
+                "appropriate admin bypass mechanisms."
+            )
+        return ""
+
+    # Convert to string and normalize
+    normalized = str(tenant_id).strip()
+
+    # Fail-safe: empty tenant_id is not allowed
+    if not normalized:
+        raise TenantContextError(
+            "Empty tenant_id is not allowed. Provide a valid tenant context."
+        )
+
+    # Validate UUID format for strict tenant isolation
+    if normalized.lower() not in reserved_keywords:
+        try:
+            UUID(normalized)
+        except ValueError:
+            raise TenantContextError(
+                f"Invalid tenant_id format: '{normalized}'. Expected valid UUID or "
+                f"reserved keyword ({', '.join(sorted(reserved_keywords))})."
+            )
+
+    return normalized

@@ -9,7 +9,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -308,13 +308,14 @@ async def validate_truth_object(
 
 async def mark_stale_objects(db: AsyncSession, tenant_id: UUID) -> int:
     """
-    Mark all TruthObjects past their expires_at date as stale.
+    Mark all TruthObjects past their expires_at date as stale using bulk UPDATE.
 
     Returns the number of objects marked stale.
     """
     now = datetime.now(UTC)
     result = await db.execute(
-        select(TruthObject).where(
+        update(TruthObject)
+        .where(
             and_(
                 TruthObject.tenant_id == tenant_id,
                 TruthObject.deleted_at.is_(None),
@@ -322,18 +323,18 @@ async def mark_stale_objects(db: AsyncSession, tenant_id: UUID) -> int:
                 TruthObject.expires_at <= now,
             )
         )
+        .values(is_stale=True, updated_at=now)
+        .returning(TruthObject.id)
     )
-    objects = result.scalars().all()
-    for obj in objects:
-        obj.is_stale = True
-        obj.updated_at = now
+    affected_ids = result.scalars().all()
+    count = len(affected_ids)
 
     logger.info(
         "Marked %d TruthObjects as stale for org %s",
-        len(objects),
+        count,
         tenant_id,
     )
-    return len(objects)
+    return count
 
 
 # ---------------------------------------------------------------------------

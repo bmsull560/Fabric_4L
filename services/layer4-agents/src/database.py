@@ -17,6 +17,9 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from uuid import UUID
 
+# Import settings at module level for early validation and clarity
+from .config.settings import settings
+
 # Task 4.1: Default isolation tier constant
 DEFAULT_ISOLATION_TIER = "shared"
 
@@ -167,8 +170,8 @@ def get_engine() -> AsyncEngine:
     if _engine is None:
         _engine = create_async_engine(
             get_database_url(),
-            pool_size=10,
-            max_overflow=20,
+            pool_size=settings.database_pool_size,
+            max_overflow=settings.database_max_overflow,
             pool_pre_ping=True,
             echo=False,
             future=True,
@@ -206,22 +209,34 @@ FAIL_SAFE_MODE = True
 # Reserved tenant keywords for system/admin operations
 RESERVED_TENANT_KEYWORDS = frozenset({'system', 'admin', 'internal'})
 
+# Try to import shared tenant validation
+try:
+    from value_fabric.shared.database import (
+        TenantContextError as SharedTenantContextError,
+        validate_tenant_id as shared_validate_tenant_id,
+    )
+    SHARED_TENANT_VALIDATION_AVAILABLE = True
+except ImportError:
+    SHARED_TENANT_VALIDATION_AVAILABLE = False
+    SharedTenantContextError = None  # type: ignore
+    shared_validate_tenant_id = None  # type: ignore
+
 
 def validate_tenant_id(tenant_id: UUID | str | None) -> str:
     """Validate tenant_id format and return normalized string.
-    
+
     SECURITY: Strict validation to prevent tenant confusion attacks.
     Tracks metrics for validation monitoring.
-    
+
     Args:
         tenant_id: Tenant identifier to validate (UUID object, UUID string, or None)
-        
+
     Returns:
         Normalized tenant ID string (lowercase UUID format or reserved keyword)
-        
+
     Raises:
         TenantContextError: If tenant_id is invalid or missing in fail-safe mode
-    
+
     Examples:
         >>> validate_tenant_id(UUID('550e8400-e29b-41d4-a716-446655440000'))
         '550e8400-e29b-41d4-a716-446655440000'
@@ -229,7 +244,20 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
         'system'
     """
     _tenant_validation_metrics["validations_total"] += 1
-    
+
+    # Use shared validation if available
+    if SHARED_TENANT_VALIDATION_AVAILABLE and shared_validate_tenant_id:
+        try:
+            return shared_validate_tenant_id(
+                tenant_id,
+                fail_safe_mode=FAIL_SAFE_MODE,
+                reserved_keywords=RESERVED_TENANT_KEYWORDS,
+            )
+        except Exception as e:
+            _tenant_validation_metrics["validation_failures"] += 1
+            raise e
+
+    # Fallback to local implementation
     if tenant_id is None:
         _tenant_validation_metrics["missing_context_errors"] += 1
         _tenant_validation_metrics["validation_failures"] += 1
@@ -240,10 +268,10 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
                 "get_db_with_optional_tenant() with require_super_admin() dependency."
             )
         return ""
-    
+
     # Convert to string and normalize
     normalized = str(tenant_id).strip()
-    
+
     # Fail-safe: empty tenant_id is not allowed
     if not normalized:
         _tenant_validation_metrics["empty_tenant_errors"] += 1
@@ -251,7 +279,7 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
         raise TenantContextError(
             "Empty tenant_id is not allowed. Provide a valid tenant context."
         )
-    
+
     # Validate UUID format for strict tenant isolation
     if normalized.lower() not in RESERVED_TENANT_KEYWORDS:
         try:
@@ -263,7 +291,7 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
                 f"Invalid tenant_id format: '{normalized}'. Expected valid UUID or "
                 f"reserved keyword ({', '.join(sorted(RESERVED_TENANT_KEYWORDS))})."
             )
-    
+
     return normalized
 
 

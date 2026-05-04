@@ -1,51 +1,68 @@
 # Production Invariants
 
-Generated: 2026-05-04
+Generated: 2026-05-04 (Autonomous Test Assurance Agent - Phase 2)
 
 ## Security Invariants
 
 ### Tenant Isolation
 - **Rule**: No cross-tenant reads or writes across API, persistence, graph, search, agent, export, and audit surfaces
-- **Enforcement**: PostgreSQL RLS policies with `current_setting('app.tenant_id')`, RequestContext tenant context
+- **Enforcement**: PostgreSQL RLS policies with `SET LOCAL app.tenant_id`, RequestContext tenant context, fail-safe validation
 - **Code Path**: 
-  - `services/layer5-ground-truth/src/layer5_ground_truth/database.py` - get_db_from_context() sets app.tenant_id
-  - `services/layer5-ground-truth/src/layer5_ground_truth/migrations/versions/002_add_rls_policies.py` - RLS policy definitions
-  - `tests/backend_integrated/test_tenant_isolation_security_persistence.py` - cross-tenant denial tests
-- **Bypass**: Super-admin operations only via explicit admin_role/system_role in RLS policies
+  - `services/layer4-agents/src/database.py` - validate_tenant_id(), set_tenant_context(), get_db_from_context()
+  - `services/layer5-ground-truth/src/layer5_ground_truth/database.py` - validate_tenant_id(), get_db_from_context()
+  - `packages/shared/src/value_fabric/shared/identity/context.py` - RequestContext with immutable tenant_id
+  - `packages/shared/src/value_fabric/shared/identity/middleware.py` - GovernanceMiddleware resolution order
+  - RLS migrations in layer4-agents and layer5-ground-truth with admin_role/system_role TO clauses
+- **Fail-Safe Mode**: FAIL_SAFE_MODE=True requires explicit tenant context, rejects missing/empty tenant_id
+- **Reserved Keywords**: 'system', 'admin', 'internal' for system operations
+- **Bypass**: Super-admin operations only via explicit is_super_admin() check with admin_role/system_role in RLS TO clauses
+- **Validation Metrics**: Tracked via _tenant_validation_metrics (validations_total, validation_failures, uuid_format_errors, missing_context_errors, empty_tenant_errors)
 
 ### Authentication
 - **Rule**: No unauthenticated access to protected resources
-- **Enforcement**: JWT validation with Bearer token, X-Tenant-ID header fallback for service-to-service
+- **Enforcement**: GovernanceMiddleware with JWT verification, X-API-Key HMAC verification, X-Tenant-ID header fallback
 - **Code Path**: 
+  - `packages/shared/src/value_fabric/shared/identity/middleware.py` - GovernanceMiddleware resolution order
   - `services/layer5-ground-truth/src/layer5_ground_truth/api/auth.py` - get_current_user() dependency
-  - JWT decoded with JWT_SECRET, verifies exp claim
-  - Fallback to X-Tenant-ID header (service-to-service)
-  - Dev/test fallback via tenant_id query param (disabled in production)
+  - JWT decoded with JWT_SECRET, verifies exp claim, HMAC-SHA256 signature
+  - Resolution order: Bearer JWT → X-API-Key → X-Tenant-ID → query param (dev/test only)
+  - RequestContext stored in ContextVar for downstream access
+- **Public Paths**: /health, /metrics, /docs, /openapi.json, /redoc bypass authentication
 - **Failure Mode**: HTTP 401 Unauthorized if no valid identity resolved
+- **JWT Claims**: tenant_id (required), user_id, roles, raw payload
+- **Auth Sources**: jwt_claim, api_key, service_account (normalized via _normalise_auth_source)
 
 ### Authorization
 - **Rule**: No authorization bypass via headers, params, body fields, or stale context
-- **Enforcement**: Role-based access control via TokenClaims.require_role(), is_super_admin() checks
+- **Enforcement**: Role-based access control via RequestContext.has_role(), is_super_admin(), Permission checks
 - **Code Path**:
-  - `services/layer5-ground-truth/src/layer5_ground_truth/api/auth.py` - TokenClaims.has_role(), require_role()
-  - `services/layer4-agents/src/tenants/api/routes/provisioning.py` - is_super_admin() checks
-- **Failure Mode**: HTTP 403 Forbidden if role requirements not met
+  - `packages/shared/src/value_fabric/shared/identity/context.py` - RequestContext.has_role(), has_permission(), is_super_admin()
+  - `services/layer5-ground-truth/src/layer5_ground_truth/api/auth.py` - TokenClaims.require_role()
+  - `packages/shared/src/value_fabric/shared/identity/permissions.py` - ROLE_PERMISSIONS mapping
+- **Immutable Fields**: RequestContext.tenant_id and permissions are immutable after construction (__setattr__ protection)
+- **Privileged Access**: require_privileged_access() for admin operations
+- **Failure Mode**: HTTP 403 Forbidden if role/permission requirements not met
 
 ### Input Validation
 - **Rule**: No unvalidated input reaching persistence, queues, tools, or LLM calls
-- **Enforcement**: Pydantic BaseModel schemas for all request/response models
+- **Enforcement**: Pydantic BaseModel schemas with Field() validators, field_validator, model_validator
 - **Code Path**:
-  - `services/layer5-ground-truth/src/layer5_ground_truth/api/schemas.py` - TruthSourceCreate, TruthObjectCreate, etc.
-  - `services/layer6-benchmarks/src/api/schemas.py` - DatasetSummary, ComparisonRequestPayload, etc.
-  - UUID validation for tenant_id, user_id fields
+  - `services/layer5-ground-truth/src/layer5_ground_truth/api/schemas.py` - TruthSourceCreate, TruthObjectCreate, ValidateRequest with validators
+  - `services/layer6-benchmarks/src/api/schemas.py` - DatasetSummary, ComparisonRequestPayload, ValidationRequestPayload
+  - `services/layer6-benchmarks/src/config.py` - field_validator for neo4j_password
+  - UUID validation via validate_tenant_id() for tenant_id fields
+  - String length constraints (min_length, max_length), numeric ranges (ge, le)
 - **Failure Mode**: HTTP 400 Bad Request on validation errors
+- **Specific Validations**: claim_not_empty(), dispute_reason required when action='dispute', neo4j_password cannot be 'password'
 
 ### Secrets Protection
 - **Rule**: No secrets exposed in logs, errors, responses, bundles, or LLM prompts
-- **Enforcement**: Secret redaction in LLM safety guards, K8s secretKeyRef for credentials
+- **Enforcement**: Secret redaction in LLM safety guards, K8s secretKeyRef for credentials, Infisical integration
 - **Code Path**:
   - `value-fabric/tests/security/test_week4_llm_safety.py` - password/API key redaction
   - `value-fabric/tests/security/test_week2_credential_hardening.py` - secretKeyRef validation
+  - `services/layer6-benchmarks/src/api/main.py` - load_infisical_secrets()
+  - MIN_SERVICE_SECRET_LENGTH = 32 for X-Service-Auth header
 - **Failure Mode**: Secret redaction before logging or LLM inclusion
 
 ## Reliability Invariants

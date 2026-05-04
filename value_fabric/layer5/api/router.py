@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..cache import cached
 from ..config import get_settings
 from ..database import get_db_from_context
 from ..integration.layer3_client import get_layer3_client
@@ -520,6 +521,7 @@ async def sync_to_kg(
     summary="Get maturity ladder definition",
     description="Returns the full 0–5 maturity ladder with descriptions and advancement criteria.",
 )
+@cached(ttl=3600, key_prefix="maturity_ladder")
 async def get_maturity_ladder() -> MaturityLadderResponse:
     levels = [
         MaturityLevelDetail(

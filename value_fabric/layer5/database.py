@@ -237,35 +237,37 @@ except ImportError:
         """Fail-closed fallback used when the shared identity package is unavailable."""
         return None
 
+try:
+    from value_fabric.shared.database import TenantContextError, validate_tenant_id
+    SHARED_DATABASE_AVAILABLE = True
+except ImportError:
+    SHARED_DATABASE_AVAILABLE = False
 
-class TenantContextError(Exception):
-    """Raised when tenant context is missing or invalid."""
-    pass
+    class TenantContextError(Exception):  # type: ignore
+        """Fallback when shared database module is unavailable."""
 
+        pass
 
-def validate_tenant_id(tenant_id: UUID | str | None) -> str:
-    """Validate tenant_id format and return normalized string.
+    def validate_tenant_id(tenant_id: UUID | str | None) -> str:  # type: ignore
+        """Fallback validation when shared database module is unavailable."""
+        if tenant_id is None:
+            raise TenantContextError(
+                "Tenant context is mandatory. "
+                "Use explicit admin role context for system operations."
+            )
 
-    SECURITY: Strict validation to prevent tenant confusion attacks.
-    """
-    if tenant_id is None:
-        raise TenantContextError(
-            "Tenant context is mandatory. "
-            "Use explicit admin role context for system operations."
-        )
+        normalized = str(tenant_id).strip()
+        if not normalized:
+            raise TenantContextError("Empty tenant_id is not allowed.")
 
-    normalized = str(tenant_id).strip()
-    if not normalized:
-        raise TenantContextError("Empty tenant_id is not allowed.")
+        # Validate UUID format
+        if normalized.lower() not in ("system", "admin", "internal"):
+            try:
+                UUID(normalized)
+            except ValueError:
+                raise TenantContextError(f"Invalid tenant_id format: {normalized}")
 
-    # Validate UUID format
-    if normalized.lower() not in ('system', 'admin', 'internal'):
-        try:
-            UUID(normalized)
-        except ValueError:
-            raise TenantContextError(f"Invalid tenant_id format: {normalized}")
-
-    return normalized
+        return normalized
 
 
 async def get_db_from_context(

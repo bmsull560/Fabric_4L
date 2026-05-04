@@ -1,12 +1,19 @@
 # Test Gap Analysis
 
-Generated: 2026-05-04
+Generated: 2026-05-04 (Autonomous Test Assurance Agent - Phase 3)
 
 ## Executive Summary
 
-**Overall Assessment**: The repository has strong security test coverage for critical invariants (tenant isolation, authentication, RLS, secrets, rate limiting) but has gaps in layer-specific coverage, frontend testing, and some reliability invariants.
+**Overall Assessment**: The repository has strong security test coverage for critical invariants (tenant isolation, authentication, RLS, secrets, rate limiting) but has gaps in specific GovernanceMiddleware patterns, RequestContext immutability, tier-aware isolation, and some reliability invariants.
 
-**Priority**: Focus on layer-specific invariant coverage and frontend test expansion.
+**Priority**: Focus on GovernanceMiddleware invariant coverage, RequestContext immutability tests, tier-aware isolation testing, and frontend test expansion.
+
+**New Findings from Phase 2 Discovery**:
+- GovernanceMiddleware resolution order (JWT → X-API-Key → X-Tenant-ID → query param) needs comprehensive adversarial testing
+- RequestContext immutable fields (tenant_id, permissions) need explicit immutability violation tests
+- Tier-aware isolation (shared/schema/database) needs validation for unimplemented tiers
+- Audit event emission (TENANT_CONTEXT_SET) needs verification across all database session types
+- Tenant validation metrics tracking needs monitoring integration tests
 
 ---
 
@@ -34,7 +41,79 @@ Generated: 2026-05-04
 
 ### P0 - Security Critical (Immediate Action Required)
 
-#### 1. Layer-Specific Invariant Coverage
+#### 1. GovernanceMiddleware Resolution Order Testing
+**Gap**: No comprehensive adversarial testing for JWT → X-API-Key → X-Tenant-ID → query param resolution order
+**Impact**: Authentication bypass vulnerabilities if resolution order can be manipulated
+**Evidence**:
+- `packages/shared/src/value_fabric/shared/identity/middleware.py` - GovernanceMiddleware resolution order
+- No tests for resolution order manipulation
+- No tests for multiple auth headers present simultaneously
+- No tests for malformed JWT with valid X-API-Key fallback
+
+**Remediation Effort**: Medium (1-2 days)
+**Test Files Needed**:
+- `tests/security/test_governance_middleware_resolution_order.py`
+- `tests/security/test_middleware_auth_header_conflicts.py`
+- `tests/security/test_middleware_fallback_bypass_attempts.py`
+
+#### 2. RequestContext Immutability Testing
+**Gap**: No explicit tests for immutable field violations (tenant_id, permissions)
+**Impact**: Privilege escalation if immutability can be bypassed
+**Evidence**:
+- `packages/shared/src/value_fabric/shared/identity/context.py` - __setattr__ protection for tenant_id, permissions
+- No tests for direct assignment attempts
+- No tests for reflection-based bypass attempts
+- No tests for ContextVar isolation violations
+
+**Remediation Effort**: Low (1 day)
+**Test Files Needed**:
+- `tests/security/test_request_context_immutability.py`
+- `tests/security/test_context_var_isolation.py`
+
+#### 3. Tier-Aware Isolation Testing
+**Gap**: No validation for unimplemented tiers (schema, database) - only shared tier tested
+**Impact**: HTTP 501 errors if tier is misconfigured, no graceful degradation
+**Evidence**:
+- `services/layer4-agents/src/database.py` - get_tiered_db_session() with 501 for schema/database tiers
+- `services/layer5-ground-truth/src/layer5_ground_truth/database.py` - similar tier handling
+- No tests for tier configuration validation
+- No tests for tier transition scenarios
+
+**Remediation Effort**: Low (1 day)
+**Test Files Needed**:
+- `tests/security/test_tier_aware_isolation.py`
+- `tests/security/test_isolation_tier_validation.py`
+
+#### 4. Audit Event Emission Verification
+**Gap**: No verification that TENANT_CONTEXT_SET audit events are emitted for all database session types
+**Impact**: Compliance gaps, forensic analysis missing tenant context changes
+**Evidence**:
+- `services/layer4-agents/src/database.py` - _emit_tenant_context_set_audit() function
+- Multiple session types: get_db_from_context, get_db_with_optional_tenant, db_session, db_session_for_context
+- No tests verifying audit emission for each session type
+- No tests for audit emission failure handling
+
+**Remediation Effort**: Medium (1 day)
+**Test Files Needed**:
+- `tests/security/test_audit_event_emission.py`
+- `tests/security/test_tenant_context_audit_completeness.py`
+
+#### 5. Tenant Validation Metrics Testing
+**Gap**: No integration tests for tenant validation metrics tracking
+**Impact**: Monitoring gaps, unable to detect tenant validation failures at scale
+**Evidence**:
+- `services/layer4-agents/src/database.py` - _tenant_validation_metrics tracking
+- Metrics tracked: validations_total, validation_failures, uuid_format_errors, missing_context_errors, empty_tenant_errors
+- No tests for metrics accuracy
+- No tests for metrics reset functionality
+- No tests for metrics integration with monitoring systems
+
+**Remediation Effort**: Low (1 day)
+**Test Files Needed**:
+- `tests/security/test_tenant_validation_metrics.py`
+- `tests/monitoring/test_metrics_integration.py`
+
+#### 6. Layer-Specific Invariant Coverage
 **Gap**: Each layer (L1-L6) lacks comprehensive invariant testing
 **Impact**: Security boundaries may vary per layer, unverified gaps
 **Evidence**:
@@ -53,7 +132,7 @@ Generated: 2026-05-04
 - `tests/layer4/test_layer4_security_invariants.py`
 - `tests/layer6/test_layer6_security_invariants.py`
 
-#### 2. Frontend Test Coverage
+#### 7. Frontend Test Coverage
 **Gap**: Only 1 unit test file (utils.test.ts), 19 E2E specs but no component/integration tests
 **Impact**: Frontend security boundaries untested, input validation gaps
 **Evidence**:
@@ -234,32 +313,37 @@ Generated: 2026-05-04
 ## Recommended Remediation Plan
 
 ### Sprint 1 (P0 - Security Critical)
-1. Layer 1 security invariants (2 days)
-2. Layer 2 security invariants (2 days)
-3. Layer 3 security invariants (2 days)
-4. Layer 4 security invariants (2 days)
-5. Layer 6 security invariants (1 day)
-6. Frontend auth component tests (2 days)
-7. Frontend input validation tests (2 days)
+1. GovernanceMiddleware resolution order tests (2 days)
+2. RequestContext immutability tests (1 day)
+3. Tier-aware isolation tests (1 day)
+4. Audit event emission verification (1 day)
+5. Tenant validation metrics tests (1 day)
+6. Layer 1 security invariants (2 days)
+7. Layer 2 security invariants (2 days)
+8. Layer 3 security invariants (2 days)
+9. Layer 4 security invariants (2 days)
+10. Layer 6 security invariants (1 day)
 
-**Total**: 13 days
+**Total**: 15 days
 
 ### Sprint 2 (P1 - High Priority)
-1. Connection pool exhaustion tests (2 days)
-2. Database transaction rollback tests (2 days)
-3. ACID property tests (2 days)
-4. Frontend integration tests (2 days)
-5. Frontend E2E auth flows (2 days)
+1. Frontend auth component tests (2 days)
+2. Frontend input validation tests (2 days)
+3. Connection pool exhaustion tests (2 days)
+4. Database transaction rollback tests (2 days)
+5. ACID property tests (2 days)
+6. Frontend integration tests (2 days)
 
-**Total**: 10 days
+**Total**: 12 days
 
 ### Sprint 3 (P2 - Medium Priority)
 1. Session cleanup expansion (1 day)
 2. Cascade deletion verification (1 day)
 3. Audit logging completeness (2 days)
-4. Frontend E2E error handling (2 days)
+4. Frontend E2E auth flows (2 days)
+5. Frontend E2E error handling (2 days)
 
-**Total**: 6 days
+**Total**: 8 days
 
 ---
 
