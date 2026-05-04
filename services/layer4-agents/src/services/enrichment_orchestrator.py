@@ -23,10 +23,9 @@ from uuid import UUID
 
 import httpx
 import structlog
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from value_fabric.shared.models.typed_dict import TypedDictModel
 from value_fabric.shared.security.dil_auth import SSRFBlockedError, validate_url_safe
 
 from ..models.account import Account

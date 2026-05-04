@@ -16,14 +16,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from value_fabric.shared.identity.dependencies import require_authenticated, require_super_admin
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_authenticated, require_super_admin
 from value_fabric.shared.identity.models import (
     TenantCreateRequest,
     TenantModel,
     TenantUpdateRequest,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....api.security.csrf import CSRF_COOKIE_NAME, validate_double_submit
 from ....database import get_db_from_context

@@ -1,3 +1,5 @@
+import base64
+import binascii
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -44,6 +46,30 @@ class TokenExpiredError(ValueError):
     """Raised when a JWT has expired. Translated to HTTP 401 by require_authenticated."""
 
 
+def _is_canonical_base64url_segment(segment: str) -> bool:
+    """Reject non-canonical JWT segments before cryptographic verification.
+
+    Some base64url decoders ignore unused trailing bits in unpadded encodings,
+    which can make a mutated compact-JWS segment decode to the same bytes.  The
+    API treats such alternate encodings as malformed so tampering is fail-closed
+    and auditable before business routing occurs.
+    """
+    if not segment or "=" in segment:
+        return False
+    try:
+        padded = segment + "=" * (-len(segment) % 4)
+        decoded = base64.urlsafe_b64decode(padded.encode("ascii"))
+    except (binascii.Error, UnicodeEncodeError, ValueError):
+        return False
+    canonical = base64.urlsafe_b64encode(decoded).decode("ascii").rstrip("=")
+    return canonical == segment
+
+
+def _has_canonical_compact_jws_encoding(token: str) -> bool:
+    segments = token.split(".")
+    return len(segments) == 3 and all(_is_canonical_base64url_segment(segment) for segment in segments)
+
+
 def decode_token(token: str) -> Optional[TokenPayload]:
     """Decode and validate a JWT.
 
@@ -52,6 +78,8 @@ def decode_token(token: str) -> Optional[TokenPayload]:
     distinct error message without coupling this function to HTTP concerns.
     """
     settings = get_settings()
+    if not _has_canonical_compact_jws_encoding(token):
+        return None
     try:
         data = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         return TokenPayload(sub=data["sub"], tenant_id=data.get("tenant_id", "default"), exp=data.get("exp"))

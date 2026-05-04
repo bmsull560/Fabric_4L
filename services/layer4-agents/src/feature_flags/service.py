@@ -18,9 +18,9 @@ except ImportError as e:
         "shared.audit and shared.identity packages are required for feature flag functionality. "
         "Install the shared package or set PYTHONPATH to include value-fabric/shared"
     ) from e
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from .models import FeatureFlag
 

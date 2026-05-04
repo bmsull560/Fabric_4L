@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabric4l.dev/schemas/gate/policy-decision-record.schema.json",
+  "title": "GATE Policy Decision Record",
+  "description": "JSON Schema contract for POLICY_DECISION audit event details (GATE Phase 2)",
+  "type": "object",
+  "required": [
+    "decision"
+  ],
+  "properties": {
+    "decision": {
+      "type": "boolean",
+      "description": "True when the runtime policy stage allows the invocation; false when policy or invariant checks block it"
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable policy or invariant decision reason"
+    },
+    "obligations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Policy obligations or invariant-denial tags that must be honored by the caller"
+    },
+    "policy_bundle_hash": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Canonical hash of the evaluated policy, ABOM, or invariant bundle"
+    }
+  },
+  "additionalProperties": false
+}

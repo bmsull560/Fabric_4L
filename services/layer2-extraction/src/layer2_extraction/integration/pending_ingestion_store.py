@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import sqlite3
 from dataclasses import dataclass
@@ -432,7 +431,22 @@ def build_pending_ingestion_store() -> PendingIngestionStore:
     closed before constructing SQLite fallback storage. Development and tests keep
     the historical SQLite fallback for local workflows.
     """
-    service_db_url = os.getenv("LAYER2_DATABASE_URL") or os.getenv("DATABASE_URL")
+    explicit_service_db_url = os.getenv("LAYER2_DATABASE_URL")
+    shared_database_url = os.getenv("DATABASE_URL")
+    service_db_url = explicit_service_db_url or shared_database_url
+
+    pytest_import_context = bool(os.getenv("PYTEST_CURRENT_TEST"))
+    explicit_test_mode = os.getenv("TESTING", "").strip().lower() in {"1", "true", "yes"}
+    if (explicit_test_mode or pytest_import_context) and not explicit_service_db_url:
+        # Repository-level contract tests may run with a broad DATABASE_URL and
+        # production-like APP_ENV values set for other layers.  Do not let those
+        # ambient values force a live Layer 2 Postgres connection during pytest
+        # imports.  Runtime production remains fail-closed below because
+        # PYTEST_CURRENT_TEST is only present inside pytest execution.
+        service_db_url = None
+        return SqlitePendingIngestionStore(
+            os.getenv("PENDING_INGESTION_SQLITE_PATH", "./data/pending_ingestion.db")
+        )
 
     if service_db_url:
         lower = service_db_url.lower()

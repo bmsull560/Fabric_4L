@@ -109,6 +109,7 @@ class AuditOutcome(str, Enum):
     SUCCESS = "success"
     FAILURE = "failure"
     PARTIAL = "partial"
+    DENIED = "denied"
 
 
 class AuditEvent(BaseModel):
@@ -131,6 +132,21 @@ class AuditEvent(BaseModel):
     outcome: AuditOutcome = AuditOutcome.SUCCESS
     details: Dict[str, Any] = Field(default_factory=dict, description="Action-specific metadata")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    def __await__(self):
+        """Allow async governance code to ``await`` an already-emitted audit event.
+
+        The shared emitter is intentionally synchronous for low-latency logging and
+        backward compatibility with existing service code. Several governance
+        wrappers are async and historically awaited the helper, so returning an
+        awaitable model preserves both call styles without duplicating emitters
+        across layers.
+        """
+
+        async def _return_self() -> "AuditEvent":
+            return self
+
+        return _return_self().__await__()
 
     model_config = ConfigDict(use_enum_values=True)
 

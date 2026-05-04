@@ -20,8 +20,8 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import get_settings
 from ..database import get_db_from_context

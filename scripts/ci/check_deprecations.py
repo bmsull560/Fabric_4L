@@ -22,6 +22,23 @@ def load_deprecation_register(path: Path) -> dict:
         return json.load(f)
 
 
+def _register_items(register: dict) -> list[dict]:
+    """Return deprecation items from either legacy or governance register shape."""
+    items = register.get("items")
+    if isinstance(items, list):
+        return items
+    deprecations = register.get("deprecations")
+    if isinstance(deprecations, list):
+        return deprecations
+    return []
+
+
+def _target_removal(item: dict) -> str | None:
+    """Return target-removal date from either camelCase or snake_case field names."""
+    value = item.get("targetRemoval") or item.get("target_removal")
+    return str(value) if value else None
+
+
 def check_deprecations(register: dict) -> tuple[list[dict], list[dict]]:
     """Check for overdue and upcoming deprecations.
 
@@ -32,15 +49,17 @@ def check_deprecations(register: dict) -> tuple[list[dict], list[dict]]:
     overdue = []
     upcoming = []
 
-    for item in register.get("deprecations", []):
-        target_removal = item.get("target_removal")
+    for item in _register_items(register):
+        target_removal = _target_removal(item)
         if not target_removal:
             continue
 
         try:
             removal_date = datetime.fromisoformat(target_removal.replace("Z", "+00:00"))
+            if removal_date.tzinfo is None:
+                removal_date = removal_date.replace(tzinfo=timezone.utc)
         except ValueError:
-            print(f"Warning: Invalid date format for {item.get('feature', 'unknown')}: {target_removal}")
+            print(f"Warning: Invalid date format for {item.get('feature') or item.get('pattern') or item.get('id', 'unknown')}: {target_removal}")
             continue
 
         if removal_date <= now:
@@ -55,11 +74,15 @@ def check_deprecations(register: dict) -> tuple[list[dict], list[dict]]:
 
 def format_item(item: dict) -> str:
     """Format a deprecation item for display."""
+    name = item.get("feature") or item.get("pattern") or item.get("id", "unknown")
+    path = item.get("path") or ", ".join(item.get("blockedPaths", [])) or "N/A"
+    introduced = item.get("deprecated_since") or item.get("introduced", "N/A")
+    target_removal = _target_removal(item) or "N/A"
     return (
-        f"  - {item['feature']}\n"
-        f"    Path: {item.get('path', 'N/A')}\n"
-        f"    Deprecated since: {item.get('deprecated_since', 'N/A')}\n"
-        f"    Target removal: {item.get('target_removal', 'N/A')}\n"
+        f"  - {name}\n"
+        f"    Path: {path}\n"
+        f"    Deprecated since: {introduced}\n"
+        f"    Target removal: {target_removal}\n"
         f"    Owner: {item.get('owner', 'N/A')}"
     )
 
@@ -67,10 +90,15 @@ def format_item(item: dict) -> str:
 def main() -> int:
     """Main entry point. Returns exit code."""
     repo_root = Path(__file__).parent.parent.parent
-    register_path = repo_root / "docs" / "deprecation_register.json"
+    candidate_paths = [
+        repo_root / "docs" / "governance" / "deprecations.json",
+        repo_root / "docs" / "deprecation_register.json",
+    ]
+    register_path = next((path for path in candidate_paths if path.exists()), None)
 
-    if not register_path.exists():
-        print(f"Error: Deprecation register not found at {register_path}")
+    if register_path is None:
+        rendered_paths = ", ".join(str(path) for path in candidate_paths)
+        print(f"Error: Deprecation register not found at any canonical path: {rendered_paths}")
         return 1
 
     try:
@@ -84,7 +112,8 @@ def main() -> int:
     # Print summary
     print("Deprecation Check")
     print("=" * 50)
-    print(f"Total deprecations: {len(register.get('deprecations', []))}")
+    print(f"Register: {register_path}")
+    print(f"Total deprecations: {len(_register_items(register))}")
     print(f"Overdue: {len(overdue)}")
     print(f"Upcoming (≤30 days): {len(upcoming)}")
     print()

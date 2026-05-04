@@ -19,7 +19,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -449,10 +448,118 @@ class ScrapingTarget(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # ... (rest of the code remains the same)
-        Index("idx_crawl_queue_next_retry", "status", "next_retry_at"),
-        Index("idx_crawl_queue_domain_priority", "domain", "priority"),
+
+# =============================================================================
+# RESTORED ENTITY DECLARATIONS
+# =============================================================================
+
+
+class ScrapingJob(Base):
+    """Scraping job execution record.
+
+    This declaration restores the Layer 1 ORM contract consumed by the API,
+    crawler, and security-test import path. It is intentionally minimal and
+    tenant-scoped; deeper schema normalization remains in the Layer 1 schema
+    hardening track.
+    """
+
+    __tablename__ = "scraping_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    target_id = Column(UUID(as_uuid=True), ForeignKey("scraping_targets.id"), nullable=False, index=True)
+    created_by = Column(UUID(as_uuid=True), nullable=False)
+    configuration = Column(JSONB, default=dict)
+    priority = Column(Integer, default=5)
+    status = Column(String(50), nullable=False, default=JobStatus.PENDING.value)
+    triggered_by = Column(String(50), default=TriggeredBy.MANUAL.value)
+    correlation_id = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
     )
+
+
+class RawContent(Base):
+    """Captured raw content for a scraping job."""
+
+    __tablename__ = "raw_contents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
+    source_url = Column(Text, nullable=False)
+    content = Column(Text, nullable=True)
+    storage_path = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
+class ExtractedData(Base):
+    """Post-extraction structured data for a scraping job."""
+
+    __tablename__ = "extracted_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
+    raw_content_id = Column(UUID(as_uuid=True), ForeignKey("raw_contents.id"), nullable=True)
+    data = Column(JSONB, default=dict)
+    validation_data_quality_score = Column(Numeric(3, 2), default=0.00)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
+class ComplianceLog(Base):
+    """Tenant-scoped compliance/audit event emitted by Layer 1 ingestion."""
+
+    __tablename__ = "compliance_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
+    event_type = Column(String(100), nullable=False)
+    request_url = Column(Text, nullable=True)
+    response_status_code = Column(Integer, nullable=True)
+    meta = Column(JSONB, default=dict)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
+class ProxyPool(Base):
+    """Proxy-pool configuration for tenant-scoped ingestion jobs."""
+
+    __tablename__ = "proxy_pools"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    proxies = Column(JSONB, default=list)
+    rotation_strategy = Column(String(50), default=ProxyRotationStrategy.ROUND_ROBIN.value)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
+class JobStageDetail(Base):
+    """Per-stage job execution telemetry."""
+
+    __tablename__ = "job_stage_details"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=False, index=True)
+    stage = Column(String(100), nullable=False)
+    duration_ms = Column(Integer, nullable=True)
+    meta = Column(JSONB, default=dict)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
+class JobError(Base):
+    """Job error record used by Layer 1 ingestion diagnostics."""
+
+    __tablename__ = "job_errors"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=False, index=True)
+    error_message = Column(Text, nullable=False)
+    retryable = Column(Boolean, default=True)
+    retry_count = Column(Integer, default=0)
+    occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
 
 # =============================================================================

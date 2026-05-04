@@ -15,6 +15,19 @@ const criticalFiles = [
   'e2e/navigation.spec.ts',
   'e2e/my-models.spec.ts',
   'playwright.config.ts',
+  'e2e/global-setup.ts',
+  'package.json',
+  'e2e/helpers/validation-program.ts',
+  'e2e/journeys/j6-account-prospect-lifecycle.spec.ts',
+  'e2e/journeys/j7-value-realization-and-calculation.spec.ts',
+  'e2e/journeys/j8-approval-review-gates.spec.ts',
+  'e2e/journeys/j9-agent-grounding-governance.spec.ts',
+  'e2e/journeys/j10-layer-ui-validation.spec.ts',
+  'e2e/security/tenant-isolation-validation.spec.ts',
+  'e2e/resilience/operational-resilience.spec.ts',
+  'e2e/collaboration/collaboration-notifications-tasks.spec.ts',
+  'e2e/export-workflows.spec.ts',
+  'e2e/personas/persona-journeys.spec.ts',
 ];
 
 const forbidden = [
@@ -23,6 +36,54 @@ const forbidden = [
   { pattern: /\btest\.fixme\s*\(/, label: 'test.fixme' },
   { pattern: /\bSKIP_BACKEND_TESTS\b/, label: 'SKIP_BACKEND_TESTS backend skip valve' },
   { pattern: /Mobile navigation.*skipped|not yet implemented in AppShell/i, label: 'stale mobile-navigation skipped claim' },
+];
+
+const requiredEvidence = [
+  {
+    file: 'playwright.config.ts',
+    pattern: /name:\s*['"]backend-integrated['"]/,
+    label: 'backend-integrated Playwright project',
+  },
+  {
+    file: 'playwright.config.ts',
+    pattern: /grep:\s*\/@backend\//,
+    label: '@backend-only backend-integrated project filter',
+  },
+  {
+    file: 'playwright.config.ts',
+    pattern: /globalSetup:\s*['"]\.\/e2e\/global-setup\.ts['"]/,
+    label: 'backend deterministic global setup wiring',
+  },
+  {
+    file: 'e2e/my-models.spec.ts',
+    pattern: /PLAYWRIGHT_BACKEND_URL is required for the @backend My Models CRUD journey/,
+    label: 'fail-closed backend URL requirement in My Models CRUD journey',
+  },
+  {
+    file: 'e2e/global-setup.ts',
+    pattern: /seed-e2e-data/,
+    label: 'deterministic backend seed execution',
+  },
+  {
+    file: 'package.json',
+    pattern: /test:e2e:validation/,
+    label: 'dedicated validation-program E2E command',
+  },
+  {
+    file: 'e2e/journeys/j9-agent-grounding-governance.spec.ts',
+    pattern: /SECURITY-PROMPT-INJECTION-001/,
+    label: 'agent prompt-injection validation coverage',
+  },
+  {
+    file: 'e2e/security/tenant-isolation-validation.spec.ts',
+    pattern: /SEC-TENANT-001/,
+    label: 'tenant isolation validation coverage',
+  },
+  {
+    file: 'e2e/export-workflows.spec.ts',
+    pattern: /EXPORT-GATE-001/,
+    label: 'approval-gated export validation coverage',
+  },
 ];
 
 const failures = [];
@@ -36,6 +97,14 @@ for (const file of criticalFiles) {
   }
 }
 
+for (const { file, pattern, label } of requiredEvidence) {
+  const path = resolve(webRoot, file);
+  const text = readFileSync(path, 'utf8');
+  if (!pattern.test(text)) {
+    failures.push(`${relative(webRoot, path)} is missing required ${label}`);
+  }
+}
+
 if (failures.length > 0) {
   console.error('Critical E2E journey coverage must fail closed.');
   for (const failure of failures) {
@@ -44,4 +113,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('Critical E2E journey guard passed: no skipped mobile or backend CRUD journeys.');
+console.log('Critical E2E journey guard passed: no skipped mobile, backend CRUD, or validation-program journeys, and product-confidence wiring is present.');

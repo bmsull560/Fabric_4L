@@ -151,9 +151,11 @@ class TenantRateLimiter:
     async def check_rate_limit(
         self,
         tenant_id: UUID,
-        tenant_tier: TenantTier,
-        endpoint: str,
+        tenant_tier: TenantTier | None = None,
+        endpoint: str = "*",
         user_id: UUID | None = None,
+        *,
+        tier: TenantTier | None = None,
     ) -> RateLimitResult:
         """Check if request is within rate limit.
         
@@ -166,8 +168,16 @@ class TenantRateLimiter:
         Returns:
             RateLimitResult indicating if request is allowed
         """
+        # Preserve the canonical tenant_tier API while accepting the historical
+        # keyword used by older chaos/security fixtures.  The compatibility
+        # mapping remains local to the shared rate-limiter boundary and does
+        # not weaken tenant-scoped key construction.
+        effective_tier = tenant_tier or tier
+        if effective_tier is None:
+            raise ValueError("tenant_tier is required for tenant-scoped rate limiting")
+
         # Get rate limit config
-        config = self._get_limit_config(tenant_id, tenant_tier)
+        config = self._get_limit_config(tenant_id, effective_tier)
         
         # Check minute limit (most restrictive)
         minute_result = await self._check_window(
@@ -239,15 +249,9 @@ class TenantRateLimiter:
             
             # Count requests in current window
             current_count = await self.redis.zcard(key)
-        except redis.RedisError as e:
-            logger.error(f"Redis error checking rate limit for tenant {tenant_id}: {e}")
-            # Fail open - allow request if Redis is down
-            return RateLimitResult(
-                allowed=True,
-                limit=limit,
-                remaining=limit,
-                reset_at=now + timedelta(seconds=window_seconds),
-            )
+        except (redis.RedisError, TimeoutError, ConnectionError) as e:
+            logger.error("Redis error checking tenant rate limit", extra={"tenant_id": str(tenant_id)})
+            raise RuntimeError("tenant_rate_limit_unavailable") from e
         
         # Check if limit exceeded
         if current_count >= limit:
@@ -269,12 +273,16 @@ class TenantRateLimiter:
                 retry_after_seconds=retry_after,
             )
         
-        # Add current request to window with cryptographically secure unique ID
-        request_id = f"{now.timestamp()}:{secrets.token_hex(8)}"
-        await self.redis.zadd(key, {request_id: now.timestamp()})
-        
-        # Set expiry on key (cleanup) - TTL is 2x window for buffer
-        await self.redis.expire(key, window_seconds * TTL_MULTIPLIER)
+        try:
+            # Add current request to window with cryptographically secure unique ID
+            request_id = f"{now.timestamp()}:{secrets.token_hex(8)}"
+            await self.redis.zadd(key, {request_id: now.timestamp()})
+            
+            # Set expiry on key (cleanup) - TTL is 2x window for buffer
+            await self.redis.expire(key, window_seconds * TTL_MULTIPLIER)
+        except (redis.RedisError, TimeoutError, ConnectionError) as e:
+            logger.error("Redis error updating tenant rate limit", extra={"tenant_id": str(tenant_id)})
+            raise RuntimeError("tenant_rate_limit_unavailable") from e
         
         # Calculate reset time (end of current window)
         reset_at = now + timedelta(seconds=window_seconds)

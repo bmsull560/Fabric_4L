@@ -19,9 +19,9 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from .tiers import TierConfig, get_tier_config
 

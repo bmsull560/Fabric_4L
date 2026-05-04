@@ -485,9 +485,8 @@ async def start_prospect_analysis(
         # 4. Attempt enrichment (if service available)
         # -------------------------------------------------------------------
         try:
-            from ...services.enrichment_orchestrator import EnrichmentOrchestrator
-
             # Check if enrichment service is available
+            __import__("value_fabric.layer4.services.enrichment_orchestrator", fromlist=["EnrichmentOrchestrator"])
             enrichment_status = EnrichmentStatus.QUEUED
 
             # Note: Actual enrichment happens asynchronously
@@ -502,7 +501,7 @@ async def start_prospect_analysis(
         # -------------------------------------------------------------------
         try:
             # Check for existing CRM integration
-            from ...services.crm_sync_service import CRMSyncService
+            __import__("value_fabric.layer4.services.crm_sync_service", fromlist=["CRMSyncService"])
 
             # CRM match check happens asynchronously
             # For now, report pending (not fabricated match)

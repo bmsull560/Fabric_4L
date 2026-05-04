@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import FrozenSet
+from typing import Any, FrozenSet, Iterable
 
 
 class Permission(str, Enum):
@@ -65,6 +65,28 @@ class Role(str, Enum):
     ANALYST = "analyst"
     READ_ONLY = "read_only"
     SYSTEM = "system"
+
+
+# Legacy claim aliases are intentionally narrow and resolve only to canonical
+# business roles. Runtime callers decide whether this compatibility path is
+# enabled; RBAC checks continue to evaluate only canonical role values.
+LEGACY_ROLE_ALIASES: dict[str, str] = {
+    "admin": Role.TENANT_ADMIN.value,
+}
+
+
+def normalize_role_claim(role: Role | Any) -> str:
+    """Return a canonical role string for a single role-like claim value."""
+    raw_role = role.value if isinstance(role, Role) else str(role)
+    normalized_key = raw_role.strip().lower()
+    return LEGACY_ROLE_ALIASES.get(normalized_key, raw_role.strip())
+
+
+def normalize_role_claims(roles: Iterable[Role | Any] | None) -> list[str]:
+    """Normalize role claim values while preserving unknown roles as inert strings."""
+    if roles is None:
+        return []
+    return [normalized for role in roles if (normalized := normalize_role_claim(role))]
 
 
 @dataclass(frozen=True)

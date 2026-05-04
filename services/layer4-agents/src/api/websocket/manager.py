@@ -13,6 +13,7 @@ from typing import Any
 
 from fastapi import WebSocket
 from value_fabric.shared.models.typed_dict import TypedDictModel
+
 from ..schemas.workflow_progress import normalize_workflow_progress
 
 

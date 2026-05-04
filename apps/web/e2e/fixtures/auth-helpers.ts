@@ -89,7 +89,18 @@ export async function seedAuthState(
     localStorage.setItem('accessToken', token);
     localStorage.setItem('userInfo', JSON.stringify(u));
     localStorage.setItem('tenantId', u.tenantId);
+
+    // Current auth uses cookie-backed sessions with non-secret metadata in
+    // sessionStorage. Keep the legacy localStorage keys above for older E2E
+    // helpers, but seed the canonical session metadata key so AuthProvider and
+    // ProtectedRoute treat the journey page as authenticated.
+    sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user: u, tenantId: u.tenantId }));
   }, user);
+
+  // AuthProvider reads sessionStorage on mount. If ensureSameOrigin loaded the
+  // app at /login before storage was seeded, reload once so the provider observes
+  // the seeded session instead of retaining the unauthenticated initial state.
+  await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
 }
 
 /**
@@ -101,6 +112,7 @@ export async function clearAuthState(page: Page): Promise<void> {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('userInfo');
       localStorage.removeItem('tenantId');
+      sessionStorage.removeItem('vf.auth.session.meta');
     });
   } catch {
     // Page may already be closed or on about:blank — safe to ignore

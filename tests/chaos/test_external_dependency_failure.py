@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 
 import httpx
 from httpx import ConnectError, TimeoutException, HTTPStatusError
+from value_fabric.shared.security.redaction import redact_credentials
 
 
 class TestExternalAPIFailure:
@@ -318,9 +319,10 @@ class TestTenantIsolationUnderExternalFailure:
             url = f"https://api.example.com/data?key={api_key}"
             raise ConnectError(f"Failed to connect to {url}")
         except ConnectError as e:
-            error_message = str(e)
+            error_message = redact_credentials(e)
             # API key must not appear in error message
             assert api_key not in error_message
+            assert "key=%5BREDACTED%5D" in error_message
 
 
 class TestErrorClassification:

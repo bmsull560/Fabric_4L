@@ -238,7 +238,6 @@ def create_app() -> FastAPI:
     # GovernanceMiddleware — provides auth and tenant context with rate limiting
     # Production/staging: fail closed if auth middleware is missing
     allow_bypass = settings.allow_insecure_dev_auth_bypass
-    env = settings.effective_environment
 
     # Get Redis rate limiter from app state (initialized in lifespan)
     redis_rate_limiter = getattr(app.state, 'redis_rate_limiter', None)

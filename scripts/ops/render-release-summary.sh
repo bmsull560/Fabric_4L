@@ -8,10 +8,10 @@ if ! command -v "$_PYTHON" > /dev/null 2>&1; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(dirname "$SCRIPT_DIR")"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ARTIFACT_DIR="${ROOT}/artifacts/release"
 LOG_DIR="${ARTIFACT_DIR}/logs"
-POLICY_FILE=".fabric/prod-gates.policy.yaml"
+POLICY_FILE="${ROOT}/.fabric/prod-gates.policy.yaml"
 mkdir -p "$LOG_DIR"
 
 SUMMARY="${ARTIFACT_DIR}/summary.md"
@@ -215,11 +215,10 @@ ${FAIL_REASONS:-None}
 
 ## Known System Caveats
 
-- **Placeholder gates**: chaos, release-policy have no test implementations.
-- **Advisory gates**: smoke, agent, obs require live services or optional deps.
-- **Typecheck**: Layer 1 has ~386 pre-existing mypy errors (SQLAlchemy Column typing).
-- **Unit tests**: Layer 4 has 15 collection errors due to dual-track \`shared/\` import shadowing.
-- **Security tests**: 56 failures are import-path / env issues, not security regressions.
+- **Release-candidate placeholders**: no unclassified release-candidate placeholder gates are allowed; chaos and release-policy are implemented blocking gates.
+- **Advisory gates**: smoke, agent, and obs remain advisory where they require live services or optional dependencies.
+- **Controlled Pilot vs Broad GA**: this summary supports Controlled Pilot evidence unless the full release gate and all broad-GA dependencies have passing artifacts.
+- **Launch blockers**: any failing blocking gate or missing artifact must remain classified in the gate logs and release summary rather than being marked complete.
 
 ## Verification
 

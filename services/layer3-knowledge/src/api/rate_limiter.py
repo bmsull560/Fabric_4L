@@ -7,8 +7,8 @@ from typing import Any
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
-from value_fabric.shared.models.typed_dict import TypedDictModel
 from starlette.middleware.base import BaseHTTPMiddleware
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..logging_config import get_logger
 

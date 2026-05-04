@@ -5,10 +5,14 @@ continue-on-error that would allow violations to pass silently.
 """
 
 import os
+import re
 from pathlib import Path
 
+import jsonschema
 import pytest
 import yaml
+
+from value_fabric.shared.audit.models import PolicyDecisionRecord
 
 
 class TestContractGatePolicy:
@@ -71,6 +75,7 @@ class TestContractGatePolicy:
         content = makefile.read_text(encoding="utf-8")
 
         required_targets = [
+            "gate-mandatory-security-regression",
             "gate-security",
             "gate-arch",
             "gate-state",
@@ -81,3 +86,101 @@ class TestContractGatePolicy:
 
         if missing:
             pytest.fail(f"Required Makefile targets missing: {missing}")
+
+    def test_mandatory_security_regression_gate_is_non_optional(self):
+        """Sprint 2 mandatory security checks must be wired into gate-security.
+
+        The production-readiness workflow invokes ``make gate-security`` for the
+        security-isolation job. Making this aggregate gate a dependency of
+        ``gate-security`` keeps the CI contract intact while ensuring auth,
+        tenant-boundary, contract-drift, critical E2E guard, and workload
+        hardening regressions cannot be skipped.
+        """
+        makefile = Path("Makefile")
+        script = Path("scripts/ci/mandatory_security_regression_gate.sh")
+
+        assert script.exists(), "mandatory security regression script is missing"
+        assert script.stat().st_size > 0, "mandatory security regression script is empty"
+
+        content = makefile.read_text(encoding="utf-8")
+        assert "gate-security: gate-mandatory-security-regression" in content, (
+            "gate-security must depend on gate-mandatory-security-regression so "
+            "the existing production-readiness workflow cannot bypass it"
+        )
+        assert "bash scripts/ci/mandatory_security_regression_gate.sh" in content, (
+            "Makefile target must invoke the canonical mandatory security regression script"
+        )
+
+    def test_policy_decision_record_schema_matches_shared_contract(self):
+        """Sprint 3 runtime policy decisions must have explicit schema coverage."""
+        schema_path = Path("packages/platform-contract/schemas/gate/policy-decision-record.schema.json")
+        assert schema_path.exists(), "policy-decision detail schema is missing"
+        schema = yaml.safe_load(schema_path.read_text(encoding="utf-8"))
+
+        allowed = PolicyDecisionRecord(
+            decision=True,
+            reason="OPA allowed tool",
+            obligations=["log_invocation"],
+            policy_bundle_hash="a" * 64,
+        ).model_dump()
+        denied = PolicyDecisionRecord(
+            decision=False,
+            reason="invariant_blocked",
+            obligations=["invariant_blocked"],
+            policy_bundle_hash="b" * 64,
+        ).model_dump()
+
+        validator = jsonschema.Draft202012Validator(schema)
+        validator.validate(allowed)
+        validator.validate(denied)
+
+    def test_backend_integrated_product_confidence_guard_is_structural(self):
+        """Critical frontend journeys must fail closed and keep backend seeding wired."""
+        guard = Path("apps/web/scripts/security/assert-no-skipped-critical-e2e.mjs")
+        config = Path("apps/web/playwright.config.ts")
+        crud = Path("apps/web/e2e/my-models.spec.ts")
+        setup = Path("apps/web/e2e/global-setup.ts")
+        package_json = Path("apps/web/package.json")
+
+        assert guard.exists(), "critical E2E guard is missing"
+        guard_text = guard.read_text(encoding="utf-8")
+        config_text = config.read_text(encoding="utf-8")
+        crud_text = crud.read_text(encoding="utf-8")
+        setup_text = setup.read_text(encoding="utf-8")
+        package_text = package_json.read_text(encoding="utf-8")
+
+        assert "requiredEvidence" in guard_text, "guard must assert required backend wiring, not only skipped tests"
+        assert "backend-integrated" in guard_text, "guard must protect the backend-integrated project"
+        assert re.search(r"name:\s*['\"]backend-integrated['\"]", config_text)
+        assert re.search(r"grep:\s*/@backend/", config_text)
+        assert "globalSetup: './e2e/global-setup.ts'" in config_text
+        assert "PLAYWRIGHT_BACKEND_URL is required for the @backend My Models CRUD journey" in crud_text
+        assert "seed-e2e-data" in setup_text
+        assert '"test:e2e:guard": "node scripts/security/assert-no-skipped-critical-e2e.mjs"' in package_text
+        assert '"test:e2e:backend": "pnpm run test:e2e:guard && playwright test --project=backend-integrated"' in package_text
+
+    def test_mandatory_security_regression_gate_covers_launch_blocker_surfaces(self):
+        """Mandatory gate must cover the Sprint 2 launch-blocker surfaces."""
+        script = Path("scripts/ci/mandatory_security_regression_gate.sh")
+        if not script.exists():
+            pytest.fail("mandatory security regression script is missing")
+
+        content = script.read_text(encoding="utf-8")
+        required_snippets = {
+            "standalone_api_production_safety": "services/api",
+            "i03_persistence_and_provider_boundary": "test_i03_durable_persistence_and_llm.py",
+            "tenant_boundary_security": "test_tenant_boundary_fails_closed.py",
+            "cross_tenant_api_security": "test_cross_tenant_api.py",
+            "shared_tenant_context_contract": "test_tenant_context_contract.py",
+            "shared_import_boundary": "test_shared_import_boundary.py",
+            "openapi_contract_drift": "contract-drift",
+            "frontend_contract_placeholder_guard": "assert-no-placeholder-contract-tests.mjs",
+            "critical_e2e_skip_guard": "assert-no-skipped-critical-e2e.mjs",
+            "kubernetes_hardening": "tests/k8s/test_security_policies.py",
+        }
+
+        missing = [name for name, snippet in required_snippets.items() if snippet not in content]
+        assert not missing, (
+            "mandatory security regression gate is missing required launch-blocker surfaces: "
+            f"{missing}"
+        )

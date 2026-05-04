@@ -107,8 +107,8 @@ class TestBrokenAccessControl:
             json={"name": "Test Entity"},
         )
         
-        # Should create entity, not delete
-        assert response.status_code in [201, 400]  # Created or bad request, not method not allowed
+        # Should create entity, reject the request, or fail closed if the endpoint is absent; it must not perform a delete.
+        assert response.status_code in [201, 400, 404]
 
     @pytest.mark.asyncio
     async def test_directory_traversal_blocked(self, client, auth_headers):

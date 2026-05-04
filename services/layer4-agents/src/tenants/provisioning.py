@@ -13,10 +13,10 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from value_fabric.shared.models.typed_dict import TypedDictModel
 from value_fabric.shared.secrets.infisical_client import TenantSecretManager
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .service import (
     get_tenant,

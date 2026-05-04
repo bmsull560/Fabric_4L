@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
 LOCALHOST_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEAK_JWT_SECRETS = {

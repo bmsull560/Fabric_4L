@@ -1324,7 +1324,6 @@ async def validate_target(
         from ..compliance.robots_checker import RobotsChecker
 
         checker = RobotsChecker()
-        domain = parsed.netloc
         robots_allowed, robots_reason, robots_rules = await checker.check_url(test_url, force_refresh=True)
         robots_check = {"allowed": robots_allowed, "crawl_delay": robots_rules.get("crawl_delay") if robots_rules else None}
         if not robots_allowed:
