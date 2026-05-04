@@ -46,7 +46,7 @@ export function BillingProvider({ children, customerId }: BillingProviderProps) 
     customerId,
     subscription: billing.subscription,
     isLoading: billing.isLoading,
-    error: billing.error as Error | null,
+    error: billing.error,
     entitlements: entitlementsQuery.data,
     openCustomerPortal: billing.openCustomerPortal,
     subscribe: billing.subscribe,

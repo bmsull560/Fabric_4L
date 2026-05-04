@@ -589,7 +589,7 @@ function Accounts() {
                 <div className="p-8 text-center">
                   <AlertCircle size={32} className="mx-auto mb-3 text-destructive" />
                   <h3 className="text-[14px] font-semibold mb-1">Failed to load accounts</h3>
-                  <p className="text-[12px] text-muted-foreground">{(error as Error).message}</p>
+                  <p className="text-[12px] text-muted-foreground">{error.message}</p>
                 </div>
               ) : accounts.length === 0 ? (
                 <div className="p-12 text-center">
