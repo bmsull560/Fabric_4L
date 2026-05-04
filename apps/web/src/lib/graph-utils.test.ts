@@ -70,9 +70,13 @@ describe('getNodeRadius', () => {
     expect(getNodeRadius('account')).toBe(DEFAULT_NODE_SIZE);
   });
 
-  it('is case-insensitive', () => {
+  it('is case-insensitive for all configured types', () => {
     expect(getNodeRadius('Capability')).toBe(NODE_SIZES.capability);
+    expect(getNodeRadius('CAPABILITY')).toBe(NODE_SIZES.capability);
     expect(getNodeRadius('USECASE')).toBe(NODE_SIZES.usecase);
+    expect(getNodeRadius('UseCase')).toBe(NODE_SIZES.usecase);
+    expect(getNodeRadius('Persona')).toBe(NODE_SIZES.persona);
+    expect(getNodeRadius('PERSONA')).toBe(NODE_SIZES.persona);
   });
 
   it('returns default radius for undefined', () => {
