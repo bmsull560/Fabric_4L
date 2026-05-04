@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-HOOKS_DIR="frontend/client/src/hooks"
+HOOKS_DIR="apps/web/src/hooks"
 EXIT_CODE=0
 ISSUES=()
 

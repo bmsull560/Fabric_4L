@@ -1,0 +1,50 @@
+tasks:
+  installFrontend:
+    name: Install frontend dependencies
+    description: Install Node.js dependencies for all workspace packages.
+    command: |
+      if [ -f "pnpm-lock.yaml" ]; then
+        pnpm install --frozen-lockfile
+      else
+        pnpm install
+      fi
+    triggeredBy:
+      - postDevcontainerStart
+
+  installPython:
+    name: Install Python dependencies
+    description: Create virtual environments and install dependencies for each service layer.
+    command: |
+      for layer_dir in services/*/; do
+        if [ -f "$layer_dir/pyproject.toml" ]; then
+          layer_name=$(basename "$layer_dir")
+          echo "Installing $layer_name..."
+          cd "$layer_dir"
+          if [ ! -d ".venv" ]; then
+            python3 -m venv .venv
+          fi
+          source .venv/bin/activate
+          if [ -f "requirements-dev.lock" ]; then
+            pip install -r requirements-dev.lock
+          else
+            pip install -e ".[dev]" 2>/dev/null || pip install -e .
+          fi
+          deactivate
+          cd /workspace
+        fi
+      done
+    triggeredBy:
+      - postDevcontainerStart
+
+services:
+  databases:
+    name: Development Databases
+    description: PostgreSQL, Redis, and Neo4j via docker-compose.dev.yml.
+    commands:
+      start: |
+        docker compose -f docker-compose.dev.yml up -d postgres redis neo4j
+      ready: |
+        docker compose -f docker-compose.dev.yml ps --services --filter status=running | grep -q postgres && \
+        docker compose -f docker-compose.dev.yml ps --services --filter status=running | grep -q redis
+      stop: |
+        docker compose -f docker-compose.dev.yml down

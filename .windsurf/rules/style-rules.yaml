@@ -1,3 +1,6 @@
+---
+trigger: always_on
+---
 # Style Rules
 # These are ENFORCED BY LINTERS, not by the policy engine.
 # Agents do not need to reason about these; they run the linter and fix errors iteratively.
@@ -36,6 +39,12 @@ tailwind:
   version: 4
   config_location: "frontend/client/src/index.css"
   note: "Tailwind v4 uses CSS-based config (@theme inline). No tailwind.config.js exists."
+
+# TypeScript strict mode
+typescript:
+  strict_mode: true
+  no_explicit_any: "off"  # Gradual migration - allows any during transition
+  config: "frontend/tsconfig.json"
 
 # Agent instructions
 agent_guidance:

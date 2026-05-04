@@ -352,3 +352,11 @@ See `shared/identity/middleware.py` for implementation details.
 - `shared/identity/context.py` - RequestContext
 - `shared/identity/middleware.py` - Token validation
 - `value-fabric/layer4-agents/src/tenants/models/` - Tenant resolution
+
+## Migration Note (May 2026): Cookie-Based Session Transport
+
+Frontend and OIDC auth flows now use cookie-based session transport rather than reading or writing bearer tokens from browser storage.
+
+- Session token is issued as `vf_session` cookie with `HttpOnly`, `Secure`, and `SameSite=Strict` flags.
+- CSRF uses double-submit token: backend issues `vf_csrf_token` cookie and mutating requests must send matching `X-CSRF-Token` header.
+- Legacy `localStorage` accessors for access tokens are deprecated and removed from the API client request path.

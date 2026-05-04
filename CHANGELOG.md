@@ -23,6 +23,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+### Changed
+- Canonical launch readiness source set to `docs/readiness/current.md`; roadmap launch criteria references now point to canonical readiness.
+
 ## [0.9.0] — 2026-04-12
 
 ### Added

@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +97,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
       - uses: actions/checkout@v4
@@ -140,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
       - name: Install Cosign
@@ -171,16 +171,18 @@ jobs:
       - name: Audit Python dependencies
         run: |
           pip install pip-audit
-          for req in value-fabric/*/requirements.txt; do
-            if [ -f "$req" ]; then
-              echo "Auditing $req"
-              pip-audit -r "$req" --format=json --output="$(basename $(dirname $req))-audit.json" || true
+          for dir in services/*/; do
+            if [ -f "$dir/pyproject.toml" ]; then
+              service_name=$(basename "$dir")
+              echo "Auditing $service_name"
+              # Generate requirements from pyproject.toml using pip freeze approach
+              (cd "$dir" && pip freeze > /tmp/requirements.txt 2>/dev/null && pip-audit -r /tmp/requirements.txt --format=json --output="../${service_name}-audit.json") || true
             fi
           done
 
       - name: Audit Node.js dependencies
         run: |
-          cd frontend
+          cd apps/web
           npm audit --json > ../frontend-audit.json || true
           cd ..
 
@@ -205,7 +207,7 @@ jobs:
       - name: Check Python licenses
         run: |
           pip install pip-licenses
-          for dir in value-fabric/*/; do
+          for dir in services/*/; do
             if [ -f "$dir/requirements.txt" ]; then
               echo "Checking licenses in $dir"
               (cd "$dir" && pip-licenses --format=json --output-file=licenses.json) || true

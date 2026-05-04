@@ -255,9 +255,7 @@ class TestL3GraphNodeContracts:
     def test_graph_node_response_sample_includes_alias_fields(self, monkeypatch) -> None:
         """GraphNode model_dump includes both legacy and alias fields for frontend compatibility."""
         # Import and use the actual Pydantic model to test real serialization
-        layer3_src = str(Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src")
-        monkeypatch.syspath_prepend(layer3_src)
-        from api.models import GraphNode
+        from value_fabric.layer3.api.models import GraphNode
 
         # Create a GraphNode instance (uses legacy fields internally)
         node = GraphNode(
@@ -305,9 +303,7 @@ class TestL3GraphRelationshipContracts:
         """GraphEdge model_dump includes relationship_type alias for frontend compatibility."""
         # Import and use the actual Pydantic model to test real serialization
         from pathlib import Path
-        layer3_src = str(Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src")
-        monkeypatch.syspath_prepend(layer3_src)
-        from api.models import GraphEdge
+        from value_fabric.layer3.api.models import GraphEdge
 
         # Create a GraphEdge instance (uses legacy 'type' field internally)
         edge = GraphEdge(

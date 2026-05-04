@@ -8,6 +8,11 @@ metadata:
     component: layer6
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: layer6-benchmarks
@@ -17,9 +22,21 @@ spec:
         app: layer6-benchmarks
         component: layer6
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
           image: value-fabric/layer6-benchmarks:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8006
               name: http
@@ -55,6 +72,8 @@ spec:
                 secretKeyRef:
                   name: layer6-interlayer
                   key: LAYER5_API_KEY
+            - name: TMPDIR
+              value: "/tmp"
           resources:
             requests:
               memory: "128Mi"
@@ -78,6 +97,20 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

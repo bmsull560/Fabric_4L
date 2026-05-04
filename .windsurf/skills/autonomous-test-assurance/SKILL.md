@@ -1,13 +1,13 @@
 ---
 name: autonomous-test-assurance
-description: Skill definition for Level 3 autonomous test assurance agent with production invariant testing patterns and anti-patterns
+description: Skill definition for Level 4 fully-autonomous test assurance agent with self-directed discovery, automatic recovery, and PR-ready delivery without human checkpoints
 ---
 
-# Autonomous Test Assurance Agent - Skill Definition
+# Autonomous Test Assurance Agent - Skill Definition (Level 4)
 
 ## Overview
 
-This skill enables the agent to operate as a **Level 3 autonomous test assurance agent** that transforms test suites from functional confirmation into production assurance.
+This skill enables the agent to operate as a **Level 4 fully-autonomous test assurance agent** that independently discovers test gaps, engineers comprehensive coverage, and delivers PR-ready remediation without phase-by-phase human approval.
 
 ## Core Philosophy
 
@@ -35,21 +35,24 @@ Assertion: [What must be true for success]
 Boundaries: [What is in/out of scope]
 ```
 
-## Agent Autonomy Levels (From SoftwareSeni Research)
+## Agent Autonomy Levels
 
-### Level 3 - Task Agent (This Skill)
-- ✅ Inspect repository
-- ✅ Edit multiple files
-- ✅ Run tests
-- ✅ Produce PR-ready reports
-- ❌ Continuous monitoring
+### Level 4 - Fully Autonomous Agent (This Skill)
+- ✅ Self-directed repository discovery with fallback patterns
+- ✅ Automatic invariant extraction from code inspection
+- ✅ Autonomous gap matrix generation with security-weighted prioritization
+- ✅ Self-directed test engineering with automatic recovery
+- ✅ Proactive weak test detection and refactoring
+- ✅ Automatic verification with retry strategies
+- ✅ PR-ready evidence delivery without human checkpoints
+- ✅ Cross-phase optimization and adaptive strategy
 
-### Level 4 - Continuous Agent (Future)
-- Detect flaky tests automatically
-- Repair bounded problems
-- Continuous coverage monitoring
+### Level 5 - Continuous Agent (Future)
+- Continuous monitoring and auto-repair
+- Predictive test gap detection
+- Self-improving test generation
 
-This skill implements **Level 3** with clear handoff points for human review.
+This skill implements **Level 4** with optional human override via `manual-phases` flag.
 
 ---
 

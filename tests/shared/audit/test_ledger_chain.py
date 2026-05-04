@@ -13,9 +13,9 @@ from __future__ import annotations
 import pytest
 from uuid import uuid4
 
-from shared.audit.emitter import AuditEmitter, emit_audit_event, _create_audit_event
-from shared.audit.ledger import LedgerCommitHandler
-from shared.audit.models import AuditAction, AuditEvent, AuditOutcome
+from value_fabric.shared.audit.emitter import AuditEmitter, emit_audit_event, _create_audit_event
+from value_fabric.shared.audit.ledger import LedgerCommitHandler
+from value_fabric.shared.audit.models import AuditAction, AuditEvent, AuditOutcome
 
 
 def _make_event(

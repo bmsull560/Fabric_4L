@@ -1,0 +1,282 @@
+/**
+ * Contract tests: Benchmarks / Policies (L6)
+ *
+ * Validates request/response shapes against contracts/openapi/layer6-benchmarks.json
+ * and the BenchmarkPolicy schema in layer3-knowledge.json.
+ * Covers: GET /v1/benchmarks/datasets, POST /v1/benchmarks/compare,
+ * POST /v1/benchmarks/validate, GET /v1/benchmarks/industries,
+ * and the BenchmarkPolicy CRUD shapes.
+ *
+ * Note: The L6 OpenAPI spec was discovered from router source and does not
+ * include inline response schemas. These tests document the frontend-expected
+ * contract shapes and will catch drift when the spec is enriched.
+ */
+
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
+import { ApiErrorSchema, assertSchema, assertSchemaRejects } from './_helpers';
+
+// ── Response schemas (frontend-expected shapes) ───────────────────────────────
+
+const BenchmarkDatasetSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  industry: z.string().min(1),
+  metric_count: z.number().int().nonnegative(),
+  last_updated: z.string(),
+  source: z.string().optional(),
+});
+
+const BenchmarkCompareResponseSchema = z.object({
+  prospect_id: z.string().min(1),
+  metrics: z.array(
+    z.object({
+      metric_name: z.string().min(1),
+      prospect_value: z.number(),
+      benchmark_value: z.number(),
+      percentile: z.number().min(0).max(100),
+      delta_percent: z.number(),
+    })
+  ),
+  overall_percentile: z.number().min(0).max(100),
+  dataset_id: z.string().min(1),
+});
+
+const BenchmarkValidateResponseSchema = z.object({
+  is_valid: z.boolean(),
+  errors: z.array(z.string()),
+  warnings: z.array(z.string()),
+  validated_metrics: z.number().int().nonnegative(),
+});
+
+const BenchmarkPolicySchema = z.object({
+  id: z.string().min(1),
+  policy_type: z.enum(['threshold', 'cadence', 'fallback', 'override']),
+  name: z.string().min(1),
+  description: z.string(),
+  value: z.string(),
+  is_enabled: z.boolean(),
+});
+
+const BenchmarkPolicyUpdateSchema = z.object({
+  name: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  value: z.string().nullable().optional(),
+  is_enabled: z.boolean().nullable().optional(),
+});
+
+// ── GET /v1/benchmarks/datasets ───────────────────────────────────────────────
+
+describe('Contract: GET /v1/benchmarks/datasets', () => {
+  it('dataset has id, name, industry, and metric_count', () => {
+    const dataset = assertSchema(
+      BenchmarkDatasetSchema,
+      {
+        id: 'ds-saas-2024',
+        name: 'SaaS Industry Benchmarks 2024',
+        industry: 'Technology',
+        metric_count: 48,
+        last_updated: '2024-01-01T00:00:00Z',
+        source: 'Gartner',
+      },
+      'BenchmarkDataset'
+    );
+    expect(dataset.metric_count).toBeGreaterThanOrEqual(0);
+  });
+
+  it('source is optional', () => {
+    assertSchema(
+      BenchmarkDatasetSchema,
+      {
+        id: 'ds-001',
+        name: 'Manufacturing Benchmarks',
+        industry: 'Manufacturing',
+        metric_count: 32,
+        last_updated: '2024-01-01T00:00:00Z',
+      },
+      'BenchmarkDataset (no source)'
+    );
+  });
+
+  it('rejects negative metric_count', () => {
+    assertSchemaRejects(
+      BenchmarkDatasetSchema,
+      {
+        id: 'ds-001',
+        name: 'Test',
+        industry: 'Tech',
+        metric_count: -1,
+        last_updated: '2024-01-01T00:00:00Z',
+      },
+      'BenchmarkDataset with negative metric_count'
+    );
+  });
+});
+
+// ── POST /v1/benchmarks/compare ───────────────────────────────────────────────
+
+describe('Contract: POST /v1/benchmarks/compare', () => {
+  it('compare response has per-metric percentiles and overall_percentile', () => {
+    const resp = assertSchema(
+      BenchmarkCompareResponseSchema,
+      {
+        prospect_id: 'prospect-abc',
+        metrics: [
+          {
+            metric_name: 'revenue_per_employee',
+            prospect_value: 180000,
+            benchmark_value: 220000,
+            percentile: 35,
+            delta_percent: -18.2,
+          },
+          {
+            metric_name: 'gross_margin',
+            prospect_value: 0.72,
+            benchmark_value: 0.68,
+            percentile: 65,
+            delta_percent: 5.9,
+          },
+        ],
+        overall_percentile: 48,
+        dataset_id: 'ds-saas-2024',
+      },
+      'BenchmarkCompareResponse'
+    );
+    expect(resp.overall_percentile).toBeGreaterThanOrEqual(0);
+    expect(resp.overall_percentile).toBeLessThanOrEqual(100);
+    for (const m of resp.metrics) {
+      expect(m.percentile).toBeGreaterThanOrEqual(0);
+      expect(m.percentile).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it('rejects overall_percentile > 100', () => {
+    assertSchemaRejects(
+      BenchmarkCompareResponseSchema,
+      {
+        prospect_id: 'p',
+        metrics: [],
+        overall_percentile: 101,
+        dataset_id: 'ds-001',
+      },
+      'BenchmarkCompareResponse with percentile > 100'
+    );
+  });
+});
+
+// ── POST /v1/benchmarks/validate ──────────────────────────────────────────────
+
+describe('Contract: POST /v1/benchmarks/validate', () => {
+  it('valid data returns is_valid=true with no errors', () => {
+    const resp = assertSchema(
+      BenchmarkValidateResponseSchema,
+      { is_valid: true, errors: [], warnings: [], validated_metrics: 12 },
+      'BenchmarkValidateResponse (valid)'
+    );
+    expect(resp.is_valid).toBe(true);
+    expect(resp.errors).toHaveLength(0);
+  });
+
+  it('invalid data returns is_valid=false with errors', () => {
+    const resp = assertSchema(
+      BenchmarkValidateResponseSchema,
+      {
+        is_valid: false,
+        errors: ['revenue_per_employee: value must be positive', 'gross_margin: must be in [0,1]'],
+        warnings: ['churn_rate: unusually high value'],
+        validated_metrics: 10,
+      },
+      'BenchmarkValidateResponse (invalid)'
+    );
+    expect(resp.is_valid).toBe(false);
+    expect(resp.errors.length).toBeGreaterThan(0);
+  });
+});
+
+// ── GET /v1/benchmarks/industries ────────────────────────────────────────────
+
+describe('Contract: GET /v1/benchmarks/industries', () => {
+  it('industries response is an array of strings', () => {
+    const IndustriesResponseSchema = z.array(z.string().min(1));
+    const resp = assertSchema(
+      IndustriesResponseSchema,
+      ['Technology', 'Manufacturing', 'Healthcare', 'Financial Services'],
+      'IndustriesResponse'
+    );
+    expect(resp.length).toBeGreaterThan(0);
+    for (const industry of resp) {
+      expect(typeof industry).toBe('string');
+    }
+  });
+});
+
+// ── BenchmarkPolicy CRUD ──────────────────────────────────────────────────────
+
+describe('Contract: BenchmarkPolicy shapes', () => {
+  it('policy has required fields and valid policy_type', () => {
+    const policy = assertSchema(
+      BenchmarkPolicySchema,
+      {
+        id: 'policy-001',
+        policy_type: 'threshold',
+        name: 'Minimum confidence threshold',
+        description: 'Reject benchmarks below this confidence level',
+        value: '0.7',
+        is_enabled: true,
+      },
+      'BenchmarkPolicy'
+    );
+    expect(['threshold', 'cadence', 'fallback', 'override']).toContain(policy.policy_type);
+  });
+
+  it('all valid policy_type values are accepted', () => {
+    for (const policy_type of ['threshold', 'cadence', 'fallback', 'override'] as const) {
+      assertSchema(
+        BenchmarkPolicySchema,
+        { id: 'p1', policy_type, name: 'Test', description: 'Desc', value: '1', is_enabled: true },
+        `BenchmarkPolicy (${policy_type})`
+      );
+    }
+  });
+
+  it('rejects unknown policy_type', () => {
+    assertSchemaRejects(
+      BenchmarkPolicySchema,
+      { id: 'p1', policy_type: 'custom', name: 'Test', description: 'Desc', value: '1', is_enabled: true },
+      'BenchmarkPolicy with unknown type'
+    );
+  });
+
+  it('update accepts partial fields', () => {
+    assertSchema(
+      BenchmarkPolicyUpdateSchema,
+      { is_enabled: false },
+      'BenchmarkPolicyUpdate (disable only)'
+    );
+  });
+
+  it('update accepts empty patch', () => {
+    assertSchema(BenchmarkPolicyUpdateSchema, {}, 'BenchmarkPolicyUpdate (empty)');
+  });
+});
+
+// ── Auth failures ─────────────────────────────────────────────────────────────
+
+describe('Contract: benchmarks auth failures', () => {
+  it('401 matches ApiError shape', () => {
+    assertSchema(
+      ApiErrorSchema,
+      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      'ApiError (401)'
+    );
+  });
+
+  it('dataset not found 404 matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Benchmark dataset not found', code: 'NOT_FOUND' },
+      'ApiError (404)'
+    );
+    expect(err.code).toBe('NOT_FOUND');
+  });
+});

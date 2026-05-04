@@ -20,7 +20,7 @@ class RouteEntry:
     required_tier: Optional[str] = None
 
 # Read App.tsx content
-app_tsx_path = Path("frontend/client/src/App.tsx")
+app_tsx_path = Path("apps/web/client/src/App.tsx")
 content = app_tsx_path.read_text(encoding='utf-8')
 
 routes = []

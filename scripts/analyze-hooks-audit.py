@@ -139,7 +139,7 @@ def analyze_hook_file(hook_file: Path) -> Optional[HookAnalysis]:
 def main() -> None:
     """Main entry point for hook analysis."""
     # Read all hook files
-    hooks_dir = Path("frontend/client/src/hooks")
+    hooks_dir = Path("apps/web/client/src/hooks")
     hook_files = load_hook_files(hooks_dir)
     
     if not hook_files:

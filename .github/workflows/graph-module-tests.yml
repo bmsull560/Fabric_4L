@@ -13,15 +13,15 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'frontend/client/src/hooks/useGraphQuery.ts'
-      - 'frontend/client/src/hooks/useGraphQuery.*.test.ts'
+      - 'apps/web/src/hooks/useGraphQuery.ts'
+      - 'apps/web/src/hooks/useGraphQuery.*.test.ts'
       - 'value-fabric/layer3-knowledge/src/api/**'
       - 'tests/contract/**'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'frontend/client/src/hooks/useGraphQuery.ts'
-      - 'frontend/client/src/hooks/useGraphQuery.*.test.ts'
+      - 'apps/web/src/hooks/useGraphQuery.ts'
+      - 'apps/web/src/hooks/useGraphQuery.*.test.ts'
       - 'value-fabric/layer3-knowledge/src/api/**'
       - 'tests/contract/**'
 
@@ -71,7 +71,7 @@ jobs:
         if: always()
         with:
           name: unit-test-coverage
-          path: frontend/coverage/
+          path: apps/web/coverage/
 
   # ============================================================================
   # L2: INTEGRATION TESTS (20% of test count)
@@ -284,3 +284,4 @@ jobs:
           echo "- Branch Coverage: ≥80%" >> $GITHUB_STEP_SUMMARY
           echo "- Performance SLOs: All met" >> $GITHUB_STEP_SUMMARY
           echo "- Contract Validation: Passing" >> $GITHUB_STEP_SUMMARY
+

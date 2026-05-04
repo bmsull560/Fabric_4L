@@ -5,6 +5,30 @@ Validates that:
 - API routes in implementation are documented in OpenAPI
 - Frontend environment config matches backend route structure
 
+Implementation Notes:
+--------------------
+This test file uses Python's AST (Abstract Syntax Tree) module to parse and
+validate backend source code without importing it. This approach provides:
+- Fast test execution (no runtime imports needed)
+- Detection of API surface changes at the source level
+- Independence from runtime dependencies
+
+Brittleness Considerations (P2 Improvement):
+-------------------------------------------
+1. AST structure changes: If backend code refactors to use different FastAPI
+   patterns (e.g., class-based views, dynamic route registration), the
+   _extract_routes_from_ast() function may need updates.
+2. Decorator patterns: The detection of HTTP methods relies on specific
+   decorator patterns (@router.get, @app.post, etc.). Alternative patterns
+   (e.g., middleware-based routing) won't be detected.
+3. Path extraction: Route paths are extracted from string literals. Dynamic
+   path construction or f-strings won't be captured.
+
+Maintenance: If AST parsing fails after backend refactoring:
+- Check HTTP_DECORATORS pattern matching
+- Verify _extract_routes_from_ast() handles new syntax patterns
+- Consider switching to runtime introspection if AST becomes too brittle
+
 NOTE: If tests fail due to missing schemas, regenerate OpenAPI contracts:
     python scripts/export_openapi.py
 """

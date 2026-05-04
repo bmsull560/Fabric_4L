@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-PAGES_DIR="frontend/client/src/pages"
+PAGES_DIR="apps/web/src/pages"
 EXIT_CODE=0
 FINDINGS=()
 

@@ -1,0 +1,39 @@
+Given the text and the list of extracted entities, identify relationships between them.
+
+Text:
+{text}
+
+Entities:
+{entities_json}
+
+Relationship Types (raw_predicate → canonical_predicate mapping):
+- enables: Capability → UseCase (capability makes use case possible)
+  - enablement_type: REQUIRED / ENHANCES / OPTIONAL (extract when clear)
+  - contribution_weight: 0.0-1.0 (extract when quantified)
+- requires: UseCase → Capability (use case needs capability) → normalize to ENABLES (inverse)
+- benefits: UseCase → Persona (use case helps persona)
+  - benefit_type: TIME_SAVINGS / ERROR_REDUCTION / VISIBILITY / EFFICIENCY (extract when clear)
+  - impact_level: TRANSFORMATIONAL / SIGNIFICANT / MODERATE / MINOR (extract when clear)
+- drives: Persona → ValueDriver (persona cares about value)
+  - driver_type: PRIMARY / SECONDARY / TERTIARY (extract when clear)
+  - influence_weight: 0.0-1.0 (extract when quantified)
+- contributes_to: Capability → ValueDriver (capability creates value)
+- depends_on: Capability → Capability (capability needs another)
+- alternative_to: Capability → Capability (alternative solution)
+- capability_subtype_of: Capability → Capability (specialization hierarchy)
+- capability_requires_capability: Capability → Capability (dependency chain)
+- semantically_equivalent: Entity → Entity (same concept, different names)
+- implements: Feature → Capability (feature delivers capability)
+- delivers: UseCase → ValueDriver (use case produces value outcome)
+- involves: UseCase → Persona (use case includes persona participation)
+
+Instructions:
+- ONLY create relationships if EXPLICIT evidence exists in the text
+- raw_predicate: Extract the original word/phrase from text (e.g., "requires", "depends on", "supports")
+- canonical_predicate: Map to normalized ontology relationship type from list above
+- Include direct quote as evidence_text
+- Extract relationship properties (enablement_type, benefit_type, driver_type, weights) when evidence exists
+- Be conservative: low confidence if evidence is indirect
+- Only use source_id and target_id values from the provided Entities list
+- Use calibrated confidence values and avoid inflated scores
+- Return empty array if no clear relationships exist

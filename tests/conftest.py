@@ -120,12 +120,12 @@ JWT_ROLES_CLAIM = os.getenv("JWT_ROLES_CLAIM", "roles")
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _PATHS_TO_ADD = [
     str(_PROJECT_ROOT),
-    # NOTE: Do NOT add value-fabric/shared/ here — it shadows stdlib `secrets`.
-    # The shared package is importable as `shared.identity`, `shared.security`, etc.
-    # via the project root path above.
-    str(_PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src"),
-    str(_PROJECT_ROOT / "value-fabric" / "layer3-knowledge" / "src"),
-    str(_PROJECT_ROOT / "value-fabric" / "layer1-ingestion" / "src"),
+    # NOTE: Do NOT add packages/shared/src here — it shadows stdlib `secrets`.
+    # The shared package is importable as `value_fabric.shared.identity`, etc.
+    # via the namespace package setup.
+    str(_PROJECT_ROOT / "services" / "layer4-agents" / "src"),
+    str(_PROJECT_ROOT / "services" / "layer3-knowledge" / "src"),
+    str(_PROJECT_ROOT / "services" / "layer1-ingestion" / "src"),
     str(_PROJECT_ROOT / "packages" / "platform-contract" / "src" / "python"),
 ]
 for p in _PATHS_TO_ADD:
@@ -267,8 +267,8 @@ def jwt_token_malformed_tenant() -> str:
 @pytest.fixture
 def context_a():
     """RequestContext for Tenant A — use with RequestContextManager."""
-    from identity.context import RequestContext
-    from identity.permissions import Permission, Role, get_role_permissions
+    from value_fabric.shared.identity.context import RequestContext
+    from value_fabric.shared.identity.permissions import Permission, Role, get_role_permissions
 
     return RequestContext(
         tenant_id=TENANT_A_ID,
@@ -282,8 +282,8 @@ def context_a():
 @pytest.fixture
 def context_b():
     """RequestContext for Tenant B — use with RequestContextManager."""
-    from identity.context import RequestContext
-    from identity.permissions import Permission, Role, get_role_permissions
+    from value_fabric.shared.identity.context import RequestContext
+    from value_fabric.shared.identity.permissions import Permission, Role, get_role_permissions
 
     return RequestContext(
         tenant_id=TENANT_B_ID,
@@ -297,8 +297,8 @@ def context_b():
 @pytest.fixture
 def context_admin():
     """RequestContext for super_admin."""
-    from identity.context import RequestContext
-    from identity.permissions import Permission, Role, get_role_permissions
+    from value_fabric.shared.identity.context import RequestContext
+    from value_fabric.shared.identity.permissions import Permission, Role, get_role_permissions
 
     return RequestContext(
         tenant_id=TENANT_A_ID,
@@ -487,14 +487,14 @@ def project_root() -> Path:
 @pytest.fixture(scope="session")
 def all_route_files(project_root) -> list[Path]:
     """All Python route files across all layers."""
-    return sorted(project_root.glob("value-fabric/**/api/routes/*.py"))
+    return sorted(project_root.glob("services/**/api/routes/*.py"))
 
 
 @pytest.fixture(scope="session")
 def l4_route_files(project_root) -> list[Path]:
     """L4 route files only (highest risk for tenant bypass)."""
     return sorted(
-        (project_root / "value-fabric" / "layer4-agents" / "src" / "api" / "routes").glob("*.py")
+        (project_root / "services" / "layer4-agents" / "src" / "api" / "routes").glob("*.py")
     )
 
 

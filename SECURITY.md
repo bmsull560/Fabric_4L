@@ -41,7 +41,9 @@ Please include:
   `local`, `test`, `testing`, or `ci`). In non-dev environments, startup hard-fails if
   `JWT_SECRET` is unset/empty or left as `changeme-in-production`.
 - **API keys use HMAC-SHA256** (not bcrypt) for throughput; bcrypt is reserved for user passwords.
-- **JWT tokens** are short-lived and signed with `JWT_SECRET`.
+- **JWT tokens** are short-lived and support `HS256`, `RS256`, or `ES256` with `kid` headers.
+- **Key rotation** supports active + previous key verification (`JWT_ACTIVE_KID`, `JWT_PREVIOUS_KID`) during rollout windows.
+- **Asymmetric mode** uses `JWT_PRIVATE_KEY_PEM` for signing and `JWT_PUBLIC_KEY_PEM`/`JWT_PREVIOUS_PUBLIC_KEY_PEM` for verification and JWKS discovery.
 - **Audit logs** are append-only and protected by a database trigger that prevents UPDATE/DELETE.
 - **RBAC** is enforced via `GovernanceMiddleware` in `value-fabric/shared/identity/`.
 - **CI uses short-lived OIDC credentials** — no long-lived secrets stored in GitHub Actions.

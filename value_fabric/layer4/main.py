@@ -1,0 +1,11 @@
+"""Layer 4 FastAPI application compatibility export.
+
+The canonical Layer 4 application lives in :mod:`value_fabric.layer4.api.main`.
+This module exists so repository-level contract tests and legacy deployment
+entrypoints can import ``value_fabric.layer4.main`` without duplicating route,
+authentication, tenant-isolation, or orchestration logic.
+"""
+
+from .api.main import app
+
+__all__ = ["app"]

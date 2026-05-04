@@ -16,16 +16,17 @@ def get_repo_root() -> Path:
 
 def get_source_files(repo_root: Path) -> list[Path]:
     """Get all source files that should be checked."""
+    import os
     source_extensions = {".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".yml", ".yaml", ".md", ".rego"}
-    exclude_dirs = {".git", "__pycache__", ".pytest_cache", "node_modules", ".venv", "venv", "dist", "build", ".windsurf"}
+    exclude_dirs = {".git", "__pycache__", ".pytest_cache", "node_modules", ".venv", "venv", "dist", "build", ".windsurf", ".mypy_cache", ".ruff_cache", ".vite", "artifacts", "audit-output"}
     
     files = []
-    for ext in source_extensions:
-        for path in repo_root.rglob(f"*{ext}"):
-            # Skip files in excluded directories
-            if any(excluded in path.parts for excluded in exclude_dirs):
-                continue
-            files.append(path)
+    for root, dirs, filenames in os.walk(repo_root):
+        # Prune excluded directories in-place so os.walk doesn't traverse them
+        dirs[:] = [d for d in dirs if d not in exclude_dirs]
+        for filename in filenames:
+            if any(filename.endswith(ext) for ext in source_extensions):
+                files.append(Path(root) / filename)
     return files
 
 

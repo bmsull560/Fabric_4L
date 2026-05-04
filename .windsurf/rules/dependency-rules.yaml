@@ -1,3 +1,6 @@
+---
+trigger: always_on
+---
 # Dependency Rules
 # Enforced by the monorepo graph and module boundaries.
 # These prevent architectural erosion and circular dependencies.

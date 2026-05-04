@@ -185,30 +185,74 @@ def redis_client() -> Generator:
             client.close()
 
 
+class _CallableString(str):
+    """String proxy that also supports legacy ``response.text()`` calls."""
+
+    def __call__(self) -> str:
+        return str(self)
+
+
+class _AwaitableResponse:
+    """Proxy an HTTP response for both sync and legacy async security tests."""
+
+    def __init__(self, response):
+        self._response = response
+
+    def __await__(self):
+        async def _return_self():
+            return self
+
+        return _return_self().__await__()
+
+    def __getattr__(self, name: str):
+        if name == "text":
+            return _CallableString(self._response.text)
+        return getattr(self._response, name)
+
+
+class _HybridTestClient:
+    """Expose TestClient methods that work with or without ``await``."""
+
+    def __init__(self, client):
+        self._client = client
+
+    def __getattr__(self, name: str):
+        return getattr(self._client, name)
+
+    def _wrap(self, response):
+        return _AwaitableResponse(response)
+
+    def get(self, *args, **kwargs):
+        return self._wrap(self._client.get(*args, **kwargs))
+
+    def post(self, *args, **kwargs):
+        return self._wrap(self._client.post(*args, **kwargs))
+
+    def put(self, *args, **kwargs):
+        return self._wrap(self._client.put(*args, **kwargs))
+
+    def patch(self, *args, **kwargs):
+        return self._wrap(self._client.patch(*args, **kwargs))
+
+    def delete(self, *args, **kwargs):
+        return self._wrap(self._client.delete(*args, **kwargs))
+
+    def options(self, *args, **kwargs):
+        return self._wrap(self._client.options(*args, **kwargs))
+
+
 @pytest.fixture
 def client():
-    """TestClient fixture - L1 ingestion API client for security tests."""
+    """Hybrid L1 ingestion API client for sync and async security tests."""
     TestClient = _get_testclient()
     if TestClient is None:
         pytest.skip("fastapi not installed")
     
-    import sys
-    from pathlib import Path
-
-    # Add L1 src to path for direct imports (matches pattern in test_model_registry_integration.py)
-    l1_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer1-ingestion" / "src")
-    if l1_src not in sys.path:
-        sys.path.insert(0, l1_src)
-
     try:
-        from api.main import app
-        return TestClient(app)
+        from value_fabric.layer1.api.main import app
+        return _HybridTestClient(TestClient(app))
     except ImportError:
         pytest.skip("FastAPI app not available for testing")
-    finally:
-        # Cleanup: remove path modification to prevent isolation leakage
-        if l1_src in sys.path:
-            sys.path.remove(l1_src)
 
 
 @pytest.fixture
@@ -242,27 +286,33 @@ def malformed_token() -> str:
 
 
 @pytest.fixture
+def auth_headers(auth_headers_a):
+    """Legacy alias for Tenant A JWT auth headers used by older security suites."""
+    return dict(auth_headers_a)
+
+
+@pytest.fixture
+def user_headers(auth_headers_a):
+    """Legacy alias for standard-user JWT auth headers used by older security suites."""
+    return dict(auth_headers_a)
+
+
+@pytest.fixture
+def admin_headers(auth_headers_admin):
+    """Legacy alias for admin JWT auth headers used by older security suites."""
+    return dict(auth_headers_admin)
+
+
+@pytest.fixture
 def websocket_client():
     """TestClient fixture for L4 WebSocket testing."""
     TestClient = _get_testclient()
     if TestClient is None:
         pytest.skip("fastapi not installed")
     
-    import sys
-    from pathlib import Path
-
-    # Add L4 src to path for direct imports
-    l4_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer4-agents" / "src")
-    if l4_src not in sys.path:
-        sys.path.insert(0, l4_src)
-
     try:
         # Try to import L4 app - may not be available without dependencies
-        from api.main import app
+        from value_fabric.layer4.api.main import app
         return TestClient(app)
     except ImportError:
         pytest.skip("Layer 4 FastAPI app not available for WebSocket testing")
-    finally:
-        # Cleanup: remove path modification to prevent isolation leakage
-        if l4_src in sys.path:
-            sys.path.remove(l4_src)

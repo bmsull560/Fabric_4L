@@ -17,21 +17,21 @@ try:
 except ImportError:
     Request = None
 
-from shared.audit import (
+from value_fabric.shared.audit import (
     AuditAction,
     AuditOutcome,
     TenantResolvedDetails,
     TenantContextSetDetails,
     emit_audit_event,
 )
-from shared.identity.context import (
+from value_fabric.shared.identity.context import (
     RequestContext,
     ISOLATION_TIER_SHARED,
     ISOLATION_TIER_SCHEMA,
     AUTH_SOURCE_JWT,
     AUTH_SOURCE_API_KEY,
 )
-from shared.identity.middleware import GovernanceMiddleware
+from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
 
 class TestTenantResolvedDetails:

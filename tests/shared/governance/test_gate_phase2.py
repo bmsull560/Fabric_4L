@@ -14,21 +14,21 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import jsonschema
 import pytest
 
-from shared.governance.abom import (
+from value_fabric.shared.governance.abom import (
     ABOMInvariants,
     AgentBillOfMaterials,
     clear_abom_cache,
     load_abom,
 )
-from shared.governance.invariants import InvariantEvaluator
-from shared.governance.policy_engine import PolicyDecision, PolicyEngineClient
-from shared.governance.tool_gateway import (
+from value_fabric.shared.governance.invariants import InvariantEvaluator
+from value_fabric.shared.governance.policy_engine import PolicyDecision, PolicyEngineClient
+from value_fabric.shared.governance.tool_gateway import (
     InvariantViolation,
     ToolGateway,
     ToolGatewayDenied,
@@ -265,6 +265,98 @@ class TestToolGateway:
         gw.reset_for_new_run()
         assert len(gw.invocation_log) == 0
         assert gw.invariant_evaluator.tool_call_count == 0
+
+    @pytest.mark.asyncio
+    async def test_policy_decision_audit_emitted_for_allowed_invocation(self) -> None:
+        """Runtime policy decisions are audit evidence, separate from tool invocation."""
+        registry = _make_mock_registry()
+        abom = _make_abom()
+        gw = ToolGateway(registry=registry, abom=abom, tenant_id=str(uuid4()), trace_id="trace-allow")
+
+        with patch(
+            "value_fabric.shared.governance.tool_gateway.emit_audit_event",
+            new_callable=AsyncMock,
+        ) as emit:
+            await gw.execute("tool_a", {"x": 1})
+
+        policy_calls = [
+            call for call in emit.await_args_list
+            if call.kwargs["action"].value == "policy_decision"
+        ]
+        tool_calls = [
+            call for call in emit.await_args_list
+            if call.kwargs["action"].value == "tool_invocation"
+        ]
+        assert len(policy_calls) == 1
+        assert len(tool_calls) == 1
+        assert policy_calls[0].kwargs["details"]["decision"] is True
+        assert policy_calls[0].kwargs["details"]["policy_bundle_hash"] == abom.manifest_hash()
+        assert policy_calls[0].kwargs["request_id"] == "trace-allow"
+        assert policy_calls[0].kwargs["chain_id"].endswith(":policy:tool_a")
+
+    @pytest.mark.asyncio
+    async def test_policy_decision_audit_emitted_for_policy_denial(self) -> None:
+        registry = _make_mock_registry()
+        abom = _make_abom()
+        policy_client = MagicMock()
+        policy_client.evaluate = AsyncMock(return_value=PolicyDecision(
+            allowed=False,
+            reason="OPA denied",
+            obligations=["manual_review"],
+            policy_bundle_hash="c" * 64,
+        ))
+        gw = ToolGateway(registry=registry, abom=abom, policy_client=policy_client)
+
+        with patch(
+            "value_fabric.shared.governance.tool_gateway.emit_audit_event",
+            new_callable=AsyncMock,
+        ) as emit:
+            with pytest.raises(ToolGatewayDenied, match="OPA denied"):
+                await gw.execute("tool_a", {})
+
+        policy_calls = [
+            call for call in emit.await_args_list
+            if call.kwargs["action"].value == "policy_decision"
+        ]
+        assert len(policy_calls) == 1
+        assert policy_calls[0].kwargs["outcome"].value == "denied"
+        assert policy_calls[0].kwargs["details"] == {
+            "decision": False,
+            "reason": "OPA denied",
+            "obligations": ["manual_review"],
+            "policy_bundle_hash": "c" * 64,
+        }
+        registry.execute.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_policy_decision_audit_emitted_for_invariant_denial(self) -> None:
+        registry = _make_mock_registry()
+        abom = _make_abom()
+        gw = ToolGateway(registry=registry, abom=abom)
+        for _ in range(5):
+            await gw.execute("tool_a", {})
+
+        with patch(
+            "value_fabric.shared.governance.tool_gateway.emit_audit_event",
+            new_callable=AsyncMock,
+        ) as emit:
+            with pytest.raises(InvariantViolation, match="limit exceeded"):
+                await gw.execute("tool_a", {})
+
+        policy_calls = [
+            call for call in emit.await_args_list
+            if call.kwargs["action"].value == "policy_decision"
+        ]
+        tool_calls = [
+            call for call in emit.await_args_list
+            if call.kwargs["action"].value == "tool_invocation"
+        ]
+        assert len(policy_calls) == 2
+        assert policy_calls[-1].kwargs["details"]["decision"] is False
+        assert "invariant_blocked" in policy_calls[-1].kwargs["details"]["obligations"]
+        assert policy_calls[-1].kwargs["details"]["policy_bundle_hash"]
+        assert tool_calls[-1].kwargs["details"]["policy_decision"] == "invariant_blocked"
+        assert tool_calls[-1].kwargs["details"]["invariant_checks"]
 
     @pytest.mark.asyncio
     async def test_high_privilege_denied_when_opa_down(self) -> None:

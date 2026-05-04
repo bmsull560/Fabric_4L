@@ -29,9 +29,13 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: valuefabric
       POSTGRES_MULTIPLE_DATABASES: ingestion,ground_truth,layer4_agents
+      # pgAudit configuration (P0-5: Database Audit Logging)
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - dev-postgres-data:/var/lib/postgresql/data
       - ./value-fabric/scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - ./k8s/base/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     ports:
       - "5432:5432"
     networks:
@@ -41,6 +45,34 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+
+  # PgBouncer connection pool (P1-1: Connection Pooling)
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    container_name: vf-dev-pgbouncer
+    environment:
+      - DATABASES_HOST=postgres
+      - DATABASES_PORT=5432
+      - DATABASES_USER=postgres
+      - DATABASES_PASSWORD=postgres
+    volumes:
+      - ./k8s/base/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    ports:
+      - "6432:6432"
+    networks:
+      - dev-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "true"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   redis:
     image: redis:7-alpine
@@ -72,7 +104,7 @@ services:
     networks:
       - dev-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7474"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474/browser || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -83,8 +115,8 @@ services:
   # ---------------------------------------------------------------------------
   layer4:
     build:
-      context: ./value-fabric
-      dockerfile: ./layer4-agents/Dockerfile
+      context: ./services/layer4-agents
+      dockerfile: ./Dockerfile
     container_name: vf-dev-layer4
     ports:
       - "8004:8000"
@@ -129,8 +161,8 @@ services:
       - dev-network
     volumes:
       # Mount source for hot-reload (optional — remove for production-like testing)
-      - ./shared:/app/shared:ro
-      - ./value-fabric/layer4-agents/src:/app/src:ro
+      - ./packages/shared/src/value_fabric:/app/value_fabric
+      - ./services/layer4-agents/src:/app/src:ro
     command: >
       uvicorn src.api.main:app
       --host 0.0.0.0
@@ -151,7 +183,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: ./frontend/Dockerfile.dev
+      dockerfile: ./apps/web/Dockerfile.dev
     container_name: vf-dev-frontend
     ports:
       - "3001:3001"
@@ -163,7 +195,7 @@ services:
       - VITE_ENABLE_QUERY_DEVTOOLS=true
       - VITE_API_LOG_LEVEL=debug
     volumes:
-      - ./frontend:/app
+      - ./apps/web:/app
       - /app/node_modules
     networks:
       - dev-network

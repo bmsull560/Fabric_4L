@@ -9,12 +9,20 @@ Tests the /v1/entities endpoints with comprehensive coverage of:
 Note: These tests require Neo4j. When Neo4j is unavailable, they are skipped.
 """
 
+import importlib.util
+import os
+
 import pytest
 
-# Skip all tests if Neo4j is not available
+# neo4j driver is a production dep (layer3-knowledge). Tests are infra-gated:
+# skip locally when the driver is absent, fail in CI where it must be present.
+_neo4j_missing = importlib.util.find_spec("neo4j") is None
+if _neo4j_missing and os.getenv("CI") == "true":
+    pytest.fail("neo4j driver not installed in CI — add neo4j to layer3-knowledge[dev]")
+
 pytestmark = pytest.mark.skipif(
-    not pytest.importorskip("neo4j", reason="Neo4j driver not installed"),
-    reason="Neo4j not available"
+    _neo4j_missing,
+    reason="neo4j driver not installed — optional infra dep (layer3-knowledge[dev])",
 )
 
 

@@ -16,7 +16,7 @@ ValuePack Framework v1.0 - Evaluation Suite
 
 import pytest
 from typing import List, Dict, Any
-from value_fabric.layer3_knowledge.src.models.valuepack import (
+from value_fabric.layer3.models.valuepack import (
     DEFAULT_VALUEPACKS,
     ValuePackCreate,
     ValuePackTier,

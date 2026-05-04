@@ -23,6 +23,7 @@ pytestmark = [
     pytest.mark.skipif(not TESTCLIENT_AVAILABLE, reason="FastAPI TestClient not available"),
     pytest.mark.security,
     pytest.mark.tenant_mismatch,
+    pytest.mark.tenant_boundary,
 ]
 
 

@@ -8,6 +8,11 @@ metadata:
     component: layer2
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: layer2-extraction
@@ -17,16 +22,52 @@ spec:
         app: layer2-extraction
         component: layer2
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-neo4j
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z neo4j-db 7687; do echo waiting for neo4j; sleep 2; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
         - name: wait-redis
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 2; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
       containers:
         - name: api
           image: value-fabric/layer2-extraction:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8000
               name: http
@@ -56,6 +97,8 @@ spec:
               value: "/app/rdf-output"
             - name: LOG_LEVEL
               value: "info"
+            - name: TMPDIR
+              value: "/tmp"
           resources:
             requests:
               memory: "256Mi"
@@ -79,11 +122,23 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
           volumeMounts:
             - name: rdf-output
               mountPath: /app/rdf-output
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: rdf-output
+          emptyDir: {}
+        - name: tmp
           emptyDir: {}
 ---
 apiVersion: v1

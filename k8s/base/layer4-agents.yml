@@ -8,6 +8,11 @@ metadata:
     component: layer4
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: layer4-agents
@@ -39,10 +44,15 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+        # SECURITY: Mount JWT RSA keys for RS256 token signing
+        - name: jwt-keys
+          secret:
+            secretName: jwt-keys
+            defaultMode: 0400  # Read-only
       containers:
-        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
+        # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: value-fabric/layer4-agents:latest
+          image: value-fabric/layer4-agents:main
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
@@ -63,6 +73,10 @@ spec:
                 optional: false
             - secretRef:
                 name: layer4-auth
+                optional: false
+            # SECURITY: API key cache HMAC secret for secure key fingerprinting
+            - secretRef:
+                name: api-key-cache-secret
                 optional: false
           env:
             # Dynamic database credentials (required)
@@ -94,6 +108,23 @@ spec:
                   key: NEO4J_PASSWORD
             - name: LOG_LEVEL
               value: "info"
+            # SECURITY: JWT RS256 key paths (asymmetric signing)
+            - name: JWT_PRIVATE_KEY_PATH
+              value: "/secrets/jwt-private.pem"
+            - name: JWT_PUBLIC_KEY_PATH
+              value: "/secrets/jwt-public.pem"
+            - name: JWT_ALGORITHM
+              value: "RS256"
+            # SECURITY: Production environment for auth bypass hard-block
+            - name: ENVIRONMENT
+              value: "production"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # SECURITY: Mount JWT keys to /secrets/
+            - name: jwt-keys
+              mountPath: /secrets
+              readOnly: true
           resources:
             requests:
               memory: "256Mi"
@@ -117,6 +148,14 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
 ---
 apiVersion: v1
 kind: Service

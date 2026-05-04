@@ -68,7 +68,8 @@ open http://localhost:5173
 | `value-fabric/shared/` | Cross-layer identity, auth, and audit libraries |
 | `layer4-agents/` | Agent behavior artifacts (prompts, skills, workflows) |
 | `contracts/` | Versioned tool manifests, JSON Schemas, OpenAPI specs |
-| `frontend/` | React + TypeScript UI |
+| `apps/web/` | React + TypeScript UI (canonical frontend) |
+| `frontend/` | ⚠️ OBSOLETE — migrated to `apps/web/` |
 | `k8s/` | Kubernetes manifests |
 | `monitoring/` | Prometheus + Grafana dashboards |
 | `packs/` | Domain-specific data packs (life-sciences, manufacturing, software) |
@@ -87,6 +88,8 @@ open http://localhost:5173
 ## Documentation
 
 📚 **[Complete Documentation →](docs/README.md)**
+
+🚀 **[Platform Launch Checklist →](docs/launch-checklists/platform-launch.md)** (Sprint 4 Release Hardening)
 
 Our documentation follows the [Diátaxis Framework](https://diataxis.fr/) with tutorials, how-to guides, reference, and explanations.
 

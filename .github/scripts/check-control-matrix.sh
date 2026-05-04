@@ -27,7 +27,7 @@ if [[ -z "$CHANGED_FILES" ]]; then
 fi
 
 # Paths considered security/governance-impacting.
-NEEDS_MATRIX_REGEX='^(value-fabric/shared/identity/|value-fabric/shared/audit/|value-fabric/layer[0-9]+-.*/migrations/|contracts/tool-manifests/|k8s/|monitoring/|docs/secrets-management\.md|docs/SECRETS\.md|docs/runbooks/|\.github/workflows/security-gates\.yml|\.github/workflows/pr-checks\.yml)'
+NEEDS_MATRIX_REGEX='^(packages/shared/src/value_fabric/shared/identity/|packages/shared/src/value_fabric/shared/audit/|services/layer[0-9]+-.*/migrations/|contracts/tool-manifests/|k8s/|monitoring/|docs/secrets-management\.md|docs/SECRETS\.md|docs/runbooks/|\.github/workflows/security-gates\.yml|\.github/workflows/pr-checks\.yml)'
 
 if ! printf '%s\n' "$CHANGED_FILES" | rg -q "$NEEDS_MATRIX_REGEX"; then
   echo "No security/governance-sensitive files changed; matrix update not required."

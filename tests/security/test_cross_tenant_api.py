@@ -31,6 +31,9 @@ from uuid import UUID
 import jwt as pyjwt
 import pytest
 
+pytestmark = [pytest.mark.security, pytest.mark.tenant_boundary]
+
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -115,7 +118,7 @@ class TestAccountsRouteTenantEnforcement:
     """
 
     ACCOUNTS_FILE = (
-        _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes" / "accounts.py"
+        _PROJECT_ROOT / "value_fabric" / "layer4" / "api" / "routes" / "accounts.py"
     )
 
     ACCOUNT_ENDPOINTS = [
@@ -169,7 +172,7 @@ class TestAnalysisRouteTenantEnforcement:
     """Verify that analysis/business case routes enforce tenant isolation."""
 
     ANALYSIS_FILE = (
-        _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes" / "analysis.py"
+        _PROJECT_ROOT / "value_fabric" / "layer4" / "api" / "routes" / "analysis.py"
     )
 
     def test_generate_business_case_requires_auth(self):
@@ -223,7 +226,7 @@ class TestWorkflowRouteTenantEnforcement:
     """Verify that workflow routes enforce tenant isolation."""
 
     WORKFLOWS_FILE = (
-        _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes" / "workflows.py"
+        _PROJECT_ROOT / "value_fabric" / "layer4" / "api" / "routes" / "workflows.py"
     )
 
     WORKFLOW_ENDPOINTS = [
@@ -251,7 +254,7 @@ class TestSignalRouteTenantEnforcement:
     """Verify that signal/prospect routes enforce tenant isolation."""
 
     SIGNALS_FILE = (
-        _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes" / "signals.py"
+        _PROJECT_ROOT / "value_fabric" / "layer4" / "api" / "routes" / "signals.py"
     )
 
     def test_setup_prospect_requires_auth(self):
@@ -288,13 +291,13 @@ class TestTenantAdminRouteTenantEnforcement:
     """
 
     ADMIN_FILE = (
-        _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tenants" / "api" / "routes" / "admin.py"
+        _PROJECT_ROOT / "value_fabric" / "layer4" / "tenants" / "api" / "routes" / "admin.py"
     )
     USERS_FILE = (
-        _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tenants" / "api" / "routes" / "users.py"
+        _PROJECT_ROOT / "value_fabric" / "layer4" / "tenants" / "api" / "routes" / "users.py"
     )
     API_KEYS_FILE = (
-        _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tenants" / "api" / "routes" / "api_keys.py"
+        _PROJECT_ROOT / "value_fabric" / "layer4" / "tenants" / "api" / "routes" / "api_keys.py"
     )
 
     def _count_get_db_usages(self, filepath: Path) -> int:
@@ -377,10 +380,10 @@ class TestAggregateDepAudit:
         uses the deprecated dependency.
         """
         route_dirs = [
-            _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes",
-            _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tenants" / "api" / "routes",
-            _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "feature_flags" / "api",
-            _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "registry" / "api",
+            _PROJECT_ROOT / "value_fabric" / "layer4" / "api" / "routes",
+            _PROJECT_ROOT / "value_fabric" / "layer4" / "tenants" / "api" / "routes",
+            _PROJECT_ROOT / "value_fabric" / "layer4" / "feature_flags" / "api",
+            _PROJECT_ROOT / "value_fabric" / "layer4" / "registry" / "api",
         ]
 
         total = 0

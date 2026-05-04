@@ -5,13 +5,18 @@
         test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
-        gate-security gate-state gate-arch gate-config gate-all \
-        platform-contract-lint setup-hooks
+        test-backend-integrated-validation test-backend-integrated-release-smoke \
+        gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
+        platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency
 
 # Strict shell settings for production safety
 .ONESHELL:
 SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
+
+PROFILE ?= release-candidate
+POLICY_FILE := .fabric/prod-gates.policy.yaml
+ARTIFACT_DIR := artifacts/release
 
 PYTHON := python3
 PIP    := pip install -e
@@ -26,8 +31,27 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency verify-structure ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + structure) — required before PR
 	@echo "✅  All checks passed"
+
+verify-structure: ## Run structural preflight and Python contract lint checks
+	@echo "→ Running structural preflight..."
+	@python scripts/ci/structural_preflight.py --strict
+	@echo "→ Running Python contract lint..."
+	@python scripts/ci/python_contract_lint.py --strict
+	@echo "→ Running strict shared-import enforcement..."
+	@python scripts/ci/check_shared_imports.py --strict --scope executable
+	@echo "→ Running import topology tests..."
+	@python -m pytest tests/contract/test_import_topology.py -q
+	@echo "→ Running strict navigation pattern check..."
+	@cd apps/web && python ../../scripts/ci/check_navigation_patterns.py --strict
+	@echo "✅  Structure verification passed"
+
+check-ui-duplicates: ## Block new duplicate UI component filenames between prototype and production trees
+	@python3 scripts/check_ui_duplicate_filenames.py
+
+check-readiness-consistency: ## Ensure canonical readiness percentages are aligned and archives are snapshot-tagged
+	@python3 scripts/ci/check_readiness_consistency.py
 
 verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
 	@echo "✅  Strict verification passed"
@@ -36,27 +60,27 @@ verify-strict: verify contract-drift ## Full verification including contract dri
 
 lint-layer1: ## Lint Layer 1 only
 	@echo "→ Linting Layer 1..."
-	@cd value-fabric/layer1-ingestion && ruff check src/
+	@cd services/layer1-ingestion && ruff check src/
 
 lint-layer2: ## Lint Layer 2 only
 	@echo "→ Linting Layer 2..."
-	@cd value-fabric/layer2-extraction && ruff check src/
+	@cd services/layer2-extraction && ruff check src/
 
 lint-layer3: ## Lint Layer 3 only
 	@echo "→ Linting Layer 3..."
-	@cd value-fabric/layer3-knowledge && ruff check src/
+	@cd services/layer3-knowledge && ruff check src/
 
 lint-layer4: ## Lint Layer 4 only
 	@echo "→ Linting Layer 4..."
-	@cd value-fabric/layer4-agents && ruff check src/
+	@cd services/layer4-agents && ruff check src/
 
 lint-layer5: ## Lint Layer 5 only
 	@echo "→ Linting Layer 5..."
-	@cd value-fabric/layer5-ground-truth && ruff check src/
+	@cd services/layer5-ground-truth && ruff check src/
 
 lint-layer6: ## Lint Layer 6 only
 	@echo "→ Linting Layer 6..."
-	@cd value-fabric/layer6-benchmarks && ruff check src/
+	@cd services/layer6-benchmarks && ruff check src/
 
 lint: ## Lint all Python layers with ruff (fails fast on first error)
 	@$(MAKE) lint-layer1 && \
@@ -69,13 +93,13 @@ lint: ## Lint all Python layers with ruff (fails fast on first error)
 
 # Per-layer mypy flags - stricter layers enforce more type safety
 # Layer 1: Relaxed with explicit untyped handling
-MYPY_LAYER1_FLAGS = --warn-return-any --warn-unused-configs --disallow-untyped-defs=false
+MYPY_LAYER1_FLAGS = --warn-return-any --warn-unused-configs
 # Layer 2: Strict - fully typed codebase
 MYPY_LAYER2_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 3: Strict - fully typed codebase
 MYPY_LAYER3_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 4: Moderate - typed with some flexibility for agent patterns
-MYPY_LAYER4_FLAGS = --warn-return-any --warn-unused-configs --disallow-untyped-defs=false
+MYPY_LAYER4_FLAGS = --warn-return-any --warn-unused-configs
 # Layer 5: Strict - fully typed codebase
 MYPY_LAYER5_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 6: Minimal - gradual typing
@@ -88,32 +112,32 @@ MYPY_OVERRIDES = --python-version 3.11
 typecheck-layer1: ## Type-check Layer 1 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 1..."
-	@cd value-fabric/layer1-ingestion && mypy src/ $(MYPY_LAYER1_FLAGS)
+	@cd services/layer1-ingestion && mypy src/ $(MYPY_LAYER1_FLAGS)
 
 typecheck-layer2: ## Type-check Layer 2 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 2..."
-	@cd value-fabric/layer2-extraction && mypy src/ $(MYPY_LAYER2_FLAGS)
+	@cd services/layer2-extraction && mypy src/ $(MYPY_LAYER2_FLAGS)
 
 typecheck-layer3: ## Type-check Layer 3 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 3..."
-	@cd value-fabric/layer3-knowledge && mypy src/ $(MYPY_LAYER3_FLAGS)
+	@cd services/layer3-knowledge && mypy src/ $(MYPY_LAYER3_FLAGS)
 
 typecheck-layer4: ## Type-check Layer 4 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 4..."
-	@cd value-fabric/layer4-agents && mypy src/ $(MYPY_LAYER4_FLAGS)
+	@cd services/layer4-agents && mypy src/ $(MYPY_LAYER4_FLAGS)
 
 typecheck-layer5: ## Type-check Layer 5 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 5..."
-	@cd value-fabric/layer5-ground-truth && mypy src/ $(MYPY_LAYER5_FLAGS)
+	@cd services/layer5-ground-truth && mypy src/ $(MYPY_LAYER5_FLAGS)
 
 typecheck-layer6: ## Type-check Layer 6 only
 	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 6..."
-	@cd value-fabric/layer6-benchmarks && mypy src/ $(MYPY_LAYER6_FLAGS)
+	@cd services/layer6-benchmarks && mypy src/ $(MYPY_LAYER6_FLAGS)
 
 typecheck: ## Type-check all Python layers with mypy (fails fast on first error)
 	@$(MAKE) typecheck-layer1 && \
@@ -129,17 +153,42 @@ typecheck: ## Type-check all Python layers with mypy (fails fast on first error)
 test: test-layer1 test-layer2 test-layer3 test-layer4 test-layer5 test-layer6 ## Run all backend unit tests
 
 test-e2e-contracts: ## Layer 1: Run Playwright isolated page contract tests (mocked)
-	cd frontend && npx playwright test --project=contracts
+	cd apps/web && npx playwright test --project=contracts
 
 test-e2e-journeys: ## Layer 2: Run Playwright chained user journeys (live or mocked)
-	cd frontend && npx playwright test --project=journeys
+	cd apps/web && npx playwright test --project=journeys
 
 test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 	$(PYTEST) tests/contract/test_journey_contracts.py -v
 
+test-backend-integrated-validation: ## Backend milestone: run live-service workflow, persistence, tenant, agent, and resilience validation
+	$(PYTEST) tests/backend_integrated -m backend_integrated -v
+
+test-backend-integrated-release-smoke: ## Backend milestone: run release-environment smoke validation only
+	$(PYTEST) tests/backend_integrated/test_release_environment_smoke_validation.py -m release_smoke -v
+
+seed-e2e: ## Seed deterministic E2E fixture data into the local backend (requires running stack)
+	@echo "→ Seeding E2E test data..."
+	npx tsx scripts/db/seed-e2e-data.ts
+	@echo "✅  E2E seed complete"
+
+reset-e2e: ## Remove all E2E tenant data from the local backend
+	@echo "→ Resetting E2E test data..."
+	npx tsx scripts/db/reset-e2e-data.ts
+	@echo "✅  E2E reset complete"
+
+test-e2e-full: ## Run full E2E suite: seed → contracts → journeys → reset
+	@echo "→ Starting full E2E run..."
+	$(MAKE) seed-e2e
+	$(MAKE) test-e2e-contracts
+	$(MAKE) test-e2e-journeys
+	$(MAKE) reset-e2e
+	@echo "✅  Full E2E suite complete"
+
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
 	$(PYTEST) tests/contract/ -v --tb=short
+	cd packages/platform-contract && npm run contract:test
 	@echo "→ Running architecture tests (tenant isolation guards)..."
 	$(PYTEST) tests/arch/ -v --tb=short
 	@echo "✅  Contract and architecture tests passed"
@@ -148,46 +197,46 @@ contract-tests: ## Run cross-layer contract + architecture tests (fast, no secre
 
 test-unit: ## Run only unit tests (fast, no external deps)
 	@echo "→ Running unit tests (marked with @pytest.mark.unit)"
-	cd value-fabric/layer4-agents && $(PYTEST) -m unit tests/
+	cd services/layer4-agents && $(PYTEST) -m unit tests/
 
 test-integration: ## Run integration tests (real DB, cache, no containers)
 	@echo "→ Running integration tests (marked with @pytest.mark.integration)"
-	cd value-fabric/layer4-agents && $(PYTEST) -m integration tests/
+	cd services/layer4-agents && $(PYTEST) -m integration tests/
 
 test-e2e-docker: ## Run E2E tests with Docker containers
 	@echo "→ Running E2E tests (requires Docker)"
-	cd value-fabric/layer3-knowledge && $(PYTEST) -m e2e tests/ 2>/dev/null || true
+	cd services/layer3-knowledge && $(PYTEST) -m e2e tests/ 2>/dev/null || true
 
 test-fast: ## Run only fast tests (exclude slow and e2e)
 	@echo "→ Running fast tests only"
-	cd value-fabric/layer4-agents && $(PYTEST) -m "not slow and not e2e" tests/
+	cd services/layer4-agents && $(PYTEST) -m "not slow and not e2e" tests/
 
 # ─── Layer-Specific Tests ─────────────────────────────────────────────────────
 
 test-layer1: ## Run Layer 1 tests
-	cd value-fabric/layer1-ingestion && $(PYTEST) tests/
+	cd services/layer1-ingestion && $(PYTEST) tests/
 
 test-layer2: ## Run Layer 2 tests
-	cd value-fabric/layer2-extraction && $(PYTEST) tests/
+	cd services/layer2-extraction && $(PYTEST) tests/
 
 test-layer3: ## Run Layer 3 tests
-	cd value-fabric/layer3-knowledge && $(PYTEST) tests/
+	cd services/layer3-knowledge && $(PYTEST) tests/
 
 test-layer4: ## Run Layer 4 tests
-	cd value-fabric/layer4-agents && $(PYTEST) tests/
+	cd services/layer4-agents && $(PYTEST) tests/
 
 test-layer5: ## Run Layer 5 tests
-	cd value-fabric/layer5-ground-truth && python scripts/check_no_duplicate_modules.py
-	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/
+	cd services/layer5-ground-truth && python scripts/check_no_duplicate_modules.py
+	cd services/layer5-ground-truth && $(PYTEST) tests/
 
 test-layer6: ## Run Layer 6 tests
-	cd value-fabric/layer6-benchmarks && $(PYTEST) tests/
+	cd services/layer6-benchmarks && $(PYTEST) tests/
 
 test-frontend: ## Run frontend unit tests
-	cd frontend && pnpm run test
+	cd apps/web && pnpm run test
 
 test-e2e: ## Run Playwright end-to-end tests (requires running stack)
-	cd frontend && pnpm exec playwright test
+	cd apps/web && pnpm exec playwright test
 
 # ─── Security Tests ───────────────────────────────────────────────────────────
 
@@ -251,17 +300,17 @@ perf-eval: ## Evaluate k6 results against versioned SLO thresholds
 # ─── Build ────────────────────────────────────────────────────────────────────
 
 build: ## Build frontend production bundle
-	cd frontend && pnpm run build
+	cd apps/web && pnpm run build
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 
 migrate: ## Run Alembic migrations for all layers
 	@echo "→ Migrating Layer 1..."
-	cd value-fabric/layer1-ingestion && alembic upgrade head
+	cd services/layer1-ingestion && alembic upgrade head
 	@echo "→ Migrating Layer 4..."
-	cd value-fabric/layer4-agents && alembic upgrade head
+	cd services/layer4-agents && alembic upgrade head
 	@echo "→ Migrating Layer 5..."
-	cd value-fabric/layer5-ground-truth && alembic upgrade head
+	cd services/layer5-ground-truth && alembic upgrade head
 
 # ─── Contracts ────────────────────────────────────────────────────────────────
 
@@ -285,16 +334,16 @@ sdk: ## Generate the Python SDK (manual typed client)
 # ─── Dev Infrastructure ───────────────────────────────────────────────────────
 
 preflight: ## Run pre-flight checks (Docker, env, ports)
-	@bash scripts/dev-preflight.sh
+	@bash scripts/dev/dev-preflight.sh
 
 up: preflight ## Start all services with Docker Compose (runs preflight first)
-	cd value-fabric && docker compose up -d
+	docker compose -f docker-compose.dev.yml up -d
 
 down: ## Stop all services
-	cd value-fabric && docker compose down
+	docker compose -f docker-compose.dev.yml down
 
 logs: ## Tail logs for all services
-	cd value-fabric && docker compose logs -f
+	docker compose -f docker-compose.dev.yml logs -f
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 
@@ -319,7 +368,7 @@ check-deprecations: ## CI gate — check for overdue deprecations
 
 check-tool-contracts: ## CI gate — validate tool error structure (CONTRACT.md §2.4)
 	@echo "→ Checking tool contracts in Layer 4..."
-	$(PYTHON) scripts/ci/check_tool_contracts.py value-fabric/layer4-agents/src/tools/
+	$(PYTHON) scripts/ci/check_tool_contracts.py services/layer4-agents/src/tools/
 	@echo "✅ Tool contract check passed"
 
 # ─── Developer Setup ─────────────────────────────────────────────────────────
@@ -333,12 +382,21 @@ setup-hooks: ## Configure git to use .githooks/ (run once after clone)
 # Each gate-* target runs pytest directly. Non-zero exit = release blocked.
 # No runners, no policy engines, no simulation.
 
-GATE_PYTEST := $(PYTEST) --tb=short -q
+GATE_PYTEST := $(PYTEST) --tb=short -q -n 0
 
-gate-security: ## Gate: tenant isolation, RLS, auth enforcement, export access
-	@echo "→ Gate: Security & Tenant Isolation"
-	$(GATE_PYTEST) tests/security/
+gate-mandatory-security-regression: ## Gate: mandatory security regression suite for launch readiness
+	@echo "→ Gate: Mandatory Security Regression"
+	bash scripts/ci/mandatory_security_regression_gate.sh
+	@echo "✅  gate-mandatory-security-regression passed"
+
+gate-security: gate-mandatory-security-regression ## Gate: release-critical tenant isolation, auth enforcement, and fail-closed security regression
+	@echo "→ Gate: Security & Tenant Isolation — release-critical suite"
 	@echo "✅  gate-security passed"
+
+gate-security-broad: ## Advisory gate: exhaustive legacy security coverage for Broad GA backlog classification
+	@echo "→ Gate: Broad Security Coverage — advisory legacy suite (bounded to 300s)"
+	timeout 300s $(GATE_PYTEST) tests/security/
+	@echo "✅  gate-security-broad passed"
 
 gate-state: ## Gate: frontend/backend state alignment, workflow type consistency
 	@echo "→ Gate: State Alignment"
@@ -358,28 +416,98 @@ gate-config: ## Gate: startup validation, security config hardening
 gate-all: gate-security gate-state gate-arch gate-config ## Run all production readiness gates
 	@echo "✅  All production gates passed — ship/no-ship: SHIP"
 
-release-gate: ## Run the full 4-layer quality gate sequence
+# ─── Extended Gate Targets (referenced by prod-readiness.yml) ────────────────
+
+lint-release: lint-layer1 lint-layer2 lint-layer3 lint-layer4 lint-layer5 lint-layer6 ## Lint all layers (release variant)
+	@echo "✅  Release lint complete"
+
+gates-validate-policy: ## Validate gate policy schema, profile existence, and artifact dirs
+	@echo "→ Gate: Validate Policy"
+	@test -s $(POLICY_FILE) || (echo "❌ Policy file $(POLICY_FILE) not found" && exit 1)
+	@python -c "import yaml; yaml.safe_load(open('$(POLICY_FILE)'))" || (echo "❌ Policy file is not valid YAML" && exit 1)
+	@mkdir -p artifacts/{arch,security,chaos,smoke,agent,state,obs,release}
+	@echo "✅  gates-validate-policy passed"
+
+gate-chaos: ## Gate: dependency chaos and failure injection
+	@echo "→ Gate: Chaos"
+	@if [ ! -d tests/chaos ] || [ -z "$$(find tests/chaos -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No chaos tests implemented (0 test files)."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/chaos/ -v --tb=short -q
+	@echo "✅  gate-chaos passed"
+
+gate-smoke: ## Gate: cross-domain smoke tests
+	@echo "→ Gate: Smoke"
+	@if [ ! -d tests/e2e ] || [ -z "$$(find tests/e2e -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No smoke tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/e2e/ -v --tb=short -q -m "not runtime_contract"
+	@echo "✅  gate-smoke passed"
+
+gate-agent: ## Gate: agent provenance and behavior regression
+	@echo "→ Gate: Agent"
+	@if [ ! -d tests/agents ] || [ -z "$$(find tests/agents -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No agent tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/agents/ -v --tb=short -q
+	@echo "✅  gate-agent passed"
+
+gate-obs: ## Gate: observability, metrics, and SLO validation
+	@echo "→ Gate: Observability"
+	@if [ ! -d tests/performance ] || [ -z "$$(find tests/performance -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No performance tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/performance/ -v --tb=short -q
+	@echo "✅  gate-obs passed"
+
+gate-release-policy: ## Gate: release policy compliance
+	@echo "→ Gate: Release Policy"
+	@if [ ! -d tests/release ] || [ -z "$$(find tests/release -name 'test_*.py' -print -quit)" ]; then \
+		echo "❌ PLACEHOLDER: No release-policy tests implemented."; \
+		exit 1; \
+	fi
+	$(GATE_PYTEST) tests/release/ -v --tb=short -q
+	python scripts/ci/check_deprecations.py
+	@echo "✅  gate-release-policy passed"
+
+gates-sign-manifest: ## Sign artifact manifest with SHA-256
+	@echo "→ Gate: Sign Manifest"
+	@mkdir -p $(ARTIFACT_DIR)/logs
+	@if [ ! -d $(ARTIFACT_DIR) ]; then \
+		echo "❌ Artifact directory $(ARTIFACT_DIR) does not exist"; \
+		exit 1; \
+	fi
+	@FILE_COUNT=$$(find $(ARTIFACT_DIR) -type f -not -path "*/logs/*" -not -name "manifest.sha256" | wc -l); \
+	if [ "$$FILE_COUNT" -eq 0 ]; then \
+		echo "❌ No artifacts to sign in $(ARTIFACT_DIR)"; \
+		exit 1; \
+	fi
+	@find $(ARTIFACT_DIR) -type f -not -path "*/logs/*" -not -name "manifest.sha256" -exec sha256sum {} \; > $(ARTIFACT_DIR)/manifest.sha256
+	@echo "✅  gates-sign-manifest passed ($$(wc -l < $(ARTIFACT_DIR)/manifest.sha256) files)"
+
+gates-render-summary: ## Render release summary with gate results
+	@echo "→ Gate: Render Summary"
+	@bash scripts/ops/render-release-summary.sh
+	@test -s $(ARTIFACT_DIR)/summary.md || (echo "❌ Summary file not generated" && exit 1)
+	@echo "✅  gates-render-summary passed"
+
+release-gate: ## Run the policy-driven production readiness gate sequence
 	@echo "🚀 Starting Release Gate Sequence..."
-	@echo "1. Core Quality Gate (Lint, Typecheck, Unit Tests)"
-	$(MAKE) lint typecheck test-unit
-	@echo "2. Agent Behavior Regression (Evals)"
-	$(MAKE) evals
-	@echo "3. User-Journey E2E (Playwright + Backend Contracts)"
-	$(MAKE) test-backend-contracts
-	$(MAKE) test-e2e-journeys
-	@echo "4. Performance & Reliability (k6 Load Tests)"
-	$(MAKE) perf-test-journeys
-	@echo "✅ Release Gate Passed!"
+	@bash scripts/ops/release-gate.sh $(PROFILE)
 
 contract-lint: ## Run ESLint contract rules across all packages
 	@echo "→ Running contract lint rules..."
-	cd frontend/client && npm run lint -- --ext .ts,.tsx --rule 'fabric-contracts/no-tenant-id-parameter: error' --rule 'fabric-contracts/no-req-tenant-access: error' --rule 'fabric-contracts/no-raw-tenant-query: error' --rule 'fabric-contracts/no-explicit-db-connect: error' --rule 'fabric-contracts/no-inline-middleware: error' --rule 'fabric-contracts/no-inline-tool-definition: error' --rule 'fabric-contracts/no-throw-in-tool: error' --rule 'fabric-contracts/no-json-parse-agent-output: error' --rule 'fabric-contracts/no-imperative-navigation: error' --rule 'fabric-contracts/no-url-concatenation: error' --rule 'fabric-contracts/no-private-imports: error' --rule 'fabric-contracts/no-circular-dependencies: error' 2>/dev/null || echo "⚠️  Contract ESLint plugin not yet installed"
+	@cd apps/web && npm run lint -- --ext .ts,.tsx --rule 'fabric-contracts/no-tenant-id-parameter: error' --rule 'fabric-contracts/no-req-tenant-access: error' --rule 'fabric-contracts/no-raw-tenant-query: error' --rule 'fabric-contracts/no-explicit-db-connect: error' --rule 'fabric-contracts/no-inline-middleware: error' --rule 'fabric-contracts/no-inline-tool-definition: error' --rule 'fabric-contracts/no-throw-in-tool: error' --rule 'fabric-contracts/no-json-parse-agent-output: error' --rule 'fabric-contracts/no-imperative-navigation: error' --rule 'fabric-contracts/no-url-concatenation: error' --rule 'fabric-contracts/no-private-imports: error' --rule 'fabric-contracts/no-circular-dependencies: error' 2>/dev/null || echo "⚠️  Contract ESLint plugin not yet installed"
 
 # ─── Backup/DR Tests ─────────────────────────────────────────────────────────
 
 test-backup-drills: ## Run backup/DR drill tests (requires pytest-asyncio)
 	@echo "→ Running backup manager tests..."
-	cd value-fabric/layer3-knowledge && $(PYTEST) tests/test_backup_manager.py -v --tb=short
+	cd services/layer3-knowledge && $(PYTEST) tests/test_backup_manager.py -v --tb=short
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 

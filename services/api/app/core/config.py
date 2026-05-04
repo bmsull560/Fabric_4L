@@ -1,0 +1,164 @@
+import os
+import warnings
+from functools import lru_cache
+from urllib.parse import urlparse
+
+from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_DEFAULT_DEV_SECRET = "fabric-4l-dev-secret-key-change-in-production"
+_DEV_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
+_PRODUCTION_ENVS = {"production", "prod", "staging"}
+_DEV_CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
+_EXPLICIT_CORS_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+_EXPLICIT_CORS_HEADERS = ["Authorization", "Content-Type", "X-Request-ID", "X-Tenant-ID"]
+
+
+def _detect_environment() -> str:
+    for key in ("ENVIRONMENT", "ENV", "APP_ENV"):
+        val = os.getenv(key, "").strip().lower()
+        if val:
+            return val
+    return "development"
+
+
+def _is_production_like(environment: str) -> bool:
+    env = environment.strip().lower()
+    return env in _PRODUCTION_ENVS or env not in _DEV_ENVIRONMENTS
+
+
+def _parse_cors_origins(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(origin).strip() for origin in value if str(origin).strip()]
+    raise TypeError(f"Unsupported type for CORS origins: {type(value).__name__}. Expected str, list, tuple, set, or None.")
+
+
+def _validate_exact_cors_origins(origins: list[str], *, production_like: bool) -> list[str]:
+    if production_like and not origins:
+        raise ValueError("cors_origins must be configured in production-like environments")
+
+    errors: list[str] = []
+    for origin in origins:
+        if origin == "*" or "*" in origin:
+            if production_like:
+                errors.append("cors_origins cannot include wildcard origins in production-like environments")
+            continue
+        parsed = urlparse(origin)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            errors.append(f"cors origin '{origin}' must be an explicit http(s) origin")
+        if origin.lower() in {"change_me", "changeme", "null"}:
+            errors.append(f"cors origin '{origin}' is not a deployable origin")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return origins
+
+
+def build_cors_policy(origins: list[str], *, production_like: bool) -> dict[str, object]:
+    """Return a credentials-safe, explicit CORS policy for FastAPI middleware."""
+    safe_origins = _validate_exact_cors_origins(origins, production_like=production_like)
+    return {
+        "allow_origins": safe_origins,
+        "allow_credentials": bool(safe_origins) and "*" not in safe_origins,
+        "allow_methods": _EXPLICIT_CORS_METHODS,
+        "allow_headers": _EXPLICIT_CORS_HEADERS,
+    }
+
+
+class Settings(BaseSettings):
+    app_name: str = "Fabric_4L API"
+    app_env: str = Field(
+        default_factory=_detect_environment,
+        validation_alias=AliasChoices("ENVIRONMENT", "ENV", "APP_ENV"),
+    )
+    debug: bool = False
+    secret_key: str = _DEFAULT_DEV_SECRET
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+    mock_persistence: bool = True
+    database_url: str | None = None
+    llm_provider: str = "mock"
+    llm_model: str | None = None
+    allow_mock_llm: bool = False
+    seed_demo_data: bool = True
+    # Empty list = no cross-origin requests allowed by default (fail-closed).
+    # Development get_settings() supplies localhost defaults only after warning.
+    cors_origins: list[str] | str = []
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+    @property
+    def is_production_like(self) -> bool:
+        return _is_production_like(self.app_env)
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: object) -> object:
+        """Accept a comma-separated string or a list of exact allowed origins."""
+        return _parse_cors_origins(value)
+
+    @model_validator(mode="after")
+    def validate_production_safety(self) -> "Settings":
+        errors: list[str] = []
+        if self.is_production_like:
+            if self.debug:
+                errors.append("debug must be false in production-like environments")
+            if self.mock_persistence:
+                errors.append("mock_persistence must be false in production-like environments")
+            if not self.database_url:
+                errors.append("database_url must be configured in production-like environments")
+            elif urlparse(self.database_url).scheme != "sqlite":
+                errors.append("database_url must use a supported durable sqlite:// URL for services/api")
+            if self.llm_provider.lower() == "mock":
+                errors.append("llm_provider=mock is disabled in production-like environments")
+            if self.seed_demo_data:
+                errors.append("seed_demo_data must be false in production-like environments")
+            if self.secret_key == _DEFAULT_DEV_SECRET or len(self.secret_key) < 32:
+                errors.append("SECRET_KEY must be replaced with a strong production secret")
+
+        try:
+            _validate_exact_cors_origins(self.cors_origins, production_like=self.is_production_like)
+        except ValueError as exc:
+            errors.append(str(exc))
+
+        if errors:
+            raise ValueError("Unsafe production configuration: " + "; ".join(errors))
+        return self
+
+    @property
+    def cors_policy(self) -> dict[str, object]:
+        return build_cors_policy(self.cors_origins, production_like=self.is_production_like)
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    try:
+        settings = Settings()
+    except Exception as exc:
+        if "Unsafe production configuration" in str(exc):
+            raise RuntimeError(str(exc)) from exc
+        raise
+
+    if settings.is_production_like:
+        return settings
+
+    if not settings.cors_origins:
+        warnings.warn(
+            "CORS_ORIGINS not set — defaulting to localhost dev origins. "
+            "Set CORS_ORIGINS explicitly before deploying.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        settings.cors_origins = list(_DEV_CORS_ORIGINS)
+
+    return settings

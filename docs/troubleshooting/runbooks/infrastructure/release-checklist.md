@@ -19,6 +19,11 @@ Use this checklist for staging and production release approvals.
 - [ ] Confirm monitoring/alerting dashboards are healthy and on-call handoff is complete.
 - [ ] Verify runbooks for active alerts are up-to-date.
 
+## Reliability Approval (Required)
+
+- [ ] Confirm latest `artifacts/performance/slo-report.md` and `artifacts/performance/slo-evaluation.json` are attached to the release ticket.
+- [ ] Confirm SLO owner review/sign-off is recorded for impacted layers/services.
+
 ## Approval
 
 - [ ] Release Manager sign-off.

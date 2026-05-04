@@ -1,0 +1,121 @@
+/**
+ * DriverTreePage Regression Tests
+ *
+ * Locks down the fix for the original bug where DriverTreePage rendered:
+ *   "Account · Unknown · N/A"
+ * with empty content when no account context was present.
+ *
+ * Verifies the standardized pattern:
+ *   missing accountId → AccountRequiredGuard
+ *   loading           → CenteredLoader
+ *   valid account     → shell with correct header
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { createWrapperWithRouterPath } from "@/test-utils";
+import DriverTreePage from "./DriverTreePage";
+
+const mockUseParams = vi.fn();
+const mockUseAccount = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...(actual as object),
+    useParams: () => mockUseParams(),
+  };
+});
+
+vi.mock("@/hooks/useAccounts", () => ({
+  useAccount: (accountId: string | null) => mockUseAccount(accountId),
+}));
+
+vi.mock("@/pages/intelligence/EvidenceTab", () => ({
+  EvidenceTabContent: () => <div data-testid="evidence-content">Evidence</div>,
+}));
+
+vi.mock("@/pages/evidence/AlternativesTab", () => ({
+  default: () => <div data-testid="alternatives-content">Alternatives</div>,
+}));
+
+vi.mock("@/pages/evidence/SolutionCostTab", () => ({
+  default: () => <div data-testid="solution-cost-content">Solution Cost</div>,
+}));
+
+describe("DriverTreePage account/loading guards", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders AccountRequiredGuard when accountId is missing", () => {
+    mockUseParams.mockReturnValue({ accountId: undefined, tab: "evidence" });
+    mockUseAccount.mockReturnValue({ data: undefined, isLoading: false });
+
+    const wrapper = createWrapperWithRouterPath("/drivers");
+    render(<DriverTreePage />, { wrapper });
+
+    expect(screen.getByText("No account selected")).toBeInTheDocument();
+    expect(
+      screen.getByText("Select an account from the sidebar to view this page.")
+    ).toBeInTheDocument();
+
+    // Must NOT render the workspace shell header
+    expect(screen.queryByText("Account")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
+    expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+  });
+
+  it("renders CenteredLoader while account is loading", () => {
+    mockUseParams.mockReturnValue({ accountId: "acc-123", tab: "evidence" });
+    mockUseAccount.mockReturnValue({ data: undefined, isLoading: true });
+
+    const wrapper = createWrapperWithRouterPath("/drivers/acc-123/evidence");
+    render(<DriverTreePage />, { wrapper });
+
+    expect(screen.getByText("Loading driver tree…")).toBeInTheDocument();
+
+    // Must NOT render the workspace shell header with placeholder values
+    expect(screen.queryByText("Account")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
+    expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+  });
+
+  it('renders "Account not found" when accountId is present but account does not exist', () => {
+    mockUseParams.mockReturnValue({ accountId: "acc-404", tab: "evidence" });
+    mockUseAccount.mockReturnValue({ data: undefined, isLoading: false });
+
+    const wrapper = createWrapperWithRouterPath("/drivers/acc-404/evidence");
+    render(<DriverTreePage />, { wrapper });
+
+    expect(screen.getByText("Account not found.")).toBeInTheDocument();
+
+    // Must NOT render the workspace shell header
+    expect(screen.queryByText("Account")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
+    expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+  });
+
+  it("renders the workspace shell with correct account header when account is valid", () => {
+    mockUseParams.mockReturnValue({ accountId: "acc-123", tab: "evidence" });
+    mockUseAccount.mockReturnValue({
+      data: {
+        id: "acc-123",
+        name: "Acme Corp",
+        industry: "Technology",
+        annual_revenue: 1_500_000,
+      },
+      isLoading: false,
+    });
+
+    const wrapper = createWrapperWithRouterPath("/drivers/acc-123/evidence");
+    render(<DriverTreePage />, { wrapper });
+
+    // Shell header should show real account data
+    expect(screen.getByText("Acme Corp")).toBeInTheDocument();
+    expect(screen.getByText("Technology")).toBeInTheDocument();
+    expect(screen.getByText("$1,500,000")).toBeInTheDocument();
+
+    // The active tab content should be present
+    expect(screen.getByTestId("evidence-content")).toBeInTheDocument();
+  });
+});

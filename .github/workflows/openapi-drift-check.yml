@@ -3,16 +3,16 @@ name: OpenAPI Drift Check
 on:
   pull_request:
     paths:
-      - 'value-fabric/**/src/api/**'
-      - 'value-fabric/**/src/**/routes/**'
+      - 'services/**/src/api/**'
+      - 'services/**/src/**/routes/**'
       - 'shared/**'
       - 'scripts/export_openapi.py'
       - '.github/workflows/openapi-drift-check.yml'
   push:
     branches: [main, develop]
     paths:
-      - 'value-fabric/**/src/api/**'
-      - 'value-fabric/**/src/**/routes/**'
+      - 'services/**/src/api/**'
+      - 'services/**/src/**/routes/**'
       - 'shared/**'
       - 'scripts/export_openapi.py'
 
@@ -44,7 +44,7 @@ jobs:
         run: |
           pip install fastapi uvicorn pydantic
           # Install layer-specific dependencies
-          pip install -e value-fabric/${{ matrix.layer.dir }} || true
+          pip install -e services/${{ matrix.layer.dir }} || true
 
       - name: Export OpenAPI spec
         run: |

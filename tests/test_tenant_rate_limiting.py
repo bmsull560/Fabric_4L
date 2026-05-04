@@ -15,7 +15,10 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from shared.rate_limiting.tenant_rate_limiter import (
+from types import SimpleNamespace
+from value_fabric.shared.rate_limiting.admin_api import get_tenant_quota
+
+from value_fabric.shared.rate_limiting.tenant_rate_limiter import (
     TenantRateLimiter,
     TenantTier,
     RateLimitConfig,
@@ -85,7 +88,7 @@ class TestTenantRateLimiter:
     @pytest.mark.asyncio
     async def test_different_limits_per_tier(self, rate_limiter):
         """Verify different tiers have different limits."""
-        from shared.rate_limiting.tenant_rate_limiter import DEFAULT_TENANT_LIMITS
+        from value_fabric.shared.rate_limiting.tenant_rate_limiter import DEFAULT_TENANT_LIMITS
         
         shared_limits = DEFAULT_TENANT_LIMITS[TenantTier.SHARED]
         enterprise_limits = DEFAULT_TENANT_LIMITS[TenantTier.ENTERPRISE]
@@ -278,7 +281,7 @@ class TestRateLimitMiddleware:
     @pytest.mark.asyncio
     async def test_normalizes_endpoint_paths(self):
         """Verify endpoint normalization groups similar requests."""
-        from shared.rate_limiting.middleware import TenantRateLimitMiddleware
+        from value_fabric.shared.rate_limiting.middleware import TenantRateLimitMiddleware
         
         middleware = TenantRateLimitMiddleware(app=None, rate_limiter=None)
         
@@ -296,11 +299,90 @@ class TestRateLimitAdminAPI:
     """Tests for rate limit admin API."""
     
     @pytest.mark.asyncio
-    async def test_get_tenant_quota(self):
-        """Verify getting tenant quota status."""
-        # Would test with actual FastAPI TestClient
-        # Verify quota response includes limits and usage
-        pass
+    @pytest.mark.parametrize("resolved_tier", [TenantTier.SHARED, TenantTier.DEDICATED, TenantTier.ENTERPRISE])
+    async def test_get_tenant_quota_uses_resolved_tier(self, resolved_tier):
+        """Verify quota lookup uses the resolved tenant tier from metadata provider."""
+        tenant_id = uuid4()
+        context = SimpleNamespace(user_id=uuid4(), roles=["super_admin"])
+
+        mock_rate_limiter = AsyncMock()
+        mock_rate_limiter.get_tenant_quota_status = AsyncMock(return_value={
+            "tenant_id": str(tenant_id),
+            "tier": resolved_tier.value,
+            "limits": {"requests_per_minute": 100},
+            "usage": {"minute": 1},
+            "custom_limits": False,
+        })
+
+        metadata_provider = AsyncMock()
+        metadata_provider.get_tenant_tier = AsyncMock(return_value=resolved_tier)
+
+        response = await get_tenant_quota(
+            tenant_id=tenant_id,
+            context=context,
+            rate_limiter=mock_rate_limiter,
+            tenant_metadata_provider=metadata_provider,
+        )
+
+        assert response.tier == resolved_tier.value
+        mock_rate_limiter.get_tenant_quota_status.assert_awaited_once_with(
+            tenant_id=tenant_id,
+            tenant_tier=resolved_tier,
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_tenant_quota_returns_404_when_tenant_not_found(self):
+        """Verify unknown tenant IDs return 404 instead of defaulting to SHARED."""
+        from fastapi import HTTPException
+
+        tenant_id = uuid4()
+        context = SimpleNamespace(user_id=uuid4(), roles=["super_admin"])
+        mock_rate_limiter = AsyncMock()
+        metadata_provider = AsyncMock()
+        metadata_provider.get_tenant_tier = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_tenant_quota(
+                tenant_id=tenant_id,
+                context=context,
+                rate_limiter=mock_rate_limiter,
+                tenant_metadata_provider=metadata_provider,
+            )
+
+        assert exc_info.value.status_code == 404
+        mock_rate_limiter.get_tenant_quota_status.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_tenant_quota_prevents_tier_mismatch_from_rate_limiter_response(self):
+        """Verify response tier follows resolved metadata tier even if backend returns mismatched tier."""
+        tenant_id = uuid4()
+        resolved_tier = TenantTier.DEDICATED
+        context = SimpleNamespace(user_id=uuid4(), roles=["super_admin"])
+
+        mock_rate_limiter = AsyncMock()
+        mock_rate_limiter.get_tenant_quota_status = AsyncMock(return_value={
+            "tenant_id": str(tenant_id),
+            "tier": TenantTier.SHARED.value,
+            "limits": {"requests_per_minute": 100},
+            "usage": {"minute": 1},
+            "custom_limits": False,
+        })
+
+        metadata_provider = AsyncMock()
+        metadata_provider.get_tenant_tier = AsyncMock(return_value=resolved_tier)
+
+        response = await get_tenant_quota(
+            tenant_id=tenant_id,
+            context=context,
+            rate_limiter=mock_rate_limiter,
+            tenant_metadata_provider=metadata_provider,
+        )
+
+        assert response.tier == resolved_tier.value
+        mock_rate_limiter.get_tenant_quota_status.assert_awaited_once_with(
+            tenant_id=tenant_id,
+            tenant_tier=resolved_tier,
+        )
     
     @pytest.mark.asyncio
     async def test_set_custom_limits(self):

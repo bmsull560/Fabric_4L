@@ -18,8 +18,8 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from shared.identity.context import RequestContext
-from shared.identity.dependencies import (
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import (
     require_authenticated,
     require_tenant_context,
     require_admin,
@@ -40,7 +40,7 @@ class TestContextExtraction:
         
         Rationale: JWT is primary auth mechanism for user requests.
         """
-        from shared.identity.middleware import extract_context_from_jwt
+        from value_fabric.shared.identity.middleware import extract_context_from_jwt
         
         tenant_id = uuid4()
         user_id = uuid4()
@@ -65,7 +65,7 @@ class TestContextExtraction:
         
         Rationale: API keys are used for service-to-service auth.
         """
-        from shared.identity.middleware import extract_context_from_api_key
+        from value_fabric.shared.identity.middleware import extract_context_from_api_key
         
         tenant_id = uuid4()
         api_key = "sk_test_12345"
@@ -88,7 +88,7 @@ class TestContextExtraction:
         
         Rationale: All authenticated requests must have tenant context.
         """
-        from shared.identity.middleware import extract_context_from_jwt
+        from value_fabric.shared.identity.middleware import extract_context_from_jwt
         
         # JWT missing tenant_id
         jwt_payload = {
@@ -106,7 +106,7 @@ class TestContextExtraction:
         
         Rationale: Invalid UUIDs could cause downstream errors.
         """
-        from shared.identity.middleware import extract_context_from_jwt
+        from value_fabric.shared.identity.middleware import extract_context_from_jwt
         
         # JWT with invalid UUID
         jwt_payload = {
@@ -125,7 +125,7 @@ class TestContextExtraction:
         Attack scenario: Attacker provides different tenant_id in header
         to bypass authorization.
         """
-        from shared.identity.middleware import validate_context_consistency
+        from value_fabric.shared.identity.middleware import validate_context_consistency
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -238,7 +238,7 @@ class TestContextPropagation:
         Rationale: Context must survive middleware chain.
         """
         from fastapi import FastAPI, Request
-        from shared.identity.middleware import TenantContextMiddleware
+        from value_fabric.shared.identity.middleware import TenantContextMiddleware
         
         app = FastAPI()
         app.add_middleware(TenantContextMiddleware)
@@ -277,7 +277,7 @@ class TestContextPropagation:
         Rationale: Background tasks must maintain tenant isolation.
         """
         from fastapi import BackgroundTasks
-        from shared.identity.context import get_current_context, set_current_context
+        from value_fabric.shared.identity.context import get_current_context, set_current_context
         
         tenant_id = uuid4()
         original_context = RequestContext(tenant_id=tenant_id, user_id=uuid4())
@@ -306,7 +306,7 @@ class TestContextPropagation:
         
         Rationale: Async context must be request-scoped, not global.
         """
-        from shared.identity.context import set_current_context, get_current_context, clear_current_context
+        from value_fabric.shared.identity.context import set_current_context, get_current_context, clear_current_context
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -387,7 +387,7 @@ class TestNegativePathContextScenarios:
         
         Rationale: Expired tokens should not grant access.
         """
-        from shared.identity.middleware import decode_jwt
+        from value_fabric.shared.identity.middleware import decode_jwt
         from jose import JWTError
         
         expired_token = "eyJ..."  # Mock expired token
@@ -401,7 +401,7 @@ class TestNegativePathContextScenarios:
         
         Attack scenario: Attacker modifies token payload.
         """
-        from shared.identity.middleware import decode_jwt
+        from value_fabric.shared.identity.middleware import decode_jwt
         from jose import JWTError
         
         tampered_token = "eyJ..."  # Mock tampered token
@@ -415,7 +415,7 @@ class TestNegativePathContextScenarios:
         
         Rationale: Revoked keys should not grant access.
         """
-        from shared.identity.middleware import extract_context_from_api_key
+        from value_fabric.shared.identity.middleware import extract_context_from_api_key
         
         revoked_api_key = "sk_test_revoked"
         
@@ -433,7 +433,7 @@ class TestNegativePathContextScenarios:
         
         Attack scenario: Attacker provides SQL in tenant_id field.
         """
-        from shared.identity.middleware import extract_context_from_jwt
+        from value_fabric.shared.identity.middleware import extract_context_from_jwt
         
         # JWT with SQL injection attempt
         jwt_payload = {
@@ -451,7 +451,7 @@ class TestNegativePathContextScenarios:
         
         Attack scenario: Attacker provides script tag in user_id.
         """
-        from shared.identity.middleware import extract_context_from_jwt
+        from value_fabric.shared.identity.middleware import extract_context_from_jwt
         
         # JWT with XSS attempt
         jwt_payload = {
@@ -469,7 +469,7 @@ class TestNegativePathContextScenarios:
         
         Attack scenario: Attacker provides huge permissions list to DoS.
         """
-        from shared.identity.middleware import extract_context_from_jwt
+        from value_fabric.shared.identity.middleware import extract_context_from_jwt
         
         # JWT with 10,000 permissions
         jwt_payload = {
@@ -496,7 +496,7 @@ class TestCrossLayerContextValidation:
         
         Rationale: Ingestion endpoints must enforce tenant isolation.
         """
-        from value_fabric.layer1_ingestion.src.api.main import app
+        from value_fabric.layer1.api.main import app
         
         client = TestClient(app)
         
@@ -511,7 +511,7 @@ class TestCrossLayerContextValidation:
         
         Rationale: Extraction endpoints must enforce tenant isolation.
         """
-        from value_fabric.layer2_extraction.src.api.main import app
+        from value_fabric.layer2.api.main import app
         
         client = TestClient(app)
         
@@ -526,7 +526,7 @@ class TestCrossLayerContextValidation:
         
         Rationale: Knowledge graph endpoints must enforce tenant isolation.
         """
-        from value_fabric.layer3_knowledge.src.api.main import app
+        from value_fabric.layer3.api.main import app
         
         client = TestClient(app)
         
@@ -541,7 +541,7 @@ class TestCrossLayerContextValidation:
         
         Rationale: Agent endpoints must enforce tenant isolation.
         """
-        from value_fabric.layer4_agents.src.main import app
+        from value_fabric.layer4.main import app
         
         client = TestClient(app)
         

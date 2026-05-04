@@ -81,8 +81,8 @@ services:
   # ---------------------------------------------------------------------------
   layer4:
     build:
-      context: ./value-fabric
-      dockerfile: ./layer4-agents/Dockerfile
+      context: ./services/layer4-agents
+      dockerfile: ./Dockerfile
     container_name: vf-e2e-layer4
     ports:
       - "8004:8000"
@@ -142,8 +142,8 @@ services:
   # ---------------------------------------------------------------------------
   migrate:
     build:
-      context: ./value-fabric
-      dockerfile: ./layer4-agents/Dockerfile
+      context: ./services/layer4-agents
+      dockerfile: ./Dockerfile
     container_name: vf-e2e-migrate
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents

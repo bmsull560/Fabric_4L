@@ -39,7 +39,7 @@ class TestV001_AuthenticationRequired:
 
     def test_get_verified_tenant_id_rejects_no_context(self):
         """get_verified_tenant_id raises 401 when no governance context."""
-        from shared.security.dil_auth import require_dil_context
+        from value_fabric.shared.security.dil_auth import require_dil_context
 
         with pytest.raises(Exception) as exc_info:
             # Simulate no context
@@ -49,7 +49,7 @@ class TestV001_AuthenticationRequired:
 
     def test_get_verified_tenant_id_returns_tenant(self):
         """get_verified_tenant_id returns tenant_id from valid context."""
-        from shared.security.dil_auth import get_verified_tenant_id
+        from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
         mock_ctx = MagicMock()
         mock_ctx.tenant_id = str(TENANT_A_ID)
@@ -58,7 +58,7 @@ class TestV001_AuthenticationRequired:
 
     def test_www_authenticate_header_on_401(self):
         """401 response must include WWW-Authenticate header."""
-        from shared.security.dil_auth import require_dil_context
+        from value_fabric.shared.security.dil_auth import require_dil_context
 
         with pytest.raises(Exception) as exc_info:
             require_dil_context(ctx=None)
@@ -70,7 +70,7 @@ class TestV002_TenantBinding:
 
     def test_verified_tenant_ignores_header(self):
         """Even if X-Tenant-ID header is present, the verified context wins."""
-        from shared.security.dil_auth import get_verified_tenant_id
+        from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
         mock_ctx = MagicMock()
         mock_ctx.tenant_id = str(TENANT_A_ID)
@@ -79,7 +79,7 @@ class TestV002_TenantBinding:
 
     def test_tenant_header_mismatch_raises_403(self):
         """If X-Tenant-ID header doesn't match auth context, raise 403."""
-        from shared.security.dil_auth import verify_tenant_header_matches
+        from value_fabric.shared.security.dil_auth import verify_tenant_header_matches
 
         mock_ctx = MagicMock()
         mock_ctx.tenant_id = str(TENANT_A_ID)
@@ -94,7 +94,7 @@ class TestV002_TenantBinding:
 
     def test_tenant_header_matches_passes(self):
         """If X-Tenant-ID matches auth context, no error."""
-        from shared.security.dil_auth import verify_tenant_header_matches
+        from value_fabric.shared.security.dil_auth import verify_tenant_header_matches
 
         mock_ctx = MagicMock()
         mock_ctx.tenant_id = str(TENANT_A_ID)
@@ -154,7 +154,7 @@ class TestV008_HypothesisStatusValidation:
 
     def test_valid_hypothesis_statuses(self):
         """Valid statuses should pass validation."""
-        from shared.security.dil_auth import validate_enum_value, VALID_HYPOTHESIS_STATUSES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_HYPOTHESIS_STATUSES
 
         for status in ["validated", "rejected", "converted"]:
             result = validate_enum_value(status, VALID_HYPOTHESIS_STATUSES, "new_status")
@@ -162,7 +162,7 @@ class TestV008_HypothesisStatusValidation:
 
     def test_invalid_hypothesis_status_raises(self):
         """Invalid status should raise 422."""
-        from shared.security.dil_auth import validate_enum_value, VALID_HYPOTHESIS_STATUSES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_HYPOTHESIS_STATUSES
 
         with pytest.raises(Exception) as exc_info:
             validate_enum_value("hacked", VALID_HYPOTHESIS_STATUSES, "new_status")
@@ -239,7 +239,7 @@ class TestV005_SSRFProtection:
     @pytest.mark.parametrize("url", SSRF_TARGETS)
     def test_ssrf_targets_blocked(self, url):
         """Each SSRF target URL must be blocked by validate_url_safe."""
-        from shared.security.dil_auth import SSRFBlockedError, validate_url_safe
+        from value_fabric.shared.security.dil_auth import SSRFBlockedError, validate_url_safe
 
         # Some URLs may fail DNS resolution, which is fine
         # The important thing is they don't pass validation
@@ -263,7 +263,7 @@ class TestV005_SSRFProtection:
 
     def test_valid_url_passes(self):
         """Legitimate URLs should pass validation."""
-        from shared.security.dil_auth import validate_url_safe
+        from value_fabric.shared.security.dil_auth import validate_url_safe
 
         result = validate_url_safe("https://www.example.com", resolve_dns=False)
         assert result == "https://www.example.com"
@@ -285,7 +285,7 @@ class TestV006_CypherInjection:
 
     def test_allowlisted_fields_pass(self):
         """Valid field names should be accepted."""
-        from shared.security.dil_auth import AllowlistedFieldUpdate
+        from value_fabric.shared.security.dil_auth import AllowlistedFieldUpdate
 
         updater = AllowlistedFieldUpdate(
             allowed={"name", "description", "domain"},
@@ -299,7 +299,7 @@ class TestV006_CypherInjection:
     @pytest.mark.parametrize("malicious_key", CYPHER_INJECTION_KEYS)
     def test_injection_keys_rejected(self, malicious_key):
         """Malicious field names must be rejected."""
-        from shared.security.dil_auth import AllowlistedFieldUpdate
+        from value_fabric.shared.security.dil_auth import AllowlistedFieldUpdate
 
         updater = AllowlistedFieldUpdate(
             allowed={"name", "description", "domain"},
@@ -310,7 +310,7 @@ class TestV006_CypherInjection:
 
     def test_protected_fields_rejected(self):
         """Fields like tenant_id, id, created_at must never be updatable."""
-        from shared.security.dil_auth import AllowlistedFieldUpdate
+        from value_fabric.shared.security.dil_auth import AllowlistedFieldUpdate
 
         updater = AllowlistedFieldUpdate(
             allowed={"name", "description"},
@@ -336,14 +336,14 @@ class TestV011_WinLossValidation:
 
     def test_valid_outcomes_pass(self):
         """'won' and 'lost' should pass validation."""
-        from shared.security.dil_auth import validate_enum_value, VALID_WIN_LOSS_OUTCOMES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_WIN_LOSS_OUTCOMES
 
         assert validate_enum_value("won", VALID_WIN_LOSS_OUTCOMES, "outcome") == "won"
         assert validate_enum_value("lost", VALID_WIN_LOSS_OUTCOMES, "outcome") == "lost"
 
     def test_invalid_outcome_raises(self):
         """Invalid outcome should raise 422."""
-        from shared.security.dil_auth import validate_enum_value, VALID_WIN_LOSS_OUTCOMES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_WIN_LOSS_OUTCOMES
 
         with pytest.raises(Exception) as exc_info:
             validate_enum_value("draw", VALID_WIN_LOSS_OUTCOMES, "outcome")
@@ -375,7 +375,7 @@ class TestV015_SSRFBlockedNetworks:
     ])
     def test_ip_blocking(self, ip_str, should_block):
         """Verify IP address blocking logic."""
-        from shared.security.dil_auth import _is_blocked_ip
+        from value_fabric.shared.security.dil_auth import _is_blocked_ip
 
         ip = ipaddress.ip_address(ip_str)
         assert _is_blocked_ip(ip) == should_block, \
@@ -390,7 +390,7 @@ class TestV015_SSRFBlockedNetworks:
     ])
     def test_encoded_ip_detection(self, hostname, should_detect):
         """Verify encoded IP detection."""
-        from shared.security.dil_auth import _is_encoded_ip
+        from value_fabric.shared.security.dil_auth import _is_encoded_ip
 
         assert _is_encoded_ip(hostname) == should_detect, \
             f"Hostname '{hostname}' should {'be detected' if should_detect else 'not be detected'} as encoded IP"
@@ -425,7 +425,7 @@ class TestV010_NarrativeStatusValidation:
 
     def test_valid_narrative_statuses(self):
         """Valid statuses should pass."""
-        from shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_STATUSES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_STATUSES
 
         for status in ["draft", "review", "approved", "delivered"]:
             result = validate_enum_value(status, VALID_NARRATIVE_STATUSES, "status")
@@ -433,7 +433,7 @@ class TestV010_NarrativeStatusValidation:
 
     def test_invalid_narrative_status_raises(self):
         """Invalid status should raise 422."""
-        from shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_STATUSES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_STATUSES
 
         with pytest.raises(Exception) as exc_info:
             validate_enum_value("published", VALID_NARRATIVE_STATUSES, "status")
@@ -445,24 +445,24 @@ class TestV014_NarrativeToneAudienceValidation:
 
     @pytest.mark.parametrize("tone", ["executive", "technical", "financial", "consultative"])
     def test_valid_tones(self, tone):
-        from shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_TONES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_TONES
         assert validate_enum_value(tone, VALID_NARRATIVE_TONES, "tone") == tone
 
     @pytest.mark.parametrize("audience", [
         "c_suite", "vp_director", "technical_buyer", "champion", "evaluation_committee"
     ])
     def test_valid_audiences(self, audience):
-        from shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_AUDIENCES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_AUDIENCES
         assert validate_enum_value(audience, VALID_NARRATIVE_AUDIENCES, "audience") == audience
 
     def test_invalid_tone_raises(self):
-        from shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_TONES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_TONES
         with pytest.raises(Exception) as exc_info:
             validate_enum_value("aggressive", VALID_NARRATIVE_TONES, "tone")
         assert exc_info.value.status_code == 422
 
     def test_invalid_audience_raises(self):
-        from shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_AUDIENCES
+        from value_fabric.shared.security.dil_auth import validate_enum_value, VALID_NARRATIVE_AUDIENCES
         with pytest.raises(Exception) as exc_info:
             validate_enum_value("intern", VALID_NARRATIVE_AUDIENCES, "audience")
         assert exc_info.value.status_code == 422
@@ -494,19 +494,19 @@ class TestV017_ConfidenceClamping:
     """V-017: Confidence adjustments must be clamped to [0.0, 1.0]."""
 
     def test_clamp_within_range(self):
-        from shared.security.dil_auth import clamp_confidence
+        from value_fabric.shared.security.dil_auth import clamp_confidence
         assert clamp_confidence(0.5, 0.2) == 0.7
 
     def test_clamp_upper_bound(self):
-        from shared.security.dil_auth import clamp_confidence
+        from value_fabric.shared.security.dil_auth import clamp_confidence
         assert clamp_confidence(0.9, 0.5) == 1.0
 
     def test_clamp_lower_bound(self):
-        from shared.security.dil_auth import clamp_confidence
+        from value_fabric.shared.security.dil_auth import clamp_confidence
         assert clamp_confidence(0.1, -0.5) == 0.0
 
     def test_clamp_exact_boundaries(self):
-        from shared.security.dil_auth import clamp_confidence
+        from value_fabric.shared.security.dil_auth import clamp_confidence
         assert clamp_confidence(0.0, 0.0) == 0.0
         assert clamp_confidence(1.0, 0.0) == 1.0
 

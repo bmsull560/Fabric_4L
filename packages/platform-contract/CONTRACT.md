@@ -28,9 +28,11 @@ This contract ends those debates. **One pattern per concern. Enforced in CI.**
 
 ## 3. Canonical Patterns
 
+> **Note:** All shared code imports must use the canonical path `value_fabric.shared.*`. The legacy root `shared` package is deprecated and blocked by CI. Use `from value_fabric.shared.X import Y` for all shared dependencies.
+
 ### 3.1 Tenant Context Propagation
 
-**Canonical:** shared.identity.RequestContext + GovernanceMiddleware + _current_context ContextVar.
+**Canonical:** value_fabric.shared.identity.RequestContext + GovernanceMiddleware + _current_context ContextVar.
 
 `python
 # How context is SET (once per request)
@@ -44,22 +46,22 @@ async def dispatch(self, request: Request, call_next):
     return response
 
 # How context is READ in endpoints
-from shared.identity.dependencies import get_request_context
-from shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import get_request_context
+from value_fabric.shared.identity.context import RequestContext
 
 @router.get('/items')
 async def list_items(ctx: RequestContext = Depends(get_request_context)):
     ...
 
 # How context is READ in non-endpoint code
-from shared.identity.context import get_current_context
+from value_fabric.shared.identity.context import get_current_context
 
 def some_helper():
     ctx = get_current_context()
     if ctx is None:
         raise RuntimeError('No request context')
     return ctx.tenant_id
-`
+```
 
 **Rules:**
 - GovernanceMiddleware is the **outermost** middleware in every layer (after CORS).
@@ -76,7 +78,7 @@ equest.state.tenant.
 
 **Canonical:** Async SQLAlchemy + get_db_from_context() + PostgreSQL RLS via SET LOCAL app.tenant_id.
 
-`python
+```python
 # FastAPI endpoint (canonical)
 from value_fabric.layer4_agents.database import get_db_from_context
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -92,12 +94,12 @@ async def list_items(
 
 # Non-FastAPI usage (background task, service method)
 from value_fabric.layer4_agents.database import db_session_for_context
-from shared.identity.context import RequestContext
+from value_fabric.shared.identity.context import RequestContext
 
 async def background_task(ctx: RequestContext):
     async with db_session_for_context(ctx) as db:
         ...
-`
+```
 
 **Rules:**
 - get_db_from_context() is the ONLY FastAPI dependency for DB sessions in new code.
@@ -126,7 +128,7 @@ app.add_middleware(SecurityMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
 # Auth enforcement in routes
-from shared.identity.dependencies import require_authenticated, require_tenant_admin
+from value_fabric.shared.identity.dependencies import require_authenticated, require_tenant_admin
 
 @router.post('/items')
 async def create_item(
@@ -293,7 +295,7 @@ function reducer(state: State, action: Action): State { ... }
 Every auditable action produces a hash-chained audit event. Events are partitioned by `chain_id` (typically `agent_type:tenant_id`). Each event's `prev_hash` references the preceding event in the same chain, forming a tamper-evident ledger.
 
 ```python
-from shared.audit.emitter import emit_audit_event
+from value_fabric.shared.audit.emitter import emit_audit_event
 
 # Emit an audit event with chain linkage
 await emit_audit_event(
@@ -489,28 +491,39 @@ This contract is versioned. Changes require:
 
 ### One-liners for developers
 
-`python
+```python
 # Get tenant context in an endpoint
 ctx: RequestContext = Depends(get_request_context)
 
 # Get DB session with RLS
 db: AsyncSession = Depends(get_db_from_context)
 
-# Get trace_id for logging
-trace_id = ctx.request_id  # or from OTel span
-
 # Build agent response
-return AgentResultEnvelope(status='success', data=..., metadata=...)
-`
+return AgentResultEnvelope(status="success", data=payload, metadata=metadata)
+```
 
-`	ypescript
+```typescript
 // Navigate
 const [, navigate] = useLocation();
-navigate('/home');
+navigate("/home");
 
 // Read global state
-const accountId = useAccountContextStore((s) => s.selectedAccountId);
+const accountId = useAccountContextStore((state) => state.selectedAccountId);
 
 // Read server state
-const { data } = useQuery({ queryKey: ['key'], queryFn: fetchFn });
-`
+const { data } = useQuery({ queryKey: ["key"], queryFn: fetchFn });
+```
+
+---
+
+## 9. Adding a New Canonical Contract
+
+Treat every new canonical contract as one change set that includes code, enforcement, and docs.
+
+1. Add or update the canonical source under `packages/platform-contract/src/python/canonical/` or `packages/platform-contract/src/typescript/`.
+2. Add adjacent positive and negative tests. Negative coverage must assert actionable error text or TypeScript diagnostics.
+3. Update the package export map or `docs/platform-contract/DEPRECATION_MAP.md` if the public surface or migration path changes.
+4. Wire the checks into CI through the existing contract stages rather than relying on local-only scripts.
+5. Run `npm run contract:test` in `packages/platform-contract/`, then run `make contract-tests`.
+
+Definition of done: a violation of the new canonical rule fails CI with a contract-specific message that tells the next engineer what to fix.

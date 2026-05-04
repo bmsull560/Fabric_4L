@@ -32,7 +32,9 @@ sys.modules.setdefault("shared.audit", types.ModuleType("shared.audit"))
 sys.modules.setdefault("shared", types.ModuleType("shared"))
 
 # Now import the service — add the layer4-agents src to path
-_l4_src = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src"
+import os
+_repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_l4_src = os.path.join(_repo_root, "services", "layer4-agents", "src")
 if _l4_src not in sys.path:
     sys.path.insert(0, _l4_src)
 

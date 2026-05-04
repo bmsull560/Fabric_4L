@@ -1,0 +1,25 @@
+FROM node:20-alpine
+WORKDIR /workspace
+RUN corepack enable
+
+# Copy everything needed at workspace root for pnpm to resolve relative paths correctly
+COPY apps/web/package.json ./package.json
+COPY apps/web/scripts ./scripts
+
+# Remove local file dependency and unused patches from package.json
+RUN sed -i '/eslint-plugin-fabric-contracts/d' package.json && \
+    sed -i '/patchedDependencies/,/}/d' package.json && \
+    sed -i '/wouter@3.7.1/d' package.json
+
+# Install dependencies (generate fresh lockfile without local plugin)
+RUN pnpm install
+
+# Copy frontend source to app directory
+WORKDIR /app
+COPY apps/web/ .
+
+# Link dependencies from workspace
+RUN rm -rf /app/node_modules && ln -s /workspace/node_modules /app/node_modules
+
+EXPOSE 3001
+CMD ["pnpm", "dev"]

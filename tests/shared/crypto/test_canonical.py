@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from shared.crypto.canonical import canonical_hash, canonical_json_encode
+from value_fabric.shared.crypto.canonical import canonical_hash, canonical_json_encode
 
 
 # ═══════════════════════════════════════════════════════════════════════════

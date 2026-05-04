@@ -8,6 +8,11 @@ metadata:
     component: layer2
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: layer2-extraction
@@ -42,9 +47,9 @@ spec:
             capabilities:
               drop: ["ALL"]
       containers:
-        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
+        # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: value-fabric/layer2-extraction:latest
+          image: value-fabric/layer2-extraction:main
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
@@ -116,6 +121,14 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
           volumeMounts:
             - name: rdf-output
               mountPath: /app/rdf-output

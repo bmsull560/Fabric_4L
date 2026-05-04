@@ -11,7 +11,10 @@ data:
   LAYER4_API_URL: "http://layer4-agents:8000"
   LAYER5_API_URL: "http://layer5-ground-truth:8005"
   LAYER6_API_URL: "http://layer6-benchmarks:8006"
-  LAYER5_DATABASE_URL_SYNC: "postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth"
+  # LAYER5_DATABASE_URL_SYNC: Moved to Secret — do not store DB credentials in ConfigMaps.
+  # Use k8s/external-secrets/layer5-secrets.yaml or create a Secret manually:
+  #   kubectl create secret generic layer5-db-credentials \
+  #     --from-literal=DATABASE_URL_SYNC="postgresql+psycopg2://<user>:<pass>@postgres:5432/ground_truth"
   PINECONE_INDEX: ""
   
   # Neo4j configuration

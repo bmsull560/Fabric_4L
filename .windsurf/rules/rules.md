@@ -1,5 +1,9 @@
 # **VALUE FABRIC: DEVELOPMENT RULES** (Quick Reference)
 
+**Status:** Legacy Reference Material  
+**Last Reviewed:** 2026-05-04  
+**Note:** This document provides a quick reference for development rules. For current rule enforcement, see the YAML rule files in this directory (`hard-constraints.yaml`, `safety-rules.yaml`, `dependency-rules.yaml`, `style-rules.yaml`).
+
 ## **1. CODE QUALITY**
 | Aspect | Rule |
 |--------|------|

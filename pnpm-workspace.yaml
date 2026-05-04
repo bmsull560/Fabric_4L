@@ -1,0 +1,10 @@
+# Fabric 4L Monorepo Workspace Configuration
+#
+# Defines packages that are part of the pnpm workspace.
+# All workspace packages can reference each other using the "workspace:" protocol.
+
+packages:
+  # Application packages
+  - 'apps/*'
+  # Shared library packages
+  - 'packages/*'

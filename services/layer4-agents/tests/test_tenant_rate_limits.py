@@ -1,0 +1,222 @@
+"""Active regression tests for per-tenant rate limiting.
+
+Validates:
+- TENANT scope rate limiting exists
+- Per-tenant settings schema remains valid
+- Process-local tenant buckets isolate tenants in unit tests
+- Middleware consumes tenant-specific rate-limit settings through the shared limiter
+"""
+
+from __future__ import annotations
+
+import asyncio
+import time
+import unittest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+from starlette.datastructures import Headers
+
+from value_fabric.shared.identity.middleware import (
+    GovernanceMiddleware,
+    _check_tenant_rate_limit,
+    _tenant_rate_limit_buckets,
+)
+from value_fabric.shared.identity.rate_limiter import RateLimitResult
+from value_fabric.shared.identity.rate_limiting import RateLimitScope
+from value_fabric.layer4.tenants.settings_schema import (
+    RateLimitSettings,
+    TenantSettings,
+    get_tenant_rate_limits,
+)
+
+
+class TestTenantRateLimiting(unittest.TestCase):
+    """Test per-tenant rate limiting functionality."""
+
+    def setUp(self):
+        _tenant_rate_limit_buckets.clear()
+
+    def tearDown(self):
+        _tenant_rate_limit_buckets.clear()
+
+    def test_tenant_scope_added_to_enum(self):
+        """Verify TENANT scope exists in RateLimitScope enum."""
+        self.assertTrue(hasattr(RateLimitScope, "TENANT"))
+        self.assertEqual(RateLimitScope.TENANT, "tenant")
+
+    def test_tenant_settings_schema_validation(self):
+        """Verify tenant settings schema validates rate limits correctly."""
+        settings = {"rate_limits": {"requests_per_minute": 200, "burst": 400}}
+        tenant_settings = TenantSettings.from_json(settings)
+        self.assertEqual(tenant_settings.rate_limits.requests_per_minute, 200)
+        self.assertEqual(tenant_settings.rate_limits.burst, 400)
+
+        with self.assertRaises(ValueError):
+            RateLimitSettings(requests_per_minute=200, burst=100)
+
+    def test_tenant_settings_defaults(self):
+        """Verify defaults are applied when settings are missing."""
+        limits = get_tenant_rate_limits({})
+        self.assertEqual(limits.requests_per_minute, 120)
+        self.assertEqual(limits.burst, 240)
+        self.assertEqual(limits.llm_requests_per_minute, 30)
+
+        limits = get_tenant_rate_limits(None)
+        self.assertEqual(limits.requests_per_minute, 120)
+
+    def test_rate_limit_check_validates_positive_rpm(self):
+        """Verify rate limit rejects non-positive requests_per_minute."""
+        tenant_id = str(uuid4())
+
+        with self.assertRaisesRegex(ValueError, "requests_per_minute must be >= 1"):
+            _check_tenant_rate_limit(tenant_id, requests_per_minute=0)
+
+        with self.assertRaisesRegex(ValueError, "requests_per_minute must be >= 1"):
+            _check_tenant_rate_limit(tenant_id, requests_per_minute=-1)
+
+    def test_rate_limit_check_allows_under_limit(self):
+        """Verify requests under limit are allowed."""
+        tenant_id = str(uuid4())
+
+        for _ in range(5):
+            allowed, retry_after = _check_tenant_rate_limit(tenant_id, requests_per_minute=10)
+            self.assertTrue(allowed)
+            self.assertEqual(retry_after, 0)
+
+    def test_rate_limit_check_blocks_over_limit(self):
+        """Verify requests over limit are blocked."""
+        tenant_id = str(uuid4())
+        rpm = 3
+
+        for _ in range(3):
+            allowed, _ = _check_tenant_rate_limit(tenant_id, requests_per_minute=rpm)
+            self.assertTrue(allowed)
+
+        allowed, retry_after = _check_tenant_rate_limit(tenant_id, requests_per_minute=rpm)
+        self.assertFalse(allowed)
+        self.assertGreater(retry_after, 0)
+
+    def test_tenant_isolation(self):
+        """Verify Tenant A cannot consume Tenant B's quota."""
+        tenant_a = str(uuid4())
+        tenant_b = str(uuid4())
+        rpm = 3
+
+        for _ in range(3):
+            allowed, _ = _check_tenant_rate_limit(tenant_a, requests_per_minute=rpm)
+            self.assertTrue(allowed)
+
+        allowed, _ = _check_tenant_rate_limit(tenant_a, requests_per_minute=rpm)
+        self.assertFalse(allowed)
+
+        for _ in range(3):
+            allowed, _ = _check_tenant_rate_limit(tenant_b, requests_per_minute=rpm)
+            self.assertTrue(allowed)
+
+        allowed, _ = _check_tenant_rate_limit(tenant_b, requests_per_minute=rpm)
+        self.assertFalse(allowed)
+
+    def test_rate_limit_window_reset(self):
+        """Verify rate limit window resets after 60 seconds."""
+        tenant_id = str(uuid4())
+        rpm = 2
+
+        start = time.time()
+        with patch("value_fabric.shared.identity.middleware.time.time", return_value=start):
+            for _ in range(2):
+                allowed, _ = _check_tenant_rate_limit(tenant_id, requests_per_minute=rpm)
+                self.assertTrue(allowed)
+            allowed, _ = _check_tenant_rate_limit(tenant_id, requests_per_minute=rpm)
+            self.assertFalse(allowed)
+
+        with patch("value_fabric.shared.identity.middleware.time.time", return_value=start + 61):
+            allowed, retry_after = _check_tenant_rate_limit(tenant_id, requests_per_minute=rpm)
+            self.assertTrue(allowed)
+            self.assertEqual(retry_after, 0)
+
+    def test_tenant_settings_serialization(self):
+        """Verify tenant settings can be serialized to JSON."""
+        settings = TenantSettings()
+        json_data = settings.to_json()
+
+        self.assertIn("rate_limits", json_data)
+        self.assertEqual(json_data["rate_limits"]["requests_per_minute"], 120)
+        self.assertEqual(json_data["rate_limits"]["burst"], 240)
+
+
+class FakeRateLimiter:
+    """Minimal async limiter that records the key and config passed by middleware."""
+
+    def __init__(self, allowed: bool = True):
+        self.allowed = allowed
+        self.calls = []
+
+    async def check(self, key, config):
+        self.calls.append((key, config))
+        return RateLimitResult(
+            allowed=self.allowed,
+            remaining=0 if not self.allowed else max(config.requests_per_minute - 1, 0),
+            reset_at=time.time() + 60,
+            retry_after=60 if not self.allowed else None,
+        )
+
+
+class TestRateLimitMiddlewareIntegration(unittest.TestCase):
+    """Test rate limiting integration with the current GovernanceMiddleware API."""
+
+    def test_middleware_uses_tenant_settings_for_rate_limit(self):
+        """Middleware should prefer tenant settings when a resolver is configured."""
+        async def scenario():
+            tenant_id = uuid4()
+            limiter = FakeRateLimiter(allowed=True)
+            resolver = AsyncMock(
+                return_value={
+                    "rate_limits": {
+                        "requests_per_minute": 1,
+                        "burst_size": 1,
+                        "scope": "tenant",
+                    }
+                }
+            )
+            middleware = GovernanceMiddleware(
+                app=MagicMock(),
+                rate_limiter=limiter,
+                tenant_settings_resolver=resolver,
+            )
+            request = SimpleNamespace(headers=Headers({}), state=SimpleNamespace())
+            context = SimpleNamespace(
+                tenant_id=tenant_id,
+                user_id="user-1",
+                api_key_id=None,
+                roles=["read_only"],
+                has_any_role=lambda *roles: False,
+            )
+
+            result = await middleware._check_rate_limit(request, context)
+
+            self.assertTrue(result.allowed)
+            resolver.assert_awaited_once_with(tenant_id)
+            self.assertEqual(limiter.calls[0][0], f"ratelimit:tenant:{tenant_id}")
+            self.assertEqual(limiter.calls[0][1].requests_per_minute, 1)
+            self.assertEqual(limiter.calls[0][1].scope, RateLimitScope.TENANT)
+
+        asyncio.run(scenario())
+
+    def test_middleware_skips_rate_limit_without_limiter(self):
+        """Middleware should skip rate-limit checks when no limiter is configured."""
+        async def scenario():
+            middleware = GovernanceMiddleware(app=MagicMock(), rate_limiter=None)
+            request = SimpleNamespace(headers=Headers({}), state=SimpleNamespace())
+            context = SimpleNamespace(tenant_id=uuid4(), roles=["read_only"])
+
+            result = await middleware._check_rate_limit(request, context)
+
+            self.assertIsNone(result)
+
+        asyncio.run(scenario())
+
+
+if __name__ == "__main__":
+    unittest.main()

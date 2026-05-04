@@ -1140,6 +1140,554 @@
           }
         }
       }
+    },
+    "/v1/audit//trace/{job_id}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/audit//trace/{job_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\audit.py).",
+        "operationId": "discovered_get_v1_audit__trace_job_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/audit//entity/{entity_id}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/audit//entity/{entity_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\audit.py).",
+        "operationId": "discovered_get_v1_audit__entity_entity_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1//extract/signals": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1//extract/signals",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_post_v1__extract_signals",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1//extract": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1//extract",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_post_v1__extract",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1//extract-and-ingest": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1//extract-and-ingest",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_post_v1__extract-and-ingest",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1//extract/status/{job_id}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1//extract/status/{job_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_get_v1__extract_status_job_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1//jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1//jobs/{job_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_get_v1__jobs_job_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1//extract/batch": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1//extract/batch",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_post_v1__extract_batch",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1//extract/jobs/{job_id}/events": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1//extract/jobs/{job_id}/events",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_get_v1__extract_jobs_job_id_events",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//entities": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//entities",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__entities",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//relationships/{entity_id}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//relationships/{entity_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__relationships_entity_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//schema",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__schema",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/validate": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1/ontology//schema/validate",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_post_v1_ontology__schema_validate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/publish": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1/ontology//schema/publish",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_post_v1_ontology__schema_publish",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/import": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1/ontology//schema/import",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_post_v1_ontology__schema_import",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/export": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//schema/export",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__schema_export",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/types": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//schema/types",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__schema_types",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1/ontology//schema/types",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_post_v1_ontology__schema_types",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/types/{type_id}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//schema/types/{type_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__schema_types_type_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "PUT /v1/ontology//schema/types/{type_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_put_v1_ontology__schema_types_type_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "DELETE /v1/ontology//schema/types/{type_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_delete_v1_ontology__schema_types_type_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/types/{type_id}/properties": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1/ontology//schema/types/{type_id}/properties",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_post_v1_ontology__schema_types_type_id_properties",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/types/{type_id}/properties/{property_id}": {
+      "put": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "PUT /v1/ontology//schema/types/{type_id}/properties/{property_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_put_v1_ontology__schema_types_type_id_properties_property_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "DELETE /v1/ontology//schema/types/{type_id}/properties/{property_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_delete_v1_ontology__schema_types_type_id_properties_property_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/relationships": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//schema/relationships",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__schema_relationships",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1/ontology//schema/relationships",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_post_v1_ontology__schema_relationships",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/relationships/{relationship_id}": {
+      "delete": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "DELETE /v1/ontology//schema/relationships/{relationship_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_delete_v1_ontology__schema_relationships_relationship_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/versions": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//schema/versions",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__schema_versions",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/ontology//schema/versions/{version}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/ontology//schema/versions/{version}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
+        "operationId": "discovered_get_v1_ontology__schema_versions_version",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/extract/signals": {
+      "post": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "POST /v1/extract/signals",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_post_v1_extract_signals",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "layer2-extraction"
+        ],
+        "summary": "GET /v1/jobs/{job_id}",
+        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
+        "operationId": "discovered_get_v1_jobs_job_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
     }
   },
   "components": {

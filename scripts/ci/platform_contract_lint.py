@@ -50,7 +50,12 @@ def scan_file(path: str) -> list[tuple]:
     except (UnicodeDecodeError, OSError):
         return violations
 
+    # manual_db_commit/rollback are route-handler rules; skip tests and services
+    is_route_handler_file = "api" in Path(path).parts
+
     for pattern_name, regex, description in ERROR_PATTERNS:
+        if pattern_name in ("manual_db_commit", "manual_db_rollback") and not is_route_handler_file:
+            continue
         for match in re.finditer(regex, content):
             line_number = content[:match.start()].count("\n") + 1
             violations.append(("ERROR", path, line_number, pattern_name, description))

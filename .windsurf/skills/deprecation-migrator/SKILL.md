@@ -1,6 +1,14 @@
 ---
-name: deprecation-migrator
+skill_id: deprecation-migrator
+name: Deprecation Migrator
+version: 1.0.0
 description: Migrate deprecated anti-pattern instances to canonical replacements defined in contract.md. Use when fixing tenant-id-as-parameter, direct-header-access, explicit-db-connect, inline-middleware, inline-tool-definition, tools-throwing-exceptions, json-parse-llm, imperative-navigation, url-concatenation, or raw-sql-tenant patterns. Targets ~280 instances tracked in DEPRECATIONS.md.
+side_effects: write
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # Deprecation Migrator

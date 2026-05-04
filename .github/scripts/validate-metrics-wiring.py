@@ -17,7 +17,7 @@ from pathlib import Path
 
 def get_layer_paths(layer: int) -> tuple[Path, Path]:
     """Get paths to main.py and prometheus_metrics.py for a layer."""
-    base = Path("value-fabric")
+    base = Path("services")
 
     layer_dirs = {
         2: "layer2-extraction/src/layer2_extraction",

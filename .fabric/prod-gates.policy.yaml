@@ -1,0 +1,151 @@
+version: "2.0"
+description: >
+  Production readiness gate policy for Value Fabric.
+  Each profile defines which gates run for a given pipeline context.
+  Gates are implemented as Makefile targets and run pytest where applicable.
+
+  Gate classes:
+    - blocking:   Must pass. Non-zero exit = release blocked.
+    - advisory:   Runs and reports, but failure does not block release.
+    - artifact:   Generates artifacts. Must succeed.
+    - placeholder: Explicitly not implemented. Blocks release-candidate.
+
+profiles:
+  pr-fast:
+    description: "Cheap local or PR feedback — no external deps, < 5 min"
+    gates:
+      - policy
+      - lint
+      - arch
+      - security
+      - security-broad
+      - state
+      - summary
+
+  mainline-full:
+    description: "Main branch verification — full gate except deploy-specific actions"
+    gates:
+      - policy
+      - lint
+      - arch
+      - security
+      - security-broad
+      - chaos
+      - smoke
+      - state
+      - agent
+      - obs
+      - release-policy
+      - summary
+
+  release-candidate:
+    description: "Final pre-tag or pre-production decision — full local production release gate"
+    gates:
+      - policy
+      - lint
+      - arch
+      - security
+      - security-broad
+      - chaos
+      - smoke
+      - state
+      - agent
+      - obs
+      - release-policy
+      - sign-manifest
+      - summary
+
+gate-definitions:
+  policy:
+    target: gates-validate-policy
+    description: "Validate policy schema, profile existence, and artifact directories"
+    class: blocking
+    artifact-dir: artifacts/release
+    required: true
+
+  lint:
+    target: lint-release
+    description: "Lint all Python layers with ruff"
+    class: blocking
+    required: true
+
+  arch:
+    target: gate-arch
+    description: "Architecture conformance, tenant guards, testability"
+    class: blocking
+    artifact-dir: artifacts/arch
+    required: true
+
+  security:
+    target: gate-security
+    description: "Tenant isolation, RLS, auth enforcement, export access"
+    class: blocking
+    artifact-dir: artifacts/security
+    required: true
+
+  security-broad:
+    target: gate-security-broad
+    description: "Exhaustive legacy security coverage for Broad GA backlog classification"
+    class: advisory
+    artifact-dir: artifacts/security
+    required: false
+    caveat: "Legacy broad security suite covers inactive or not-yet-exposed GA endpoints; failures are Broad GA blockers and do not override controlled-pilot release-critical security evidence."
+
+  chaos:
+    target: gate-chaos
+    description: "Dependency chaos and failure injection"
+    class: blocking
+    artifact-dir: artifacts/chaos
+    required: true
+
+  smoke:
+    target: gate-smoke
+    description: "Cross-domain smoke tests and golden-path verification"
+    class: advisory
+    artifact-dir: artifacts/smoke
+    required: false
+    caveat: "E2E tests require live services. Failures are environment-dependent, not regressions."
+
+  state:
+    target: gate-state
+    description: "Frontend/backend state alignment, workflow type consistency"
+    class: blocking
+    artifact-dir: artifacts/state
+    required: true
+
+  agent:
+    target: gate-agent
+    description: "Agent provenance, behavior regression, tool boundaries"
+    class: advisory
+    artifact-dir: artifacts/agent
+    required: false
+    caveat: "Agent tests exist but may fail due to missing optional dependencies."
+
+  obs:
+    target: gate-obs
+    description: "Observability, metrics, health checks, SLO validation"
+    class: advisory
+    artifact-dir: artifacts/obs
+    required: false
+    caveat: "Performance tests require live services or k6."
+
+  release-policy:
+    target: gate-release-policy
+    description: "Release policy compliance, deprecation check, version freeze"
+    class: blocking
+    artifact-dir: artifacts/release
+    required: true
+
+  sign-manifest:
+    target: gates-sign-manifest
+    description: "Sign artifact manifest with SHA-256"
+    class: artifact
+    artifact-dir: artifacts/release
+    required: true
+
+  summary:
+    target: gates-render-summary
+    description: "Render release summary with gate results"
+    class: artifact
+    artifact-dir: artifacts/release
+    required: true
