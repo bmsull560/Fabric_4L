@@ -35,6 +35,9 @@ import { useFormulaVersions, useFormulaGovernance, type FormulaVersion } from "@
 import { useFormulaDependents, useFormulaDependencies, type DependentAsset } from "@/hooks/useFormulaDependents";
 import { useFormulaScenario, type VariableAdjustment, type ScenarioResponse } from "@/hooks/useFormulaScenario";
 import { formatRelativeTime } from "@/lib/formatters";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('FormulaBuilder');
 
 // ============================================================================
 // Type Definitions
@@ -506,9 +509,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           setIsEvaluating(false);
         },
         onError: (err) => {
-          if (process.env.NODE_ENV === "development") {
-            console.error("Formula evaluation error:", err);
-          }
+          log.error('Formula evaluation error', { errorCode: err.message });
           setSaveError(err.message);
           setIsEvaluating(false);
         },

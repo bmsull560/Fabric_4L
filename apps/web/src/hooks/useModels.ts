@@ -12,6 +12,9 @@ import { toast } from 'sonner';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { BaseApiError, STALE_TIME, RETRY_CONFIG, withApiError } from './useApiShared';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useModels');
 
 // ── Error class ──────────────────────────────────────────────────────────────
 
@@ -215,7 +218,7 @@ export function useCreateModel() {
       });
     },
     onError: (error) => {
-      console.error('[useCreateModel] mutation failed:', error.message);
+      log.error('useCreateModel mutation failed', { errorCode: error.message });
       toast.error('Failed to create model', {
         description: error.message,
       });
@@ -241,7 +244,7 @@ export function useDeleteModel() {
       });
     },
     onError: (error) => {
-      console.error('[useDeleteModel] mutation failed:', error.message);
+      log.error('useDeleteModel mutation failed', { errorCode: error.message });
       toast.error('Failed to delete model', {
         description: error.message,
       });

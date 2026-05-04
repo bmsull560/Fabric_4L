@@ -32,7 +32,7 @@ export const STALE_TIME = {
 // Vitest defines globalThis.VITEST or process.env.VITEST in test environment
 const isTestEnv = 
   (typeof process !== 'undefined' && process.env?.VITEST === 'true') ||
-  (typeof globalThis !== 'undefined' && (globalThis as any).VITEST === true);
+  (typeof globalThis !== 'undefined' && (globalThis as Record<string, unknown>).VITEST === true);
 
 export const RETRY_CONFIG = {
   maxRetries: isTestEnv ? false : 3,

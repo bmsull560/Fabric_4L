@@ -3,6 +3,9 @@ import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import { EntityListResponseSchema, validateOrThrow, validateObject } from '@/lib/validation/schemas';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useEntities');
 
 /**
  * Canonical Entity interface from Layer 3 API
@@ -253,7 +256,7 @@ export function useCreateEntity() {
   return useMutation({
     mutationFn: async (entity: Omit<Entity, 'id' | 'createdAt'>) => {
       // Placeholder - would need to call extraction layer or Neo4j directly
-      console.warn('Entity creation not implemented in Layer 3 API');
+      log.warn('Entity creation not implemented in Layer 3 API');
       throw new Error('Entity creation not supported');
     },
     onSuccess: () => {

@@ -33,6 +33,9 @@ import {
   type ApprovalRequest,
   type FormulaStatus,
 } from "@/hooks";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('FormulaGovernance');
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -261,7 +264,7 @@ function FormulaGovernanceContent() {
         reason: action === "request_changes" ? "Changes requested by admin" : undefined
       });
     } catch (err) {
-      console.error(`Failed to ${action} formula:`, err);
+      log.error(`Failed to ${action} formula`, { errorCode: String(err) });
     }
   };
 

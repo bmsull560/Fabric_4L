@@ -9,6 +9,9 @@ import { PageHeader, Btn, Toolbar, SectionCard, StatusBadge, DataTable } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProvenanceTrail, useAuditLogs, useExportProvenance, type AuditLogEntry, type AuditLogFilter } from "@/hooks/useProvenance";
 import { useBusinessCase } from "@/hooks/useDocuments";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('DecisionTrace');
 
 function formatTimestamp(timestamp: string): string {
   const date = new Date(timestamp);
@@ -49,7 +52,7 @@ export default function DecisionTrace() {
     try {
       await exportMutation.mutateAsync({ entityId: selectedEntityId, format: 'prov-o' });
     } catch (error) {
-      console.error("Export failed:", error);
+      log.error('Export failed', { errorCode: String(error) });
     }
   };
 

@@ -180,7 +180,7 @@ export default function StudioCompetitiveTab() {
     accountName: account?.name ?? "Account",
   });
 
-  const competitors = (competitorsData as any)?.competitors ?? [];
+  const competitors = competitorsData?.competitors ?? [];
   const landscape = landscapeData as LandscapeEntry[] | undefined;
   const winLoss = (winLossData as WinLossSummary[]) ?? [];
   const battlecards = (battlecardsData as Battlecard[]) ?? [];

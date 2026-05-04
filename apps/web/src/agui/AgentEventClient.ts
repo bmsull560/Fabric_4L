@@ -28,6 +28,9 @@ import {
   type AgentEvent,
   type RunMetadata,
 } from "./events";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('AgentEventClient');
 
 // ── Step Templates ──────────────────────────────────────────────────────────
 
@@ -308,7 +311,7 @@ export async function* streamAgentEvents(
         yield event;
       } catch {
         if (import.meta.env.DEV) {
-          console.warn("[AgentEventClient] Malformed SSE chunk:", trimmed.slice(0, 100));
+          log.warn('Malformed SSE chunk');
         }
       }
     }

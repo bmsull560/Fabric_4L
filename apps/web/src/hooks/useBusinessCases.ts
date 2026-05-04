@@ -9,6 +9,9 @@ import {
   parseWorkflowResult,
   type ApiWorkflowStepDto,
 } from '@/types/api';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useBusinessCases');
 
 export interface UseCase {
   name: string;
@@ -210,7 +213,7 @@ export function useCreateBusinessCase() {
       queryClient.invalidateQueries({ queryKey: ['business-cases'] });
     },
     onError: (error) => {
-      console.error('Failed to create business case:', error.message);
+      log.error('Failed to create business case', { errorCode: error.message });
     },
   });
 }
@@ -236,7 +239,7 @@ export function useArchiveBusinessCase() {
       queryClient.invalidateQueries({ queryKey: ['business-cases'] });
     },
     onError: (error) => {
-      console.error('Failed to archive business case:', error.message);
+      log.error('Failed to archive business case', { errorCode: error.message });
     },
   });
 }
