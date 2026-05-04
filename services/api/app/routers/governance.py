@@ -1,17 +1,23 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
-from app.core.tenant_context import tenant_required
+from fastapi import APIRouter, Depends
+
 from app.core.database import db
-from app.models.schemas import ReviewDecision, GovernanceGate, AuditLogEvent
+from app.core.tenant_context import tenant_required
+from app.models.schemas import GovernanceGate, ReviewDecision
 
 router = APIRouter(prefix="/governance", tags=["Governance"])
 
 
 @router.get("/review-queue")
 async def get_review_queue(tenant_id: str = Depends(tenant_required)):
-    hypotheses = db.hypotheses.list(tenant_id=tenant_id, filter_fn=lambda h: h.status == "generated")
-    formulas = db.formulas.list(tenant_id=tenant_id, filter_fn=lambda f: f.validation_status == "draft")
-    evidence = db.evidence.list(tenant_id=tenant_id, filter_fn=lambda e: e.audit.review_state == "needs_review")
+    hypotheses = db.hypotheses.list(
+        tenant_id=tenant_id, filter_fn=lambda h: h.status == "generated"
+    )
+    formulas = db.formulas.list(
+        tenant_id=tenant_id, filter_fn=lambda f: f.validation_status == "draft"
+    )
+    evidence = db.evidence.list(
+        tenant_id=tenant_id, filter_fn=lambda e: e.audit.review_state == "needs_review"
+    )
     return {
         "hypotheses": hypotheses,
         "formulas": formulas,
@@ -20,14 +26,16 @@ async def get_review_queue(tenant_id: str = Depends(tenant_required)):
     }
 
 
-@router.post("/review-decisions", response_model=ReviewDecision)
-async def create_review_decision(decision: ReviewDecision, tenant_id: str = Depends(tenant_required)):
+@router.post("/review-decisions", response_model=ReviewDecision, status_code=201)
+async def create_review_decision(
+    decision: ReviewDecision, tenant_id: str = Depends(tenant_required)
+):
     decision.tenant_id = tenant_id
     db.review_decisions.insert(decision.id, decision)
     return decision
 
 
-@router.get("/prod-gates", response_model=List[GovernanceGate])
+@router.get("/prod-gates", response_model=list[GovernanceGate])
 async def list_prod_gates(tenant_id: str = Depends(tenant_required)):
     return db.governance_gates.list(tenant_id=tenant_id)
 

@@ -1,7 +1,6 @@
 import base64
 import binascii
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -21,7 +20,7 @@ _SESSION_COOKIE = "vf_session"
 class TokenPayload(BaseModel):
     sub: str
     tenant_id: str
-    exp: Optional[datetime] = None
+    exp: datetime | None = None
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -32,12 +31,14 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(subject: str, tenant_id: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    subject: str, tenant_id: str, expires_delta: timedelta | None = None
+) -> str:
     settings = get_settings()
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {"sub": subject, "tenant_id": tenant_id, "exp": expire}
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
@@ -67,10 +68,12 @@ def _is_canonical_base64url_segment(segment: str) -> bool:
 
 def _has_canonical_compact_jws_encoding(token: str) -> bool:
     segments = token.split(".")
-    return len(segments) == 3 and all(_is_canonical_base64url_segment(segment) for segment in segments)
+    return len(segments) == 3 and all(
+        _is_canonical_base64url_segment(segment) for segment in segments
+    )
 
 
-def decode_token(token: str) -> Optional[TokenPayload]:
+def decode_token(token: str) -> TokenPayload | None:
     """Decode and validate a JWT.
 
     Returns a TokenPayload on success, None for invalid/malformed tokens.
@@ -82,7 +85,9 @@ def decode_token(token: str) -> Optional[TokenPayload]:
         return None
     try:
         data = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        return TokenPayload(sub=data["sub"], tenant_id=data.get("tenant_id", "default"), exp=data.get("exp"))
+        return TokenPayload(
+            sub=data["sub"], tenant_id=data.get("tenant_id", "default"), exp=data.get("exp")
+        )
     except ExpiredSignatureError:
         raise TokenExpiredError("Token has expired")
     except JWTError:
@@ -91,9 +96,9 @@ def decode_token(token: str) -> Optional[TokenPayload]:
 
 def _extract_token(
     request: Request,
-    bearer: Optional[HTTPAuthorizationCredentials],
-    cookie: Optional[str],
-) -> Optional[str]:
+    bearer: HTTPAuthorizationCredentials | None,
+    cookie: str | None,
+) -> str | None:
     """Return the raw JWT from Bearer header or session cookie, in that order."""
     if bearer and bearer.credentials:
         return bearer.credentials
@@ -104,8 +109,8 @@ def _extract_token(
 
 def require_authenticated(
     request: Request,
-    bearer: Optional[HTTPAuthorizationCredentials] = Depends(_bearer_scheme),
-    vf_session: Optional[str] = Cookie(default=None, alias=_SESSION_COOKIE),
+    bearer: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+    vf_session: str | None = Cookie(default=None, alias=_SESSION_COOKIE),
 ) -> TokenPayload:
     """FastAPI dependency: require a valid JWT from Bearer header or session cookie.
 

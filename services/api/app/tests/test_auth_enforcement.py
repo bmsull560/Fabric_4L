@@ -11,6 +11,7 @@ Proves that:
   7. /health and /metrics remain public (no auth required).
   8. The app refuses to start with the default secret in production environments.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -19,6 +20,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+
 from .conftest import TENANT_ALPHA, TENANT_BETA, auth_headers, mint_token
 
 # ---------------------------------------------------------------------------
@@ -28,14 +30,14 @@ from .conftest import TENANT_ALPHA, TENANT_BETA, auth_headers, mint_token
 # Representative endpoints — one per router — to verify blanket enforcement.
 # All paths are verified to exist in the app's route table.
 PROTECTED_ENDPOINTS = [
-    ("GET",  "/v1/accounts"),
-    ("GET",  "/v1/accounts/acc-allego"),
-    ("GET",  "/v1/accounts/acc-allego/signals"),
-    ("GET",  "/v1/accounts/acc-allego/hypotheses"),
-    ("GET",  "/v1/accounts/acc-allego/drivers"),
-    ("GET",  "/v1/accounts/acc-allego/evidence"),
-    ("GET",  "/v1/governance/review-queue"),
-    ("GET",  "/v1/context-engine/formulas"),
+    ("GET", "/v1/accounts"),
+    ("GET", "/v1/accounts/acc-allego"),
+    ("GET", "/v1/accounts/acc-allego/signals"),
+    ("GET", "/v1/accounts/acc-allego/hypotheses"),
+    ("GET", "/v1/accounts/acc-allego/drivers"),
+    ("GET", "/v1/accounts/acc-allego/evidence"),
+    ("GET", "/v1/governance/review-queue"),
+    ("GET", "/v1/context-engine/formulas"),
 ]
 
 PUBLIC_ENDPOINTS = [
@@ -47,6 +49,7 @@ PUBLIC_ENDPOINTS = [
 # ---------------------------------------------------------------------------
 # 1. Unauthenticated requests → 401
 # ---------------------------------------------------------------------------
+
 
 class TestUnauthenticatedRequests:
     """Every protected endpoint must return 401 with no credentials."""
@@ -75,6 +78,7 @@ class TestUnauthenticatedRequests:
 # 2. Valid JWT → access granted
 # ---------------------------------------------------------------------------
 
+
 class TestAuthenticatedRequests:
     """A valid JWT must grant access to protected endpoints."""
 
@@ -91,6 +95,7 @@ class TestAuthenticatedRequests:
 # ---------------------------------------------------------------------------
 # 3. Expired JWT → 401
 # ---------------------------------------------------------------------------
+
 
 class TestExpiredToken:
     def test_expired_jwt_returns_401(self) -> None:
@@ -112,6 +117,7 @@ class TestExpiredToken:
 # ---------------------------------------------------------------------------
 # 4. Tampered JWT → 401
 # ---------------------------------------------------------------------------
+
 
 class TestTamperedToken:
     def test_tampered_signature_returns_401(self) -> None:
@@ -136,6 +142,7 @@ class TestTamperedToken:
 # ---------------------------------------------------------------------------
 # 5. Tenant isolation — JWT for alpha cannot access beta resources
 # ---------------------------------------------------------------------------
+
 
 class TestTenantIsolation:
     def test_alpha_token_cannot_spoof_beta_tenant_header(self) -> None:
@@ -168,6 +175,7 @@ class TestTenantIsolation:
 # 6. Public endpoints remain unauthenticated
 # ---------------------------------------------------------------------------
 
+
 class TestPublicEndpoints:
     @pytest.mark.parametrize("method,path", PUBLIC_ENDPOINTS)
     def test_public_endpoint_accessible_without_auth(self, method: str, path: str) -> None:
@@ -180,6 +188,7 @@ class TestPublicEndpoints:
 # 7. Production secret guard
 # ---------------------------------------------------------------------------
 
+
 class TestProductionSecretGuard:
     def test_default_secret_raises_in_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """App must refuse to start with the default secret in production."""
@@ -188,6 +197,7 @@ class TestProductionSecretGuard:
 
         # Clear the lru_cache so the new env vars are picked up
         from app.core.config import get_settings
+
         get_settings.cache_clear()
 
         with pytest.raises(RuntimeError, match="SECRET_KEY"):
@@ -201,6 +211,7 @@ class TestProductionSecretGuard:
         monkeypatch.delenv("SECRET_KEY", raising=False)
 
         from app.core.config import get_settings
+
         get_settings.cache_clear()
 
         with pytest.raises(RuntimeError, match="SECRET_KEY"):
@@ -218,6 +229,7 @@ class TestProductionSecretGuard:
         monkeypatch.setenv("CORS_ORIGINS", "https://app.example.com")
 
         from app.core.config import get_settings
+
         get_settings.cache_clear()
 
         settings = get_settings()
@@ -232,6 +244,7 @@ class TestProductionSecretGuard:
         monkeypatch.setenv("ENVIRONMENT", "development")
 
         from app.core.config import get_settings
+
         get_settings.cache_clear()
 
         settings = get_settings()  # Must not raise

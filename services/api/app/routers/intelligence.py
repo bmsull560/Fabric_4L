@@ -1,26 +1,28 @@
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from app.core.tenant_context import tenant_required
+
 from app.core.database import db
+from app.core.tenant_context import tenant_required
 from app.models.schemas import Signal, Stakeholder
 
 router = APIRouter(prefix="/accounts/{account_id}", tags=["Intelligence"])
 
 
-@router.get("/signals", response_model=List[Signal])
+@router.get("/signals", response_model=list[Signal])
 async def list_signals(account_id: str, tenant_id: str = Depends(tenant_required)):
     return db.signals.list(tenant_id=tenant_id, filter_fn=lambda s: s.account_id == account_id)
 
 
-@router.post("/signals/extract", response_model=Signal)
-async def extract_signal(account_id: str, signal: Signal, tenant_id: str = Depends(tenant_required)):
+@router.post("/signals/extract", response_model=Signal, status_code=201)
+async def extract_signal(
+    account_id: str, signal: Signal, tenant_id: str = Depends(tenant_required)
+):
     signal.account_id = account_id
     signal.tenant_id = tenant_id
     db.signals.insert(signal.id, signal)
     return signal
 
 
-@router.get("/stakeholders", response_model=List[Stakeholder])
+@router.get("/stakeholders", response_model=list[Stakeholder])
 async def list_stakeholders(account_id: str, tenant_id: str = Depends(tenant_required)):
     return db.stakeholders.list(tenant_id=tenant_id, filter_fn=lambda s: s.account_id == account_id)
 

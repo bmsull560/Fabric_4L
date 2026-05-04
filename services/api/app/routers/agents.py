@@ -1,15 +1,17 @@
-from typing import Optional
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
-from app.core.tenant_context import tenant_required
+
 from app.core.database import db
+from app.core.tenant_context import tenant_required
 from app.models.schemas import AgentRun
 from app.services.agent_orchestrator import orchestrator
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
 
-@router.post("/runs", response_model=AgentRun)
-async def create_agent_run(payload: dict, tenant_id: str = Depends(tenant_required)):
+@router.post("/runs", response_model=AgentRun, status_code=201)
+async def create_agent_run(payload: dict[str, Any], tenant_id: str = Depends(tenant_required)):
     run = orchestrator.create_run(
         tenant_id=tenant_id,
         workflow_type=payload.get("workflow_type", "unknown"),

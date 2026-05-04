@@ -1,11 +1,10 @@
 from contextvars import ContextVar
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request
 
 from app.core.security import TokenPayload, require_authenticated
 
-TenantContext: ContextVar[Optional[str]] = ContextVar("tenant_id", default=None)
+TenantContext: ContextVar[str | None] = ContextVar("tenant_id", default=None)
 
 
 def get_tenant_id() -> str:
