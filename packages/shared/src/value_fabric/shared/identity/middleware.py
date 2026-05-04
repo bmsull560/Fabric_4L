@@ -357,6 +357,57 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 token = set_request_context(ctx)
                 request.state.governance_context = ctx
                 request.state.context = ctx
+
+                # Tenant lifecycle enforcement — block non-active tenants before
+                # any route handler can execute.  Status is read from the raw JWT
+                # payload so the check is authoritative and cannot be bypassed by
+                # application-layer code.
+                tenant_status = (ctx.raw or {}).get("tenant_status")
+                if tenant_status == "suspended":
+                    logger.warning(
+                        "Blocked suspended tenant: tenant_id=%s path=%s",
+                        ctx.tenant_id,
+                        request.url.path,
+                    )
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={
+                            "error": "tenant_suspended",
+                            "detail": (
+                                "Your account has been suspended. "
+                                "Please contact support to resolve this issue."
+                            ),
+                        },
+                    )
+                elif tenant_status == "pending":
+                    logger.info(
+                        "Blocked pending tenant: tenant_id=%s path=%s",
+                        ctx.tenant_id,
+                        request.url.path,
+                    )
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={
+                            "error": "tenant_pending",
+                            "detail": (
+                                "Your account setup is not yet complete. "
+                                "Please complete your onboarding to access this resource."
+                            ),
+                        },
+                    )
+                elif tenant_status == "deleted":
+                    logger.info(
+                        "Blocked deleted tenant: tenant_id=%s path=%s",
+                        ctx.tenant_id,
+                        request.url.path,
+                    )
+                    return JSONResponse(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        content={
+                            "error": "tenant_not_found",
+                            "detail": "The requested tenant was not found.",
+                        },
+                    )
             else:
                 request.state.governance_context = None
                 request.state.context = None
