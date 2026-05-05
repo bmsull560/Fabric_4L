@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from value_fabric.shared.fastapi_framework import create_fabric_app
 
 from app.core.config import get_settings
 from app.routers import (
@@ -28,17 +28,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(
+app = create_fabric_app(
+    service_name="fabric-4l-api",
     title=settings.app_name,
     version="0.1.0",
     description="Fabric_4L unified API for value management",
     lifespan=lifespan,
+    cors_policy=settings.cors_policy,
 )
-
-# Use the validated policy from Settings so production-like environments fail
-# before middleware is installed, and credentials are never combined with
-# wildcard origins or broad method/header exposure.
-app.add_middleware(CORSMiddleware, **settings.cors_policy)
 
 app.include_router(accounts.router, prefix="/v1")
 app.include_router(intelligence.router, prefix="/v1")
