@@ -2,6 +2,14 @@
 
 > Map every user-facing workflow step to backend objects, status fields, and event sources.
 
+## Matrix Maintenance Contract
+
+- This document is the canonical backend object, status, and event-lineage map for release-significant workflows.
+- The release-level workflow inventory remains in `docs/validation/master_workflow_traceability_matrix.md`.
+- The frontend-facing subset remains in `apps/web/docs/frontend-workflow-coverage-matrix.md`.
+- This document must fail closed in CI via `python3 scripts/ci/assert_backend_workflow_traceability.py` and the root `make check-workflow-matrix` target.
+- New release-significant workflows must update this matrix when they introduce new IDs, status transitions, audit surfaces, or cross-layer lineage requirements.
+
 ---
 
 ## Workflow 1: Configure Ingestion → Run Ingestion → Monitor Job
@@ -113,6 +121,55 @@ data: {"event_id": "...", "event_type": "node_started|node_completed|workflow_co
 
 ---
 
+## Workflow 8: Submit for Review → Approve / Reject → Trace Version History
+
+| UI Step | Backend Layer | Backend Object | Status Field | Event Source | Required ID | Frontend Query Key |
+|---------|---------------|----------------|--------------|--------------|-------------|--------------------|
+| User submits value model or case for review | L4/L5 | `ReviewRequest` | `status: submitted` | POST response | `review_id` | `QK.governance.review(reviewId)` |
+| Reviewer opens pending review | L4/L5 | `ReviewRequest` | `status: submitted|in_review` | Query | `review_id` | `QK.governance.reviewQueue(filters)` |
+| Reviewer comments on assumption or evidence | L5 | `ReviewComment` | `resolution_status: open` | Mutation response | `comment_id` | `QK.governance.reviewComments(reviewId)` |
+| Reviewer approves or rejects submission | L4/L5 | `ApprovalDecision` | `decision: approved|changes_requested|rejected` | POST response | `review_id` | `QK.governance.review(reviewId)` |
+| System writes approval audit event | L5 | `AuditLogEntry` | `event_type: approval.decision` | Query | `review_id` | `QK.governance.audit(reviewId)` |
+| System snapshots new version | L4/L5 | `VersionRecord` | `version_status: active|superseded` | Mutation response | `version_id` | `QK.versions.detail(id)` |
+| User compares versions | L4/L5 | `VersionDiff` | `change_count`, `changed_fields` | Query | `version_id`, `compare_to_version_id` | `QK.versions.compare(versionId, compareTo)` |
+| User exports audit report | L5 | `AuditExportJob` | `status: pending|ready|failed` | POST response + polling | `audit_export_id` | `QK.governance.auditExport(id)` |
+
+**🔴 Gap:** The workflow inventory expects immutable approval history, version comparison, and audit export. These objects and query keys should share a common trace identifier with the originating value model or business case so approval lineage can be followed without stitching unrelated IDs manually.
+
+---
+
+## Workflow 9: Search and Retrieval → Open Result in Correct Context
+
+| UI Step | Backend Layer | Backend Object | Status Field | Event Source | Required ID | Frontend Query Key |
+|---------|---------------|----------------|--------------|--------------|-------------|--------------------|
+| User performs tenant-scoped search | L3/L4 | `SearchQuery` | `scope: tenant|account`, `status: completed` | Query | `search_id` | `QK.search.results(params)` |
+| User filters results by account or source | L3/L4 | `SearchFilterState` | `filters_applied` | Query | `search_id` | `QK.search.results(params)` |
+| User opens an account result | L4 | `Account` | `status: active|archived` | Query | `account_id` | `QK.accounts.detail(id)` |
+| User opens a document or evidence result | L1/L4 | `SourceDocument` or `EvidenceItem` | `status: available` | Query | `document_id` or `evidence_id` | `QK.documents.detail(id)` or `QK.evidence.detail(id)` |
+| User opens a stakeholder or signal result | L2/L4 | `Stakeholder` or `Signal` | `confidence`, `account_id` | Query | `stakeholder_id` or `signal_id` | `QK.stakeholders.detail(id)` or `QK.signals.detail(id)` |
+| User lands in the destination workspace | L4 | `NavigationContext` | `resolved_route`, `restored_filters` | Router state + query response | `account_id` or object id | Route state + destination query key |
+| System rejects cross-tenant result access | L4/L5 | `AuthorizationDecision` | `decision: denied`, `reason_code` | Query or mutation failure | `search_id`, `subject_id` | surfaced via guarded destination query |
+
+**🔴 Gap:** Search coverage in the master matrix depends on deterministic account- and tenant-scoped result routing, but the current traceability map does not define a canonical search result envelope or a reusable authorization decision object for denied result opens.
+
+---
+
+## Workflow 10: Convert Value Case → Track Realized Outcomes
+
+| UI Step | Backend Layer | Backend Object | Status Field | Event Source | Required ID | Frontend Query Key |
+|---------|---------------|----------------|--------------|--------------|-------------|--------------------|
+| User creates realization plan from approved case | L4/L5 | `RealizationPlan` | `status: draft|active` | POST response | `plan_id` | `QK.realization.plan(accountId)` |
+| User defines target outcomes and baseline metrics | L5/L6 | `OutcomeMetric` | `baseline_status: captured` | Mutation response | `metric_id` | `QK.realization.metrics(planId)` |
+| User sets measurement cadence and owner | L5 | `MeasurementSchedule` | `cadence_status: scheduled` | Mutation response | `schedule_id` | `QK.realization.schedule(planId)` |
+| User records actual results | L5 | `MetricObservation` | `status: recorded|validated` | POST response | `observation_id` | `QK.realization.observations(planId)` |
+| System compares projected versus realized value | L5/L6 | `VarianceAnalysis` | `variance_status: computed` | Query | `plan_id` | `QK.realization.variance(planId)` |
+| User generates realization report or renewal proof | L4/L5 | `RealizationReport` | `status: draft|published` | POST response | `report_id` | `QK.realization.report(planId)` |
+| User flags unrealized value risk | L5 | `RiskFlag` | `severity`, `status: open|mitigated` | Mutation response | `risk_id` | `QK.realization.risks(planId)` |
+
+**🔴 Gap:** The current traceability chain ends at business-case export, but the release inventory treats post-sale realization as a first-class workflow. A stable `plan_id` to `case_id` linkage is required so projected and realized value can be audited together.
+
+---
+
 ## Event Source Summary
 
 | Source | Used By | Latency | Reliability | Fallback |
@@ -141,10 +198,14 @@ Value Tree (root_entity_id)
 Workflow (workflow_instance_id)
     ↓ Agent execution
 Business Case / Document Export (export_job_id)
+    ↓ Review, approval, and versioning
+Review / Version (review_id, version_id)
+    ↓ Post-sale follow-through
+Realization Plan (plan_id)
     ↓ User action
 Ground Truth (truth_id)
 ```
 
 **Critical observation:** There is no unified `correlation_id` propagated across all UI steps. Each layer has its own ID space. The frontend must track multiple IDs to present a coherent user journey.
 
-**Recommendation:** Introduce a `trace_id` or `session_id` that flows from ingestion → extraction → graph → workflow, surfaced in UI as "Job lineage" or "Audit trail".
+**Recommendation:** Introduce a `trace_id` or `session_id` that flows from ingestion → extraction → graph → workflow → approval/versioning → realization, surfaced in UI as "Job lineage" or "Audit trail".

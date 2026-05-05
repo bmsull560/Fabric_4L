@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -135,9 +135,11 @@ from .models import (
     AuditLogEntry,
     AuditLogResponse,
     BatchAnalyticsRequest,
+    BatchAnalyticsResult,
     BatchAnalyticsResponse,
     BatchEntityOperation,
     BatchEntityRequest,
+    BatchEntityResult,
     BatchEntityResponse,
     CentralityRequest,
     CentralityResponse,
@@ -171,6 +173,7 @@ from .models import (
     SearchRequest,
     SearchResponse,
     SearchResult,
+    SearchType,
     SimilarityRequest,
     SimilarityResponse,
     SubgraphResponse,
@@ -266,6 +269,11 @@ def _add_deprecation_headers(response: Response, endpoint_path: str) -> None:
             break
 
 
+def _get_neo4j_client(app_state: Any) -> Any | None:
+    """Return the Neo4j client from the current app state shape."""
+    return getattr(app_state, "neo4j_manager", getattr(app_state, "neo4j", None))
+
+
 # Track application startup time for uptime calculation
 _app_start_time = time.time()
 
@@ -316,10 +324,10 @@ def _get_settings_with_fallback() -> Any:
 
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
-_tracer_provider: TracerProvider | None = None
+_tracer_provider: Any | None = None
 
 
-def init_telemetry() -> TracerProvider | None:
+def init_telemetry() -> Any | None:
     """Initialize OpenTelemetry tracing if endpoint configured.
 
     P1-29: OpenTelemetry integration for distributed tracing.
@@ -963,9 +971,12 @@ async def ingest_rdf(
             tenant_id=tenant_id,
         )
 
-        raw_status = stats.get("status", "unknown")
-        status = "success" if raw_status in {"synced", "success"} else raw_status
-        if status not in {"success", "partial", "failed"}:
+        raw_status = str(stats.get("status", "unknown"))
+        if raw_status in {"synced", "success"}:
+            status: Literal["success", "partial", "failed"] = "success"
+        elif raw_status == "partial":
+            status = "partial"
+        else:
             status = "failed"
 
         return IngestResponse(
@@ -1061,6 +1072,7 @@ async def _execute_graph_rag_query(
         confidence_score=result.confidence_score,
         sources=result.sources,
         processing_time_ms=processing_time,
+        answer=getattr(result, "answer", None),
     )
 
 
@@ -1235,6 +1247,7 @@ async def _execute_hybrid_search(
     weights: dict | None,
 ) -> SearchResponse:
     """Execute hybrid search (extracted for caching/deduplication)."""
+    start_time = time.time()
     if search_type == "vector":
         results = await hybrid_search.semantic_search(query, entity_type, top_k)
     elif search_type == "fulltext":
@@ -1251,12 +1264,16 @@ async def _execute_hybrid_search(
     search_results = [
         SearchResult(**asdict(result)) for result in results
     ]
+    resolved_search_type = (
+        search_type if isinstance(search_type, SearchType) else SearchType(search_type)
+    )
 
     return SearchResponse(
         query=query,
         results=search_results,
         total_results=len(search_results),
-        search_type=search_type,
+        search_type=resolved_search_type,
+        processing_time_ms=(time.time() - start_time) * 1000,
     )
 
 
@@ -1450,7 +1467,7 @@ async def list_entities(
     sort_order: str = Query("desc", description="Sort direction: asc or desc"),
     _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
-    request: Request = None,  # Sprint 5: For tenant context extraction
+    request: Request | None = None,  # Sprint 5: For tenant context extraction
 ):
     """List entities with server-backed filtering and sorting.
 
@@ -1641,7 +1658,7 @@ async def get_entity_detail(
     include_relationships: bool = Query(True, description="Include related entities"),
     _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
-    request: Request = None,  # Sprint 5: For tenant context extraction
+    request: Request | None = None,  # Sprint 5: For tenant context extraction
 ):
     """Get full entity detail for inspection/drawer views.
 
@@ -1834,9 +1851,9 @@ async def query_entities(
         # Convert request body to the same parameters
         return await list_entities(
             search_text=request.search_text,
-            entity_types=request.entity_types,
+            entity_types=[entity_type.value for entity_type in request.entity_types] if request.entity_types else None,
             domains=request.domains,
-            statuses=request.statuses,
+            statuses=[str(status) for status in request.statuses] if request.statuses else None,
             min_confidence=request.min_confidence,
             max_confidence=request.max_confidence,
             limit=request.limit,
@@ -2003,14 +2020,14 @@ async def compare_entities(
 async def batch_entity_operations(
     request: BatchEntityRequest,
     neo4j_driver=Depends(get_neo4j_driver),
-    fastapi_request: Request = None,  # Sprint 5: For tenant context
+    fastapi_request: Request | None = None,  # Sprint 5: For tenant context
 ):
     """Execute batch entity operations (create/update/delete).
 
     Reduces round-trips for bulk operations from the frontend.
     Supports atomic mode where all operations succeed or all fail.
     """
-    results = []
+    results: list[BatchEntityResult] = []
     successful = 0
     failed = 0
     atomic_rollback = False
@@ -2033,13 +2050,13 @@ async def batch_entity_operations(
                     else:
                         failed += 1
                     results.append(
-                        {
-                            "index": i,
-                            "operation": "create",
-                            "entity_id": result.get("entity_id"),
-                            "success": result["success"],
-                            "error": result.get("error"),
-                        }
+                        BatchEntityResult(
+                            index=i,
+                            operation="create",
+                            entity_id=result.get("entity_id"),
+                            success=result["success"],
+                            error=result.get("error"),
+                        )
                     )
 
                 elif operation.operation == "update":
@@ -2050,13 +2067,13 @@ async def batch_entity_operations(
                     else:
                         failed += 1
                     results.append(
-                        {
-                            "index": i,
-                            "operation": "update",
-                            "entity_id": operation.entity_id,
-                            "success": result["success"],
-                            "error": result.get("error"),
-                        }
+                        BatchEntityResult(
+                            index=i,
+                            operation="update",
+                            entity_id=operation.entity_id,
+                            success=result["success"],
+                            error=result.get("error"),
+                        )
                     )
 
                 elif operation.operation == "delete":
@@ -2067,25 +2084,25 @@ async def batch_entity_operations(
                     else:
                         failed += 1
                     results.append(
-                        {
-                            "index": i,
-                            "operation": "delete",
-                            "entity_id": operation.entity_id,
-                            "success": result["success"],
-                            "error": result.get("error"),
-                        }
+                        BatchEntityResult(
+                            index=i,
+                            operation="delete",
+                            entity_id=operation.entity_id,
+                            success=result["success"],
+                            error=result.get("error"),
+                        )
                     )
 
             except Exception as e:
                 failed += 1
                 results.append(
-                    {
-                        "index": i,
-                        "operation": operation.operation,
-                        "entity_id": operation.entity_id,
-                        "success": False,
-                        "error": str(e),
-                    }
+                    BatchEntityResult(
+                        index=i,
+                        operation=operation.operation,
+                        entity_id=operation.entity_id,
+                        success=False,
+                        error=str(e),
+                    )
                 )
 
         # Atomic rollback if requested and any failures occurred
@@ -2124,7 +2141,7 @@ async def batch_analytics(
     Runs analytics (centrality, community context) on each entity's
     neighborhood subgraph efficiently.
     """
-    results = []
+    results: list[BatchAnalyticsResult] = []
     successful = 0
     failed = 0
     all_scores = []
@@ -2140,11 +2157,12 @@ async def batch_analytics(
 
                 if not context.get("center"):
                     results.append(
-                        {
-                            "entity_id": entity_id,
-                            "success": False,
-                            "error": "Entity not found",
-                        }
+                        BatchAnalyticsResult(
+                            entity_id=entity_id,
+                            success=False,
+                            metrics=None,
+                            error="Entity not found",
+                        )
                     )
                     failed += 1
                     continue
@@ -2163,22 +2181,24 @@ async def batch_analytics(
                     metrics = {"context": context}
 
                 results.append(
-                    {
-                        "entity_id": entity_id,
-                        "success": True,
-                        "metrics": metrics,
-                    }
+                    BatchAnalyticsResult(
+                        entity_id=entity_id,
+                        success=True,
+                        metrics=metrics,
+                        error=None,
+                    )
                 )
                 successful += 1
 
             except Exception as e:
                 logger.warning(f"Batch analytics failed for {entity_id}: {e}")
                 results.append(
-                    {
-                        "entity_id": entity_id,
-                        "success": False,
-                        "error": str(e),
-                    }
+                    BatchAnalyticsResult(
+                        entity_id=entity_id,
+                        success=False,
+                        metrics=None,
+                        error=str(e),
+                    )
                 )
                 failed += 1
 
@@ -2534,7 +2554,7 @@ async def agent_workflow(
 async def get_provenance(
     entity_id: str,
     app_state: AppState = Depends(get_app_state),
-    request: Request = None,  # Sprint 5: For tenant context
+    request: Request | None = None,  # Sprint 5: For tenant context
 ):
     """Get full provenance trail for an entity."""
     # Validate entity_id
@@ -2553,7 +2573,7 @@ async def get_provenance(
 
     try:
         # Query Neo4j for entity and its provenance
-        neo4j = app_state.neo4j_manager
+        neo4j = _get_neo4j_client(app_state)
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -2614,6 +2634,7 @@ async def get_provenance(
                     detail=f"Entity {entity_id} created from source",
                     timestamp=record.get("created_at", datetime.utcnow()),
                     agent="ExtractionEngine-v2.1",
+                    entity_id=entity_id,
                 )
             ]
 
@@ -2661,7 +2682,7 @@ async def list_audit_logs(
 
         # Query Neo4j provenance if source is 'provenance' or 'all'
         if source in ("provenance", "all"):
-            neo4j = app_state.neo4j_manager
+            neo4j = _get_neo4j_client(app_state)
             if neo4j:
                 try:
                     # Use OPTIONAL MATCH to handle case where AuditEvent nodes don't exist yet
@@ -2889,14 +2910,14 @@ async def export_document(
 async def get_full_graph(
     limit: int = 1000,
     app_state: AppState = Depends(get_app_state),
-    request: Request = None,  # Sprint 5: For tenant context extraction
+    request: Request | None = None,  # Sprint 5: For tenant context extraction
 ) -> GraphResponse:
     """Get the full knowledge graph for visualization.
 
     Returns nodes, edges, and statistics. Results are limited for performance.
     """
     try:
-        neo4j = app_state.neo4j_manager
+        neo4j = _get_neo4j_client(app_state)
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -2935,6 +2956,7 @@ async def get_full_graph(
                 confidence=r.get("confidence") or 0.8,
                 x=r.get("x"),
                 y=r.get("y"),
+                r=None,
                 properties={"name": r.get("label")},
             )
             nodes.append(node)
@@ -3042,7 +3064,7 @@ async def get_entity_subgraph(
     entity_id: str,
     depth: int = 2,
     app_state: AppState = Depends(get_app_state),
-    request: Request = None,  # Sprint 5: For tenant context
+    request: Request | None = None,  # Sprint 5: For tenant context
 ) -> SubgraphResponse:
     """Get subgraph centered on a specific entity.
 
@@ -3050,7 +3072,7 @@ async def get_entity_subgraph(
     - **depth**: How many hops to traverse (1-5, default 2)
     """
     try:
-        neo4j = app_state.neo4j_manager
+        neo4j = _get_neo4j_client(app_state)
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -3104,6 +3126,9 @@ async def get_entity_subgraph(
             label=root_record.get("label") or entity_id,
             type=root_type,
             confidence=root_record.get("confidence") or 0.8,
+            x=None,
+            y=None,
+            r=None,
             properties={"is_root": True},
         )
 
@@ -3123,6 +3148,9 @@ async def get_entity_subgraph(
                         label=connected.get("name") or conn_id,
                         type=conn_type,
                         confidence=connected.get("confidence") or 0.8,
+                        x=None,
+                        y=None,
+                        r=None,
                         properties={},
                     )
 
@@ -3203,7 +3231,7 @@ async def get_query_subgraph(
     hybrid_search=Depends(get_hybrid_search),
     graph_rag=Depends(get_graph_rag),
     app_state: AppState = Depends(get_app_state),
-    request: Request = None,  # Sprint 5: For tenant context
+    request: Request | None = None,  # Sprint 5: For tenant context
 ) -> SubgraphResponse:
     """
     Get a coherent subgraph based on query or center entity.
@@ -3230,7 +3258,10 @@ async def get_query_subgraph(
         )
 
     try:
-        neo4j = app_state.neo4j
+        neo4j = _get_neo4j_client(app_state)
+        if not neo4j:
+            raise HTTPException(status_code=503, detail="Neo4j not available")
+        neo4j = cast(Any, neo4j)
         nodes: list[GraphNode] = []
         edges: list[GraphEdge] = []
         root_id = center_entity_id or ""
@@ -3292,6 +3323,10 @@ async def get_query_subgraph(
                         id=root_data.get("id", center_entity_id),
                         label=root_data.get("name", root_data.get("id", "Unknown")),
                         type=root_data.get("entity_type", "Unknown"),
+                        confidence=root_data.get("confidence", 0.8),
+                        x=None,
+                        y=None,
+                        r=None,
                         properties={k: v for k, v in root_data.items() if k not in ["id", "name", "entity_type"]},
                     ))
 
@@ -3302,6 +3337,10 @@ async def get_query_subgraph(
                             id=neighbor.get("id"),
                             label=neighbor.get("name", neighbor.get("id", "Unknown")),
                             type=neighbor.get("entity_type", "Unknown"),
+                            confidence=neighbor.get("confidence", 0.8),
+                            x=None,
+                            y=None,
+                            r=None,
                             properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
                         ))
 
@@ -3377,6 +3416,10 @@ async def get_query_subgraph(
                         id=seed.get("id"),
                         label=seed.get("name", seed.get("id", "Unknown")),
                         type=seed.get("entity_type", "Unknown"),
+                        confidence=seed.get("confidence", 0.8),
+                        x=None,
+                        y=None,
+                        r=None,
                         properties={k: v for k, v in seed.items() if k not in ["id", "name", "entity_type"]},
                     ))
 
@@ -3388,6 +3431,10 @@ async def get_query_subgraph(
                             id=neighbor.get("id"),
                             label=neighbor.get("name", neighbor.get("id", "Unknown")),
                             type=neighbor.get("entity_type", "Unknown"),
+                            confidence=neighbor.get("confidence", 0.8),
+                            x=None,
+                            y=None,
+                            r=None,
                             properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
                         ))
 

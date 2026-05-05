@@ -49,6 +49,10 @@ jobs:
         run: |
           python scripts/ci/check_navigation_patterns.py --strict
 
+      - name: Run workflow matrix guards
+        run: |
+          make check-workflow-matrix
+
       - name: Upload structural reports
         if: always()
         uses: actions/upload-artifact@v4

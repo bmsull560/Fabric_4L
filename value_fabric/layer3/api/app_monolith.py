@@ -315,10 +315,10 @@ def _get_settings_with_fallback() -> Any:
 
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
-_tracer_provider: TracerProvider | None = None
+_tracer_provider: Any | None = None
 
 
-def init_telemetry() -> TracerProvider | None:
+def init_telemetry() -> Any | None:
     """Initialize OpenTelemetry tracing if endpoint configured.
 
     P1-29: OpenTelemetry integration for distributed tracing.
