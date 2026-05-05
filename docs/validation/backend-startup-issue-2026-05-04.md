@@ -15,7 +15,7 @@ docker compose -f docker-compose.backend-integrated.yml up --build -d
 
 ## Error Output
 
-```
+```text
 Exit code: 1
 Output:
 [+] up 0/8
@@ -31,17 +31,35 @@ Output:
 
 ## Root Cause Analysis
 
-**Confirmed issue:** Docker network/download error during package installation
+**Initial observed issue:** Docker network/download error during package installation
+
 - Error occurs while downloading packages from debian repositories
 - `failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF`
-- This is a transient network connectivity issue, not a code/configuration problem
+- This remains a valid observed failure mode, but it is no longer sufficient to classify the blocker as purely environmental
 
 **Validation performed:**
+
 - Docker Compose YAML syntax valid (`docker compose config` succeeded)
 - All service directories exist with valid Dockerfiles
 - Volume mount paths correct (`./packages/shared/src/value_fabric/shared` exists)
 - Init script path correct (`./value-fabric/scripts/init-multiple-dbs.sh` exists)
 - Build contexts valid for all services
+
+## Follow-up Repo Hardening Applied on 2026-05-05
+
+Two backend-integrated compose fixes were applied after the initial report to remove avoidable repo-local fragility from the validation path:
+
+1. **Layer 2 persistence wiring fixed**
+   - Added `layer2_extraction` to `POSTGRES_MULTIPLE_DATABASES`
+   - Set `layer2` `POSTGRES_DB=layer2_extraction`
+   - Added explicit `LAYER2_DATABASE_URL=postgresql://postgres:postgres@postgres:5432/layer2_extraction`
+   - Rationale: the backend-integrated stack should exercise Layer 2 against dedicated PostgreSQL-backed persistence rather than silently falling back to SQLite in development mode.
+
+2. **Layer 1 build surface reduced for backend-integrated validation**
+   - Set `INSTALL_PLAYWRIGHT_BROWSERS=false` for `layer1` and `layer1-worker` image builds in `docker-compose.backend-integrated.yml`
+   - Rationale: the backend-integrated validation harness uses the Layer 1 ingestion compatibility API (`/api/v1/ingestion/sources`) and does not require browser-crawling binaries during stack startup. This removes a large optional download step from the build path that was implicated in the original failure.
+
+These changes improve the odds that a rerun will distinguish transient network issues from actual backend-integrated service startup defects.
 
 ## Potential Causes
 
@@ -52,25 +70,34 @@ Output:
 
 ## Next Steps for Investigation
 
-1. **Retry the build**: This may be a transient network issue
+1. **Retry the targeted build first**: confirm whether the lighter Layer 1 image path still reproduces the original failure
+
    ```bash
    docker compose -f docker-compose.backend-integrated.yml build layer1
    ```
 
-2. **Check Docker daemon health**:
+2. **Retry full backend-integrated startup** after the targeted build succeeds
+
+   ```bash
+   docker compose -f docker-compose.backend-integrated.yml up --build -d
+   ```
+
+3. **Check Docker daemon health**:
+
    ```bash
    docker ps
    docker info
    ```
 
-3. **Test network connectivity**:
+4. **Test network connectivity**:
+
    ```bash
    docker run --rm debian:bookworm apt-get update
    ```
 
-4. **Check for proxy settings**: Verify if Docker is configured to use a proxy
+5. **Check for proxy settings**: Verify if Docker is configured to use a proxy
 
-5. **Try building with different base image**: Test if issue is specific to `python:3.11.11-slim-bookworm`
+6. **If the rerun still fails, capture the exact failing service and build step**: do not assume the failure is still network-only unless the logs show the same boundary
 
 ## Workarounds
 
@@ -81,6 +108,7 @@ Output:
 - **Document as known issue**: Add to technical debt for later resolution
 
 Since the backend stack cannot be started, Phase 1 backend validation is blocked. However:
+
 - The seed script (`scripts/db/seed-e2e-data.ts`) is functional and can be used when backend is available
 - Playwright backend-integrated configuration is ready (requires `@backend` tag on tests)
 - Test infrastructure is in place (global-setup.ts seeds data automatically)

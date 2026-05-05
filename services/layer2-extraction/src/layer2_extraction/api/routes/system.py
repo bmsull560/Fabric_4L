@@ -13,7 +13,7 @@ async def health_check():
     return await handlers.health_check()
 
 
-@router.get("/metrics")
+@router.get("/metrics", tags=["Monitoring"], include_in_schema=False)
 async def metrics_endpoint(request: Request):
     result = await handlers.metrics_endpoint(request)
     if isinstance(result, Response):

@@ -61,6 +61,7 @@ from ..shared_bootstrap import (
     install_metrics_middleware,
     resolve_cors_policy,
     validate_production_safety,
+    verify_metrics_access,
 )
 
 from layer2_extraction.alignment import SemanticAligner
@@ -1169,11 +1170,14 @@ async def health_check():
 
 async def metrics_endpoint(request: Request):
     """Prometheus metrics endpoint."""
+    if not verify_metrics_access(request):
+        raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
+
     metrics = get_metrics()
 
     if not metrics:
         return Response(
-            content="Metrics collection is disabled", status_code=503, media_type="text/plain"
+            content="# Metrics collection is disabled", status_code=503, media_type="text/plain"
         )
 
     try:
@@ -1181,7 +1185,7 @@ async def metrics_endpoint(request: Request):
         return Response(content=metrics_data, media_type="text/plain; version=0.0.4; charset=utf-8")
     except Exception as e:
         return Response(
-            content=f"Error generating metrics: {e}", status_code=500, media_type="text/plain"
+            content=f"# Error: {e}", status_code=500, media_type="text/plain"
         )
 
 

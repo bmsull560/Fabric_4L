@@ -3,6 +3,8 @@
 P1-29: OpenTelemetry tracing integration for observability.
 """
 
+# mypy: disable-error-code=import-untyped
+
 import json
 import logging
 import os
@@ -90,7 +92,7 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
-from value_fabric.shared.error_handling.middleware import RequestIDMiddleware
+from value_fabric.shared.error_handling.middleware import RequestIDMiddleware  # type: ignore[import-untyped]
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
 from .exceptions import (
@@ -758,7 +760,7 @@ async def value_fabric_exception_handler(request: Request, exc: ValueFabricExcep
     if SHARED_ERROR_HANDLING_AVAILABLE:
         from value_fabric.shared.error_handling.handlers import (
             value_fabric_exception_handler as shared_handler,
-        )
+        )  # type: ignore[import-untyped]
         response = await shared_handler(request, exc)
     else:
         # Fallback to legacy handler
@@ -799,7 +801,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     if SHARED_ERROR_HANDLING_AVAILABLE:
         from value_fabric.shared.error_handling.handlers import (
             http_exception_handler as shared_handler,
-        )
+        )  # type: ignore[import-untyped]
         response = await shared_handler(request, exc)
     else:
         response = JSONResponse(status_code=exc.status_code, content=exc.detail)
@@ -820,7 +822,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     if SHARED_ERROR_HANDLING_AVAILABLE:
         from value_fabric.shared.error_handling.handlers import (
             global_exception_handler as shared_handler,
-        )
+        )  # type: ignore[import-untyped]
         response = await shared_handler(request, exc)
     else:
         # Legacy fallback

@@ -2,6 +2,14 @@
 
 Create a master validation control plane that maps 30 workflow categories (300+ workflows) to existing test coverage, defines validation gates, execution cadence, gap prioritization, and recommends the next implementation batch focused on P0 stabilization.
 
+## Matrix Maintenance Contract
+
+- This document is the canonical release-level workflow inventory for Fabric_4L.
+- The frontend-focused subset remains in `apps/web/docs/frontend-workflow-coverage-matrix.md`.
+- Backend object, status, and event lineage remains in `docs/contracts/workflow-traceability-matrix.md`.
+- The matrix must fail closed in CI via `python3 scripts/ci/assert_master_workflow_traceability.py` or `make check-workflow-matrix`.
+- Release-significant gate commands listed here must resolve to current repository commands rather than stale ad hoc invocations.
+
 ## Executive Master Traceability Matrix
 
 | ID | Workflow Category | Risk | Priority | Current Coverage | Test Type | Gate | Status | Gap | Next Action |
@@ -245,8 +253,8 @@ Create a master validation control plane that maps 30 workflow categories (300+ 
 | P0 deep frontend validation | Validate 78 interaction-level P0 workflows | 7 deep test files | `pnpm run test:e2e:validation:p0:deep` | 78/78 tests pass, 0 flaky | Yes |
 | Anti-skip guard | Prevent silent test weakening | All E2E files | `pnpm run test:e2e:guard` | No skipped critical tests | Yes |
 | Backend-gated Playwright validation | Validate golden path against local L1-L6 | j11-golden-path-business-lifecycle.spec.ts | `pnpm run test:e2e:journeys --file=j11-golden-path-business-lifecycle.spec.ts` | All j11 tests pass with seeded L1-L6 data | Yes |
-| Backend-integrated service validation | Validate 8 backend-integrated workflows | 9 backend-integrated test files | `pytest tests/backend_integrated/` | All backend-integrated tests pass | Yes |
-| Release smoke | Validate staging/release candidate health | Release environment smoke | `pytest tests/backend_integrated/test_release_environment_smoke_validation.py` | All smoke checks pass | Yes |
+| Backend-integrated service validation | Validate 8 backend-integrated workflows | 9 backend-integrated test files | `make test-backend-integrated-validation` | All backend-integrated tests pass | Yes |
+| Release smoke | Validate staging/release candidate health | Release environment smoke | `make test-backend-integrated-release-smoke` | All smoke checks pass | Yes |
 | Full production-readiness validation | Complete validation program | All frontend + backend-integrated suites | Full validation suite | All P0 gates pass, backend-integrated green | Yes |
 
 ## Execution Cadence
