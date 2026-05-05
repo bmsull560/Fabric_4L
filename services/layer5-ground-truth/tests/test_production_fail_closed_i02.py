@@ -18,6 +18,9 @@ VALID_DATABASE_URL = "postgresql://layer5_app:strong-password@layer5-db.internal
 VALID_CORS_ORIGINS = "https://fabric.example.com,https://admin.fabric.example.com"
 
 
+VALID_SERVICE_AUTH_SECRET = "layer5-service-auth-secret-with-more-than-32-characters"
+
+
 def _clear_layer5_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for key in (
         "ENVIRONMENT",
@@ -29,6 +32,7 @@ def _clear_layer5_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "DATABASE_URL",
         "DATABASE_URL_SYNC",
         "DEFAULT_TENANT_ID",
+        "SERVICE_AUTH_SECRET",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -43,6 +47,7 @@ def _set_valid_production_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", VALID_DATABASE_URL)
     monkeypatch.setenv("DATABASE_URL_SYNC", VALID_DATABASE_URL.replace("postgresql://", "postgresql+psycopg://"))
     monkeypatch.setenv("DEFAULT_TENANT_ID", "11111111-1111-4111-8111-111111111111")
+    monkeypatch.setenv("SERVICE_AUTH_SECRET", VALID_SERVICE_AUTH_SECRET)
 
 
 def _validation_message(exc_info: pytest.ExceptionInfo[ValidationError]) -> str:
@@ -141,3 +146,191 @@ class TestLayer5ProductionSettingsFailClosed:
         assert settings.jwt_fallback_to_query_param is True
         assert settings.allow_insecure_dev_auth_bypass is True
         assert settings.cors_origin_list == ["*"]
+
+    # --- Sprint 2 credential remediation: SERVICE_AUTH_SECRET fail-closed ---
+
+    def test_production_requires_service_auth_secret(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _set_valid_production_env(monkeypatch)
+        monkeypatch.delenv("SERVICE_AUTH_SECRET", raising=False)
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert (
+            "SERVICE_AUTH_SECRET must be set to a value of at least 32 characters"
+            in _validation_message(exc_info)
+        )
+
+    def test_production_rejects_short_service_auth_secret(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _set_valid_production_env(monkeypatch)
+        monkeypatch.setenv("SERVICE_AUTH_SECRET", "too-short")
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert (
+            "SERVICE_AUTH_SECRET must be set to a value of at least 32 characters"
+            in _validation_message(exc_info)
+        )
+
+    def test_production_rejects_placeholder_service_auth_secret(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _set_valid_production_env(monkeypatch)
+        # 40 chars to clear the length check; stripped/lowercased → "changeme",
+        # which matches the WEAK_JWT_SECRETS denylist shared with JWT_SECRET.
+        monkeypatch.setenv(
+            "SERVICE_AUTH_SECRET",
+            "changeme                                ",
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert (
+            "SERVICE_AUTH_SECRET must not be a known placeholder value"
+            in _validation_message(exc_info)
+        )
+
+
+class TestLayer5GetCurrentUserHardening:
+    """Regression coverage for ``get_current_user`` adapter.
+
+    The dependency must:
+      * derive identity from ``request.state.governance_context`` when present;
+      * return 401 in production-like runtimes when no middleware context is set
+        (no header or query-param fallback permitted);
+      * only fall back to legacy header/query paths when
+        ``ALLOW_INSECURE_DEV_AUTH_BYPASS=true`` AND the environment is NOT
+        production-like.
+    """
+
+    @staticmethod
+    def _fake_request(headers: dict[str, str] | None = None, ctx=None):
+        """Build a Request-like stub with ``state.governance_context``."""
+        from types import SimpleNamespace
+
+        state = SimpleNamespace(governance_context=ctx, context=ctx)
+        return SimpleNamespace(state=state, headers=headers or {})
+
+    def _build_settings(self, monkeypatch: pytest.MonkeyPatch, *, production: bool, allow_bypass: bool):
+        _clear_layer5_env(monkeypatch)
+        if production:
+            _set_valid_production_env(monkeypatch)
+            monkeypatch.setenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "false")
+        else:
+            monkeypatch.setenv("ENVIRONMENT", "development")
+            monkeypatch.setenv("JWT_SECRET", VALID_JWT_SECRET)
+            monkeypatch.setenv(
+                "ALLOW_INSECURE_DEV_AUTH_BYPASS",
+                "true" if allow_bypass else "false",
+            )
+        return Settings()
+
+    def test_derives_identity_from_governance_context(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from uuid import uuid4
+
+        from layer5_ground_truth.api.auth import get_current_user
+
+        settings = self._build_settings(monkeypatch, production=True, allow_bypass=False)
+
+        tenant = uuid4()
+
+        class _Ctx:
+            tenant_id = tenant
+            user_id = "user-123"
+            roles = ["admin"]
+            raw = {"source": "jwt"}
+
+        request = self._fake_request(ctx=_Ctx())
+
+        claims = get_current_user(
+            request=request,
+            authorization=None,
+            x_tenant_id=None,
+            tenant_id=None,
+            settings=settings,
+        )
+
+        assert claims.tenant_id == tenant
+        assert claims.user_id == "user-123"
+        assert claims.roles == ["admin"]
+
+    def test_production_without_governance_context_is_401(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from fastapi import HTTPException
+
+        from layer5_ground_truth.api.auth import get_current_user
+
+        settings = self._build_settings(monkeypatch, production=True, allow_bypass=False)
+        request = self._fake_request(ctx=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(
+                request=request,
+                authorization=None,
+                x_tenant_id="11111111-1111-4111-8111-111111111111",
+                tenant_id=None,
+                settings=settings,
+            )
+
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Authentication required."
+
+    def test_production_ignores_tenant_id_query_param(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from fastapi import HTTPException
+
+        from layer5_ground_truth.api.auth import get_current_user
+
+        settings = self._build_settings(monkeypatch, production=True, allow_bypass=False)
+        request = self._fake_request(ctx=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(
+                request=request,
+                authorization=None,
+                x_tenant_id=None,
+                tenant_id="11111111-1111-4111-8111-111111111111",
+                settings=settings,
+            )
+
+        assert exc_info.value.status_code == 401
+
+    def test_dev_bypass_disabled_without_context_is_401(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from fastapi import HTTPException
+
+        from layer5_ground_truth.api.auth import get_current_user
+
+        # Non-production but bypass flag OFF: must still fail closed when no
+        # middleware context is present, so unit tests that forget to override
+        # the dependency cannot accidentally grant auth.
+        settings = self._build_settings(monkeypatch, production=False, allow_bypass=False)
+        request = self._fake_request(ctx=None)
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(
+                request=request,
+                authorization=None,
+                x_tenant_id="11111111-1111-4111-8111-111111111111",
+                tenant_id=None,
+                settings=settings,
+            )
+
+        assert exc_info.value.status_code == 401
+
+    def test_dev_bypass_enabled_accepts_x_tenant_id_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from uuid import UUID
+
+        from layer5_ground_truth.api.auth import get_current_user
+
+        settings = self._build_settings(monkeypatch, production=False, allow_bypass=True)
+        request = self._fake_request(ctx=None)
+        tenant = "11111111-1111-4111-8111-111111111111"
+
+        claims = get_current_user(
+            request=request,
+            authorization=None,
+            x_tenant_id=tenant,
+            tenant_id=None,
+            settings=settings,
+        )
+
+        assert claims.tenant_id == UUID(tenant)
+        assert claims.user_id == "service"

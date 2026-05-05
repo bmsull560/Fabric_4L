@@ -614,6 +614,7 @@ jobs:
       - name: Run mandatory security regression gate
         env:
           MANDATORY_SECURITY_ARTIFACT_DIR: artifacts/mandatory_security
+          FABRIC_AUDIT_DIR: .fabric/audit
         run: bash scripts/ci/mandatory_security_regression_gate.sh
 
       - name: Upload mandatory security evidence
@@ -621,7 +622,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mandatory-security-regression-${{ github.sha }}
-          path: artifacts/mandatory_security/
+          path: |
+            artifacts/mandatory_security/
+            .fabric/audit/security_regression_gate/
           if-no-files-found: error
           retention-days: ${{ env.SECURITY_ARTIFACT_RETENTION_DAYS }}
 

@@ -37,12 +37,20 @@ jobs:
           docker compose version
 
       - name: Start services
-        working-directory: ./value-fabric
+        working-directory: value-fabric
         run: |
-          # Export required environment variables
-          export NEO4J_PASSWORD=valuefabric
-          # P1-22 FIX: Removed secret fallback - secrets must be configured
-          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          cat > .env <<'EOF'
+          OPENAI_API_KEY=sk-ci-test-key
+          ANTHROPIC_API_KEY=sk-ci-test-key
+          NEO4J_PASSWORD=valuefabric
+          JWT_SECRET=ci-jwt-secret-value-for-ephemeral-compose-only
+          JWT_ALGORITHM=HS256
+          AUTH_BYPASS_ENABLED=true
+          ENVIRONMENT=ci
+          REDIS_PASSWORD=valuefabric
+          FLOWER_PASSWORD=valuefabric
+          GRAFANA_ADMIN_PASSWORD=valuefabric
+          EOF
           
           # Start core services (L2, L3, L4 + dependencies)
           docker compose up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
@@ -87,7 +95,7 @@ jobs:
 
       - name: Capture logs on failure
         if: failure()
-        working-directory: ./value-fabric
+        working-directory: value-fabric
         run: |
           mkdir -p ../artifacts/logs
           docker compose logs > ../artifacts/logs/docker-compose.log
@@ -102,6 +110,6 @@ jobs:
 
       - name: Tear down services
         if: always()
-        working-directory: ./value-fabric
+        working-directory: value-fabric
         run: |
           docker compose down -v
