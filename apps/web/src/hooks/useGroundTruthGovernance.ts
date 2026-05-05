@@ -1,6 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
-import type { components } from "@/api/generated/l5";
+import type {
+  ClaimType,
+  FreshnessSummaryResponse,
+  MaturityLadderResponse,
+  StaleTruthsResponse,
+  TruthObjectListResponse,
+  TruthStatus,
+  ValidationEventResponse,
+} from "@/lib/schemas/groundTruthGovernance";
+import {
+  parseFreshnessSummaryResponse,
+  parseMaturityLadderResponse,
+  parseStaleTruthsResponse,
+  parseTruthObjectListResponse,
+  parseValidationEventListResponse,
+} from "@/lib/schemas/groundTruthGovernance";
 import { QK } from "./queryKeys";
 import {
   withApiError,
@@ -9,39 +24,26 @@ import {
   RETRY_CONFIG,
 } from "./useApiShared";
 
-export type TruthStatus = components["schemas"]["TruthStatus"];
-export type TruthObjectSummary = components["schemas"]["TruthObjectSummary"];
-export type ValidationEventResponse =
-  components["schemas"]["ValidationEventResponse"];
-export type MaturityLadderResponse =
-  components["schemas"]["MaturityLadderResponse"];
+export type {
+  ClaimType,
+  FreshnessSummaryResponse,
+  MaturityLadderResponse,
+  StaleTruthsResponse,
+  TruthObjectListResponse,
+  TruthObjectSummary,
+  TruthStatus,
+  ValidationEventResponse,
+} from "@/lib/schemas/groundTruthGovernance";
 
 export interface TruthListFilters {
   status?: TruthStatus;
-  claim_type?: components["schemas"]["ClaimType"];
+  claim_type?: ClaimType;
   min_maturity?: number;
   min_confidence?: number;
   is_stale?: boolean;
   applies_to_opportunity?: string;
   limit?: number;
   offset?: number;
-}
-
-export interface FreshnessSummaryResponse {
-  stale_count?: number;
-  fresh_count?: number;
-  expiring_soon_count?: number;
-  total_count?: number;
-  [key: string]: unknown;
-}
-
-export interface StaleTruthsResponse {
-  items: TruthObjectSummary[];
-  total: number;
-  limit: number;
-  offset: number;
-  has_more: boolean;
-  [key: string]: unknown;
 }
 
 export class GroundTruthGovernanceApiError extends BaseApiError {
@@ -63,12 +65,12 @@ function toQueryString(filters: object): string {
 
 async function fetchTruths(
   filters: TruthListFilters
-): Promise<components["schemas"]["TruthObjectListResponse"]> {
+): Promise<TruthObjectListResponse> {
   const response = (await apiClient.get(
     "l4",
     `/ground-truth/truths${toQueryString(filters)}`
   )) as { data: unknown };
-  return response.data as components["schemas"]["TruthObjectListResponse"];
+  return parseTruthObjectListResponse(response.data);
 }
 
 async function fetchTruthAuditTrail(
@@ -78,7 +80,7 @@ async function fetchTruthAuditTrail(
     "l4",
     `/ground-truth/truths/${encodeURIComponent(truthId)}/audit`
   )) as { data: unknown };
-  return response.data as ValidationEventResponse[];
+  return parseValidationEventListResponse(response.data);
 }
 
 async function fetchFreshnessSummary(): Promise<FreshnessSummaryResponse> {
@@ -86,21 +88,7 @@ async function fetchFreshnessSummary(): Promise<FreshnessSummaryResponse> {
     "l4",
     "/ground-truth/truths/freshness-summary"
   )) as { data: unknown };
-  return response.data as FreshnessSummaryResponse;
-}
-
-function normalizeTruthItems(data: unknown): TruthObjectSummary[] {
-  if (Array.isArray(data)) {
-    return data as TruthObjectSummary[];
-  }
-  if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { items?: unknown }).items)
-  ) {
-    return (data as { items: TruthObjectSummary[] }).items;
-  }
-  return [];
+  return parseFreshnessSummaryResponse(response.data);
 }
 
 async function fetchStaleTruths(
@@ -110,37 +98,18 @@ async function fetchStaleTruths(
     "l4",
     `/ground-truth/truths/stale${toQueryString(params)}`
   )) as { data: unknown };
-  const payload = response.data as Record<string, unknown>;
-  const items = normalizeTruthItems(payload);
-
-  return {
-    ...payload,
-    items,
-    total: typeof payload.total === "number" ? payload.total : items.length,
-    limit:
-      typeof payload.limit === "number"
-        ? payload.limit
-        : (params.limit ?? items.length),
-    offset:
-      typeof payload.offset === "number"
-        ? payload.offset
-        : (params.offset ?? 0),
-    has_more: Boolean(payload.has_more),
-  };
+  return parseStaleTruthsResponse(response.data, params);
 }
 
 async function fetchMaturityLadder(): Promise<MaturityLadderResponse> {
   const response = (await apiClient.get("l4", "/ground-truth/maturity-ladder")) as {
     data: unknown;
   };
-  return response.data as MaturityLadderResponse;
+  return parseMaturityLadderResponse(response.data);
 }
 
 export function useTruths(filters: TruthListFilters = {}) {
-  return useQuery<
-    components["schemas"]["TruthObjectListResponse"],
-    GroundTruthGovernanceApiError
-  >({
+  return useQuery<TruthObjectListResponse, GroundTruthGovernanceApiError>({
     queryKey: QK.groundTruth.list(filters),
     queryFn: () =>
       withApiError(fetchTruths(filters), GroundTruthGovernanceApiError),
