@@ -28,22 +28,19 @@
 
 | Frontend Route | Dev Proxy Rewrite | Backend Route | Gateway Route | Rewrite Needed? | Current Result | Layer Owner | Notes |
 |----------------|-------------------|---------------|---------------|-----------------|----------------|-------------|-------|
-| `/api/v1/extract/jobs/{id}` | Strip `/api/v1/extract` | `/v1/extract/status/{job_id}` | `/layer2/*` | **YES** | `broken` | L2 | Frontend sends `/jobs/{id}`; backend expects `/extract/status/{id}`. No gateway alias exists. |
+| `/api/v1/extract/status/{id}` | Strip `/api/v1/extract` | `/v1/extract/status/{job_id}` | `/layer2/*` | No | `working` | L2 | Frontend must use canonical route. Legacy `/jobs/{id}` alias removed. |
 | `/api/v1/extract` | Strip `/api/v1/extract` | `/v1/extract` | `/layer2/*` | No | `working` | L2 | — |
 | `/api/v1/extract/signals` | Strip `/api/v1/extract` | `/v1/extract/signals` | `/layer2/*` | No | `working` | L2 | — |
 
-**🔴 Critical Mismatch:**
+**✅ Resolved:**
 ```
-Frontend:  GET /api/v1/extract/jobs/123
-Proxy:     → GET localhost:8002/jobs/123
-Backend:   expects GET /v1/extract/status/123
-Result:    404 Not Found
+Frontend:  GET /api/v1/extract/status/123
+Proxy:     → GET localhost:8002/extract/status/123
+Backend:   GET /v1/extract/status/123
+Result:    200 OK
 ```
 
-**Fix options:**
-1. **Gateway rewrite:** `*/extract/jobs/{id}` → `/v1/extract/status/{id}`
-2. **Frontend fix:** Change `useExtraction.ts` to call `/extract/status/${jobId}`.
-3. **Backend alias:** Add `GET /jobs/{job_id}` alias in L2 that delegates to `get_extraction_status`.
+**Migration note:** The legacy backend alias `/v1/jobs/{job_id}` and the L3 alias `/v1/ingest/{id}/status` have been removed. Frontend must use canonical routes.
 
 ---
 

@@ -44,7 +44,7 @@
 
 | Frontend Module | Query Key | Backend Owner | Canonical Endpoint | HTTP Method | Request Params | Request Body Schema | Response Schema | Auth / Tenant | Current Status | Notes / Migration Needs |
 |-----------------|-----------|---------------|--------------------|-------------|----------------|---------------------|-----------------|---------------|----------------|------------------------|
-| Extraction Job | `QK.extraction.job(id)` | L2 | `/v1/extract/status/{job_id}` | GET | `job_id` path param | — | `ExtractionStatusResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | **FIXED (BLOCKER-001):** Added backend compatibility alias `GET /v1/jobs/{job_id}` → `get_extraction_status`. Frontend path `/jobs/{id}` now resolves correctly. |
+| Extraction Job | `QK.extraction.job(id)` | L2 | `/v1/extract/status/{job_id}` | GET | `job_id` path param | — | `ExtractionStatusResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend must call `/v1/extract/status/{job_id}`. The legacy `/v1/jobs/{job_id}` alias was removed. |
 | Extraction Results | `QK.extraction.results(id)` | L2 | — | — | — | — | — | — | `missing` | Frontend defines query key but no corresponding backend endpoint found for raw results retrieval. |
 | Extraction Create | — | L2 | `/v1/extract` | POST | — | `ExtractRequest` | `ExtractResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Not currently consumed by frontend hooks; used directly in workflows. |
 | Extraction Batch | — | L2 | `/v1/extract/batch` | POST | — | `ExtractRequest[]` | `{ total_jobs: number }` | `X-Tenant-ID`, Bearer JWT | `implemented` | Not currently consumed by frontend hooks. |
@@ -52,10 +52,9 @@
 | Signal Extraction | — | L2 | `/v1/extract/signals` | POST | — | `SignalExtractionRequest` | `SignalExtractionResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Consumed by L4 workflows, not directly by frontend. |
 
 **🔴 Layer 2 Mismatch Detail:**
-- **Frontend call:** `apiClient.get('l2', '/jobs/{jobId}')` → resolved via baseURL `/api/extract` or `/api/v1/extract` → Vite proxy strips prefix → backend receives `/{jobId}` or `/jobs/{jobId}`.
+- **Frontend call:** `apiClient.get('l2', '/extract/status/{jobId}')` → resolved via baseURL `/api/extract` or `/api/v1/extract` → Vite proxy strips prefix → backend receives `/extract/status/{jobId}`.
 - **Backend actual:** `/v1/extract/status/{job_id}` (in `extraction.py`).
-- **Gap:** No `/jobs/{job_id}` route exists in L2 backend. The `tier_policy.py` references `/jobs` for tier mapping, but that is a policy artifact, not a live route.
-- **Recommendation:** Add gateway rewrite `/*jobs/{id}` → `/v1/extract/status/{id}` OR update frontend to call `/extract/status/{jobId}`.
+- **Gap resolved:** The legacy `/v1/jobs/{job_id}` alias was removed. Frontend must use the canonical route. `tier_policy.py` still references `/jobs` for tier mapping, but that is a policy artifact for historical route prefixes, not a live route.
 
 ---
 

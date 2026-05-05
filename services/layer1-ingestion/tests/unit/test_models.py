@@ -6,6 +6,7 @@ from value_fabric.layer1_ingestion.src.shared.models import (
     CrawlQueueItem,
     JobStatus,
     RawContent,
+    SourceCategory,
     TargetType,
     create_scraping_job,
     create_scraping_target,
@@ -60,6 +61,24 @@ class TestScrapingTarget:
         assert target.name == 'Test Target'
         assert target.url == 'https://example.com'
         assert target.target_type == TargetType.SINGLE_PAGE.value
+        assert target.source_category is None
+
+    def test_create_scraping_target_with_source_category(self):
+        """Test creating a scraping target with source_category."""
+        org_id = uuid4()
+        created_by = uuid4()
+        
+        target = create_scraping_target(
+            tenant_id=org_id,
+            name='CRM Target',
+            url='https://salesforce.com',
+            target_type=TargetType.API_ENDPOINT,
+            source_category=SourceCategory.CRM,
+            created_by=created_by,
+        )
+        
+        assert target.target_type == TargetType.API_ENDPOINT.value
+        assert target.source_category == SourceCategory.CRM.value
 
 
 class TestCrawlQueueItem:

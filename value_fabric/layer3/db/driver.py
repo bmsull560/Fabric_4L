@@ -177,4 +177,5 @@ async def health_check(settings: Settings | None = None) -> dict:
     except ConfigurationError as exc:
         return health_checkResult.model_validate({"status": "unhealthy", "error": f"Configuration error: {exc}"})
     except Exception as exc:  # noqa: BLE001
+        logger.exception("Health check failed with unexpected error")
         return health_checkResult.model_validate({"status": "unhealthy", "error": str(exc)})

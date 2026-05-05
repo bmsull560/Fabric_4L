@@ -49,7 +49,7 @@
 - Frontend builds a 4-step wizard UI from a flat `status` field.
 - `progress_logs` are mapped to `LogLine` with color coding.
 - `extracted_entities` are mapped to `EntityChip` with color mapping.
-- **Gap:** The frontend expects `GET /jobs/{id}` which does not exist (see contract map). Even if path were fixed, the adapter logic would still be required.
+- **Gap resolved:** The legacy `/jobs/{id}` alias was removed. Frontend must call `GET /extract/status/{id}`. Adapter logic for response transformation is still required.
 
 ---
 

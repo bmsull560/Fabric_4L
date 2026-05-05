@@ -142,19 +142,18 @@ class FrozenClock:
 
 def build_layer3_client_class(*, healthy: bool, success: bool):
     required_ingest_keys = {
-        "extraction_result",
+        "rdf_data",
         "source_url",
         "extraction_job_id",
-        "relationships",
     }
 
     class _Layer3ClientDouble:
         async def health_check(self) -> bool:
             return healthy
 
-        async def ingest_extraction_result(self, **kwargs) -> IngestionResponse:
+        async def ingest_rdf_data(self, **kwargs) -> IngestionResponse:
             if not healthy:
-                raise AssertionError("ingest_extraction_result should not be called when Layer 3 is unhealthy")
+                raise AssertionError("ingest_rdf_data should not be called when Layer 3 is unhealthy")
 
             missing = required_ingest_keys.difference(kwargs)
             if missing:
@@ -446,20 +445,23 @@ def build_layer3_full_double_class():
         async def health_check(self) -> bool:
             return True
 
-        async def ingest_extraction_result(self, **kwargs) -> IngestionResponse:
-            self._call_log.append({"method": "ingest_extraction_result", "kwargs": kwargs})
+        async def ingest_rdf_data(self, **kwargs) -> IngestionResponse:
+            self._call_log.append({"method": "ingest_rdf_data", "kwargs": kwargs})
 
             extraction_job_id = kwargs.get("extraction_job_id", "unknown")
             source_url = kwargs.get("source_url", "unknown")
+
+            # Simulate entity counts from RDF payload size (contract test only)
+            rdf_data = kwargs.get("rdf_data", "")
+            simulated_entities = rdf_data.count("vf:Capability") + rdf_data.count("vf:UseCase")
+            simulated_relationships = rdf_data.count("vf:enables")
 
             # Store ingestion state
             self._ingestions[extraction_job_id] = {
                 "ingestion_id": extraction_job_id,
                 "status": "completed",
-                "entities_loaded": len(kwargs.get("extraction_result", {}).capabilities or []) + len(
-                    kwargs.get("extraction_result", {}).use_cases or []
-                ),
-                "relationships_loaded": len(kwargs.get("relationships", [])),
+                "entities_loaded": simulated_entities,
+                "relationships_loaded": simulated_relationships,
                 "source_url": source_url,
             }
 
@@ -548,14 +550,13 @@ async def test_cross_layer_extract_ingest_status_flow(
     job_id = kickoff.json()["job_id"]
 
     # Verify L2 reached L3 ingest with correct contract
-    ingest_calls = [c for c in double_instance.get_call_log() if c["method"] == "ingest_extraction_result"]
+    ingest_calls = [c for c in double_instance.get_call_log() if c["method"] == "ingest_rdf_data"]
     assert len(ingest_calls) == 1, f"Expected 1 ingest call, got {len(ingest_calls)}"
 
     ingest_kwargs = ingest_calls[0]["kwargs"]
     assert ingest_kwargs["source_url"] == payload["source_url"]
     assert ingest_kwargs["extraction_job_id"] == job_id
-    assert ingest_kwargs["extraction_result"] is not None
-    assert ingest_kwargs["relationships"] is not None
+    assert ingest_kwargs["rdf_data"] is not None
 
     # Verify L2 can query L3 status via canonical endpoint
     status = await async_client.get(f"/v1/extract/status/{job_id}")
@@ -570,23 +571,3 @@ async def test_cross_layer_extract_ingest_status_flow(
 
 
 
-# ── BLOCKER-001 regression: compatibility alias ──────────────────────────────
-
-@pytest.mark.asyncio
-async def test_jobs_alias_returns_same_status_as_canonical(async_client, monkeypatch: pytest.MonkeyPatch) -> None:
-    """GET /v1/jobs/{job_id} must return the same response as GET /v1/extract/status/{job_id}."""
-    async def fake_pipeline_runner(job_id: str, source_url: str, content: str, config: dict) -> None:
-        return None
-
-    monkeypatch.setattr(api_main, "run_extract_and_ingest", fake_pipeline_runner)
-
-    kickoff = await async_client.post("/v1/extract-and-ingest", json=request_payload())
-    assert kickoff.status_code == 200
-    body = kickoff.json()
-    job_id = body["job_id"]
-
-    canonical = await async_client.get(f"/v1/extract/status/{job_id}")
-    alias = await async_client.get(f"/v1/jobs/{job_id}")
-
-    assert alias.status_code == canonical.status_code == 200
-    assert alias.json() == canonical.json()

@@ -100,7 +100,7 @@ RUN_INTEGRATION_TESTS=1 pytest tests/test_e2e_pipeline.py -v
 **Layer 2 → Layer 3 API Calls:**
 - `GET /health` - Verify L3 availability
 - `POST /v1/ingest` - Ingest RDF data
-- `GET /v1/ingest/{id}/status` - Check ingestion status
+- `GET /v1/ingest/status/{id}` - Check ingestion status (canonical route)
 
 ## Configuration
 

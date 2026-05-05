@@ -1,9 +1,12 @@
 """Async Vault health and secret-access verification helpers."""
 
+import logging
 import os
 from typing import Any, List
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 # In-memory cache for Vault secrets to avoid repeated lookups
@@ -86,6 +89,7 @@ async def resolve_vault_secret(ref: str) -> str | None:
 
             return value
     except Exception:
+        logger.exception("Vault secret lookup failed for %s", ref)
         return None
 
 
@@ -106,6 +110,7 @@ async def check_vault_health(vault_addr: str) -> bool:
             # 200 = active, 429 = standby, 473 = recovery replication secondary
             return resp.status_code in (200, 429, 473)
     except Exception:
+        logger.exception("Vault health check failed for %s", vault_addr)
         return False
 
 
@@ -128,6 +133,7 @@ async def verify_secret_access(vault_addr: str, paths: List[str]) -> bool:
                     return False
             return True
     except Exception:
+        logger.exception("Vault secret access verification failed for %s", vault_addr)
         return False
 
 # Merged from root shared/identity/vault_check.py

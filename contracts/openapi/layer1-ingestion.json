@@ -89,6 +89,23 @@
             }
           },
           {
+            "name": "source_category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SourceCategory"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Category"
+            },
+            "description": "Filter by source category"
+          },
+          {
             "name": "sort_by",
             "in": "query",
             "required": false,
@@ -189,6 +206,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ScrapingTargetDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion/targets/stats": {
+      "get": {
+        "summary": "Get Target Stats",
+        "description": "Get aggregated statistics for all scraping targets.",
+        "operationId": "get_target_stats_api_v1_ingestion_targets_stats_get",
+        "parameters": [
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetStatsResponse"
                 }
               }
             }
@@ -2414,6 +2478,10 @@
             "$ref": "#/components/schemas/TargetType",
             "default": "SINGLE_PAGE"
           },
+          "source_category": {
+            "$ref": "#/components/schemas/SourceCategory",
+            "default": "api"
+          },
           "crawl_path": {
             "$ref": "#/components/schemas/CrawlPath",
             "default": "browser"
@@ -3802,6 +3870,17 @@
             "type": "string",
             "title": "Target Type"
           },
+          "source_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Category"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -3994,6 +4073,17 @@
             "type": "string",
             "title": "Target Type"
           },
+          "source_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Category"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -4080,6 +4170,45 @@
         "title": "TargetListResponse",
         "description": "List of scraping targets."
       },
+      "TargetStatsResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "connected": {
+            "type": "integer",
+            "title": "Connected"
+          },
+          "disconnected": {
+            "type": "integer",
+            "title": "Disconnected"
+          },
+          "error": {
+            "type": "integer",
+            "title": "Error"
+          },
+          "total_records": {
+            "type": "integer",
+            "title": "Total Records"
+          },
+          "average_health_score": {
+            "type": "integer",
+            "title": "Average Health Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "connected",
+          "disconnected",
+          "error",
+          "total_records",
+          "average_health_score"
+        ],
+        "title": "TargetStatsResponse",
+        "description": "Aggregated statistics for scraping targets."
+      },
       "TargetStatus": {
         "type": "string",
         "enum": [
@@ -4101,6 +4230,18 @@
         ],
         "title": "TargetType",
         "description": "Scraping target types."
+      },
+      "SourceCategory": {
+        "type": "string",
+        "enum": [
+          "crm",
+          "database",
+          "file",
+          "api",
+          "cloud_storage"
+        ],
+        "title": "SourceCategory",
+        "description": "Semantic category of the data source (what it is)."
       },
       "UpdateTargetRequest": {
         "properties": {
@@ -4132,6 +4273,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/TargetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCategory"
               },
               {
                 "type": "null"

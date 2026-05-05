@@ -9,8 +9,11 @@ from datetime import datetime
 
 try:
     from .config import Settings, get_settings
-except ImportError:  # pragma: no cover - fallback for top-level module imports
-    from config import Settings, get_settings
+except ImportError as _import_exc:  # pragma: no cover - fallback for top-level module imports
+    if "attempted relative import with no known parent package" in str(_import_exc):
+        from config import Settings, get_settings
+    else:
+        raise
 
 
 class JSONFormatter(logging.Formatter):

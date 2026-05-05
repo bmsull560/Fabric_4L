@@ -64,6 +64,14 @@ class TargetType(str, PyEnum):
     API_ENDPOINT = "API_ENDPOINT"
 
 
+class SourceCategory(str, PyEnum):
+    CRM = "crm"
+    DATABASE = "database"
+    FILE = "file"
+    API = "api"
+    CLOUD_STORAGE = "cloud_storage"
+
+
 class TargetStatus(str, PyEnum):
     ACTIVE = "ACTIVE"
     PAUSED = "PAUSED"
@@ -168,6 +176,7 @@ class ScrapingTarget(TenantScoped, Base):
     url = Column(Text, nullable=False)
     url_pattern = Column(String(500), nullable=True)
     target_type = Column(String(50), nullable=False, default=TargetType.SINGLE_PAGE.value)
+    source_category = Column(String(50), nullable=True)
     extraction_config = Column(JSONB, default=dict)
     browser_config = Column(JSONB, default=dict)
     schedule = Column(JSONB, nullable=True)
@@ -534,12 +543,14 @@ def create_scraping_target(
     compliance: dict | None = None,
     proxy_config: dict | None = None,
     tags: list[str] | None = None,
+    source_category: SourceCategory | None = None,
 ) -> ScrapingTarget:
     return ScrapingTarget(
         tenant_id=tenant_id,
         name=name,
         url=url,
         target_type=target_type.value,
+        source_category=source_category.value if source_category else None,
         created_by=created_by,
         description=description,
         extraction_config=extraction_config or {},
@@ -611,6 +622,7 @@ __all__ = [
     "RobotsTxtCache",
     "ScrapingJob",
     "ScrapingTarget",
+    "SourceCategory",
     "TargetStatus",
     "TargetType",
     "TriggeredBy",

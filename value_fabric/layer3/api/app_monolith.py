@@ -1587,18 +1587,6 @@ async def get_sync_status(
     )
 
 
-# Alias for L2 client compatibility (canonical route is /v1/ingest/status/{source_id})
-# DESIGN NOTE: L2 uses ingestion_id, L3 uses source_id. They are treated as equivalent
-# for sync status lookups. If ID schemes diverge in future, add mapping layer here.
-@app.get("/v1/ingest/{source_id}/status", response_model=SyncStatusResponse)
-async def get_sync_status_alias(
-    source_id: str,
-    sync_manager=Depends(get_sync_manager),
-):
-    """Get synchronization status for a source (backward-compatible alias)."""
-    return await get_sync_status(source_id, sync_manager)
-
-
 @app.delete("/v1/ingest/{source_id}")
 async def delete_source(
     source_id: str,

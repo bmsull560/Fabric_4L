@@ -312,26 +312,390 @@ components:
       - MAX_CONCURRENT_AGENTS=10
 ```
 
-## Verification Commands
+## CLI-Based Environment Launch
+
+The Bunnyshell CLI (`bns`) provides programmatic control over environments and components. Use CLI for automation in CI/CD pipelines, scripts, and remote development workflows.
+
+### Install CLI
+
+```bash
+# macOS
+brew tap bunnyshell/tap
+brew install bunnyshell
+
+# Linux
+curl -fsSL https://get.bunnyshell.com | sh
+
+# Windows (via scoop)
+scoop install bunnyshell
+
+# Verify installation
+bns version
+```
+
+### Configure CLI
+
+```bash
+# Interactive setup
+bns configure
+
+# Set API token
+bns configure --api-token YOUR_API_TOKEN
+
+# Use specific profile
+bns --profile production environments list
+```
+
+### Launch Environment from Dockerfile
+
+**Option 1: Using CLI with Docker Compose**
+
+```bash
+# Create environment from docker-compose.yml
+bns environments create \
+  --name value-fabric-dev \
+  --template docker-compose \
+  --source ./docker-compose.dev.yml \
+  --project value-fabric
+
+# Start the environment
+bns environments start value-fabric-dev
+
+# View components
+bns components list --environment value-fabric-dev
+```
+
+**Option 2: Using CLI with Dockerfile directly**
+
+```bash
+# Create a component from Dockerfile
+bns components create \
+  --name layer1-ingestion \
+  --type service \
+  --source ./services/layer1-ingestion/Dockerfile \
+  --environment value-fabric-dev \
+  --port 8000
+
+# Set environment variables for the component
+bns variables set \
+  --component layer1-ingestion \
+  --environment value-fabric-dev \
+  DATABASE_URL=postgresql://user:pass@postgres:5432/valuefabric \
+  REDIS_URL=redis://redis:6379
+```
+
+### Remote Development via CLI
+
+```bash
+# Start remote development session
+bns remote-development start \
+  --environment value-fabric-dev \
+  --component layer1-ingestion \
+  --ide vscode
+
+# Sync local changes to remote environment
+bns git sync --environment value-fabric-dev
+
+# Port forward to access local services
+bns port-forward \
+  --environment value-fabric-dev \
+  --component layer1-ingestion \
+  --local 8000 \
+  --remote 8000
+
+# Stop remote development
+bns remote-development stop --environment value-fabric-dev
+```
+
+### CLI Environment Management
 
 ```bash
 # List all environments
-bunnyshell env list
+bns environments list
 
-# Check environment status
-bunnyshell env status <environment-id>
+# List environments in a project
+bns environments list --project value-fabric
 
-# View environment logs
-bunnyshell env logs <environment-id> --component layer1-ingestion
+# Get environment status
+bns environments get value-fabric-dev
 
-# Stop an environment
-bunnyshell env stop <environment-id>
+# Deploy changes to environment
+bns environments deploy value-fabric-dev
 
-# Delete an environment
-bunnyshell env delete <environment-id>
+# Stop environment
+bns environments stop value-fabric-dev
 
-# View cost report
-bunnyshell cost report --month 2026-05
+# Delete environment
+bns environments delete value-fabric-dev
+
+# View environment events
+bns environments events value-fabric-dev
+```
+
+### CLI Component Management
+
+```bash
+# List components in an environment
+bns components list --environment value-fabric-dev
+
+# Get component details
+bns components get layer1-ingestion --environment value-fabric-dev
+
+# View component logs
+bns components logs layer1-ingestion --environment value-fabric-dev --follow
+
+# Restart a component
+bns components restart layer1-ingestion --environment value-fabric-dev
+
+# Scale component replicas
+bns components scale layer1-ingestion --environment value-fabric-dev --replicas 3
+```
+
+## API-Based Environment Launch
+
+Use the Bunnyshell REST API for programmatic environment creation and management from any language or service.
+
+### API Authentication
+
+```bash
+# Set API token as environment variable
+export BUNNYSHELL_API_TOKEN=your_api_token_here
+
+# Or pass in headers
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  https://api.bunnyshell.com/v1/environments
+```
+
+### List Components via API
+
+```bash
+# List all components
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  "https://api.bunnyshell.com/v1/components"
+
+# Filter by environment
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  "https://api.bunnyshell.com/v1/components?environment=value-fabric-dev"
+
+# Filter by name
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  "https://api.bunnyshell.com/v1/components?name=layer1-ingestion"
+
+# Filter by operation status
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  "https://api.bunnyshell.com/v1/components?operationStatus=running"
+```
+
+### Create Environment via API
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "value-fabric-dev",
+    "projectId": "your-project-id",
+    "templateId": "docker-compose-template",
+    "source": {
+      "type": "docker-compose",
+      "repository": "https://github.com/your-org/value-fabric",
+      "branch": "develop",
+      "path": "./docker-compose.dev.yml"
+    },
+    "variables": {
+      "LOG_LEVEL": "debug",
+      "DATABASE_URL": "${DEV_DATABASE_URL}",
+      "REDIS_URL": "${DEV_REDIS_URL}"
+    }
+  }' \
+  https://api.bunnyshell.com/v1/environments
+```
+
+### Create Component via API
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "layer1-ingestion",
+    "environmentId": "env-id",
+    "type": "service",
+    "source": {
+      "type": "dockerfile",
+      "repository": "https://github.com/your-org/value-fabric",
+      "branch": "develop",
+      "path": "./services/layer1-ingestion/Dockerfile",
+      "context": "./services/layer1-ingestion"
+    },
+    "ports": [
+      {
+        "containerPort": 8000,
+        "protocol": "TCP"
+      }
+    ],
+    "resources": {
+      "limits": {
+        "cpu": "1000m",
+        "memory": "1Gi"
+      },
+      "requests": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      }
+    },
+    "healthCheck": {
+      "path": "/health",
+      "intervalSeconds": 30,
+      "timeoutSeconds": 5,
+      "failureThreshold": 3
+    }
+  }' \
+  https://api.bunnyshell.com/v1/components
+```
+
+### Deploy Environment via API
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentId": "value-fabric-dev",
+    "source": {
+      "type": "docker-compose",
+      "repository": "https://github.com/your-org/value-fabric",
+      "branch": "feature/new-feature",
+      "path": "./docker-compose.dev.yml"
+    }
+  }' \
+  https://api.bunnyshell.com/v1/environments/value-fabric-dev/deploy
+```
+
+### Start/Stop Environment via API
+
+```bash
+# Start environment
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  https://api.bunnyshell.com/v1/environments/value-fabric-dev/start
+
+# Stop environment
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  https://api.bunnyshell.com/v1/environments/value-fabric-dev/stop
+```
+
+## Value Fabric Dockerfile Launch Workflows
+
+### Workflow 1: Launch Single Layer Development Environment
+
+```bash
+# Using CLI
+bns environments create \
+  --name layer1-dev \
+  --project value-fabric \
+  --source ./services/layer1-ingestion/Dockerfile \
+  --port 8000 \
+  --env DATABASE_URL=postgresql://localhost:5432/dev \
+  --env LOG_LEVEL=debug
+
+# Using API
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "layer1-dev",
+    "projectId": "value-fabric",
+    "components": [{
+      "name": "layer1-ingestion",
+      "type": "service",
+      "source": {
+        "type": "dockerfile",
+        "path": "./services/layer1-ingestion/Dockerfile"
+      },
+      "ports": [{"containerPort": 8000}]
+    }]
+  }' \
+  https://api.bunnyshell.com/v1/environments
+```
+
+### Workflow 2: Launch Full Stack from Docker Compose
+
+```bash
+# Using CLI with existing docker-compose.dev.yml
+bns environments create \
+  --name value-fabric-full-dev \
+  --project value-fabric \
+  --template docker-compose \
+  --source ./docker-compose.dev.yml \
+  --auto-start
+
+# Verify all components are running
+bns components list --environment value-fabric-full-dev
+```
+
+### Workflow 3: Launch PR Environment
+
+```bash
+# Trigger via CLI on PR creation
+PR_NUMBER=123
+BRANCH=feature/new-feature
+
+bns environments create \
+  --name pr-${PR_NUMBER} \
+  --project value-fabric \
+  --source ./docker-compose.dev.yml \
+  --branch ${BRANCH} \
+  --auto-destroy \
+  --destroy-after 7d \
+  --env PR_NUMBER=${PR_NUMBER}
+```
+
+### Workflow 4: Remote Development Setup
+
+```bash
+# Start remote dev environment
+bns environments create \
+  --name remote-dev-$(whoami) \
+  --project value-fabric \
+  --source ./docker-compose.dev.yml \
+  --remote-development true
+
+# Start VS Code remote session
+bns remote-development start \
+  --environment remote-dev-$(whoami) \
+  --component layer1-ingestion \
+  --ide vscode
+
+# Sync code
+bns git sync --environment remote-dev-$(whoami)
+```
+
+## Verification Commands
+
+```bash
+# List all environments (CLI)
+bns environments list
+
+# Check environment status (CLI)
+bns environments get value-fabric-dev
+
+# View environment logs (CLI)
+bns components logs layer1-ingestion --environment value-fabric-dev --follow
+
+# Stop an environment (CLI)
+bns environments stop value-fabric-dev
+
+# Delete an environment (CLI)
+bns environments delete value-fabric-dev
+
+# List components via API
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  "https://api.bunnyshell.com/v1/components?environment=value-fabric-dev"
+
+# View cost report (CLI)
+bns environments cost-report --month 2026-05
 ```
 
 ## Best Practices

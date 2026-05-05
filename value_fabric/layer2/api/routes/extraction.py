@@ -97,14 +97,13 @@ async def extract_signals(
 
     start_time = time.time()
 
-    try:
-        # Load the operational signal extraction prompt
-        prompt_text = load_prompt("operational_signal_extraction.txt")
+    # Load the operational signal extraction prompt
+    prompt_text = load_prompt("operational_signal_extraction.txt")
 
-        # Prepare input for LLM
-        # P1-12 FIX: Wrap all user-controlled content in delimiters to prevent prompt injection
-        prospect = request.prospect_data
-        user_content = f"""
+    # Prepare input for LLM
+    # P1-12 FIX: Wrap all user-controlled content in delimiters to prevent prompt injection
+    prospect = request.prospect_data
+    user_content = f"""
 Company: <<<USER_INPUT>>>{prospect.company_name}<<</USER_INPUT>>>
 Industry: <<<USER_INPUT>>>{prospect.industry or "Unknown"}<<</USER_INPUT>>>
 
@@ -127,56 +126,48 @@ Freeform Context:
 <<<USER_INPUT>>>{prospect.prompt_text}<<</USER_INPUT>>>
 """
 
-        # Call LLM for structured extraction using existing LLMClient
+    # Call LLM for structured extraction using existing LLMClient
 
-        llm_client = LLMClient()
-        messages = [
-            {"role": "system", "content": prompt_text},
-            {"role": "user", "content": user_content},
-        ]
+    llm_client = LLMClient()
+    messages = [
+        {"role": "system", "content": prompt_text},
+        {"role": "user", "content": user_content},
+    ]
 
-        extraction_result, _ = await llm_client.chat_completion_structured(
-            messages=messages,
-            extraction_job_id=x_trace_id or f"signal_{x_tenant_id}_{int(time.time())}",
-            endpoint="operational_signal_extraction",
-            response_format=OperationalSignalExtractionResponse,
-            temperature=0.1,
-        )
+    extraction_result, _ = await llm_client.chat_completion_structured(
+        messages=messages,
+        extraction_job_id=x_trace_id or f"signal_{x_tenant_id}_{int(time.time())}",
+        endpoint="operational_signal_extraction",
+        response_format=OperationalSignalExtractionResponse,
+        temperature=0.1,
+    )
 
-        duration_ms = int((time.time() - start_time) * 1000)
+    duration_ms = int((time.time() - start_time) * 1000)
 
-        # Transform to API response format
-        signals = []
-        for signal in extraction_result.signals:
-            signals.append(
-                SignalExtractionResult(
-                    name=signal.name,
-                    category=signal.category.value if hasattr(signal.category, "value") else str(signal.category),
-                    description=signal.description,
-                    confidence_score=signal.confidence_score,
-                    confidence_explanation=signal.confidence_explanation,
-                    impact_indicators=signal.impact_indicators,
-                    trend_direction=signal.trend_direction.value if hasattr(signal.trend_direction, "value") else str(signal.trend_direction),
-                    trend_explanation=signal.trend_explanation or "",
-                    stakeholder_quotes=signal.stakeholder_quotes,
-                    likely_value_drivers=signal.likely_value_drivers,
-                )
+    # Transform to API response format
+    signals = []
+    for signal in extraction_result.signals:
+        signals.append(
+            SignalExtractionResult(
+                name=signal.name,
+                category=signal.category.value if hasattr(signal.category, "value") else str(signal.category),
+                description=signal.description,
+                confidence_score=signal.confidence_score,
+                confidence_explanation=signal.confidence_explanation,
+                impact_indicators=signal.impact_indicators,
+                trend_direction=signal.trend_direction.value if hasattr(signal.trend_direction, "value") else str(signal.trend_direction),
+                trend_explanation=signal.trend_explanation or "",
+                stakeholder_quotes=signal.stakeholder_quotes,
+                likely_value_drivers=signal.likely_value_drivers,
             )
-
-        return SignalExtractionResponse(
-            signals=signals,
-            duration_ms=duration_ms,
-            model_version=extraction_result.extraction_metadata.model_version,
-            prompt_version=extraction_result.extraction_metadata.prompt_version,
         )
 
-    except Exception as e:
-        logger.error(f"Signal extraction failed: {e}", exc_info=True)
-        # Return empty result on error (don't expose internal details)
-        return SignalExtractionResponse(
-            signals=[],
-            duration_ms=int((time.time() - start_time) * 1000),
-        )
+    return SignalExtractionResponse(
+        signals=signals,
+        duration_ms=duration_ms,
+        model_version=extraction_result.extraction_metadata.model_version,
+        prompt_version=extraction_result.extraction_metadata.prompt_version,
+    )
 
 
 @router.post("/extract", response_model=handlers.ExtractResponse)
@@ -191,15 +182,6 @@ async def extract_and_ingest(request: handlers.ExtractRequest, background_tasks:
 
 @router.get("/extract/status/{job_id}", response_model=handlers.ExtractionStatusResponse)
 async def get_extraction_status(job_id: str):
-    return await handlers.get_extraction_status(job_id)
-
-
-# BLOCKER-001 compatibility alias: frontend calls /jobs/{id} directly.
-# This alias preserves frontend contract stability while the canonical path
-# remains /extract/status/{job_id}. Consider deprecating once frontend migrates.
-@router.get("/jobs/{job_id}", response_model=handlers.ExtractionStatusResponse)
-async def get_extraction_status_compat(job_id: str):
-    """Compatibility alias for /extract/status/{job_id}."""
     return await handlers.get_extraction_status(job_id)
 
 

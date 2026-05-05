@@ -163,6 +163,110 @@ def _validation_trace_id(http_request: Request) -> str:
     return http_request.headers.get("X-Validation-Run-ID") or http_request.headers.get("X-Request-ID") or str(uuid4())
 
 
+async def _smoke_roi_response(
+    http_request: Request,
+    prospect_id: str,
+    account: Any,
+    context: RequestContext,
+) -> ROIAnalysisResponse:
+    """Build deterministic smoke-mode ROI response without invoking the workflow executor."""
+    trace_id = _validation_trace_id(http_request)
+    emit_audit_event(
+        AuditAction.ROI_CALCULATED,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
+        resource_type="ROIAnalysis",
+        resource_id=str(account.id),
+        request_id=trace_id,
+        details={
+            "mode": "smoke",
+            "status": "draft",
+            "account_id": str(account.id),
+            "requires_full_analysis": True,
+        },
+    )
+    return ROIAnalysisResponse(
+        prospect_id=prospect_id,
+        aggregated_roi={
+            "status": "draft",
+            "mode": "smoke",
+            "calculation": "roi",
+            "result": {
+                "total_value": 0,
+                "roi": None,
+                "payback_months": None,
+            },
+            "requires_full_analysis": True,
+            "trace_id": trace_id,
+            "tenant_id": str(context.tenant_id),
+            "account_id": str(account.id),
+        },
+        detailed_results=[],
+        benchmark_comparison={"mode": "smoke", "status": "not_evaluated"},
+    )
+
+
+async def _smoke_business_case_response(
+    http_request: Request,
+    request: BusinessCaseRequest,
+    account: Any,
+    db: AsyncSession,
+    context: RequestContext,
+) -> BusinessCaseResponse:
+    """Build deterministic smoke-mode business case response without invoking the workflow executor."""
+    trace_id = _validation_trace_id(http_request)
+    case_id = f"smoke-case-{uuid4()}"
+    business_case_service = BusinessCaseService(db)
+    await business_case_service.upsert_case_record(
+        case_id=case_id,
+        workflow_id=case_id,
+        account_id=request.account_id,
+        opportunity_id=request.opportunity_id,
+        status="draft",
+        document_url=None,
+    )
+    emit_audit_event(
+        AuditAction.BUSINESS_CASE_GENERATED,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
+        resource_type="BusinessCase",
+        resource_id=case_id,
+        request_id=trace_id,
+        details={
+            "mode": "smoke",
+            "status": "draft",
+            "account_id": str(account.id),
+            "approval_required": True,
+            "export_allowed": False,
+            "requires_full_generation": True,
+        },
+    )
+    return BusinessCaseResponse(
+        case_id=case_id,
+        title="Business Case Draft",
+        summary="Draft smoke-mode business case; full generation is still required.",
+        status="draft",
+        created_at=datetime.now(UTC).isoformat(),
+        remediation_items=[
+            {
+                "code": "FULL_GENERATION_REQUIRED",
+                "message": "Run full business-case generation before approval or export.",
+            }
+        ],
+        case_metadata={
+            "mode": "smoke",
+            "trace_id": trace_id,
+            "tenant_id": str(context.tenant_id),
+            "account_id": str(account.id),
+            "approval_required": True,
+            "export_allowed": False,
+            "requires_full_generation": True,
+        },
+    )
+
+
 async def _require_tenant_account(db: AsyncSession, account_id: UUID, context: RequestContext) -> Any:
     """Load an account through the authenticated tenant boundary or fail closed."""
     account = await AccountService(db).get_account(account_id, tenant_id=str(context.tenant_id))
@@ -211,41 +315,7 @@ async def quick_roi_analysis(
             except ValueError as exc:
                 raise HTTPException(status_code=422, detail="account_id must be a UUID for smoke-mode ROI validation") from exc
             account = await _require_tenant_account(db, account_uuid, context)
-            trace_id = _validation_trace_id(http_request)
-            emit_audit_event(
-                AuditAction.ROI_CALCULATED,
-                tenant_id=context.tenant_id,
-                user_id=context.user_id,
-                api_key_id=context.api_key_id,
-                resource_type="ROIAnalysis",
-                resource_id=str(account.id),
-                request_id=trace_id,
-                details={
-                    "mode": "smoke",
-                    "status": "draft",
-                    "account_id": str(account.id),
-                    "requires_full_analysis": True,
-                },
-            )
-            return ROIAnalysisResponse(
-                prospect_id=prospect_id,
-                aggregated_roi={
-                    "status": "draft",
-                    "mode": "smoke",
-                    "calculation": "roi",
-                    "result": {
-                        "total_value": 0,
-                        "roi": None,
-                        "payback_months": None,
-                    },
-                    "requires_full_analysis": True,
-                    "trace_id": trace_id,
-                    "tenant_id": str(context.tenant_id),
-                    "account_id": str(account.id),
-                },
-                detailed_results=[],
-                benchmark_comparison={"mode": "smoke", "status": "not_evaluated"},
-            )
+            return await _smoke_roi_response(http_request, prospect_id, account, context)
 
         input_data = ROIInputData(
             prospect_id=prospect_id,
@@ -358,56 +428,7 @@ async def generate_business_case(
         custom_inputs["provider_record_id"] = account.provider_record_id
 
         if _is_smoke_mode(http_request, body_mode=str(custom_inputs.get("mode", ""))):
-            trace_id = _validation_trace_id(http_request)
-            case_id = f"smoke-case-{uuid4()}"
-            business_case_service = BusinessCaseService(db)
-            await business_case_service.upsert_case_record(
-                case_id=case_id,
-                workflow_id=case_id,
-                account_id=request.account_id,
-                opportunity_id=request.opportunity_id,
-                status="draft",
-                document_url=None,
-            )
-            emit_audit_event(
-                AuditAction.BUSINESS_CASE_GENERATED,
-                tenant_id=context.tenant_id,
-                user_id=context.user_id,
-                api_key_id=context.api_key_id,
-                resource_type="BusinessCase",
-                resource_id=case_id,
-                request_id=trace_id,
-                details={
-                    "mode": "smoke",
-                    "status": "draft",
-                    "account_id": str(account.id),
-                    "approval_required": True,
-                    "export_allowed": False,
-                    "requires_full_generation": True,
-                },
-            )
-            return BusinessCaseResponse(
-                case_id=case_id,
-                title="Business Case Draft",
-                summary="Draft smoke-mode business case; full generation is still required.",
-                status="draft",
-                created_at=datetime.now(UTC).isoformat(),
-                remediation_items=[
-                    {
-                        "code": "FULL_GENERATION_REQUIRED",
-                        "message": "Run full business-case generation before approval or export.",
-                    }
-                ],
-                case_metadata={
-                    "mode": "smoke",
-                    "trace_id": trace_id,
-                    "tenant_id": str(context.tenant_id),
-                    "account_id": str(account.id),
-                    "approval_required": True,
-                    "export_allowed": False,
-                    "requires_full_generation": True,
-                },
-            )
+            return await _smoke_business_case_response(http_request, request, account, db, context)
 
         input_data = BusinessCaseInputData(
             account_id=request.account_id,

@@ -99,6 +99,7 @@ export interface CreateSourceRequest {
   proxyConfig?: Record<string, unknown>;
   authentication?: DataSource['authentication'];
   tags?: string[];
+  sourceCategory?: SourceType;
 }
 
 export interface UpdateSourceRequest extends Partial<CreateSourceRequest> {
@@ -142,8 +143,8 @@ type BackendTargetType = 'SINGLE_PAGE' | 'PAGINATED' | 'SPIDER' | 'API_ENDPOINT'
  * Frontend SourceType: 'crm' | 'database' | 'file' | 'api' | 'cloud_storage'
  * Backend target_type: 'SINGLE_PAGE' | 'PAGINATED' | 'SPIDER' | 'API_ENDPOINT'
  *
- * These are different axes. The backend scraping method is inferred from source
- * category until the backend exposes an explicit source_category field.
+ * These are different axes. The backend now exposes source_category for the
+ * semantic category; target_type remains for the scraping method.
  */
 const FRONTEND_TO_BACKEND_TARGET_TYPE: Record<SourceType, BackendTargetType> = {
   crm:           'API_ENDPOINT',    // CRM platforms expose REST/SOAP APIs
@@ -164,6 +165,7 @@ function buildTargetPayload(request: CreateSourceRequest): Record<string, unknow
     name: request.name,
     url: request.url,
     target_type: backendTargetType,
+    source_category: request.sourceCategory ?? request.targetType,
     description: request.description,
     extraction_config: request.extractionConfig,
     browser_config: request.browserConfig,
@@ -183,6 +185,7 @@ interface ApiScrapingTargetDetail {
   name: string;
   url: string;
   target_type: string;
+  source_category?: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -232,16 +235,24 @@ interface ApiValidateTargetResponse {
 // ── Normalization ───────────────────────────────────────────────────────────
 
 /**
- * Map backend target type to frontend SourceType.
+ * Map backend source_category to frontend SourceType.
  *
- * Backend target_type (SINGLE_PAGE, PAGINATED, SPIDER, API_ENDPOINT) describes
- * HOW to scrape, while frontend SourceType describes WHAT kind of source.
+ * Backend source_category (crm, database, file, api, cloud_storage) describes
+ * WHAT the source is, aligned with frontend SourceType.
  *
- * NOTE: Backend source_category field would eliminate inference. Tracked in
- * CONTRACT.md §2.3 Data Layer Alignment. For now, we infer from tags/URL.
+ * Falls back to mapping from target_type for legacy targets without
+ * source_category populated.
  */
-function mapTargetType(targetType: string, tags: string[] = [], url: string = ''): SourceType {
-  // Check tags for explicit source type hints
+function mapTargetType(sourceCategory: string | null | undefined, targetType: string, tags: string[] = [], url: string = ''): SourceType {
+  // Prefer explicit source_category when available
+  if (sourceCategory) {
+    const normalized = sourceCategory.toLowerCase();
+    if (['crm', 'database', 'file', 'api', 'cloud_storage'].includes(normalized)) {
+      return normalized as SourceType;
+    }
+  }
+
+  // Legacy fallback: infer from tags/URL for targets without source_category
   const tagMap: Record<string, SourceType> = {
     'crm': 'crm',
     'salesforce': 'crm',
@@ -265,7 +276,6 @@ function mapTargetType(targetType: string, tags: string[] = [], url: string = ''
   // Infer from URL patterns
   const lowerUrl = url.toLowerCase();
   if (lowerUrl.includes('salesforce') || lowerUrl.includes('hubapi')) return 'crm';
-  // Databases: check for connection strings or specific protocols
   if (lowerUrl.includes('postgres') || lowerUrl.includes('mysql') || lowerUrl.includes('://db')) {
     return 'database';
   }
@@ -356,7 +366,7 @@ function normalizeDataSource(api: ApiScrapingTargetDetail): DataSource {
     id: api.id,
     name: api.name,
     description: api.description ?? undefined,
-    type: mapTargetType(api.target_type, api.tags, api.url),
+    type: mapTargetType(api.source_category, api.target_type, api.tags, api.url),
     status,
     endpoint: api.url,
     urlPattern: api.url_pattern ?? undefined,
@@ -412,7 +422,7 @@ export function useSources(filters: SourceFilters = {}) {
       params.set('sort_by', sortBy);
       params.set('sort_order', sortOrder);
       if (search) params.set('search', search);
-      if (type) params.set('target_type', type);
+      if (type) params.set('source_category', type);
 
       const response = await withApiError(
         apiClient.get('l1', `/targets?${params.toString()}`),
@@ -459,40 +469,34 @@ export function useSource(id: string | null) {
 /**
  * Get aggregated statistics for all sources.
  *
- * Note: Fetches all sources to calculate accurate stats. If pagination is
- * needed for large datasets, a dedicated /stats endpoint should be added.
+ * Uses the dedicated /targets/stats endpoint for efficient server-side
+ * aggregation instead of fetching all sources client-side.
  */
 export function useSourceStats() {
   return useQuery<SourceStats, SourceApiError>({
     queryKey: QK.sources.stats,
     queryFn: async () => {
-      // Fetch all sources for accurate stats calculation
-      const MAX_STATS_LIMIT = 1000; // CONTRACT.md §2.3: Dedicated /stats endpoint preferred
       const response = await withApiError(
-        apiClient.get('l1', `/targets?page=1&limit=${MAX_STATS_LIMIT}`),
+        apiClient.get('l1', '/targets/stats'),
         SourceApiError
       );
 
-      const data = response.data as ApiTargetListResponse;
-      const sources = data.data.map(normalizeDataSource);
-
-      const total = data.pagination.total;
-      const connected = sources.filter(s => s.status === 'connected').length;
-      const disconnected = sources.filter(s => s.status === 'disconnected').length;
-      const error = sources.filter(s => s.status === 'error').length;
-
-      const totalRecords = sources.reduce((sum, s) => sum + (s.recordCount || 0), 0);
-      const averageHealthScore = sources.length > 0
-        ? Math.round(sources.reduce((sum, s) => sum + (s.healthScore || 0), 0) / sources.length)
-        : 0;
+      const data = response.data as {
+        total: number;
+        connected: number;
+        disconnected: number;
+        error: number;
+        total_records: number;
+        average_health_score: number;
+      };
 
       return {
-        total,
-        connected,
-        disconnected,
-        error,
-        totalRecords,
-        averageHealthScore,
+        total: data.total,
+        connected: data.connected,
+        disconnected: data.disconnected,
+        error: data.error,
+        totalRecords: data.total_records,
+        averageHealthScore: data.average_health_score,
       };
     },
     staleTime: STALE_TIME.stats,
@@ -546,7 +550,8 @@ export function useUpdateSource() {
 
       addIfDefined('name', updates.name);
       addIfDefined('url', updates.url);
-      addIfDefined('target_type', updates.targetType?.toUpperCase());
+      addIfDefined('target_type', updates.targetType ? FRONTEND_TO_BACKEND_TARGET_TYPE[updates.targetType] : undefined);
+      addIfDefined('source_category', updates.sourceCategory ?? updates.targetType);
       addIfDefined('description', updates.description);
       addIfDefined('extraction_config', updates.extractionConfig);
       addIfDefined('browser_config', updates.browserConfig);

@@ -13,9 +13,6 @@ from typing import Any
 import httpx
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from layer2_extraction.models import ExtractionResult
-from layer2_extraction.output.rdf_generator import generate_rdf
-
 
 class Layer3KnowledgeClient_detailed_health_checkResult(TypedDictModel):
     error: Any
@@ -54,14 +51,17 @@ class IngestionStatus:
 
 
 class Layer3KnowledgeClient:
-    """Client for pushing extraction results to Layer 3 Knowledge Graph.
+    """Client for pushing RDF data to Layer 3 Knowledge Graph.
 
     This client handles:
-    - Converting extraction results to RDF
-    - Calling Layer 3 ingest API
+    - Calling Layer 3 ingest API with pre-generated RDF
     - Batching for large extractions
     - Retry logic with exponential backoff
     - Health checking Layer 3 availability
+
+    The caller is responsible for generating the RDF payload (e.g. via
+    ``layer2_extraction.output.rdf_generator.generate_rdf``) so that this
+    client remains decoupled from Layer 2 internal models.
 
     Example:
         client = Layer3KnowledgeClient(
@@ -71,9 +71,9 @@ class Layer3KnowledgeClient:
 
         # Check health
         if await client.health_check():
-            # Ingest extraction results
-            response = await client.ingest_extraction_result(
-                extraction_result=result,
+            # Ingest pre-generated RDF
+            response = await client.ingest_rdf_data(
+                rdf_data=rdf_payload,
                 source_url="https://example.com/doc",
                 extraction_job_id="job_123"
             )
@@ -151,26 +151,23 @@ class Layer3KnowledgeClient:
             logger.error(f"Detailed health check failed: {e}")
             return Layer3KnowledgeClient_detailed_health_checkResult.model_validate({"status": "error", "error": str(e)})
 
-    async def ingest_extraction_result(
+    async def ingest_rdf_data(
         self,
-        extraction_result: ExtractionResult,
+        rdf_data: str,
         source_url: str,
         extraction_job_id: str,
-        relationships: list[Any] | None = None,
         batch_size: int | None = None,
     ) -> IngestionResponse:
-        """Ingest extraction results into Layer 3 Knowledge Graph.
+        """Ingest pre-generated RDF data into Layer 3 Knowledge Graph.
 
-        This method:
-        1. Converts extraction result to RDF
-        2. Calls Layer 3 ingest API
-        3. Returns ingestion statistics
+        This is a layer-decoupled entry point: the caller is responsible for
+        generating or otherwise supplying the RDF payload. The client only
+        speaks the Layer 3 HTTP contract (RDF Turtle + metadata).
 
         Args:
-            extraction_result: Entities and relationships from extraction
+            rdf_data: RDF Turtle payload to ingest
             source_url: Source document URL
             extraction_job_id: Job ID for tracking
-            relationships: Optional relationship list for RDF generation
             batch_size: Override default batch size
 
         Returns:
@@ -179,21 +176,12 @@ class Layer3KnowledgeClient:
         batch_size = batch_size or self.batch_size
 
         try:
-            # Convert to RDF
-            logger.info(f"Converting extraction {extraction_job_id} to RDF...")
-            rdf_data = generate_rdf(
-                extraction_result,
-                relationships or [],
-            )
-
-            # Call Layer 3 ingest API
             logger.info(f"Sending {len(rdf_data)} bytes to Layer 3...")
             response = await self._ingest_rdf(
                 rdf_data=rdf_data,
                 source_url=source_url,
                 extraction_job_id=extraction_job_id,
             )
-
             return response
 
         except Exception as e:
@@ -271,10 +259,9 @@ class Layer3KnowledgeClient:
         )
 
     async def get_ingestion_status(self, ingestion_id: str) -> IngestionStatus:
-        """Check status of an ingestion job via canonical L3 endpoint.
+        """Check status of an ingestion job via Layer 3 endpoint.
 
-        Calls GET /v1/ingest/status/{ingestion_id} (canonical route).
-        L3 also provides backward-compatible alias /v1/ingest/{id}/status.
+        Calls GET /v1/ingest/status/{ingestion_id}.
 
         Args:
             ingestion_id: Ingestion job ID (treated as source_id in L3)
@@ -397,15 +384,15 @@ class Layer3KnowledgeClient:
 
 # Convenience functions for common use cases
 async def ingest_to_knowledge_graph(
-    extraction_result: ExtractionResult,
+    rdf_data: str,
     source_url: str,
     extraction_job_id: str,
     base_url: str | None = None,
 ) -> IngestionResponse:
-    """One-shot function to ingest extraction results.
+    """One-shot function to ingest pre-generated RDF into Layer 3.
 
     Args:
-        extraction_result: Entities and relationships
+        rdf_data: RDF Turtle payload to ingest
         source_url: Source document URL
         extraction_job_id: Job ID for tracking
         base_url: Optional Layer 3 URL override
@@ -415,8 +402,8 @@ async def ingest_to_knowledge_graph(
     """
     client = Layer3KnowledgeClient(base_url=base_url)
     try:
-        return await client.ingest_extraction_result(
-            extraction_result=extraction_result,
+        return await client.ingest_rdf_data(
+            rdf_data=rdf_data,
             source_url=source_url,
             extraction_job_id=extraction_job_id,
         )

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 
 class OIDCProviderConfig(BaseModel):
@@ -45,4 +48,5 @@ class OIDCProviderConfig(BaseModel):
         try:
             return cls.model_validate(oidc_settings)
         except Exception:
+            logger.exception("OIDC configuration validation failed")
             return None

@@ -25,19 +25,73 @@
         }
       }
     },
-    "/metrics": {
-      "get": {
+    "/v1/extract/signals": {
+      "post": {
         "tags": [
-          "system"
+          "extraction"
         ],
-        "summary": "Metrics Endpoint",
-        "operationId": "metrics_endpoint_metrics_get",
+        "summary": "Extract Signals",
+        "description": "Extract operational pain signals from prospect setup data.\n\nUses LLM-based structured extraction to identify operational signals\n(equipment downtime, changeover inefficiency, quality defects, etc.)\nfrom prospect-provided business context.\n\nArgs:\n    request: Signal extraction request with prospect data\n    http_request: HTTP request object\n    x_tenant_id: Tenant ID from header\n    x_trace_id: Optional trace ID from header\n\nReturns:\n    SignalExtractionResponse with extracted signals",
+        "operationId": "extract_signals_v1_extract_signals_post",
+        "parameters": [
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Tenant ID for scoping",
+              "title": "X-Tenant-Id"
+            },
+            "description": "Tenant ID for scoping"
+          },
+          {
+            "name": "x-trace-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Trace ID for observability",
+              "title": "X-Trace-Id"
+            },
+            "description": "Trace ID for observability"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalExtractionRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SignalExtractionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -542,7 +596,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/OntologyType-Output"
+                    "$ref": "#/components/schemas/OntologyType"
                   },
                   "type": "array",
                   "title": "Response List Ontology Types V1 Ontology Schema Types Get"
@@ -575,7 +629,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OntologyType-Output"
+                  "$ref": "#/components/schemas/OntologyType"
                 }
               }
             }
@@ -618,7 +672,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OntologyType-Output"
+                  "$ref": "#/components/schemas/OntologyType"
                 }
               }
             }
@@ -669,7 +723,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OntologyType-Output"
+                  "$ref": "#/components/schemas/OntologyType"
                 }
               }
             }
@@ -761,7 +815,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OntologyType-Output"
+                  "$ref": "#/components/schemas/OntologyType"
                 }
               }
             }
@@ -823,7 +877,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OntologyType-Output"
+                  "$ref": "#/components/schemas/OntologyType"
                 }
               }
             }
@@ -1140,554 +1194,6 @@
           }
         }
       }
-    },
-    "/v1/audit//trace/{job_id}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/audit//trace/{job_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\audit.py).",
-        "operationId": "discovered_get_v1_audit__trace_job_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/audit//entity/{entity_id}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/audit//entity/{entity_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\audit.py).",
-        "operationId": "discovered_get_v1_audit__entity_entity_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1//extract/signals": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1//extract/signals",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_post_v1__extract_signals",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1//extract": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1//extract",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_post_v1__extract",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1//extract-and-ingest": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1//extract-and-ingest",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_post_v1__extract-and-ingest",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1//extract/status/{job_id}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1//extract/status/{job_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_get_v1__extract_status_job_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1//jobs/{job_id}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1//jobs/{job_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_get_v1__jobs_job_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1//extract/batch": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1//extract/batch",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_post_v1__extract_batch",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1//extract/jobs/{job_id}/events": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1//extract/jobs/{job_id}/events",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_get_v1__extract_jobs_job_id_events",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//entities": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//entities",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__entities",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//relationships/{entity_id}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//relationships/{entity_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__relationships_entity_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//schema",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__schema",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/validate": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1/ontology//schema/validate",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_post_v1_ontology__schema_validate",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/publish": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1/ontology//schema/publish",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_post_v1_ontology__schema_publish",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/import": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1/ontology//schema/import",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_post_v1_ontology__schema_import",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/export": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//schema/export",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__schema_export",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/types": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//schema/types",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__schema_types",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1/ontology//schema/types",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_post_v1_ontology__schema_types",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/types/{type_id}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//schema/types/{type_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__schema_types_type_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "PUT /v1/ontology//schema/types/{type_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_put_v1_ontology__schema_types_type_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "DELETE /v1/ontology//schema/types/{type_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_delete_v1_ontology__schema_types_type_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/types/{type_id}/properties": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1/ontology//schema/types/{type_id}/properties",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_post_v1_ontology__schema_types_type_id_properties",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/types/{type_id}/properties/{property_id}": {
-      "put": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "PUT /v1/ontology//schema/types/{type_id}/properties/{property_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_put_v1_ontology__schema_types_type_id_properties_property_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "DELETE /v1/ontology//schema/types/{type_id}/properties/{property_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_delete_v1_ontology__schema_types_type_id_properties_property_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/relationships": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//schema/relationships",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__schema_relationships",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1/ontology//schema/relationships",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_post_v1_ontology__schema_relationships",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/relationships/{relationship_id}": {
-      "delete": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "DELETE /v1/ontology//schema/relationships/{relationship_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_delete_v1_ontology__schema_relationships_relationship_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/versions": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//schema/versions",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__schema_versions",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/ontology//schema/versions/{version}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/ontology//schema/versions/{version}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\ontology.py).",
-        "operationId": "discovered_get_v1_ontology__schema_versions_version",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/extract/signals": {
-      "post": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "POST /v1/extract/signals",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_post_v1_extract_signals",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
-    },
-    "/v1/jobs/{job_id}": {
-      "get": {
-        "tags": [
-          "layer2-extraction"
-        ],
-        "summary": "GET /v1/jobs/{job_id}",
-        "description": "Discovered from router source (value-fabric\\layer2-extraction\\src\\layer2_extraction\\api\\routes\\extraction.py).",
-        "operationId": "discovered_get_v1_jobs_job_id",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -1915,8 +1421,15 @@
             "title": "Next Retry At"
           },
           "started_at": {
-            "type": "string",
-            "format": "date-time",
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Started At"
           },
           "completed_at": {
@@ -1940,7 +1453,6 @@
           "ingestion_status",
           "entities_extracted",
           "relationships_extracted",
-          "started_at",
           "completed_at"
         ],
         "title": "ExtractionStatusResponse",
@@ -2056,7 +1568,7 @@
         "properties": {
           "types": {
             "items": {
-              "$ref": "#/components/schemas/OntologyType-Output"
+              "$ref": "#/components/schemas/OntologyType"
             },
             "type": "array",
             "title": "Types"
@@ -2102,72 +1614,7 @@
         "title": "OntologySchema",
         "description": "Complete ontology schema definition.\n\nContains all type definitions and their relationships.\nThis is the authoritative schema used to guide extraction.\n\nAttributes:\n    types: All ontology type definitions\n    relationships: All type relationship definitions\n    version: Schema version identifier\n    published_at: When this version was published\n    published_by: Who published this version"
       },
-      "OntologyType-Input": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "description": {
-            "type": "string",
-            "maxLength": 2000,
-            "title": "Description",
-            "default": ""
-          },
-          "properties": {
-            "items": {
-              "$ref": "#/components/schemas/OntologyProperty"
-            },
-            "type": "array",
-            "title": "Properties"
-          },
-          "parent_type_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parent Type Id"
-          },
-          "is_active": {
-            "type": "boolean",
-            "title": "Is Active",
-            "default": true
-          },
-          "version": {
-            "type": "integer",
-            "title": "Version",
-            "default": 1
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "OntologyType",
-        "description": "An ontology type definition (schema-level).\n\nDefines the structure for a category of entities that can be extracted.\nFor example, \"Capability\" type defines that all capabilities have:\n- name (required string)\n- description (required string)\n- technical_features (optional array)\n\nAttributes:\n    id: Unique type identifier (e.g., \"capability\", \"use_case\")\n    name: Human-readable type name\n    description: Type description\n    properties: Property definitions for this type\n    parent_type_id: Parent type for inheritance (optional)\n    is_active: Whether this type is currently active\n    version: Schema version number\n    created_at: Creation timestamp\n    updated_at: Last update timestamp"
-      },
-      "OntologyType-Output": {
+      "OntologyType": {
         "properties": {
           "id": {
             "type": "string",
@@ -2334,6 +1781,90 @@
         "title": "PropertyType",
         "description": "Valid property types for ontology type definitions."
       },
+      "ProspectDataInput": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id",
+            "description": "Account identifier"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name",
+            "description": "Company name"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry",
+            "description": "Industry vertical"
+          },
+          "business_pains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Business Pains",
+            "description": "Business pains"
+          },
+          "friction_points": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Friction Points",
+            "description": "Friction points"
+          },
+          "desired_outcomes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Desired Outcomes",
+            "description": "Desired outcomes"
+          },
+          "prompt_text": {
+            "type": "string",
+            "title": "Prompt Text",
+            "description": "Freeform prompt text"
+          },
+          "prompt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Id",
+            "description": "Prompt identifier"
+          },
+          "attachments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Attachments",
+            "description": "Attachments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "company_name",
+          "prompt_text"
+        ],
+        "title": "ProspectDataInput",
+        "description": "Prospect data for signal extraction."
+      },
       "ProvenanceResponse": {
         "properties": {
           "activity_id": {
@@ -2433,6 +1964,140 @@
         "title": "RelationshipType",
         "description": "Valid relationship types between ontology types."
       },
+      "SignalExtractionRequest": {
+        "properties": {
+          "prospect_data": {
+            "$ref": "#/components/schemas/ProspectDataInput",
+            "description": "Prospect information"
+          },
+          "extraction_type": {
+            "type": "string",
+            "title": "Extraction Type",
+            "description": "Extraction type",
+            "default": "operational_signals"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "Signal category",
+            "default": "Operational"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prospect_data"
+        ],
+        "title": "SignalExtractionRequest",
+        "description": "Request for operational signal extraction."
+      },
+      "SignalExtractionResponse": {
+        "properties": {
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalExtractionResult"
+            },
+            "type": "array",
+            "title": "Signals",
+            "description": "Extracted signals"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "title": "Duration Ms",
+            "description": "Processing duration",
+            "default": 0
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version",
+            "description": "LLM model used",
+            "default": "gpt-4o-2024-08-06"
+          },
+          "prompt_version": {
+            "type": "string",
+            "title": "Prompt Version",
+            "description": "Prompt version",
+            "default": "1.0.0"
+          }
+        },
+        "type": "object",
+        "title": "SignalExtractionResponse",
+        "description": "Response from signal extraction."
+      },
+      "SignalExtractionResult": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Signal name"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "Signal category",
+            "default": "Operational"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Signal description"
+          },
+          "confidence_score": {
+            "type": "number",
+            "title": "Confidence Score",
+            "description": "Confidence 0.0-1.0"
+          },
+          "confidence_explanation": {
+            "type": "string",
+            "title": "Confidence Explanation",
+            "description": "Why this confidence",
+            "default": ""
+          },
+          "impact_indicators": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Impact Indicators",
+            "description": "Impact clues"
+          },
+          "trend_direction": {
+            "type": "string",
+            "title": "Trend Direction",
+            "description": "increasing|decreasing|stable|new",
+            "default": "new"
+          },
+          "trend_explanation": {
+            "type": "string",
+            "title": "Trend Explanation",
+            "description": "Why this trend",
+            "default": ""
+          },
+          "stakeholder_quotes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Stakeholder Quotes",
+            "description": "Evidence quotes"
+          },
+          "likely_value_drivers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Likely Value Drivers",
+            "description": "Mapped value drivers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "confidence_score"
+        ],
+        "title": "SignalExtractionResult",
+        "description": "Single extracted signal result."
+      },
       "TypeRelationship": {
         "properties": {
           "id": {
@@ -2514,7 +2179,7 @@
         "properties": {
           "types": {
             "items": {
-              "$ref": "#/components/schemas/OntologyType-Input"
+              "$ref": "#/components/schemas/OntologyType"
             },
             "type": "array",
             "title": "Types"

@@ -493,11 +493,12 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
             max_retries=MAX_INGESTION_RETRIES,
         )
 
-        response = await client.ingest_extraction_result(
-            extraction_result=artifacts.result,
+        # Layer 2 owns RDF generation; the L3 client only speaks the L3 HTTP contract.
+        rdf_data = generate_rdf(artifacts.result, artifacts.relationships)
+        response = await client.ingest_rdf_data(
+            rdf_data=rdf_data,
             source_url=source_url,
             extraction_job_id=job_id,
-            relationships=artifacts.relationships,
         )
         if response.success:
             await _set_pipeline_job(
@@ -1027,6 +1028,7 @@ async def run_extract_and_ingest(
             mark_pipeline_complete=False,
         )
     except Exception:
+        logger.exception("Extraction pipeline failed for job %s", job_id)
         return
 
     if not artifacts:

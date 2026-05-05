@@ -1,11 +1,14 @@
 """Database connection management."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import asyncpg
 
 from .config import close_db_pool, get_db_pool
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -44,4 +47,5 @@ async def check_db_health() -> bool:
             await conn.fetchval("SELECT 1")
         return True
     except Exception:
+        logger.exception("Database health check failed")
         return False

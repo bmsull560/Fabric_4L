@@ -31,6 +31,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/targets/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Target Stats
+         * @description Get aggregated statistics for all scraping targets.
+         */
+        get: operations["get_target_stats_api_v1_ingestion_targets_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/targets/{target_id}": {
         parameters: {
             query?: never;
@@ -695,6 +715,8 @@ export interface components {
             url: string;
             /** @default SINGLE_PAGE */
             target_type: components["schemas"]["TargetType"];
+            /** @default api */
+            source_category: components["schemas"]["SourceCategory"];
             /** @default browser */
             crawl_path: components["schemas"]["CrawlPath"];
             extraction_config?: components["schemas"]["ExtractionConfigInput"];
@@ -1342,6 +1364,8 @@ export interface components {
             url: string;
             /** Target Type */
             target_type: string;
+            /** Source Category */
+            source_category?: string | null;
             /** Status */
             status: string;
             /**
@@ -1427,6 +1451,8 @@ export interface components {
             url: string;
             /** Target Type */
             target_type: string;
+            /** Source Category */
+            source_category?: string | null;
             /** Status */
             status: string;
             /**
@@ -1463,6 +1489,24 @@ export interface components {
             };
         };
         /**
+         * TargetStatsResponse
+         * @description Aggregated statistics for scraping targets.
+         */
+        TargetStatsResponse: {
+            /** Total */
+            total: number;
+            /** Connected */
+            connected: number;
+            /** Disconnected */
+            disconnected: number;
+            /** Error */
+            error: number;
+            /** Total Records */
+            total_records: number;
+            /** Average Health Score */
+            average_health_score: number;
+        };
+        /**
          * TargetStatus
          * @description Scraping target lifecycle status.
          * @enum {string}
@@ -1475,6 +1519,12 @@ export interface components {
          */
         TargetType: "SINGLE_PAGE" | "PAGINATED" | "SPIDER" | "API_ENDPOINT";
         /**
+         * SourceCategory
+         * @description Semantic category of the data source (what it is).
+         * @enum {string}
+         */
+        SourceCategory: "crm" | "database" | "file" | "api" | "cloud_storage";
+        /**
          * UpdateTargetRequest
          * @description Request to update a scraping target.
          */
@@ -1484,6 +1534,7 @@ export interface components {
             /** Description */
             description?: string | null;
             target_type?: components["schemas"]["TargetType"] | null;
+            source_category?: components["schemas"]["SourceCategory"] | null;
             crawl_path?: components["schemas"]["CrawlPath"] | null;
             extraction_config?: components["schemas"]["ExtractionConfigInput"] | null;
             browser_config?: components["schemas"]["BrowserConfigInput"] | null;
@@ -1602,6 +1653,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TargetListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_target_stats_api_v1_ingestion_targets_stats_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetStatsResponse"];
                 };
             };
             /** @description Validation Error */

@@ -3182,46 +3182,6 @@
         }
       }
     },
-    "/v1/ingest/{source_id}/status": {
-      "get": {
-        "summary": "Get Sync Status Alias",
-        "description": "Get synchronization status for a source (backward-compatible alias).",
-        "operationId": "get_sync_status_alias_v1_ingest__source_id__status_get",
-        "parameters": [
-          {
-            "name": "source_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Source Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncStatusResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v1/ingest/{source_id}": {
       "delete": {
         "summary": "Delete Source",
@@ -3656,7 +3616,7 @@
     "/v1/entities": {
       "get": {
         "summary": "List Entities",
-        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence—eliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
+        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence\u00e2\u20ac\u201deliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
         "operationId": "list_entities_v1_entities_get",
         "parameters": [
           {
@@ -13188,7 +13148,7 @@
           },
           "formula_shape": {
             "type": "string",
-            "description": "Input → Calculation → Output"
+            "description": "Input \u00e2\u2020\u2019 Calculation \u00e2\u2020\u2019 Output"
           },
           "inputs": {
             "type": "array",

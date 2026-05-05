@@ -13,6 +13,8 @@ import structlog
 from protego import Protego
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+logger = structlog.get_logger()
+
 from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import RobotsTxtCache
@@ -352,4 +354,5 @@ class RobotsChecker:
             rp = Protego.parse(robots_data.get("content", ""))
             return rp.crawl_delay(self.user_agent)
         except Exception:
+            logger.warning("Failed to parse robots.txt for crawl delay", url=url)
             return None

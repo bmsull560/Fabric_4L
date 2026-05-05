@@ -239,6 +239,7 @@ class OrchestrationController:
             async with db_session_for_context(context) as db:
                 return await resolve_llm_model(db, tenant_id, provider)
         except Exception:
+            logger.exception("Failed to resolve LLM model for tenant %s, using fallback", tenant_id)
             return os.getenv("LLM_MODEL", "gpt-4o")
 
     async def register_agent(self, agent: BaseAgent) -> None:

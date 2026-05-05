@@ -59,6 +59,7 @@ from ..shared.models import (
     RetryBackoff,
     ScrapingJob,
     ScrapingTarget,
+    SourceCategory,
     TargetStatus,
     TargetType,
     TriggeredBy,
@@ -554,6 +555,7 @@ class CreateTargetRequest(BaseModel):
     description: str | None = None
     url: str = Field(..., description="Target URL")
     target_type: TargetType = TargetType.SINGLE_PAGE
+    source_category: SourceCategory = SourceCategory.API
     crawl_path: CrawlPath = CrawlPath.BROWSER  # HTTPX Fast Path selection
     extraction_config: ExtractionConfigInput = Field(default_factory=ExtractionConfigInput)
     browser_config: BrowserConfigInput = Field(default_factory=BrowserConfigInput)
@@ -571,6 +573,7 @@ class UpdateTargetRequest(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     target_type: TargetType | None = None
+    source_category: SourceCategory | None = None
     crawl_path: CrawlPath | None = None  # HTTPX Fast Path selection
     extraction_config: ExtractionConfigInput | None = None
     browser_config: BrowserConfigInput | None = None
@@ -590,6 +593,7 @@ class ScrapingTargetSummary(BaseModel):
     name: str
     url: str
     target_type: str
+    source_category: str | None = None
     status: str
     created_at: datetime
     updated_at: datetime
@@ -606,6 +610,7 @@ class ScrapingTargetDetail(ScrapingTargetSummary):
     tenant_id: UUID
     description: str | None
     url_pattern: str | None
+    source_category: str | None = None
     crawl_path: str  # HTTPX Fast Path selection
     extraction_config: dict[str, Any]
     browser_config: dict[str, Any]
@@ -623,6 +628,17 @@ class TargetListResponse(BaseModel):
 
     data: list[ScrapingTargetSummary]
     pagination: dict[str, Any]
+
+
+class TargetStatsResponse(BaseModel):
+    """Aggregated statistics for scraping targets."""
+
+    total: int
+    connected: int
+    disconnected: int
+    error: int
+    total_records: int
+    average_health_score: int
 
 
 class ValidateTargetRequest(BaseModel):
@@ -975,6 +991,7 @@ async def list_targets(
     status: TargetStatus | None = Query(None),
     search: str | None = Query(None, description="Search in name, description, url"),
     tags: list[str] | None = Query(None),
+    source_category: SourceCategory | None = Query(None, description="Filter by source category"),
     sort_by: str = Query(
         default="created_at", regex="^(created_at|updated_at|last_success_at|name)$"
     ),
@@ -987,6 +1004,9 @@ async def list_targets(
 
     if status:
         query = query.filter(ScrapingTarget.status == status.value)
+
+    if source_category:
+        query = query.filter(ScrapingTarget.source_category == source_category.value)
 
     if search:
         search_filter = f"%{search}%"
@@ -1020,6 +1040,7 @@ async def list_targets(
                 name=t.name,
                 url=t.url,
                 target_type=t.target_type,
+                source_category=t.source_category,
                 status=t.status,
                 created_at=t.created_at,
                 updated_at=t.updated_at,
@@ -1032,6 +1053,77 @@ async def list_targets(
             for t in targets
         ],
         pagination={"page": page, "limit": limit, "total": total, "total_pages": total_pages},
+    )
+
+
+@router.get("/targets/stats", response_model=TargetStatsResponse)
+async def get_target_stats(
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Get aggregated statistics for all scraping targets.
+
+    Computes counts by derived connection status and average health score
+    server-side to avoid transferring large target lists to the client.
+    """
+    targets = (
+        db.query(
+            ScrapingTarget.status,
+            ScrapingTarget.last_success_at,
+            ScrapingTarget.last_error_at,
+            ScrapingTarget.error_count,
+            ScrapingTarget.success_count,
+        )
+        .filter(ScrapingTarget.tenant_id == org_id)
+        .all()
+    )
+
+    total = len(targets)
+    connected = 0
+    disconnected = 0
+    error = 0
+    health_score_sum = 0
+
+    for t in targets:
+        status = t.status
+        last_success_at = t.last_success_at
+        last_error_at = t.last_error_at
+        error_count = t.error_count
+        success_count = t.success_count
+
+        # Derive connection status (mirrors frontend deriveConnectionStatus)
+        if status == TargetStatus.ERROR.value:
+            derived = "error"
+        elif status == TargetStatus.PAUSED.value:
+            derived = "disconnected"
+        elif error_count > 0 and last_error_at and (not last_success_at or last_error_at > last_success_at):
+            derived = "error"
+        elif last_success_at:
+            derived = "connected"
+        else:
+            derived = "disconnected"
+
+        if derived == "connected":
+            connected += 1
+        elif derived == "disconnected":
+            disconnected += 1
+        else:
+            error += 1
+
+        # Calculate health score (mirrors frontend calculateHealthScore)
+        run_total = success_count + error_count
+        if run_total > 0:
+            health_score_sum += round((success_count / run_total) * 100)
+
+    average_health_score = round(health_score_sum / total) if total > 0 else 0
+
+    return TargetStatsResponse(
+        total=total,
+        connected=connected,
+        disconnected=disconnected,
+        error=error,
+        total_records=0,  # Reserved: requires per-target extracted_data aggregation
+        average_health_score=average_health_score,
     )
 
 
@@ -1138,6 +1230,7 @@ async def create_target(
         name=request.name,
         url=request.url,
         target_type=request.target_type,
+        source_category=request.source_category,
         created_by=user_id,
         description=request.description,
         extraction_config=extraction_config,
@@ -1228,6 +1321,8 @@ async def update_target(
         target.description = request.description
     if request.target_type is not None:
         target.target_type = request.target_type.value
+    if request.source_category is not None:
+        target.source_category = request.source_category.value
     if request.status is not None:
         target.status = request.status.value
     if request.tags is not None:
@@ -2494,6 +2589,7 @@ def _target_to_detail(target: ScrapingTarget) -> ScrapingTargetDetail:
         name=target.name,
         url=target.url,
         target_type=target.target_type,
+        source_category=target.source_category,
         status=target.status,
         created_at=target.created_at,
         updated_at=target.updated_at,

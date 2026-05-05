@@ -120,11 +120,14 @@ async def list_entities(
         ]
 
         return EntityListResponse(
-            entities=entities,
-            total=total,
+            results=entities,
+            total_count=total,
+            filtered_count=total,
             limit=limit,
             offset=offset,
             has_more=(offset + len(entities)) < total,
+            available_domains=[],
+            available_sources=[],
         )
 
     except Exception as e:
@@ -254,7 +257,17 @@ async def query_entities(
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        # Execute query
+        # Execute count query for accurate pagination metadata
+        count_cypher = f"""
+            MATCH (e:Entity)
+            WHERE {where_clause}
+            RETURN count(e) as total
+        """
+        count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
+        count_results = await neo4j_driver.execute_query(count_cypher, count_params)
+        total_count = count_results[0]["total"] if count_results else 0
+
+        # Execute paginated data query
         query_cypher = f"""
             MATCH (e:Entity)
             WHERE {where_clause}
@@ -284,11 +297,14 @@ async def query_entities(
         ]
 
         return EntityListResponse(
-            entities=entities,
-            total=len(entities),  # Simplified; should use count query
+            results=entities,
+            total_count=total_count,
+            filtered_count=total_count,
             limit=request.limit or 20,
             offset=request.offset or 0,
-            has_more=len(entities) == (request.limit or 20),
+            has_more=(request.offset or 0) + len(entities) < total_count,
+            available_domains=[],
+            available_sources=[],
         )
 
     except Exception as e:
