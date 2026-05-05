@@ -6,10 +6,13 @@ Ensures every package manifest and Dockerfile has:
 1. A corresponding entry in dependabot.yml
 2. An owner defined in CODEOWNERS
 3. No stale Dependabot entry pointing at a missing or non-manifest directory
+4. Dependabot reviewers align with CODEOWNERS owners for the same path
+5. CODEOWNERS directory patterns resolve to existing directories
 
 Exit codes:
     0 - All packages have coverage
-    1 - Missing dependabot entries, stale dependabot entries, or CODEOWNERS ownership
+    1 - Missing dependabot entries, stale dependabot entries, ownership drift,
+        or stale CODEOWNERS paths
 """
 
 import os
@@ -17,7 +20,7 @@ import re
 import sys
 import yaml
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Optional
 
 # Repository root
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -94,6 +97,105 @@ def get_dependabot_entries(config: Dict) -> Dict[str, Set[str]]:
             entries[ecosystem].add(normalized)
 
     return entries
+
+
+def get_dependabot_entries_with_reviewers(config: Dict) -> List[Tuple[str, str, List[str]]]:
+    """
+    Extract dependabot entries with their reviewers.
+    Returns: [(ecosystem, directory, reviewers), ...]
+    """
+    entries: List[Tuple[str, str, List[str]]] = []
+    for update in config.get("updates", []):
+        ecosystem = update.get("package-ecosystem", "")
+        directory = update.get("directory", "")
+        reviewers = update.get("reviewers", [])
+        entries.append((ecosystem, normalize_path(directory), reviewers))
+    return entries
+
+
+def parse_codeowners_patterns(codeowners: str) -> List[Tuple[str, List[str]]]:
+    """
+    Parse CODEOWNERS into a list of (pattern, owners) tuples.
+    Skips comments and empty lines.
+    """
+    patterns: List[Tuple[str, List[str]]] = []
+    for line in codeowners.split("\n"):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        pattern = parts[0].lstrip("/")
+        owners = parts[1:]
+        patterns.append((pattern, owners))
+    return patterns
+
+
+def get_codeowners_owners_for_path(patterns: List[Tuple[str, List[str]]], path_str: str) -> Set[str]:
+    """
+    Return all CODEOWNERS owners whose patterns match the given path.
+    """
+    owners: Set[str] = set()
+    for pattern, pattern_owners in patterns:
+        match = False
+        if pattern.endswith("/"):
+            prefix = pattern.rstrip("/")
+            if path_str == prefix or path_str.startswith(prefix + "/"):
+                match = True
+        elif pattern.startswith("**/"):
+            suffix = pattern[3:]
+            if path_str.endswith(suffix) or suffix in path_str:
+                match = True
+        elif pattern in path_str:
+            match = True
+        if match:
+            owners.update(pattern_owners)
+    return owners
+
+
+def validate_reviewer_ownership(
+    dependabot_entries: List[Tuple[str, str, List[str]]],
+    codeowners_patterns: List[Tuple[str, List[str]]],
+) -> List[str]:
+    """
+    Validate that every dependabot entry has at least one reviewer
+    that is also a CODEOWNERS owner for the same path.
+    """
+    mismatches: List[str] = []
+    for ecosystem, directory, reviewers in dependabot_entries:
+        # Normalize reviewers to bare team names (strip @ if present)
+        normalized_reviewers = {r.lstrip("@") for r in reviewers}
+        owners = get_codeowners_owners_for_path(codeowners_patterns, directory)
+        normalized_owners = {o.lstrip("@") for o in owners}
+        if not normalized_reviewers & normalized_owners:
+            mismatches.append(
+                f"{ecosystem}: {directory or '/'} (reviewers {reviewers} do not match CODEOWNERS owners {sorted(owners)})"
+            )
+    return mismatches
+
+
+def validate_codeowners_paths_exist(codeowners: str) -> List[str]:
+    """
+    Validate that non-glob CODEOWNERS directory patterns (ending with /)
+    resolve to existing directories in the repository.
+    """
+    stale: List[str] = []
+    for line in codeowners.split("\n"):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        pattern = parts[0]
+        # Skip wildcard/glob patterns and file patterns
+        if "*" in pattern or "?" in pattern or not pattern.endswith("/"):
+            continue
+        path_str = pattern.lstrip("/").rstrip("/")
+        if path_str and not (REPO_ROOT / path_str).is_dir():
+            stale.append(f"CODEOWNERS: {pattern} (directory does not exist)")
+    return stale
 
 
 def entry_path_exists(path_str: str) -> bool:
@@ -288,6 +390,18 @@ def main():
         packages, dependabot_entries, codeowners
     )
 
+    # Validate reviewer ↔ CODEOWNERS ownership alignment
+    print()
+    print("Validating reviewer ownership alignment...")
+    codeowners_patterns = parse_codeowners_patterns(codeowners)
+    dependabot_with_reviewers = get_dependabot_entries_with_reviewers(dependabot_config)
+    reviewer_mismatches = validate_reviewer_ownership(dependabot_with_reviewers, codeowners_patterns)
+
+    # Validate CODEOWNERS paths exist
+    print()
+    print("Validating CODEOWNERS paths exist...")
+    stale_codeowners = validate_codeowners_paths_exist(codeowners)
+
     # Report results
     exit_code = 0
 
@@ -321,6 +435,26 @@ def main():
         print()
         print("[PASS] All packages have CODEOWNERS ownership")
 
+    if reviewer_mismatches:
+        print()
+        print("::error::Dependabot reviewer / CODEOWNERS ownership mismatches:")
+        for item in reviewer_mismatches:
+            print(f"  [FAIL] {item}")
+        exit_code = 1
+    else:
+        print()
+        print("[PASS] All dependabot reviewers align with CODEOWNERS owners")
+
+    if stale_codeowners:
+        print()
+        print("::error::Stale CODEOWNERS directory paths:")
+        for item in stale_codeowners:
+            print(f"  [FAIL] {item}")
+        exit_code = 1
+    else:
+        print()
+        print("[PASS] All CODEOWNERS directory patterns exist")
+
     # Summary
     print()
     print("=" * 60)
@@ -329,7 +463,8 @@ def main():
         print("All package manifests and Dockerfiles have current update owners.")
     else:
         print("[ERROR] VALIDATION FAILED")
-        print("Some packages are missing dependabot coverage, have stale dependabot entries, or lack ownership.")
+        print("Some packages are missing dependabot coverage, have stale dependabot entries,")
+        print("lack ownership, have reviewer mismatches, or have stale CODEOWNERS paths.")
     print("=" * 60)
 
     sys.exit(exit_code)

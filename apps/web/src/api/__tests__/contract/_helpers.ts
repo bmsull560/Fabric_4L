@@ -7,6 +7,10 @@
  */
 
 import { z } from 'zod';
+import {
+  assertOpenApiSchema,
+  assertOpenApiSchemaRejects,
+} from './openapi-validator';
 
 // ---------------------------------------------------------------------------
 // Common
@@ -26,6 +30,17 @@ export const PaginatedSchema = <T extends z.ZodTypeAny>(item: T) =>
     page_size: z.number().int().positive(),
     has_more: z.boolean(),
   });
+
+// Tenant context helpers
+export const TenantContextSchema = z.object({
+  tenant_id: z.string().uuid(),
+});
+
+export const CrossTenantErrorSchema = z.object({
+  message: z.string().min(1),
+  code: z.literal('FORBIDDEN'),
+  detail: z.string().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // L2 Extraction  (contracts/openapi/layer2-extraction.json)
@@ -458,6 +473,14 @@ export const fixtures = {
     ...overrides,
   }),
 
+  paginatedSignals: (page = 1, hasMore = false): z.infer<ReturnType<typeof PaginatedSchema>> => ({
+    items: [],
+    total: 0,
+    page,
+    page_size: 20,
+    has_more: hasMore,
+  }),
+
   graphNode: (): z.infer<typeof GraphNodeSchema> => ({
     id: 'node-001',
     name: 'Cloud Migration',
@@ -510,4 +533,40 @@ export function assertSchemaRejects(
       `Expected ${label} to fail schema validation, but it passed`
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Dual-validation helpers (Zod + canonical OpenAPI JSON Schema)
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert that `data` satisfies both the hand-written Zod `schema`
+ * and the canonical OpenAPI JSON Schema component `ref` in `specFile`.
+ * Returns the Zod-parsed value for downstream assertions.
+ */
+export function assertCanonicalSchema<T extends z.ZodTypeAny>(
+  schema: T,
+  specFile: string,
+  ref: string,
+  data: unknown,
+  label: string
+): z.infer<T> {
+  const parsed = assertSchema(schema, data, label);
+  assertOpenApiSchema(specFile, ref, data, label);
+  return parsed;
+}
+
+/**
+ * Assert that `data` fails both the Zod `schema` and the canonical
+ * OpenAPI JSON Schema component `ref` in `specFile`.
+ */
+export function assertCanonicalSchemaRejects(
+  schema: z.ZodTypeAny,
+  specFile: string,
+  ref: string,
+  data: unknown,
+  label: string
+): void {
+  assertSchemaRejects(schema, data, label);
+  assertOpenApiSchemaRejects(specFile, ref, data, label);
 }

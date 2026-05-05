@@ -155,24 +155,51 @@ describe('Contract: C1 SSE event payloads', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: C1 stream tenant context', () => {
+  it('request includes tenant_id in business_case_data when scoped', () => {
+    assertSchema(
+      C1StreamRequestSchema,
+      {
+        messages: [{ role: 'user', content: 'Hello' }],
+        business_case_id: 'case-abc123',
+        business_case_data: { tenant_id: '550e8400-e29b-41d4-a716-446655440000', account_id: 'acct-001' },
+      },
+      'C1StreamRequest with tenant context'
+    );
+  });
+});
+
 // ── Auth failure ──────────────────────────────────────────────────────────────
 
 describe('Contract: C1 stream auth failures', () => {
   it('401 before stream opens matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-c1-401' },
       'ApiError (401 pre-stream)'
     );
     expect(err.message).toBeTruthy();
+    expect(err.trace_id).toBeTruthy();
   });
 
   it('403 when tenant lacks C1 entitlement matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'C1 feature not available on current plan', code: 'FEATURE_NOT_ENTITLED' },
+      { message: 'C1 feature not available on current plan', code: 'FEATURE_NOT_ENTITLED', trace_id: 'trace-c1-403' },
       'ApiError (403 entitlement)'
     );
     expect(err.code).toBe('FEATURE_NOT_ENTITLED');
+    expect(err.trace_id).toBeTruthy();
+  });
+
+  it('404 when business_case_id does not exist in tenant matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Business case not found', code: 'NOT_FOUND', trace_id: 'trace-c1-404' },
+      'ApiError (404 case)'
+    );
+    expect(err.code).toBe('NOT_FOUND');
   });
 });

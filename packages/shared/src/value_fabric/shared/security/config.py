@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
 from urllib.parse import urlparse
 
@@ -13,6 +14,29 @@ logger = logging.getLogger(__name__)
 
 # Minimum JWT secret length for production (NIST SP 800-117 recommends >= 256 bits)
 _MIN_JWT_SECRET_LENGTH = 32
+
+# Known weak/placeholder secrets that must never be used in production
+_WEAK_SECRET_DENYLIST = frozenset({
+    "", "changeme", "change_me", "change-me", "change me",
+    "password", "secret", "secretkey", "secret_key", "secret-key",
+    "your-secret", "your_secret", "yoursecret",
+    "test-secret", "test_secret", "testsecret",
+    "default", "defaultsecret", "default_secret",
+    "admin", "root", "123456", "12345678", "qwerty",
+})
+
+# Dev-only environment names — anything else is treated as production-like
+_DEV_ENVIRONMENTS = frozenset({"local", "dev", "development", "test", "testing", "ci"})
+
+# Known PostgreSQL superuser names that bypass RLS
+_SUPERUSER_NAMES = frozenset({"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"})
+
+# Default database credentials that must not be used in production
+_DEFAULT_DATABASE_USERS = frozenset({"postgres", "admin", "root", "user", "dbuser"})
+_DEFAULT_DATABASE_NAMES = frozenset({"postgres", "admin", "test", "db", "database"})
+
+# Localhost hostnames that must not be used in production
+_LOCALHOST_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
 
 
 class SecurityConfig(BaseModel):
@@ -50,18 +74,385 @@ class SecurityConfig(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Startup Validation Functions
+# Environment Detection
 # ═══════════════════════════════════════════════════════════════════════════
+
+
+def detect_environment() -> str:
+    """Detect environment from ENVIRONMENT, ENV, or APP_ENV variables."""
+    for key in ("ENVIRONMENT", "ENV", "APP_ENV"):
+        val = os.getenv(key, "").strip().lower()
+        if val:
+            return val
+    return "development"
 
 
 def is_production() -> bool:
     """Check if running in production environment."""
-    return os.getenv("ENVIRONMENT", "").lower() == "production"
+    return detect_environment() == "production"
+
+
+def is_staging() -> bool:
+    """Check if running in staging environment."""
+    return detect_environment() == "staging"
 
 
 def is_development() -> bool:
     """Check if running in development environment."""
-    return os.getenv("ENVIRONMENT", "").lower() == "development"
+    return detect_environment() == "development"
+
+
+def is_production_like_environment(environment: str | None = None) -> bool:
+    """Return True for production, staging, or any unknown environment.
+
+    This is the canonical fail-safe policy: unknown/custom environments are
+    treated as production-like so that security controls are never accidentally
+    relaxed.
+    """
+    env = (environment or detect_environment()).strip().lower()
+    return env not in _DEV_ENVIRONMENTS
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Production Safety Validator
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ProductionSafetyValidator:
+    """Fail-closed validator for required production dependencies.
+
+    Authentication, persistence, encryption, API keys, CORS origins, and tenant
+    isolation must never downgrade to mock, fallback, or development behavior in
+    ``production`` or ``staging`` modes (or any unknown environment).
+
+    Usage::
+
+        from value_fabric.shared.security.config import validate_production_safety
+        validate_production_safety()  # raises RuntimeError on misconfiguration
+    """
+
+    def __init__(self, environment: str | None = None) -> None:
+        self.environment = (environment or detect_environment()).strip().lower()
+        self.is_production_like = is_production_like_environment(self.environment)
+        self.errors: list[str] = []
+
+    # ------------------------------------------------------------------
+    # Authentication
+    # ------------------------------------------------------------------
+    def validate_authentication(self) -> None:
+        """JWT secret and auth bypass flags."""
+        jwt_secret = os.getenv("JWT_SECRET", "")
+        if not jwt_secret:
+            self.errors.append(
+                "JWT_SECRET is required in production-like environments. "
+                "Authentication cannot operate without a signing secret."
+            )
+            return
+
+        normalized = jwt_secret.strip().lower()
+        if len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
+            self.errors.append(
+                f"JWT_SECRET is too short ({len(jwt_secret)} chars). "
+                f"Production-like environments require at least {_MIN_JWT_SECRET_LENGTH} characters "
+                f"(256 bits) to resist brute-force attacks."
+            )
+        if normalized in _WEAK_SECRET_DENYLIST:
+            self.errors.append(
+                "JWT_SECRET appears to be a known placeholder or weak value. "
+                "Generate a strong secret: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            )
+
+        # Auth bypass flags must never be enabled in production-like envs
+        if os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() in ("true", "1", "yes"):
+            self.errors.append(
+                "ALLOW_INSECURE_DEV_AUTH_BYPASS must be false or unset in production-like environments. "
+                "Development authentication bypass is a critical security risk."
+            )
+        if os.getenv("JWT_FALLBACK_TO_QUERY_PARAM", "").lower() in ("true", "1", "yes"):
+            self.errors.append(
+                "JWT_FALLBACK_TO_QUERY_PARAM must be false or unset in production-like environments. "
+                "Passing tokens in query strings leaks credentials to logs and proxies."
+            )
+
+    # ------------------------------------------------------------------
+    # Persistence
+    # ------------------------------------------------------------------
+    def validate_persistence(self) -> None:
+        """Database URL must be durable PostgreSQL with non-default credentials."""
+        database_url = os.getenv("DATABASE_URL", "")
+        if not database_url:
+            self.errors.append(
+                "DATABASE_URL is required in production-like environments. "
+                "Services must not start without a configured persistence backend."
+            )
+            return
+
+        if database_url.startswith("sqlite"):
+            self.errors.append(
+                "SQLite is not permitted in production-like environments. "
+                "Use PostgreSQL with Row-Level Security for multi-tenant isolation."
+            )
+            return
+
+        try:
+            parsed = urlparse(database_url)
+            host = (parsed.hostname or "").lower()
+            username = (parsed.username or "").lower()
+            db_name = (parsed.path or "").lstrip("/").lower()
+        except Exception:
+            self.errors.append("DATABASE_URL is malformed and cannot be parsed.")
+            return
+
+        if host in _LOCALHOST_HOSTS:
+            self.errors.append(
+                f"DATABASE_URL host '{host}' is localhost. "
+                f"Production-like environments require a network-resident database."
+            )
+        if username in _DEFAULT_DATABASE_USERS:
+            self.errors.append(
+                f"DATABASE_URL user '{username}' is a default/weak account. "
+                f"Create a dedicated application role with least privilege."
+            )
+        if username in _SUPERUSER_NAMES:
+            self.errors.append(
+                f"DATABASE_URL user '{username}' is a PostgreSQL superuser. "
+                f"Superusers bypass ALL Row-Level Security policies, making tenant isolation ineffective."
+            )
+        if db_name.split("?")[0] in _DEFAULT_DATABASE_NAMES:
+            self.errors.append(
+                f"DATABASE_URL database '{db_name}' is a default name. "
+                f"Use a service-specific database name."
+            )
+
+        # Mock persistence must not be enabled
+        if os.getenv("MOCK_PERSISTENCE", "").lower() in ("true", "1", "yes"):
+            self.errors.append(
+                "MOCK_PERSISTENCE must be false or unset in production-like environments. "
+                "Mock persistence destroys data durability and tenant isolation guarantees."
+            )
+
+    # ------------------------------------------------------------------
+    # Encryption
+    # ------------------------------------------------------------------
+    def validate_encryption(self) -> None:
+        """Master encryption key must be explicitly configured."""
+        master_key = os.getenv("CREDENTIALS_MASTER_KEY", "")
+        if not master_key:
+            self.errors.append(
+                "CREDENTIALS_MASTER_KEY is required in production-like environments. "
+                "Ephemeral encryption keys would cause irreversible data loss on restart."
+            )
+            return
+
+        normalized = master_key.strip().lower()
+        if normalized in _WEAK_SECRET_DENYLIST or normalized.startswith("change"):
+            self.errors.append(
+                "CREDENTIALS_MASTER_KEY appears to be a placeholder. "
+                "Set a strong 256-bit base64-encoded Fernet key."
+            )
+
+        allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_ENCRYPTION", "").lower() in ("true", "1", "yes")
+        if allow_ephemeral:
+            self.errors.append(
+                "ALLOW_EPHEMERAL_ENCRYPTION must be false or unset in production-like environments."
+            )
+
+    # ------------------------------------------------------------------
+    # API Keys
+    # ------------------------------------------------------------------
+    def validate_api_keys(self) -> None:
+        """API key HMAC secret must be configured and strong."""
+        api_key_secret = os.getenv("API_KEY_HMAC_SECRET", "")
+        if not api_key_secret:
+            self.errors.append(
+                "API_KEY_HMAC_SECRET is required in production-like environments. "
+                "API key integrity verification cannot operate without an HMAC secret."
+            )
+            return
+
+        normalized = api_key_secret.strip().lower()
+        if len(api_key_secret) < _MIN_JWT_SECRET_LENGTH:
+            self.errors.append(
+                f"API_KEY_HMAC_SECRET is too short ({len(api_key_secret)} chars). "
+                f"Use at least {_MIN_JWT_SECRET_LENGTH} characters."
+            )
+        if normalized in _WEAK_SECRET_DENYLIST or normalized.startswith("change"):
+            self.errors.append(
+                "API_KEY_HMAC_SECRET appears to be a placeholder or weak value."
+            )
+
+    # ------------------------------------------------------------------
+    # CORS Origins
+    # ------------------------------------------------------------------
+    def validate_cors_origins(self) -> None:
+        """CORS origins must be explicit, HTTPS-only, and contain no wildcards."""
+        cors_origins = os.getenv("CORS_ORIGINS", "")
+        if not cors_origins or cors_origins.strip() == "":
+            self.errors.append(
+                "CORS_ORIGINS is required in production-like environments. "
+                "Wildcard or missing CORS allows arbitrary cross-origin requests."
+            )
+            return
+
+        origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+        if not origins:
+            self.errors.append(
+                "CORS_ORIGINS is empty after parsing. Provide at least one trusted origin."
+            )
+            return
+
+        if "*" in origins:
+            self.errors.append(
+                "CORS_ORIGINS contains wildcard '*'. Explicit HTTPS origins are required in production-like environments."
+            )
+
+        for origin in origins:
+            if "*" in origin:
+                self.errors.append(
+                    f"CORS origin '{origin}' contains a wildcard. Each origin must be an exact URL."
+                )
+                continue
+            parsed = urlparse(origin)
+            if parsed.scheme not in {"https"} and not is_development():
+                # Allow http:// only in development
+                self.errors.append(
+                    f"CORS origin '{origin}' must use HTTPS in production-like environments."
+                )
+            if not parsed.netloc:
+                self.errors.append(
+                    f"CORS origin '{origin}' is missing a host. Provide a complete URL like https://app.example.com."
+                )
+
+    # ------------------------------------------------------------------
+    # Tenant Isolation
+    # ------------------------------------------------------------------
+    def validate_tenant_isolation(self) -> None:
+        """Tenant isolation prerequisites: valid default tenant ID, no shared schemas."""
+        default_tenant = os.getenv("DEFAULT_TENANT_ID", "").strip()
+        if not default_tenant:
+            self.errors.append(
+                "DEFAULT_TENANT_ID is required in production-like environments. "
+                "A missing default tenant prevents deterministic fallback isolation."
+            )
+        elif default_tenant.lower() == "default":
+            self.errors.append(
+                "DEFAULT_TENANT_ID must not use the literal value 'default'. "
+                "This is an implicit fallback that breaks deterministic isolation."
+            )
+        else:
+            # Validate UUID format (basic check)
+            uuid_pattern = re.compile(
+                r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
+            )
+            if not uuid_pattern.match(default_tenant):
+                self.errors.append(
+                    f"DEFAULT_TENANT_ID '{default_tenant}' is not a valid UUID. "
+                    f"Tenant IDs must be deterministic UUIDs for isolation guarantees."
+                )
+
+        # Service auth secret (used for inter-service auth) must also be strong
+        service_auth = os.getenv("SERVICE_AUTH_SECRET", "").strip()
+        if not service_auth:
+            self.errors.append(
+                "SERVICE_AUTH_SECRET is required in production-like environments. "
+                "Inter-service authentication cannot operate without a shared secret."
+            )
+        elif len(service_auth) < _MIN_JWT_SECRET_LENGTH:
+            self.errors.append(
+                f"SERVICE_AUTH_SECRET is too short ({len(service_auth)} chars). "
+                f"Use at least {_MIN_JWT_SECRET_LENGTH} characters."
+            )
+        elif service_auth.lower() in _WEAK_SECRET_DENYLIST:
+            self.errors.append(
+                "SERVICE_AUTH_SECRET appears to be a known placeholder or weak value."
+            )
+
+        # Multi-tenant mode must be explicitly enabled
+        if os.getenv("MULTI_TENANT_MODE", "").lower() == "false":
+            self.errors.append(
+                "MULTI_TENANT_MODE must not be explicitly disabled in production-like environments."
+            )
+
+    # ------------------------------------------------------------------
+    # LLM / External Providers
+    # ------------------------------------------------------------------
+    def validate_external_providers(self) -> None:
+        """Mock LLM providers must not be used in production-like environments."""
+        llm_provider = os.getenv("LLM_PROVIDER", "").strip().lower()
+        if llm_provider == "mock":
+            self.errors.append(
+                "LLM_PROVIDER='mock' is not permitted in production-like environments. "
+                "Configure a real inference endpoint (e.g., openai, anthropic, azure)."
+            )
+        if os.getenv("ALLOW_MOCK_LLM", "").lower() in ("true", "1", "yes"):
+            self.errors.append(
+                "ALLOW_MOCK_LLM must be false or unset in production-like environments."
+            )
+
+    # ------------------------------------------------------------------
+    # Debug / Development Flags
+    # ------------------------------------------------------------------
+    def validate_debug_flags(self) -> None:
+        """DEBUG mode and development flags must be disabled."""
+        if os.getenv("DEBUG", "").lower() == "true":
+            self.errors.append(
+                "DEBUG must be false or unset in production-like environments."
+            )
+        if os.getenv("SEED_DEMO_DATA", "").lower() in ("true", "1", "yes"):
+            self.errors.append(
+                "SEED_DEMO_DATA must be false or unset in production-like environments. "
+                "Demo data seeding pollutes production databases with synthetic records."
+            )
+
+    # ------------------------------------------------------------------
+    # Orchestration
+    # ------------------------------------------------------------------
+    def validate(self) -> None:
+        """Run all production-safety checks."""
+        if not self.is_production_like:
+            # In dev/test environments, run validations as warnings only
+            self._run_all()
+            if self.errors:
+                for msg in self.errors:
+                    logger.warning("Development environment config warning: %s", msg)
+                self.errors.clear()
+            return
+        self._run_all()
+        if self.errors:
+            raise RuntimeError(
+                f"Production safety validation failed for environment='{self.environment}':\n"
+                + "\n".join(f"  • {err}" for err in self.errors)
+            )
+
+    def _run_all(self) -> None:
+        """Execute every validation gate."""
+        self.validate_authentication()
+        self.validate_persistence()
+        self.validate_encryption()
+        self.validate_api_keys()
+        self.validate_cors_origins()
+        self.validate_tenant_isolation()
+        self.validate_external_providers()
+        self.validate_debug_flags()
+
+
+def validate_production_safety(environment: str | None = None) -> None:
+    """Fail-closed gate: raise RuntimeError if required production dependencies are missing.
+
+    This is the canonical entry-point that every service should call during startup.
+    It never allows mock, fallback, or development behavior in ``production``,
+    ``staging``, or any unknown environment.
+
+    Raises:
+        RuntimeError: If any required control is missing or misconfigured.
+    """
+    validator = ProductionSafetyValidator(environment=environment)
+    validator.validate()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Legacy Startup Validation Functions (preserved for backward compatibility)
+# ═══════════════════════════════════════════════════════════════════════════
 
 
 def validate_cors_config() -> None:
@@ -229,7 +620,7 @@ def get_startup_summary() -> dict[str, Any]:
     Returns:
         Dictionary with environment info and control status
     """
-    environment = os.getenv("ENVIRONMENT", "development")
+    environment = detect_environment()
     redis_url = os.getenv("REDIS_URL", "")
     audit_sink = os.getenv("AUDIT_SINK_URL", "")
     cors_origins = os.getenv("CORS_ORIGINS", "*")

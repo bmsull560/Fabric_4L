@@ -226,13 +226,37 @@ describe('Contract: intelligence pagination', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: intelligence tenant context', () => {
+  it('briefing response can include tenant-scoped account_id', () => {
+    const TenantScopedBriefingSchema = AccountBriefingResponseSchema.extend({
+      tenant_id: z.string().uuid(),
+    });
+    const resp = assertSchema(
+      TenantScopedBriefingSchema,
+      {
+        account_id: 'acct-001',
+        signals: [{ id: 'sig-1', name: 'Operational inefficiency', category: 'Operational', confidence: 85, impact: 'High', trend: 'Increasing' }],
+        top_opportunities: ['Automate approval workflows'],
+        risk_factors: ['Budget freeze in Q2'],
+        recommended_actions: ['Schedule executive briefing'],
+        generated_at: '2024-01-15T10:00:00Z',
+        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      },
+      'TenantScopedBriefing'
+    );
+    expect(resp.tenant_id).toBe('550e8400-e29b-41d4-a716-446655440000');
+  });
+});
+
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: intelligence auth failures', () => {
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-intel-401' },
       'ApiError (401)'
     );
   });
@@ -240,9 +264,19 @@ describe('Contract: intelligence auth failures', () => {
   it('cross-tenant 403 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Account does not belong to your tenant', code: 'FORBIDDEN' },
+      { message: 'Account does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-intel-403' },
       'ApiError (403 cross-tenant)'
     );
     expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
+  });
+
+  it('account not found 404 matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Account not found', code: 'NOT_FOUND', trace_id: 'trace-intel-404' },
+      'ApiError (404 account)'
+    );
+    expect(err.code).toBe('NOT_FOUND');
   });
 });

@@ -63,7 +63,10 @@ async def get_ingestion_source_compatibility_boundary(
 async def entity_security_boundary(
     _ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, list[Any]]:
-    return {"entities": []}
+    raise HTTPException(
+        status_code=501,
+        detail="Entity listing is owned by the Layer 3 Knowledge Graph API. Use /api/v1/knowledge/entities instead.",
+    )
 
 
 @router.delete("/api/v1/entities/{entity_id}", tags=["Security Compatibility"])
@@ -101,4 +104,7 @@ async def user_private_data_security_boundary(
 async def admin_read_security_boundary(
     _ctx: RequestContext = Depends(require_role(Role.TENANT_ADMIN, Role.SUPER_ADMIN)),
 ) -> dict[str, str]:
-    return {"status": "authorized"}
+    raise HTTPException(
+        status_code=501,
+        detail="Admin read endpoints are not implemented in Layer 1. Query the Layer 4 tenant admin API instead.",
+    )

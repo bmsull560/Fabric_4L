@@ -260,21 +260,99 @@ describe('Contract: BenchmarkPolicy shapes', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: benchmarks tenant context', () => {
+  it('dataset list is scoped to tenant_id in request context', () => {
+    const TenantScopedDatasetSchema = BenchmarkDatasetSchema.extend({
+      tenant_id: z.string().uuid(),
+    });
+    const ds = assertSchema(
+      TenantScopedDatasetSchema,
+      {
+        id: 'ds-saas-2024',
+        name: 'SaaS Benchmarks',
+        industry: 'Technology',
+        metric_count: 48,
+        last_updated: '2024-01-01T00:00:00Z',
+        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      },
+      'TenantScopedDataset'
+    );
+    expect(ds.tenant_id).toBe('550e8400-e29b-41d4-a716-446655440000');
+  });
+});
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+describe('Contract: benchmarks pagination', () => {
+  it('paginated dataset list has required pagination fields', () => {
+    const PaginatedDatasetsSchema = z.object({
+      items: z.array(BenchmarkDatasetSchema),
+      total: z.number().int().nonnegative(),
+      page: z.number().int().positive(),
+      page_size: z.number().int().positive(),
+      has_more: z.boolean(),
+    });
+
+    const resp = assertSchema(
+      PaginatedDatasetsSchema,
+      { items: [], total: 0, page: 1, page_size: 20, has_more: false },
+      'PaginatedDatasets (empty)'
+    );
+    expect(resp.has_more).toBe(false);
+  });
+
+  it('paginated dataset list with has_more=true', () => {
+    const PaginatedDatasetsSchema = z.object({
+      items: z.array(BenchmarkDatasetSchema),
+      total: z.number().int().nonnegative(),
+      page: z.number().int().positive(),
+      page_size: z.number().int().positive(),
+      has_more: z.boolean(),
+    });
+
+    const resp = assertSchema(
+      PaginatedDatasetsSchema,
+      {
+        items: [{ id: 'ds-1', name: 'DS1', industry: 'Tech', metric_count: 10, last_updated: '2024-01-01T00:00:00Z' }],
+        total: 42,
+        page: 1,
+        page_size: 20,
+        has_more: true,
+      },
+      'PaginatedDatasets (has more)'
+    );
+    expect(resp.has_more).toBe(true);
+    expect(resp.total).toBeGreaterThan(resp.items.length);
+  });
+});
+
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: benchmarks auth failures', () => {
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-bench-401' },
       'ApiError (401)'
     );
+  });
+
+  it('403 cross-tenant access matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Dataset does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-bench-403' },
+      'ApiError (403 cross-tenant)'
+    );
+    expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
   });
 
   it('dataset not found 404 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Benchmark dataset not found', code: 'NOT_FOUND' },
+      { message: 'Benchmark dataset not found', code: 'NOT_FOUND', trace_id: 'trace-bench-404' },
       'ApiError (404)'
     );
     expect(err.code).toBe('NOT_FOUND');

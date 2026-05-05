@@ -40,6 +40,11 @@ jobs:
           pip install pytest
           pytest tests/contract/test_import_topology.py -v --tb=short
 
+      - name: Run duplicate source-tree drift gate
+        run: |
+          python scripts/ci/check_duplicate_source_trees.py --strict --json | tee artifacts/duplicate-source-tree.json
+          exit ${PIPESTATUS[0]}
+
       - name: Run navigation pattern guardrail
         run: |
           python scripts/ci/check_navigation_patterns.py --strict

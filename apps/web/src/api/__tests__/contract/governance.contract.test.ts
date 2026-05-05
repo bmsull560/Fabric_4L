@@ -212,22 +212,80 @@ describe('Contract: PUT /v1/feature-flags/{flag_key}', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: governance tenant context', () => {
+  it('tenant model includes tenant_id as UUID', () => {
+    const tenant = assertSchema(TenantModelSchema, fixtures.tenant(), 'TenantModel');
+    expect(tenant.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    );
+  });
+
+  it('feature flag tenant_id can be null for global flags', () => {
+    const flag = assertSchema(
+      FeatureFlagResponseSchema,
+      { ...fixtures.featureFlag(), tenant_id: null },
+      'FeatureFlagResponse (global)'
+    );
+    expect(flag.tenant_id).toBeNull();
+  });
+
+  it('cross-tenant tenant fetch is rejected', () => {
+    assertSchemaRejects(
+      TenantModelSchema,
+      { ...fixtures.tenant(), id: 'not-a-uuid' },
+      'TenantModel with invalid UUID'
+    );
+  });
+});
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+describe('Contract: tenant list pagination', () => {
+  it('paginated tenant list has required pagination fields', () => {
+    const PaginatedTenantSchema = z.object({
+      items: z.array(TenantModelSchema),
+      total: z.number().int().nonnegative(),
+      page: z.number().int().positive(),
+      page_size: z.number().int().positive(),
+      has_more: z.boolean(),
+    });
+
+    const resp = assertSchema(
+      PaginatedTenantSchema,
+      { items: [], total: 0, page: 1, page_size: 20, has_more: false },
+      'PaginatedTenants (empty)'
+    );
+    expect(resp.has_more).toBe(false);
+  });
+});
+
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: governance auth failures', () => {
+  it('401 matches ApiError shape', () => {
+    assertSchema(
+      ApiErrorSchema,
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-gov-401' },
+      'ApiError (401 governance)'
+    );
+  });
+
   it('non-admin 403 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'super_admin role required', code: 'FORBIDDEN' },
+      { message: 'super_admin role required', code: 'FORBIDDEN', trace_id: 'trace-gov-403' },
       'ApiError (403 governance)'
     );
     expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
   });
 
   it('tenant not found 404 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Tenant not found', code: 'NOT_FOUND' },
+      { message: 'Tenant not found', code: 'NOT_FOUND', trace_id: 'trace-gov-404' },
       'ApiError (404 tenant)'
     );
     expect(err.message).toBeTruthy();

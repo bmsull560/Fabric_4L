@@ -292,21 +292,77 @@ describe('Contract: formula governance lifecycle', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: formula tenant context', () => {
+  it('formula list item is scoped to a tenant', () => {
+    const TenantScopedFormulaSchema = FormulaSchema.extend({
+      tenant_id: z.string().uuid(),
+    });
+    const formula = assertSchema(
+      TenantScopedFormulaSchema,
+      {
+        id: 'formula-roi-001',
+        name: 'ROI Calculator',
+        status: 'active',
+        version: '2.1.0',
+        domain: 'finance',
+        formula_type: 'composite',
+        used_in_count: 14,
+        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      },
+      'TenantScopedFormula'
+    );
+    expect(formula.tenant_id).toBe('550e8400-e29b-41d4-a716-446655440000');
+  });
+});
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+describe('Contract: formula list pagination', () => {
+  it('paginated formula list has required pagination fields', () => {
+    const PaginatedFormulaSchema = z.object({
+      items: z.array(FormulaSchema),
+      total: z.number().int().nonnegative(),
+      page: z.number().int().positive(),
+      page_size: z.number().int().positive(),
+      has_more: z.boolean(),
+    });
+
+    const resp = assertSchema(
+      PaginatedFormulaSchema,
+      { items: [], total: 0, page: 1, page_size: 20, has_more: false },
+      'PaginatedFormulas (empty)'
+    );
+    expect(resp.has_more).toBe(false);
+  });
+});
+
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: formula auth failures', () => {
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-formula-401' },
       'ApiError (401)'
     );
+  });
+
+  it('403 cross-tenant formula access matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Formula does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-formula-403' },
+      'ApiError (403 cross-tenant)'
+    );
+    expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
   });
 
   it('formula not found 404 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Formula not found', code: 'NOT_FOUND' },
+      { message: 'Formula not found', code: 'NOT_FOUND', trace_id: 'trace-formula-404' },
       'ApiError (404)'
     );
     expect(err.code).toBe('NOT_FOUND');

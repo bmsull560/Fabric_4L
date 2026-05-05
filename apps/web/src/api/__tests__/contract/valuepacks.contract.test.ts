@@ -216,21 +216,63 @@ describe('Contract: GET /v1/packs — pagination', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: value pack tenant context', () => {
+  it('tenant-scoped value pack includes tenant_id', () => {
+    const TenantScopedPackSchema = ValuePackSchema.extend({
+      tenant_id: z.string().uuid().nullable(),
+    });
+    const pack = assertSchema(
+      TenantScopedPackSchema,
+      {
+        id: 'pack-saas-001',
+        pack_id: 'pack-saas-001',
+        name: 'SaaS Value Pack',
+        industry: 'Technology',
+        description: 'Pre-built value drivers for SaaS companies',
+        driver_count: 12,
+        formula_count: 8,
+        benchmark_count: 5,
+        workflow_count: 3,
+        status: 'active',
+        scope: 'tenant',
+        updated_at: '2024-01-15T10:00:00Z',
+        version: '2.1.0',
+        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
+      },
+      'TenantScopedValuePack'
+    );
+    expect(pack.tenant_id).toBe('550e8400-e29b-41d4-a716-446655440000');
+    expect(pack.scope).toBe('tenant');
+  });
+});
+
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: value pack auth failures', () => {
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-pack-401' },
       'ApiError (401)'
     );
+  });
+
+  it('403 cross-tenant pack access matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Value pack does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-pack-403' },
+      'ApiError (403 cross-tenant)'
+    );
+    expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
   });
 
   it('pack not found 404 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Value pack not found', code: 'NOT_FOUND' },
+      { message: 'Value pack not found', code: 'NOT_FOUND', trace_id: 'trace-pack-404' },
       'ApiError (404)'
     );
     expect(err.code).toBe('NOT_FOUND');

@@ -68,6 +68,18 @@ class TestImportTopology:
 
         assert value_fabric.layer4.models.__file__ is not None
 
+    def test_layer4_resolves_to_canonical_service_tree(self):
+        """value_fabric.layer4.* must resolve via services/layer4-agents/src/."""
+        import value_fabric.layer4
+
+        canonical = str(REPO_ROOT / "services" / "layer4-agents" / "src")
+        assert any(
+            canonical in str(p) for p in value_fabric.layer4.__path__
+        ), (
+            f"Canonical path {canonical} not found in value_fabric.layer4.__path__: "
+            f"{value_fabric.layer4.__path__}"
+        )
+
     def test_pytest_collection_no_import_errors(self):
         """pytest --collect-only should have zero import errors."""
         import subprocess

@@ -1,0 +1,184 @@
+# Canonical Path Manifest for Fabric_4L / Value Fabric
+# version: 1.0.0
+#
+# This manifest defines the canonical filesystem layout for the monorepo.
+# CI, scripts, and documentation must reference these paths.
+# The repository hygiene job enforces this manifest.
+
+metadata:
+  version: "1.0.0"
+  last_updated: "2026-05-04"
+  description: |
+    Canonical layout after the 2026-05-02 frontend migration and
+    service-layer consolidation. Legacy roots like frontend/ (obsolete)
+    and value-fabric/ (partially archived) must not be referenced by
+    active CI workflows for build, test, or lint operations.
+
+canonical:
+  applications:
+    root: apps/
+    entries:
+      - path: apps/web
+        description: Canonical React + TypeScript frontend (Vite)
+        dockerfiles:
+          - apps/web/Dockerfile
+          - apps/web/Dockerfile.dev
+
+  services:
+    root: services/
+    entries:
+      - path: services/api
+        description: API gateway / orchestration service
+      - path: services/layer1-ingestion
+        description: Layer 1 — Data ingestion
+        dockerfiles:
+          - services/layer1-ingestion/Dockerfile
+          - services/layer1-ingestion/Dockerfile.uv
+      - path: services/layer2-extraction
+        description: Layer 2 — Information extraction
+        dockerfiles:
+          - services/layer2-extraction/Dockerfile
+          - services/layer2-extraction/Dockerfile.uv
+      - path: services/layer3-knowledge
+        description: Layer 3 — Knowledge graph
+        dockerfiles:
+          - services/layer3-knowledge/Dockerfile
+      - path: services/layer4-agents
+        description: Layer 4 — Agent runtime
+        dockerfiles:
+          - services/layer4-agents/Dockerfile
+          - services/layer4-agents/Dockerfile.uv
+      - path: services/layer5-ground-truth
+        description: Layer 5 — Ground truth / validation
+        dockerfiles:
+          - services/layer5-ground-truth/Dockerfile
+          - services/layer5-ground-truth/Dockerfile.uv
+      - path: services/layer6-benchmarks
+        description: Layer 6 — Benchmarks & evaluation
+        dockerfiles:
+          - services/layer6-benchmarks/Dockerfile
+          - services/layer6-benchmarks/Dockerfile.uv
+
+  packages:
+    root: packages/
+    entries:
+      - path: packages/config
+        description: Shared configuration package
+      - path: packages/eslint-plugin-fabric-contracts
+        description: ESLint plugin for contract enforcement
+      - path: packages/platform-contract
+        description: Cross-platform contract definitions
+      - path: packages/shared
+        description: Shared libraries (Python / TS)
+      - path: packages/value-packs
+        description: Value-pack domain logic
+
+  documentation:
+    root: docs/
+    description: Documentation hub (Diátaxis framework)
+    sub_roots:
+      - path: docs/getting-started
+      - path: docs/core-concepts
+      - path: docs/how-to-guides
+      - path: docs/reference
+      - path: docs/explanations
+      - path: docs/troubleshooting
+      - path: docs/operations
+      - path: docs/runbooks/operational
+        description: Operational automation runbooks (scripts)
+      - path: docs/troubleshooting/runbooks/application
+        description: Application troubleshooting runbooks
+      - path: docs/troubleshooting/runbooks/incident
+        description: Incident response runbooks
+      - path: docs/troubleshooting/runbooks/infrastructure
+        description: Infrastructure troubleshooting runbooks
+
+  contracts:
+    root: contracts/
+    entries:
+      - path: contracts/openapi
+      - path: contracts/jsonschema
+      - path: contracts/tool-manifests
+      - path: contracts/frontend
+      - path: contracts/rfcs
+
+  tests:
+    root: tests/
+    description: Cross-cutting test suites
+
+  sdk:
+    root: sdk/
+    description: Language-specific SDKs
+
+  k8s:
+    root: k8s/
+    description: Kubernetes manifests
+
+  monitoring:
+    root: monitoring/
+    description: Alerting rules, dashboards, Prometheus configs
+
+  packs:
+    root: packs/
+    description: Domain ontology packs
+
+obsolete:
+  # These directories must not be referenced by active CI workflows,
+  # runbook validators, contract checks, or build scripts.
+  # They may still exist for archival purposes.
+  - path: frontend/
+    reason: Obsoleted on 2026-05-02; canonical frontend moved to apps/web/
+    severity: error
+    allowed_references:
+      - "Archive or migration documentation"
+      - "Explicit OBSOLETE.md notices"
+  - path: archive/
+    reason: Historical archive; not part of active build/test surface
+    severity: warn
+    allowed_references:
+      - "Archive retention policies"
+      - "Historical migration docs"
+  - path: value-fabric/
+    reason: |
+      Legacy Python package tree. Partially retained for docker-compose.yml
+      and ADR archives, but service source code has migrated to services/.
+    severity: warn
+    allowed_references:
+      - "docker-compose.yml execution (temporary)"
+      - "ADR/doc archives inside value-fabric/ADRs/"
+      - "Legacy test references that are being migrated"
+    disallowed_in:
+      - docker_build_contexts
+      - path_filters_for_service_code
+      - eslint_working_directories
+      - npm_cache_dependency_paths
+
+# Validation rules enforced by repo_hygiene.py
+rules:
+  - id: no_obsolete_path_filters
+    description: Workflow path filters must not watch obsolete directories
+    severity: error
+
+  - id: no_obsolete_working_directories
+    description: Workflow working-directory steps must not use obsolete roots
+    severity: error
+
+  - id: no_obsolete_dockerfile_paths
+    description: Docker build steps must not reference Dockerfiles inside obsolete roots
+    severity: error
+
+  - id: no_obsolete_docker_contexts
+    description: Docker build contexts must not be obsolete roots for service builds
+    severity: error
+
+  - id: canonical_docs_exist
+    description: All canonical paths listed above must exist on disk
+    severity: error
+
+  - id: dependabot_no_obsolete_dirs
+    description: Dependabot config must not scan obsolete directories
+    severity: error
+
+  - id: codeowners_no_obsolete_dirs
+    description: CODEOWNERS must not assign reviewers to obsolete roots
+    severity: warn

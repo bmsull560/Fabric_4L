@@ -211,21 +211,57 @@ describe('Contract: path alignment', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: extraction tenant context', () => {
+  it('extraction status includes tenant_id when scoped', () => {
+    const TenantScopedStatusSchema = ExtractionStatusSchema.extend({
+      tenant_id: z.string().min(1),
+    });
+    const resp = assertSchema(
+      TenantScopedStatusSchema,
+      {
+        job_id: 'job-001',
+        overall_status: 'completed',
+        extraction_status: 'completed',
+        ingestion_status: 'completed',
+        entities_extracted: 5,
+        relationships_extracted: 3,
+        started_at: '2024-01-15T10:00:00Z',
+        completed_at: '2024-01-15T10:01:00Z',
+        tenant_id: 'tenant-001',
+      },
+      'TenantScopedExtractionStatus'
+    );
+    expect(resp.tenant_id).toBe('tenant-001');
+  });
+});
+
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: extraction auth failures', () => {
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-extract-401' },
       'ApiError (401)'
     );
+  });
+
+  it('403 cross-tenant job access matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Extraction job belongs to a different tenant', code: 'FORBIDDEN', trace_id: 'trace-extract-403' },
+      'ApiError (403 cross-tenant)'
+    );
+    expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
   });
 
   it('job not found 404 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Extraction job not found', code: 'NOT_FOUND' },
+      { message: 'Extraction job not found', code: 'NOT_FOUND', trace_id: 'trace-extract-404' },
       'ApiError (404)'
     );
     expect(err.code).toBe('NOT_FOUND');

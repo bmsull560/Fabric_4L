@@ -215,23 +215,70 @@ describe('Contract: subgraph and entity shapes', () => {
   });
 });
 
+// ── Tenant context ────────────────────────────────────────────────────────────
+
+describe('Contract: graph tenant context', () => {
+  it('graph node can carry tenant_id for isolation', () => {
+    const TenantScopedGraphNodeSchema = GraphNodeSchema.extend({
+      tenant_id: z.string().uuid(),
+    });
+    const node = assertSchema(
+      TenantScopedGraphNodeSchema,
+      { id: 'node-001', name: 'Cloud Migration', type: 'capability', tenant_id: '550e8400-e29b-41d4-a716-446655440000' },
+      'TenantScopedGraphNode'
+    );
+    expect(node.tenant_id).toBe('550e8400-e29b-41d4-a716-446655440000');
+  });
+});
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+describe('Contract: graph entity list pagination', () => {
+  it('paginated entity list has required pagination fields', () => {
+    const PaginatedGraphNodesSchema = z.object({
+      items: z.array(GraphNodeSchema),
+      total: z.number().int().nonnegative(),
+      page: z.number().int().positive(),
+      page_size: z.number().int().positive(),
+      has_more: z.boolean(),
+    });
+
+    const resp = assertSchema(
+      PaginatedGraphNodesSchema,
+      { items: [], total: 0, page: 1, page_size: 20, has_more: false },
+      'PaginatedGraphNodes (empty)'
+    );
+    expect(resp.has_more).toBe(false);
+  });
+});
+
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: graph auth failures', () => {
-  it('entity not found 404 matches ApiError shape', () => {
-    const err = assertSchema(
-      ApiErrorSchema,
-      { message: 'Entity not found', code: 'NOT_FOUND' },
-      'ApiError (404)'
-    );
-    expect(err.code).toBe('NOT_FOUND');
-  });
-
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-graph-401' },
       'ApiError (401)'
     );
+  });
+
+  it('403 cross-tenant entity access matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Entity belongs to a different tenant', code: 'FORBIDDEN', trace_id: 'trace-graph-403' },
+      'ApiError (403 cross-tenant)'
+    );
+    expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
+  });
+
+  it('entity not found 404 matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Entity not found', code: 'NOT_FOUND', trace_id: 'trace-graph-404' },
+      'ApiError (404)'
+    );
+    expect(err.code).toBe('NOT_FOUND');
   });
 });

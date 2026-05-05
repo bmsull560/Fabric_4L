@@ -335,25 +335,57 @@ describe('Contract: POST /v1/analysis/whitespace', () => {
   });
 });
 
+// ── Pagination ────────────────────────────────────────────────────────────────
+
+describe('Contract: workflow list pagination', () => {
+  it('paginated workflow list has required pagination fields', () => {
+    const PaginatedWorkflowSchema = z.object({
+      items: z.array(WorkflowStatusResponseSchema),
+      total: z.number().int().nonnegative(),
+      page: z.number().int().positive(),
+      page_size: z.number().int().positive(),
+      has_more: z.boolean(),
+    });
+
+    const resp = assertSchema(
+      PaginatedWorkflowSchema,
+      { items: [], total: 0, page: 1, page_size: 20, has_more: false },
+      'PaginatedWorkflows (empty)'
+    );
+    expect(resp.has_more).toBe(false);
+  });
+});
+
 // ── Auth failure shape ───────────────────────────────────────────────────────
 
 describe('Contract: auth failure responses', () => {
   it('401 response matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-wf-401' },
       'ApiError (401)'
     );
     expect(err.message).toBeTruthy();
+    expect(err.trace_id).toBeTruthy();
   });
 
-  it('403 response matches ApiError shape', () => {
+  it('403 cross-tenant workflow access matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Insufficient permissions', code: 'FORBIDDEN', trace_id: 'req_abc123' },
-      'ApiError (403)'
+      { message: 'Workflow does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-wf-403' },
+      'ApiError (403 cross-tenant)'
     );
     expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
+  });
+
+  it('404 workflow not found matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      { message: 'Workflow not found', code: 'NOT_FOUND', trace_id: 'trace-wf-404' },
+      'ApiError (404)'
+    );
+    expect(err.code).toBe('NOT_FOUND');
     expect(err.trace_id).toBeTruthy();
   });
 });

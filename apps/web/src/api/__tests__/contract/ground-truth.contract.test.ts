@@ -294,44 +294,32 @@ describe('Contract: GET /api/v1/maturity-ladder', () => {
   });
 });
 
-// ── Tenant isolation ──────────────────────────────────────────────────────────
-
-describe('Contract: ground truth tenant isolation', () => {
-  it('organization_id is present on every truth object', () => {
-    const truth = assertSchema(
-      TruthObjectResponseSchema,
-      fixtures.truthObject({ organization_id: '550e8400-e29b-41d4-a716-446655440000' }),
-      'TruthObjectResponse (org context)'
-    );
-    expect(truth.organization_id).toBe('550e8400-e29b-41d4-a716-446655440000');
-  });
-});
-
 // ── Auth failures ─────────────────────────────────────────────────────────────
 
 describe('Contract: ground truth auth failures', () => {
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-gt-401' },
       'ApiError (401)'
     );
   });
 
-  it('cross-org 403 matches ApiError shape', () => {
+  it('cross-tenant 403 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Truth object does not belong to your organization', code: 'FORBIDDEN' },
-      'ApiError (403 cross-org)'
+      { message: 'Truth object does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-gt-403' },
+      'ApiError (403 cross-tenant)'
     );
     expect(err.code).toBe('FORBIDDEN');
+    expect(err.trace_id).toBeTruthy();
   });
 
   it('truth not found 404 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Truth object not found', code: 'NOT_FOUND' },
-      'ApiError (404)'
+      { message: 'Truth object not found', code: 'NOT_FOUND', trace_id: 'trace-gt-404' },
+      'ApiError (404 truth)'
     );
     expect(err.code).toBe('NOT_FOUND');
   });

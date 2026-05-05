@@ -15,6 +15,7 @@ import structlog
 from defusedxml.ElementTree import fromstring
 
 from ..metrics import get_metrics
+from ..shared.exceptions import XBRLParseError
 
 logger = structlog.get_logger()
 
@@ -307,50 +308,58 @@ class XBRLParser:
             if not value_text:
                 continue
 
-            # Parse value
-            value = self._parse_value(value_text)
+            try:
+                # Parse value
+                value = self._parse_value(value_text)
 
-            # Get context info
-            ctx = contexts.get(context_ref, {})
+                # Get context info
+                ctx = contexts.get(context_ref, {})
 
-            # Get unit
-            unit_ref = elem.get("unitRef")
-            unit = units.get(unit_ref) if unit_ref else None
+                # Get unit
+                unit_ref = elem.get("unitRef")
+                unit = units.get(unit_ref) if unit_ref else None
 
-            # Get decimals/scale info
-            decimals = elem.get("decimals")
-            scale = 0
-            if decimals and decimals != "INF":
-                try:
-                    scale = int(decimals)
-                except ValueError:
-                    logger.warning(
-                        "xbrl_decimals_parse_failed",
-                        concept=tag_name,
-                        decimals_value=decimals,
-                        context_ref=context_ref,
-                        fallback="using_scale_0",
-                    )
-                    metrics = get_metrics()
-                    if metrics:
-                        metrics.increment_errors(error_type="xbrl_parse_fallback", component="xbrl_parser")
-                    scale = 0
+                # Get decimals/scale info
+                decimals = elem.get("decimals")
+                scale = 0
+                if decimals and decimals != "INF":
+                    try:
+                        scale = int(decimals)
+                    except ValueError as exc:
+                        raise XBRLParseError(
+                            f"Invalid decimals attribute {decimals!r} for concept {tag_name}",
+                            concept=tag_name,
+                            value_preview=decimals,
+                            context_ref=context_ref,
+                            error_code="XBRL_DECIMALS_PARSE_ERROR",
+                        ) from exc
 
-            # Apply scale if needed
-            if scale != 0 and isinstance(value, (int, float, Decimal)):
-                value = value * (10**scale)
+                # Apply scale if needed
+                if scale != 0 and isinstance(value, (int, float, Decimal)):
+                    value = value * (10**scale)
 
-            fact = FinancialFact(
-                concept=tag_name,
-                value=value,
-                unit=unit,
-                context_ref=context_ref,
-                period_start=ctx.get("start_date"),
-                period_end=ctx.get("end_date"),
-                dimensions=ctx.get("dimensions", {}),
-            )
+                fact = FinancialFact(
+                    concept=tag_name,
+                    value=value,
+                    unit=unit,
+                    context_ref=context_ref,
+                    period_start=ctx.get("start_date"),
+                    period_end=ctx.get("end_date"),
+                    dimensions=ctx.get("dimensions", {}),
+                )
 
-            facts.append(fact)
+                facts.append(fact)
+            except XBRLParseError:
+                logger.warning(
+                    "xbrl_fact_parse_failed",
+                    concept=tag_name,
+                    context_ref=context_ref,
+                    value_preview=value_text[:100] if len(value_text) > 100 else value_text,
+                )
+                metrics = get_metrics()
+                if metrics:
+                    metrics.increment_errors(error_type="xbrl_fact_parse_failed", component="xbrl_parser")
+                continue
 
         return facts
 

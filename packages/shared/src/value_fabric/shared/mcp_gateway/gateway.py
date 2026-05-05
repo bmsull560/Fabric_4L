@@ -115,6 +115,7 @@ class MCPGateway:
             "auth_failures": 0,
             "access_denied": 0,
             "manifest_failures": 0,
+            "not_implemented": 0,
         }
         
         logger.info("MCP Gateway initialized")
@@ -354,24 +355,23 @@ class MCPGateway:
                 request_id=tool_request.request_id,
             )
         
-        # Placeholder: Simulate tool execution
-        # In production, this calls the actual tool endpoint
-        logger.info(
-            f"Executing tool '{tool_name}' at {manifest.endpoint}",
+        # Tool execution is not yet implemented in production.
+        # The gateway authenticates and authorizes but does not dispatch
+        # to actual tool endpoints. Callers must not receive mock success.
+        self._metrics["not_implemented"] += 1
+        logger.warning(
+            f"Tool '{tool_name}' execution not implemented - returning error instead of mock data",
             extra={
                 "tool_name": tool_name,
                 "endpoint": manifest.endpoint,
                 "tenant_id": str(tool_request.tenant_id),
             }
         )
-        
-        # Simulated success
         return ToolResponse(
             tool_name=tool_name,
-            result={"status": "success", "data": "placeholder_result"},
+            error=f"Tool '{tool_name}' execution is not implemented. The tool endpoint at {manifest.endpoint} is registered but not wired to a real implementation.",
             execution_time_ms=(time.time() - start_time) * 1000,
             request_id=tool_request.request_id,
-            audit_event_id=str(uuid4()),
         )
     
     async def _emit_audit_event(

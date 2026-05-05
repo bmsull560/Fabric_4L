@@ -11,7 +11,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-backend
+      - value-fabric/backend-leads
 
   - package-ecosystem: pip
     directory: /services/layer1-ingestion
@@ -21,7 +21,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-ingestion
+      - value-fabric/data-engineering
 
   - package-ecosystem: pip
     directory: /services/layer2-extraction
@@ -31,7 +31,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-extraction
+      - value-fabric/ai-ml-leads
 
   - package-ecosystem: pip
     directory: /services/layer3-knowledge
@@ -41,7 +41,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-knowledge
+      - value-fabric/graph-specialists
 
   - package-ecosystem: pip
     directory: /services/layer4-agents
@@ -51,7 +51,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-agents
+      - value-fabric/ai-ml-leads
 
   - package-ecosystem: pip
     directory: /services/layer5-ground-truth
@@ -61,7 +61,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-quality
+      - value-fabric/data-engineering
 
   - package-ecosystem: pip
     directory: /services/layer6-benchmarks
@@ -71,7 +71,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-research
+      - value-fabric/qa-leads
 
   - package-ecosystem: pip
     directory: /sdk/python
@@ -81,7 +81,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-platform
+      - value-fabric/sre-leads
 
   - package-ecosystem: pip
     directory: /tests
@@ -91,8 +91,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-backend
-      - team-qa
+      - value-fabric/backend-leads
+      - value-fabric/qa-leads
 
   # ============================================================================
   # Node.js Dependencies — Apps and Packages (npm ecosystem)
@@ -105,7 +105,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-frontend
+      - value-fabric/frontend-leads
 
   - package-ecosystem: npm
     directory: /packages/config
@@ -115,7 +115,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-platform
+      - value-fabric/sre-leads
 
   - package-ecosystem: npm
     directory: /packages/eslint-plugin-fabric-contracts
@@ -125,7 +125,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-platform
+      - value-fabric/sre-leads
 
   - package-ecosystem: npm
     directory: /packages/platform-contract
@@ -135,7 +135,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-platform
+      - value-fabric/sre-leads
 
   # ============================================================================
   # Docker Base Images — Services, Apps, and Devcontainer (docker ecosystem)
@@ -148,8 +148,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-frontend
-      - team-platform
+      - value-fabric/frontend-leads
+      - value-fabric/sre-leads
 
   - package-ecosystem: docker
     directory: /services/layer1-ingestion
@@ -159,8 +159,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-ingestion
-      - team-platform
+      - value-fabric/data-engineering
+      - value-fabric/sre-leads
 
   - package-ecosystem: docker
     directory: /services/layer2-extraction
@@ -170,8 +170,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-extraction
-      - team-platform
+      - value-fabric/ai-ml-leads
+      - value-fabric/sre-leads
 
   - package-ecosystem: docker
     directory: /services/layer3-knowledge
@@ -181,8 +181,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-knowledge
-      - team-platform
+      - value-fabric/graph-specialists
+      - value-fabric/sre-leads
 
   - package-ecosystem: docker
     directory: /services/layer4-agents
@@ -192,8 +192,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-agents
-      - team-platform
+      - value-fabric/ai-ml-leads
+      - value-fabric/sre-leads
 
   - package-ecosystem: docker
     directory: /services/layer5-ground-truth
@@ -203,8 +203,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-quality
-      - team-platform
+      - value-fabric/data-engineering
+      - value-fabric/sre-leads
 
   - package-ecosystem: docker
     directory: /services/layer6-benchmarks
@@ -214,8 +214,8 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-research
-      - team-platform
+      - value-fabric/qa-leads
+      - value-fabric/sre-leads
 
   - package-ecosystem: docker
     directory: /.devcontainer
@@ -225,7 +225,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - team-platform
+      - value-fabric/sre-leads
 
   # ============================================================================
   # GitHub Actions (github-actions ecosystem)
@@ -238,4 +238,4 @@ updates:
     commit-message:
       prefix: chore(ci)
     reviewers:
-      - team-platform
+      - value-fabric/sre-leads

@@ -1,8 +1,9 @@
-"""SQLAlchemy models for Layer 1 Ingestion Service.
+"""SQLAlchemy models for the Layer 1 ingestion service.
 
-Spec-compliant database schema with multi-tenancy support.
-Defines: ScrapingTarget, ScrapingJob, RawContent, ExtractedData,
-ComplianceLog, ProxyPool, JobStageDetail, JobError entities.
+The active schema is the spec-compliant post-003 migration shape.  The
+database column is ``organization_id`` for historical migration compatibility,
+while ORM callers may continue to use ``tenant_id`` through SQLAlchemy
+synonyms.
 """
 
 from __future__ import annotations
@@ -11,32 +12,18 @@ import uuid
 from datetime import UTC, datetime
 from enum import Enum as PyEnum
 
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    Index,
-    Integer,
-    Numeric,
-    String,
-    Text,
-    func,
-)
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, relationship, synonym
 
 Base = declarative_base()
 
 
-# =============================================================================
-# ENUMS
-# =============================================================================
+def _now() -> datetime:
+    return datetime.now(UTC)
 
 
 class JobStatus(str, PyEnum):
-    """Job lifecycle states - 11 states as per spec."""
-
     PENDING = "PENDING"
     QUEUED = "QUEUED"
     VALIDATING = "VALIDATING"
@@ -52,8 +39,6 @@ class JobStatus(str, PyEnum):
 
 
 class PipelineStage(str, PyEnum):
-    """Pipeline execution stages - 11 stages as per spec."""
-
     INIT = "INIT"
     COMPLIANCE_CHECK = "COMPLIANCE_CHECK"
     BROWSER_LAUNCH = "BROWSER_LAUNCH"
@@ -67,16 +52,12 @@ class PipelineStage(str, PyEnum):
 
 
 class ExtractionMethod(str, PyEnum):
-    """Content extraction methods."""
-
     AI_LLM = "AI_LLM"
     DETERMINISTIC = "DETERMINISTIC"
     HYBRID = "HYBRID"
 
 
 class TargetType(str, PyEnum):
-    """Scraping target types."""
-
     SINGLE_PAGE = "SINGLE_PAGE"
     PAGINATED = "PAGINATED"
     SPIDER = "SPIDER"
@@ -84,8 +65,6 @@ class TargetType(str, PyEnum):
 
 
 class TargetStatus(str, PyEnum):
-    """Scraping target lifecycle status."""
-
     ACTIVE = "ACTIVE"
     PAUSED = "PAUSED"
     ARCHIVED = "ARCHIVED"
@@ -93,8 +72,6 @@ class TargetStatus(str, PyEnum):
 
 
 class ComplianceEventType(str, PyEnum):
-    """Compliance event types."""
-
     ROBOTS_TXT_CHECK = "ROBOTS_TXT_CHECK"
     RATE_LIMIT_APPLIED = "RATE_LIMIT_APPLIED"
     PII_DETECTED = "PII_DETECTED"
@@ -108,8 +85,6 @@ class ComplianceEventType(str, PyEnum):
 
 
 class ProxyRotationStrategy(str, PyEnum):
-    """Proxy rotation strategies."""
-
     ROUND_ROBIN = "ROUND_ROBIN"
     RANDOM = "RANDOM"
     GEO_BASED = "GEO_BASED"
@@ -118,24 +93,18 @@ class ProxyRotationStrategy(str, PyEnum):
 
 
 class ProxyType(str, PyEnum):
-    """Proxy types."""
-
     RESIDENTIAL = "RESIDENTIAL"
     DATACENTER = "DATACENTER"
     MOBILE = "MOBILE"
 
 
 class ProxyStatus(str, PyEnum):
-    """Proxy health status."""
-
     ACTIVE = "ACTIVE"
     FAILED = "FAILED"
     QUARANTINED = "QUARANTINED"
 
 
 class TriggeredBy(str, PyEnum):
-    """Job trigger sources."""
-
     SCHEDULE = "SCHEDULE"
     MANUAL = "MANUAL"
     API = "API"
@@ -144,27 +113,17 @@ class TriggeredBy(str, PyEnum):
 
 
 class RetryBackoff(str, PyEnum):
-    """Retry backoff strategies."""
-
     FIXED = "fixed"
     EXPONENTIAL = "exponential"
 
 
 class CrawlPath(str, PyEnum):
-    """Ingestion path selection for a scraping target.
-
-    Controls whether the crawler uses HTTPX fast path,
-    Playwright browser automation, or hybrid fallback.
-    """
-
-    FAST = "fast"  # HTTPX only - fastest for static content
-    BROWSER = "browser"  # Playwright only - handles dynamic content
-    FAST_WITH_FALLBACK = "fast_fallback"  # HTTPX first, browser if quality fails
+    FAST = "fast"
+    BROWSER = "browser"
+    FAST_WITH_FALLBACK = "fast_fallback"
 
 
 class AuthenticationType(str, PyEnum):
-    """Authentication types for targets."""
-
     NONE = "NONE"
     BEARER = "BEARER"
     API_KEY = "API_KEY"
@@ -173,426 +132,387 @@ class AuthenticationType(str, PyEnum):
 
 
 class BrowserEngine(str, PyEnum):
-    """Browser engines."""
-
     CHROMIUM = "chromium"
     FIREFOX = "firefox"
     WEBKIT = "webkit"
 
 
 class LLMProvider(str, PyEnum):
-    """LLM providers for AI extraction."""
-
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     AZURE_OPENAI = "azure_openai"
 
 
 class PIIStatus(str, PyEnum):
-    """PII detection status."""
-
     CLEAN = "clean"
     FLAGGED = "flagged"
     QUARANTINED = "quarantined"
 
 
-# =============================================================================
-# ENTITIES
-# =============================================================================
+class TenantScoped:
+    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = synonym("organization_id")
 
 
-class ScrapingTarget(Base):
-    """Configuration entity for a scraping target.
-
-    Defines what to scrape, how to extract it, scheduling, rate limits, etc.
-    """
-
+class ScrapingTarget(TenantScoped, Base):
     __tablename__ = "scraping_targets"
 
-    # Primary Identifiers
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-
-    # Target Configuration
     url = Column(Text, nullable=False)
-    url_pattern = Column(String(500), nullable=True)  # Regex for URL matching
+    url_pattern = Column(String(500), nullable=True)
     target_type = Column(String(50), nullable=False, default=TargetType.SINGLE_PAGE.value)
-
-    # Extraction Configuration (JSONB for nested structure)
-    extraction_config = Column(JSONB, default=dict)  # {
-    # "method": "AI_LLM|DETERMINISTIC|HYBRID",
-    # "llm_provider": "openai|anthropic|azure_openai",
-    # "extraction_schema": {...},  # JSON Schema
-    # "visual_hints": false,
-    # "max_depth": 2,
-    # "follow_links": true,
-    # "link_selectors": [...]
-    # }
-
-    # Browser Configuration
-    browser_config = Column(JSONB, default=dict)  # {
-    # "engine": "chromium",
-    # "headless": true,
-    # "viewport": {"width": 1920, "height": 1080},
-    # "user_agent": "...",
-    # "javascript_enabled": true,
-    # "wait_for_selector": null,
-    # "wait_timeout": 30000,
-    # "stealth_mode": true
-    # }
-
-    # Scheduling
-    schedule = Column(JSONB, nullable=True)  # {
-    # "enabled": true,
-    # "cron_expression": "0 0 * * *",
-    # "timezone": "UTC",
-    # "max_concurrent_jobs": 1
-    # }
-
-    # Rate Limiting
-    rate_limit = Column(JSONB, default=dict)  # {
-    # "requests_per_second": 1,
-    # "requests_per_minute": 30,
-    # "requests_per_hour": 500,
-    # "burst_limit": 5,
-    # "retry_attempts": 3,
-    # "retry_backoff": "exponential",
-    # "retry_delay_ms": 1000
-    # }
-
-    # Compliance Settings
-    compliance = Column(JSONB, default=dict)  # {
-    # "respect_robots_txt": true,
-    # "user_agent_string": "...",
-    # "crawl_delay_seconds": 1,
-    # "domain_allowlist": [],
-    # "domain_blocklist": [],
-    # "pii_redaction_enabled": true,
-    # "sensitive_field_patterns": []
-    # }
-
-    # Proxy Configuration
-    proxy_config = Column(JSONB, default=dict)  # {
-    # "enabled": false,
-    # "rotation_strategy": "ROUND_ROBIN|RANDOM|GEO_BASED|SESSION_BASED",
-    # "proxy_pool_id": "uuid",
-    # "sticky_sessions": false,
-    # "session_duration_minutes": 30
-    # }
-
-    # Authentication
-    authentication = Column(JSONB, nullable=True)  # {
-    # "type": "NONE|BEARER|API_KEY|BASIC|OAUTH2",
-
-    # Metadata
+    extraction_config = Column(JSONB, default=dict)
+    browser_config = Column(JSONB, default=dict)
+    schedule = Column(JSONB, nullable=True)
+    rate_limit = Column(JSONB, default=dict)
+    compliance = Column(JSONB, default=dict)
+    proxy_config = Column(JSONB, default=dict)
+    authentication = Column(JSONB, nullable=True)
     status = Column(String(50), nullable=False, default=TargetStatus.ACTIVE.value)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
-    )
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
     created_by = Column(UUID(as_uuid=True), nullable=False)
     last_success_at = Column(DateTime(timezone=True), nullable=True)
     last_error_at = Column(DateTime(timezone=True), nullable=True)
     success_count = Column(Integer, default=0)
-    # ... (rest of the code remains the same)
+    error_count = Column(Integer, default=0)
+    average_execution_time_ms = Column(Integer, default=0)
+    tags = Column(JSONB, default=list)
 
+    jobs = relationship("ScrapingJob", back_populates="target")
+    raw_contents = relationship("RawContent", back_populates="target")
+    extracted_data = relationship("ExtractedData", back_populates="target")
+
+    __table_args__ = (
+        Index("idx_scraping_targets_org_status", "organization_id", "status"),
+        Index("idx_scraping_targets_created", "organization_id", "created_at"),
+    )
+
+
+class ScrapingJob(TenantScoped, Base):
+    __tablename__ = "scraping_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    target_id = Column(UUID(as_uuid=True), ForeignKey("scraping_targets.id", ondelete="CASCADE"), nullable=False, index=True)
+    configuration = Column(JSONB, default=dict)
+    status = Column(String(50), nullable=False, default=JobStatus.PENDING.value, index=True)
+    priority = Column(Integer, default=5)
+    scheduled_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    estimated_duration_ms = Column(Integer, nullable=True)
+    progress_total_pages = Column(Integer, nullable=True)
+    progress_processed_pages = Column(Integer, default=0)
+    progress_failed_pages = Column(Integer, default=0)
+    progress_current_url = Column(Text, nullable=True)
+    progress_stage = Column(String(50), default=PipelineStage.INIT.value)
+    progress_percent_complete = Column(Integer, default=0)
+    results_raw_content_count = Column(Integer, default=0)
+    results_extracted_record_count = Column(Integer, default=0)
+    results_storage_bytes_used = Column(Integer, default=0)
+    results_output_location = Column(Text, nullable=True)
+    resources_browser_sessions_used = Column(Integer, default=0)
     resources_proxy_requests_made = Column(Integer, default=0)
     resources_llm_tokens_consumed = Column(Integer, default=0)
     resources_compute_time_ms = Column(Integer, default=0)
-
-    # Audit
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
     created_by = Column(UUID(as_uuid=True), nullable=False)
     triggered_by = Column(String(50), default=TriggeredBy.MANUAL.value)
-    correlation_id = Column(String(100), nullable=True)  # Distributed tracing
+    correlation_id = Column(String(100), nullable=True)
 
-    # Relationships
-    # ... (rest of the code remains the same)
+    target = relationship("ScrapingTarget", back_populates="jobs")
+    stages = relationship("JobStageDetail", back_populates="job", cascade="all, delete-orphan")
+    errors = relationship("JobError", back_populates="job", cascade="all, delete-orphan")
+    raw_contents = relationship("RawContent", back_populates="job", cascade="all, delete-orphan")
+    extracted_data = relationship("ExtractedData", back_populates="job", cascade="all, delete-orphan")
+    compliance_logs = relationship("ComplianceLog", back_populates="job")
+    queue_items = relationship("CrawlQueueItem", back_populates="job", cascade="all, delete-orphan")
 
+    __table_args__ = (
+        Index("idx_scraping_jobs_org_status", "organization_id", "status"),
+        Index("idx_scraping_jobs_target", "target_id", "created_at"),
+        Index("idx_scraping_jobs_status_created", "status", "created_at"),
+    )
+
+
+class JobStageDetail(TenantScoped, Base):
+    __tablename__ = "job_stage_details"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    stage = Column(String(50), nullable=False)
+    status = Column(String(50), nullable=False, default=JobStatus.PENDING.value)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
     duration_ms = Column(Integer, nullable=True)
-
     error_message = Column(Text, nullable=True)
-    meta = Column(JSONB, default=dict)  # Stage-specific details
+    meta = Column("metadata", JSONB, default=dict)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-    # Relationships
     job = relationship("ScrapingJob", back_populates="stages")
 
-    # ... (rest of the code remains the same)
+    __table_args__ = (
+        Index("idx_job_stage_details_job_stage", "job_id", "stage"),
+    )
 
-    url = Column(Text, nullable=True)  # URL being processed when error occurred
 
+class JobError(TenantScoped, Base):
+    __tablename__ = "job_errors"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    stage = Column(String(50), nullable=True)
+    error_code = Column(String(100), nullable=True)
+    error_message = Column(Text, nullable=False)
+    stack_trace = Column(Text, nullable=True)
+    url = Column(Text, nullable=True)
     retryable = Column(Boolean, default=True)
     retry_count = Column(Integer, default=0)
-
-    occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    occurred_at = Column(DateTime(timezone=True), default=_now, nullable=False)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolution = Column(Text, nullable=True)
 
-    # Relationships
     job = relationship("ScrapingJob", back_populates="errors")
 
-    # ... (rest of the code remains the same)
+    __table_args__ = (
+        Index("idx_job_errors_job_occurred", "job_id", "occurred_at"),
+        Index("idx_job_errors_retryable", "retryable", "retry_count"),
+    )
 
-    # Source Information
+
+class RawContent(TenantScoped, Base):
+    __tablename__ = "raw_content"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_id = Column(UUID(as_uuid=True), ForeignKey("scraping_targets.id", ondelete="SET NULL"), nullable=True, index=True)
     source_url = Column(Text, nullable=False)
-    source_final_url = Column(Text, nullable=True)  # After redirects
+    source_final_url = Column(Text, nullable=True)
     source_domain = Column(String(255), nullable=False, index=True)
-    source_ip_address = Column(String(45), nullable=True)  # IPv6 compatible
-    source_accessed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    source_ip_address = Column(String(45), nullable=True)
+    source_accessed_at = Column(DateTime(timezone=True), default=_now, nullable=False)
     source_http_status = Column(Integer, nullable=True)
     source_headers = Column(JSONB, default=dict)
     source_content_type = Column(String(255), nullable=True)
     source_content_length = Column(Integer, nullable=True)
-
-    # ... (rest of the code remains the same)
-
-    # Retention
+    storage_html_path = Column(Text, nullable=True)
+    storage_screenshot_path = Column(Text, nullable=True)
+    storage_dom_snapshot_path = Column(Text, nullable=True)
+    storage_har_path = Column(Text, nullable=True)
+    storage_text_content_path = Column(Text, nullable=True)
+    meta_title = Column(Text, nullable=True)
+    meta_description = Column(Text, nullable=True)
+    meta_language = Column(String(10), nullable=True)
+    meta_charset = Column(String(50), nullable=True)
+    meta_viewport = Column(String(255), nullable=True)
+    meta_canonical_url = Column(Text, nullable=True)
+    meta_robots_meta = Column(String(255), nullable=True)
+    meta_og_tags = Column(JSONB, default=dict)
+    meta_structured_data = Column(JSONB, default=list)
+    capture_method = Column(String(50), default="DYNAMIC")
+    capture_browser_version = Column(String(100), nullable=True)
+    capture_rendering_engine = Column(String(100), nullable=True)
+    capture_javascript_executed = Column(Boolean, default=True)
+    capture_wait_time_ms = Column(Integer, default=0)
+    capture_scroll_depth = Column(Integer, nullable=True)
+    capture_interactions = Column(JSONB, default=list)
+    content_hash = Column(String(64), nullable=True, index=True)
+    is_duplicate = Column(Boolean, default=False)
+    duplicate_of_id = Column(UUID(as_uuid=True), ForeignKey("raw_content.id", ondelete="SET NULL"), nullable=True)
+    processing_status = Column(String(50), default=JobStatus.PENDING.value)
+    extracted_data_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     retention_raw_content_expiry_days = Column(Integer, default=30)
     retention_screenshot_expiry_days = Column(Integer, default=30)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-    # Relationships
     job = relationship("ScrapingJob", back_populates="raw_contents")
+    target = relationship("ScrapingTarget", back_populates="raw_contents")
     duplicate_of = relationship("RawContent", remote_side=[id])
 
-    # ... (rest of the code remains the same)
+    __table_args__ = (
+        Index("idx_raw_content_job_status", "job_id", "processing_status"),
+        Index("idx_raw_content_org_domain", "organization_id", "source_domain"),
+        Index("idx_raw_content_hash", "organization_id", "content_hash"),
+    )
 
+
+class ExtractedData(TenantScoped, Base):
+    __tablename__ = "extracted_data"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    raw_content_id = Column(UUID(as_uuid=True), ForeignKey("raw_content.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_id = Column(UUID(as_uuid=True), ForeignKey("scraping_targets.id", ondelete="SET NULL"), nullable=True, index=True)
+    extraction_method = Column(String(50), nullable=False, default=ExtractionMethod.DETERMINISTIC.value)
+    extraction_llm_model = Column(String(100), nullable=True)
+    extraction_prompt_version = Column(String(50), nullable=True)
+    extraction_time_ms = Column(Integer, default=0)
+    extraction_confidence_score = Column(Numeric(3, 2), default=0.00)
+    extraction_schema_version = Column(String(50), nullable=True)
+    data = Column(JSONB, default=dict)
+    validation_schema_valid = Column(Boolean, default=True)
+    validation_errors = Column(JSONB, default=list)
+    validation_required_fields_present = Column(JSONB, default=list)
+    validation_required_fields_missing = Column(JSONB, default=list)
     validation_data_quality_score = Column(Numeric(3, 2), default=0.00)
-
-    # Provenance
     provenance_source_url = Column(Text, nullable=False)
-    provenance_extracted_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
-    )
+    provenance_extracted_at = Column(DateTime(timezone=True), default=_now, nullable=False)
     provenance_extraction_version = Column(String(50), nullable=True)
-
-    # Post-Processing
     post_pii_redaction_applied = Column(Boolean, default=False)
-
-    # ... (rest of the code remains the same)
-
-    # Storage
+    post_redacted_fields = Column(JSONB, default=list)
+    post_normalized_fields = Column(JSONB, default=list)
+    post_enriched_fields = Column(JSONB, default=list)
+    ontology_concept_ids = Column(JSONB, default=list)
+    ontology_relationship_ids = Column(JSONB, default=list)
+    ontology_mapped_at = Column(DateTime(timezone=True), nullable=True)
+    ontology_mapping_confidence = Column(Numeric(3, 2), nullable=True)
     storage_path = Column(Text, nullable=True)
-    format = Column(String(20), default="JSON")  # JSON, JSONL, PARQUET, MARKDOWN
+    format = Column(String(20), default="JSON")
     size_bytes = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
-    )
-
-    # Relationships
     job = relationship("ScrapingJob", back_populates="extracted_data")
     raw_content = relationship("RawContent")
+    target = relationship("ScrapingTarget", back_populates="extracted_data")
 
-    # ... (rest of the code remains the same)
+    __table_args__ = (
+        Index("idx_extracted_data_job", "job_id", "created_at"),
+        Index("idx_extracted_data_org_quality", "organization_id", "validation_data_quality_score"),
+    )
 
-    # "reason": "..."
 
-    # Request Details
+class ComplianceLog(TenantScoped, Base):
+    __tablename__ = "compliance_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id", ondelete="SET NULL"), nullable=True, index=True)
+    target_id = Column(UUID(as_uuid=True), ForeignKey("scraping_targets.id", ondelete="SET NULL"), nullable=True, index=True)
+    event_type = Column(String(50), nullable=False, index=True)
+    severity = Column(String(20), nullable=False, default="INFO")
+    robots_txt_check = Column(JSONB, nullable=True)
+    rate_limit_event = Column(JSONB, nullable=True)
+    pii_detection = Column(JSONB, nullable=True)
+    domain_policy = Column(JSONB, nullable=True)
     request_url = Column(Text, nullable=False)
-    request_timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    request_timestamp = Column(DateTime(timezone=True), default=_now, nullable=False)
     request_ip_address = Column(String(45), nullable=True)
     request_proxy_used = Column(String(500), nullable=True)
     request_user_agent = Column(String(500), nullable=True)
     request_headers = Column(JSONB, default=dict)
-
-    # Response
     response_status_code = Column(Integer, nullable=True)
     response_action_taken = Column(String(100), nullable=True)
     response_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    meta = Column("metadata", JSONB, default=dict)
 
-    # Metadata
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    meta = Column(JSONB, default=dict)
-
-    # Relationships
     job = relationship("ScrapingJob", back_populates="compliance_logs")
+    target = relationship("ScrapingTarget")
 
-    # ... (rest of the code remains the same)
+    __table_args__ = (
+        Index("idx_compliance_logs_org_event", "organization_id", "event_type"),
+        Index("idx_compliance_logs_timestamp", "created_at"),
+        Index("idx_compliance_logs_job", "job_id", "created_at"),
+    )
 
+
+class ProxyPool(TenantScoped, Base):
+    __tablename__ = "proxy_pools"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False)
+    proxies = Column(JSONB, default=list)
     rotation_strategy = Column(String(50), default=ProxyRotationStrategy.ROUND_ROBIN.value)
     rotation_max_failures_before_quarantine = Column(Integer, default=3)
     rotation_quarantine_duration_minutes = Column(Integer, default=60)
     rotation_health_check_interval_minutes = Column(Integer, default=5)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
 
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+    __table_args__ = (
+        Index("idx_proxy_pools_org", "organization_id", "created_at"),
     )
 
-    # ... (rest of the code remains the same)
 
-    content = Column(Text, nullable=True)
-    url = Column(Text, nullable=True)
-    rules = Column(JSONB, default=dict)
+class CrawlQueueItem(TenantScoped, Base):
+    __tablename__ = "crawl_queue"
 
-    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
-    http_status = Column(Integer, nullable=True)
-
-    is_valid = Column(Boolean, default=True)
-    parse_error = Column(Text, nullable=True)
-
-    # ... (rest of the code remains the same)
-
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    url = Column(Text, nullable=False)
+    domain = Column(String(255), nullable=False, index=True)
+    depth = Column(Integer, default=0)
+    parent_url = Column(Text, nullable=True)
+    priority = Column(Integer, default=5)
+    status = Column(String(50), default=JobStatus.PENDING.value, index=True)
     retry_count = Column(Integer, default=0)
     max_retries = Column(Integer, default=3)
     next_retry_at = Column(DateTime(timezone=True), nullable=True)
     last_error = Column(Text, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Merge repair: the truncated crawl-queue __table_args__ block previously left
-    # dangling Index entries here, which made the module unloadable and prevented
-    # tenant-boundary security tests from importing Layer 1.  The complete model
-    # definitions should be restored in the dedicated L1 schema-hardening track.
+    job = relationship("ScrapingJob", back_populates="queue_items")
 
-
-# =============================================================================
-# RESTORED ENTITY DECLARATIONS
-# =============================================================================
-
-
-class ScrapingJob(Base):
-    """Scraping job execution record.
-
-    This declaration restores the Layer 1 ORM contract consumed by the API,
-    crawler, and security-test import path.  It is intentionally minimal and
-    tenant-scoped; deeper schema normalization remains in the Layer 1 schema
-    hardening track.
-    """
-
-    __tablename__ = "scraping_jobs"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    target_id = Column(UUID(as_uuid=True), ForeignKey("scraping_targets.id"), nullable=False, index=True)
-    created_by = Column(UUID(as_uuid=True), nullable=False)
-    configuration = Column(JSONB, default=dict)
-    priority = Column(Integer, default=5)
-    status = Column(String(50), nullable=False, default=JobStatus.PENDING.value)
-    triggered_by = Column(String(50), default=TriggeredBy.MANUAL.value)
-    correlation_id = Column(String(100), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+    __table_args__ = (
+        Index("idx_crawl_queue_org_job_status", "organization_id", "job_id", "status"),
+        Index("idx_crawl_queue_next_retry", "status", "next_retry_at"),
+        Index("idx_crawl_queue_domain_priority", "domain", "priority"),
     )
 
 
-class RawContent(Base):
-    """Captured raw content for a scraping job."""
-
-    __tablename__ = "raw_contents"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
-    source_url = Column(Text, nullable=False)
-    content = Column(Text, nullable=True)
-    storage_path = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-
-class ExtractedData(Base):
-    """Post-extraction structured data for a scraping job."""
-
-    __tablename__ = "extracted_data"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
-    raw_content_id = Column(UUID(as_uuid=True), ForeignKey("raw_contents.id"), nullable=True)
-    data = Column(JSONB, default=dict)
-    validation_data_quality_score = Column(Numeric(3, 2), default=0.00)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-
-class ComplianceLog(Base):
-    """Tenant-scoped compliance/audit event emitted by Layer 1 ingestion."""
-
-    __tablename__ = "compliance_logs"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
-    event_type = Column(String(100), nullable=False)
-    request_url = Column(Text, nullable=True)
-    response_status_code = Column(Integer, nullable=True)
-    meta = Column(JSONB, default=dict)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-
-class ProxyPool(Base):
-    """Proxy-pool configuration for tenant-scoped ingestion jobs."""
-
-    __tablename__ = "proxy_pools"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    name = Column(String(255), nullable=False)
-    proxies = Column(JSONB, default=list)
-    rotation_strategy = Column(String(50), default=ProxyRotationStrategy.ROUND_ROBIN.value)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-
-class JobStageDetail(Base):
-    """Per-stage job execution telemetry."""
-
-    __tablename__ = "job_stage_details"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=False, index=True)
-    stage = Column(String(100), nullable=False)
-    duration_ms = Column(Integer, nullable=True)
-    meta = Column(JSONB, default=dict)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-
-class JobError(Base):
-    """Job error record used by Layer 1 ingestion diagnostics."""
-
-    __tablename__ = "job_errors"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=False, index=True)
-    error_message = Column(Text, nullable=False)
-    retryable = Column(Boolean, default=True)
-    retry_count = Column(Integer, default=0)
-    occurred_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-
-
-class RobotsTxtCache(Base):
-    """Cache for fetched robots.txt files, keyed by domain.
-
-    Stores raw robots.txt content and parsed rules with a TTL so that
-    the compliance checker can avoid redundant network requests.
-    """
-
+class RobotsTxtCache(TenantScoped, Base):
     __tablename__ = "robots_txt_cache"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    domain = Column(String(255), nullable=False, unique=True, index=True)
+    domain = Column(String(255), nullable=False, index=True)
     url = Column(Text, nullable=True)
     content = Column(Text, nullable=True)
     rules = Column(JSONB, default=dict)
-    fetched_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    fetched_at = Column(DateTime(timezone=True), default=_now, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     http_status = Column(Integer, nullable=True)
     is_valid = Column(Boolean, default=True)
     parse_error = Column(Text, nullable=True)
 
+    __table_args__ = (
+        Index("idx_robots_txt_cache_org", "organization_id", "domain"),
+    )
 
-# =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
+
+class CrawlDecision(Base):
+    __tablename__ = "crawl_decisions"
+
+    decision_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    url = Column(Text, nullable=False)
+    domain = Column(String(255), nullable=False, index=True)
+    requested_path = Column(String(20), nullable=False)
+    router_decision = Column(String(20), nullable=False)
+    router_rule = Column(String(50), nullable=False, index=True)
+    quality_passed = Column(Boolean, nullable=True)
+    quality_checks = Column(JSONB, nullable=True)
+    fallback_reason = Column(String(50), nullable=True, index=True)
+    final_path = Column(String(20), nullable=False)
+    status_code = Column(Integer, nullable=True)
+    fast_duration_ms = Column(Integer, nullable=False, default=0)
+    browser_duration_ms = Column(Integer, nullable=True)
+    fetch_time_ms = Column(Integer, nullable=False, default=0)
+    bytes_transferred = Column(Integer, nullable=False, default=0)
+    spa_detected = Column(Boolean, nullable=False, default=False)
+    text_length = Column(Integer, nullable=False, default=0)
+    error_type = Column(String(50), nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("idx_crawl_decisions_job_created", "job_id", "created_at"),
+        Index("idx_crawl_decisions_domain_created", "domain", "created_at"),
+    )
 
 
 def create_scraping_target(
@@ -610,7 +530,6 @@ def create_scraping_target(
     proxy_config: dict | None = None,
     tags: list[str] | None = None,
 ) -> ScrapingTarget:
-    """Factory function to create a new scraping target."""
     return ScrapingTarget(
         tenant_id=tenant_id,
         name=name,
@@ -637,7 +556,6 @@ def create_scraping_job(
     triggered_by: TriggeredBy = TriggeredBy.MANUAL,
     correlation_id: str | None = None,
 ) -> ScrapingJob:
-    """Factory function to create a new scraping job."""
     return ScrapingJob(
         tenant_id=tenant_id,
         target_id=target_id,
@@ -655,7 +573,6 @@ def create_proxy_pool(
     proxies: list[dict] | None = None,
     rotation_strategy: ProxyRotationStrategy = ProxyRotationStrategy.ROUND_ROBIN,
 ) -> ProxyPool:
-    """Factory function to create a proxy pool."""
     return ProxyPool(
         tenant_id=tenant_id,
         name=name,
@@ -664,69 +581,35 @@ def create_proxy_pool(
     )
 
 
-# =============================================================================
-# CRAWL DECISION MODEL (for Smart Router)
-# =============================================================================
-
-
-class CrawlDecision(Base):
-    """Canonical record of crawl routing decisions.
-
-    Stores immutable history of routing decisions, quality assessments,
-    and execution outcomes for debugging, metrics, and optimization.
-    """
-
-    __tablename__ = "crawl_decisions"
-
-    # Primary key
-    decision_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-
-    # Foreign keys
-    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
-    # Tenant context
-    # - NULL = global/router-level decision not tied to a specific tenant
-    # - UUID = tenant-scoped decision
-    # RLS policy intentionally allows all tenants to read NULL-tenant rows
-    # (global routing rules, Smart Router observability data)
-    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)  # no FK — tenant table is in Layer 4
-
-    # Request context
-    url = Column(Text, nullable=False)
-    domain = Column(String(255), nullable=False, index=True)
-    requested_path = Column(String(20), nullable=False)  # fast/browser/fast_fallback
-
-    # Routing decision
-    router_decision = Column(String(20), nullable=False)  # What router chose
-    router_rule = Column(String(50), nullable=False, index=True)  # Which rule triggered
-
-    # Quality evaluation
-    quality_passed = Column(Boolean, nullable=True)
-    quality_checks = Column(JSONB, nullable=True)  # Dict of check_name -> bool
-    fallback_reason = Column(String(50), nullable=True, index=True)
-
-    # Execution outcome
-    final_path = Column(String(20), nullable=False)  # What actually executed
-    status_code = Column(Integer, nullable=True)
-
-    # Performance metrics
-    fast_duration_ms = Column(Integer, nullable=False, default=0)
-    browser_duration_ms = Column(Integer, nullable=True)
-    fetch_time_ms = Column(Integer, nullable=False, default=0)
-    bytes_transferred = Column(Integer, nullable=False, default=0)
-
-    # Content analysis
-    spa_detected = Column(Boolean, nullable=False, default=False)
-    text_length = Column(Integer, nullable=False, default=0)
-
-    # Error tracking
-    error_type = Column(String(50), nullable=True)
-    error_message = Column(Text, nullable=True)
-
-    # Metadata
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
-
-    # Indexes for common queries
-    __table_args__ = (
-        Index("idx_crawl_decisions_job_created", "job_id", "created_at"),
-        Index("idx_crawl_decisions_domain_created", "domain", "created_at"),
-    )
+__all__ = [
+    "AuthenticationType",
+    "Base",
+    "BrowserEngine",
+    "ComplianceEventType",
+    "ComplianceLog",
+    "CrawlDecision",
+    "CrawlPath",
+    "CrawlQueueItem",
+    "ExtractedData",
+    "ExtractionMethod",
+    "JobError",
+    "JobStageDetail",
+    "JobStatus",
+    "LLMProvider",
+    "PIIStatus",
+    "PipelineStage",
+    "ProxyPool",
+    "ProxyRotationStrategy",
+    "ProxyStatus",
+    "RawContent",
+    "RetryBackoff",
+    "RobotsTxtCache",
+    "ScrapingJob",
+    "ScrapingTarget",
+    "TargetStatus",
+    "TargetType",
+    "TriggeredBy",
+    "create_proxy_pool",
+    "create_scraping_job",
+    "create_scraping_target",
+]

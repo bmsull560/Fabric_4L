@@ -1,10 +1,15 @@
-"""Layer 4: Agentic Workflow Engine for Value Fabric.
+"""Redirect shim: value_fabric.layer4.* -> services/layer4-agents/src/*.
 
-LangGraph-powered workflow orchestration layer providing:
-- ROI Calculator with formula evaluation
-- Whitespace Analysis for gap identification
-- Business Case Generator with document assembly
-- 24+ tools for knowledge, calculation, CRM, and generation
+Canonical Layer 4 code lives exclusively in ``services/layer4-agents/src/``.
+This shim prepends that directory to ``__path__`` so that
+``import value_fabric.layer4.engine`` resolves to the canonical tree
+without duplicating source files.
 """
 
-__version__ = "0.1.0"
+from pathlib import Path
+
+_repo_root = Path(__file__).resolve().parent.parent.parent
+_canonical = str(_repo_root / "services" / "layer4-agents" / "src")
+
+if _canonical not in __path__:
+    __path__.insert(0, _canonical)

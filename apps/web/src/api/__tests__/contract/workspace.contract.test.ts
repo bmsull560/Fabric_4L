@@ -205,6 +205,54 @@ describe('Contract: Workspace Tab API', () => {
     });
   });
 
+  describe('GET /v1/cases/{case_id}/workspace/{tab_key} — pagination', () => {
+    it('paginated workspace tab items have required pagination fields', () => {
+      const PaginatedWorkspaceTabSchema = z.object({
+        items: z.array(WorkspaceSignalSchema),
+        total: z.number().int().nonnegative(),
+        page: z.number().int().positive(),
+        page_size: z.number().int().positive(),
+        has_more: z.boolean(),
+      });
+
+      const resp = assertSchema(
+        PaginatedWorkspaceTabSchema,
+        { items: [], total: 0, page: 1, page_size: 20, has_more: false },
+        'PaginatedWorkspaceSignals (empty)'
+      );
+      expect(resp.has_more).toBe(false);
+    });
+  });
+
+  describe('Contract: workspace auth failures', () => {
+    it('401 matches ApiError shape', () => {
+      assertSchema(
+        ApiErrorSchema,
+        { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-ws-401' },
+        'ApiError (401 workspace)'
+      );
+    });
+
+    it('403 cross-tenant workspace access matches ApiError shape', () => {
+      const err = assertSchema(
+        ApiErrorSchema,
+        { message: 'Case does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-ws-403' },
+        'ApiError (403 workspace)'
+      );
+      expect(err.code).toBe('FORBIDDEN');
+      expect(err.trace_id).toBeTruthy();
+    });
+
+    it('404 case not found matches ApiError shape', () => {
+      const err = assertSchema(
+        ApiErrorSchema,
+        { message: 'Case not found', code: 'NOT_FOUND', trace_id: 'trace-ws-404' },
+        'ApiError (404 workspace)'
+      );
+      expect(err.code).toBe('NOT_FOUND');
+    });
+  });
+
   describe('POST /v1/cases/{case_id}/workspace/generate', () => {
     it('validates the production generation response shape when generation is implemented', () => {
       const parsed = assertSchema(
