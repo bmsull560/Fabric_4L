@@ -62,3 +62,22 @@ resources:
   - pdb/layer5-ground-truth-pdb.yml
   - pdb/layer6-benchmarks-pdb.yml
   - pdb/frontend-pdb.yml
+
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchExpressions:
+                      - key: app
+                        operator: Exists
+                  matchLabelKeys:
+                    - app

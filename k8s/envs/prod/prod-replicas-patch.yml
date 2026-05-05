@@ -4,7 +4,7 @@ metadata:
   name: layer1-ingestion
   namespace: value-fabric
 spec:
-  replicas: 2
+  replicas: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -12,7 +12,7 @@ metadata:
   name: layer2-extraction
   namespace: value-fabric
 spec:
-  replicas: 2
+  replicas: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -20,7 +20,7 @@ metadata:
   name: layer3-knowledge
   namespace: value-fabric
 spec:
-  replicas: 2
+  replicas: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -28,7 +28,7 @@ metadata:
   name: layer4-agents
   namespace: value-fabric
 spec:
-  replicas: 2
+  replicas: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -36,7 +36,7 @@ metadata:
   name: layer5-ground-truth
   namespace: value-fabric
 spec:
-  replicas: 2
+  replicas: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -44,7 +44,7 @@ metadata:
   name: layer6-benchmarks
   namespace: value-fabric
 spec:
-  replicas: 2
+  replicas: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -52,7 +52,7 @@ metadata:
   name: frontend
   namespace: value-fabric
 spec:
-  replicas: 2
+  replicas: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -68,4 +68,20 @@ metadata:
   name: alertmanager
   namespace: value-fabric
 spec:
-  replicas: 2  # Alertmanager supports HA clustering
+  replicas: 3  # Alertmanager supports HA clustering
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: layer1-celery-worker
+  namespace: value-fabric
+spec:
+  replicas: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: value-fabric
+spec:
+  replicas: 3

@@ -171,7 +171,7 @@ class TestKustomizeProdOverlay:
         assert "prod-replicas-patch.yml" in patch_paths
 
     def test_prod_replicas_patch_content(self, k8s_overlays_dir: Path) -> None:
-        """[2e] Verify replica patch scales layer1-ingestion to 2 replicas for HA."""
+        """[2e] Verify replica patch scales layer1-ingestion to 3 replicas for HA."""
         patch_file = k8s_overlays_dir / "prod" / "prod-replicas-patch.yml"
         assert patch_file.exists()
         
@@ -184,7 +184,7 @@ class TestKustomizeProdOverlay:
             None
         )
         assert layer1_patch is not None, "Layer1 replica patch must exist"
-        assert layer1_patch.get("spec", {}).get("replicas") == 2
+        assert layer1_patch.get("spec", {}).get("replicas") == 3
 
     def test_prod_image_digest_pinning(self, k8s_overlays_dir: Path) -> None:
         """[2f] Verify production images use SHA digest pinning (immutable)."""
@@ -561,8 +561,33 @@ class TestKustomizeBuild:
         )
         
         assert layer1_deployment is not None
-        assert layer1_deployment.get("spec", {}).get("replicas") >= 2, \
-            "Layer1 must have at least 2 replicas in prod"
+        assert layer1_deployment.get("spec", {}).get("replicas") >= 3, \
+            "Layer1 must have at least 3 replicas in prod"
+
+    def test_prod_uses_neo4j_aura_not_in_cluster_neo4j(self, repo_root: Path, skip_without_kustomize) -> None:
+        """Production must not render the single-node in-cluster Neo4j deployment."""
+        result = subprocess.run(
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+        )
+
+        docs = list(yaml.safe_load_all(result.stdout))
+        neo4j_deployment = next(
+            (
+                d for d in docs
+                if d.get("kind") == "Deployment"
+                and d.get("metadata", {}).get("name") == "neo4j"
+            ),
+            None,
+        )
+        assert neo4j_deployment is None
 
 
 class TestKustomizeGatewayAPIDeployment:

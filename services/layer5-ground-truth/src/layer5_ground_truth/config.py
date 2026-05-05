@@ -84,11 +84,11 @@ class Settings(BaseSettings):
 
     # PostgreSQL Configuration
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/value_fabric_ground_truth",
+        default="sqlite+aiosqlite:///./ground_truth.db",
         alias="DATABASE_URL",
     )
     database_url_sync: str = Field(
-        default="postgresql+psycopg2://postgres:postgres@localhost:5432/value_fabric_ground_truth",
+        default="sqlite:///./ground_truth.db",
         alias="DATABASE_URL_SYNC",
     )
     db_pool_size: int = Field(default=10, alias="DB_POOL_SIZE")

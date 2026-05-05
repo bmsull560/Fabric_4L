@@ -87,6 +87,11 @@ spec:
   target:
     name: postgres-secret
     creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        username: "postgres"
+        password: "{{ .password }}"
   data:
     - secretKey: password
       remoteRef:

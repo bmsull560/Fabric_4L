@@ -1,5 +1,5 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
 metadata:
   name: postgres
   namespace: value-fabric
@@ -7,87 +7,38 @@ metadata:
     app: postgres
     component: infrastructure
 spec:
-  replicas: 1
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
-  selector:
-    matchLabels:
-      app: postgres
-  template:
-    metadata:
-      labels:
-        app: postgres
-        component: infrastructure
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
-        fsGroup: 999
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-        - name: postgres
-          image: postgres:15-alpine
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          ports:
-            - containerPort: 5432
-              name: postgres
-          env:
-            - name: POSTGRES_USER
-              value: "postgres"
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: password
-            - name: POSTGRES_DB
-              value: "ingestion"
-            - name: POSTGRES_MULTIPLE_DATABASES
-              value: "ingestion,ground_truth"
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "200m"
-            limits:
-              memory: "2Gi"
-              cpu: "1000m"
-          livenessProbe:
-            exec:
-              command:
-                - pg_isready
-                - -U
-                - postgres
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            exec:
-              command:
-                - pg_isready
-                - -U
-                - postgres
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          volumeMounts:
-            - name: postgres-data
-              mountPath: /var/lib/postgresql/data
-            - name: postgres-config
-              mountPath: /etc/postgresql/postgresql.conf
-              subPath: postgresql.conf
-      volumes:
-        - name: postgres-data
-          persistentVolumeClaim:
-            claimName: postgres-pvc
-        - name: postgres-config
-          configMap:
-            name: postgres-config
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:15.10
+  primaryUpdateStrategy: unsupervised
+  superuserSecret:
+    name: postgres-secret
+  bootstrap:
+    initdb:
+      database: ingestion
+      owner: postgres
+      secret:
+        name: postgres-secret
+      postInitSQL:
+        - CREATE DATABASE ground_truth;
+        - CREATE DATABASE agents;
+        - CREATE DATABASE extraction;
+        - CREATE DATABASE knowledge;
+        - CREATE DATABASE benchmarks;
+  postgresql:
+    parameters:
+      max_connections: "300"
+      shared_buffers: "256MB"
+  storage:
+    size: 10Gi
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  monitoring:
+    enablePodMonitor: true
 ---
 apiVersion: v1
 kind: Service
@@ -98,22 +49,9 @@ metadata:
     app: postgres
     component: infrastructure
 spec:
-  selector:
-    app: postgres
+  type: ExternalName
+  externalName: postgres-rw.value-fabric.svc.cluster.local
   ports:
     - port: 5432
       targetPort: 5432
       name: postgres
-  type: ClusterIP
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-pvc
-  namespace: value-fabric
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi

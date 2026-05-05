@@ -105,8 +105,8 @@ cd value-fabric/layer5-ground-truth
 pip install -e ".[dev]"
 
 # Set environment variables
-export DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/value_fabric_ground_truth"
-export DATABASE_URL_SYNC="postgresql+psycopg2://postgres:postgres@localhost:5432/value_fabric_ground_truth"
+export DATABASE_URL="sqlite+aiosqlite:///./ground_truth.db"
+export DATABASE_URL_SYNC="sqlite:///./ground_truth.db"
 export LAYER3_BASE_URL="http://localhost:8001"
 
 # Run database migrations
@@ -126,8 +126,8 @@ layer5-ground-truth:
   ports:
     - "8005:8005"
   environment:
-    DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/value_fabric_ground_truth
-    DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/value_fabric_ground_truth
+    DATABASE_URL: ${DATABASE_URL}
+    DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
     LAYER3_BASE_URL: http://layer3-knowledge:8001
     LAYER3_SYNC_ENABLED: "true"
   depends_on:

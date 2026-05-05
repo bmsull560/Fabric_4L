@@ -193,6 +193,7 @@ class TaskScheduler:
         # Callbacks
         self._on_task_complete: Callable[[ScheduledTask], Any] | None = None
         self._on_task_fail: Callable[[ScheduledTask, Exception], Any] | None = None
+        self._handlers: dict[str, Callable[[ScheduledTask], Any]] = {}
 
     async def start(self) -> None:
         """Start the scheduler background task."""
@@ -385,6 +386,10 @@ class TaskScheduler:
         self._on_task_complete = on_complete
         self._on_task_fail = on_fail
 
+    def register_handler(self, capability: str, handler: Callable[[ScheduledTask], Any]) -> None:
+        """Register an execution handler for a task capability."""
+        self._handlers[capability] = handler
+
     async def _scheduler_loop(self) -> None:
         """Main scheduler loop."""
         while not self._shutdown:
@@ -489,21 +494,45 @@ class TaskScheduler:
     async def _run_task_handler(self, task: ScheduledTask) -> dict[str, Any]:
         """Run the actual task handler.
 
-        This should be overridden or the task should have a handler.
-        For now, returns a placeholder result.
-
         Args:
             task: Task to run
 
         Returns:
             Task result
         """
-        # Placeholder - actual implementation would dispatch to appropriate agent
+        handler = task.parameters.get("handler")
+        if handler is None:
+            handler = self._handlers.get(task.capability)
+
+        if handler is None and task.capability == "workflow_execution":
+            workflow = task.parameters.get("workflow")
+            initial_state = task.parameters.get("initial_state")
+            workflow_id = task.parameters.get("workflow_id") or task.workflow_instance_id
+            if workflow is None or initial_state is None:
+                raise RuntimeError(
+                    f"Task {task.task_id} cannot execute workflow_execution without workflow and initial_state"
+                )
+
+            result = await workflow.run(initial_state, thread_id=workflow_id)
+            return TaskScheduler__run_task_handlerResult.model_validate({
+                "task_id": task.task_id,
+                "capability": task.capability,
+                "status": "completed",
+                "result": result.model_dump() if hasattr(result, "model_dump") else result,
+            })
+
+        if handler is None:
+            raise RuntimeError(f"No task handler registered for capability: {task.capability}")
+
+        result = handler(task)
+        if asyncio.iscoroutine(result):
+            result = await result
+
         return TaskScheduler__run_task_handlerResult.model_validate({
             "task_id": task.task_id,
             "capability": task.capability,
             "status": "completed",
-            "result": {},
+            "result": result.model_dump() if hasattr(result, "model_dump") else result,
         })
 
 
@@ -624,5 +653,4 @@ class TaskScheduler:
             "max_concurrent": self.max_concurrent_tasks,
             "utilization": round(running_count / self.max_concurrent_tasks * 100, 2),
         })
-
 

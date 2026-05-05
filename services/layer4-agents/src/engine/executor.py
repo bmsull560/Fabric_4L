@@ -172,6 +172,7 @@ class OrchestrationController:
             on_complete=self._on_task_complete,
             on_fail=self._on_task_fail,
         )
+        self.scheduler.register_handler("workflow_execution", self._run_workflow_task)
 
         # Message routing
         self.message_router = MessageRouter(self.message_bus)
@@ -330,6 +331,10 @@ class OrchestrationController:
         }
 
         # Schedule workflow execution (Task 2.1: Capture tenant context)
+        initial_state.status = WorkflowStatus.PENDING
+        initial_state.started_at = datetime.now(UTC)
+        await self.state_manager.save_state(workflow_id, initial_state)
+
         task = ScheduledTask(
             priority=priority.value,
             scheduled_time=datetime.now(UTC),
@@ -347,6 +352,7 @@ class OrchestrationController:
                 "initial_state": initial_state,
                 "workflow_id": workflow_id,
                 "checkpoint_interval": checkpoint_interval,
+                "handler": self._run_workflow_task,
             },
             tenant_id=tenant_id,
             tenant_context={
@@ -446,6 +452,20 @@ class OrchestrationController:
         schedule_id = f"sched-{datetime.now(UTC).timestamp()}"
 
         execute_time = scheduled_time or datetime.now(UTC)
+        workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
+        initial_state = workflow.create_initial_state(input_data)
+        initial_state.workflow_id = schedule_id
+        initial_state.status = WorkflowStatus.PENDING
+        initial_state.started_at = execute_time
+
+        self._workflow_metadata[schedule_id] = {
+            "workflow_type": workflow_type,
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "priority": priority.value,
+            "scheduled_at": execute_time.isoformat(),
+        }
+        await self.state_manager.save_state(schedule_id, initial_state)
 
         # Create scheduled task
         task = ScheduledTask(
@@ -461,10 +481,21 @@ class OrchestrationController:
                 "workflow_type": workflow_type,
             },
             parameters={
+                "workflow": workflow,
+                "initial_state": initial_state,
+                "workflow_id": schedule_id,
                 "workflow_type": workflow_type,
                 "input_data": input_data,
                 "tenant_id": tenant_id,
                 "user_id": user_id,
+                "handler": self._run_workflow_task,
+            },
+            tenant_id=tenant_id,
+            tenant_context={
+                "tenant_id": tenant_id,
+                "user_id": user_id,
+                "workflow_type": workflow_type,
+                "auth_source": "scheduled_workflow",
             },
         )
 
@@ -606,6 +637,57 @@ class OrchestrationController:
             await self.state_manager.save_state(workflow_id, state)
 
         return cancelled
+
+    async def pause_workflow(
+        self,
+        workflow_id: str,
+        user_id: str,
+        reason: str | None = None,
+    ) -> bool:
+        """Pause a running or queued workflow and persist a resumable state."""
+        state = await self.state_manager.load_state(workflow_id)
+        if not state:
+            raise ValueError(f"Workflow {workflow_id} not found")
+
+        if state.status in [
+            WorkflowStatus.COMPLETED,
+            WorkflowStatus.FAILED,
+            WorkflowStatus.CANCELLED,
+        ]:
+            raise ValueError(
+                f"Workflow {workflow_id} is {state.status.value} and cannot be paused"
+            )
+
+        if state.status == WorkflowStatus.PAUSED:
+            raise ValueError(f"Workflow {workflow_id} is already paused")
+
+        await self.scheduler.cancel_task(f"wf-{workflow_id}")
+        await self.scheduler.cancel_task(workflow_id)
+
+        if workflow_id in self._active_workflows:
+            running = self._active_workflows[workflow_id]
+            if not running.done():
+                running.cancel()
+
+        paused_at = datetime.now(UTC)
+        state.status = WorkflowStatus.PAUSED
+        state.paused_at = paused_at
+        state.paused_by = user_id
+        state.pause_count = (state.pause_count or 0) + 1
+        state.pause_point = {
+            "title": "Workflow paused",
+            "reason": reason or "Manual pause requested",
+            "severity": "info",
+            "node": state.current_node,
+            "required_inputs": [],
+            "paused_at": paused_at.isoformat(),
+        }
+        state.metadata["pause_reason"] = reason
+        state.metadata["paused_by"] = user_id
+        state.metadata["paused_at"] = paused_at.isoformat()
+        await self.state_manager.save_state(workflow_id, state)
+        logger.info("Paused workflow %s at node %s", workflow_id, state.current_node)
+        return True
 
     async def archive_workflow(self, workflow_id: str, tenant_id: str | None = None) -> dict[str, Any] | None:
         """Archive a workflow.
@@ -894,6 +976,46 @@ class OrchestrationController:
 
         return handler
 
+    async def _run_workflow_task(self, task: ScheduledTask) -> AgentState:
+        """Execute a scheduled workflow task and persist state transitions."""
+        workflow = task.parameters.get("workflow")
+        initial_state = task.parameters.get("initial_state")
+        workflow_id = task.parameters.get("workflow_id") or task.workflow_instance_id
+
+        if workflow is None or initial_state is None:
+            raise WorkflowExecutionError(
+                f"Workflow task {task.task_id} missing workflow or initial_state"
+            )
+
+        initial_state.status = WorkflowStatus.RUNNING
+        initial_state.started_at = initial_state.started_at or datetime.now(UTC)
+        await self.state_manager.save_state(workflow_id, initial_state)
+        self._active_workflows[workflow_id] = asyncio.current_task()
+
+        try:
+            result = await workflow.run(initial_state, thread_id=workflow_id)
+            await self.state_manager.save_state(workflow_id, result)
+            return result
+        except asyncio.CancelledError:
+            paused = await self.state_manager.load_state(workflow_id)
+            if paused and paused.status == WorkflowStatus.PAUSED:
+                raise
+
+            if paused:
+                paused.status = WorkflowStatus.CANCELLED
+                paused.completed_at = datetime.now(UTC)
+                await self.state_manager.save_state(workflow_id, paused)
+            raise
+        except Exception as exc:
+            failed = await self.state_manager.load_state(workflow_id) or initial_state
+            failed.status = WorkflowStatus.FAILED
+            failed.completed_at = datetime.now(UTC)
+            failed.errors.append(str(exc))
+            await self.state_manager.save_state(workflow_id, failed)
+            raise
+        finally:
+            self._active_workflows.pop(workflow_id, None)
+
     async def _wait_for_workflow_with_timeout(
         self, workflow_id: str, timeout_seconds: int
     ) -> AgentState:
@@ -969,6 +1091,8 @@ class OrchestrationController:
         status_progress = {
             WorkflowStatus.PENDING: 0,
             WorkflowStatus.RUNNING: 50,
+            WorkflowStatus.PAUSED: 50,
+            WorkflowStatus.INTERRUPTED: 25,
             WorkflowStatus.COMPLETED: 100,
             WorkflowStatus.FAILED: 100,
             WorkflowStatus.CANCELLED: 100,

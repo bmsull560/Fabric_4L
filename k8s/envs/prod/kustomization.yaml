@@ -7,6 +7,7 @@ resources:
   - ../../base
   - ../../external-secrets/vault-integration.yml
   - ../../external-secrets/vault-database-dynamic.yml
+  - ../../external-secrets/neo4j-secrets.yaml
 
 labels:
   - pairs:
@@ -14,6 +15,8 @@ labels:
 
 patches:
   - path: prod-replicas-patch.yml
+  - path: neo4j-aura-patch.yml
+  - path: layer4-aura-wait-patch.yml
 
 # Production application images are pinned to immutable SHA digests by
 # scripts/ci/prepare_kustomize_deploy.sh during the deploy workflow. The

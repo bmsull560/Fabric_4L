@@ -24,7 +24,7 @@ config = context.config
 # Override sqlalchemy.url from environment variable if set
 database_url_sync = os.environ.get(
     "DATABASE_URL_SYNC",
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/value_fabric_ground_truth",
+    "sqlite:///./ground_truth.db",
 )
 config.set_main_option("sqlalchemy.url", database_url_sync)
 
