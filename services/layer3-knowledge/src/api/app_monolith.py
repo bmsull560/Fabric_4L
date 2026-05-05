@@ -6,7 +6,6 @@ P1-29: OpenTelemetry tracing integration for observability.
 import json
 import logging
 import os
-import platform
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -16,7 +15,6 @@ from types import SimpleNamespace
 from typing import Any, Literal
 
 import httpx
-import psutil
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -64,6 +62,7 @@ from .main_fix import (
     TracerProvider,
     trace,
 )
+from .routes.system import set_app_metrics
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
@@ -91,7 +90,7 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
-from value_fabric.shared.error_handling import RequestIDMiddleware
+from value_fabric.shared.error_handling.middleware import RequestIDMiddleware
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
 from .exceptions import (
@@ -143,8 +142,6 @@ from .models import (
     Community,
     CommunityDetectionRequest,
     CommunityDetectionResponse,
-    DependencyStatus,
-    DetailedHealthResponse,
     DocumentExportRequest,
     DocumentExportResponse,
     EntityComparisonRequest,
@@ -162,7 +159,6 @@ from .models import (
     GraphRAGResponse,
     GraphResponse,
     GraphStats,
-    HealthResponse,
     IngestRequest,
     IngestResponse,
     ProvenanceStep,
@@ -173,7 +169,6 @@ from .models import (
     SearchRequest,
     SearchResponse,
     SearchResult,
-    ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
     SubgraphResponse,
@@ -223,19 +218,23 @@ def _check_deprecation_warnings(register: dict) -> None:
             if removal_date <= now:
                 logger.warning(
                     "Deprecation overdue",
-                    feature=item.get("feature"),
-                    target_removal=target_removal,
-                    owner=item.get("owner"),
-                    path=item.get("path"),
+                    extra={
+                        "feature": item.get("feature"),
+                        "target_removal": target_removal,
+                        "owner": item.get("owner"),
+                        "path": item.get("path"),
+                    },
                 )
             else:
                 days_until = (removal_date - now).days
                 if days_until <= 7:
                     logger.warning(
                         "Deprecation expiring soon",
-                        feature=item.get("feature"),
-                        days_until=days_until,
-                        target_removal=target_removal,
+                        extra={
+                            "feature": item.get("feature"),
+                            "days_until": days_until,
+                            "target_removal": target_removal,
+                        },
                     )
         except ValueError:
             continue
@@ -454,7 +453,7 @@ async def lifespan(app: FastAPI):
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy:
+        if vault_addr and is_vault_healthy is not None:
             logger.info("L3: Checking Vault connectivity", extra={"vault_addr": vault_addr})
             ok = await is_vault_healthy(vault_addr)
             if not ok:
@@ -727,6 +726,7 @@ class _delete_entityResult(TypedDictModel):
 add_governance_middleware(app)
 
 # Rate limiting middleware
+settings: Any | None
 try:
     settings = get_settings()
 except Exception:
@@ -851,504 +851,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         )
 
     return response
-
-
-async def check_dependencies(schema_initializer: Any | None = None) -> list[DependencyStatus]:
-    """Check health of all dependencies.
-
-    When startup has already placed the service in degraded mode because Neo4j
-    is unavailable, avoid creating a new SchemaInitializer during the health
-    probe. Docker health checks must be lightweight and must not spend the
-    entire retry window opening fresh Bolt connections.
-    """
-    dependencies = []
-    settings = _get_settings_with_fallback()
-
-    # Check Neo4j
-    try:
-        if schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None:
-            dependencies.append(
-                DependencyStatus(
-                    name="neo4j",
-                    status="degraded",
-                    error="Neo4j not initialized",
-                    details={
-                        "uri": settings.neo4j_uri,
-                        "database": settings.neo4j_database,
-                    },
-                )
-            )
-        else:
-            from ..schema.initializer import SchemaInitializer
-
-            neo4j_checker = schema_initializer if schema_initializer is not None else SchemaInitializer()
-            # Mark ad-hoc checkers as non-owning so close() won't destroy the shared singleton driver
-            if schema_initializer is None:
-                neo4j_checker._owned_driver = False
-            start_time = time.time()
-            neo4j_health = await neo4j_checker.health_check()
-            response_time = (time.time() - start_time) * 1000
-
-            dependencies.append(
-                DependencyStatus(
-                    name="neo4j",
-                    status=neo4j_health["status"],
-                    response_time_ms=response_time,
-                    error=neo4j_health.get("error"),
-                    details={
-                        "uri": settings.neo4j_uri,
-                        "database": settings.neo4j_database,
-                    },
-                )
-            )
-    except Exception as e:
-        dependencies.append(
-            DependencyStatus(
-                name="neo4j",
-                status="unhealthy",
-                error=str(e),
-                details={"uri": settings.neo4j_uri},
-            )
-        )
-
-    # Check Pinecone (if configured)
-    if settings.pinecone_api_key:
-        try:
-            start_time = time.time()
-            # Simple Pinecone health check would go here
-            # For now, just check if API key is present
-            response_time = (time.time() - start_time) * 1000
-            dependencies.append(
-                DependencyStatus(
-                    name="pinecone",
-                    status="healthy",
-                    response_time_ms=response_time,
-                    details={"index": settings.pinecone_index},
-                )
-            )
-        except Exception as e:
-            dependencies.append(
-                DependencyStatus(name="pinecone", status="unhealthy", error=str(e))
-            )
-
-    return dependencies
-
-
-_app_metrics: Any | None = None
-
-
-def set_app_metrics(metrics: Any | None) -> None:
-    """Set the global metrics instance for health check access."""
-    global _app_metrics
-    _app_metrics = metrics
-
-
-def get_system_metrics() -> ServiceMetrics:
-    """Collect system and application metrics from Prometheus.
-
-    Extracts real counter values from the Prometheus registry by iterating
-    through collected metrics and summing sample values for counters.
-    """
-    uptime = time.time() - _app_start_time
-
-    # System metrics from psutil
-    memory_info = psutil.virtual_memory()
-    memory_usage_mb = memory_info.used / (1024 * 1024)
-    cpu_percent = psutil.cpu_percent(interval=None)
-
-    # Application metrics from Prometheus registry
-    total_requests = 0
-    total_errors = 0
-    active_connections = 0
-    error_rate_percent = 0.0
-    metrics_instance = _app_metrics
-
-    if metrics_instance is not None:
-        try:
-            registry = metrics_instance.config.registry
-            prefix = metrics_instance.config.prefix
-
-            # Iterate through all metrics in registry and extract values
-            for metric in registry.collect():
-                if metric.name == f"{prefix}active_connections":
-                    # Gauge: take the value directly (connection_type="total")
-                    for sample in metric.samples:
-                        if sample.labels.get("connection_type") == "total":
-                            active_connections = int(sample.value)
-                            break
-
-                elif metric.name == f"{prefix}http_requests_total":
-                    # Counter: sum all sample values across all labels
-                    for sample in metric.samples:
-                        total_requests += int(sample.value)
-
-                elif metric.name == f"{prefix}errors_total":
-                    # Counter: sum all error samples across all labels
-                    for sample in metric.samples:
-                        total_errors += int(sample.value)
-
-            # Calculate error rate as percentage
-            if total_requests > 0:
-                error_rate_percent = round((total_errors / total_requests) * 100, 2)
-
-        except Exception as e:
-            logger.warning(f"Failed to extract Prometheus metrics: {e}")
-            # Keep default zero values on any extraction failure
-
-    return ServiceMetrics(
-        uptime_seconds=uptime,
-        memory_usage_mb=round(memory_usage_mb, 2),
-        cpu_percent=round(cpu_percent, 2),
-        active_connections=active_connections,
-        total_requests=total_requests,
-        error_rate_percent=error_rate_percent,
-    )
-
-
-# Health check endpoint
-@app.get(
-    "/health",
-    response_model=HealthResponse,
-    tags=["Health"],
-    summary="Basic Health Check",
-    description="""
-    Perform a basic health check of the service and its dependencies.
-    
-    This endpoint checks:
-    - Neo4j database connectivity
-    - Overall service status
-    - Basic system metrics
-    - Schema validation status
-    
-    Returns a simplified health status suitable for load balancers and monitoring systems.
-    
-    **Response Headers:**
-    - `X-RateLimit-*`: Current rate limiting information
-    - `X-API-Version`: API version used
-    - `X-Supported-Versions`: Supported API versions
-    
-    **Status Codes:**
-    - `200`: Service is healthy
-    - `503`: Service or dependencies are unhealthy
-    """,
-    responses={
-        200: {
-            "description": "Service is healthy",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "status": "healthy",
-                        "version": "1.0.0",
-                        "timestamp": "2024-01-01T12:00:00.000Z",
-                        "uptime_seconds": 3600.0,
-                        "dependencies": [
-                            {
-                                "name": "neo4j",
-                                "status": "healthy",
-                                "response_time_ms": 15.5,
-                                "error": None,
-                                "details": {
-                                    "uri": "bolt://localhost:7687",
-                                    "database": "neo4j",
-                                },
-                            }
-                        ],
-                        "metrics": {
-                            "uptime_seconds": 3600.0,
-                            "memory_usage_mb": 1024.5,
-                            "cpu_percent": 25.0,
-                            "active_connections": 10,
-                            "total_requests": 1500,
-                            "error_rate_percent": 0.1,
-                        },
-                        "neo4j": {
-                            "status": "healthy",
-                            "database": "neo4j",
-                            "uri": "bolt://localhost:7687",
-                        },
-                        "schema_status": {
-                            "constraints": {"expected": 10, "found": 10, "missing": []},
-                            "indexes": {"expected": 15, "found": 15, "missing": []},
-                            "valid": True,
-                        },
-                    }
-                }
-            },
-        },
-        503: {
-            "description": "Service or dependencies are unhealthy",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "status": "unhealthy",
-                        "version": "1.0.0",
-                        "timestamp": "2024-01-01T12:00:00.000Z",
-                        "uptime_seconds": 3600.0,
-                        "dependencies": [
-                            {
-                                "name": "neo4j",
-                                "status": "unhealthy",
-                                "response_time_ms": None,
-                                "error": "Connection timeout",
-                                "details": {
-                                    "uri": "bolt://localhost:7687",
-                                    "database": "neo4j",
-                                },
-                            }
-                        ],
-                        "metrics": {
-                            "uptime_seconds": 3600.0,
-                            "memory_usage_mb": 1024.5,
-                            "cpu_percent": 25.0,
-                            "active_connections": 0,
-                            "total_requests": 1500,
-                            "error_rate_percent": 5.2,
-                        },
-                        "neo4j": {
-                            "status": "unhealthy",
-                            "database": "neo4j",
-                            "uri": "bolt://localhost:7687",
-                            "error": "Connection timeout",
-                        },
-                        "schema_status": {
-                            "constraints": {
-                                "expected": 10,
-                                "found": 8,
-                                "missing": ["constraint_1", "constraint_2"],
-                            },
-                            "indexes": {"expected": 15, "found": 15, "missing": []},
-                            "valid": False,
-                        },
-                    }
-                }
-            },
-        },
-    },
-)
-async def health_check(
-    request: Request,
-    schema_initializer=Depends(get_schema_initializer),
-):
-    """Check service health and Neo4j connectivity."""
-    start_time = time.time()
-    request_id = getattr(request.state, "request_id", "unknown")
-
-    # Check dependencies
-    dependencies = await check_dependencies(schema_initializer=schema_initializer)
-
-    # Get metrics
-    metrics = get_system_metrics()
-
-    # Check Neo4j health (handle case where schema_initializer is None)
-    neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
-    schema_status = {"status": "unknown", "message": "Schema initializer not available"}
-
-    if schema_initializer is not None:
-        try:
-            if getattr(schema_initializer, "_driver", None) is None:
-                neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
-                schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
-            else:
-                health_result = await schema_initializer.health_check()
-                neo4j_health = health_result.model_dump() if health_result else None
-                schema_status = await schema_initializer.verify_schema()
-        except Exception:
-            logger.warning(
-                "Health check failed for Neo4j",
-                exc_info=True,
-                extra={"health_request_id": request_id},
-            )
-            error_msg = "Neo4j health check failed"
-            neo4j_health = {"status": "error", "message": error_msg}
-            schema_status = {"status": "error", "message": error_msg}
-
-    # Determine overall status (priority: unhealthy > degraded > healthy)
-    overall_status = "healthy"
-    if schema_initializer is None or (schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None):
-        overall_status = "degraded"
-    elif any(dep.status == "unhealthy" for dep in dependencies):
-        overall_status = "unhealthy"
-    elif any(dep.status == "degraded" for dep in dependencies):
-        overall_status = "degraded"
-
-    response_time_ms = (time.time() - start_time) * 1000
-
-    logger.info(
-        "Health check completed",
-        extra={
-            "health_request_id": request_id,
-            "status": overall_status,
-            "response_time_ms": round(response_time_ms, 2),
-            "neo4j_status": neo4j_health.get("status"),
-        },
-    )
-
-    # Create response data
-    response_data = {
-        "status": overall_status,
-        "version": "1.0.0",
-        "timestamp": datetime.utcnow(),
-        "uptime_seconds": metrics.uptime_seconds,
-        "response_time_ms": round(response_time_ms, 2),
-        "dependencies": dependencies,
-        "metrics": metrics,
-        "neo4j": neo4j_health,
-        "schema_status": schema_status,
-    }
-
-    # Response model expects health payload directly (version headers are applied by middleware).
-    return response_data
-
-
-@app.get(
-    "/health/detailed",
-    response_model=DetailedHealthResponse,
-    tags=["Health"],
-    summary="Detailed Health Check",
-    description="""
-    Perform a comprehensive health check with detailed system information.
-    
-    This endpoint provides complete health information including:
-    - All dependency status with response times
-    - Detailed system metrics and resource usage
-    - Configuration information (non-sensitive)
-    - System information and platform details
-    - Full schema validation results
-    
-    Use this endpoint for detailed diagnostics and troubleshooting.
-    
-    **Response Headers:**
-    - `X-RateLimit-*`: Current rate limiting information
-    
-    **Status Codes:**
-    - `200`: Detailed health information returned
-    - `503`: Service or dependencies are unhealthy
-    """,
-    responses={
-        200: {
-            "description": "Detailed health information",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "status": "healthy",
-                        "version": "1.0.0",
-                        "timestamp": "2024-01-01T12:00:00.000Z",
-                        "uptime_seconds": 3600.0,
-                        "dependencies": [
-                            {
-                                "name": "neo4j",
-                                "status": "healthy",
-                                "response_time_ms": 15.5,
-                                "error": None,
-                                "details": {
-                                    "uri": "bolt://localhost:7687",
-                                    "database": "neo4j",
-                                },
-                            },
-                            {
-                                "name": "pinecone",
-                                "status": "healthy",
-                                "response_time_ms": 25.2,
-                                "error": None,
-                                "details": {"index": "value-fabric"},
-                            },
-                        ],
-                        "metrics": {
-                            "uptime_seconds": 3600.0,
-                            "memory_usage_mb": 1024.5,
-                            "cpu_percent": 25.0,
-                            "active_connections": 10,
-                            "total_requests": 1500,
-                            "error_rate_percent": 0.1,
-                        },
-                        "neo4j": {
-                            "status": "healthy",
-                            "database": "neo4j",
-                            "uri": "bolt://localhost:7687",
-                        },
-                        "schema_status": {
-                            "constraints": {"expected": 10, "found": 10, "missing": []},
-                            "indexes": {"expected": 15, "found": 15, "missing": []},
-                            "valid": True,
-                        },
-                        "system_info": {
-                            "platform": "Windows-10-10.0.19041-SP0",
-                            "python_version": "3.11.0",
-                            "cpu_count": 8,
-                            "memory_total_gb": 16.0,
-                            "disk_usage_gb": 250.5,
-                        },
-                        "configuration": {
-                            "api_host": "0.0.0.0",
-                            "api_port": 8001,
-                            "log_level": "INFO",
-                            "log_format": "json",
-                            "neo4j_database": "neo4j",
-                            "neo4j_max_pool_size": 50,
-                            "pinecone_configured": True,
-                        },
-                    }
-                }
-            },
-        }
-    },
-)
-async def detailed_health_check(
-    schema_initializer=Depends(get_schema_initializer),
-    app_state: AppState = Depends(get_app_state),
-):
-    """Get detailed health information with system info and configuration."""
-    time.time()
-
-    # Basic health check
-    dependencies = await check_dependencies(schema_initializer=schema_initializer)
-    metrics = get_system_metrics()
-    if getattr(schema_initializer, "_driver", None) is None:
-        neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
-        schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
-    else:
-        neo4j_health = await schema_initializer.health_check()
-        schema_status = await schema_initializer.verify_schema()
-
-    # Determine overall status
-    overall_status = "healthy"
-    if any(dep.status == "unhealthy" for dep in dependencies):
-        overall_status = "unhealthy"
-    elif any(dep.status == "degraded" for dep in dependencies):
-        overall_status = "degraded"
-
-    # System information
-    system_info = {
-        "platform": platform.platform(),
-        "python_version": platform.python_version(),
-        "cpu_count": psutil.cpu_count(),
-        "memory_total_gb": psutil.virtual_memory().total / (1024**3),
-        "disk_usage_gb": psutil.disk_usage("/").used / (1024**3),
-    }
-
-    # Configuration (non-sensitive)
-    settings = get_settings()
-    configuration = {
-        "api_host": settings.api_host,
-        "api_port": settings.api_port,
-        "log_level": settings.log_level,
-        "log_format": settings.log_format,
-        "neo4j_database": settings.neo4j_database,
-        "neo4j_max_pool_size": settings.neo4j_max_pool_size,
-        "pinecone_configured": bool(settings.pinecone_api_key),
-    }
-
-    return DetailedHealthResponse(
-        status=overall_status,
-        version="1.0.0",
-        uptime_seconds=metrics.uptime_seconds,
-        dependencies=dependencies,
-        metrics=metrics,
-        neo4j=neo4j_health,
-        schema_status=schema_status,
-        system_info=system_info,
-        configuration=configuration,
-    )
 
 
 # Schema endpoints

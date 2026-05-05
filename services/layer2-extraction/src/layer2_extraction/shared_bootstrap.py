@@ -1,0 +1,22 @@
+from __future__ import annotations
+
+import sys
+from importlib import import_module
+from pathlib import Path
+from typing import Any, Callable, cast
+
+_SHARED_SRC = Path(__file__).resolve().parents[4] / "packages" / "shared" / "src"
+if str(_SHARED_SRC) not in sys.path:
+    sys.path.insert(0, str(_SHARED_SRC))
+
+_framework_app = import_module("value_fabric.shared.fastapi_framework.app")
+_framework_middleware = import_module("value_fabric.shared.fastapi_framework.middleware")
+_security_config = import_module("value_fabric.shared.security.config")
+_security_middleware = import_module("value_fabric.shared.security.middleware")
+
+create_fabric_app = cast(Callable[..., Any], _framework_app.create_fabric_app)
+install_metrics_middleware = cast(Callable[..., Any], _framework_app.install_metrics_middleware)
+resolve_cors_policy = cast(Callable[..., Any], _framework_middleware.resolve_cors_policy)
+validate_production_safety = cast(Callable[..., None], _security_config.validate_production_safety)
+SecurityConfig = _security_middleware.SecurityConfig
+add_security_middleware = cast(Callable[..., None], _security_middleware.add_security_middleware)

@@ -15,6 +15,8 @@ import json
 import logging
 import os
 import time
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -27,16 +29,8 @@ except ImportError:
     psutil = None  # Health check will work without system metrics
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 
-# P1-29: OpenTelemetry imports for distributed tracing
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel, Field
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
@@ -60,9 +54,14 @@ except Exception:
 
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
-# Hard imports - fail fast if security components unavailable
-from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
-from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
+from ..shared_bootstrap import (
+    SecurityConfig,
+    add_security_middleware,
+    create_fabric_app,
+    install_metrics_middleware,
+    resolve_cors_policy,
+    validate_production_safety,
+)
 
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
@@ -112,64 +111,8 @@ def _is_production_like() -> bool:
 # App start time for uptime calculation
 _app_start_time = time.time()
 
-# P1-29: OpenTelemetry tracer provider (initialized on startup)
-_tracer_provider: TracerProvider | None = None
-
-
-def init_telemetry() -> TracerProvider | None:
-    """Initialize OpenTelemetry tracing if endpoint configured.
-
-    P1-29: OpenTelemetry integration for distributed tracing.
-    """
-    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if not otel_endpoint:
-        return None
-
-    resource = Resource.create({SERVICE_NAME: "layer2-extraction"})
-    provider = TracerProvider(resource=resource)
-
-    exporter = OTLPSpanExporter(
-        endpoint=f"{otel_endpoint}/v1/traces"
-    )
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
-
-    trace.set_tracer_provider(provider)
-    return provider
-
 # WebSocket manager for real-time pipeline streaming
 _ws_manager = get_pipeline_ws_manager()
-
-# Initialize Prometheus metrics
-metrics = initialize_metrics()
-
-# P1-29: Initialize OpenTelemetry
-_tracer_provider = init_telemetry()
-if _tracer_provider:
-    logger.info("L2: OpenTelemetry tracing initialized")
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="Value Fabric - Extraction Pipeline",
-    description="Ontology-guided extraction of entities from unstructured text to RDF/OWL",
-    version="1.0.0",
-)
-
-# CORS middleware with production validation (P0-20) — OUTERMOST
-_cors_policy = resolve_cors_policy()
-app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
-
-# SecurityMiddleware — input validation and security headers (mandatory)
-# P1-14 FIX: Removed /v1/extract paths from skip list
-# All untrusted input must pass through SecurityMiddleware validation
-_security_config_l2 = SecurityConfig.from_env(
-    skip_validation_paths=frozenset({
-        "/health",
-        "/metrics",
-    }),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l2)
 
 # Redis rate limiter - initialized in startup event
 redis_rate_limiter: RedisRateLimiter | None = None
@@ -201,21 +144,82 @@ async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
         return None
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Manage Layer 2 startup and shutdown around the shared app factory."""
+    global redis_rate_limiter, _retry_task
+
+    validate_production_safety()
+
+    if getattr(app.state, "telemetry_provider", None) is not None:
+        logger.info("L2: OpenTelemetry tracing initialized")
+
+    redis_rate_limiter = await _init_redis_rate_limiter()
+    app.state.redis_rate_limiter = redis_rate_limiter
+
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr:
+            logger.info("L2: Checking Vault connectivity at %s", vault_addr)
+            ok = await is_vault_healthy(vault_addr)
+            if not ok:
+                logger.error("L2: %s", _VAULT_UNREACHABLE_ERROR)
+                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
+            logger.info("L2: Vault connectivity verified")
+
+    if _retry_task is None:
+        _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
+
+    await _ws_manager.start()
+    yield
+
+    if _retry_task:
+        _retry_task.cancel()
+        try:
+            await _retry_task
+        except asyncio.CancelledError:
+            pass
+        _retry_task = None
+
+    await _ws_manager.stop()
+
+    if getattr(app.state, "telemetry_provider", None) is not None:
+        app.state.telemetry_provider.shutdown()
+        app.state.telemetry_provider = None
+
+
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
 # Note: redis_rate_limiter is set during startup
 from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
 
+app = create_fabric_app(
+    service_name="layer2-extraction",
+    title="Value Fabric - Extraction Pipeline",
+    description="Ontology-guided extraction of entities from unstructured text to RDF/OWL",
+    version="1.0.0",
+    lifespan=lifespan,
+    cors_policy=resolve_cors_policy(),
+    telemetry_service_name="layer2-extraction",
+    instrument_telemetry=True,
+)
+
+_security_config_l2 = SecurityConfig.from_env(
+    skip_validation_paths=frozenset({
+        "/health",
+        "/metrics",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l2)
+
 app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=None)
 
-# Add metrics middleware if available — INNERMOST
-if metrics:
-    metrics_middleware = MetricsMiddleware(metrics)
-    app.middleware("http")(metrics_middleware)
-
-# P1-29: Instrument FastAPI with OpenTelemetry (after all middleware)
-if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-    FastAPIInstrumentor.instrument_app(app)
-    logger.info("L2: FastAPI instrumented with OpenTelemetry")
+install_metrics_middleware(
+    app,
+    metrics=initialize_metrics(),
+    middleware_factory=MetricsMiddleware,
+    logger=logger,
+)
 
 # Include WebSocket router for real-time pipeline streaming
 app.include_router(websocket_router, prefix="/v1")
@@ -642,52 +646,6 @@ async def _pending_ingestion_retry_loop() -> None:
 
 # Vault health check error message (shared across layers)
 _VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production without secrets backend"
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    global redis_rate_limiter, _retry_task
-
-    validate_production_safety()
-
-    # Initialize Redis rate limiter
-    redis_rate_limiter = await _init_redis_rate_limiter()
-    
-    # Update GovernanceMiddleware with rate limiter if available
-    # Note: In FastAPI, middleware is already added but we can update the reference
-    # for any code that accesses redis_rate_limiter directly
-    
-    # Production Vault smoke gate (fail fast before starting other resources)
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy:
-            logger.info("L2: Checking Vault connectivity at %s", vault_addr)
-            ok = await is_vault_healthy(vault_addr)
-            if not ok:
-                logger.error("L2: %s", _VAULT_UNREACHABLE_ERROR)
-                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
-            logger.info("L2: Vault connectivity verified")
-
-    if _retry_task is None:
-        _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
-
-    # Start WebSocket manager for real-time streaming
-    await _ws_manager.start()
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    global _retry_task
-    if _retry_task:
-        _retry_task.cancel()
-        try:
-            await _retry_task
-        except asyncio.CancelledError:
-            pass
-        _retry_task = None
-
-    # Stop WebSocket manager
-    await _ws_manager.stop()
 
 
 # Background task for extraction
