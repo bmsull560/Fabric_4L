@@ -81,11 +81,12 @@ class FeatureExtractionResponse(BaseModel):
 
 
 class ValueMetricExtractionResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     """Structured response for value metric extraction.
 
     Expected as response_format parameter to OpenAI structured output API.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     value_metrics: list[ValueMetric] = Field(
         default_factory=list,
