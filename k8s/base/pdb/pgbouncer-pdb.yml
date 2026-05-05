@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer-pdb
+  namespace: value-fabric
+  labels:
+    app: pgbouncer
+    component: infrastructure
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pgbouncer

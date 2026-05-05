@@ -51,6 +51,10 @@ resources:
   - hpa/layer6-benchmarks-hpa.yml
   - hpa/frontend-hpa.yml
   # Pod disruption budgets for critical services
+  - pdb/postgres-pdb.yml
+  - pdb/redis-pdb.yml
+  - pdb/neo4j-pdb.yml
+  - pdb/pgbouncer-pdb.yml
   - pdb/layer1-ingestion-pdb.yml
   - pdb/layer2-extraction-pdb.yml
   - pdb/layer3-knowledge-pdb.yml
