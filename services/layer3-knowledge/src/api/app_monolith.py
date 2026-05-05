@@ -599,6 +599,7 @@ from .routes import (
     models,
     products,
     roi_calculator,
+    system,
     value_packs,
     value_trees,
     variables,
@@ -620,6 +621,7 @@ include_router_mounts(
         RouterMount(competitive_intel.router, prefix="/v1"),
         RouterMount(roi_calculator.router, prefix="/v1"),
         RouterMount(benchmarks.router, prefix="/v1/roi"),
+        RouterMount(system.router),
     ],
 )
 
@@ -849,87 +851,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         )
 
     return response
-
-
-# Metrics endpoint
-@app.get(
-    "/metrics",
-    tags=["Monitoring"],
-    summary="Prometheus Metrics",
-    description="""
-    Export Prometheus metrics for monitoring.
-    
-    This endpoint provides metrics in Prometheus format for:
-    - HTTP requests and response times
-    - Database operations
-    - Cache performance
-    - Search queries
-    - System resources
-    - Error rates
-    
-    **Usage:**
-    Configure Prometheus to scrape this endpoint:
-    ```yaml
-    scrape_configs:
-      - job_name: 'value-fabric-layer3'
-        static_configs:
-          - targets: ['localhost:8001']
-        metrics_path: '/metrics'
-    ```
-    
-    **Response Headers:**
-    - `Content-Type`: `text/plain; version=0.0.4; charset=utf-8`
-    
-    **Status Codes:**
-    - `200`: Metrics exported successfully
-    - `503`: Metrics collection disabled
-    """,
-    responses={
-        200: {
-            "description": "Prometheus metrics exported successfully",
-            "content": {
-                "text/plain": {
-                    "example": """# HELP value_fabric_http_requests_total Total HTTP requests
-# TYPE value_fabric_http_requests_total counter
-value_fabric_http_requests_total{method="GET",endpoint="/health",status_code="200",namespace="layer3"} 42
-# HELP value_fabric_http_request_duration_seconds HTTP request duration in seconds
-# TYPE value_fabric_http_request_duration_seconds histogram
-value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="0.1"} 40
-value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="0.25"} 41
-value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="0.5"} 42
-value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="+Inf"} 42
-value_fabric_http_request_duration_seconds_sum{method="GET",endpoint="/health",namespace="layer3"} 8.5
-value_fabric_http_request_duration_seconds_count{method="GET",endpoint="/health",namespace="layer3"} 42"""
-                }
-            },
-        },
-        503: {
-            "description": "Metrics collection disabled",
-            "content": {"text/plain": {"example": "Metrics collection is disabled"}},
-        },
-    },
-)
-async def get_metrics(request: Request):
-    """Get Prometheus metrics."""
-    metrics = getattr(request.app.state, "metrics", None)
-
-    if not metrics:
-        return Response(
-            content="Metrics collection is disabled",
-            status_code=503,
-            media_type="text/plain",
-        )
-
-    try:
-        metrics_data = metrics.get_metrics()
-        return Response(
-            content=metrics_data, media_type="text/plain; version=0.0.4; charset=utf-8"
-        )
-    except Exception as e:
-        logger.error(f"Error generating metrics: {e}")
-        return Response(
-            content="Error generating metrics", status_code=500, media_type="text/plain"
-        )
 
 
 async def check_dependencies(schema_initializer: Any | None = None) -> list[DependencyStatus]:
