@@ -85,6 +85,123 @@ export interface OntologyEditorActions {
   initializeFromSchema: (types: OntologyType[], relationships: TypeRelationship[]) => void;
 }
 
+type TypeChangeData = {
+  previous?: OntologyType;
+  current: OntologyType;
+};
+
+type PropertyChangeData = {
+  typeId: string;
+  property: OntologyProperty;
+  previous?: OntologyProperty;
+};
+
+type RelationshipChangeData = {
+  relationship: TypeRelationship;
+};
+
+function cloneTypes(types: Map<string, OntologyType>): Map<string, OntologyType> {
+  return new Map(types);
+}
+
+function cloneRelationships(relationships: Map<string, TypeRelationship>): Map<string, TypeRelationship> {
+  return new Map(relationships);
+}
+
+function upsertProperty(type: OntologyType, property: OntologyProperty): OntologyType {
+  const exists = type.properties.some((candidate) => candidate.id === property.id);
+  return {
+    ...type,
+    properties: exists
+      ? type.properties.map((candidate) => candidate.id === property.id ? property : candidate)
+      : [...type.properties, property],
+  };
+}
+
+function removeProperty(type: OntologyType, propertyId: string): OntologyType {
+  return {
+    ...type,
+    properties: type.properties.filter((property) => property.id !== propertyId),
+  };
+}
+
+function applyChange(
+  state: OntologyEditorState,
+  change: OntologyChange,
+  direction: 'undo' | 'redo'
+): Pick<OntologyEditorState, 'draftTypes' | 'draftRelationships' | 'selectedTypeId'> {
+  const draftTypes = cloneTypes(state.draftTypes);
+  const draftRelationships = cloneRelationships(state.draftRelationships);
+  let selectedTypeId = state.selectedTypeId;
+
+  switch (change.type) {
+    case 'create_type': {
+      const { previous, current } = change.data as TypeChangeData;
+      if (direction === 'undo') {
+        if (previous) draftTypes.set(previous.id, previous);
+        else draftTypes.delete(current.id);
+        if (selectedTypeId === current.id && !previous) selectedTypeId = draftTypes.keys().next().value ?? null;
+      } else {
+        draftTypes.set(current.id, current);
+        selectedTypeId = current.id;
+      }
+      break;
+    }
+    case 'update_type': {
+      const { previous, current } = change.data as TypeChangeData;
+      if (direction === 'undo') {
+        if (previous) draftTypes.set(previous.id, previous);
+        else draftTypes.delete(current.id);
+      } else {
+        draftTypes.set(current.id, current);
+      }
+      break;
+    }
+    case 'add_property': {
+      const { typeId, property } = change.data as PropertyChangeData;
+      const type = draftTypes.get(typeId);
+      if (type) {
+        draftTypes.set(typeId, direction === 'undo' ? removeProperty(type, property.id) : upsertProperty(type, property));
+      }
+      break;
+    }
+    case 'update_property': {
+      const { typeId, property, previous } = change.data as PropertyChangeData;
+      const type = draftTypes.get(typeId);
+      if (type) {
+        if (direction === 'undo') {
+          draftTypes.set(typeId, previous ? upsertProperty(type, previous) : removeProperty(type, property.id));
+        } else {
+          draftTypes.set(typeId, upsertProperty(type, property));
+        }
+      }
+      break;
+    }
+    case 'remove_property': {
+      const { typeId, property } = change.data as PropertyChangeData;
+      const type = draftTypes.get(typeId);
+      if (type) {
+        draftTypes.set(typeId, direction === 'undo' ? upsertProperty(type, property) : removeProperty(type, property.id));
+      }
+      break;
+    }
+    case 'add_relationship': {
+      const { relationship } = change.data as RelationshipChangeData;
+      if (direction === 'undo') draftRelationships.delete(relationship.id);
+      else draftRelationships.set(relationship.id, relationship);
+      break;
+    }
+    case 'remove_relationship': {
+      const { relationship } = change.data as RelationshipChangeData;
+      if (direction === 'undo') draftRelationships.set(relationship.id, relationship);
+      else draftRelationships.delete(relationship.id);
+      break;
+    }
+  }
+
+  return { draftTypes, draftRelationships, selectedTypeId };
+}
+
 const DEFAULTS: OntologyEditorState = {
   selectedTypeId: null,
   selectedPropertyId: null,
@@ -278,30 +395,35 @@ export const useOntologyStore = create<OntologyEditorState & OntologyEditorActio
       },
 
       undo: () => {
-        const { historyIndex, canUndo } = get();
+        const state = get();
+        const { historyIndex, canUndo } = state;
         if (!canUndo || historyIndex < 0) return;
 
-        // TODO: Apply inverse of history[historyIndex] to draft state
-        // This would need more sophisticated state management
+        const restoredDraft = applyChange(state, state.history[historyIndex], 'undo');
 
         set({
+          ...restoredDraft,
           historyIndex: historyIndex - 1,
           canUndo: historyIndex > 0,
           canRedo: true,
+          hasUnsavedChanges: true,
         });
       },
 
       redo: () => {
-        const { historyIndex, history, canRedo } = get();
+        const state = get();
+        const { historyIndex, history, canRedo } = state;
         if (!canRedo || historyIndex >= history.length - 1) return;
 
         const newIndex = historyIndex + 1;
-        // TODO: Reapply history[newIndex] to draft state
+        const restoredDraft = applyChange(state, history[newIndex], 'redo');
 
         set({
+          ...restoredDraft,
           historyIndex: newIndex,
           canUndo: true,
           canRedo: newIndex < history.length - 1,
+          hasUnsavedChanges: true,
         });
       },
 

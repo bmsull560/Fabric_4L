@@ -108,6 +108,44 @@ describe("ApiClient", () => {
     });
   });
 
+  describe("request deduplication", () => {
+    it("shares identical in-flight GET requests", async () => {
+      let requestCount = 0;
+      server.use(
+        http.get("/api/v1/graph/deduped", async () => {
+          requestCount += 1;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+          return HttpResponse.json({ ok: true });
+        })
+      );
+
+      await Promise.all([
+        apiClient.get("l3", "/deduped"),
+        apiClient.get("l3", "/deduped"),
+      ]);
+
+      expect(requestCount).toBe(1);
+    });
+
+    it("does not deduplicate POST requests because they can be state-changing", async () => {
+      let requestCount = 0;
+      server.use(
+        http.post("/api/v1/agents/workflows", async () => {
+          requestCount += 1;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+          return HttpResponse.json({ id: `workflow-${requestCount}` });
+        })
+      );
+
+      await Promise.all([
+        apiClient.post("l4", "/workflows", { name: "same" }),
+        apiClient.post("l4", "/workflows", { name: "same" }),
+      ]);
+
+      expect(requestCount).toBe(2);
+    });
+  });
+
   describe("error handling", () => {
     it("should throw on network errors", async () => {
       server.use(

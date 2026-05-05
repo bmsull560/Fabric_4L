@@ -32,6 +32,7 @@ import {
   useRemoveOntologyProperty,
   useAddTypeRelationship,
   useRemoveTypeRelationship,
+  type ValidationResult,
 } from '@/hooks/useOntology';
 import useOntologyStore from '@/stores/ontologyStore';
 import { toast } from 'sonner';
@@ -104,8 +105,8 @@ export default function OntologyEditor() {
   const relationships = Array.from(draftRelationships.values());
 
   // Handle validate
-  const handleValidate = useCallback(async () => {
-    if (!schema) return;
+  const handleValidate = useCallback(async (): Promise<ValidationResult | null> => {
+    if (!schema) return null;
 
     setIsValidating(true);
     try {
@@ -128,10 +129,13 @@ export default function OntologyEditor() {
           description: `${result.errors.length} error${result.errors.length > 1 ? 's' : ''} found`,
         });
       }
+
+      return result;
     } catch (err) {
       toast.error('Validation failed', {
         description: err instanceof Error ? err.message : 'Unknown error',
       });
+      return null;
     } finally {
       setIsValidating(false);
     }
@@ -141,9 +145,9 @@ export default function OntologyEditor() {
   const handlePublish = useCallback(async () => {
     if (!schema) return;
 
-    // First validate
-    await handleValidate();
-    if (validationResult && !validationResult.valid) {
+    // First validate and use the fresh result returned by the mutation.
+    const latestValidationResult = await handleValidate();
+    if (!latestValidationResult?.valid) {
       toast.error('Cannot publish', { description: 'Please fix validation errors first' });
       return;
     }
@@ -166,7 +170,7 @@ export default function OntologyEditor() {
     } finally {
       setIsPublishing(false);
     }
-  }, [schema, types, relationships, validationResult, publishMutation, setIsPublishing, handleValidate]);
+  }, [schema, types, relationships, publishMutation, setIsPublishing, handleValidate]);
 
   // Handle import
   const handleImport = useCallback(async () => {

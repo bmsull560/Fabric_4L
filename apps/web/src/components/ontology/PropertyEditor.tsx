@@ -15,6 +15,16 @@ import { Btn } from '@/components/WfPrimitives';
 import useOntologyStore from '@/stores/ontologyStore';
 import type { OntologyType, OntologyProperty, PropertyConstraints } from '@/hooks/useOntology';
 
+function createPropertyId(name: string): string {
+  const normalizedName = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'property';
+
+  return `prop_${normalizedName}_${Date.now().toString(36)}`;
+}
+
 interface PropertyEditorProps {
   type: OntologyType | null;
   className?: string;
@@ -38,7 +48,8 @@ export function PropertyEditor({ type, className }: PropertyEditorProps) {
   const handleAddProperty = useCallback(() => {
     if (!type || !newProperty.name) return;
 
-    const property: Omit<OntologyProperty, 'id'> = {
+    const property: OntologyProperty = {
+      id: createPropertyId(newProperty.name),
       name: newProperty.name,
       type: newProperty.type || 'string',
       description: newProperty.description,
@@ -47,7 +58,7 @@ export function PropertyEditor({ type, className }: PropertyEditorProps) {
       constraints: newProperty.constraints,
     };
 
-    addPropertyToDraft(type.id, property as OntologyProperty);
+    addPropertyToDraft(type.id, property);
     setIsAddingProperty(false);
     setNewProperty({ type: 'string', required: false });
   }, [type, newProperty, addPropertyToDraft]);

@@ -165,29 +165,25 @@ class ApiClient {
   }
 
   /**
-   * Generate unique key for request deduplication
-   * Uses sorted keys to ensure consistent hashing regardless of object key order
+   * Generate unique key for safe request deduplication.
+   * GET dedupe intentionally ignores request bodies because GET requests must not rely on one.
    */
-  private getRequestKey(layer: LayerKey, method: string, path: string, data?: unknown): string {
-    const dataKey = data
-      ? JSON.stringify(data, this.stableReplacer)
-      : '';
-    return `${layer}:${method}:${path}:${dataKey}`;
+  private getRequestKey(layer: LayerKey, method: string, path: string): string {
+    return `${layer}:${method}:${path}`;
   }
 
-  /**
-   * JSON replacer that sorts object keys for stable serialization
-   */
-  private stableReplacer(key: string, value: unknown): unknown {
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      return Object.keys(value as Record<string, unknown>)
-        .sort()
-        .reduce((sorted, k) => {
-          sorted[k] = (value as Record<string, unknown>)[k];
-          return sorted;
-        }, {} as Record<string, unknown>);
-    }
-    return value;
+  private trackInFlight<T>(requestKey: string, promise: Promise<T>): Promise<T> {
+    this.inFlightRequests.set(requestKey, {
+      promise,
+      timestamp: Date.now(),
+    });
+
+    // Cleanup when complete without creating a secondary unhandled rejection.
+    void promise.finally(() => {
+      this.inFlightRequests.delete(requestKey);
+    }).catch(() => undefined);
+
+    return promise;
   }
 
   private initializeClients() {
@@ -327,50 +323,12 @@ class ApiClient {
       return existing.promise as Promise<AxiosResponse>;
     }
 
-    // Create new request promise
-    const promise = this.getClient(layer).get(validatedPath, config);
-
-    // Track in-flight request
-    this.inFlightRequests.set(requestKey, {
-      promise: promise as Promise<AxiosResponse>,
-      timestamp: Date.now(),
-    });
-
-    // Cleanup when complete without creating a secondary unhandled rejection
-    void promise.finally(() => {
-      this.inFlightRequests.delete(requestKey);
-    }).catch(() => undefined);
-
-    return promise;
+    return this.trackInFlight(requestKey, this.getClient(layer).get(validatedPath, config));
   }
 
-  // PERF: Request deduplication applied to POST requests (for idempotent operations)
   async post(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse> {
     const validatedPath = ApiPathSchema.parse(path);
-    const requestKey = this.getRequestKey(layer, 'POST', validatedPath, data);
-
-    // Check for existing in-flight request
-    const existing = this.inFlightRequests.get(requestKey);
-    if (existing) {
-      log.warn('Deduplicating identical in-flight POST request', { path: validatedPath, layer });
-      return existing.promise as Promise<AxiosResponse>;
-    }
-
-    // Create new request promise
-    const promise = this.getClient(layer).post(validatedPath, data, config);
-
-    // Track in-flight request
-    this.inFlightRequests.set(requestKey, {
-      promise: promise as Promise<AxiosResponse>,
-      timestamp: Date.now(),
-    });
-
-    // Cleanup when complete without creating a secondary unhandled rejection
-    void promise.finally(() => {
-      this.inFlightRequests.delete(requestKey);
-    }).catch(() => undefined);
-
-    return promise;
+    return this.getClient(layer).post(validatedPath, data, config);
   }
 
   async put(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse> {
