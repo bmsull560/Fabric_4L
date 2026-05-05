@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-L1_CONFIG = REPO_ROOT / "value-fabric/layer1-ingestion/src/shared/config.py"
-L1_TASKS = REPO_ROOT / "value-fabric/layer1-ingestion/src/shared/tasks.py"
+L1_CONFIG = REPO_ROOT / "services/layer1-ingestion/src/shared/config.py"
+L1_TASKS = REPO_ROOT / "services/layer1-ingestion/src/shared/tasks.py"
 
 
 def test_retention_defaults_declared_in_settings():

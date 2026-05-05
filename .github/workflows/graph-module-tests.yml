@@ -15,14 +15,14 @@ on:
     paths:
       - 'apps/web/src/hooks/useGraphQuery.ts'
       - 'apps/web/src/hooks/useGraphQuery.*.test.ts'
-      - 'value-fabric/layer3-knowledge/src/api/**'
+      - 'services/layer3-knowledge/src/api/**'
       - 'tests/contract/**'
   pull_request:
     branches: [main, develop]
     paths:
       - 'apps/web/src/hooks/useGraphQuery.ts'
       - 'apps/web/src/hooks/useGraphQuery.*.test.ts'
-      - 'value-fabric/layer3-knowledge/src/api/**'
+      - 'services/layer3-knowledge/src/api/**'
       - 'tests/contract/**'
 
 jobs:
@@ -52,11 +52,11 @@ jobs:
           version: 8
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm install --frozen-lockfile
 
       - name: Run L1 Unit Tests
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           pnpm test -- useGraphQuery.comprehensive.test.ts \
             --reporter=verbose \
@@ -100,11 +100,11 @@ jobs:
           version: 8
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm install --frozen-lockfile
 
       - name: Run L2 Integration Tests
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           pnpm test -- useGraphQuery.integration.test.ts \
             --reporter=verbose
@@ -136,11 +136,11 @@ jobs:
           version: 8
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm install --frozen-lockfile
 
       - name: Run L3 Property Tests
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           pnpm test -- useGraphQuery.property.test.ts \
             --reporter=verbose
@@ -172,17 +172,17 @@ jobs:
           version: 8
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: apps/web
         run: pnpm install --frozen-lockfile
 
       - name: Run L4 Performance Tests
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           pnpm test -- useGraphQuery.performance.test.ts \
             --reporter=verbose
 
       - name: Check Performance Baseline
-        working-directory: frontend
+        working-directory: apps/web
         run: |
           # Extract metrics from test output and compare to SLOs
           echo "Performance tests complete"

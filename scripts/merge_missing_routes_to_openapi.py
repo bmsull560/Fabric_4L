@@ -162,39 +162,39 @@ def main() -> int:
 
     layer_configs = {
         "layer1-ingestion": {
-            "router_dir": Path("value-fabric/layer1-ingestion/src/api/routes"),
+            "router_dir": Path("services/layer1-ingestion/src/api/routes"),
             "spec_path": Path("contracts/openapi/layer1-ingestion.json"),
             "prefix": "/api/v1/ingestion",
             "main_path": "layer1_ingestion/api/main.py",
         },
         "layer2-extraction": {
-            "router_dir": Path("value-fabric/layer2-extraction/src/layer2_extraction/api/routes"),
+            "router_dir": Path("services/layer2-extraction/src/layer2_extraction/api/routes"),
             "spec_path": Path("contracts/openapi/layer2-extraction.json"),
             "prefix": "",
             "main_path": "layer2_extraction/api/main.py",
         },
         "layer3-knowledge": {
-            "router_dir": Path("value-fabric/layer3-knowledge/src/api/routes"),
+            "router_dir": Path("services/layer3-knowledge/src/api/routes"),
             "spec_path": Path("contracts/openapi/layer3-knowledge.json"),
             "prefix": "/v1",
         },
         "layer4-agents": {
             "router_dir": [
-                Path("value-fabric/layer4-agents/src/api/routes"),
-                Path("value-fabric/layer4-agents/src/tenants/api/routes"),
-                Path("value-fabric/layer4-agents/src/registry/api"),
-                Path("value-fabric/layer4-agents/src/messaging"),
+                Path("services/layer4-agents/src/api/routes"),
+                Path("services/layer4-agents/src/tenants/api/routes"),
+                Path("services/layer4-agents/src/registry/api"),
+                Path("services/layer4-agents/src/messaging"),
             ],
             "spec_path": Path("contracts/openapi/layer4-agents.json"),
             "prefix": "/v1",
         },
         "layer5-ground-truth": {
-            "router_dir": Path("value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/routes"),
+            "router_dir": Path("services/layer5-ground-truth/src/layer5_ground_truth/api/routes"),
             "spec_path": Path("contracts/openapi/layer5-ground-truth.json"),
             "prefix": "/api/v1",
         },
         "layer6-benchmarks": {
-            "router_dir": Path("value-fabric/layer6-benchmarks/src/api/routes"),
+            "router_dir": Path("services/layer6-benchmarks/src/api/routes"),
             "spec_path": Path("contracts/openapi/layer6-benchmarks.json"),
             "prefix": "",
         },

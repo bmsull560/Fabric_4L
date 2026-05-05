@@ -503,7 +503,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend
+        working-directory: apps/web
 
     steps:
       - uses: actions/checkout@v4
@@ -1001,7 +1001,7 @@ jobs:
             context: value-fabric
             dockerfile: ./layer6-benchmarks/Dockerfile
           - layer: frontend
-            context: frontend
+            context: apps/web
             dockerfile: ./Dockerfile
 
     steps:

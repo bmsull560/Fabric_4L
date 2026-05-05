@@ -8,8 +8,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENTRYPOINTS = [
-    REPO_ROOT / "value-fabric/layer2-extraction/src/layer2_extraction/api/main.py",
-    REPO_ROOT / "value-fabric/layer6-benchmarks/src/api/main.py",
+    REPO_ROOT / "services/layer2-extraction/src/layer2_extraction/api/main.py",
+    REPO_ROOT / "services/layer6-benchmarks/src/api/main.py",
 ]
 HTTP_DECORATORS = {"get", "post", "put", "patch", "delete", "options", "head"}
 

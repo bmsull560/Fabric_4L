@@ -197,12 +197,12 @@ class TestKustomizeProdOverlay:
         
         # All 6 layers + frontend should have digest pinning
         layer_names = [
-            "value-fabric/layer1-ingestion",
-            "value-fabric/layer2-extraction",
-            "value-fabric/layer3-knowledge",
-            "value-fabric/layer4-agents",
-            "value-fabric/layer5-ground-truth",
-            "value-fabric/layer6-benchmarks",
+            "services/layer1-ingestion",
+            "services/layer2-extraction",
+            "services/layer3-knowledge",
+            "services/layer4-agents",
+            "services/layer5-ground-truth",
+            "services/layer6-benchmarks",
             "value-fabric/frontend",
         ]
         
@@ -323,12 +323,12 @@ class TestKustomizeStagingOverlay:
 
         # All 6 layers + frontend should have digest pinning
         layer_names = [
-            "value-fabric/layer1-ingestion",
-            "value-fabric/layer2-extraction",
-            "value-fabric/layer3-knowledge",
-            "value-fabric/layer4-agents",
-            "value-fabric/layer5-ground-truth",
-            "value-fabric/layer6-benchmarks",
+            "services/layer1-ingestion",
+            "services/layer2-extraction",
+            "services/layer3-knowledge",
+            "services/layer4-agents",
+            "services/layer5-ground-truth",
+            "services/layer6-benchmarks",
             "value-fabric/frontend",
         ]
 

@@ -35,10 +35,10 @@ jobs:
         run: |
           pip install fastapi uvicorn pydantic neo4j psycopg2-binary
           # Install layer dependencies for proper export
-          pip install -e value-fabric/layer1-ingestion/
-          pip install -e value-fabric/layer2-extraction/
-          pip install -e value-fabric/layer3-knowledge/
-          pip install -e value-fabric/layer4-agents/
+          pip install -e services/layer1-ingestion/
+          pip install -e services/layer2-extraction/
+          pip install -e services/layer3-knowledge/
+          pip install -e services/layer4-agents/
 
       - name: Export current contracts
         run: |

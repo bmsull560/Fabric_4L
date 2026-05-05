@@ -82,8 +82,8 @@ jobs:
         run: |
           pip install pytest pytest-asyncio httpx psycopg2-binary redis pyjwt
           # Install layer dependencies if available
-          if [ -f value-fabric/layer1-ingestion/requirements.txt ]; then
-            pip install -r value-fabric/layer1-ingestion/requirements.txt || true
+          if [ -f services/layer1-ingestion/requirements.txt ]; then
+            pip install -r services/layer1-ingestion/requirements.txt || true
           fi
 
       - name: Verify JWT Secret is configured
@@ -100,7 +100,7 @@ jobs:
           echo "Checking for unfiltered Neo4j MATCH queries..."
 
           # File to check
-          MAIN_FILE="value-fabric/layer3-knowledge/src/api/main.py"
+          MAIN_FILE="services/layer3-knowledge/src/api/main.py"
 
           # Find MATCH queries that don't have tenant_id filtering
           # Look for MATCH patterns without {tenant_id: or tenant_id in WHERE
@@ -155,28 +155,28 @@ jobs:
           echo "Checking rate limiting in all layers..."
           
           # Check Layer 1
-          if ! grep -q "RedisRateLimiter" value-fabric/layer1-ingestion/src/api/main.py; then
+          if ! grep -q "RedisRateLimiter" services/layer1-ingestion/src/api/main.py; then
             echo "ERROR: Layer 1 missing RedisRateLimiter"
             exit 1
           fi
           echo "✓ Layer 1 has RedisRateLimiter"
           
           # Check Layer 2
-          if ! grep -q "RedisRateLimiter" value-fabric/layer2-extraction/src/layer2_extraction/api/main.py; then
+          if ! grep -q "RedisRateLimiter" services/layer2-extraction/src/layer2_extraction/api/main.py; then
             echo "ERROR: Layer 2 missing RedisRateLimiter"
             exit 1
           fi
           echo "✓ Layer 2 has RedisRateLimiter"
           
           # Check Layer 4
-          if ! grep -q "RedisRateLimiter" value-fabric/layer4-agents/src/api/main.py; then
+          if ! grep -q "RedisRateLimiter" services/layer4-agents/src/api/main.py; then
             echo "ERROR: Layer 4 missing RedisRateLimiter"
             exit 1
           fi
           echo "✓ Layer 4 has RedisRateLimiter"
           
           # Check Layer 5
-          if ! grep -q "RedisRateLimiter" value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/main.py; then
+          if ! grep -q "RedisRateLimiter" services/layer5-ground-truth/src/layer5_ground_truth/api/main.py; then
             echo "ERROR: Layer 5 missing RedisRateLimiter"
             exit 1
           fi
@@ -188,13 +188,13 @@ jobs:
         run: |
           echo "Checking Layer 1 database connection pool configuration..."
           
-          if ! grep -q "os.getenv.*DB_POOL_SIZE" value-fabric/layer1-ingestion/src/shared/database.py; then
+          if ! grep -q "os.getenv.*DB_POOL_SIZE" services/layer1-ingestion/src/shared/database.py; then
             echo "ERROR: Layer 1 database pool_size not configurable via environment"
             exit 1
           fi
           echo "✓ Layer 1 pool_size reads from DB_POOL_SIZE env var"
           
-          if ! grep -q "os.getenv.*DB_MAX_OVERFLOW" value-fabric/layer1-ingestion/src/shared/database.py; then
+          if ! grep -q "os.getenv.*DB_MAX_OVERFLOW" services/layer1-ingestion/src/shared/database.py; then
             echo "ERROR: Layer 1 max_overflow not configurable via environment"
             exit 1
           fi

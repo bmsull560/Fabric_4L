@@ -26,7 +26,7 @@ import pytest
 # Ensure shared/ is importable
 # ---------------------------------------------------------------------------
 _repo = "/home/ubuntu/Fabric_4L"
-for p in [_repo, f"{_repo}/shared", f"{_repo}/value-fabric/layer4-agents/src"]:
+for p in [_repo, f"{_repo}/shared", f"{_repo}/services/layer4-agents/src"]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -73,7 +73,7 @@ def _load_module(name, path):
 class TestAgentABOMIntegration:
     """Test that agents correctly load and enforce ABOM manifests."""
 
-    MANIFESTS_DIR = Path(_repo) / "value-fabric/layer4-agents/manifests"
+    MANIFESTS_DIR = Path(_repo) / "services/layer4-agents/manifests"
 
     def test_all_manifests_load_as_abom(self):
         """Every manifest file should parse into a valid AgentBillOfMaterials."""

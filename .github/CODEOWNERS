@@ -57,22 +57,22 @@ monitoring/ @value-fabric/sre-leads @value-fabric/backend-leads
 # ============================================
 
 # Layer 1: Ingestion
-value-fabric/layer1-ingestion/ @value-fabric/backend-leads @value-fabric/data-engineering
+services/layer1-ingestion/ @value-fabric/backend-leads @value-fabric/data-engineering
 
 # Layer 2: Extraction  
-value-fabric/layer2-extraction/ @value-fabric/backend-leads @value-fabric/ai-ml-leads
+services/layer2-extraction/ @value-fabric/backend-leads @value-fabric/ai-ml-leads
 
 # Layer 3: Knowledge Graph
-value-fabric/layer3-knowledge/ @value-fabric/backend-leads @value-fabric/graph-specialists
+services/layer3-knowledge/ @value-fabric/backend-leads @value-fabric/graph-specialists
 
 # Layer 4: Agents
-value-fabric/layer4-agents/ @value-fabric/backend-leads @value-fabric/ai-ml-leads
+services/layer4-agents/ @value-fabric/backend-leads @value-fabric/ai-ml-leads
 
 # Layer 5: Ground Truth
-value-fabric/layer5-ground-truth/ @value-fabric/backend-leads @value-fabric/data-engineering
+services/layer5-ground-truth/ @value-fabric/backend-leads @value-fabric/data-engineering
 
 # Layer 6: Benchmarks
-value-fabric/layer6-benchmarks/ @value-fabric/backend-leads @value-fabric/qa-leads
+services/layer6-benchmarks/ @value-fabric/backend-leads @value-fabric/qa-leads
 
 # Shared libraries
 value-fabric/shared/ @value-fabric/backend-leads @value-fabric/architects

@@ -170,7 +170,7 @@ def test_tenant_required_api_dependencies_reject_missing_and_invalid_tenant() ->
 
 def test_layer5_truth_object_uses_tenant_id() -> None:
     """Layer 5 TruthObject model must declare tenant_id for tenant scoping."""
-    path = REPO_ROOT / "value-fabric/layer5-ground-truth/src/models/truth_object.py"
+    path = REPO_ROOT / "services/layer5-ground-truth/src/layer5_ground_truth/models/truth_object.py"
     if not path.exists():
         pytest.skip("Layer 5 truth_object model not found")
 

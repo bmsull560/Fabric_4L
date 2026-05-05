@@ -166,12 +166,12 @@ def test_policy_schema_completeness():
 def test_lint_passes_all_layers():
     """Lint must pass across all layers (positive validation)."""
     layers = [
-        "value-fabric/layer1-ingestion",
-        "value-fabric/layer2-extraction",
-        "value-fabric/layer3-knowledge",
-        "value-fabric/layer4-agents",
-        "value-fabric/layer5-ground-truth",
-        "value-fabric/layer6-benchmarks",
+        "services/layer1-ingestion",
+        "services/layer2-extraction",
+        "services/layer3-knowledge",
+        "services/layer4-agents",
+        "services/layer5-ground-truth",
+        "services/layer6-benchmarks",
     ]
     for layer in layers:
         rc, out, err = run_cmd(f"cd {layer} && ruff check src/")

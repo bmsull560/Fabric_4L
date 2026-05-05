@@ -74,13 +74,13 @@ jobs:
             --output-dir ../artifacts
 
       - name: Run L2 extraction pipeline tests
-        working-directory: value-fabric/layer2-extraction
+        working-directory: services/layer2-extraction
         run: |
           pip install -e ".[dev]" pytest httpx pytest-asyncio
           pytest tests/test_extract_and_ingest_pipeline.py -v --tb=short
 
       - name: Run L3 E2E pipeline tests
-        working-directory: value-fabric/layer3-knowledge
+        working-directory: services/layer3-knowledge
         run: |
           pip install -e ".[dev]" pytest httpx pytest-asyncio
           pytest tests/test_e2e_pipeline.py -v --tb=short

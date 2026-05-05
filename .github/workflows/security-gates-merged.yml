@@ -23,12 +23,12 @@ jobs:
         run: pip install bandit[toml]
       - name: Run Bandit
         run: |
-          bandit -r value-fabric/layer1-ingestion/src \
-                 value-fabric/layer2-extraction/src \
-                 value-fabric/layer3-knowledge/src \
-                 value-fabric/layer4-agents/src \
-                 value-fabric/layer5-ground-truth/src \
-                 value-fabric/layer6-benchmarks/src \
+          bandit -r services/layer1-ingestion/src \
+                 services/layer2-extraction/src \
+                 services/layer3-knowledge/src \
+                 services/layer4-agents/src \
+                 services/layer5-ground-truth/src \
+                 services/layer6-benchmarks/src \
                  shared/ \
                  -f json -o bandit-report.json || true
       - name: Upload Bandit Report
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Image
         run: |
-          docker build -f value-fabric/${{ matrix.layer }}/Dockerfile -t test-${{ matrix.layer }}:latest value-fabric/
+          docker build -f services/${{ matrix.layer }}/Dockerfile -t test-${{ matrix.layer }}:latest services/${{ matrix.layer }}/
       - name: Run Trivy
         uses: aquasecurity/trivy-action@master
         with:
@@ -122,7 +122,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run Grype
         run: |
-          docker run --rm -v $(pwd):/project anchore/grype:latest dir:/project/value-fabric/${{ matrix.layer }} --output json > grype-${{ matrix.layer }}.json || true
+          docker run --rm -v $(pwd):/project anchore/grype:latest dir:/project/services/${{ matrix.layer }} --output json > grype-${{ matrix.layer }}.json || true
       - name: Upload Grype Report
         uses: actions/upload-artifact@v4
         with:
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Generate SBOM with Syft
         run: |
-          docker run --rm -v $(pwd):/project anchore/syft:latest dir:/project/value-fabric/${{ matrix.layer }} -o spdx-json > sbom-${{ matrix.layer }}.json
+          docker run --rm -v $(pwd):/project anchore/syft:latest dir:/project/services/${{ matrix.layer }} -o spdx-json > sbom-${{ matrix.layer }}.json
       - name: Upload SBOM
         uses: actions/upload-artifact@v4
         with:
@@ -164,7 +164,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -r tests/requirements.txt
-          pip install -r value-fabric/layer1-ingestion/pyproject.toml
+          pip install -e services/layer1-ingestion
       - name: Run Security Tests
         run: |
           pytest tests/security/test_security_fixes.py -v --tb=short
