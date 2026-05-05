@@ -14,8 +14,9 @@ except ImportError:
 
 import logging
 
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from value_fabric.shared.security.neo4j import validate_neo4j_aura_config
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,21 @@ class Settings(BaseSettings):
     layer5_api_url: str = Field(
         default="http://layer5-ground-truth:8000",
         description="Layer 5 Ground Truth API URL"
+    )
+    neo4j_uri: str = Field(
+        default="bolt://localhost:7687",
+        validation_alias=AliasChoices("LAYER4_NEO4J_URI", "NEO4J_URI"),
+        description="Neo4j URI for graph-backed tools"
+    )
+    neo4j_user: str = Field(
+        default="neo4j",
+        validation_alias=AliasChoices("LAYER4_NEO4J_USER", "NEO4J_USER"),
+        description="Neo4j username",
+    )
+    neo4j_password: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("LAYER4_NEO4J_PASSWORD", "NEO4J_PASSWORD"),
+        description="Neo4j password",
     )
 
     # ==========================================================================
@@ -389,6 +405,16 @@ class Settings(BaseSettings):
                 "OPENAI_API_KEY appears invalid. Should start with 'sk-' or 'sk-proj-'."
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_prod_neo4j_aura(self) -> "Settings":
+        """Production/staging must use managed Aura, not in-cluster Neo4j."""
+        validate_neo4j_aura_config(
+            uri=self.neo4j_uri,
+            password=self.neo4j_password,
+            environment=self.environment,
+        )
+        return self
 
 
 

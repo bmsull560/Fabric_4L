@@ -203,11 +203,19 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         account_id = str(state.case_input.account_id)
         prospect_id = state.case_input.custom_inputs.get("provider_record_id", account_id)
+        try:
+            value_driver_ids = await self._resolve_value_driver_ids(state, account_id)
+        except ValueError as exc:
+            return BusinessCaseGeneratorWorkflow__execute_roi_subworkflowResult.model_validate({
+                "status": "failed",
+                "error": str(exc),
+                "roi_results": {},
+            })
 
         # Create ROI workflow state
         roi_input_data = {
             "prospect_id": prospect_id,
-            "value_driver_ids": ["vd-001", "vd-002", "vd-003"],  # Default set
+            "value_driver_ids": value_driver_ids,
             "use_benchmarks": True,
         }
 
@@ -227,6 +235,47 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         except Exception as e:
             return BusinessCaseGeneratorWorkflow__execute_roi_subworkflowResult.model_validate({"status": "failed", "error": str(e), "roi_results": {}})
+
+    async def _resolve_value_driver_ids(
+        self, state: BusinessCaseAgentState, account_id: str
+    ) -> list[str]:
+        """Resolve tenant/account value drivers without hardcoded sample IDs."""
+        custom_value_driver_ids = state.case_input.custom_inputs.get("value_driver_ids")
+        if isinstance(custom_value_driver_ids, list):
+            resolved = [str(driver_id).strip() for driver_id in custom_value_driver_ids if str(driver_id).strip()]
+            if resolved:
+                return resolved
+
+        env_defaults = os.getenv("LAYER4_DEFAULT_VALUE_DRIVER_IDS", "")
+        if env_defaults:
+            resolved = [driver_id.strip() for driver_id in env_defaults.split(",") if driver_id.strip()]
+            if resolved:
+                return resolved
+
+        query_result = await self.tool_registry.execute(
+            "query_graph",
+            {
+                "cypher_query": """
+                    MATCH (a {id: $account_id})-[:USES_VALUE_DRIVER|HAS_VALUE_DRIVER]->(v:ValueDriver)
+                    WHERE coalesce(v.status, 'ACTIVE') IN ['ACTIVE', 'VALIDATED']
+                    RETURN v.id AS id
+                    LIMIT 25
+                """,
+                "parameters": {"account_id": account_id},
+            },
+        )
+        drivers = []
+        for row in query_result.get("results", []):
+            driver_id = row.get("id") or row.get("v.id")
+            if driver_id:
+                drivers.append(str(driver_id))
+        if drivers:
+            return drivers
+
+        raise ValueError(
+            "No value_driver_ids available for business case ROI calculation. "
+            "Provide custom_inputs.value_driver_ids or configure graph-backed account drivers."
+        )
 
     async def _execute_generate_sections(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Generate all requested narrative sections.

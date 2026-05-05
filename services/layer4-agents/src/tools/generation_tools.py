@@ -5,7 +5,6 @@ import logging
 from io import BytesIO
 from typing import Any
 
-from openai import AsyncOpenAI
 from value_fabric.shared.identity.context import require_context
 
 # Optional weasyprint import - allows tests to run without GTK libraries
@@ -32,6 +31,7 @@ from ..models.tool_schemas import (
     ToolCategory,
 )
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
+from ..services.llm_provider import get_openai_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -83,15 +83,14 @@ Maximum {max_length} words.""",
 
     async def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
         """Call LLM to generate content."""
-        api_key = self.config.get("openai_api_key") if self.config else None
         initial_model = "gpt-4o"
         decision = await get_llm_budget_guardrails().precheck_or_raise(initial_model)
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
 
-        client = AsyncOpenAI(api_key=api_key)
+        provider = get_openai_provider(self.config)
 
-        response = await client.chat.completions.create(
+        response = await provider.complete_text(
             model=decision.model,
             messages=[
                 {
@@ -104,8 +103,8 @@ Maximum {max_length} words.""",
             max_tokens=max_tokens,
         )
 
-        prompt_tokens = response.usage.prompt_tokens if response.usage else 0
-        completion_tokens = response.usage.completion_tokens if response.usage else 0
+        prompt_tokens = response.usage.prompt_tokens
+        completion_tokens = response.usage.completion_tokens
         cost = LLMCostCalculator().calculate_cost(
             provider="openai",
             model=decision.model,
@@ -137,7 +136,7 @@ Maximum {max_length} words.""",
                 extra={"tenant_id": tenant_id, "model": decision.model},
             )
 
-        return response.choices[0].message.content.strip()
+        return response.content
 
     async def execute(self, input_data: GenerateSectionInput) -> GenerateSectionOutput:
         """Generate a business case section."""

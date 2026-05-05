@@ -26,8 +26,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from openai import AsyncOpenAI
-
 from ..contracts.artifacts import (
     CompetitiveBaseline,
     CompetitiveIntelArtifact,
@@ -37,6 +35,7 @@ from ..contracts.artifacts import (
     EconomicDifferenceCategory,
 )
 from ..models.tool_schemas import ToolCategory
+from ..services.llm_provider import LLMProvider, get_openai_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -214,12 +213,12 @@ Return a JSON array of EconomicDifference objects with these fields:
 
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
-        self._llm_client: AsyncOpenAI | None = None
+        self._llm_provider: LLMProvider | None = None
 
-    def _get_llm_client(self) -> AsyncOpenAI:
-        if self._llm_client is None:
-            self._llm_client = AsyncOpenAI()
-        return self._llm_client
+    def _get_llm_provider(self) -> LLMProvider:
+        if self._llm_provider is None:
+            self._llm_provider = get_openai_provider(self.config)
+        return self._llm_provider
 
     async def _query_graph_for_competitor(
         self,
@@ -300,14 +299,13 @@ Return a JSON array of EconomicDifference objects with these fields:
         )
 
         try:
-            client = self._get_llm_client()
-            response = await client.chat.completions.create(
+            response = await self._get_llm_provider().complete_text(
                 model="gpt-4.1-mini",
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
                 temperature=0.2,
             )
-            raw = response.choices[0].message.content or "{}"
+            raw = response.content or "{}"
             # CONTRACT §2.5: Use Pydantic model validation instead of json.loads
             try:
                 validated = LLMDifferencesResponse.model_validate_json(raw)

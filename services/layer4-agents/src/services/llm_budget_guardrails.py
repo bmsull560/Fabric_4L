@@ -8,8 +8,10 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from value_fabric.shared.identity.context import require_context
+from value_fabric.shared.security.neo4j import is_production_like_environment
 
 from ..metrics import get_metrics
 
@@ -30,7 +32,7 @@ class LLMBudgetDecision:
 
 
 class LLMBudgetGuardrails:
-    """In-memory per-tenant budget guardrails.
+    """Tenant budget guardrails with Redis-backed production accounting.
 
     Caps and thresholds are configured by environment variables:
     - ``LLM_BUDGET_HOURLY_CAP_USD`` (default: 100)
@@ -40,15 +42,36 @@ class LLMBudgetGuardrails:
     - ``LLM_BUDGET_FALLBACK_MODEL`` (default: gpt-4o-mini)
     """
 
-    def __init__(self) -> None:
+    def __init__(self, redis_client: Any | None = None) -> None:
         self.hourly_cap_usd = float(os.getenv("LLM_BUDGET_HOURLY_CAP_USD", "100"))
         self.daily_cap_usd = float(os.getenv("LLM_BUDGET_DAILY_CAP_USD", "1000"))
         self.soft_threshold_ratio = float(os.getenv("LLM_BUDGET_SOFT_THRESHOLD_RATIO", "0.8"))
         self.throttle_seconds = int(os.getenv("LLM_BUDGET_THROTTLE_SECONDS", "15"))
         self.fallback_model = os.getenv("LLM_BUDGET_FALLBACK_MODEL", "gpt-4o-mini")
+        self.environment = os.getenv("ENVIRONMENT") or os.getenv("ENV") or "development"
 
         self._usage_events: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
         self._lock = asyncio.Lock()
+        self._redis = redis_client if redis_client is not None else self._build_redis_client()
+        if is_production_like_environment(self.environment) and self._redis is None:
+            raise RuntimeError(
+                "Redis-backed LLM budget guardrails are required in production/staging. "
+                "Set LLM_BUDGET_REDIS_URL or REDIS_URL."
+            )
+
+    def _build_redis_client(self) -> Any | None:
+        redis_url = os.getenv("LLM_BUDGET_REDIS_URL") or os.getenv("REDIS_URL")
+        if not redis_url:
+            return None
+        try:
+            from redis.asyncio import Redis
+
+            return Redis.from_url(redis_url, decode_responses=True)
+        except Exception as exc:
+            if is_production_like_environment(self.environment):
+                raise RuntimeError("Failed to initialize Redis LLM budget backend") from exc
+            logger.warning("Using in-memory LLM budget fallback: %s", exc)
+            return None
 
     async def precheck_or_raise(self, model: str) -> LLMBudgetDecision:
         """Check budget state and return throttling/escalation decision.
@@ -60,9 +83,12 @@ class LLMBudgetGuardrails:
         tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
         normalized_tenant = tenant_id.strip() or "unknown"
 
-        async with self._lock:
-            now = datetime.now(timezone.utc)  # noqa: UP017 (Python 3.10 compatibility)
-            hourly_spend, daily_spend = self._window_spend_locked(normalized_tenant, now)
+        now = datetime.now(timezone.utc)  # noqa: UP017 (Python 3.10 compatibility)
+        if self._redis is not None:
+            hourly_spend, daily_spend = await self._redis_window_spend(normalized_tenant, now)
+        else:
+            async with self._lock:
+                hourly_spend, daily_spend = self._window_spend_locked(normalized_tenant, now)
 
         if hourly_spend >= self.hourly_cap_usd or daily_spend >= self.daily_cap_usd:
             self._record_event(normalized_tenant, "blocked", "hard_cap_exceeded")
@@ -94,10 +120,54 @@ class LLMBudgetGuardrails:
         if cost_usd <= 0:
             return
 
+        now = datetime.now(timezone.utc)  # noqa: UP017 (Python 3.10 compatibility)
+        if self._redis is not None:
+            await self._redis_record_usage(normalized_tenant, now, cost_usd)
+            return
+
         async with self._lock:
-            now = datetime.now(timezone.utc)  # noqa: UP017 (Python 3.10 compatibility)
             self._usage_events[normalized_tenant].append((now, cost_usd))
             self._prune_locked(normalized_tenant, now)
+
+    async def _redis_window_spend(self, tenant_id: str, now: datetime) -> tuple[float, float]:
+        hourly_key, daily_key = self._redis_keys(tenant_id, now)
+        try:
+            hourly_raw, daily_raw = await self._redis.mget(hourly_key, daily_key)
+            return float(hourly_raw or 0), float(daily_raw or 0)
+        except Exception as exc:
+            if is_production_like_environment(self.environment):
+                self._record_event(tenant_id, "blocked", "redis_unavailable")
+                raise LLMBudgetExceededError("LLM budget backend unavailable") from exc
+            logger.warning("LLM budget Redis unavailable; using in-memory fallback: %s", exc)
+            async with self._lock:
+                return self._window_spend_locked(tenant_id, now)
+
+    async def _redis_record_usage(self, tenant_id: str, now: datetime, cost_usd: float) -> None:
+        hourly_key, daily_key = self._redis_keys(tenant_id, now)
+        try:
+            pipe = self._redis.pipeline()
+            pipe.incrbyfloat(hourly_key, cost_usd)
+            pipe.expire(hourly_key, 3700)
+            pipe.incrbyfloat(daily_key, cost_usd)
+            pipe.expire(daily_key, 90000)
+            await pipe.execute()
+        except Exception as exc:
+            if is_production_like_environment(self.environment):
+                self._record_event(tenant_id, "blocked", "redis_unavailable")
+                raise LLMBudgetExceededError("LLM budget backend unavailable") from exc
+            logger.warning("LLM budget Redis record failed; using in-memory fallback: %s", exc)
+            async with self._lock:
+                self._usage_events[tenant_id].append((now, cost_usd))
+                self._prune_locked(tenant_id, now)
+
+    def _redis_keys(self, tenant_id: str, now: datetime) -> tuple[str, str]:
+        hour_bucket = now.strftime("%Y%m%d%H")
+        day_bucket = now.strftime("%Y%m%d")
+        prefix = os.getenv("LLM_BUDGET_REDIS_PREFIX", "llm_budget")
+        return (
+            f"{prefix}:{tenant_id}:hour:{hour_bucket}",
+            f"{prefix}:{tenant_id}:day:{day_bucket}",
+        )
 
     def _window_spend_locked(self, tenant_id: str, now: datetime) -> tuple[float, float]:
         self._prune_locked(tenant_id, now)

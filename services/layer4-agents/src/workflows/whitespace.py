@@ -17,6 +17,7 @@ from ..models.agent_state import (
 )
 from ..models.workflow_config import WHITESPACE_WORKFLOW_CONFIG
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
+from ..services.llm_provider import get_openai_provider
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
 
@@ -46,6 +47,12 @@ class WhitespaceAnalysisWorkflow__execute_score_opportunityResult(TypedDictModel
     opportunity_score: Any | None = None
     recommendations: Any | None = None
     score: int
+
+
+class ExtractedNeedsResponse(TypedDictModel):
+    """Schema for LLM-extracted prospect needs."""
+
+    needs: list[str]
 
 logger = logging.getLogger(__name__)
 
@@ -129,15 +136,11 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
 
         profile = prospect_data.get("profile", {})
 
-        # Use LLM to extract structured needs
-        from openai import AsyncOpenAI
-
-        api_key = self.config.get("openai_api_key") if self.config else None
         initial_model = "gpt-4o-mini"
         decision = await get_llm_budget_guardrails().precheck_or_raise(initial_model)
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
-        client = AsyncOpenAI(api_key=api_key)
+        provider = get_openai_provider(self.config)
 
         # P1-12 FIX: Wrap user content in delimiters to prevent prompt injection
         prompt = f"""Extract structured business needs from the following prospect description.
@@ -149,28 +152,27 @@ Description:
 {needs_text}
 <<</USER_CONTENT>>>
 
-Extract needs as a JSON array of strings. Each need should be a clear, specific business requirement.
-Example output: ["Reduce invoice processing time", "Improve data visibility across departments"]
+Extract needs as JSON with this exact shape:
+{"needs": ["Reduce invoice processing time", "Improve data visibility across departments"]}
 
-Return ONLY the JSON array, no other text."""
+Return ONLY the JSON object, no other text."""
 
         try:
-            response = await client.chat.completions.create(
+            response = await provider.complete_text(
                 model=decision.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
+                response_format={"type": "json_object"},
             )
-            import json
-
-            content = response.choices[0].message.content.strip()
+            content = response.content
             # Extract JSON from potential markdown
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
-            extracted_needs = json.loads(content)
-            prompt_tokens = response.usage.prompt_tokens if response.usage else 0
-            completion_tokens = response.usage.completion_tokens if response.usage else 0
+            extracted_needs = ExtractedNeedsResponse.model_validate_json(content).needs
+            prompt_tokens = response.usage.prompt_tokens
+            completion_tokens = response.usage.completion_tokens
             cost = LLMCostCalculator().calculate_cost(
                 provider="openai",
                 model=decision.model,
@@ -411,5 +413,4 @@ Return ONLY the JSON array, no other text."""
             },
             "recommendations": recommendations,
         })
-
 

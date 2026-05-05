@@ -27,6 +27,7 @@ from ..shared.domain.context import (
     TenantContextError,
     get_current_tenant_context,
 )
+from ..services.llm_provider import get_openai_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -294,13 +295,11 @@ class SemanticSearchTool(BaseTool):
 
     async def _get_embedding(self, text: str) -> list[float]:
         """Get embedding for text using OpenAI."""
-        from openai import AsyncOpenAI
-
-        api_key = self.config.get("openai_api_key") if self.config else None
-        client = AsyncOpenAI(api_key=api_key)
-
-        response = await client.embeddings.create(model=self.embedding_model, input=text)
-        return response.data[0].embedding
+        response = await get_openai_provider(self.config).embed(
+            model=self.embedding_model,
+            text=text,
+        )
+        return response.embedding
 
     async def execute(self, input_data: SemanticSearchInput) -> SemanticSearchOutput:
         """Execute semantic search against Pinecone vector store with tenant isolation.
