@@ -2,8 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Index, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON, DateTime, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..database import Base
@@ -18,7 +17,7 @@ class SavedBusinessCaseScenario(Base):
     case_id: Mapped[str] = mapped_column(String(100), nullable=False)
     tenant_id: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    adjustments: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
+    adjustments: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )

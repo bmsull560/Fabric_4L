@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditEmitter, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
@@ -18,6 +19,7 @@ from ...database import get_db_from_context
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
 from ...models.business_case_record import BusinessCaseRecord
+from ...models.saved_scenario import SavedBusinessCaseScenario
 from ...services.account_service import AccountService
 from ...services.business_case_service import BusinessCaseService
 from ...services.export_provenance import build_export_provenance_manifest
@@ -680,6 +682,27 @@ class CreateCaseResponse(BaseModel):
     created_at: str
 
 
+class SaveScenarioRequest(BaseModel):
+    """Persist a business-case what-if scenario."""
+
+    name: str = Field(..., min_length=1, max_length=120)
+    adjustments: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
+
+
+class SavedScenarioSummary(BaseModel):
+    """Safe scenario metadata returned to the frontend."""
+
+    id: str
+    name: str
+    created_at: str
+
+
+class SavedScenarioDetail(SavedScenarioSummary):
+    """Full server-side scenario payload."""
+
+    adjustments: list[dict[str, Any]]
+
+
 class WorkspaceTabData(BaseModel):
     """Generic workspace tab data container."""
     signals: list[dict[str, Any]] = Field(default_factory=list)
@@ -752,6 +775,108 @@ async def create_case(
         status="created",
         created_at=now,
     )
+
+
+@router.get("/cases/{case_id}/scenarios", response_model=list[SavedScenarioSummary])
+async def list_saved_scenarios(
+    case_id: str,
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
+) -> list[SavedScenarioSummary]:
+    """List saved scenario metadata for a business case."""
+    tenant_id = str(context.tenant_id)
+    result = await db.execute(
+        select(SavedBusinessCaseScenario)
+        .where(
+            SavedBusinessCaseScenario.case_id == case_id,
+            SavedBusinessCaseScenario.tenant_id == tenant_id,
+        )
+        .order_by(SavedBusinessCaseScenario.created_at.desc())
+    )
+    records = result.scalars().all()
+    return [
+        SavedScenarioSummary(
+            id=record.scenario_id,
+            name=record.name,
+            created_at=record.created_at.isoformat(),
+        )
+        for record in records
+    ]
+
+
+@router.post(
+    "/cases/{case_id}/scenarios",
+    response_model=SavedScenarioDetail,
+    status_code=status.HTTP_201_CREATED,
+)
+async def save_scenario(
+    case_id: str,
+    request: SaveScenarioRequest,
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
+) -> SavedScenarioDetail:
+    """Persist a business-case what-if scenario server-side."""
+    now = datetime.now(UTC)
+    record = SavedBusinessCaseScenario(
+        scenario_id=f"scenario_{uuid4().hex}",
+        case_id=case_id,
+        tenant_id=str(context.tenant_id),
+        name=request.name,
+        adjustments=request.adjustments,
+        created_at=now,
+    )
+    db.add(record)
+    return SavedScenarioDetail(
+        id=record.scenario_id,
+        name=record.name,
+        adjustments=record.adjustments,
+        created_at=now.isoformat(),
+    )
+
+
+@router.get("/cases/{case_id}/scenarios/{scenario_id}", response_model=SavedScenarioDetail)
+async def get_saved_scenario(
+    case_id: str,
+    scenario_id: str,
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
+) -> SavedScenarioDetail:
+    """Fetch a saved scenario with sensitive adjustments from server storage."""
+    result = await db.execute(
+        select(SavedBusinessCaseScenario).where(
+            SavedBusinessCaseScenario.case_id == case_id,
+            SavedBusinessCaseScenario.scenario_id == scenario_id,
+            SavedBusinessCaseScenario.tenant_id == str(context.tenant_id),
+        )
+    )
+    record = result.scalar_one_or_none()
+    if record is None:
+        raise HTTPException(status_code=404, detail="Saved scenario not found")
+    return SavedScenarioDetail(
+        id=record.scenario_id,
+        name=record.name,
+        adjustments=record.adjustments,
+        created_at=record.created_at.isoformat(),
+    )
+
+
+@router.delete("/cases/{case_id}/scenarios/{scenario_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_saved_scenario(
+    case_id: str,
+    scenario_id: str,
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
+) -> None:
+    """Delete a saved scenario only within the authenticated tenant scope."""
+    result = await db.execute(
+        delete(SavedBusinessCaseScenario).where(
+            SavedBusinessCaseScenario.case_id == case_id,
+            SavedBusinessCaseScenario.scenario_id == scenario_id,
+            SavedBusinessCaseScenario.tenant_id == str(context.tenant_id),
+        )
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Saved scenario not found")
 
 
 @router.get("/cases/{case_id}/workspace/{tab_key}")
@@ -833,4 +958,3 @@ async def generate_workspace_intelligence(
             "integration and will not return sample data."
         ),
     )
-

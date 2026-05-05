@@ -31,12 +31,58 @@ class FakeExecutor:
         return self.results_by_id.get(workflow_id)
 
 
+class FakeScalarResult:
+    def __init__(self, records: list[Any]) -> None:
+        self.records = records
+
+    def all(self) -> list[Any]:
+        return self.records
+
+
+class FakeExecuteResult:
+    def __init__(self, records: list[Any] | None = None, rowcount: int = 0) -> None:
+        self._records = records or []
+        self.rowcount = rowcount
+
+    def scalars(self) -> FakeScalarResult:
+        return FakeScalarResult(self._records)
+
+    def scalar_one_or_none(self) -> Any | None:
+        return self._records[0] if self._records else None
+
+
+class FakeScenarioDb:
+    def __init__(self, records: list[Any] | None = None, delete_rowcount: int = 1) -> None:
+        self.records = records or []
+        self.delete_rowcount = delete_rowcount
+        self.added: list[Any] = []
+
+    async def execute(self, statement: Any) -> FakeExecuteResult:
+        statement_text = str(statement)
+        if statement_text.startswith("DELETE"):
+            return FakeExecuteResult(rowcount=self.delete_rowcount)
+        return FakeExecuteResult(records=self.records)
+
+    def add(self, record: Any) -> None:
+        self.added.append(record)
+        self.records.append(record)
+
+
 @pytest.fixture
 def analysis_app() -> FastAPI:
     """Build a small FastAPI app with analysis routes only."""
     app = FastAPI()
     app.include_router(analysis.router, prefix="/v1")
     return app
+
+
+async def _mock_context() -> Any:
+    from value_fabric.shared.identity.context import RequestContext
+
+    return RequestContext(
+        tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
+        user_id="test-user",
+    )
 
 
 @pytest.mark.asyncio
@@ -138,6 +184,55 @@ async def test_export_route_uses_get_result_dependency(analysis_app: FastAPI, mo
     assert payload["case_id"] == "case-export"
     assert payload["blocked"] is True
     assert fake_executor.get_result_calls == ["case-export"]
+
+
+@pytest.mark.asyncio
+async def test_save_and_list_business_case_scenarios_are_server_side(
+    analysis_app: FastAPI,
+) -> None:
+    fake_db = FakeScenarioDb()
+    analysis_app.dependency_overrides[analysis.require_authenticated] = _mock_context
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: fake_db
+
+    async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
+        create_response = await client.post(
+            "/v1/cases/case-123/scenarios",
+            json={
+                "name": "Cost pressure scenario",
+                "adjustments": [{"name": "Implementation cost", "value": 125000}],
+            },
+        )
+        list_response = await client.get("/v1/cases/case-123/scenarios")
+
+    assert create_response.status_code == 201, create_response.text
+    created = create_response.json()
+    assert created["id"].startswith("scenario_")
+    assert created["adjustments"] == [{"name": "Implementation cost", "value": 125000}]
+    assert fake_db.added[0].tenant_id == "12345678-1234-1234-1234-123456789abc"
+
+    assert list_response.status_code == 200, list_response.text
+    listed = list_response.json()
+    assert listed == [
+        {
+            "id": created["id"],
+            "name": "Cost pressure scenario",
+            "created_at": created["created_at"],
+        }
+    ]
+    assert "adjustments" not in listed[0]
+
+
+@pytest.mark.asyncio
+async def test_delete_business_case_scenario_is_tenant_scoped(analysis_app: FastAPI) -> None:
+    fake_db = FakeScenarioDb(delete_rowcount=0)
+    analysis_app.dependency_overrides[analysis.require_authenticated] = _mock_context
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: fake_db
+
+    async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
+        response = await client.delete("/v1/cases/case-123/scenarios/scenario-missing")
+
+    assert response.status_code == 404
+    assert "Saved scenario not found" in response.text
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
