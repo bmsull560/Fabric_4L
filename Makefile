@@ -336,6 +336,9 @@ contract-drift: contracts ## Detect OpenAPI contract drift (exports + validates 
 	@test -s contracts/openapi/layer6-benchmarks.json || (echo "⚠️ Layer 6 OpenAPI spec missing ( Gap 6 - non-blocking)")
 	@echo "✅ All layer OpenAPI specs present"
 
+contract-freshness: ## Regenerate OpenAPI and frontend DTO types, then fail on deterministic generated drift
+	bash scripts/ci/check_contract_freshness.sh
+
 sdk: ## Generate the Python SDK (manual typed client)
 	$(PYTHON) scripts/generate_sdk.py
 
