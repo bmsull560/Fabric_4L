@@ -91,7 +91,7 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
-from value_fabric.shared.error_handling import RequestIDMiddleware
+from value_fabric.shared.error_handling.middleware import RequestIDMiddleware  # type: ignore[import-untyped]
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
 from .exceptions import (
@@ -223,19 +223,23 @@ def _check_deprecation_warnings(register: dict) -> None:
             if removal_date <= now:
                 logger.warning(
                     "Deprecation overdue",
-                    feature=item.get("feature"),
-                    target_removal=target_removal,
-                    owner=item.get("owner"),
-                    path=item.get("path"),
+                    extra={
+                        "feature": item.get("feature"),
+                        "target_removal": target_removal,
+                        "owner": item.get("owner"),
+                        "path": item.get("path"),
+                    },
                 )
             else:
                 days_until = (removal_date - now).days
                 if days_until <= 7:
                     logger.warning(
                         "Deprecation expiring soon",
-                        feature=item.get("feature"),
-                        days_until=days_until,
-                        target_removal=target_removal,
+                        extra={
+                            "feature": item.get("feature"),
+                            "days_until": days_until,
+                            "target_removal": target_removal,
+                        },
                     )
         except ValueError:
             continue
@@ -454,7 +458,7 @@ async def lifespan(app: FastAPI):
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy:
+        if vault_addr:
             logger.info("L3: Checking Vault connectivity", extra={"vault_addr": vault_addr})
             ok = await is_vault_healthy(vault_addr)
             if not ok:
@@ -727,6 +731,7 @@ class _delete_entityResult(TypedDictModel):
 add_governance_middleware(app)
 
 # Rate limiting middleware
+settings: Any | None
 try:
     settings = get_settings()
 except Exception:

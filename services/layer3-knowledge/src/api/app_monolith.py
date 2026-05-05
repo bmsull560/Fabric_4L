@@ -1455,6 +1455,7 @@ async def traverse_value_tree(
 
 @app.get("/v1/entities", response_model=EntityListResponse)
 async def list_entities(
+    request: Request,  # Sprint 5: For tenant context extraction
     search_text: str | None = Query(None, max_length=200, description="Search across name and description"),
     entity_types: list[str] | None = Query(None, description="Filter by entity types"),
     domains: list[str] | None = Query(None, description="Filter by domains"),
@@ -1467,7 +1468,6 @@ async def list_entities(
     sort_order: str = Query("desc", description="Sort direction: asc or desc"),
     _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
-    request: Request | None = None,  # Sprint 5: For tenant context extraction
 ):
     """List entities with server-backed filtering and sorting.
 
@@ -1654,11 +1654,11 @@ async def list_entities(
 @app.get("/v1/entities/{{entity_id}}", response_model=EntityDetail)
 async def get_entity_detail(
     entity_id: str,
+    request: Request,  # Sprint 5: For tenant context extraction
     include_provenance: bool = Query(True, description="Include provenance chain"),
     include_relationships: bool = Query(True, description="Include related entities"),
     _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
-    request: Request | None = None,  # type: ignore[assignment]  # Sprint 5: For tenant context extraction
 ):
     """Get full entity detail for inspection/drawer views.
 
@@ -1834,6 +1834,7 @@ async def get_entity_detail(
 @app.post("/v1/entities/query", response_model=EntityListResponse)
 async def query_entities(
     request: EntityFilterRequest,
+    fastapi_request: Request,
     _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
 ):
@@ -1850,6 +1851,7 @@ async def query_entities(
         # Delegate to the same implementation as GET endpoint
         # Convert request body to the same parameters
         return await list_entities(
+            request=fastapi_request,
             search_text=request.search_text,
             entity_types=[entity_type.value for entity_type in request.entity_types] if request.entity_types else None,
             domains=request.domains,
@@ -2019,8 +2021,8 @@ async def compare_entities(
 @app.post("/v1/batch/entities", response_model=BatchEntityResponse)
 async def batch_entity_operations(
     request: BatchEntityRequest,
+    fastapi_request: Request,  # Sprint 5: For tenant context
     neo4j_driver=Depends(get_neo4j_driver),
-    fastapi_request: Request | None = None,  # Sprint 5: For tenant context
 ):
     """Execute batch entity operations (create/update/delete).
 
@@ -2553,8 +2555,8 @@ async def agent_workflow(
 )
 async def get_provenance(
     entity_id: str,
+    request: Request,  # Sprint 5: For tenant context
     app_state: AppState = Depends(get_app_state),
-    request: Request | None = None,  # Sprint 5: For tenant context
 ):
     """Get full provenance trail for an entity."""
     # Validate entity_id
@@ -2908,9 +2910,9 @@ async def export_document(
     },
 )
 async def get_full_graph(
+    request: Request,  # Sprint 5: For tenant context extraction
     limit: int = 1000,
     app_state: AppState = Depends(get_app_state),
-    request: Request | None = None,  # Sprint 5: For tenant context extraction
 ) -> GraphResponse:
     """Get the full knowledge graph for visualization.
 
@@ -3062,9 +3064,9 @@ async def get_full_graph(
 )
 async def get_entity_subgraph(
     entity_id: str,
+    request: Request,  # Sprint 5: For tenant context
     depth: int = 2,
     app_state: AppState = Depends(get_app_state),
-    request: Request | None = None,  # Sprint 5: For tenant context
 ) -> SubgraphResponse:
     """Get subgraph centered on a specific entity.
 
@@ -3222,6 +3224,7 @@ async def get_entity_subgraph(
     },
 )
 async def get_query_subgraph(
+    request: Request,  # Sprint 5: For tenant context
     query: str | None = Query(None, description="Search query to find matching entities"),
     center_entity_id: str | None = Query(None, description="Center entity ID for expansion mode"),
     depth: int = Query(2, ge=1, le=3, description="Traversal depth (1-3)"),
@@ -3231,7 +3234,6 @@ async def get_query_subgraph(
     hybrid_search=Depends(get_hybrid_search),
     graph_rag=Depends(get_graph_rag),
     app_state: AppState = Depends(get_app_state),
-    request: Request | None = None,  # Sprint 5: For tenant context
 ) -> SubgraphResponse:
     """
     Get a coherent subgraph based on query or center entity.

@@ -41,7 +41,8 @@ from ..workflows import create_workflow
 from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from .state_manager import StateManager
 
-sys.modules.setdefault("src.engine.executor", sys.modules[__name__])
+sys.modules["src.engine.executor"] = sys.modules[__name__]
+sys.modules["value_fabric.layer4.engine.executor"] = sys.modules[__name__]
 
 
 class OrchestrationController_get_resultResult(TypedDictModel):
@@ -789,8 +790,15 @@ class OrchestrationController:
         if not workflow_type:
             raise WorkflowExecutionError(f"No workflow type found for {workflow_id}")
 
-        # Re-create workflow with checkpoint saver
-        workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
+        # Re-create workflow with checkpoint saver. Some legacy tests and
+        # service code still patch the historical ``src.engine.executor``
+        # import path, so resolve through that alias when present.
+        workflow_factory = getattr(
+            sys.modules.get("src.engine.executor"),
+            "create_workflow",
+            create_workflow,
+        )
+        workflow = workflow_factory(workflow_type, self.tool_registry, self.checkpoint_saver)
 
         # Update metadata
         metadata["resumed_at"] = datetime.now(UTC).isoformat()
