@@ -1,0 +1,130 @@
+name: Live Workflow Validation Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Validation mode to run"
+        required: true
+        default: "config-only"
+        type: choice
+        options:
+          - config-only
+          - no-start
+          - full
+      run_seed:
+        description: "Run strict live seed after services are healthy"
+        required: true
+        default: false
+        type: boolean
+      run_playwright:
+        description: "Run live Playwright P0 validation after services are healthy"
+        required: true
+        default: false
+        type: boolean
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docker-compose.live.yml'
+      - 'scripts/ci/run_live_workflow_validation.sh'
+      - 'scripts/ci/validate_live_workflow_artifacts.py'
+      - 'scripts/db/seed-e2e-data.ts'
+      - 'apps/web/playwright.config.ts'
+      - 'apps/web/scripts/live-env-guard.mjs'
+      - 'apps/web/e2e/**'
+      - 'docs/validation/live-workflow-validation.md'
+      - '.github/workflows/live-workflow-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docker-compose.live.yml'
+      - 'scripts/ci/run_live_workflow_validation.sh'
+      - 'scripts/ci/validate_live_workflow_artifacts.py'
+      - 'scripts/db/seed-e2e-data.ts'
+      - 'apps/web/playwright.config.ts'
+      - 'apps/web/scripts/live-env-guard.mjs'
+      - 'apps/web/e2e/**'
+      - 'docs/validation/live-workflow-validation.md'
+      - '.github/workflows/live-workflow-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live-validation-gate:
+    name: Live validation gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      ARTIFACT_DIR: artifacts/live-workflow-validation
+      PLAYWRIGHT_LIVE_FRONTEND_URL: http://localhost:3001
+      PLAYWRIGHT_BACKEND_URL: http://localhost:8004
+      VITE_USE_MOCKS: "false"
+      VITE_ENABLE_MOCK_FALLBACK: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Provide docker-compose compatibility command
+        run: |
+          if ! command -v docker-compose >/dev/null 2>&1; then
+            sudo tee /usr/local/bin/docker-compose >/dev/null <<'SH'
+          #!/usr/bin/env bash
+          exec docker compose "$@"
+          SH
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
+          docker-compose version
+
+      - name: Run live workflow validation gate
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'config-only' }}
+          RUN_SEED: ${{ github.event_name == 'workflow_dispatch' && inputs.run_seed || false }}
+          RUN_PLAYWRIGHT: ${{ github.event_name == 'workflow_dispatch' && inputs.run_playwright || false }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [[ "$MODE" == "config-only" ]]; then
+            args+=(--config-only)
+          elif [[ "$MODE" == "no-start" ]]; then
+            args+=(--no-start)
+          elif [[ "$MODE" != "full" ]]; then
+            echo "Unsupported live validation mode: $MODE" >&2
+            exit 2
+          fi
+          if [[ "$RUN_SEED" == "true" ]]; then
+            args+=(--seed)
+          fi
+          if [[ "$RUN_PLAYWRIGHT" == "true" ]]; then
+            args+=(--playwright)
+          fi
+          scripts/ci/run_live_workflow_validation.sh "${args[@]}"
+
+      - name: Validate live workflow artifact schema
+        run: |
+          python scripts/ci/validate_live_workflow_artifacts.py "$ARTIFACT_DIR"
+
+      - name: Upload live validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-workflow-validation
+          path: artifacts/live-workflow-validation
+          if-no-files-found: error

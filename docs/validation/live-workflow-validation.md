@@ -309,3 +309,19 @@ The third live-readiness loop hardens the validation gate for CI and operator co
 | `playwright/html`, `playwright/junit.xml`, and trace ZIP files | Browser validation evidence. | Only when Playwright is requested | Required when Playwright is requested |
 
 The deterministic seed runner now performs a backend contract preflight before mutating data. Required probes include `/health`, the account read route, and the analysis case list route. Optional probes, such as tenant settings discovery, are recorded in the seed report but do not independently block seeding unless the strict seed report later records a required seed area as missing or blocked. This preserves the fail-closed rule: a full live validation cannot be promoted as **PASS** from partial seed data or missing browser artifacts.
+
+## Fourth-loop CI gate, artifact schema, and marginal-value stop criteria
+
+The fourth autonomous sprint loop adds the last material live-readiness hardening layer before additional loops become nominal. The repository now includes a path-scoped GitHub Actions workflow at `.github/workflows/live-workflow-validation.yml`. Pull requests and pushes that modify the canonical live validation surfaces run the live validation gate in **config-only** mode by default, then validate the generated artifact schema and upload the evidence directory. Manual `workflow_dispatch` runs can request `config-only`, `no-start`, or `full` validation and can independently enable strict seeding and live Playwright execution.
+
+The machine-readable evidence contract is enforced by `scripts/ci/validate_live_workflow_artifacts.py`. The validator checks `live-workflow-validation-summary.json`, `artifact-manifest.json`, required core artifact presence, optional endpoint probes, and optional strict seed reports. This makes the live gate auditable in CI without claiming a full live PASS unless the live stack, seed, and browser artifacts are actually produced under fail-closed live settings.
+
+| Sprint | Implemented increment | Validation implication |
+| --- | --- | --- |
+| Sprint 10 | CI integration for the live workflow validation gate | Live-readiness surfaces now trigger a repository-owned validation workflow with uploaded artifacts. |
+| Sprint 11 | Artifact schema validator | Generated summaries and manifests are structurally checked before reviewers rely on them. |
+| Sprint 12 | Explicit stop criteria for additional sprint loops | Further loops should stop unless they remove a live-stack blocker, add a missing deterministic gate, or replace manual interpretation with enforceable automation. |
+
+Additional autonomous sprint loops should now be considered **nominal value** unless a fresh assessment identifies one of the following material outcomes: a remaining live-stack service can be made healthy, a seed or Playwright contract can be verified against real backend behavior, CI can execute a previously manual fail-closed gate that is not already automated, or a documented blocker can be converted into deterministic validation. Pure documentation expansion, cosmetic refactoring, duplicate wrapper commands, or additional summaries over the same artifacts should not justify another loop.
+
+Because the current automation identity may not have permission to update protected GitHub Actions workflow paths directly, the fourth loop also stores the proposed workflow definition at `docs/validation/ci-templates/live-workflow-validation.yml`. A maintainer with workflow-write permission can copy that file to `.github/workflows/live-workflow-validation.yml` to enable the same manual and path-scoped CI gate without changing the validation runner contract.

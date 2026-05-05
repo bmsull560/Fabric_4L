@@ -134,6 +134,8 @@ write_summary() {
 SUMMARY
   write_machine_summary "$status" "$detail"
   write_artifact_manifest "$status"
+  # Refresh after manifest generation so required artifactPresence flags reflect the final evidence set.
+  write_machine_summary "$status" "$detail"
 }
 
 write_machine_summary() {
@@ -166,6 +168,9 @@ const payload = {
     playwrightArtifacts: process.env.PLAYWRIGHT_ARTIFACT_DIR,
   },
   artifactPresence: {
+    markdownSummary: exists(process.env.SUMMARY_FILE),
+    jsonSummary: exists(process.env.SUMMARY_JSON_FILE),
+    manifest: exists(process.env.ARTIFACT_MANIFEST_FILE),
     log: exists(process.env.LOG_FILE),
     composeConfig: exists(process.env.COMPOSE_CONFIG_FILE),
     containerStatus: exists(process.env.CONTAINER_STATUS_FILE),
@@ -188,6 +193,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = process.env.ARTIFACT_DIR;
 const entries = [];
+// Ensure the manifest can include itself when the artifact set is walked.
+fs.mkdirSync(path.dirname(process.env.ARTIFACT_MANIFEST_FILE), { recursive: true });
+if (!fs.existsSync(process.env.ARTIFACT_MANIFEST_FILE)) {
+  fs.writeFileSync(process.env.ARTIFACT_MANIFEST_FILE, '');
+}
 function walk(dir) {
   if (!fs.existsSync(dir)) return;
   for (const name of fs.readdirSync(dir).sort()) {
