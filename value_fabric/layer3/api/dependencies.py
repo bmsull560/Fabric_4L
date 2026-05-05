@@ -178,6 +178,81 @@ async def init_app_state(app: FastAPI) -> AppState:
         return state
 
 
+async def recover_neo4j_state(app: FastAPI) -> AppState:
+    """Reconnect Neo4j-backed application state after a degraded startup.
+
+    Docker Compose can mark Neo4j HTTP as healthy before the Bolt endpoint and
+    schema operations are ready. Startup therefore intentionally degrades instead
+    of crashing, and health checks call this helper to perform a bounded lazy
+    recovery once Neo4j becomes reachable.
+    """
+    state = getattr(app.state, "app_state", None)
+    if state is None:
+        state = AppState()
+        state.settings = get_settings()
+        app.state.app_state = state
+
+    if state.settings is None:
+        state.settings = get_settings()
+
+    if state.neo4j_driver is not None and state.schema_initializer is not None:
+        return state
+
+    try:
+        state.neo4j_driver = await get_driver(state.settings)
+        state.schema_initializer = SchemaInitializer(
+            driver=state.neo4j_driver,
+            settings=state.settings,
+        )
+        await state.schema_initializer.initialize_schema()
+        logger.info("Neo4j state recovered after degraded startup")
+    except Exception as exc:
+        logger.warning("Neo4j recovery attempt failed: %s", exc)
+        state.neo4j_driver = None
+        state.schema_initializer = SchemaInitializer(
+            driver=None,
+            settings=state.settings,
+        )
+        return state
+
+    state.vector_store = VectorStore(driver=state.neo4j_driver, settings=state.settings)
+    state.neo4j_loader = Neo4jLoader(driver=state.neo4j_driver, settings=state.settings)
+    state.sync_manager = SyncManager(
+        loader=state.neo4j_loader,
+        driver=state.neo4j_driver,
+        settings=state.settings,
+    )
+    state.graph_rag = GraphRAGEngine(
+        driver=state.neo4j_driver,
+        vector_store=state.vector_store,
+        settings=state.settings,
+    )
+    state.hybrid_search = HybridSearch(
+        driver=state.neo4j_driver,
+        vector_store=state.vector_store,
+        settings=state.settings,
+    )
+    state.community_detector = CommunityDetector(
+        driver=state.neo4j_driver,
+        settings=state.settings,
+    )
+    state.centrality_analyzer = CentralityAnalyzer(
+        driver=state.neo4j_driver,
+        settings=state.settings,
+    )
+    state.similarity_analyzer = SimilarityAnalyzer(
+        driver=state.neo4j_driver,
+        vector_store=state.vector_store,
+        settings=state.settings,
+    )
+    state.value_tree_projection_agent = ValueTreeProjectionAgent(driver=state.neo4j_driver)
+    state.whitespace_analysis_agent = WhitespaceAnalysisAgent(driver=state.neo4j_driver)
+    state.roi_calculation_agent = ROICalculationAgent(driver=state.neo4j_driver)
+    state.narrative_synthesis_agent = NarrativeSynthesisAgent()
+    state.provenance_tracking_agent = ProvenanceTrackingAgent(driver=state.neo4j_driver)
+    return state
+
+
 async def _cleanup_partial_state(state: AppState) -> None:
     """Clean up partially initialized state to prevent resource leaks."""
     logger.info("Cleaning up partially initialized state...")

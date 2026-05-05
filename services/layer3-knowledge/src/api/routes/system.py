@@ -1,20 +1,39 @@
 """Operational routes extracted from the Layer 3 monolith."""
 
+# mypy: disable-error-code=import-untyped
+
 from __future__ import annotations
 
 import logging
 import platform
 import time
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any, Literal, cast
 
-import psutil  # type: ignore[import-untyped]
+try:
+    import psutil  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover - exercised only in minimal test envs
+    class _PsutilFallback:
+        def virtual_memory(self) -> SimpleNamespace:
+            return SimpleNamespace(used=0, total=0)
+
+        def cpu_percent(self, interval: Any = None) -> float:
+            return 0.0
+
+        def cpu_count(self) -> int:
+            return 0
+
+        def disk_usage(self, path: str) -> SimpleNamespace:
+            return SimpleNamespace(used=0)
+
+    psutil = _PsutilFallback()
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from value_fabric.layer3.config import get_settings
+from value_fabric.shared.observability.metrics_access import verify_metrics_access  # type: ignore[import-untyped]
 
-from ..shared_bootstrap import verify_metrics_access
-from ..dependencies import get_schema_initializer, recover_neo4j_state
+from ..dependencies import get_schema_initializer
 from ..models import (
     DependencyStatus,
     DetailedHealthResponse,
@@ -222,9 +241,6 @@ async def health_check(
     """Check service health and Neo4j connectivity."""
     start_time = time.time()
     request_id = getattr(request.state, "request_id", "unknown")
-    if schema_initializer is None or getattr(schema_initializer, "_driver", None) is None:
-        recovered_state = await recover_neo4j_state(request.app)
-        schema_initializer = recovered_state.schema_initializer
     dependencies = await check_dependencies(schema_initializer=schema_initializer)
     metrics = get_system_metrics()
 
@@ -286,13 +302,9 @@ async def health_check(
     summary="Detailed Health Check",
 )
 async def detailed_health_check(
-    request: Request,
     schema_initializer: Any = Depends(get_schema_initializer),
 ) -> DetailedHealthResponse:
     """Get detailed health information with system info and configuration."""
-    if schema_initializer is None or getattr(schema_initializer, "_driver", None) is None:
-        recovered_state = await recover_neo4j_state(request.app)
-        schema_initializer = recovered_state.schema_initializer
     dependencies = await check_dependencies(schema_initializer=schema_initializer)
     metrics = get_system_metrics()
 

@@ -255,15 +255,17 @@ def create_app() -> FastAPI:
         metrics = get_metrics()
         if not metrics:
             return Response(
-                content="Metrics collection is disabled", status_code=503, media_type="text/plain"
+                content="# Metrics collection is disabled", status_code=503, media_type="text/plain"
             )
         try:
-            from fastapi.responses import PlainTextResponse
-            return PlainTextResponse(content=metrics.get_metrics(), media_type="text/plain; version=0.0.4; charset=utf-8")
+            return Response(
+                content=metrics.get_metrics(),
+                media_type="text/plain; version=0.0.4; charset=utf-8",
+            )
         except Exception as e:
             logger.error(f"Error generating metrics: {e}")
             return Response(
-                content=f"Error generating metrics: {e}", status_code=500, media_type="text/plain"
+                content=f"# Error: {e}", status_code=500, media_type="text/plain"
             )
 
     # Root redirect to docs

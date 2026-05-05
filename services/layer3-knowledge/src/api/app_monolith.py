@@ -3,20 +3,20 @@
 P1-29: OpenTelemetry tracing integration for observability.
 """
 
-# mypy: disable-error-code=import-untyped
-
 import json
 import logging
 import os
+import platform
 import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 import httpx
+import psutil
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -64,7 +64,6 @@ from .main_fix import (
     TracerProvider,
     trace,
 )
-from .routes.system import set_app_metrics
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
@@ -146,6 +145,8 @@ from .models import (
     Community,
     CommunityDetectionRequest,
     CommunityDetectionResponse,
+    DependencyStatus,
+    DetailedHealthResponse,
     DocumentExportRequest,
     DocumentExportResponse,
     EntityComparisonRequest,
@@ -163,6 +164,7 @@ from .models import (
     GraphRAGResponse,
     GraphResponse,
     GraphStats,
+    HealthResponse,
     IngestRequest,
     IngestResponse,
     ProvenanceStep,
@@ -174,6 +176,7 @@ from .models import (
     SearchResponse,
     SearchResult,
     SearchType,
+    ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
     SubgraphResponse,
@@ -267,11 +270,6 @@ def _add_deprecation_headers(response: Response, endpoint_path: str) -> None:
             # RFC 7234 Warning header
             response.headers["Warning"] = f'299 - "Deprecated since {deprecated_since}"'
             break
-
-
-def _get_neo4j_client(app_state: Any) -> Any | None:
-    """Return the Neo4j client from the current app state shape."""
-    return getattr(app_state, "neo4j_manager", getattr(app_state, "neo4j", None))
 
 
 # Track application startup time for uptime calculation
@@ -463,7 +461,7 @@ async def lifespan(app: FastAPI):
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy is not None:
+        if vault_addr:
             logger.info("L3: Checking Vault connectivity", extra={"vault_addr": vault_addr})
             ok = await is_vault_healthy(vault_addr)
             if not ok:
@@ -760,6 +758,32 @@ def _exception_trace(exc: Exception):
     return (type(exc), exc, exc.__traceback__)
 
 
+def _build_graph_node(
+    *,
+    node_id: str,
+    label: str,
+    node_type: str,
+    confidence: float = 0.8,
+    x: float | None = None,
+    y: float | None = None,
+    r: float | None = None,
+    properties: dict[str, Any] | None = None,
+) -> GraphNode:
+    """Construct a graph node using the canonical visualization contract."""
+    return GraphNode.model_validate(
+        {
+            "id": node_id,
+            "label": label,
+            "type": node_type,
+            "confidence": confidence,
+            "x": x,
+            "y": y,
+            "r": r,
+            "properties": properties or {},
+        }
+    )
+
+
 # Exception handlers
 @app.exception_handler(ValueFabricException)
 async def value_fabric_exception_handler(request: Request, exc: ValueFabricException):
@@ -768,7 +792,7 @@ async def value_fabric_exception_handler(request: Request, exc: ValueFabricExcep
     if SHARED_ERROR_HANDLING_AVAILABLE:
         from value_fabric.shared.error_handling.handlers import (
             value_fabric_exception_handler as shared_handler,
-        )  # type: ignore[import-untyped]
+        )
         response = await shared_handler(request, exc)
     else:
         # Fallback to legacy handler
@@ -809,7 +833,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     if SHARED_ERROR_HANDLING_AVAILABLE:
         from value_fabric.shared.error_handling.handlers import (
             http_exception_handler as shared_handler,
-        )  # type: ignore[import-untyped]
+        )
         response = await shared_handler(request, exc)
     else:
         response = JSONResponse(status_code=exc.status_code, content=exc.detail)
@@ -830,7 +854,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     if SHARED_ERROR_HANDLING_AVAILABLE:
         from value_fabric.shared.error_handling.handlers import (
             global_exception_handler as shared_handler,
-        )  # type: ignore[import-untyped]
+        )
         response = await shared_handler(request, exc)
     else:
         # Legacy fallback
@@ -861,6 +885,525 @@ async def global_exception_handler(request: Request, exc: Exception):
         )
 
     return response
+
+
+async def check_dependencies(schema_initializer: Any | None = None) -> list[DependencyStatus]:
+    """Check health of all dependencies.
+
+    When startup has already placed the service in degraded mode because Neo4j
+    is unavailable, avoid creating a new SchemaInitializer during the health
+    probe. Docker health checks must be lightweight and must not spend the
+    entire retry window opening fresh Bolt connections.
+    """
+    dependencies = []
+    settings = _get_settings_with_fallback()
+
+    # Check Neo4j
+    try:
+        if schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None:
+            dependencies.append(
+                DependencyStatus.model_validate({
+                    "name": "neo4j",
+                    "status": "degraded",
+                    "response_time_ms": None,
+                    "error": "Neo4j not initialized",
+                    "details": {
+                        "uri": settings.neo4j_uri,
+                        "database": settings.neo4j_database,
+                    },
+                })
+            )
+        else:
+            from ..schema.initializer import SchemaInitializer
+
+            neo4j_checker = schema_initializer if schema_initializer is not None else SchemaInitializer()
+            # Mark ad-hoc checkers as non-owning so close() won't destroy the shared singleton driver
+            if schema_initializer is None:
+                neo4j_checker._owned_driver = False
+            start_time = time.time()
+            neo4j_health = await neo4j_checker.health_check()
+            response_time = (time.time() - start_time) * 1000
+
+            dependencies.append(
+                DependencyStatus.model_validate({
+                    "name": "neo4j",
+                    "status": neo4j_health["status"],
+                    "response_time_ms": response_time,
+                    "error": neo4j_health.get("error"),
+                    "details": {
+                        "uri": settings.neo4j_uri,
+                        "database": settings.neo4j_database,
+                    },
+                })
+            )
+    except Exception as e:
+        dependencies.append(
+            DependencyStatus.model_validate({
+                "name": "neo4j",
+                "status": "unhealthy",
+                "response_time_ms": None,
+                "error": str(e),
+                "details": {"uri": settings.neo4j_uri},
+            })
+        )
+
+    # Check Pinecone (if configured)
+    if settings.pinecone_api_key:
+        try:
+            start_time = time.time()
+            # Simple Pinecone health check would go here
+            # For now, just check if API key is present
+            response_time = (time.time() - start_time) * 1000
+            dependencies.append(
+                DependencyStatus.model_validate({
+                    "name": "pinecone",
+                    "status": "healthy",
+                    "response_time_ms": response_time,
+                    "error": None,
+                    "details": {"index": settings.pinecone_index},
+                })
+            )
+        except Exception as e:
+            dependencies.append(
+                DependencyStatus.model_validate({
+                    "name": "pinecone",
+                    "status": "unhealthy",
+                    "response_time_ms": None,
+                    "error": str(e),
+                })
+            )
+
+    return dependencies
+
+
+_app_metrics: Any | None = None
+
+
+def set_app_metrics(metrics: Any | None) -> None:
+    """Set the global metrics instance for health check access."""
+    global _app_metrics
+    _app_metrics = metrics
+
+
+def get_system_metrics() -> ServiceMetrics:
+    """Collect system and application metrics from Prometheus.
+
+    Extracts real counter values from the Prometheus registry by iterating
+    through collected metrics and summing sample values for counters.
+    """
+    uptime = time.time() - _app_start_time
+
+    # System metrics from psutil
+    memory_info = psutil.virtual_memory()
+    memory_usage_mb = memory_info.used / (1024 * 1024)
+    cpu_percent = psutil.cpu_percent(interval=None)
+
+    # Application metrics from Prometheus registry
+    total_requests = 0
+    total_errors = 0
+    active_connections = 0
+    error_rate_percent = 0.0
+    metrics_instance = _app_metrics
+
+    if metrics_instance is not None:
+        try:
+            registry = metrics_instance.config.registry
+            prefix = metrics_instance.config.prefix
+
+            # Iterate through all metrics in registry and extract values
+            for metric in registry.collect():
+                if metric.name == f"{prefix}active_connections":
+                    # Gauge: take the value directly (connection_type="total")
+                    for sample in metric.samples:
+                        if sample.labels.get("connection_type") == "total":
+                            active_connections = int(sample.value)
+                            break
+
+                elif metric.name == f"{prefix}http_requests_total":
+                    # Counter: sum all sample values across all labels
+                    for sample in metric.samples:
+                        total_requests += int(sample.value)
+
+                elif metric.name == f"{prefix}errors_total":
+                    # Counter: sum all error samples across all labels
+                    for sample in metric.samples:
+                        total_errors += int(sample.value)
+
+            # Calculate error rate as percentage
+            if total_requests > 0:
+                error_rate_percent = round((total_errors / total_requests) * 100, 2)
+
+        except Exception as e:
+            logger.warning(f"Failed to extract Prometheus metrics: {e}")
+            # Keep default zero values on any extraction failure
+
+    return ServiceMetrics(
+        uptime_seconds=uptime,
+        memory_usage_mb=round(memory_usage_mb, 2),
+        cpu_percent=round(cpu_percent, 2),
+        active_connections=active_connections,
+        total_requests=total_requests,
+        error_rate_percent=error_rate_percent,
+    )
+
+
+# Health check endpoint
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["Health"],
+    summary="Basic Health Check",
+    description="""
+    Perform a basic health check of the service and its dependencies.
+    
+    This endpoint checks:
+    - Neo4j database connectivity
+    - Overall service status
+    - Basic system metrics
+    - Schema validation status
+    
+    Returns a simplified health status suitable for load balancers and monitoring systems.
+    
+    **Response Headers:**
+    - `X-RateLimit-*`: Current rate limiting information
+    - `X-API-Version`: API version used
+    - `X-Supported-Versions`: Supported API versions
+    
+    **Status Codes:**
+    - `200`: Service is healthy
+    - `503`: Service or dependencies are unhealthy
+    """,
+    responses={
+        200: {
+            "description": "Service is healthy",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "version": "1.0.0",
+                        "timestamp": "2024-01-01T12:00:00.000Z",
+                        "uptime_seconds": 3600.0,
+                        "dependencies": [
+                            {
+                                "name": "neo4j",
+                                "status": "healthy",
+                                "response_time_ms": 15.5,
+                                "error": None,
+                                "details": {
+                                    "uri": "bolt://localhost:7687",
+                                    "database": "neo4j",
+                                },
+                            }
+                        ],
+                        "metrics": {
+                            "uptime_seconds": 3600.0,
+                            "memory_usage_mb": 1024.5,
+                            "cpu_percent": 25.0,
+                            "active_connections": 10,
+                            "total_requests": 1500,
+                            "error_rate_percent": 0.1,
+                        },
+                        "neo4j": {
+                            "status": "healthy",
+                            "database": "neo4j",
+                            "uri": "bolt://localhost:7687",
+                        },
+                        "schema_status": {
+                            "constraints": {"expected": 10, "found": 10, "missing": []},
+                            "indexes": {"expected": 15, "found": 15, "missing": []},
+                            "valid": True,
+                        },
+                    }
+                }
+            },
+        },
+        503: {
+            "description": "Service or dependencies are unhealthy",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "unhealthy",
+                        "version": "1.0.0",
+                        "timestamp": "2024-01-01T12:00:00.000Z",
+                        "uptime_seconds": 3600.0,
+                        "dependencies": [
+                            {
+                                "name": "neo4j",
+                                "status": "unhealthy",
+                                "response_time_ms": None,
+                                "error": "Connection timeout",
+                                "details": {
+                                    "uri": "bolt://localhost:7687",
+                                    "database": "neo4j",
+                                },
+                            }
+                        ],
+                        "metrics": {
+                            "uptime_seconds": 3600.0,
+                            "memory_usage_mb": 1024.5,
+                            "cpu_percent": 25.0,
+                            "active_connections": 0,
+                            "total_requests": 1500,
+                            "error_rate_percent": 5.2,
+                        },
+                        "neo4j": {
+                            "status": "unhealthy",
+                            "database": "neo4j",
+                            "uri": "bolt://localhost:7687",
+                            "error": "Connection timeout",
+                        },
+                        "schema_status": {
+                            "constraints": {
+                                "expected": 10,
+                                "found": 8,
+                                "missing": ["constraint_1", "constraint_2"],
+                            },
+                            "indexes": {"expected": 15, "found": 15, "missing": []},
+                            "valid": False,
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
+async def health_check(
+    request: Request,
+    schema_initializer=Depends(get_schema_initializer),
+):
+    """Check service health and Neo4j connectivity."""
+    start_time = time.time()
+    request_id = getattr(request.state, "request_id", "unknown")
+
+    # Check dependencies
+    dependencies = await check_dependencies(schema_initializer=schema_initializer)
+
+    # Get metrics
+    metrics = get_system_metrics()
+
+    # Check Neo4j health (handle case where schema_initializer is None)
+    neo4j_health: dict[str, Any] = {"status": "unavailable", "message": "Neo4j not initialized"}
+    schema_status: dict[str, Any] = {
+        "status": "unknown",
+        "message": "Schema initializer not available",
+    }
+
+    if schema_initializer is not None:
+        try:
+            if getattr(schema_initializer, "_driver", None) is None:
+                neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
+                schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
+            else:
+                health_result = await schema_initializer.health_check()
+                if health_result:
+                    neo4j_health = health_result.model_dump()
+                else:
+                    neo4j_health = {"status": "unknown", "message": "Neo4j health unavailable"}
+                schema_status = await schema_initializer.verify_schema()
+        except Exception:
+            logger.warning(
+                "Health check failed for Neo4j",
+                exc_info=True,
+                extra={"health_request_id": request_id},
+            )
+            error_msg = "Neo4j health check failed"
+            neo4j_health = {"status": "error", "message": error_msg}
+            schema_status = {"status": "error", "message": error_msg}
+
+    # Determine overall status (priority: unhealthy > degraded > healthy)
+    overall_status: Literal["healthy", "unhealthy", "degraded"] = "healthy"
+    if schema_initializer is None or (schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None):
+        overall_status = "degraded"
+    elif any(dep.status == "unhealthy" for dep in dependencies):
+        overall_status = "unhealthy"
+    elif any(dep.status == "degraded" for dep in dependencies):
+        overall_status = "degraded"
+
+    response_time_ms = (time.time() - start_time) * 1000
+
+    logger.info(
+        "Health check completed",
+        extra={
+            "health_request_id": request_id,
+            "status": overall_status,
+            "response_time_ms": round(response_time_ms, 2),
+            "neo4j_status": neo4j_health.get("status"),
+        },
+    )
+
+    # Create response data
+    response_data = {
+        "status": overall_status,
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow(),
+        "uptime_seconds": metrics.uptime_seconds,
+        "response_time_ms": round(response_time_ms, 2),
+        "dependencies": dependencies,
+        "metrics": metrics,
+        "neo4j": neo4j_health,
+        "schema_status": schema_status,
+    }
+
+    # Response model expects health payload directly (version headers are applied by middleware).
+    return response_data
+
+
+@app.get(
+    "/health/detailed",
+    response_model=DetailedHealthResponse,
+    tags=["Health"],
+    summary="Detailed Health Check",
+    description="""
+    Perform a comprehensive health check with detailed system information.
+    
+    This endpoint provides complete health information including:
+    - All dependency status with response times
+    - Detailed system metrics and resource usage
+    - Configuration information (non-sensitive)
+    - System information and platform details
+    - Full schema validation results
+    
+    Use this endpoint for detailed diagnostics and troubleshooting.
+    
+    **Response Headers:**
+    - `X-RateLimit-*`: Current rate limiting information
+    
+    **Status Codes:**
+    - `200`: Detailed health information returned
+    - `503`: Service or dependencies are unhealthy
+    """,
+    responses={
+        200: {
+            "description": "Detailed health information",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "version": "1.0.0",
+                        "timestamp": "2024-01-01T12:00:00.000Z",
+                        "uptime_seconds": 3600.0,
+                        "dependencies": [
+                            {
+                                "name": "neo4j",
+                                "status": "healthy",
+                                "response_time_ms": 15.5,
+                                "error": None,
+                                "details": {
+                                    "uri": "bolt://localhost:7687",
+                                    "database": "neo4j",
+                                },
+                            },
+                            {
+                                "name": "pinecone",
+                                "status": "healthy",
+                                "response_time_ms": 25.2,
+                                "error": None,
+                                "details": {"index": "value-fabric"},
+                            },
+                        ],
+                        "metrics": {
+                            "uptime_seconds": 3600.0,
+                            "memory_usage_mb": 1024.5,
+                            "cpu_percent": 25.0,
+                            "active_connections": 10,
+                            "total_requests": 1500,
+                            "error_rate_percent": 0.1,
+                        },
+                        "neo4j": {
+                            "status": "healthy",
+                            "database": "neo4j",
+                            "uri": "bolt://localhost:7687",
+                        },
+                        "schema_status": {
+                            "constraints": {"expected": 10, "found": 10, "missing": []},
+                            "indexes": {"expected": 15, "found": 15, "missing": []},
+                            "valid": True,
+                        },
+                        "system_info": {
+                            "platform": "Windows-10-10.0.19041-SP0",
+                            "python_version": "3.11.0",
+                            "cpu_count": 8,
+                            "memory_total_gb": 16.0,
+                            "disk_usage_gb": 250.5,
+                        },
+                        "configuration": {
+                            "api_host": "0.0.0.0",
+                            "api_port": 8001,
+                            "log_level": "INFO",
+                            "log_format": "json",
+                            "neo4j_database": "neo4j",
+                            "neo4j_max_pool_size": 50,
+                            "pinecone_configured": True,
+                        },
+                    }
+                }
+            },
+        }
+    },
+)
+async def detailed_health_check(
+    schema_initializer=Depends(get_schema_initializer),
+    app_state: AppState = Depends(get_app_state),
+):
+    """Get detailed health information with system info and configuration."""
+    time.time()
+
+    # Basic health check
+    dependencies = await check_dependencies(schema_initializer=schema_initializer)
+    metrics = get_system_metrics()
+    neo4j_health: dict[str, Any]
+    schema_status: dict[str, Any]
+    if getattr(schema_initializer, "_driver", None) is None:
+        neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
+        schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
+    else:
+        health_result = await schema_initializer.health_check()
+        neo4j_health = (
+            health_result.model_dump()
+            if hasattr(health_result, "model_dump")
+            else dict(health_result)
+        )
+        schema_status = await schema_initializer.verify_schema()
+
+    # Determine overall status
+    overall_status: Literal["healthy", "unhealthy", "degraded"] = "healthy"
+    if any(dep.status == "unhealthy" for dep in dependencies):
+        overall_status = "unhealthy"
+    elif any(dep.status == "degraded" for dep in dependencies):
+        overall_status = "degraded"
+
+    # System information
+    system_info = {
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
+        "cpu_count": psutil.cpu_count(),
+        "memory_total_gb": psutil.virtual_memory().total / (1024**3),
+        "disk_usage_gb": psutil.disk_usage("/").used / (1024**3),
+    }
+
+    # Configuration (non-sensitive)
+    settings = get_settings()
+    configuration = {
+        "api_host": settings.api_host,
+        "api_port": settings.api_port,
+        "log_level": settings.log_level,
+        "log_format": settings.log_format,
+        "neo4j_database": settings.neo4j_database,
+        "neo4j_max_pool_size": settings.neo4j_max_pool_size,
+        "pinecone_configured": bool(settings.pinecone_api_key),
+    }
+
+    return DetailedHealthResponse(
+        status=overall_status,
+        version="1.0.0",
+        uptime_seconds=metrics.uptime_seconds,
+        dependencies=dependencies,
+        metrics=metrics,
+        neo4j=neo4j_health,
+        schema_status=schema_status,
+        system_info=system_info,
+        configuration=configuration,
+    )
 
 
 # Schema endpoints
@@ -971,23 +1514,26 @@ async def ingest_rdf(
             tenant_id=tenant_id,
         )
 
-        raw_status = str(stats.get("status", "unknown"))
-        if raw_status in {"synced", "success"}:
-            status: Literal["success", "partial", "failed"] = "success"
-        elif raw_status == "partial":
-            status = "partial"
-        else:
+        raw_status = stats.get("status", "unknown")
+        status = "success" if raw_status in {"synced", "success"} else raw_status
+        if status not in {"success", "partial", "failed"}:
             status = "failed"
 
-        return IngestResponse(
-            status=status,
-            source_id=request.source_id,
-            entities_loaded=stats.get("entities_loaded", 0),
-            relationships_loaded=stats.get("relationships_loaded", 0),
-            triples_processed=stats.get("triples_processed", 0),
-            duration_seconds=stats.get("duration_seconds"),
-            error=stats.get("error"),
-        )
+        normalized_status: Literal["success", "partial", "failed"] = "failed"
+        if status == "success":
+            normalized_status = "success"
+        elif status == "partial":
+            normalized_status = "partial"
+
+        return IngestResponse.model_validate({
+            "status": normalized_status,
+            "source_id": request.source_id,
+            "entities_loaded": stats.get("entities_loaded", 0),
+            "relationships_loaded": stats.get("relationships_loaded", 0),
+            "triples_processed": stats.get("triples_processed", 0),
+            "duration_seconds": stats.get("duration_seconds"),
+            "error": stats.get("error"),
+        })
     except Exception as e:
         logger.error(f"Ingestion failed: {e}")
         raise HTTPException(status_code=500, detail="Ingestion failed. Please try again later.")
@@ -1064,16 +1610,16 @@ async def _execute_graph_rag_query(
 
     processing_time = (time.time() - start_time) * 1000
 
-    return GraphRAGResponse(
-        query=result.query,
-        entities=result.entities,
-        relationships=result.relationships,
-        context_graph=result.context_graph,
-        confidence_score=result.confidence_score,
-        sources=result.sources,
-        processing_time_ms=processing_time,
-        answer=getattr(result, "answer", None),
-    )
+    return GraphRAGResponse.model_validate({
+        "query": result.query,
+        "entities": result.entities,
+        "relationships": result.relationships,
+        "context_graph": result.context_graph,
+        "confidence_score": result.confidence_score,
+        "sources": result.sources,
+        "processing_time_ms": processing_time,
+        "answer": getattr(result, "answer", None),
+    })
 
 
 @app.post("/v1/graphrag", response_model=GraphRAGResponse)
@@ -1242,15 +1788,16 @@ async def _execute_hybrid_search(
     hybrid_search,
     query: str,
     entity_type: str | None,
-    search_type: str,
+    search_type: SearchType | str,
     top_k: int,
     weights: dict | None,
 ) -> SearchResponse:
     """Execute hybrid search (extracted for caching/deduplication)."""
     start_time = time.time()
-    if search_type == "vector":
+    search_type_value = search_type.value if isinstance(search_type, SearchType) else search_type
+    if search_type_value == "vector":
         results = await hybrid_search.semantic_search(query, entity_type, top_k)
-    elif search_type == "fulltext":
+    elif search_type_value == "fulltext":
         results = await hybrid_search.fulltext_search(query, entity_type, top_k)
     else:  # hybrid
         results = await hybrid_search.search(
@@ -1264,17 +1811,16 @@ async def _execute_hybrid_search(
     search_results = [
         SearchResult(**asdict(result)) for result in results
     ]
-    resolved_search_type = (
-        search_type if isinstance(search_type, SearchType) else SearchType(search_type)
-    )
+    processing_time_ms = (time.time() - start_time) * 1000
+    normalized_search_type = SearchType(search_type_value)
 
-    return SearchResponse(
-        query=query,
-        results=search_results,
-        total_results=len(search_results),
-        search_type=resolved_search_type,
-        processing_time_ms=(time.time() - start_time) * 1000,
-    )
+    return SearchResponse.model_validate({
+        "query": query,
+        "results": search_results,
+        "total_results": len(search_results),
+        "search_type": normalized_search_type,
+        "processing_time_ms": processing_time_ms,
+    })
 
 
 @app.post(
@@ -1651,7 +2197,7 @@ async def list_entities(
         raise HTTPException(status_code=500, detail="Entity listing failed. Please try again later.")
 
 
-@app.get("/v1/entities/{{entity_id}}", response_model=EntityDetail)
+@app.get("/v1/entities/{entity_id}", response_model=EntityDetail)
 async def get_entity_detail(
     entity_id: str,
     request: Request,  # Sprint 5: For tenant context extraction
@@ -1727,7 +2273,7 @@ async def get_entity_detail(
                     confidence_label = "low"
 
             # Build relationships if requested
-            relationships = EntityRelationships()
+            relationships = EntityRelationships(total_count=0)
             if include_relationships:
                 # Outgoing relationships with mandatory tenant filtering
                 outgoing_query = """
@@ -1853,7 +2399,7 @@ async def query_entities(
         return await list_entities(
             request=fastapi_request,
             search_text=request.search_text,
-            entity_types=[entity_type.value for entity_type in request.entity_types] if request.entity_types else None,
+            entity_types=[str(entity_type) for entity_type in request.entity_types] if request.entity_types else None,
             domains=request.domains,
             statuses=[str(status) for status in request.statuses] if request.statuses else None,
             min_confidence=request.min_confidence,
@@ -2029,7 +2575,7 @@ async def batch_entity_operations(
     Reduces round-trips for bulk operations from the frontend.
     Supports atomic mode where all operations succeed or all fail.
     """
-    results: list[BatchEntityResult] = []
+    results = []
     successful = 0
     failed = 0
     atomic_rollback = False
@@ -2052,13 +2598,13 @@ async def batch_entity_operations(
                     else:
                         failed += 1
                     results.append(
-                        BatchEntityResult(
-                            index=i,
-                            operation="create",
-                            entity_id=result.get("entity_id"),
-                            success=result["success"],
-                            error=result.get("error"),
-                        )
+                        {
+                            "index": i,
+                            "operation": "create",
+                            "entity_id": result.get("entity_id"),
+                            "success": result["success"],
+                            "error": result.get("error"),
+                        }
                     )
 
                 elif operation.operation == "update":
@@ -2069,13 +2615,13 @@ async def batch_entity_operations(
                     else:
                         failed += 1
                     results.append(
-                        BatchEntityResult(
-                            index=i,
-                            operation="update",
-                            entity_id=operation.entity_id,
-                            success=result["success"],
-                            error=result.get("error"),
-                        )
+                        {
+                            "index": i,
+                            "operation": "update",
+                            "entity_id": operation.entity_id,
+                            "success": result["success"],
+                            "error": result.get("error"),
+                        }
                     )
 
                 elif operation.operation == "delete":
@@ -2086,25 +2632,25 @@ async def batch_entity_operations(
                     else:
                         failed += 1
                     results.append(
-                        BatchEntityResult(
-                            index=i,
-                            operation="delete",
-                            entity_id=operation.entity_id,
-                            success=result["success"],
-                            error=result.get("error"),
-                        )
+                        {
+                            "index": i,
+                            "operation": "delete",
+                            "entity_id": operation.entity_id,
+                            "success": result["success"],
+                            "error": result.get("error"),
+                        }
                     )
 
             except Exception as e:
                 failed += 1
                 results.append(
-                    BatchEntityResult(
-                        index=i,
-                        operation=operation.operation,
-                        entity_id=operation.entity_id,
-                        success=False,
-                        error=str(e),
-                    )
+                    {
+                        "index": i,
+                        "operation": operation.operation,
+                        "entity_id": operation.entity_id,
+                        "success": False,
+                        "error": str(e),
+                    }
                 )
 
         # Atomic rollback if requested and any failures occurred
@@ -2119,13 +2665,13 @@ async def batch_entity_operations(
                 except Exception as e:
                     logger.error(f"Rollback error for entity {entity_id}: {e}")
 
-        return BatchEntityResponse(
-            total_operations=len(request.operations),
-            successful=successful if not (request.atomic and failed > 0) else 0,
-            failed=failed,
-            results=results,
-            atomic_rollback=atomic_rollback if request.atomic else None,
-        )
+        return BatchEntityResponse.model_validate({
+            "total_operations": len(request.operations),
+            "successful": successful if not (request.atomic and failed > 0) else 0,
+            "failed": failed,
+            "results": [BatchEntityResult.model_validate(result) for result in results],
+            "atomic_rollback": atomic_rollback if request.atomic else None,
+        })
 
     except Exception as e:
         logger.error(f"Batch entity operations failed: {e}")
@@ -2143,7 +2689,7 @@ async def batch_analytics(
     Runs analytics (centrality, community context) on each entity's
     neighborhood subgraph efficiently.
     """
-    results: list[BatchAnalyticsResult] = []
+    results = []
     successful = 0
     failed = 0
     all_scores = []
@@ -2159,12 +2705,11 @@ async def batch_analytics(
 
                 if not context.get("center"):
                     results.append(
-                        BatchAnalyticsResult(
-                            entity_id=entity_id,
-                            success=False,
-                            metrics=None,
-                            error="Entity not found",
-                        )
+                        {
+                            "entity_id": entity_id,
+                            "success": False,
+                            "error": "Entity not found",
+                        }
                     )
                     failed += 1
                     continue
@@ -2183,24 +2728,22 @@ async def batch_analytics(
                     metrics = {"context": context}
 
                 results.append(
-                    BatchAnalyticsResult(
-                        entity_id=entity_id,
-                        success=True,
-                        metrics=metrics,
-                        error=None,
-                    )
+                    {
+                        "entity_id": entity_id,
+                        "success": True,
+                        "metrics": metrics,
+                    }
                 )
                 successful += 1
 
             except Exception as e:
                 logger.warning(f"Batch analytics failed for {entity_id}: {e}")
                 results.append(
-                    BatchAnalyticsResult(
-                        entity_id=entity_id,
-                        success=False,
-                        metrics=None,
-                        error=str(e),
-                    )
+                    {
+                        "entity_id": entity_id,
+                        "success": False,
+                        "error": str(e),
+                    }
                 )
                 failed += 1
 
@@ -2214,13 +2757,13 @@ async def batch_analytics(
                 "total_entities_analyzed": sum(all_scores),
             }
 
-        return BatchAnalyticsResponse(
-            total_analyzed=len(request.entity_ids),
-            successful=successful,
-            failed=failed,
-            results=results,
-            aggregate_metrics=aggregate,
-        )
+        return BatchAnalyticsResponse.model_validate({
+            "total_analyzed": len(request.entity_ids),
+            "successful": successful,
+            "failed": failed,
+            "results": [BatchAnalyticsResult.model_validate(result) for result in results],
+            "aggregate_metrics": aggregate,
+        })
 
     except Exception as e:
         logger.error(f"Batch analytics failed: {e}")
@@ -2575,7 +3118,7 @@ async def get_provenance(
 
     try:
         # Query Neo4j for entity and its provenance
-        neo4j = _get_neo4j_client(app_state)
+        neo4j = app_state.neo4j_driver
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -2684,7 +3227,7 @@ async def list_audit_logs(
 
         # Query Neo4j provenance if source is 'provenance' or 'all'
         if source in ("provenance", "all"):
-            neo4j = _get_neo4j_client(app_state)
+            neo4j = app_state.neo4j_driver
             if neo4j:
                 try:
                     # Use OPTIONAL MATCH to handle case where AuditEvent nodes don't exist yet
@@ -2919,7 +3462,7 @@ async def get_full_graph(
     Returns nodes, edges, and statistics. Results are limited for performance.
     """
     try:
-        neo4j = _get_neo4j_client(app_state)
+        neo4j = app_state.neo4j_driver
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -2951,14 +3494,13 @@ async def get_full_graph(
             node_type = r.get("type", "Unknown")
             node_types[node_type] = node_types.get(node_type, 0) + 1
 
-            node = GraphNode(
-                id=r.get("id"),
+            node = _build_graph_node(
+                node_id=r.get("id"),
                 label=r.get("label") or r.get("id"),
-                type=node_type,
+                node_type=node_type,
                 confidence=r.get("confidence") or 0.8,
                 x=r.get("x"),
                 y=r.get("y"),
-                r=None,
                 properties={"name": r.get("label")},
             )
             nodes.append(node)
@@ -3074,7 +3616,7 @@ async def get_entity_subgraph(
     - **depth**: How many hops to traverse (1-5, default 2)
     """
     try:
-        neo4j = _get_neo4j_client(app_state)
+        neo4j = app_state.neo4j_driver
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -3123,14 +3665,11 @@ async def get_entity_subgraph(
         # Add root node
         root_type = root_record.get("type", "Unknown")
         node_types[root_type] = node_types.get(root_type, 0) + 1
-        nodes_map[entity_id] = GraphNode(
-            id=entity_id,
+        nodes_map[entity_id] = _build_graph_node(
+            node_id=entity_id,
             label=root_record.get("label") or entity_id,
-            type=root_type,
+            node_type=root_type,
             confidence=root_record.get("confidence") or 0.8,
-            x=None,
-            y=None,
-            r=None,
             properties={"is_root": True},
         )
 
@@ -3145,14 +3684,11 @@ async def get_entity_subgraph(
 
                 if conn_id not in nodes_map:
                     node_types[conn_type] = node_types.get(conn_type, 0) + 1
-                    nodes_map[conn_id] = GraphNode(
-                        id=conn_id,
+                    nodes_map[conn_id] = _build_graph_node(
+                        node_id=conn_id,
                         label=connected.get("name") or conn_id,
-                        type=conn_type,
+                        node_type=conn_type,
                         confidence=connected.get("confidence") or 0.8,
-                        x=None,
-                        y=None,
-                        r=None,
                         properties={},
                     )
 
@@ -3260,9 +3796,7 @@ async def get_query_subgraph(
         )
 
     try:
-        neo4j: Any = _get_neo4j_client(app_state)
-        if not neo4j:
-            raise HTTPException(status_code=503, detail="Neo4j not available")
+        neo4j = app_state.neo4j_driver
         nodes: list[GraphNode] = []
         edges: list[GraphEdge] = []
         root_id = center_entity_id or ""
@@ -3320,30 +3854,26 @@ async def get_query_subgraph(
 
                 # Add root node
                 if root_data:
-                    nodes.append(GraphNode(
-                        id=root_data.get("id", center_entity_id),
-                        label=root_data.get("name", root_data.get("id", "Unknown")),
-                        type=root_data.get("entity_type", "Unknown"),
-                        confidence=root_data.get("confidence", 0.8),
-                        x=None,
-                        y=None,
-                        r=None,
-                        properties={k: v for k, v in root_data.items() if k not in ["id", "name", "entity_type"]},
-                    ))
+                    nodes.append(
+                        _build_graph_node(
+                            node_id=root_data.get("id", center_entity_id),
+                            label=root_data.get("name", root_data.get("id", "Unknown")),
+                            node_type=root_data.get("entity_type", "Unknown"),
+                            properties={k: v for k, v in root_data.items() if k not in ["id", "name", "entity_type"]},
+                        )
+                    )
 
                 # Add neighbor nodes
                 for neighbor in neighbors:
                     if neighbor and neighbor.get("id"):
-                        nodes.append(GraphNode(
-                            id=neighbor.get("id"),
-                            label=neighbor.get("name", neighbor.get("id", "Unknown")),
-                            type=neighbor.get("entity_type", "Unknown"),
-                            confidence=neighbor.get("confidence", 0.8),
-                            x=None,
-                            y=None,
-                            r=None,
-                            properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
-                        ))
+                        nodes.append(
+                            _build_graph_node(
+                                node_id=neighbor.get("id"),
+                                label=neighbor.get("name", neighbor.get("id", "Unknown")),
+                                node_type=neighbor.get("entity_type", "Unknown"),
+                                properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
+                            )
+                        )
 
                 # Extract edges from paths
                 edge_keys = set()
@@ -3413,31 +3943,27 @@ async def get_query_subgraph(
                 # Add seed node
                 if seed and seed.get("id") and seed.get("id") not in node_ids:
                     node_ids.add(seed.get("id"))
-                    nodes.append(GraphNode(
-                        id=seed.get("id"),
-                        label=seed.get("name", seed.get("id", "Unknown")),
-                        type=seed.get("entity_type", "Unknown"),
-                        confidence=seed.get("confidence", 0.8),
-                        x=None,
-                        y=None,
-                        r=None,
-                        properties={k: v for k, v in seed.items() if k not in ["id", "name", "entity_type"]},
-                    ))
+                    nodes.append(
+                        _build_graph_node(
+                            node_id=seed.get("id"),
+                            label=seed.get("name", seed.get("id", "Unknown")),
+                            node_type=seed.get("entity_type", "Unknown"),
+                            properties={k: v for k, v in seed.items() if k not in ["id", "name", "entity_type"]},
+                        )
+                    )
 
                 # Add neighbors and edges
                 for neighbor in neighbors:
                     if neighbor and neighbor.get("id") and neighbor.get("id") not in node_ids:
                         node_ids.add(neighbor.get("id"))
-                        nodes.append(GraphNode(
-                            id=neighbor.get("id"),
-                            label=neighbor.get("name", neighbor.get("id", "Unknown")),
-                            type=neighbor.get("entity_type", "Unknown"),
-                            confidence=neighbor.get("confidence", 0.8),
-                            x=None,
-                            y=None,
-                            r=None,
-                            properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
-                        ))
+                        nodes.append(
+                            _build_graph_node(
+                                node_id=neighbor.get("id"),
+                                label=neighbor.get("name", neighbor.get("id", "Unknown")),
+                                node_type=neighbor.get("entity_type", "Unknown"),
+                                properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
+                            )
+                        )
 
                 # Add edges
                 for rel in rels:

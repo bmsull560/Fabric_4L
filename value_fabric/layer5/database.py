@@ -103,7 +103,7 @@ def get_engine() -> AsyncEngine:
             echo=settings.debug,
             future=True,
         )
-        _setup_sqlite_uuid_handling(_engine, settings.database_url)
+        _setup_sqlite_uuid_handling(settings.database_url)
     return _engine
 
 

@@ -2,14 +2,11 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
     Field,
-    confloat,
-    conint,
-    constr,
     field_validator,
     model_validator,
 )
@@ -19,17 +16,17 @@ from pydantic import (
 class DependencyStatus(BaseModel):
     """Status of a service dependency."""
 
-    name: constr(min_length=1, max_length=100) = Field(
-        ..., description="Dependency name"
+    name: str = Field(
+        ..., min_length=1, max_length=100, description="Dependency name"
     )
     status: Literal["healthy", "unhealthy", "degraded"] = Field(
         ..., description="Current status"
     )
-    response_time_ms: confloat(ge=0) | None = Field(
-        None, description="Response time in milliseconds"
+    response_time_ms: float | None = Field(
+        None, ge=0, description="Response time in milliseconds"
     )
-    error: constr(max_length=500) | None = Field(
-        None, description="Error message if unhealthy"
+    error: str | None = Field(
+        None, max_length=500, description="Error message if unhealthy"
     )
     details: dict[str, Any] = Field(
         default_factory=dict, description="Additional status details"
@@ -39,19 +36,19 @@ class DependencyStatus(BaseModel):
 class ServiceMetrics(BaseModel):
     """System and service performance metrics."""
 
-    uptime_seconds: confloat(ge=0) = Field(..., description="Service uptime in seconds")
-    memory_usage_mb: confloat(ge=0) | None = Field(
-        None, description="Memory usage in MB"
+    uptime_seconds: float = Field(..., ge=0, description="Service uptime in seconds")
+    memory_usage_mb: float | None = Field(
+        None, ge=0, description="Memory usage in MB"
     )
-    cpu_percent: confloat(ge=0, le=100) | None = Field(
-        None, description="CPU usage percentage"
+    cpu_percent: float | None = Field(
+        None, ge=0, le=100, description="CPU usage percentage"
     )
-    active_connections: conint(ge=0) = Field(
-        ..., description="Number of active connections"
+    active_connections: int = Field(
+        ..., ge=0, description="Number of active connections"
     )
-    total_requests: conint(ge=0) = Field(..., description="Total requests processed")
-    error_rate_percent: confloat(ge=0, le=100) = Field(
-        ..., description="Error rate percentage"
+    total_requests: int = Field(..., ge=0, description="Total requests processed")
+    error_rate_percent: float = Field(
+        ..., ge=0, le=100, description="Error rate percentage"
     )
 
 
@@ -61,11 +58,11 @@ class HealthResponse(BaseModel):
     status: Literal["healthy", "unhealthy", "degraded"] = Field(
         ..., description="Overall service status"
     )
-    version: constr(min_length=1, max_length=20) = Field(..., description="API version")
+    version: str = Field(..., min_length=1, max_length=20, description="API version")
     timestamp: datetime = Field(
         default_factory=datetime.utcnow, description="Health check timestamp"
     )
-    uptime_seconds: confloat(ge=0) = Field(..., description="Service uptime in seconds")
+    uptime_seconds: float = Field(..., ge=0, description="Service uptime in seconds")
     dependencies: list[DependencyStatus] = Field(..., description="Dependency statuses")
     metrics: ServiceMetrics = Field(..., description="Service metrics")
     neo4j: dict[str, Any] = Field(..., description="Neo4j health information")
@@ -78,11 +75,11 @@ class DetailedHealthResponse(BaseModel):
     status: Literal["healthy", "unhealthy", "degraded"] = Field(
         ..., description="Overall service status"
     )
-    version: constr(min_length=1, max_length=20) = Field(..., description="API version")
+    version: str = Field(..., min_length=1, max_length=20, description="API version")
     timestamp: datetime = Field(
         default_factory=datetime.utcnow, description="Health check timestamp"
     )
-    uptime_seconds: confloat(ge=0) = Field(..., description="Service uptime in seconds")
+    uptime_seconds: float = Field(..., ge=0, description="Service uptime in seconds")
     dependencies: list[DependencyStatus] = Field(..., description="Dependency statuses")
     metrics: ServiceMetrics = Field(..., description="Service metrics")
     neo4j: dict[str, Any] = Field(..., description="Neo4j health information")
@@ -97,22 +94,24 @@ class DetailedHealthResponse(BaseModel):
 class IngestRequest(BaseModel):
     """Request for ingesting RDF data into the knowledge graph."""
 
-    rdf_data: constr(min_length=1, max_length=1000000) = Field(
+    rdf_data: str = Field(
         ...,
+        min_length=1,
+        max_length=1000000,
         description="RDF/Turtle data from Layer 2 (max 1MB)",
-        example="<http://example.com/entity1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Capability> .",
+        examples=["<http://example.com/entity1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.com/Capability> ."],
     )
-    source_id: constr(min_length=1, max_length=255) = Field(
-        ..., description="Source document ID", example="doc-12345"
+    source_id: str = Field(
+        ..., min_length=1, max_length=255, description="Source document ID", examples=["doc-12345"]
     )
-    extraction_job_id: constr(min_length=1, max_length=255) = Field(
-        ..., description="Extraction job ID from Layer 2", example="job-67890"
+    extraction_job_id: str = Field(
+        ..., min_length=1, max_length=255, description="Extraction job ID from Layer 2", examples=["job-67890"]
     )
-    content_hash: constr(min_length=32, max_length=128) | None = Field(
-        None, description="SHA-256 hash for change detection", example="a1b2c3d4e5f6..."
+    content_hash: str | None = Field(
+        None, min_length=32, max_length=128, description="SHA-256 hash for change detection", examples=["a1b2c3d4e5f6..."]
     )
-    tenant_id: constr(min_length=1, max_length=255) | None = Field(
-        None, description="Tenant ID for data isolation (extracted from X-Tenant-ID header if not provided)", example="tenant-abc123"
+    tenant_id: str | None = Field(
+        None, min_length=1, max_length=255, description="Tenant ID for data isolation (extracted from X-Tenant-ID header if not provided)", examples=["tenant-abc123"]
     )
 
     @field_validator("content_hash")
@@ -130,19 +129,19 @@ class IngestResponse(BaseModel):
     status: Literal["success", "partial", "failed"] = Field(
         ..., description="Ingestion status"
     )
-    source_id: constr(max_length=255) = Field(..., description="Source document ID")
-    entities_loaded: conint(ge=0) = Field(..., description="Number of entities loaded")
-    relationships_loaded: conint(ge=0) = Field(
-        ..., description="Number of relationships loaded"
+    source_id: str = Field(..., max_length=255, description="Source document ID")
+    entities_loaded: int = Field(..., ge=0, description="Number of entities loaded")
+    relationships_loaded: int = Field(
+        ..., ge=0, description="Number of relationships loaded"
     )
-    triples_processed: conint(ge=0) = Field(
-        ..., description="Total RDF triples processed"
+    triples_processed: int = Field(
+        ..., ge=0, description="Total RDF triples processed"
     )
-    duration_seconds: confloat(ge=0) | None = Field(
-        None, description="Processing duration in seconds"
+    duration_seconds: float | None = Field(
+        None, ge=0, description="Processing duration in seconds"
     )
-    error: constr(max_length=1000) | None = Field(
-        None, description="Error message if failed"
+    error: str | None = Field(
+        None, max_length=1000, description="Error message if failed"
     )
     warnings: list[str] = Field(default_factory=list, description="Processing warnings")
 
@@ -150,12 +149,12 @@ class IngestResponse(BaseModel):
 class SyncStatusResponse(BaseModel):
     """Response for synchronization status."""
 
-    source_id: constr(max_length=255) = Field(..., description="Source document ID")
-    last_extraction_job_id: constr(max_length=255) | None = Field(
-        None, description="Last extraction job ID"
+    source_id: str = Field(..., max_length=255, description="Source document ID")
+    last_extraction_job_id: str | None = Field(
+        None, max_length=255, description="Last extraction job ID"
     )
-    content_hash: constr(max_length=128) | None = Field(
-        None, description="Current content hash"
+    content_hash: str | None = Field(
+        None, max_length=128, description="Current content hash"
     )
     synced_at: datetime | None = Field(
         None, description="Last synchronization timestamp"
@@ -163,8 +162,8 @@ class SyncStatusResponse(BaseModel):
     status: Literal["synced", "pending", "failed", "outdated"] | None = Field(
         None, description="Synchronization status"
     )
-    error: constr(max_length=1000) | None = Field(
-        None, description="Error message if failed"
+    error: str | None = Field(
+        None, max_length=1000, description="Error message if failed"
     )
 
 
@@ -216,20 +215,22 @@ class SearchType(str, Enum):
 class GraphRAGQuery(BaseModel):
     """Request for graph-based question answering."""
 
-    query: constr(min_length=1, max_length=1000) = Field(
+    query: str = Field(
         ...,
+        min_length=1,
+        max_length=1000,
         description="Natural language query",
-        example="What capabilities enable automated invoice processing?",
+        examples=["What capabilities enable automated invoice processing?"],
     )
     entity_type: EntityType | None = Field(None, description="Filter by entity type")
-    max_hops: conint(ge=1, le=5) = Field(
-        default=3, description="Maximum graph traversal hops"
+    max_hops: int = Field(
+        default=3, ge=1, le=5, description="Maximum graph traversal hops"
     )
-    max_results: conint(ge=1, le=50) = Field(
-        default=10, description="Maximum number of results"
+    max_results: int = Field(
+        default=10, ge=1, le=50, description="Maximum number of results"
     )
-    confidence_threshold: confloat(ge=0.0, le=1.0) = Field(
-        default=0.7, description="Minimum confidence score for results"
+    confidence_threshold: float = Field(
+        default=0.7, ge=0.0, le=1.0, description="Minimum confidence score for results"
     )
     include_context: bool = Field(
         default=True, description="Include surrounding context in results"
@@ -239,39 +240,39 @@ class GraphRAGQuery(BaseModel):
 class GraphRAGResponse(BaseModel):
     """Response from graph-based question answering."""
 
-    query: constr(max_length=1000) = Field(..., description="Original query")
+    query: str = Field(..., max_length=1000, description="Original query")
     entities: list[dict[str, Any]] = Field(..., description="Relevant entities found")
     relationships: list[dict[str, Any]] = Field(
         ..., description="Relevant relationships found"
     )
     context_graph: dict[str, Any] = Field(..., description="Context graph structure")
-    confidence_score: confloat(ge=0.0, le=1.0) = Field(
-        ..., description="Overall confidence score"
+    confidence_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Overall confidence score"
     )
-    sources: list[constr(max_length=500)] = Field(
+    sources: list[Annotated[str, Field(max_length=500)]] = Field(
         ..., description="Source entities/IDs"
     )
-    processing_time_ms: confloat(ge=0) | None = Field(
-        None, description="Processing time in milliseconds"
+    processing_time_ms: float | None = Field(
+        None, ge=0, description="Processing time in milliseconds"
     )
-    answer: constr(max_length=2000) | None = Field(None, description="Generated answer")
+    answer: str | None = Field(None, max_length=2000, description="Generated answer")
 
 
 # Search Models
 class SearchRequest(BaseModel):
     """Request for entity search."""
 
-    query: constr(min_length=1, max_length=500) = Field(
-        ..., description="Search query string", example="real-time analytics"
+    query: str = Field(
+        ..., min_length=1, max_length=500, description="Search query string", examples=["real-time analytics"]
     )
     entity_type: EntityType | None = Field(None, description="Filter by entity type")
     search_type: SearchType = Field(
         default=SearchType.HYBRID, description="Search algorithm to use"
     )
-    top_k: conint(ge=1, le=50) = Field(
-        default=10, description="Number of results to return"
+    top_k: int = Field(
+        default=10, ge=1, le=50, description="Number of results to return"
     )
-    weights: dict[str, confloat(ge=0.0, le=1.0)] | None = Field(
+    weights: dict[str, Annotated[float, Field(ge=0.0, le=1.0)]] | None = Field(
         None, description="Search weights for hybrid search (bm25, vector, graph)"
     )
     filters: dict[str, Any] | None = Field(
@@ -292,34 +293,34 @@ class SearchRequest(BaseModel):
 class SearchResult(BaseModel):
     """Individual search result."""
 
-    entity_id: constr(min_length=1, max_length=255) = Field(
-        ..., description="Entity ID"
+    entity_id: str = Field(
+        ..., min_length=1, max_length=255, description="Entity ID"
     )
     entity_type: EntityType = Field(..., description="Entity type")
-    name: constr(min_length=1, max_length=500) = Field(..., description="Entity name")
-    bm25_score: confloat(ge=0.0) = Field(
-        ..., description="BM25 keyword similarity score"
+    name: str = Field(..., min_length=1, max_length=500, description="Entity name")
+    bm25_score: float = Field(
+        ..., ge=0.0, description="BM25 keyword similarity score"
     )
-    vector_score: confloat(ge=0.0) = Field(..., description="Vector similarity score")
-    graph_score: confloat(ge=0.0) = Field(..., description="Graph traversal score")
-    combined_score: confloat(ge=0.0, le=1.0) = Field(
-        ..., description="Combined relevance score"
+    vector_score: float = Field(..., ge=0.0, description="Vector similarity score")
+    graph_score: float = Field(..., ge=0.0, description="Graph traversal score")
+    combined_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Combined relevance score"
     )
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional entity metadata"
     )
-    confidence: confloat(ge=0.0, le=1.0) = Field(..., description="Result confidence")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Result confidence")
 
 
 class SearchResponse(BaseModel):
     """Response from entity search."""
 
-    query: constr(max_length=500) = Field(..., description="Original search query")
+    query: str = Field(..., max_length=500, description="Original search query")
     results: list[SearchResult] = Field(..., description="Search results")
-    total_results: conint(ge=0) = Field(..., description="Total results found")
+    total_results: int = Field(..., ge=0, description="Total results found")
     search_type: SearchType = Field(..., description="Search type used")
-    processing_time_ms: confloat(ge=0) | None = Field(
-        None, description="Processing time in milliseconds"
+    processing_time_ms: float | None = Field(
+        None, ge=0, description="Processing time in milliseconds"
     )
 
 
@@ -345,8 +346,8 @@ class GraphRAGStreamEvent(BaseModel):
     timestamp: datetime = Field(
         default_factory=datetime.utcnow, description="Event timestamp"
     )
-    progress_percent: confloat(ge=0, le=100) | None = Field(
-        None, description="Query progress percentage"
+    progress_percent: float | None = Field(
+        None, ge=0, le=100, description="Query progress percentage"
     )
 
 
@@ -358,8 +359,8 @@ class SearchStreamEvent(BaseModel):
     timestamp: datetime = Field(
         default_factory=datetime.utcnow, description="Event timestamp"
     )
-    progress_percent: confloat(ge=0, le=100) | None = Field(
-        None, description="Search progress percentage"
+    progress_percent: float | None = Field(
+        None, ge=0, le=100, description="Search progress percentage"
     )
 
 
@@ -409,44 +410,44 @@ class EntitySummary(BaseModel):
     Provides explicit, authoritative fields for UI consumption.
     """
 
-    id: constr(min_length=1, max_length=255) = Field(
-        ..., description="Canonical entity identifier (stable UUID)"
+    id: str = Field(
+        ..., min_length=1, max_length=255, description="Canonical entity identifier (stable UUID)"
     )
-    name: constr(min_length=1, max_length=500) = Field(
-        ..., description="Human-readable entity name"
+    name: str = Field(
+        ..., min_length=1, max_length=500, description="Human-readable entity name"
     )
     entity_type: EntityType = Field(..., description="Entity classification from ontology")
 
     # Authoritative business fields (not inferred by UI)
-    domain: constr(max_length=100) | None = Field(
-        None, description="Business domain/vertical (e.g., 'Finance', 'Healthcare')"
+    domain: str | None = Field(
+        None, max_length=100, description="Business domain/vertical (e.g., 'Finance', 'Healthcare')"
     )
     status: EntityStatus = Field(
         ..., description="Entity lifecycle status: validated, pending, draft, deprecated"
     )
 
     # Confidence with explicit semantics
-    confidence: confloat(ge=0.0, le=1.0) = Field(
-        ..., description="Extraction confidence score (0.0 to 1.0)"
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Extraction confidence score (0.0 to 1.0)"
     )
     confidence_label: ConfidenceLabel = Field(
         ..., description="Human-readable confidence tier derived from score"
     )
 
     # Metadata for display
-    description: constr(max_length=1000) | None = Field(
-        None, description="Brief entity description"
+    description: str | None = Field(
+        None, max_length=1000, description="Brief entity description"
     )
     updated_at: datetime = Field(
         ..., description="Last modification timestamp (ISO 8601)"
     )
 
     # Provenance (for UI attribution)
-    source_name: constr(max_length=255) | None = Field(
-        None, description="Source system where entity was extracted"
+    source_name: str | None = Field(
+        None, max_length=255, description="Source system where entity was extracted"
     )
-    extraction_job_id: constr(max_length=255) | None = Field(
-        None, description="Originating extraction job ID"
+    extraction_job_id: str | None = Field(
+        None, max_length=255, description="Originating extraction job ID"
     )
 
     @model_validator(mode="before")
@@ -475,14 +476,14 @@ class EntitySummary(BaseModel):
 class RelationshipPreview(BaseModel):
     """Lightweight relationship for preview lists in entity detail."""
 
-    relationship_type: constr(min_length=1, max_length=100) = Field(
-        ..., description="Type of relationship (e.g., ENABLES, DEPENDS_ON)"
+    relationship_type: str = Field(
+        ..., min_length=1, max_length=100, description="Type of relationship (e.g., ENABLES, DEPENDS_ON)"
     )
-    target_entity_id: constr(min_length=1, max_length=255) = Field(
-        ..., description="ID of related entity"
+    target_entity_id: str = Field(
+        ..., min_length=1, max_length=255, description="ID of related entity"
     )
-    target_entity_name: constr(min_length=1, max_length=500) = Field(
-        ..., description="Name of related entity"
+    target_entity_name: str = Field(
+        ..., min_length=1, max_length=500, description="Name of related entity"
     )
     target_entity_type: EntityType = Field(..., description="Type of related entity")
 
@@ -490,7 +491,7 @@ class RelationshipPreview(BaseModel):
 class EntityRelationships(BaseModel):
     """Relationship counts and samples for quick navigation."""
 
-    total_count: conint(ge=0) = Field(0, description="Total relationships (in + out)")
+    total_count: Annotated[int, Field(ge=0, description="Total relationships (in + out)")] = 0
     incoming: list[RelationshipPreview] = Field(
         default_factory=list, max_length=5, description="Sample of incoming relationships"
     )
@@ -506,8 +507,8 @@ class ProvenanceEvent(BaseModel):
         ..., description="Type of provenance event"
     )
     timestamp: datetime = Field(..., description="When the event occurred")
-    actor: constr(min_length=1, max_length=255) = Field(
-        ..., description="User ID, system component, or job ID that performed the action"
+    actor: str = Field(
+        ..., min_length=1, max_length=255, description="User ID, system component, or job ID that performed the action"
     )
     details: dict[str, Any] = Field(
         default_factory=dict, description="Additional event-specific data"
@@ -524,18 +525,18 @@ class EntityDetail(BaseModel):
     # ═════════════════════════════════════════════════════════════════════════
     # All EntitySummary fields (ensuring consistency between summary/detail)
     # ═════════════════════════════════════════════════════════════════════════
-    id: constr(min_length=1, max_length=255) = Field(..., description="Entity ID")
-    name: constr(min_length=1, max_length=500) = Field(..., description="Entity name")
+    id: str = Field(..., min_length=1, max_length=255, description="Entity ID")
+    name: str = Field(..., min_length=1, max_length=500, description="Entity name")
     entity_type: EntityType = Field(..., description="Entity type")
-    domain: constr(max_length=100) | None = Field(None, description="Business domain")
+    domain: str | None = Field(None, max_length=100, description="Business domain")
     status: EntityStatus = Field(..., description="Lifecycle status")
-    confidence: confloat(ge=0.0, le=1.0) = Field(..., description="Confidence 0-1")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence 0-1")
     confidence_label: ConfidenceLabel = Field(..., description="Confidence tier")
-    description: constr(max_length=1000) | None = Field(None, description="Description")
+    description: str | None = Field(None, max_length=1000, description="Description")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    source_name: constr(max_length=255) | None = Field(None, description="Source system")
-    extraction_job_id: constr(max_length=255) | None = Field(
-        None, description="Extraction job ID"
+    source_name: str | None = Field(None, max_length=255, description="Source system")
+    extraction_job_id: str | None = Field(
+        None, max_length=255, description="Extraction job ID"
     )
 
     @model_validator(mode="before")
@@ -564,8 +565,8 @@ class EntityDetail(BaseModel):
     # Extended fields for detail view
     # ═════════════════════════════════════════════════════════════════════════
     created_at: datetime = Field(..., description="Entity creation timestamp")
-    created_by: constr(max_length=255) | None = Field(
-        None, description="User or system that created the entity"
+    created_by: str | None = Field(
+        None, max_length=255, description="User or system that created the entity"
     )
 
     # Full provenance chain
@@ -585,7 +586,7 @@ class EntityDetail(BaseModel):
     )
 
     # Validation state
-    validation_errors: list[constr(max_length=500)] = Field(
+    validation_errors: list[Annotated[str, Field(max_length=500)]] = Field(
         default_factory=list, description="Schema validation errors if any"
     )
     last_validated_at: datetime | None = Field(
@@ -601,15 +602,15 @@ class EntityFilterRequest(BaseModel):
     """
 
     # Text search (across name, description, properties)
-    search_text: constr(max_length=200) | None = Field(
-        None, description="Search across name, description, and properties"
+    search_text: str | None = Field(
+        None, max_length=200, description="Search across name, description, and properties"
     )
 
     # Exact match filters (AND logic between different filter types)
     entity_types: list[EntityType] | None = Field(
         None, description="Include only these entity types"
     )
-    domains: list[constr(max_length=100)] | None = Field(
+    domains: list[Annotated[str, Field(max_length=100)]] | None = Field(
         None, description="Include only these domains"
     )
     statuses: list[EntityStatus] | None = Field(
@@ -617,18 +618,18 @@ class EntityFilterRequest(BaseModel):
     )
 
     # Confidence range
-    min_confidence: confloat(ge=0.0, le=1.0) | None = Field(
-        None, description="Minimum confidence score (inclusive)"
+    min_confidence: float | None = Field(
+        None, ge=0.0, le=1.0, description="Minimum confidence score (inclusive)"
     )
-    max_confidence: confloat(ge=0.0, le=1.0) | None = Field(
-        None, description="Maximum confidence score (inclusive)"
+    max_confidence: float | None = Field(
+        None, ge=0.0, le=1.0, description="Maximum confidence score (inclusive)"
     )
 
     # Provenance filters
-    source_names: list[constr(max_length=255)] | None = Field(
+    source_names: list[Annotated[str, Field(max_length=255)]] | None = Field(
         None, description="Filter by source systems"
     )
-    extraction_job_ids: list[constr(max_length=255)] | None = Field(
+    extraction_job_ids: list[Annotated[str, Field(max_length=255)]] | None = Field(
         None, description="Filter by originating extraction job"
     )
 
@@ -637,8 +638,8 @@ class EntityFilterRequest(BaseModel):
     updated_before: datetime | None = Field(None, description="Updated before this time")
 
     # Pagination and sorting
-    limit: conint(ge=1, le=100) = Field(25, description="Max results to return")
-    offset: conint(ge=0) = Field(0, description="Results to skip (for pagination)")
+    limit: int = Field(25, ge=1, le=100, description="Max results to return")
+    offset: int = Field(0, ge=0, description="Results to skip (for pagination)")
     sort_by: Literal["name", "updated_at", "confidence", "entity_type", "status"] = Field(
         "updated_at", description="Field to sort by"
     )
@@ -651,14 +652,14 @@ class EntityListResponse(BaseModel):
     """Paginated list of entity summaries with filter metadata."""
 
     results: list[EntitySummary] = Field(..., description="Entity summaries")
-    total_count: conint(ge=0) = Field(..., description="Total entities in database")
-    filtered_count: conint(ge=0) = Field(
-        ..., description="Entities matching filters (before pagination)"
+    total_count: int = Field(..., ge=0, description="Total entities in database")
+    filtered_count: int = Field(
+        ..., ge=0, description="Entities matching filters (before pagination)"
     )
 
     # Pagination metadata
-    limit: conint(ge=1) = Field(..., description="Limit applied to this query")
-    offset: conint(ge=0) = Field(..., description="Offset applied to this query")
+    limit: int = Field(..., ge=1, description="Limit applied to this query")
+    offset: int = Field(..., ge=0, description="Offset applied to this query")
     has_more: bool = Field(..., description="Whether more results available")
 
     # Available filter values (for UI dropdown population)
@@ -894,7 +895,7 @@ class BatchEntityRequest(BaseModel):
     """Request for batch entity operations."""
 
     operations: list[BatchEntityOperation] = Field(
-        ..., min_items=1, max_items=100, description="Entity operations to perform"
+        ..., min_length=1, max_length=100, description="Entity operations to perform"
     )
     atomic: bool = Field(
         default=True, description="If true, all operations succeed or all fail"
@@ -929,7 +930,7 @@ class BatchAnalyticsRequest(BaseModel):
     """Request for batch analytics operations."""
 
     entity_ids: list[str] = Field(
-        ..., min_items=1, max_items=50, description="Entity IDs to analyze"
+        ..., min_length=1, max_length=50, description="Entity IDs to analyze"
     )
     algorithm: str = Field(
         default="centrality", description="Algorithm to run on each entity context"
@@ -944,8 +945,8 @@ class BatchAnalyticsResult(BaseModel):
 
     entity_id: str = Field(..., description="Entity ID")
     success: bool = Field(..., description="Whether analysis succeeded")
-    metrics: dict[str, Any] | None = Field(None, description="Analytics metrics")
-    error: str | None = Field(None, description="Error message if failed")
+    metrics: dict[str, Any] | None = None
+    error: str | None = None
 
 
 class BatchAnalyticsResponse(BaseModel):

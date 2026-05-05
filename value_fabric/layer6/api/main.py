@@ -180,14 +180,14 @@ except ImportError:
     )
 
 # Custom metrics endpoint using our PrometheusMetrics class
-@app.get("/metrics", include_in_schema=False)
+@app.get("/metrics", tags=["Monitoring"], include_in_schema=False)
 async def metrics_endpoint(request: Request):
     """Prometheus-compatible metrics endpoint.
 
     Internal-only — access is gated by ``shared.observability.verify_metrics_access``
     so that scrape-token auth and private-network rules stay aligned across layers.
     """
-    if verify_metrics_access is None or not verify_metrics_access(request):
+    if not verify_metrics_access(request):
         raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
 
     metrics = get_metrics()
@@ -244,7 +244,7 @@ class list_industriesResult(TypedDictModel):
     industries: Any
 
 
-async def health_check(request: Request | None = None):
+async def health_check(request: Request):
     """Health check endpoint with dependency and system status."""
     import psutil  # type: ignore[import-untyped]
 

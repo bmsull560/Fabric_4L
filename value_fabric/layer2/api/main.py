@@ -15,6 +15,8 @@ import json
 import logging
 import os
 import time
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -22,21 +24,13 @@ from uuid import uuid4
 
 # Third-party imports for health check
 try:
-    import psutil
+    import psutil  # type: ignore[import-untyped]
 except ImportError:
-    psutil = None  # Health check will work without system metrics
+    psutil = None  # type: ignore[assignment]  # Health check will work without system metrics
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 
-# P1-29: OpenTelemetry imports for distributed tracing
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from pydantic import BaseModel, Field
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
@@ -44,7 +38,7 @@ from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from value_fabric.shared.secrets import load_infisical_secrets
 
-from layer2_extraction.api.deps import RequestContext
+from layer2_extraction.api.deps import RequestContext  # type: ignore
 
 try:
     load_infisical_secrets()
@@ -60,34 +54,40 @@ except Exception:
 
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
-# Hard imports - fail fast if security components unavailable
-from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
-from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
+from ..shared_bootstrap import (
+    SecurityConfig,
+    add_security_middleware,
+    create_fabric_app,
+    install_metrics_middleware,
+    resolve_cors_policy,
+    validate_production_safety,
+    verify_metrics_access,
+)
 
-from layer2_extraction.alignment import SemanticAligner
-from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
-from layer2_extraction.extraction.chunker import chunk_markdown
-from layer2_extraction.extraction.deduplicator import deduplicate_entities
-from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
-from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store
-from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
-from layer2_extraction.integration.pending_ingestion_store import (
+from layer2_extraction.alignment import SemanticAligner  # type: ignore
+from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router  # type: ignore
+from layer2_extraction.extraction.chunker import chunk_markdown  # type: ignore
+from layer2_extraction.extraction.deduplicator import deduplicate_entities  # type: ignore
+from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor  # type: ignore
+from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store  # type: ignore
+from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient  # type: ignore
+from layer2_extraction.integration.pending_ingestion_store import (  # type: ignore
     PendingIngestionRecord,
     PendingIngestionStore,
     SqlitePendingIngestionStore,
     build_pending_ingestion_store,
 )
-from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics
-from layer2_extraction.models import (
+from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics  # type: ignore
+from layer2_extraction.models import (  # type: ignore
     ExtractionResult,
     Relationship,
 )
-from layer2_extraction.output.provenance import (
+from layer2_extraction.output.provenance import (  # type: ignore
     ExtractionStep,
     get_provenance_tracker,
 )
-from layer2_extraction.output.rdf_generator import generate_rdf
-from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+from layer2_extraction.output.rdf_generator import generate_rdf  # type: ignore
+from layer2_extraction.validation import EntailmentValidator, ValidationSeverity  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -112,64 +112,8 @@ def _is_production_like() -> bool:
 # App start time for uptime calculation
 _app_start_time = time.time()
 
-# P1-29: OpenTelemetry tracer provider (initialized on startup)
-_tracer_provider: TracerProvider | None = None
-
-
-def init_telemetry() -> TracerProvider | None:
-    """Initialize OpenTelemetry tracing if endpoint configured.
-
-    P1-29: OpenTelemetry integration for distributed tracing.
-    """
-    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if not otel_endpoint:
-        return None
-
-    resource = Resource.create({SERVICE_NAME: "layer2-extraction"})
-    provider = TracerProvider(resource=resource)
-
-    exporter = OTLPSpanExporter(
-        endpoint=f"{otel_endpoint}/v1/traces"
-    )
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
-
-    trace.set_tracer_provider(provider)
-    return provider
-
 # WebSocket manager for real-time pipeline streaming
 _ws_manager = get_pipeline_ws_manager()
-
-# Initialize Prometheus metrics
-metrics = initialize_metrics()
-
-# P1-29: Initialize OpenTelemetry
-_tracer_provider = init_telemetry()
-if _tracer_provider:
-    logger.info("L2: OpenTelemetry tracing initialized")
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="Value Fabric - Extraction Pipeline",
-    description="Ontology-guided extraction of entities from unstructured text to RDF/OWL",
-    version="1.0.0",
-)
-
-# CORS middleware with production validation (P0-20) — OUTERMOST
-_cors_policy = resolve_cors_policy()
-app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
-
-# SecurityMiddleware — input validation and security headers (mandatory)
-# P1-14 FIX: Removed /v1/extract paths from skip list
-# All untrusted input must pass through SecurityMiddleware validation
-_security_config_l2 = SecurityConfig.from_env(
-    skip_validation_paths=frozenset({
-        "/health",
-        "/metrics",
-    }),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l2)
 
 # Redis rate limiter - initialized in startup event
 redis_rate_limiter: RedisRateLimiter | None = None
@@ -187,7 +131,7 @@ async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         redis_client = redis.from_url(redis_url, decode_responses=True)
         # Validate connection before using for rate limiting
-        await redis_client.ping()
+        await redis_client.ping()  # type: ignore[misc]
         limiter = RedisRateLimiter(redis_client)
         logger.info("L2: Redis rate limiter initialized")
         return limiter
@@ -201,21 +145,82 @@ async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
         return None
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Manage Layer 2 startup and shutdown around the shared app factory."""
+    global redis_rate_limiter, _retry_task
+
+    validate_production_safety()
+
+    if getattr(app.state, "telemetry_provider", None) is not None:
+        logger.info("L2: OpenTelemetry tracing initialized")
+
+    redis_rate_limiter = await _init_redis_rate_limiter()
+    app.state.redis_rate_limiter = redis_rate_limiter
+
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr:
+            logger.info("L2: Checking Vault connectivity at %s", vault_addr)
+            ok = await is_vault_healthy(vault_addr)
+            if not ok:
+                logger.error("L2: %s", _VAULT_UNREACHABLE_ERROR)
+                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
+            logger.info("L2: Vault connectivity verified")
+
+    if _retry_task is None:
+        _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
+
+    await _ws_manager.start()
+    yield
+
+    if _retry_task:
+        _retry_task.cancel()
+        try:
+            await _retry_task
+        except asyncio.CancelledError:
+            pass
+        _retry_task = None
+
+    await _ws_manager.stop()
+
+    if getattr(app.state, "telemetry_provider", None) is not None:
+        app.state.telemetry_provider.shutdown()
+        app.state.telemetry_provider = None
+
+
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
 # Note: redis_rate_limiter is set during startup
 from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
 
+app = create_fabric_app(
+    service_name="layer2-extraction",
+    title="Value Fabric - Extraction Pipeline",
+    description="Ontology-guided extraction of entities from unstructured text to RDF/OWL",
+    version="1.0.0",
+    lifespan=lifespan,
+    cors_policy=resolve_cors_policy(),
+    telemetry_service_name="layer2-extraction",
+    instrument_telemetry=True,
+)
+
+_security_config_l2 = SecurityConfig.from_env(
+    skip_validation_paths=frozenset({
+        "/health",
+        "/metrics",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l2)
+
 app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=None)
 
-# Add metrics middleware if available — INNERMOST
-if metrics:
-    metrics_middleware = MetricsMiddleware(metrics)
-    app.middleware("http")(metrics_middleware)
-
-# P1-29: Instrument FastAPI with OpenTelemetry (after all middleware)
-if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-    FastAPIInstrumentor.instrument_app(app)
-    logger.info("L2: FastAPI instrumented with OpenTelemetry")
+install_metrics_middleware(
+    app,
+    metrics=initialize_metrics(),
+    middleware_factory=MetricsMiddleware,
+    logger=logger,
+)
 
 # Include WebSocket router for real-time pipeline streaming
 app.include_router(websocket_router, prefix="/v1")
@@ -291,7 +296,7 @@ class ExtractionStatusResponse(BaseModel):
     retry_count: int = 0
     last_error: str | None = None
     next_retry_at: datetime | None = None
-    started_at: datetime
+    started_at: datetime | None = None
     completed_at: datetime | None
 
 
@@ -404,9 +409,9 @@ async def _set_pipeline_job(
     if retry_count is not None:
         job.retry_count = retry_count
     if last_error is not _UNSET:
-        job.last_error = last_error
+        job.last_error = last_error  # type: ignore[assignment]
     if next_retry_at is not _UNSET:
-        job.next_retry_at = next_retry_at
+        job.next_retry_at = next_retry_at  # type: ignore[assignment]
     if completed_at is not None:
         job.completed_at = completed_at.isoformat() if completed_at else None
     # Persist to job store
@@ -423,7 +428,7 @@ def _pipeline_response(job: PipelineJob) -> ExtractionStatusResponse:
         relationships_extracted=job.relationships_extracted,
         retry_count=job.retry_count,
         last_error=job.last_error,
-        next_retry_at=job.next_retry_at,
+        next_retry_at=datetime.fromisoformat(job.next_retry_at) if job.next_retry_at else None,
         started_at=datetime.fromisoformat(job.created_at) if job.created_at else None,
         completed_at=datetime.fromisoformat(job.completed_at) if job.completed_at else None,
     )
@@ -519,6 +524,8 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
 
             # Broadcast overall pipeline completion
             job = await job_store.get(job_id)
+            if job is None:
+                return True
             await _ws_manager.broadcast_pipeline_complete(
                 job_id=job_id,
                 status="completed",
@@ -644,52 +651,6 @@ async def _pending_ingestion_retry_loop() -> None:
 _VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production without secrets backend"
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    global redis_rate_limiter, _retry_task
-
-    validate_production_safety()
-
-    # Initialize Redis rate limiter
-    redis_rate_limiter = await _init_redis_rate_limiter()
-    
-    # Update GovernanceMiddleware with rate limiter if available
-    # Note: In FastAPI, middleware is already added but we can update the reference
-    # for any code that accesses redis_rate_limiter directly
-    
-    # Production Vault smoke gate (fail fast before starting other resources)
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy:
-            logger.info("L2: Checking Vault connectivity at %s", vault_addr)
-            ok = await is_vault_healthy(vault_addr)
-            if not ok:
-                logger.error("L2: %s", _VAULT_UNREACHABLE_ERROR)
-                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
-            logger.info("L2: Vault connectivity verified")
-
-    if _retry_task is None:
-        _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
-
-    # Start WebSocket manager for real-time streaming
-    await _ws_manager.start()
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    global _retry_task
-    if _retry_task:
-        _retry_task.cancel()
-        try:
-            await _retry_task
-        except asyncio.CancelledError:
-            pass
-        _retry_task = None
-
-    # Stop WebSocket manager
-    await _ws_manager.stop()
-
-
 # Background task for extraction
 async def run_extraction(
     job_id: str,
@@ -775,7 +736,7 @@ async def run_extraction(
 
         step2 = ExtractionStep(step_name="entity_extraction", started_at=datetime.now(UTC))
 
-        all_entities = {
+        all_entities: dict[str, list[Any]] = {
             "capabilities": [],
             "use_cases": [],
             "personas": [],
@@ -916,11 +877,11 @@ async def run_extraction(
         result = ExtractionResult(
             job_id=job_id,
             source_url=source_url,
-            capabilities=deduplicated.get("capabilities", []),
-            use_cases=deduplicated.get("use_cases", []),
-            personas=deduplicated.get("personas", []),
-            value_drivers=deduplicated.get("value_drivers", []),
-            features=deduplicated.get("features", []),
+            capabilities=deduplicated.get("capabilities", []),  # type: ignore[arg-type]
+            use_cases=deduplicated.get("use_cases", []),  # type: ignore[arg-type]
+            personas=deduplicated.get("personas", []),  # type: ignore[arg-type]
+            value_drivers=deduplicated.get("value_drivers", []),  # type: ignore[arg-type]
+            features=deduplicated.get("features", []),  # type: ignore[arg-type]
             chunks_processed=len(chunks),
         )
 
@@ -996,7 +957,7 @@ async def run_extraction(
         activity.add_step(step5)
 
         # Complete activity
-        activity.output_entities = [e.id for e in result.get_all_entities()]
+        activity.output_entities = [e.id for e in result.get_all_entities()]  # type: ignore[attr-defined]
         activity.output_relationships = [r.id for r in all_relationships]
         activity.complete(rdf_path=rdf_path)
 
@@ -1191,7 +1152,7 @@ async def health_check():
         metrics.set_health_status(l3_dep_healthy, component="layer3")
 
     # Build system metrics if psutil is available
-    system_metrics = {"active_connections": active_connections, "total_requests": total_requests}
+    system_metrics: dict[str, Any] = {"active_connections": active_connections, "total_requests": total_requests}
     if psutil:
         memory_info = psutil.virtual_memory()
         system_metrics["memory_usage_mb"] = memory_info.used / (1024 * 1024)
@@ -1211,11 +1172,14 @@ async def health_check():
 
 async def metrics_endpoint(request: Request):
     """Prometheus metrics endpoint."""
+    if not verify_metrics_access(request):
+        raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
+
     metrics = get_metrics()
 
     if not metrics:
         return Response(
-            content="Metrics collection is disabled", status_code=503, media_type="text/plain"
+            content="# Metrics collection is disabled", status_code=503, media_type="text/plain"
         )
 
     try:
@@ -1223,7 +1187,7 @@ async def metrics_endpoint(request: Request):
         return Response(content=metrics_data, media_type="text/plain; version=0.0.4; charset=utf-8")
     except Exception as e:
         return Response(
-            content=f"Error generating metrics: {e}", status_code=500, media_type="text/plain"
+            content=f"# Error: {e}", status_code=500, media_type="text/plain"
         )
 
 
@@ -1455,7 +1419,7 @@ async def _job_event_generator(job_id: str):
         # Send status event on change
         if overall_status != last_status:
             last_status = overall_status
-            event_data = {
+            event_data: dict[str, Any] = {
                 "type": "status",
                 "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "data": overall_status,
