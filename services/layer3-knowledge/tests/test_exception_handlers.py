@@ -32,8 +32,9 @@ async def test_value_fabric_exception_handler_logs_with_explicit_exc_info_tuple(
     request = _make_request()
     exc = ValueFabricException("boom", error_code="INTERNAL_ERROR")
 
-    with patch("src.api.main.SHARED_ERROR_HANDLING_AVAILABLE", False), \
-         patch("src.api.main.logger.error") as mock_error:
+    with patch("value_fabric.layer3_knowledge.src.api.app_monolith.SHARED_ERROR_HANDLING_AVAILABLE", False), \
+         patch("src.api.app_monolith.SHARED_ERROR_HANDLING_AVAILABLE", False), \
+         patch("value_fabric.layer3_knowledge.src.api.app_monolith.logger.error") as mock_error:
         response = await value_fabric_exception_handler(request, exc)
 
     assert response.status_code == 500
@@ -52,7 +53,7 @@ async def test_global_exception_handler_logs_with_explicit_exc_info_tuple():
     request = _make_request()
     exc = RuntimeError("unexpected")
 
-    with patch("src.api.main.logger.error") as mock_error:
+    with patch("value_fabric.layer3_knowledge.src.api.app_monolith.logger.error") as mock_error:
         response = await global_exception_handler(request, exc)
 
     assert response.status_code == 500

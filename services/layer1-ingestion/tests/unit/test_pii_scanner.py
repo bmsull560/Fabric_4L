@@ -17,6 +17,8 @@ import importlib
 import sys
 import types
 import unittest
+
+import pytest
 from datetime import datetime, UTC
 from unittest.mock import MagicMock, patch
 

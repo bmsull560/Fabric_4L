@@ -34,7 +34,7 @@ const ValueTreeNodeSchema: z.ZodType<{
   type: z.string().min(1),
   layer: z.number().int().min(1).max(4),
   confidence: z.number().min(0).max(1),
-  properties: z.record(z.unknown()),
+  properties: z.record(z.string(), z.unknown()),
   children: z.lazy(() => z.array(ValueTreeNodeSchema)).optional(),
 });
 
@@ -59,7 +59,7 @@ const ValueTreeResponseSchema = z.object({
   stats: z.object({
     total_nodes: z.number().int().nonnegative(),
     total_edges: z.number().int().nonnegative(),
-    by_layer: z.record(z.number()),
+    by_layer: z.record(z.string(), z.number()),
     max_depth: z.number().int().nonnegative(),
   }),
 });
@@ -209,7 +209,7 @@ describe('Contract: subgraph and entity shapes', () => {
   it('confidence_score is optional on graph nodes', () => {
     assertSchema(
       GraphNodeSchema,
-      { id: 'n1', name: 'Test', type: 'capability' },
+      { id: 'n1', name: 'Test', label: 'Test', type: 'capability' },
       'GraphNode (no confidence_score)'
     );
   });

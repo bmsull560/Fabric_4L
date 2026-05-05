@@ -37,8 +37,8 @@ const WorkflowCreateRequestSchema = z.object({
       prospect_id: z.string().optional(),
       prospect_company: z.string().optional(),
       use_case_ids: z.array(z.string()).optional(),
-      prospect_metrics: z.record(z.number()).optional(),
-      custom_data: z.record(z.unknown()).optional(),
+      prospect_metrics: z.record(z.string(), z.number()).optional(),
+      custom_data: z.record(z.string(), z.unknown()).optional(),
     })
     .optional(),
   priority: z
@@ -48,15 +48,15 @@ const WorkflowCreateRequestSchema = z.object({
 
 const ROIAnalysisResponseSchema = z.object({
   prospect_id: z.string().min(1),
-  aggregated_roi: z.record(z.unknown()),
-  detailed_results: z.array(z.record(z.unknown())),
-  benchmark_comparison: z.record(z.unknown()).nullable(),
+  aggregated_roi: z.record(z.string(), z.unknown()),
+  detailed_results: z.array(z.record(z.string(), z.unknown())),
+  benchmark_comparison: z.record(z.string(), z.unknown()).nullable(),
 });
 
 const WhitespaceAnalysisResponseSchema = z.object({
   prospect_id: z.string().min(1),
   extracted_needs: z.array(z.string()),
-  gap_analysis: z.array(z.record(z.unknown())),
+  gap_analysis: z.array(z.record(z.string(), z.unknown())),
   opportunity_score: z.number().min(0).max(1),
   recommendations: z.array(z.string()),
 });

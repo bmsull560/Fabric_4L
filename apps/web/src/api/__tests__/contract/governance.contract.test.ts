@@ -22,7 +22,7 @@ import {
 const TenantCreateRequestSchema = z.object({
   name: z.string().min(1).max(200),
   slug: z.string().min(1).max(63).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 });
 
 const TenantUpdateRequestSchema = z.object({
@@ -34,7 +34,7 @@ const FeatureFlagUpsertRequestSchema = z.object({
   enabled: z.boolean(),
   rollout_percentage: z.number().int().min(0).max(100),
   description: z.string().nullable().optional(),
-  metadata: z.record(z.unknown()).nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 // ── POST /v1/tenants ─────────────────────────────────────────────────────────
