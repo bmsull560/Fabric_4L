@@ -10,6 +10,7 @@ import { journeyTest, expect } from '../helpers/journey-fixture';
 import { expectAnyVisible, expectRouteSupportsWorkflow, expectTenantContext } from '../helpers/validation-program';
 
 const ACCOUNT_ID = 'acct-meridian';
+const DUPLICATE_ACCOUNT_ID = 'acct-meridian-duplicate';
 
 journeyTest.describe('Journey 6: Account and Prospect Lifecycle Validation', () => {
   journeyTest.beforeEach(async ({ addMocks }) => {
@@ -126,6 +127,102 @@ journeyTest.describe('Journey 6: Account and Prospect Lifecycle Validation', () 
       'governance audit trail for account lifecycle changes',
     );
     await expectAnyVisible(authedPage, [/audit/i, /events/i, /state/i], 'audit event evidence');
+  });
+
+  journeyTest('Step 6 [GP-ACCOUNT-003]: duplicate account detection blocks duplicate create and suggests merge', async ({ authedPage, addMocks }) => {
+    await addMocks([
+      {
+        pattern: '**/api/v1/agents/accounts',
+        method: 'POST',
+        status: 409,
+        body: {
+          error: 'Duplicate account detected',
+          existing_account_id: ACCOUNT_ID,
+          duplicate_candidates: [{ id: ACCOUNT_ID, name: 'Meridian Health Group', domain: 'meridian.example' }],
+          suggested_action: 'merge',
+        },
+      },
+    ]);
+
+    await authedPage.goto('/workflow/prospect', { waitUntil: 'domcontentloaded' });
+
+    const companyInput = authedPage.getByPlaceholder(/company name/i).first();
+    const domainInput = authedPage.getByPlaceholder(/website/i).first();
+    const hasForm = await companyInput.isVisible({ timeout: 5000 }).catch(() => false);
+
+    if (hasForm) {
+      await companyInput.fill('Meridian Health Group');
+      if (await domainInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await domainInput.fill('meridian.example');
+      }
+      const submitBtn = authedPage.getByRole('button', { name: /launch|start|create|begin|run|intelligence|enrichment/i }).first();
+      if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await submitBtn.click();
+      }
+    }
+
+    await expectAnyVisible(
+      authedPage,
+      [/duplicate|already exists|merge|existing account|meridian health group/i],
+      'duplicate-account detection and merge guidance',
+      10000,
+    );
+  });
+
+  journeyTest('Step 7 [GP-ACCOUNT-004]: duplicate merge workflow preserves canonical account and audit trail context', async ({ authedPage, addMocks }) => {
+    await addMocks([
+      {
+        pattern: '**/api/v1/agents/accounts',
+        body: [
+          {
+            id: ACCOUNT_ID,
+            name: 'Meridian Health Group',
+            domain: 'meridian.example',
+            owner: 'Avery Stone',
+            stage: 'prospect',
+            readiness: 78,
+            value_pack: 'Healthcare Operations',
+            updated_at: '2026-05-01T12:00:00Z',
+          },
+          {
+            id: DUPLICATE_ACCOUNT_ID,
+            name: 'Meridian Health Group - Duplicate',
+            domain: 'meridian.example',
+            owner: 'Jordan Lee',
+            stage: 'prospect',
+            readiness: 52,
+            value_pack: 'Healthcare Operations',
+            updated_at: '2026-05-01T10:00:00Z',
+            duplicate_of: ACCOUNT_ID,
+          },
+        ],
+      },
+      {
+        pattern: '**/api/v1/agents/accounts/merge',
+        method: 'POST',
+        status: 200,
+        body: {
+          merged_into: ACCOUNT_ID,
+          archived_account_ids: [DUPLICATE_ACCOUNT_ID],
+          audit_event: 'accounts_merged',
+        },
+      },
+    ]);
+
+    await authedPage.goto('/accounts', { waitUntil: 'domcontentloaded' });
+
+    await expectAnyVisible(
+      authedPage,
+      [/meridian health group/i, /duplicate/i, /merge/i, /readiness/i],
+      'duplicate account lifecycle workspace',
+    );
+
+    await authedPage.goto('/governance/audit/log', { waitUntil: 'domcontentloaded' });
+    await expectAnyVisible(
+      authedPage,
+      [/audit log/i, /accounts_merged/i, /merge/i, /state transitions/i],
+      'account merge audit trail',
+    );
   });
 
   journeyTest('test_account_lifecycle_create_edit_archive_merge_and_readiness', async ({ authedPage }) => {

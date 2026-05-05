@@ -1658,7 +1658,7 @@ async def get_entity_detail(
     include_relationships: bool = Query(True, description="Include related entities"),
     _ctx: RequestContext = Depends(require_authenticated),
     neo4j_driver=Depends(get_neo4j_driver),
-    request: Request | None = None,  # Sprint 5: For tenant context extraction
+    request: Request | None = None,  # type: ignore[assignment]  # Sprint 5: For tenant context extraction
 ):
     """Get full entity detail for inspection/drawer views.
 
@@ -3258,10 +3258,9 @@ async def get_query_subgraph(
         )
 
     try:
-        neo4j = _get_neo4j_client(app_state)
+        neo4j: Any = _get_neo4j_client(app_state)
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
-        neo4j = cast(Any, neo4j)
         nodes: list[GraphNode] = []
         edges: list[GraphEdge] = []
         root_id = center_entity_id or ""

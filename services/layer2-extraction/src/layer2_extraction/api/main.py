@@ -8,6 +8,7 @@ Provides REST API endpoints for:
 
 P1-29: OpenTelemetry tracing integration for observability.
 """
+# mypy: disable-error-code=import-not-found,import-untyped
 
 import asyncio
 import hashlib
@@ -131,7 +132,7 @@ async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         redis_client = redis.from_url(redis_url, decode_responses=True)
         # Validate connection before using for rate limiting
-        await redis_client.ping()
+        await redis_client.ping()  # type: ignore[misc]
         limiter = RedisRateLimiter(redis_client)
         logger.info("L2: Redis rate limiter initialized")
         return limiter
@@ -296,7 +297,7 @@ class ExtractionStatusResponse(BaseModel):
     retry_count: int = 0
     last_error: str | None = None
     next_retry_at: datetime | None = None
-    started_at: datetime
+    started_at: datetime | None = None
     completed_at: datetime | None
 
 
@@ -734,7 +735,7 @@ async def run_extraction(
 
         step2 = ExtractionStep(step_name="entity_extraction", started_at=datetime.now(UTC))
 
-        all_entities = {
+        all_entities: dict[str, list[Any]] = {
             "capabilities": [],
             "use_cases": [],
             "personas": [],
@@ -1417,7 +1418,7 @@ async def _job_event_generator(job_id: str):
         # Send status event on change
         if overall_status != last_status:
             last_status = overall_status
-            event_data = {
+            event_data: dict[str, Any] = {
                 "type": "status",
                 "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "data": overall_status,

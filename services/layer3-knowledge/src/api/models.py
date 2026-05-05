@@ -945,8 +945,8 @@ class BatchAnalyticsResult(BaseModel):
 
     entity_id: str = Field(..., description="Entity ID")
     success: bool = Field(..., description="Whether analysis succeeded")
-    metrics: dict[str, Any] | None = Field(None, description="Analytics metrics")
-    error: str | None = Field(None, description="Error message if failed")
+    metrics: dict[str, Any] | None = None
+    error: str | None = None
 
 
 class BatchAnalyticsResponse(BaseModel):
