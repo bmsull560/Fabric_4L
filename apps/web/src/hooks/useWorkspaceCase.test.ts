@@ -293,7 +293,6 @@ describe('usePersistWorkspaceTab', () => {
   });
 
   it('should persist tab data', async () => {
-    (apiClient.post as Mock).mockResolvedValueOnce({ data: {} });
     (apiClient.put as Mock).mockResolvedValueOnce({
       data: { case_id: 'case-123', tab: 'signals', updated: true },
     });
@@ -307,16 +306,8 @@ describe('usePersistWorkspaceTab', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(apiClient.post).toHaveBeenCalledWith('l4', '/workflows', {
-      workflow_type: 'workspace_tab_persist',
-      name: 'Persist signals',
-      input: {
-        case_id: 'case-123',
-        tab: 'signals',
-        payload,
-      },
-    });
-
+    expect(result.current.data).toEqual({ case_id: 'case-123', tab: 'signals', updated: true });
+    expect(apiClient.post).not.toHaveBeenCalled();
     expect(apiClient.put).toHaveBeenCalledWith(
       'l4',
       '/analysis/cases/case-123/workspace/signals',
