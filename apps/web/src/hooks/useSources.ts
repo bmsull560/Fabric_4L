@@ -16,6 +16,11 @@ import { withApiError, SourceApiError, STALE_TIME, RETRY_CONFIG } from './useApi
 
 const log = createLogger('useSources');
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/** Default priority for ingestion jobs (1-10 scale, lower = higher priority) */
+const DEFAULT_EXECUTION_PRIORITY = 5;
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type SourceType = 'crm' | 'database' | 'file' | 'api' | 'cloud_storage';
@@ -232,8 +237,8 @@ interface ApiValidateTargetResponse {
  * Backend target_type (SINGLE_PAGE, PAGINATED, SPIDER, API_ENDPOINT) describes
  * HOW to scrape, while frontend SourceType describes WHAT kind of source.
  *
- * TODO: Backend should add explicit source_category field. For now, we infer
- * from tags or URL patterns where possible, defaulting to 'api'.
+ * NOTE: Backend source_category field would eliminate inference. Tracked in
+ * CONTRACT.md §2.3 Data Layer Alignment. For now, we infer from tags/URL.
  */
 function mapTargetType(targetType: string, tags: string[] = [], url: string = ''): SourceType {
   // Check tags for explicit source type hints
@@ -260,11 +265,9 @@ function mapTargetType(targetType: string, tags: string[] = [], url: string = ''
   // Infer from URL patterns
   const lowerUrl = url.toLowerCase();
   if (lowerUrl.includes('salesforce') || lowerUrl.includes('hubapi')) return 'crm';
-  if (lowerUrl.includes('postgres') || lowerUrl.includes('mysql') || lowerUrl.includes('://')) {
-    // Databases often have connection strings or specific protocols
-    if (lowerUrl.includes('postgres') || lowerUrl.includes('mysql') || lowerUrl.includes('://db')) {
-      return 'database';
-    }
+  // Databases: check for connection strings or specific protocols
+  if (lowerUrl.includes('postgres') || lowerUrl.includes('mysql') || lowerUrl.includes('://db')) {
+    return 'database';
   }
   if (lowerUrl.includes('s3.') || lowerUrl.includes('blob.core.windows.net')) return 'cloud_storage';
 
@@ -315,7 +318,9 @@ function calculateHealthScore(successCount: number, errorCount: number): number 
 /**
  * Extract field mappings from extraction config
  */
-function extractFieldMappings(extractionConfig: Record<string, unknown>): FieldMapping[] {
+function extractFieldMappings(extractionConfig: Record<string, unknown> | null | undefined): FieldMapping[] {
+  if (!extractionConfig || typeof extractionConfig !== 'object') return [];
+
   const mappings = extractionConfig.field_mappings as Array<{
     source: string;
     target: string;
@@ -323,7 +328,7 @@ function extractFieldMappings(extractionConfig: Record<string, unknown>): FieldM
     transformation?: string;
   }> | undefined;
 
-  if (!mappings) return [];
+  if (!Array.isArray(mappings)) return [];
 
   return mappings.map(m => ({
     sourceField: m.source,
@@ -462,8 +467,9 @@ export function useSourceStats() {
     queryKey: QK.sources.stats,
     queryFn: async () => {
       // Fetch all sources for accurate stats calculation
+      const MAX_STATS_LIMIT = 1000; // CONTRACT.md §2.3: Dedicated /stats endpoint preferred
       const response = await withApiError(
-        apiClient.get('l1', '/targets?page=1&limit=1000'),
+        apiClient.get('l1', `/targets?page=1&limit=${MAX_STATS_LIMIT}`),
         SourceApiError
       );
 
@@ -517,7 +523,7 @@ export function useCreateSource() {
       queryClient.invalidateQueries({ queryKey: QK.sources.all });
     },
     onError: (error) => {
-      log.error('Failed to create source', { error: error instanceof Error ? error.message : error });
+      log.error('Failed to create source', { error: error instanceof Error ? error.message : String(error) });
     },
   });
 }
@@ -563,7 +569,7 @@ export function useUpdateSource() {
       queryClient.invalidateQueries({ queryKey: QK.sources.detail(data.id) });
     },
     onError: (error) => {
-      log.error('Failed to update source', { error: error instanceof Error ? error.message : error });
+      log.error('Failed to update source', { error: error instanceof Error ? error.message : String(error) });
     },
   });
 }
@@ -585,7 +591,7 @@ export function useDeleteSource() {
       queryClient.invalidateQueries({ queryKey: QK.sources.all });
     },
     onError: (error) => {
-      log.error('Failed to delete source', { error: error instanceof Error ? error.message : error });
+      log.error('Failed to delete source', { error: error instanceof Error ? error.message : String(error) });
     },
   });
 }
@@ -611,7 +617,7 @@ export function useTestConnection() {
       };
     },
     onError: (error) => {
-      log.error('Connection test failed', { error: error instanceof Error ? error.message : error });
+      log.error('Connection test failed', { error: error instanceof Error ? error.message : String(error) });
     },
   });
 }
@@ -623,7 +629,7 @@ export function useExecuteSource() {
   const queryClient = useQueryClient();
 
   return useMutation<{ jobId: string }, SourceApiError, { id: string; priority?: number }>({
-    mutationFn: async ({ id, priority = 5 }) => {
+    mutationFn: async ({ id, priority = DEFAULT_EXECUTION_PRIORITY }) => {
       const response = await withApiError(
         apiClient.post('l1', `/targets/${id}/execute`, { priority }),
         SourceApiError
@@ -637,7 +643,7 @@ export function useExecuteSource() {
       queryClient.invalidateQueries({ queryKey: QK.ingestion.all });
     },
     onError: (error) => {
-      log.error('Failed to execute source', { error: error instanceof Error ? error.message : error });
+      log.error('Failed to execute source', { error: error instanceof Error ? error.message : String(error) });
     },
   });
 }

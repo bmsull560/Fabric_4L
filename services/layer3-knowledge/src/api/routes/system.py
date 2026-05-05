@@ -44,14 +44,9 @@ from ..models import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-_app_metrics: Any | None = None
-_app_start_time = time.time()
 
-
-def set_app_metrics(metrics: Any | None) -> None:
-    """Set the global metrics instance for health check access."""
-    global _app_metrics
-    _app_metrics = metrics
+# Import shared metrics from app_monolith to avoid duplication
+from ..app_monolith import _app_metrics as app_metrics, _app_start_time, set_app_metrics
 
 
 async def check_dependencies(schema_initializer: Any | None = None) -> list[DependencyStatus]:
@@ -146,10 +141,10 @@ def get_system_metrics() -> ServiceMetrics:
     active_connections = 0
     error_rate_percent = 0.0
 
-    if _app_metrics is not None:
+    if app_metrics is not None:
         try:
-            registry = _app_metrics.config.registry
-            prefix = _app_metrics.config.prefix
+            registry = app_metrics.config.registry
+            prefix = app_metrics.config.prefix
 
             for metric in registry.collect():
                 if metric.name == f"{prefix}active_connections":

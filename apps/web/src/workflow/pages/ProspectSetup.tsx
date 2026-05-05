@@ -1332,7 +1332,8 @@ export default function ProspectSetup({
       const attachments = createAttachmentItems(result, state.attachments.length)
       dispatch({ type: "ATTACHMENTS_ADDED", attachments })
     } catch (error) {
-      log.error('Attach content failed', { errorCode: String(error) })
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      log.error('Attach content failed', { error: errorMessage })
       dispatch({ type: "SUBMIT_ERROR", message: "Unable to attach content. Please try again." })
     }
   }, [onAttachContent, state.attachments.length])

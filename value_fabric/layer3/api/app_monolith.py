@@ -16,8 +16,30 @@ from types import SimpleNamespace
 from typing import Any, Literal
 
 import httpx
-import psutil
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+
+# psutil with fallback for minimal environments
+try:
+    import psutil  # type: ignore[import-untyped]
+except ImportError:  # pragma: no cover - exercised only in minimal test envs
+    class _PsutilFallback:
+        @staticmethod
+        def virtual_memory() -> SimpleNamespace:
+            return SimpleNamespace(used=0, total=0)
+
+        @staticmethod
+        def cpu_percent(interval: Any = None) -> float:
+            return 0.0
+
+        @staticmethod
+        def cpu_count() -> int:
+            return 0
+
+        @staticmethod
+        def disk_usage(path: str) -> SimpleNamespace:
+            return SimpleNamespace(used=0)
+
+    psutil = _PsutilFallback()
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from value_fabric.layer3.config import get_settings
@@ -703,31 +725,31 @@ _security_config_l3 = add_security_validation_middleware(
     strict_mode=True,
 )
 
-class init_schemaResult(TypedDictModel):
+class InitSchemaResult(TypedDictModel):
     drop_existing: Any
     status: str
 
-class delete_sourceResult(TypedDictModel):
+class DeleteSourceResult(TypedDictModel):
     entities_deleted: Any
     relationships_deleted: Any
     source_id: Any
     status: str
 
-class agent_workflowResult(TypedDictModel):
+class AgentWorkflowResult(TypedDictModel):
     results: Any
     steps_completed: Any
     workflow_type: Any
 
-class _create_entityResult(TypedDictModel):
+class _CreateEntityResult(TypedDictModel):
     entity_id: Any
     error: str | None = None
     success: bool
 
-class _update_entityResult(TypedDictModel):
+class _UpdateEntityResult(TypedDictModel):
     error: str | None = None
     success: bool
 
-class _delete_entityResult(TypedDictModel):
+class _DeleteEntityResult(TypedDictModel):
     error: str | None = None
     success: bool
 
@@ -1169,7 +1191,7 @@ def get_system_metrics() -> ServiceMetrics:
 )
 async def health_check(
     request: Request,
-    schema_initializer=Depends(get_schema_initializer),
+    schema_initializer: Any = Depends(get_schema_initializer),
 ):
     """Check service health and Neo4j connectivity."""
     start_time = time.time()
@@ -1346,7 +1368,7 @@ async def detailed_health_check(
     app_state: AppState = Depends(get_app_state),
 ):
     """Get detailed health information with system info and configuration."""
-    time.time()
+    start_time = time.time()
 
     # Basic health check
     dependencies = await check_dependencies(schema_initializer=schema_initializer)
@@ -1365,12 +1387,16 @@ async def detailed_health_check(
         )
         schema_status = await schema_initializer.verify_schema()
 
-    # Determine overall status
+    # Determine overall status (consistent with _derive_overall_status in system.py)
     overall_status: Literal["healthy", "unhealthy", "degraded"] = "healthy"
-    if any(dep.status == "unhealthy" for dep in dependencies):
+    if schema_initializer is None or getattr(schema_initializer, "_driver", None) is None:
+        overall_status = "degraded"
+    elif any(dep.status == "unhealthy" for dep in dependencies):
         overall_status = "unhealthy"
     elif any(dep.status == "degraded" for dep in dependencies):
         overall_status = "degraded"
+
+    response_time_ms = round((time.time() - start_time) * 1000, 2)
 
     # System information
     system_info = {
@@ -1396,6 +1422,7 @@ async def detailed_health_check(
     return DetailedHealthResponse(
         status=overall_status,
         version="1.0.0",
+        timestamp=datetime.utcnow(),
         uptime_seconds=metrics.uptime_seconds,
         dependencies=dependencies,
         metrics=metrics,
@@ -1579,11 +1606,11 @@ async def delete_source(
 ):
     """Delete all data from a source."""
     stats = await sync_manager.delete_source(source_id)
-    return delete_sourceResult.model_validate({
+    return DeleteSourceResult.model_validate({
         "status": "deleted",
         "source_id": source_id,
-        "entities_deleted": stats["entities_deleted"],
-        "relationships_deleted": stats["relationships_deleted"],
+        "entities_deleted": stats.get("entities_deleted", 0),
+        "relationships_deleted": stats.get("relationships_deleted", 0),
     })
 
 

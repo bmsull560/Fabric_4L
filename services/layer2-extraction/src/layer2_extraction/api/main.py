@@ -153,7 +153,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     validate_production_safety()
 
     if getattr(app.state, "telemetry_provider", None) is not None:
-        logger.info("L2: OpenTelemetry tracing initialized")
+        logger.info("L2: OpenTelemetry tracing available (initialized by app factory)")
 
     redis_rate_limiter = await _init_redis_rate_limiter()
     app.state.redis_rate_limiter = redis_rate_limiter

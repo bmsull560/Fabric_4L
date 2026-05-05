@@ -1,18 +1,19 @@
 # Test Inventory
 
 Generated: 2026-05-04 (Autonomous Test Assurance Agent — Phase 1 Complete)
+Updated: 2026-05-05 (Sprint 1 Remediation - Layer-Specific Invariants)
 Collection Status: **4623 tests collected, 0 collection errors**
 
 ## Backend Tests
 | Layer | Unit Tests | Integration Tests | Security Tests | E2E Tests |
 |-------|-----------|-------------------|----------------|-----------|
-| layer1-ingestion | 12 test files | 3 test files | 2 test files | N/A |
-| layer2-extraction | 4 test files | 2 test files | 1 test file | N/A |
-| layer3-knowledge | 14 test files | 4 test files | 3 test files | N/A |
-| layer4-agents | 25+ test files | 5 test files | 8 test files | N/A |
+| layer1-ingestion | 12 test files | 3 test files | 2 test files + layer1_security_invariants.py | N/A |
+| layer2-extraction | 4 test files | 2 test files | 1 test file + layer2_security_invariants.py (NEW) | N/A |
+| layer3-knowledge | 14 test files | 4 test files | 3 test files + layer3_security_invariants.py (NEW) | N/A |
+| layer4-agents | 25+ test files | 5 test files | 8 test files + layer4_security_invariants.py | N/A |
 | layer5-ground-truth | 3 test files | 1 test file | 1 test file | N/A |
-| layer6-benchmarks | 2 test files | N/A | N/A | N/A |
-| tests/ (shared) | ~40 test files | 10 test files | 52 test files | 3 test files |
+| layer6-benchmarks | 2 test files | N/A | layer6_security_invariants.py (NEW) | N/A |
+| tests/ (shared) | ~40 test files | 10 test files | 52 test files + 5 P0 security tests | 3 test files |
 | packages/shared | 16 test files | Contract tests | Security tests | MCP gateway tests |
 | packs (7 packs) | 21 test files | Formula/ontology tests | Pack integrity | N/A |
 | sdk/python | 7 test files | Integration tests | N/A | N/A |
