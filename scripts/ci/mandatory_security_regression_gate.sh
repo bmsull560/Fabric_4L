@@ -141,7 +141,7 @@ run_step() {
 run_root_pytest() {
   local junit_file="$1"
   shift
-  python -m pytest --tb=short -q -n 0 --junitxml="${junit_file}" "$@"
+  python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml="${junit_file}" "$@"
   python scripts/ci/assert_no_pytest_skips.py "${junit_file}"
 }
 
@@ -260,7 +260,7 @@ log_evidence_start
 trap 'log_evidence_complete $?' EXIT
 
 run_step "Standalone API production-safety, durable persistence, and fail-closed provider checks" \
-  bash -c "cd services/api && TESTING=true ENVIRONMENT=testing python -m pytest --tb=short -q -n 0 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/standalone_api_security.xml' app/tests/test_auth_enforcement.py app/tests/test_production_safety.py app/tests/test_i03_durable_persistence_and_llm.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/standalone_api_security.xml'"
+  bash -c "cd services/api && TESTING=true ENVIRONMENT=testing DEBUG=false SEED_DEMO_DATA=false python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/standalone_api_security.xml' app/tests/test_auth_enforcement.py app/tests/test_production_safety.py app/tests/test_i03_durable_persistence_and_llm.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/standalone_api_security.xml'"
 log_suite_result "I-02/I-03 API Production Safety" "pytest app/tests/test_auth_enforcement.py test_production_safety.py test_i03_durable_persistence_and_llm.py" "Yes" "PASS" "${ARTIFACT_DIR}/standalone_api_security.xml"
 
 run_step "Tenant-boundary and auth/security regression checks" \
@@ -301,11 +301,11 @@ run_step "Kubernetes workload hardening checks" \
 log_suite_result "Kubernetes Hardening" "pytest tests/k8s/*" "Yes" "PASS" "${ARTIFACT_DIR}/k8s_security.xml"
 
 run_step "I-02 production fail-closed checks - Layer 2 (Extraction)" \
-  bash -c "cd services/layer2-extraction && python -m pytest --tb=short -q -n 0 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/layer2_fail_closed.xml' tests/test_production_fail_closed_i02.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/layer2_fail_closed.xml'"
+  bash -c "cd services/layer2-extraction && python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/layer2_fail_closed.xml' tests/test_production_fail_closed_i02.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/layer2_fail_closed.xml'"
 log_suite_result "I-02 Layer 2 Production Fail-Closed" "pytest tests/test_production_fail_closed_i02.py" "Yes" "PASS" "${ARTIFACT_DIR}/layer2_fail_closed.xml"
 
 run_step "I-02 production fail-closed checks - Layer 5 (Ground Truth)" \
-  bash -c "cd services/layer5-ground-truth && python -m pytest --tb=short -q -n 0 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/layer5_fail_closed.xml' tests/test_production_fail_closed_i02.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/layer5_fail_closed.xml'"
+  bash -c "cd services/layer5-ground-truth && python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/layer5_fail_closed.xml' tests/test_production_fail_closed_i02.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/layer5_fail_closed.xml'"
 log_suite_result "I-02 Layer 5 Production Fail-Closed" "pytest tests/test_production_fail_closed_i02.py" "Yes" "PASS" "${ARTIFACT_DIR}/layer5_fail_closed.xml"
 
 write_summary ""

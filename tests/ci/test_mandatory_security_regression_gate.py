@@ -166,6 +166,21 @@ def test_gate_runs_layer4_c06_suites_with_skip_assertion():
     assert "assert_no_pytest_skips.py" in script_content
 
 
+def test_gate_bounds_mandatory_pytest_runs():
+    """Mandatory pytest invocations must time out instead of hanging CI."""
+    script_content = GATE_SCRIPT.read_text()
+
+    assert "python -m pytest --tb=short -q -n 0 --timeout=60" in script_content
+    assert script_content.count("--timeout=60") >= 4
+
+
+def test_gate_uses_deterministic_standalone_api_test_env():
+    """Standalone API checks must not inherit unsafe ambient developer env."""
+    script_content = GATE_SCRIPT.read_text()
+
+    assert "TESTING=true ENVIRONMENT=testing DEBUG=false SEED_DEMO_DATA=false" in script_content
+
+
 def test_gate_has_no_skip_or_best_effort_mode():
     """Gate should not have skip or best-effort mode for required suites."""
     script_content = GATE_SCRIPT.read_text()
