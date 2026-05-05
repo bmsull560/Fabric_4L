@@ -688,6 +688,7 @@ _security_config_l3 = add_security_validation_middleware(
         "/health",
         "/metrics",
     },
+    strict_mode=True,
 )
 
 class init_schemaResult(TypedDictModel):

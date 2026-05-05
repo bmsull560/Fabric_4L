@@ -1,15 +1,67 @@
 """Regression tests for P1-14: SecurityMiddleware skip lists.
 
-These tests verify that critical ingestion/extraction endpoints are not
-in the SecurityMiddleware skip lists.
-
-NOTE: These tests import layer main.py modules directly. Due to conflicting
-`api` package names across layers on pythonpath, they may fail in CI.
-If they fail with import errors, the skip-list configuration should be
-verified manually or via static analysis.
+These tests intentionally inspect source configuration instead of importing
+service entrypoints. Importing the full apps requires optional service
+dependencies and can silently skip security coverage in constrained CI/local
+environments.
 """
 
-import pytest
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+LAYER_CONFIG_SOURCES = {
+    "l1": REPO_ROOT / "value_fabric/layer1/api/app_monolith.py",
+    "l2": REPO_ROOT / "value_fabric/layer2/api/main.py",
+    "l3": REPO_ROOT / "value_fabric/layer3/api/app_monolith.py",
+    "l4": REPO_ROOT / "value_fabric/layer4/api/main.py",
+}
+
+
+def _literal_string_set(node: ast.AST) -> set[str]:
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "frozenset":
+        return _literal_string_set(node.args[0])
+    if isinstance(node, (ast.Set, ast.List, ast.Tuple)):
+        values = ast.literal_eval(node)
+        return {str(value) for value in values}
+    raise AssertionError(f"Unsupported skip_validation_paths expression: {ast.dump(node)}")
+
+
+def _security_config_call(layer: str) -> ast.Call:
+    source = LAYER_CONFIG_SOURCES[layer]
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    target_name = f"_security_config_{layer}"
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(target, ast.Name) and target.id == target_name for target in node.targets):
+            continue
+        if isinstance(node.value, ast.Call):
+            return node.value
+
+    raise AssertionError(f"{target_name} assignment not found in {source}")
+
+
+def _security_config_keyword(layer: str, keyword_name: str) -> ast.AST:
+    call = _security_config_call(layer)
+    for keyword in call.keywords:
+        if keyword.arg == keyword_name:
+            return keyword.value
+    raise AssertionError(f"{keyword_name} not configured for {layer}")
+
+
+def _skip_paths(layer: str) -> set[str]:
+    return _literal_string_set(_security_config_keyword(layer, "skip_validation_paths"))
+
+
+def _strict_mode(layer: str) -> bool:
+    value = ast.literal_eval(_security_config_keyword(layer, "strict_mode"))
+    assert isinstance(value, bool)
+    return value
 
 
 class TestSecurityMiddlewareCoverage:
@@ -17,12 +69,7 @@ class TestSecurityMiddlewareCoverage:
 
     def test_layer1_no_ingest_in_skip_list(self):
         """L1: /v1/ingest paths must NOT be in skip_validation_paths."""
-        try:
-            from value_fabric.layer1.api.main import _security_config_l1
-        except ImportError as e:
-            pytest.skip(f"Cannot import L1 main.py due to path conflict: {e}")
-
-        skip_paths = _security_config_l1.skip_validation_paths
+        skip_paths = _skip_paths("l1")
 
         # These paths must be validated (NOT in skip list)
         assert "/v1/ingest" not in skip_paths, "/v1/ingest must be validated"
@@ -35,12 +82,7 @@ class TestSecurityMiddlewareCoverage:
 
     def test_layer2_no_extract_in_skip_list(self):
         """L2: /v1/extract paths must NOT be in skip_validation_paths."""
-        try:
-            from value_fabric.layer2.api.main import _security_config_l2
-        except ImportError as e:
-            pytest.skip(f"Cannot import L2 main.py due to path conflict: {e}")
-
-        skip_paths = _security_config_l2.skip_validation_paths
+        skip_paths = _skip_paths("l2")
 
         # These paths must be validated
         assert "/v1/extract" not in skip_paths, "/v1/extract must be validated"
@@ -53,12 +95,7 @@ class TestSecurityMiddlewareCoverage:
 
     def test_layer3_no_query_in_skip_list(self):
         """L3: /v1/query paths must NOT be in skip_validation_paths."""
-        try:
-            from value_fabric.layer3.api.main import _security_config_l3
-        except ImportError as e:
-            pytest.skip(f"Cannot import L3 main.py due to path conflict: {e}")
-
-        skip_paths = _security_config_l3.skip_validation_paths
+        skip_paths = _skip_paths("l3")
 
         # These paths must be validated
         assert "/v1/query" not in skip_paths, "/v1/query must be validated"
@@ -71,12 +108,7 @@ class TestSecurityMiddlewareCoverage:
 
     def test_layer4_no_agent_in_skip_list(self):
         """L4: /agents/v1 paths must NOT be in skip_validation_paths."""
-        try:
-            from value_fabric.layer4.api.main import _security_config_l4
-        except ImportError as e:
-            pytest.skip(f"Cannot import L4 main.py due to path conflict: {e}")
-
-        skip_paths = _security_config_l4.skip_validation_paths
+        skip_paths = _skip_paths("l4")
 
         # These paths must be validated
         assert "/agents/v1/workflows" not in skip_paths, "/agents/v1/workflows must be validated"
@@ -89,19 +121,5 @@ class TestSecurityMiddlewareCoverage:
 
     def test_security_middleware_has_strict_mode(self):
         """All layers must have strict_mode=True."""
-        configs = []
-        for layer_name, import_path in [
-            ("L1", "value_fabric.layer1.api.main"),
-            ("L2", "value_fabric.layer2.api.main"),
-            ("L3", "value_fabric.layer3.api.main"),
-            ("L4", "value_fabric.layer4.api.main"),
-        ]:
-            try:
-                mod = __import__(import_path, fromlist=["_security_config"])
-                configs.append(getattr(mod, f"_security_config_{layer_name.lower()}", None))
-            except ImportError as e:
-                pytest.skip(f"Cannot import {layer_name} main.py due to path conflict: {e}")
-
-        for cfg in configs:
-            assert cfg is not None
-            assert cfg.strict_mode is True
+        for layer in ("l1", "l2", "l3", "l4"):
+            assert _strict_mode(layer) is True

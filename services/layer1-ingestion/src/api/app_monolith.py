@@ -264,6 +264,7 @@ _security_config_l1 = add_security_validation_middleware(
         "/health",
         "/metrics",
     },
+    strict_mode=True,
 )
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
