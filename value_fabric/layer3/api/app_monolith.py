@@ -134,9 +134,11 @@ from .models import (
     AuditLogEntry,
     AuditLogResponse,
     BatchAnalyticsRequest,
+    BatchAnalyticsResult,
     BatchAnalyticsResponse,
     BatchEntityOperation,
     BatchEntityRequest,
+    BatchEntityResult,
     BatchEntityResponse,
     CentralityRequest,
     CentralityResponse,
@@ -756,6 +758,32 @@ def _exception_trace(exc: Exception):
     return (type(exc), exc, exc.__traceback__)
 
 
+def _build_graph_node(
+    *,
+    node_id: str,
+    label: str,
+    node_type: str,
+    confidence: float = 0.8,
+    x: float | None = None,
+    y: float | None = None,
+    r: float | None = None,
+    properties: dict[str, Any] | None = None,
+) -> GraphNode:
+    """Construct a graph node using the canonical visualization contract."""
+    return GraphNode.model_validate(
+        {
+            "id": node_id,
+            "label": label,
+            "type": node_type,
+            "confidence": confidence,
+            "x": x,
+            "y": y,
+            "r": r,
+            "properties": properties or {},
+        }
+    )
+
+
 # Exception handlers
 @app.exception_handler(ValueFabricException)
 async def value_fabric_exception_handler(request: Request, exc: ValueFabricException):
@@ -874,16 +902,16 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
     try:
         if schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None:
             dependencies.append(
-                DependencyStatus(
-                    name="neo4j",
-                    status="degraded",
-                    response_time_ms=None,
-                    error="Neo4j not initialized",
-                    details={
+                DependencyStatus.model_validate({
+                    "name": "neo4j",
+                    "status": "degraded",
+                    "response_time_ms": None,
+                    "error": "Neo4j not initialized",
+                    "details": {
                         "uri": settings.neo4j_uri,
                         "database": settings.neo4j_database,
                     },
-                )
+                })
             )
         else:
             from ..schema.initializer import SchemaInitializer
@@ -897,26 +925,26 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
             response_time = (time.time() - start_time) * 1000
 
             dependencies.append(
-                DependencyStatus(
-                    name="neo4j",
-                    status=neo4j_health["status"],
-                    response_time_ms=response_time,
-                    error=neo4j_health.get("error"),
-                    details={
+                DependencyStatus.model_validate({
+                    "name": "neo4j",
+                    "status": neo4j_health["status"],
+                    "response_time_ms": response_time,
+                    "error": neo4j_health.get("error"),
+                    "details": {
                         "uri": settings.neo4j_uri,
                         "database": settings.neo4j_database,
                     },
-                )
+                })
             )
     except Exception as e:
         dependencies.append(
-            DependencyStatus(
-                name="neo4j",
-                status="unhealthy",
-                response_time_ms=None,
-                error=str(e),
-                details={"uri": settings.neo4j_uri},
-            )
+            DependencyStatus.model_validate({
+                "name": "neo4j",
+                "status": "unhealthy",
+                "response_time_ms": None,
+                "error": str(e),
+                "details": {"uri": settings.neo4j_uri},
+            })
         )
 
     # Check Pinecone (if configured)
@@ -927,22 +955,22 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
             # For now, just check if API key is present
             response_time = (time.time() - start_time) * 1000
             dependencies.append(
-                DependencyStatus(
-                    name="pinecone",
-                    status="healthy",
-                    response_time_ms=response_time,
-                    error=None,
-                    details={"index": settings.pinecone_index},
-                )
+                DependencyStatus.model_validate({
+                    "name": "pinecone",
+                    "status": "healthy",
+                    "response_time_ms": response_time,
+                    "error": None,
+                    "details": {"index": settings.pinecone_index},
+                })
             )
         except Exception as e:
             dependencies.append(
-                DependencyStatus(
-                    name="pinecone",
-                    status="unhealthy",
-                    response_time_ms=None,
-                    error=str(e),
-                )
+                DependencyStatus.model_validate({
+                    "name": "pinecone",
+                    "status": "unhealthy",
+                    "response_time_ms": None,
+                    "error": str(e),
+                })
             )
 
     return dependencies
@@ -1167,11 +1195,10 @@ async def health_check(
                 schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
             else:
                 health_result = await schema_initializer.health_check()
-                neo4j_health = (
-                    health_result.model_dump()
-                    if health_result
-                    else {"status": "unknown", "message": "Neo4j health unavailable"}
-                )
+                if health_result:
+                    neo4j_health = health_result.model_dump()
+                else:
+                    neo4j_health = {"status": "unknown", "message": "Neo4j health unavailable"}
                 schema_status = await schema_initializer.verify_schema()
         except Exception:
             logger.warning(
@@ -1492,15 +1519,21 @@ async def ingest_rdf(
         if status not in {"success", "partial", "failed"}:
             status = "failed"
 
-        return IngestResponse(
-            status=status,
-            source_id=request.source_id,
-            entities_loaded=stats.get("entities_loaded", 0),
-            relationships_loaded=stats.get("relationships_loaded", 0),
-            triples_processed=stats.get("triples_processed", 0),
-            duration_seconds=stats.get("duration_seconds"),
-            error=stats.get("error"),
-        )
+        normalized_status: Literal["success", "partial", "failed"] = "failed"
+        if status == "success":
+            normalized_status = "success"
+        elif status == "partial":
+            normalized_status = "partial"
+
+        return IngestResponse.model_validate({
+            "status": normalized_status,
+            "source_id": request.source_id,
+            "entities_loaded": stats.get("entities_loaded", 0),
+            "relationships_loaded": stats.get("relationships_loaded", 0),
+            "triples_processed": stats.get("triples_processed", 0),
+            "duration_seconds": stats.get("duration_seconds"),
+            "error": stats.get("error"),
+        })
     except Exception as e:
         logger.error(f"Ingestion failed: {e}")
         raise HTTPException(status_code=500, detail="Ingestion failed. Please try again later.")
@@ -1577,16 +1610,16 @@ async def _execute_graph_rag_query(
 
     processing_time = (time.time() - start_time) * 1000
 
-    return GraphRAGResponse(
-        query=result.query,
-        entities=result.entities,
-        relationships=result.relationships,
-        context_graph=result.context_graph,
-        confidence_score=result.confidence_score,
-        sources=result.sources,
-        processing_time_ms=processing_time,
-        answer=getattr(result, "answer", None),
-    )
+    return GraphRAGResponse.model_validate({
+        "query": result.query,
+        "entities": result.entities,
+        "relationships": result.relationships,
+        "context_graph": result.context_graph,
+        "confidence_score": result.confidence_score,
+        "sources": result.sources,
+        "processing_time_ms": processing_time,
+        "answer": getattr(result, "answer", None),
+    })
 
 
 @app.post("/v1/graphrag", response_model=GraphRAGResponse)
@@ -1755,15 +1788,16 @@ async def _execute_hybrid_search(
     hybrid_search,
     query: str,
     entity_type: str | None,
-    search_type: str,
+    search_type: SearchType | str,
     top_k: int,
     weights: dict | None,
 ) -> SearchResponse:
     """Execute hybrid search (extracted for caching/deduplication)."""
     start_time = time.time()
-    if search_type == "vector":
+    search_type_value = search_type.value if isinstance(search_type, SearchType) else search_type
+    if search_type_value == "vector":
         results = await hybrid_search.semantic_search(query, entity_type, top_k)
-    elif search_type == "fulltext":
+    elif search_type_value == "fulltext":
         results = await hybrid_search.fulltext_search(query, entity_type, top_k)
     else:  # hybrid
         results = await hybrid_search.search(
@@ -1778,14 +1812,15 @@ async def _execute_hybrid_search(
         SearchResult(**asdict(result)) for result in results
     ]
     processing_time_ms = (time.time() - start_time) * 1000
+    normalized_search_type = SearchType(search_type_value)
 
-    return SearchResponse(
-        query=query,
-        results=search_results,
-        total_results=len(search_results),
-        search_type=SearchType(search_type),
-        processing_time_ms=processing_time_ms,
-    )
+    return SearchResponse.model_validate({
+        "query": query,
+        "results": search_results,
+        "total_results": len(search_results),
+        "search_type": normalized_search_type,
+        "processing_time_ms": processing_time_ms,
+    })
 
 
 @app.post(
@@ -2630,13 +2665,13 @@ async def batch_entity_operations(
                 except Exception as e:
                     logger.error(f"Rollback error for entity {entity_id}: {e}")
 
-        return BatchEntityResponse(
-            total_operations=len(request.operations),
-            successful=successful if not (request.atomic and failed > 0) else 0,
-            failed=failed,
-            results=results,
-            atomic_rollback=atomic_rollback if request.atomic else None,
-        )
+        return BatchEntityResponse.model_validate({
+            "total_operations": len(request.operations),
+            "successful": successful if not (request.atomic and failed > 0) else 0,
+            "failed": failed,
+            "results": [BatchEntityResult.model_validate(result) for result in results],
+            "atomic_rollback": atomic_rollback if request.atomic else None,
+        })
 
     except Exception as e:
         logger.error(f"Batch entity operations failed: {e}")
@@ -2722,13 +2757,13 @@ async def batch_analytics(
                 "total_entities_analyzed": sum(all_scores),
             }
 
-        return BatchAnalyticsResponse(
-            total_analyzed=len(request.entity_ids),
-            successful=successful,
-            failed=failed,
-            results=results,
-            aggregate_metrics=aggregate,
-        )
+        return BatchAnalyticsResponse.model_validate({
+            "total_analyzed": len(request.entity_ids),
+            "successful": successful,
+            "failed": failed,
+            "results": [BatchAnalyticsResult.model_validate(result) for result in results],
+            "aggregate_metrics": aggregate,
+        })
 
     except Exception as e:
         logger.error(f"Batch analytics failed: {e}")
@@ -3083,7 +3118,7 @@ async def get_provenance(
 
     try:
         # Query Neo4j for entity and its provenance
-        neo4j = app_state.neo4j_manager
+        neo4j = app_state.neo4j_driver
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -3144,6 +3179,7 @@ async def get_provenance(
                     detail=f"Entity {entity_id} created from source",
                     timestamp=record.get("created_at", datetime.utcnow()),
                     agent="ExtractionEngine-v2.1",
+                    entity_id=entity_id,
                 )
             ]
 
@@ -3191,7 +3227,7 @@ async def list_audit_logs(
 
         # Query Neo4j provenance if source is 'provenance' or 'all'
         if source in ("provenance", "all"):
-            neo4j = app_state.neo4j_manager
+            neo4j = app_state.neo4j_driver
             if neo4j:
                 try:
                     # Use OPTIONAL MATCH to handle case where AuditEvent nodes don't exist yet
@@ -3426,7 +3462,7 @@ async def get_full_graph(
     Returns nodes, edges, and statistics. Results are limited for performance.
     """
     try:
-        neo4j = app_state.neo4j_manager
+        neo4j = app_state.neo4j_driver
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -3458,10 +3494,10 @@ async def get_full_graph(
             node_type = r.get("type", "Unknown")
             node_types[node_type] = node_types.get(node_type, 0) + 1
 
-            node = GraphNode(
-                id=r.get("id"),
+            node = _build_graph_node(
+                node_id=r.get("id"),
                 label=r.get("label") or r.get("id"),
-                type=node_type,
+                node_type=node_type,
                 confidence=r.get("confidence") or 0.8,
                 x=r.get("x"),
                 y=r.get("y"),
@@ -3580,7 +3616,7 @@ async def get_entity_subgraph(
     - **depth**: How many hops to traverse (1-5, default 2)
     """
     try:
-        neo4j = app_state.neo4j_manager
+        neo4j = app_state.neo4j_driver
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
@@ -3629,10 +3665,10 @@ async def get_entity_subgraph(
         # Add root node
         root_type = root_record.get("type", "Unknown")
         node_types[root_type] = node_types.get(root_type, 0) + 1
-        nodes_map[entity_id] = GraphNode(
-            id=entity_id,
+        nodes_map[entity_id] = _build_graph_node(
+            node_id=entity_id,
             label=root_record.get("label") or entity_id,
-            type=root_type,
+            node_type=root_type,
             confidence=root_record.get("confidence") or 0.8,
             properties={"is_root": True},
         )
@@ -3648,10 +3684,10 @@ async def get_entity_subgraph(
 
                 if conn_id not in nodes_map:
                     node_types[conn_type] = node_types.get(conn_type, 0) + 1
-                    nodes_map[conn_id] = GraphNode(
-                        id=conn_id,
+                    nodes_map[conn_id] = _build_graph_node(
+                        node_id=conn_id,
                         label=connected.get("name") or conn_id,
-                        type=conn_type,
+                        node_type=conn_type,
                         confidence=connected.get("confidence") or 0.8,
                         properties={},
                     )
@@ -3760,7 +3796,7 @@ async def get_query_subgraph(
         )
 
     try:
-        neo4j = app_state.neo4j
+        neo4j = app_state.neo4j_driver
         nodes: list[GraphNode] = []
         edges: list[GraphEdge] = []
         root_id = center_entity_id or ""
@@ -3818,22 +3854,26 @@ async def get_query_subgraph(
 
                 # Add root node
                 if root_data:
-                    nodes.append(GraphNode(
-                        id=root_data.get("id", center_entity_id),
-                        label=root_data.get("name", root_data.get("id", "Unknown")),
-                        type=root_data.get("entity_type", "Unknown"),
-                        properties={k: v for k, v in root_data.items() if k not in ["id", "name", "entity_type"]},
-                    ))
+                    nodes.append(
+                        _build_graph_node(
+                            node_id=root_data.get("id", center_entity_id),
+                            label=root_data.get("name", root_data.get("id", "Unknown")),
+                            node_type=root_data.get("entity_type", "Unknown"),
+                            properties={k: v for k, v in root_data.items() if k not in ["id", "name", "entity_type"]},
+                        )
+                    )
 
                 # Add neighbor nodes
                 for neighbor in neighbors:
                     if neighbor and neighbor.get("id"):
-                        nodes.append(GraphNode(
-                            id=neighbor.get("id"),
-                            label=neighbor.get("name", neighbor.get("id", "Unknown")),
-                            type=neighbor.get("entity_type", "Unknown"),
-                            properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
-                        ))
+                        nodes.append(
+                            _build_graph_node(
+                                node_id=neighbor.get("id"),
+                                label=neighbor.get("name", neighbor.get("id", "Unknown")),
+                                node_type=neighbor.get("entity_type", "Unknown"),
+                                properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
+                            )
+                        )
 
                 # Extract edges from paths
                 edge_keys = set()
@@ -3903,23 +3943,27 @@ async def get_query_subgraph(
                 # Add seed node
                 if seed and seed.get("id") and seed.get("id") not in node_ids:
                     node_ids.add(seed.get("id"))
-                    nodes.append(GraphNode(
-                        id=seed.get("id"),
-                        label=seed.get("name", seed.get("id", "Unknown")),
-                        type=seed.get("entity_type", "Unknown"),
-                        properties={k: v for k, v in seed.items() if k not in ["id", "name", "entity_type"]},
-                    ))
+                    nodes.append(
+                        _build_graph_node(
+                            node_id=seed.get("id"),
+                            label=seed.get("name", seed.get("id", "Unknown")),
+                            node_type=seed.get("entity_type", "Unknown"),
+                            properties={k: v for k, v in seed.items() if k not in ["id", "name", "entity_type"]},
+                        )
+                    )
 
                 # Add neighbors and edges
                 for neighbor in neighbors:
                     if neighbor and neighbor.get("id") and neighbor.get("id") not in node_ids:
                         node_ids.add(neighbor.get("id"))
-                        nodes.append(GraphNode(
-                            id=neighbor.get("id"),
-                            label=neighbor.get("name", neighbor.get("id", "Unknown")),
-                            type=neighbor.get("entity_type", "Unknown"),
-                            properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
-                        ))
+                        nodes.append(
+                            _build_graph_node(
+                                node_id=neighbor.get("id"),
+                                label=neighbor.get("name", neighbor.get("id", "Unknown")),
+                                node_type=neighbor.get("entity_type", "Unknown"),
+                                properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
+                            )
+                        )
 
                 # Add edges
                 for rel in rels:
