@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:prod-auth-bypass": "pnpm run build && node scripts/security/assert-no-dev-auth-bypass-in-production.mjs",
     "test:contracts": "vitest run src/api/__tests__/contract && node scripts/security/assert-no-placeholder-contract-tests.mjs",
+    "test:trust-boundaries": "tsx scripts/security/assert-trust-boundary-parsers.ts",
     "test:coverage": "vitest run --coverage",
     "test:workflow-matrix": "node scripts/quality/assert-frontend-workflow-matrix.mjs",
     "test:bundle-budget": "node scripts/quality/assert-bundle-budget.mjs",
