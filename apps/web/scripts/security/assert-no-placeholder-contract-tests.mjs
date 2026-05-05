@@ -42,8 +42,8 @@ for (const file of listContractTests(contractDir)) {
     /assertOpenApiSchema\(/.test(source) ||
     /assertCanonicalSchema\(/.test(source);
   const importsOpenApiHelpers =
-    /from ['"`]._helpers['"`]/.test(source) ||
-    /from ['"`].\/openapi-validator['"`]/.test(source);
+    /from ['"`](.*)_helpers['"`]/.test(source) ||
+    /from ['"`](.*)\/openapi-validator['"`]/.test(source);
   if (!hasDirectOpenApiAssertion && !importsOpenApiHelpers) {
     failures.push(
       `${file}: missing OpenAPI-backed validation (import from ./_helpers or use assertOpenApiSchema/assertCanonicalSchema)`

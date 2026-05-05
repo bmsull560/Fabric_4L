@@ -81,7 +81,7 @@ updates:
     commit-message:
       prefix: chore(deps)
     reviewers:
-      - value-fabric/sre-leads
+      - value-fabric/backend-leads
 
   - package-ecosystem: pip
     directory: /tests
@@ -238,4 +238,4 @@ updates:
     commit-message:
       prefix: chore(ci)
     reviewers:
-      - value-fabric/sre-leads
+      - value-fabric/maintainers

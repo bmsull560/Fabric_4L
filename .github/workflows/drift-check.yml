@@ -3,9 +3,9 @@ name: Contract Drift Check
 on:
   pull_request:
     paths:
-      - 'value-fabric/**/src/api/**'
-      - 'value-fabric/**/src/**/routes/**'
-      - 'value-fabric/**/src/**/main.py'
+      - 'services/**/src/api/**'
+      - 'services/**/src/**/routes/**'
+      - 'services/**/src/**/main.py'
   workflow_dispatch:
 
 env:

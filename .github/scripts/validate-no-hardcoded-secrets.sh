@@ -16,8 +16,8 @@ EXIT_CODE=0
 
 # Files to scan (production and staging only — dev/test are acceptable)
 ENV_FILES=(
-  "frontend/.env.production"
-  "frontend/.env.staging"
+  "apps/web/.env.production"
+  "apps/web/.env.staging"
 )
 
 # Secret key names that must not have hardcoded values

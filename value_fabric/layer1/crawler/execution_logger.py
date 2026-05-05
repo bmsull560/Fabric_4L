@@ -432,6 +432,15 @@ class NoOpExecutionLogger(ExecutionLogger):
     Never bind to this implementation in production.
     """
 
+    def __init__(self) -> None:
+        from ..shared.config import is_production_like_environment
+        if is_production_like_environment():
+            raise RuntimeError(
+                "NoOpExecutionLogger must not be used in production-like environments. "
+                "Bind a real ExecutionLogger implementation."
+            )
+        super().__init__()
+
     def _write_log(self, entry: ExecutionLogEntry, event_type: str) -> None:
         """Do nothing - log entry is intentionally discarded for test scenarios."""
         pass

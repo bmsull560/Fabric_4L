@@ -5,8 +5,8 @@ on:
     paths:
       - 'apps/web/src/App.tsx'
       - 'apps/web/src/App/Router.test.tsx'
-      - 'frontend/audit-output/route-map.md'
-      - 'frontend/audit-output/track-a-route-extraction.json'
+      - 'apps/web/audit-output/route-map.md'
+      - 'apps/web/audit-output/track-a-route-extraction.json'
       - 'scripts/extract-routes-audit.py'
       - 'scripts/check-route-audit-freshness.py'
   push:
@@ -14,8 +14,8 @@ on:
     paths:
       - 'apps/web/src/App.tsx'
       - 'apps/web/src/App/Router.test.tsx'
-      - 'frontend/audit-output/route-map.md'
-      - 'frontend/audit-output/track-a-route-extraction.json'
+      - 'apps/web/audit-output/route-map.md'
+      - 'apps/web/audit-output/track-a-route-extraction.json'
       - 'scripts/extract-routes-audit.py'
       - 'scripts/check-route-audit-freshness.py'
 

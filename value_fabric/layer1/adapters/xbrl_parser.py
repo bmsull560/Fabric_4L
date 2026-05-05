@@ -209,7 +209,10 @@ class XBRLParser:
                     instant = period.find(".//instant")
 
                 if instant is not None and instant.text:
-                    context_data["instant"] = self._parse_date(instant.text)
+                    try:
+                        context_data["instant"] = self._parse_date(instant.text)
+                    except XBRLParseError:
+                        logger.warning("xbrl_context_date_parse_failed", context_id=ctx_id, field="instant", value=instant.text)
 
                 # Duration period
                 start = period.find(".//{http://www.xbrl.org/2003/instance}startDate")
@@ -221,11 +224,19 @@ class XBRLParser:
                     end = period.find(".//endDate")
 
                 if start is not None and start.text:
-                    context_data["start_date"] = self._parse_date(start.text)
+                    try:
+                        context_data["start_date"] = self._parse_date(start.text)
+                    except XBRLParseError:
+                        logger.warning("xbrl_context_date_parse_failed", context_id=ctx_id, field="start_date", value=start.text)
                 if end is not None and end.text:
-                    context_data["end_date"] = self._parse_date(end.text)
-                if end is not None and end.text:
-                    context_data["instant"] = self._parse_date(end.text)
+                    try:
+                        context_data["end_date"] = self._parse_date(end.text)
+                    except XBRLParseError:
+                        logger.warning("xbrl_context_date_parse_failed", context_id=ctx_id, field="end_date", value=end.text)
+                    try:
+                        context_data["instant"] = self._parse_date(end.text)
+                    except XBRLParseError:
+                        logger.warning("xbrl_context_date_parse_failed", context_id=ctx_id, field="instant", value=end.text)
 
             # Extract entity identifier
             entity = ctx.find(".//{http://www.xbrl.org/2003/instance}entity")
@@ -473,8 +484,12 @@ class XBRLParser:
                     return elem.text
         return None
 
-    def _parse_date(self, date_str: str) -> datetime | None:
-        """Parse date string to datetime."""
+    def _parse_date(self, date_str: str) -> datetime:
+        """Parse date string to datetime.
+
+        Raises:
+            XBRLParseError: If the date string does not match any known format.
+        """
         formats = [
             "%Y-%m-%d",
             "%Y-%m-%dT%H:%M:%S",
@@ -487,24 +502,34 @@ class XBRLParser:
             except ValueError:
                 continue
 
-        return None
+        raise XBRLParseError(
+            f"Unparseable date string {date_str!r}",
+            value_preview=date_str,
+            error_code="XBRL_DATE_PARSE_ERROR",
+        )
 
     def _parse_value(self, value: str) -> Any:
-        """Parse a value string to appropriate type."""
+        """Parse a value string to appropriate type.
+
+        Falls back to the raw string only after numeric coercion fails.
+        A fallback metric is emitted so unparseable values are observable.
+        """
         # Try integer
         try:
             return int(value)
         except ValueError:
-            logger.debug("xbrl_value_parse_fallback", target_type="int", value_preview=value[:50] if len(value) > 50 else value)
-            metrics = get_metrics()
-            if metrics:
-                metrics.increment_errors(error_type="xbrl_value_parse_fallback", component="xbrl_parser")
+            pass
 
         # Try decimal
         try:
             return Decimal(value)
-        except Exception:
-            logger.debug("xbrl_value_parse_fallback", target_type="decimal", value_preview=value[:50] if len(value) > 50 else value)
+        except (ValueError, ArithmeticError) as exc:
+            logger.warning(
+                "xbrl_value_parse_fallback",
+                target_type="decimal",
+                value_preview=value[:50] if len(value) > 50 else value,
+                error_type=type(exc).__name__,
+            )
             metrics = get_metrics()
             if metrics:
                 metrics.increment_errors(error_type="xbrl_value_parse_fallback", component="xbrl_parser")

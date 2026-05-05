@@ -6,7 +6,13 @@
  *   import { loadFrontendEnv } from "@fabric/config/env/frontend";
  */
 
-export { backendEnvSchema, loadBackendEnv, type BackendEnv } from "./env/backend.js";
+export {
+  backendEnvSchema,
+  loadBackendEnv,
+  validateBackendEnvForProductionLike,
+  type BackendEnv,
+  type ProductionSafetyViolation,
+} from "./env/backend.js";
 export { frontendEnvSchema, loadFrontendEnv, type FrontendEnv } from "./env/frontend.js";
 export { testEnvSchema, type TestEnv } from "./env/test.js";
 export {

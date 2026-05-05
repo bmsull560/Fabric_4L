@@ -312,11 +312,26 @@ export const TruthObjectResponseSchema = z.object({
   applies_to: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
+export const TruthObjectSummarySchema = z.object({
+  id: z.string().uuid(),
+  claim: z.string().min(1),
+  claim_type: z.string(),
+  confidence: z.number(),
+  status: z.string(),
+  maturity_level: z.number().int().nonnegative(),
+  is_stale: z.boolean(),
+  source_count: z.number().int().nonnegative().default(0),
+  approved_by: z.string().nullable(),
+  freshness: z.string(),
+  created_at: z.string(),
+});
+
 export const TruthObjectListResponseSchema = z.object({
-  items: z.array(TruthObjectResponseSchema),
+  items: z.array(TruthObjectSummarySchema),
   total: z.number().int().nonnegative(),
-  page: z.number().int().positive(),
-  page_size: z.number().int().positive(),
+  limit: z.number().int().nonnegative(),
+  offset: z.number().int().nonnegative(),
+  has_more: z.boolean(),
 });
 
 export const ValidateResponseSchema = z.object({

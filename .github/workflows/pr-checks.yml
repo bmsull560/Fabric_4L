@@ -989,23 +989,23 @@ jobs:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
         include:
           - layer: layer1-ingestion
-            context: value-fabric
-            dockerfile: ./layer1-ingestion/Dockerfile
+            context: .
+            dockerfile: ./services/layer1-ingestion/Dockerfile
           - layer: layer2-extraction
-            context: value-fabric
-            dockerfile: ./layer2-extraction/Dockerfile
+            context: .
+            dockerfile: ./services/layer2-extraction/Dockerfile
           - layer: layer3-knowledge
-            context: value-fabric
-            dockerfile: ./layer3-knowledge/Dockerfile
+            context: .
+            dockerfile: ./services/layer3-knowledge/Dockerfile
           - layer: layer4-agents
-            context: value-fabric
-            dockerfile: ./layer4-agents/Dockerfile
+            context: .
+            dockerfile: ./services/layer4-agents/Dockerfile
           - layer: layer5-ground-truth
-            context: value-fabric
-            dockerfile: ./layer5-ground-truth/Dockerfile
+            context: .
+            dockerfile: ./services/layer5-ground-truth/Dockerfile
           - layer: layer6-benchmarks
-            context: value-fabric
-            dockerfile: ./layer6-benchmarks/Dockerfile
+            context: .
+            dockerfile: ./services/layer6-benchmarks/Dockerfile
           - layer: frontend
             context: apps/web
             dockerfile: ./Dockerfile

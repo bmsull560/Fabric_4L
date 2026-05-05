@@ -13,7 +13,14 @@ from .middleware import (
     XSS_PATTERNS,
     NOSQL_INJECTION_PATTERNS,
 )
-from .config import SecurityConfig as RootSecurityConfig
+from .config import (
+    SecurityConfig as RootSecurityConfig,
+    ProductionSafetyValidator,
+    validate_production_safety,
+    is_production_like_environment,
+    detect_environment,
+    get_startup_summary,
+)
 from .redaction import redact_credentials
 
 __all__ = [
@@ -25,4 +32,9 @@ __all__ = [
     "XSS_PATTERNS",
     "NOSQL_INJECTION_PATTERNS",
     "redact_credentials",
+    "ProductionSafetyValidator",
+    "validate_production_safety",
+    "is_production_like_environment",
+    "detect_environment",
+    "get_startup_summary",
 ]

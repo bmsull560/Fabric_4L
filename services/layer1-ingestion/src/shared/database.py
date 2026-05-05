@@ -34,11 +34,18 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Redis client (used by health checks and rate limiting)
 redis_client = None
+REDIS_AVAILABLE = False
 try:
     import redis
     redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
-except Exception:
-    pass
+    REDIS_AVAILABLE = True
+except Exception as e:
+    import logging
+    logging.getLogger(__name__).warning(
+        "redis_import_failed",
+        error=str(e),
+        fallback="redis_disabled",
+    )
 
 
 class TenantContextError(Exception):

@@ -16,11 +16,10 @@ Exit codes:
 """
 
 import os
-import re
 import sys
 import yaml
 from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple
 
 # Repository root
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -78,6 +77,21 @@ def load_codeowners() -> str:
 def normalize_path(path: str) -> str:
     """Normalize path to use forward slashes and remove leading/trailing slashes."""
     return path.replace("\\", "/").strip("/")
+
+
+def _pattern_matches_path(pattern: str, path_str: str) -> bool:
+    """Return True if a normalized CODEOWNERS pattern matches the given path."""
+    if pattern.endswith("/"):
+        prefix = pattern.rstrip("/")
+        return path_str == prefix or path_str.startswith(prefix + "/")
+    if pattern == "*":
+        return True
+    if pattern.startswith("**/"):
+        suffix = pattern[3:]
+        return path_str.endswith(suffix) or suffix in path_str
+    if pattern in path_str:
+        return True
+    return False
 
 
 def get_dependabot_entries(config: Dict) -> Dict[str, Set[str]]:
@@ -138,18 +152,7 @@ def get_codeowners_owners_for_path(patterns: List[Tuple[str, List[str]]], path_s
     """
     owners: Set[str] = set()
     for pattern, pattern_owners in patterns:
-        match = False
-        if pattern.endswith("/"):
-            prefix = pattern.rstrip("/")
-            if path_str == prefix or path_str.startswith(prefix + "/"):
-                match = True
-        elif pattern.startswith("**/"):
-            suffix = pattern[3:]
-            if path_str.endswith(suffix) or suffix in path_str:
-                match = True
-        elif pattern in path_str:
-            match = True
-        if match:
+        if _pattern_matches_path(pattern, path_str):
             owners.update(pattern_owners)
     return owners
 
@@ -296,22 +299,9 @@ def check_codeowners_ownership(codeowners: str, path_str: str) -> bool:
         if not owners:
             continue
 
-        # Remove leading slash from pattern for comparison
+        # Normalize pattern and check match
         pattern = pattern.lstrip("/")
-
-        # Check if pattern matches the package path
-        # Support glob patterns like **/Dockerfile or /apps/web/
-        if pattern.endswith("/"):
-            # Directory pattern
-            prefix = pattern.rstrip("/")
-            if path_str == prefix or path_str.startswith(prefix + "/"):
-                return True
-        elif pattern.startswith("**/"):
-            # Glob pattern
-            suffix = pattern[3:]
-            if path_str.endswith(suffix) or suffix in path_str:
-                return True
-        elif pattern in path_str:
+        if _pattern_matches_path(pattern, path_str):
             return True
 
     return False

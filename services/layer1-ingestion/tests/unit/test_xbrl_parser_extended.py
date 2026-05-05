@@ -64,6 +64,25 @@ class TestXBRLParserErrorHandling:
         result = parser.parse("<root><child>text</child></root>")
         assert result.all_facts == []
 
+    def test_parse_date_raises_on_invalid_date(self):
+        """_parse_date raises XBRLParseError for unparseable dates."""
+        parser = XBRLParser()
+        from value_fabric.layer1_ingestion.src.shared.exceptions import XBRLParseError
+        with pytest.raises(XBRLParseError):
+            parser._parse_date("not-a-date")
+
+    def test_parse_value_returns_string_for_non_numeric(self):
+        """_parse_value falls back to string for non-numeric input."""
+        parser = XBRLParser()
+        assert parser._parse_value("hello") == "hello"
+
+    def test_parse_value_narrows_decimal_exception(self):
+        """_parse_value does not swallow broad exceptions during Decimal coercion."""
+        parser = XBRLParser()
+        # Should not raise a generic Exception; it handles ValueError/ArithmeticError
+        result = parser._parse_value("not-a-number")
+        assert result == "not-a-number"
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Context parsing — instant (balance sheet) dates
@@ -142,14 +161,13 @@ class TestDecimalScaling:
         fact = result.all_facts[0]
         assert abs(float(fact.value) - 3.14) < 0.001
 
-    def test_invalid_decimals_value_falls_back_to_zero_scale(self):
-        """Non-numeric decimals attribute is handled gracefully (scale=0)."""
+    def test_invalid_decimals_value_skips_fact(self):
+        """Non-numeric decimals attribute raises XBRLParseError and the fact is skipped."""
         facts_xml = """<us-gaap:Revenues contextRef="ctx-2023" unitRef="USD" decimals="bad">99999</us-gaap:Revenues>"""
         result = _parse(self.CTX, self.UNIT, facts_xml)
 
-        # Should not raise; value should be parsed without scaling
-        assert len(result.all_facts) == 1
-        assert result.all_facts[0].value == 99999
+        # Fact with invalid decimals is skipped; remaining document is still parsed
+        assert len(result.all_facts) == 0
 
 
 # ──────────────────────────────────────────────────────────────────────────────

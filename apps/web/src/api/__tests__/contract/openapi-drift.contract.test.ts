@@ -20,19 +20,16 @@ import {
   ExtractResponseSchema,
   ExtractionStatusSchema,
   GraphNodeSchema,
-  GraphEdgeSchema,
   SubgraphResponseSchema,
   FormulaEvaluateResponseSchema,
   PackSummarySchema,
   WorkflowCreateResponseSchema,
   WorkflowStatusResponseSchema,
   WorkflowResultResponseSchema,
-  WorkflowResumeResponseSchema,
   TenantModelSchema,
   FeatureFlagResponseSchema,
   TruthObjectResponseSchema,
   TruthObjectListResponseSchema,
-  ValidateResponseSchema,
   ApiErrorSchema,
   fixtures,
   assertSchema,
@@ -223,10 +220,23 @@ describe('OpenAPI drift: L5 Ground Truth', () => {
       'layer5-ground-truth.json',
       '#/components/schemas/TruthObjectListResponse',
       {
-        items: [fixtures.truthObject()],
+        items: [{
+          id: '550e8400-e29b-41d4-a716-446655440002',
+          claim: 'Manual reporting costs 12 hours/week per analyst',
+          claim_type: 'quantitative',
+          confidence: 0.82,
+          status: 'supported',
+          maturity_level: 2,
+          is_stale: false,
+          source_count: 3,
+          approved_by: 'admin@example.com',
+          freshness: '2024-01-15T10:00:00Z',
+          created_at: '2024-01-10T08:00:00Z',
+        }],
         total: 1,
-        page: 1,
-        page_size: 20,
+        limit: 20,
+        offset: 0,
+        has_more: false,
       },
       'TruthObjectListResponse'
     );
@@ -274,7 +284,19 @@ describe('OpenAPI drift: negative-path consistency', () => {
 
 // ---------------------------------------------------------------------------
 // Common error shapes
-// ---------------------------------------------------------------------------
+// ── Auth failures ─────────────────────────────────────────────────────────────
+
+describe('Contract: drift-detection auth failures', () => {
+  it('401 matches ApiError shape', () => {
+    assertSchema(ApiErrorSchema, { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-drift-401' }, 'ApiError (401)');
+  });
+
+  it('403 forbidden matches ApiError shape', () => {
+    assertSchema(ApiErrorSchema, { message: 'Access denied', code: 'FORBIDDEN', trace_id: 'trace-drift-403' }, 'ApiError (403)');
+  });
+});
+
+// ── Common error shapes ───────────────────────────────────────────────────────
 
 describe('OpenAPI drift: common error shapes', () => {
   it('ApiError fixture is compatible with HTTPValidationError', () => {

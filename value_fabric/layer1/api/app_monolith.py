@@ -114,17 +114,28 @@ logger = structlog.get_logger()
 class _load_deprecation_registerResult(TypedDictModel):
     deprecations: list[Any]
 
+DEPRECATION_REGISTER_LOADED = False
 
 def _load_deprecation_register() -> dict:
     """Load deprecation register from docs/deprecation_register.json."""
+    global DEPRECATION_REGISTER_LOADED
     try:
         repo_root = Path(__file__).parent.parent.parent.parent.parent
         register_path = repo_root / "docs" / "deprecation_register.json"
         if register_path.exists():
             with open(register_path, encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                DEPRECATION_REGISTER_LOADED = True
+                return data
     except Exception as e:
-        logger.warning("Failed to load deprecation register", error=str(e))
+        logger.warning(
+            "deprecation_register_load_failed",
+            error=str(e),
+            fallback="empty_register",
+        )
+        metrics = get_metrics()
+        if metrics:
+            metrics.increment_errors(error_type="deprecation_register_load_failed", component="api")
     return _load_deprecation_registerResult.model_validate({"deprecations": []}).model_dump()
 
 
@@ -155,6 +166,15 @@ def _check_deprecation_warnings(register: dict) -> None:
                         target_removal=target_removal,
                     )
         except ValueError:
+            logger.warning(
+                "deprecation_date_parse_failed",
+                feature=item.get("feature"),
+                target_removal=target_removal,
+                owner=item.get("owner"),
+            )
+            metrics = get_metrics()
+            if metrics:
+                metrics.increment_errors(error_type="deprecation_date_parse_failed", component="api")
             continue
 
 
@@ -269,13 +289,15 @@ _security_config_l1 = add_security_validation_middleware(
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
 redis_rate_limiter = None
+RATE_LIMITING_AVAILABLE = False
 try:
     from ..shared.database import redis_client
 
     if redis_client is not None:
         redis_rate_limiter = RedisRateLimiter(redis_client)
+        RATE_LIMITING_AVAILABLE = True
 except Exception as e:
-    logger.warning(
+    logger.error(
         "redis_init_failed",
         error=str(e),
         degraded_mode=True,
@@ -2312,7 +2334,11 @@ async def health_check(db: Session = Depends(get_db_from_context_sync)):
         db.execute(text("SELECT 1"))
         components["database"] = ComponentHealth(status="healthy", latency_ms=0)
     except Exception as e:
+        logger.error("health_check_database_failed", error=str(e))
         components["database"] = ComponentHealth(status="unhealthy", message=str(e))
+        _metrics = get_metrics()
+        if _metrics:
+            _metrics.increment_errors(error_type="health_check_database_failed", component="api")
 
     # Queue check (Redis)
     try:
@@ -2320,8 +2346,12 @@ async def health_check(db: Session = Depends(get_db_from_context_sync)):
 
         redis_client.ping()
         components["queue"] = ComponentHealth(status="healthy", latency_ms=0)
-    except Exception:
+    except Exception as e:
+        logger.warning("health_check_redis_failed", error=str(e))
         components["queue"] = ComponentHealth(status="degraded", message="Redis not available")
+        _metrics = get_metrics()
+        if _metrics:
+            _metrics.increment_errors(error_type="health_check_redis_failed", component="api")
 
     # Active jobs metrics
     active_jobs = (

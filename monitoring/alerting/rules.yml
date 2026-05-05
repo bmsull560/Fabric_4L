@@ -36,7 +36,7 @@ groups:
           summary: "High error rate detected in Value Fabric"
           description: "Error rate is above 5% for more than 5 minutes"
           escalation_policy: "pagerduty-immediate"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-error-rate.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-error-rate.md"
 
       # Disk space alerts (using node-exporter host-level metrics)
       - alert: DiskSpaceLow
@@ -47,7 +47,7 @@ groups:
         annotations:
           summary: "Low disk space on {{ $labels.instance }}"
           description: "Disk usage on {{ $labels.mountpoint }} is above 90% ({{ $value | humanizePercentage }} remaining)"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/disk-space-low.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/disk-space-low.md"
 
       - alert: DiskSpaceCritical
         expr: (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="proc",fstype!="sysfs",fstype!="cgroup"} / node_filesystem_size_bytes) < 0.05
@@ -57,7 +57,7 @@ groups:
         annotations:
           summary: "Critical disk space on {{ $labels.instance }}"
           description: "Disk usage on {{ $labels.mountpoint }} is above 95% ({{ $value | humanizePercentage }} remaining). Immediate action required!"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/disk-space-critical.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/disk-space-critical.md"
 
       - alert: DiskInodeExhaustion
         expr: (node_filesystem_files_free{fstype!="tmpfs",fstype!="proc",fstype!="sysfs",fstype!="cgroup"} / node_filesystem_files) < 0.10
@@ -67,7 +67,7 @@ groups:
         annotations:
           summary: "Low inodes on {{ $labels.instance }}"
           description: "Inode usage on {{ $labels.mountpoint }} is above 90% ({{ $value | humanizePercentage }} remaining). New file creation may fail."
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/disk-inode-exhaustion.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/disk-inode-exhaustion.md"
 
       # Slow queries alert (p95 latency > 2s)
       - alert: SlowQueries
@@ -91,7 +91,7 @@ groups:
         annotations:
           summary: "Slow queries detected"
           description: "p95 latency is above 2 seconds for more than 10 minutes"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/slow-queries.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/slow-queries.md"
 
       # Dependency down alerts
       - alert: Neo4jDown
@@ -102,7 +102,7 @@ groups:
         annotations:
           summary: "Neo4j is down"
           description: "Neo4j database is unreachable"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/neo4j-unreachable.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/neo4j-unreachable.md"
 
       - alert: PostgresDown
         expr: layer4_health_status{component="postgres"} == 0
@@ -112,7 +112,7 @@ groups:
         annotations:
           summary: "PostgreSQL is down"
           description: "PostgreSQL database is unreachable"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/postgres-unreachable.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/postgres-unreachable.md"
 
       - alert: RedisDown
         expr: |
@@ -127,7 +127,7 @@ groups:
         annotations:
           summary: "Redis is down"
           description: "Redis cache is unreachable"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/redis-unreachable.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/redis-unreachable.md"
 
       # Workflow stalled alert
       - alert: WorkflowStalled
@@ -141,7 +141,7 @@ groups:
         annotations:
           summary: "Workflow may be stalled"
           description: "Running workflows show no progress for 30+ minutes"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/agent-workflow-stall.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/agent-workflow-stall.md"
 
       # Memory usage alert
       # NOTE: layer5/layer6 do not export *_memory_usage_bytes Prometheus
@@ -166,7 +166,7 @@ groups:
         annotations:
           summary: "High memory usage"
           description: "Memory usage exceeds 4 GB in one or more layers"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-memory-usage.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-memory-usage.md"
 
       # CPU usage alert
       # NOTE: layer5/layer6 do not export *_cpu_usage_percent today — omitted
@@ -188,7 +188,7 @@ groups:
         annotations:
           summary: "High CPU usage"
           description: "CPU usage exceeds 80% for more than 10 minutes"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-cpu-usage.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-cpu-usage.md"
 
       # High LLM cost rate alert (aggregated)
       - alert: HighLLMCostRate
@@ -200,7 +200,7 @@ groups:
           summary: "High LLM cost rate detected"
           description: "Aggregated LLM spend is above $50/hr for more than 15 minutes"
           escalation_policy: "slack-warning-finops"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-llm-cost.md"
 
       - alert: HighLLMCostCritical
         expr: sum(rate(vf_llm_cost_usd_total[1h])) > 100
@@ -211,7 +211,7 @@ groups:
           summary: "Critical LLM cost rate detected"
           description: "Aggregated LLM spend is above $100/hr for more than 10 minutes"
           escalation_policy: "pagerduty-immediate-finops"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-llm-cost.md"
 
       # Per-tenant LLM cost budget alert (Task 85)
       - alert: HighLLMCostPerTenant
@@ -223,7 +223,7 @@ groups:
         annotations:
           summary: "High LLM cost for tenant {{ $labels.tenant_id }}"
           description: "LLM cost exceeded $100 in 24h window for tenant {{ $labels.tenant_id }} (current: {{ $value }} USD)"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-llm-cost.md"
 
       # Formula approval alert
       - alert: FormulaApprovalRequired
@@ -234,7 +234,7 @@ groups:
         annotations:
           summary: "Formula approval required"
           description: "One or more formulas are pending human approval"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/formula-approval.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/formula-approval.md"
 
       # Audit write failure alert
       - alert: AuditWriteFailure
@@ -246,7 +246,7 @@ groups:
           summary: "Audit log write failures detected"
           description: "Audit writes are failing, compliance trail may be incomplete"
           escalation_policy: "pagerduty-immediate"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/audit-write-failure.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/audit-write-failure.md"
 
       # LLM Cost Monitoring (L2 Extraction)
       - alert: L2HighExtractionCost
@@ -260,7 +260,7 @@ groups:
         annotations:
           summary: "L2 extraction cost exceeded $10/hour"
           description: "Current hourly cost: ${{ $value | printf \"%.2f\" }}. L2 LLM extraction is consuming more budget than expected."
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/llm-cost-anomaly.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/llm-cost-anomaly.md"
 
       - alert: L2CostBudgetThreshold
         expr: |
@@ -274,7 +274,7 @@ groups:
           summary: "L2 monthly cost budget exceeded $1000"
           description: "Current total cost: ${{ $value | printf \"%.2f\" }}. Monthly budget threshold crossed."
           escalation_policy: "pagerduty-immediate"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/budget-exceeded.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/budget-exceeded.md"
 
       - alert: L2TokenUsageSpike
         expr: |
@@ -287,7 +287,7 @@ groups:
         annotations:
           summary: "L2 token usage spike detected (>100K tokens in 10min)"
           description: "Tokens consumed: {{ $value }}. Possible runaway extraction job or infinite loop."
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/token-spike.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/token-spike.md"
 
       # Ground truth staleness (L5)
       # `layer5_stale_objects_detected` is a Gauge reflecting the *current*
@@ -301,7 +301,7 @@ groups:
         annotations:
           summary: "Stale ground truth objects detected"
           description: "More than 10 ground truth objects are stale and need refreshing"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/stale-ground-truth.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/stale-ground-truth.md"
 
       # Service down (API health endpoint reporting unhealthy)
       - alert: ServiceDown
@@ -326,4 +326,4 @@ groups:
           summary: "Service is down: {{ $labels.job }}"
           description: "The API health check for {{ $labels.job }} has been reporting unhealthy for more than 2 minutes"
           escalation_policy: "pagerduty-immediate"
-          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/service-down.md"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/service-down.md"

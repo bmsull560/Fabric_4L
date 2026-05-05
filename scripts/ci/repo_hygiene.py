@@ -134,13 +134,12 @@ def is_allowed_reference(line: str, obsolete_item: dict[str, Any]) -> bool:
     allowed = obsolete_item.get("allowed_references", [])
     if not allowed:
         return False
-    # Very simple heuristic: if the line contains words like "archive",
-    # "obsolete", "migration", "historical", we treat it as potentially allowed.
+    # Match full allowed phrases (case-insensitive substring) rather than
+    # individual tokens, to avoid false negatives from common words.
     lower = line.lower()
     for phrase in allowed:
-        for word in phrase.lower().split():
-            if word in lower and len(word) > 4:
-                return True
+        if phrase.lower() in lower:
+            return True
     return False
 
 
@@ -197,16 +196,22 @@ def scan_workflows(repo_root: Path, manifest: dict[str, Any]) -> list[Violation]
                             # Allow test references inside value-fabric/tests (temporary)
                             if "/tests/" in candidate:
                                 continue
+                            # Allow scripts references
+                            if "/scripts/" in candidate:
+                                continue
                             # Disallow docker build contexts, eslint working dirs, etc.
                             disallowed = obs_item.get("disallowed_in", [])
                             if "docker_build_contexts" in disallowed:
                                 if "context" in line.lower() or "dockerfile" in line.lower():
                                     severity = "error"
                             if "path_filters_for_service_code" in disallowed:
-                                if "paths:" in line.lower() or stripped.startswith("-"):
+                                if "paths:" in line.lower() or (stripped.startswith("-") and ("/**" in candidate or "*." in candidate)):
                                     severity = "error"
                             if "eslint_working_directories" in disallowed:
-                                if "working-directory" in line.lower():
+                                if "working-directory" in line.lower() and ("eslint" in line.lower() or "lint" in line.lower()):
+                                    severity = "error"
+                            if "npm_cache_dependency_paths" in disallowed:
+                                if "cache-dependency-path" in line.lower():
                                     severity = "error"
 
                         violations.append(

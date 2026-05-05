@@ -90,8 +90,8 @@ def main(argv: list[str] | None = None) -> int:
         "--layers",
         nargs="+",
         choices=list(LAYER_MAP.keys()),
-        default=["layer4"],
-        help="which layers to scan (default: layer4)",
+        default=list(LAYER_MAP.keys()),
+        help="which layers to scan (default: all layers)",
     )
     args = parser.parse_args(argv)
 

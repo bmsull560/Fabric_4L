@@ -203,8 +203,12 @@ class ContentExtractor:
                             )
                     if "datePublished" in data and not metadata.get("published_at"):
                         metadata["published_at"] = data["datePublished"]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "jsonld_metadata_extraction_failed",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
 
         # Check for noindex
         robots_meta = soup.find("meta", attrs={"name": "robots"})

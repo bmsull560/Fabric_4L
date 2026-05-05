@@ -70,8 +70,6 @@ canonical:
         description: Cross-platform contract definitions
       - path: packages/shared
         description: Shared libraries (Python / TS)
-      - path: packages/value-packs
-        description: Value-pack domain logic
 
   documentation:
     root: docs/
@@ -98,7 +96,6 @@ canonical:
     entries:
       - path: contracts/openapi
       - path: contracts/jsonschema
-      - path: contracts/tool-manifests
       - path: contracts/frontend
       - path: contracts/rfcs
 

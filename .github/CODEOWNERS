@@ -10,7 +10,7 @@
 # ============================================
 
 # Authentication and authorization
-value-fabric/shared/identity/ @value-fabric/security-leads @value-fabric/maintainers
+value_fabric/shared/identity/ @value-fabric/security-leads @value-fabric/maintainers
 contracts/tool-manifests/ @value-fabric/security-leads @value-fabric/maintainers
 **/*auth* @value-fabric/security-leads @value-fabric/backend-leads
 **/*rbac* @value-fabric/security-leads @value-fabric/backend-leads
@@ -33,8 +33,7 @@ k8s/infisical/ @value-fabric/security-leads @value-fabric/sre-leads
 
 # Kubernetes manifests
 k8s/ @value-fabric/sre-leads @value-fabric/infrastructure-leads
-infra/terraform/ @value-fabric/sre-leads @value-fabric/infrastructure-leads
-infra/helm/ @value-fabric/sre-leads @value-fabric/infrastructure-leads
+infra/ @value-fabric/sre-leads @value-fabric/infrastructure-leads
 
 # CI/CD pipelines
 .github/workflows/ @value-fabric/sre-leads @value-fabric/maintainers
@@ -75,17 +74,14 @@ services/layer5-ground-truth/ @value-fabric/backend-leads @value-fabric/data-eng
 services/layer6-benchmarks/ @value-fabric/backend-leads @value-fabric/qa-leads
 
 # Shared libraries
-value-fabric/shared/ @value-fabric/backend-leads @value-fabric/architects
+value_fabric/shared/ @value-fabric/backend-leads @value-fabric/architects
 
 # ============================================
 # FRONTEND PATHS
 # Require frontend leads + UX review
 # ============================================
 
-frontend/ @value-fabric/frontend-leads @value-fabric/ux-designers
-frontend/client/src/components/ @value-fabric/frontend-leads @value-fabric/ux-designers
-frontend/client/src/contexts/AuthContext* @value-fabric/frontend-leads @value-fabric/security-leads
-frontend/client/src/pages/Admin* @value-fabric/frontend-leads @value-fabric/security-leads
+apps/web/ @value-fabric/frontend-leads @value-fabric/ux-designers
 
 # ============================================
 # API CONTRACTS
@@ -124,16 +120,16 @@ tests/contract/ @value-fabric/backend-leads @value-fabric/architects
 docs/ @value-fabric/tech-writers @value-fabric/maintainers
 docs/operations/ @value-fabric/sre-leads @value-fabric/tech-writers
 docs/compliance/ @value-fabric/compliance-team @value-fabric/security-leads
-docs/adr/ @value-fabric/architects @value-fabric/maintainers
+value-fabric/ADRs/ @value-fabric/architects @value-fabric/maintainers
 
 # ============================================
 # AGENT DEFINITIONS
 # Require agent team + architects
 # ============================================
 
-layer4-agents/agents/ @value-fabric/agent-team @value-fabric/architects
-layer4-agents/skills/ @value-fabric/agent-team @value-fabric/architects
-layer4-agents/workflows/ @value-fabric/agent-team @value-fabric/architects
+services/layer4-agents/src/agents/ @value-fabric/agent-team @value-fabric/architects
+services/layer4-agents/skills/ @value-fabric/agent-team @value-fabric/architects
+services/layer4-agents/workflows/ @value-fabric/agent-team @value-fabric/architects
 
 # ============================================
 # DATABASE MIGRATIONS

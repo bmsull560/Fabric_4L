@@ -8,7 +8,8 @@ on:
       - '**/middleware.py'
       - '**/auth*.py'
       - '**/security*.py'
-      - 'value-fabric/shared/identity/**'
+      - 'packages/shared/src/value_fabric/shared/identity/**'
+      - 'services/**/src/**/identity/**'
       - 'tests/security/**'
       - '.github/workflows/security-validation.yml'
 
@@ -288,7 +289,7 @@ jobs:
         run: |
           pip install pytest pytest-asyncio pytest-cov httpx psycopg2-binary redis pyjwt
           # Install all layer dependencies
-          for req in value-fabric/*/requirements.txt; do
+          for req in services/*/requirements.txt; do
             pip install -r "$req" || true
           done
 
