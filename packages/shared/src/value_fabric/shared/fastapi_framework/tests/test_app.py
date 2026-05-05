@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from value_fabric.shared.fastapi_framework import create_fabric_app
+from ..app import create_fabric_app, register_health_endpoint
 
 
 def test_create_fabric_app_applies_shared_defaults() -> None:
@@ -39,3 +39,22 @@ def test_create_fabric_app_applies_shared_defaults() -> None:
     assert error_response.status_code == 400
     assert error_response.json()["message"] == "bad request"
     assert "x-request-id" in error_response.headers
+
+
+def test_register_health_endpoint_uses_service_defaults() -> None:
+    app = create_fabric_app(
+        service_name="test-health-service",
+        title="Test Health Service",
+        version="1.0.0",
+        description="test app",
+    )
+    register_health_endpoint(app, service_name="test-health-service")
+
+    client = TestClient(app)
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["service"] == "test-health-service"
+    assert payload["status"] == "ok"
+    assert "timestamp" in payload

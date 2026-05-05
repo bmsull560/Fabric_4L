@@ -1,6 +1,12 @@
 """Shared FastAPI framework helpers for Value Fabric services."""
 
-from .app import create_fabric_app
+from .app import (
+    build_health_response,
+    create_fabric_app,
+    init_telemetry,
+    instrument_fastapi_app,
+    register_health_endpoint,
+)
 from .middleware import (
     CorsPolicy,
     add_cors_middleware,
@@ -18,7 +24,11 @@ __all__ = [
     "add_governance_middleware",
     "add_request_id_middleware",
     "add_security_validation_middleware",
+    "build_health_response",
     "create_fabric_app",
+    "init_telemetry",
     "include_router_mounts",
+    "instrument_fastapi_app",
+    "register_health_endpoint",
     "resolve_cors_policy",
 ]

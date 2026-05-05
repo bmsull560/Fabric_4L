@@ -1,8 +1,12 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from value_fabric.shared.fastapi_framework import create_fabric_app
-from value_fabric.shared.security import validate_production_safety
+
+from .shared_bootstrap import (
+    create_fabric_app,
+    register_health_endpoint,
+    validate_production_safety,
+)
 
 from app.core.config import get_settings
 from app.routers import (
@@ -50,10 +54,7 @@ app.include_router(context_engine.router, prefix="/v1")
 app.include_router(governance.router, prefix="/v1")
 app.include_router(agents.router, prefix="/v1")
 
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "service": "fabric-4l-api"}
+register_health_endpoint(app, service_name="fabric-4l-api")
 
 
 @app.get("/metrics")
