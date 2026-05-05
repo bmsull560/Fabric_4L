@@ -27,6 +27,7 @@ REQUIRED_MARKERS = {
     "matrix contract section": "## Matrix Maintenance Contract",
     "frontend matrix cross-link": "`docs/validation/master_workflow_traceability_matrix.md`",
     "frontend subset cross-link": "`apps/web/docs/frontend-workflow-coverage-matrix.md`",
+    "backend platform ownership cross-link": "`docs/validation/backend_platform_validation_ownership_matrix.md`",
     "root guard command": "`python3 scripts/ci/assert_backend_workflow_traceability.py`",
     "root make target": "`make check-workflow-matrix`",
     "extraction results gap": "QK.extraction.results(id)",

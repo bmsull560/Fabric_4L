@@ -7,6 +7,7 @@ Create a master validation control plane that maps 30 workflow categories (300+ 
 - This document is the canonical release-level workflow inventory for Fabric_4L.
 - The frontend-focused subset remains in `apps/web/docs/frontend-workflow-coverage-matrix.md`.
 - Backend object, status, and event lineage remains in `docs/contracts/workflow-traceability-matrix.md`.
+- Backend/platform ownership for non-browser proof remains in `docs/validation/backend_platform_validation_ownership_matrix.md`.
 - The matrix must fail closed in CI via `python3 scripts/ci/assert_master_workflow_traceability.py` or `make check-workflow-matrix`.
 - Release-significant gate commands listed here must resolve to current repository commands rather than stale ad hoc invocations.
 

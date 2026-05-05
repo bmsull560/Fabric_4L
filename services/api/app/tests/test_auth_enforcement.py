@@ -111,7 +111,8 @@ class TestExpiredToken:
         with TestClient(app) as client:
             response = client.get("/v1/accounts", headers=headers)
         data = response.json()
-        assert "expired" in data.get("detail", "").lower()
+        error_message = data.get("detail") or data.get("message") or ""
+        assert "expired" in error_message.lower()
 
 
 # ---------------------------------------------------------------------------

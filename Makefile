@@ -59,6 +59,7 @@ check-readiness-consistency: ## Ensure canonical readiness percentages are align
 check-workflow-matrix: ## Ensure the master workflow traceability matrix keeps its release-significant coverage markers
 	@python3 scripts/ci/assert_master_workflow_traceability.py
 	@python3 scripts/ci/assert_backend_workflow_traceability.py
+	@python3 scripts/ci/assert_backend_platform_validation_ownership.py
 
 verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
 	@echo "✅  Strict verification passed"

@@ -56,6 +56,7 @@ REQUIRED_MARKERS = {
     "release smoke make target": "`make test-backend-integrated-release-smoke`",
     "security gate reference": "`make security-smoke`",
     "contract traceability cross-link": "`docs/contracts/workflow-traceability-matrix.md`",
+    "backend platform ownership cross-link": "`docs/validation/backend_platform_validation_ownership_matrix.md`",
 }
 
 

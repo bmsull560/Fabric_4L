@@ -7,6 +7,7 @@
 - This document is the canonical backend object, status, and event-lineage map for release-significant workflows.
 - The release-level workflow inventory remains in `docs/validation/master_workflow_traceability_matrix.md`.
 - The frontend-facing subset remains in `apps/web/docs/frontend-workflow-coverage-matrix.md`.
+- Backend/platform ownership for SSO/MFA, ingestion persistence, audit immutability, observability, retention enforcement, and real external integration proof remains in `docs/validation/backend_platform_validation_ownership_matrix.md`.
 - This document must fail closed in CI via `python3 scripts/ci/assert_backend_workflow_traceability.py` and the root `make check-workflow-matrix` target.
 - New release-significant workflows must update this matrix when they introduce new IDs, status transitions, audit surfaces, or cross-layer lineage requirements.
 
