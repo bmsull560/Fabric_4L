@@ -1,0 +1,60 @@
+# Post-repair live environment gate evidence
+
+**Repository:** `bmsull560/Fabric_4L`  
+**Mode:** Live stack startup evidence for real UI workflow validation.  
+**Decision:** Live Environment Gate failed; Playwright live validation remains blocked.
+
+## Targeted repair actions completed
+
+| Action | Evidence |
+|---|---|
+| Docker socket access repaired for sandbox session | `/var/run/docker.sock` became `srw-rw-rw-`; Docker CLI could query daemon. |
+| Compose Python dependency incompatibility repaired | `requests==2.28.2`, `urllib3==1.26.20`, and `docker==5.0.3` were installed; `docker-compose ps` no longer raised `URLSchemeUnknown: Not supported URL scheme http+docker`. |
+| Docker daemon verified | `docker info` returned `Server=29.1.3 Driver=overlayfs Cgroup=systemd`. |
+| Legacy compose verified | `docker-compose version` returned `docker-compose version 1.29.2`; `docker-py version: 5.0.3`. |
+
+## Current compose and container state
+
+| Container | State |
+|---|---|
+| `vf-bi-layer1` | `Up (unhealthy)`; `0.0.0.0:8001->8000/tcp` |
+| `vf-bi-layer1-worker` | `Up (unhealthy)` |
+| `vf-bi-layer2` | `Exited (1)` |
+| `vf-bi-layer3` | `Exited (1)` |
+| `vf-bi-layer4` | `Created` |
+| `vf-bi-layer5` | `Created` |
+| `vf-bi-layer5-migrate` | `Exited (1)` |
+| `vf-bi-layer6` | `Exited (1)` |
+| `vf-bi-postgres` | `Up (healthy)`; `5432` exposed |
+| `vf-bi-redis` | `Up (healthy)`; `6379` exposed |
+| `vf-bi-neo4j` | `Up (healthy)`; `7474` and `7687` exposed |
+| `vf-bi-minio` | `Up (healthy)`; `9000` and `9001` exposed |
+| `vf-bi-minio-init` | `Exited (0)` |
+
+## Host endpoint probes
+
+| Layer | Host port | Probe result |
+|---|---:|---|
+| L1 ingestion | `8001` | `/health`, `/healthz`, and `/ready` timed out with `http_code=000`, curl exit `28`. |
+| L2 extraction | `8002` | `/health`, `/healthz`, and `/ready` returned connection refused with curl exit `7`. |
+| L3 knowledge | `8003` | `/health`, `/healthz`, and `/ready` returned connection refused with curl exit `7`. |
+| L4 agents | `8004` | `/health`, `/healthz`, and `/ready` returned connection refused with curl exit `7`. |
+| L5 ground truth | `8005` | `/api/v1/health`, `/health`, and `/ready` returned connection refused with curl exit `7`. |
+| L6 benchmarks | `8006` | `/health`, `/healthz`, and `/ready` returned connection refused with curl exit `7`. |
+
+## Log excerpts used for blocker classification
+
+| Service | Sanitized blocker excerpt |
+|---|---|
+| L1 ingestion | `INFO: Application startup complete.` followed by container state `Up (unhealthy)` and host health probes timing out. |
+| L1 worker | `consumer: Cannot connect to redis://redis:6379/0: Timeout connecting to server.` |
+| L2 extraction | `IndexError: 4` at `services/layer2-extraction/src/layer2_extraction/shared_bootstrap.py`, where `_SHARED_SRC` uses `Path(__file__).resolve().parents[4]`. |
+| L3 knowledge | `ImportError: cannot import name 'get_system_metrics' from 'value_fabric.layer3.api.app_monolith'`. |
+| L5 migration | `psycopg2.OperationalError: connection to server at "postgres" ..., port 5432 failed: Connection timed out`. |
+| L6 benchmarks | `IndexError: 3` at `services/layer6-benchmarks/src/shared_bootstrap.py`, where `_SHARED_SRC` uses `Path(__file__).resolve().parents[3]`. |
+
+## Classification
+
+The final permitted Docker repair attempt succeeded only at the Docker/compose access layer. The live application stack remains unavailable, so the Live Environment Gate failed. No Playwright live UI validation was started, and all 30 product workflow areas remain **BLOCKED** rather than PASS.
+
+No secrets are intentionally recorded in this evidence artifact.
