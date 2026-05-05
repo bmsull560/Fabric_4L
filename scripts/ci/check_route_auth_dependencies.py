@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CI gate to enforce auth dependencies on non-allowlisted FastAPI routes.
 
-Scans layer3 and layer4 service entrypoints and internal routers using AST.
+Scans service entrypoints and internal routers using AST.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ import yaml
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "options", "head"}
 DEFAULT_TARGETS = [
+    "services/api/app/main.py",
     "services/layer3-knowledge/src/api/main.py",
     "services/layer4-agents/src/api/main.py",
 ]
@@ -46,7 +47,8 @@ def call_name(node: ast.AST) -> str | None:
     if isinstance(node, ast.Name):
         return node.id
     if isinstance(node, ast.Attribute):
-        return node.attr
+        parent = call_name(node.value)
+        return f"{parent}.{node.attr}" if parent else node.attr
     if isinstance(node, ast.Call):
         return call_name(node.func)
     return None
@@ -91,6 +93,8 @@ def extract_include_prefixes(tree: ast.Module) -> dict[str, str]:
                     if kw.arg == "prefix":
                         pref = literal_str(kw.value) or ""
                 prefixes[router_name] = pref
+                if "." in router_name:
+                    prefixes[router_name.split(".", 1)[0]] = pref
     return prefixes
 
 
@@ -154,11 +158,16 @@ def main() -> int:
         routes, includes = extract_routes(target)
         all_routes.extend(routes)
         # inspect internal routers included by entrypoint
-        for router_file in target.parent.joinpath("routes").glob("*.py"):
-            if router_file.name.startswith("_"):
+        for router_dir_name in ("routes", "routers"):
+            router_dir = target.parent / router_dir_name
+            if not router_dir.exists():
                 continue
-            sub_routes, _ = extract_routes(router_file, base_prefix=includes.get(router_file.stem, ""))
-            all_routes.extend(sub_routes)
+            for router_file in router_dir.glob("*.py"):
+                if router_file.name.startswith("_"):
+                    continue
+                base_prefix = includes.get(router_file.stem, "")
+                sub_routes, _ = extract_routes(router_file, base_prefix=base_prefix)
+                all_routes.extend(sub_routes)
 
     failures = []
     public_count = 0

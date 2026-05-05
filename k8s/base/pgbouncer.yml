@@ -48,12 +48,12 @@ spec:
             - name: PGDATABASE
               value: "ingestion"
             - name: PGUSER
-              value: "postgres"
+              value: "pgbouncer_health"
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: password
+                  name: pgbouncer-auth
+                  key: pgbouncer-health-password
           resources:
             requests:
               memory: "64Mi"
@@ -85,10 +85,22 @@ spec:
             - name: pgbouncer-config
               mountPath: /etc/pgbouncer
               readOnly: true
+            - name: pgbouncer-auth
+              mountPath: /etc/pgbouncer-auth
+              readOnly: true
       volumes:
         - name: pgbouncer-config
           configMap:
             name: pgbouncer-config
+            items:
+              - key: pgbouncer.ini
+                path: pgbouncer.ini
+        - name: pgbouncer-auth
+          secret:
+            secretName: pgbouncer-auth
+            items:
+              - key: userlist.txt
+                path: userlist.txt
 ---
 apiVersion: v1
 kind: Service

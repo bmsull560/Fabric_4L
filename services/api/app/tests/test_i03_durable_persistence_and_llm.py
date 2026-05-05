@@ -53,6 +53,46 @@ def test_sqlite_database_round_trips_records_and_enforces_tenant_scope(monkeypat
     reopened.close()
 
 
+def test_sqlite_database_allows_same_id_per_tenant_and_deletes_only_request_tenant(
+    monkeypatch, tmp_path
+):
+    from app.core import database
+
+    db_file = tmp_path / "fabric_api.db"
+    settings = Settings(
+        app_env="development",
+        mock_persistence=False,
+        database_url=_sqlite_url(db_file),
+        llm_provider="mock",
+        seed_demo_data=False,
+    )
+    monkeypatch.setattr(database, "get_settings", lambda: settings)
+
+    durable = database.create_database()
+    alpha = Account(
+        id="shared-account-id",
+        tenant_id="tenant-alpha",
+        name="Alpha Manufacturing",
+        industry="manufacturing",
+    )
+    beta = Account(
+        id="shared-account-id",
+        tenant_id="tenant-beta",
+        name="Beta Healthcare",
+        industry="healthcare",
+    )
+
+    durable.accounts.insert(alpha.id, alpha)
+    durable.accounts.insert(beta.id, beta)
+
+    assert durable.accounts.get("shared-account-id", tenant_id="tenant-alpha") == alpha
+    assert durable.accounts.get("shared-account-id", tenant_id="tenant-beta") == beta
+    assert durable.accounts.delete("shared-account-id", tenant_id="tenant-alpha") is True
+    assert durable.accounts.get("shared-account-id", tenant_id="tenant-alpha") is None
+    assert durable.accounts.get("shared-account-id", tenant_id="tenant-beta") == beta
+    durable.close()
+
+
 def test_database_factory_rejects_unsupported_durable_backend(monkeypatch):
     from app.core import database
 

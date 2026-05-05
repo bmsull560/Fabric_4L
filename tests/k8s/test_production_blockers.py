@@ -75,3 +75,24 @@ def test_prod_has_resource_quota_and_limit_range(repo_root: Path) -> None:
 
     assert "tenant-safety.yml" in base_kustomization["resources"]
     assert {"ResourceQuota", "LimitRange"} <= kinds
+
+
+def test_pgbouncer_auth_material_is_not_committed_or_configmapped(repo_root: Path) -> None:
+    base_kustomization = yaml.safe_load((repo_root / "k8s/base/kustomization.yaml").read_text())
+    prod_kustomization = yaml.safe_load((repo_root / "k8s/envs/prod/kustomization.yaml").read_text())
+    config = _load_yaml(repo_root / "k8s/base/pgbouncer-config.yml")[0]
+    deployment = _load_yaml(repo_root / "k8s/base/pgbouncer.yml")[0]
+
+    assert "pgbouncer-config.yml" in base_kustomization["resources"]
+    assert "pgbouncer.yml" in base_kustomization["resources"]
+    assert "../../external-secrets/pgbouncer-secrets.yaml" in prod_kustomization["resources"]
+    assert not (repo_root / "k8s/base/userlist.txt").exists()
+    assert "userlist.txt" not in config.get("data", {})
+    assert "md5a8f7c7e8d9e0f1a2b3c4d5e6f7a8b9c" not in config.get("data", {}).get(
+        "pgbouncer.ini", ""
+    )
+
+    volumes = deployment["spec"]["template"]["spec"]["volumes"]
+    auth_volume = next(v for v in volumes if v["name"] == "pgbouncer-auth")
+    assert auth_volume["secret"]["secretName"] == "pgbouncer-auth"
+    assert "postgres-secret" not in yaml.safe_dump(deployment)

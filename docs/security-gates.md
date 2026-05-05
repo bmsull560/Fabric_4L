@@ -42,12 +42,16 @@ The `Security Gates` workflow now includes:
    - A dedicated PR job named **`Security Gates Required`** depends on:
      - `DAST (OWASP ZAP baseline)`
      - all matrix runs in `SBOM + Policy (...)`
+     - `Route Auth Dependency Gate`
+     - `Mandatory Security Regression Gate`
 
 ## Configure branch protection (required status check)
 
-To prevent merges without DAST + SBOM success, set branch protection on `main` to require the check:
+To prevent merges without DAST, SBOM, route-auth, and mandatory regression success, set branch protection on `main` to require these checks:
 
 - **`Security Gates Required`**
+- **`Route Auth Dependency Gate`**
+- **`Mandatory Security Regression Gate`**
 
 Recommended:
 - Keep `Security Gates` workflow required for pull requests.

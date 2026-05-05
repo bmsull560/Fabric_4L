@@ -32,6 +32,7 @@ from .billing import (
     SubscriptionStatus,
 )
 from .business_case_record import BusinessCaseRecord
+from .saved_scenario import SavedBusinessCaseScenario
 from .integration import (
     Integration,
     IntegrationStatus,
@@ -112,6 +113,7 @@ __all__ = [
     "PlanId",
     "SubscriptionStatus",
     "BusinessCaseRecord",
+    "SavedBusinessCaseScenario",
     # Agent State
     "AgentState",
     "BaseAgentState",

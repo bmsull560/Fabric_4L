@@ -120,9 +120,10 @@ class Settings(BaseSettings):
                 errors.append("mock_persistence must be false in production-like environments")
             if not self.database_url:
                 errors.append("database_url must be configured in production-like environments")
-            elif urlparse(self.database_url).scheme != "sqlite":
+            else:
                 errors.append(
-                    "database_url must use a supported durable sqlite:// URL for services/api"
+                    "services/api standalone production persistence requires PostgreSQL with "
+                    "Row-Level Security; the current SQLite durable facade is demo/dev only"
                 )
             if self.llm_provider.lower() == "mock":
                 errors.append("llm_provider=mock is disabled in production-like environments")

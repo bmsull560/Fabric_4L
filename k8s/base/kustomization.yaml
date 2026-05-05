@@ -30,6 +30,8 @@ resources:
   - api-key-cache-secret.yaml
   - redis.yml
   - postgres.yml
+  - pgbouncer-config.yml
+  - pgbouncer.yml
   - neo4j.yml
   - layer1-ingestion.yml
   - layer2-extraction.yml

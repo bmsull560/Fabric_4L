@@ -9,6 +9,7 @@ from .shared_bootstrap import (
 )
 
 from app.core.config import get_settings
+from app.core.metrics import metrics_middleware, render_metrics
 from app.routers import (
     accounts,
     agents,
@@ -54,9 +55,10 @@ app.include_router(context_engine.router, prefix="/v1")
 app.include_router(governance.router, prefix="/v1")
 app.include_router(agents.router, prefix="/v1")
 
+app.middleware("http")(metrics_middleware)
 register_health_endpoint(app, service_name="fabric-4l-api")
 
 
 @app.get("/metrics")
 async def metrics():
-    return {"requests_total": 0, "errors_total": 0}
+    return render_metrics()

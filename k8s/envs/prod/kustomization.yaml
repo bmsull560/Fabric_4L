@@ -8,6 +8,7 @@ resources:
   - ../../external-secrets/vault-integration.yml
   - ../../external-secrets/vault-database-dynamic.yml
   - ../../external-secrets/neo4j-secrets.yaml
+  - ../../external-secrets/pgbouncer-secrets.yaml
   - ../../operators
   - ../../monitoring/thanos.yml
   - ../../monitoring/loki-fluent-bit.yml

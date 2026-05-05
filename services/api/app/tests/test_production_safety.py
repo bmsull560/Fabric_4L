@@ -19,20 +19,30 @@ def test_production_like_environment_rejects_mock_persistence_and_mock_llm():
         )
 
 
-def test_production_like_environment_accepts_durable_configuration():
-    settings = Settings(
-        app_env="production",
-        mock_persistence=False,
-        database_url="sqlite:////var/lib/fabric_4l/api.db",
-        llm_provider="openai",
-        seed_demo_data=False,
-        secret_key="x" * 48,
-        cors_origins=["https://app.example.com"],
-    )
+def test_production_like_environment_rejects_sqlite_durable_configuration():
+    with pytest.raises(Exception, match="PostgreSQL with Row-Level Security"):
+        Settings(
+            app_env="production",
+            mock_persistence=False,
+            database_url="sqlite:////var/lib/fabric_4l/api.db",
+            llm_provider="openai",
+            seed_demo_data=False,
+            secret_key="x" * 48,
+            cors_origins=["https://app.example.com"],
+        )
 
-    assert settings.is_production_like is True
-    assert settings.mock_persistence is False
-    assert settings.seed_demo_data is False
+
+def test_production_like_environment_rejects_postgres_until_rls_facade_exists():
+    with pytest.raises(Exception, match="PostgreSQL with Row-Level Security"):
+        Settings(
+            app_env="production",
+            mock_persistence=False,
+            database_url="postgresql://fabric:secret@postgres:5432/fabric",
+            llm_provider="openai",
+            seed_demo_data=False,
+            secret_key="x" * 48,
+            cors_origins=["https://app.example.com"],
+        )
 
 
 def test_database_factory_uses_durable_persistence_when_mock_persistence_is_disabled(
@@ -100,7 +110,7 @@ def test_production_like_environment_rejects_placeholder_and_wildcard_cors():
 
 def test_standalone_api_cors_policy_is_explicit_and_credentials_safe():
     settings = Settings(
-        app_env="production",
+        app_env="development",
         mock_persistence=False,
         database_url="sqlite:////var/lib/fabric_4l/api.db",
         llm_provider="openai",

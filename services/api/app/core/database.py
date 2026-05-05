@@ -192,7 +192,7 @@ class SQLiteTable(Generic[T]):
                 """
                 INSERT INTO fabric_api_records(table_name, id, tenant_id, payload, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(table_name, id) DO UPDATE SET
+                ON CONFLICT(table_name, tenant_id, id) DO UPDATE SET
                     tenant_id = excluded.tenant_id,
                     payload = excluded.payload,
                     updated_at = excluded.updated_at
@@ -250,11 +250,13 @@ class SQLiteTable(Generic[T]):
         obj = self.get(id, tenant_id=tenant_id)
         if obj is None:
             return False
+        query = "DELETE FROM fabric_api_records WHERE table_name = ? AND id = ?"
+        params: list[Any] = [self.name, id]
+        if tenant_id:
+            query += " AND tenant_id = ?"
+            params.append(tenant_id)
         with self._lock, self._connection:
-            cursor = self._connection.execute(
-                "DELETE FROM fabric_api_records WHERE table_name = ? AND id = ?",
-                (self.name, id),
-            )
+            cursor = self._connection.execute(query, params)
         return cursor.rowcount > 0
 
 
@@ -320,6 +322,7 @@ class SQLiteDatabase:
 
     def _initialize_schema(self) -> None:
         with self._lock, self._connection:
+            self._migrate_legacy_schema()
             self._connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS fabric_api_records (
@@ -329,7 +332,7 @@ class SQLiteDatabase:
                     payload TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
-                    PRIMARY KEY (table_name, id)
+                    PRIMARY KEY (table_name, tenant_id, id)
                 )
                 """
             )
@@ -339,6 +342,42 @@ class SQLiteDatabase:
                 ON fabric_api_records(table_name, tenant_id)
                 """
             )
+
+    def _migrate_legacy_schema(self) -> None:
+        table_exists = self._connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'fabric_api_records'"
+        ).fetchone()
+        if table_exists is None:
+            return
+
+        columns = self._connection.execute("PRAGMA table_info(fabric_api_records)").fetchall()
+        primary_key_columns = [row["name"] for row in columns if row["pk"]]
+        if primary_key_columns == ["table_name", "tenant_id", "id"]:
+            return
+
+        self._connection.execute("ALTER TABLE fabric_api_records RENAME TO fabric_api_records_legacy")
+        self._connection.execute(
+            """
+            CREATE TABLE fabric_api_records (
+                table_name TEXT NOT NULL,
+                id TEXT NOT NULL,
+                tenant_id TEXT,
+                payload TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (table_name, tenant_id, id)
+            )
+            """
+        )
+        self._connection.execute(
+            """
+            INSERT OR REPLACE INTO fabric_api_records
+                (table_name, id, tenant_id, payload, created_at, updated_at)
+            SELECT table_name, id, tenant_id, payload, created_at, updated_at
+            FROM fabric_api_records_legacy
+            """
+        )
+        self._connection.execute("DROP TABLE fabric_api_records_legacy")
 
     def _table(
         self,

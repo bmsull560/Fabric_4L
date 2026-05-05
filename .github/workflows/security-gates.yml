@@ -508,11 +508,12 @@ jobs:
       - dast-api-scan
       - sbom-policy
       - mandatory-security-regression
+      - route-auth-gate
 
     steps:
       - name: Confirm required security gates passed
         run: |
-          echo "DAST, SBOM policy, and mandatory security regression checks succeeded."
+          echo "DAST, SBOM policy, route-auth, and mandatory security regression checks succeeded."
   sbom-generation:
     name: SBOM Generation
     runs-on: ubuntu-latest
@@ -627,5 +628,4 @@ jobs:
             .fabric/audit/security_regression_gate/
           if-no-files-found: error
           retention-days: ${{ env.SECURITY_ARTIFACT_RETENTION_DAYS }}
-
 

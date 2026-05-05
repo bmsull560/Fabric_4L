@@ -219,7 +219,9 @@ class TestProductionSecretGuard:
 
         get_settings.cache_clear()
 
-    def test_custom_secret_accepted_in_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_custom_secret_still_requires_production_persistence_policy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("SECRET_KEY", "a-sufficiently-long-production-secret-value-xyz")
         monkeypatch.setenv("MOCK_PERSISTENCE", "false")
@@ -232,11 +234,8 @@ class TestProductionSecretGuard:
 
         get_settings.cache_clear()
 
-        settings = get_settings()
-        assert settings.secret_key == "a-sufficiently-long-production-secret-value-xyz"
-        assert settings.is_production_like is True
-        assert settings.mock_persistence is False
-        assert settings.seed_demo_data is False
+        with pytest.raises(RuntimeError, match="PostgreSQL with Row-Level Security"):
+            get_settings()
 
         get_settings.cache_clear()
 

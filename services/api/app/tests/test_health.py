@@ -14,5 +14,12 @@ def test_health_check():
 
 def test_metrics():
     with TestClient(app) as client:
+        client.get("/health")
         response = client.get("/metrics")
         assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/plain")
+        body = response.text
+        assert "fabric_api_http_requests_total" in body
+        assert "fabric_api_http_request_duration_seconds_bucket" in body
+        assert "fabric_api_http_errors_total" in body
+        assert 'fabric_api_dependency_health{dependency="database"}' in body
