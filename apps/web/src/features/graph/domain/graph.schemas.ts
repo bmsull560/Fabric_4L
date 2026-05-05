@@ -30,7 +30,7 @@ export const GraphNodeDtoSchema = z.object({
   label: z.string().min(1).describe('Display label (canonical field)'),
   type: z.string().min(1).describe('Node type (canonical field)'),
   confidence: ConfidenceSchema.default(0.8).describe('Confidence score'),
-  properties: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type GraphNodeDto = z.infer<typeof GraphNodeDtoSchema>;
@@ -42,7 +42,7 @@ export const GraphEdgeDtoSchema = z.object({
   target: EntityIdSchema.describe('Target node ID'),
   type: RelationshipTypeSchema.describe('Relationship type/label'),
   weight: z.number().min(0).default(1.0).describe('Edge weight/strength'),
-  properties: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type GraphEdgeDto = z.infer<typeof GraphEdgeDtoSchema>;
@@ -57,7 +57,7 @@ export const GraphSubgraphResponseDtoSchema = z.object({
   stats: z.object({
     total_nodes: z.number().int().nonnegative(),
     total_edges: z.number().int().nonnegative(),
-    node_types: z.record(z.number().int().nonnegative()).default({}),
+    node_types: z.record(z.string(), z.number().int().nonnegative()).default({}),
     communities: z.number().int().nonnegative().default(0),
     density: z.number().min(0).default(0),
   }),
@@ -112,15 +112,20 @@ export type EntityContextResponseDto = z.infer<typeof EntityContextResponseDtoSc
  * Validates that every edge in a graph references existing node IDs.
  * Returns an array of orphaned edge indices (empty if valid).
  */
-export function validateGraphTopology(
-  nodes: readonly { id: string }[],
-  edges: readonly { sourceId: string; targetId: string }[]
+export function validateGraphTopology<
+  N extends { id: string },
+  E extends { source: string; target: string } | { sourceId: string; targetId: string }
+>(
+  nodes: readonly N[],
+  edges: readonly E[]
 ): { valid: boolean; orphanedEdges: number[] } {
   const nodeIds = new Set(nodes.map((n) => n.id));
   const orphanedEdges: number[] = [];
 
   edges.forEach((edge, idx) => {
-    if (!nodeIds.has(edge.sourceId) || !nodeIds.has(edge.targetId)) {
+    const source = 'sourceId' in edge ? edge.sourceId : edge.source;
+    const target = 'targetId' in edge ? edge.targetId : edge.target;
+    if (!nodeIds.has(source) || !nodeIds.has(target)) {
       orphanedEdges.push(idx);
     }
   });
