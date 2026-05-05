@@ -136,6 +136,13 @@ class StateManager:
             return 100.0
         elif status == WorkflowStatus.FAILED:
             return 0.0
+        elif status == WorkflowStatus.PAUSED:
+            # Estimate based on whether we have output
+            return 50.0 if state.output_data else 25.0
+        elif status == WorkflowStatus.RUNNING:
+            return 10.0
+        else:
+            return 0.0
 
     def _redact_secrets(self, value: Any) -> Any:
         """Recursively redact secret-bearing keys before checkpoint persistence."""
@@ -150,13 +157,6 @@ class StateManager:
         if isinstance(value, list):
             return [self._redact_secrets(item) for item in value]
         return value
-        elif status == WorkflowStatus.PAUSED:
-            # Estimate based on whether we have output
-            return 50.0 if state.output_data else 25.0
-        elif status == WorkflowStatus.RUNNING:
-            return 10.0
-        else:
-            return 0.0
 
     async def load_state(self, workflow_id: str) -> AgentState | None:
         """Load workflow state.

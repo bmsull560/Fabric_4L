@@ -33,8 +33,8 @@ async def test_agent_recommendation_is_read_only_until_accepted() -> None:
     service = ConversationService(orchestration_controller=MutatingOrchestrator())
 
     result = await service.handle_message(
-        user_message="Recommend next steps for this account.",
-        messages=[{"role": "user", "content": "Recommend next steps for this account."}],
+        user_message="Suggest next steps.",
+        messages=[{"role": "user", "content": "Suggest next steps."}],
         active_tab="action-plan",
         account_id="account-a",
         account_name="Acme",

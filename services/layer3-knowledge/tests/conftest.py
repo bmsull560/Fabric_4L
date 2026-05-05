@@ -3,7 +3,7 @@
 import json
 import os
 import sys
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -151,7 +151,10 @@ def mock_app_state() -> AppState:
 
 
 @pytest.fixture
-def test_client(test_settings: TestSettings, mock_app_state: AppState) -> TestClient:
+def test_client(
+    test_settings: TestSettings,
+    mock_app_state: AppState,
+) -> Iterator[TestClient]:
     """Create test client with mocked dependencies."""
     # Override settings
     app.dependency_overrides[get_settings] = lambda: test_settings

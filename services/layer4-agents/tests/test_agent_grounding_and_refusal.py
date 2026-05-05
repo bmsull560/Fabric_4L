@@ -10,7 +10,7 @@ import value_fabric.layer4.services.conversation as conversation_module
 from value_fabric.layer4.services.conversation import ConversationService
 from value_fabric.shared.audit import AuditAction
 
-from .fixtures.prompt_injection_documents import PROMPT_INJECTION_DOCUMENTS
+from fixtures.prompt_injection_documents import PROMPT_INJECTION_DOCUMENTS
 
 
 class FakeGroundingAgent:

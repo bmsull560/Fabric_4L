@@ -17,6 +17,7 @@ for module_name in list(sys.modules):
 
 from src.api.routes import analysis
 from src.config.settings import settings
+from value_fabric.shared.audit import AuditAction
 
 
 @pytest.fixture
@@ -78,6 +79,59 @@ async def test_smoke_mode_roi_returns_deterministic_response_without_executor(
     assert payload["aggregated_roi"]["requires_full_analysis"] is True
     assert payload["aggregated_roi"]["trace_id"] == "route-test-1"
     assert payload["aggregated_roi"]["account_id"] == str(account_id)
+
+
+@pytest.mark.asyncio
+async def test_roi_smoke_mode_creates_audit_event(
+    analysis_app: FastAPI,
+    monkeypatch,
+) -> None:
+    """Smoke-mode ROI drafts should emit a draft audit event without full workflow execution."""
+    tenant_id = UUID("12345678-1234-1234-1234-123456789abc")
+    account_id = uuid4()
+    events: list[dict[str, Any]] = []
+
+    async def mock_require_authenticated():
+        from value_fabric.shared.identity.context import RequestContext
+
+        return RequestContext(tenant_id=tenant_id, user_id="smoke-user")
+
+    class RaisingExecutor:
+        async def run(self, **kwargs: Any) -> Any:
+            raise AssertionError("smoke-mode ROI must not invoke the workflow executor")
+
+    class FakeAccountService:
+        def __init__(self, db: Any) -> None:
+            self.db = db
+
+        async def get_account(self, requested_account_id: UUID, *, tenant_id: str | None = None) -> Any:
+            assert requested_account_id == account_id
+            assert tenant_id == str(tenant_id_context)
+            return SimpleNamespace(id=account_id, provider_record_id="crm-account-1")
+
+    def capture_audit(*args: Any, **kwargs: Any) -> Any:
+        kwargs["action"] = args[0]
+        events.append(kwargs)
+        return SimpleNamespace(event_id="audit-roi")
+
+    tenant_id_context = tenant_id
+    analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated
+    analysis_app.dependency_overrides[analysis.get_executor] = lambda: RaisingExecutor()
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: object()
+    monkeypatch.setattr(analysis, "AccountService", FakeAccountService)
+    monkeypatch.setattr(analysis, "emit_audit_event", capture_audit)
+
+    async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
+        response = await client.post(
+            "/v1/analysis/roi",
+            headers={"X-Validation-Mode": "smoke", "X-Validation-Run-ID": "roi-audit"},
+            json={"account_id": str(account_id), "variables": {"annual_benefit": 1}},
+        )
+
+    assert response.status_code == 200, response.text
+    assert events[-1]["action"] == AuditAction.ROI_CALCULATED
+    assert events[-1]["details"]["status"] == "draft"
+    assert events[-1]["details"]["requires_full_analysis"] is True
 
 
 @pytest.mark.asyncio

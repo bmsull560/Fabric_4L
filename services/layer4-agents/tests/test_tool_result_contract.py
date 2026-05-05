@@ -504,6 +504,44 @@ class TestFocusedAgentToolResultContract:
         assert result.error["recoverable"] is True
         assert "timed out" in result.error["message"]
         assert result.metadata["trace_id"] == "trace-timeout"
+
+    @pytest.mark.asyncio
+    async def test_agent_timeout_creates_audit_event(self, monkeypatch):
+        import asyncio
+
+        class Input(BaseModel):
+            value: int
+
+        class SlowTool(BaseTool):
+            name = "audited_slow_tool"
+            input_schema = Input
+            output_schema = BaseModel
+            timeout_seconds = 0.01
+
+            async def execute(self, input_data):
+                await asyncio.sleep(0.1)
+                return {"ok": True}
+
+        audit_events = []
+
+        def capture_audit(**kwargs):
+            audit_events.append(kwargs)
+
+        registry = ToolRegistry()
+        registry.register(SlowTool(config={"tenant_id": "12345678-1234-1234-1234-123456789abc"}))
+        monkeypatch.setenv("AUDIT_LEDGER_MODE", "enabled")
+        monkeypatch.setattr(ToolRegistry, "_emit_tool_invocation_audit", staticmethod(capture_audit))
+
+        result = await registry.execute(
+            "audited_slow_tool",
+            {"value": 1, "trace_id": "trace-timeout-audit"},
+        )
+
+        assert result.status == "error"
+        assert result.error["code"] == "TOOL_TIMEOUT"
+        assert audit_events
+        assert audit_events[-1]["outcome"] == "failure"
+        assert audit_events[-1]["trace_id"] == "trace-timeout-audit"
         
         if result.status == "success":
             assert "result" in result.data

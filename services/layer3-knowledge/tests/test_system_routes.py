@@ -1,5 +1,7 @@
 """Focused tests for the extracted Layer 3 system routes."""
 
+from collections.abc import Iterator
+
 from typing import Any
 
 import pytest
@@ -12,7 +14,7 @@ from value_fabric.layer3.api.routes import system as system_routes
 
 
 @pytest.fixture
-def system_test_client(mock_app_state: Any) -> TestClient:
+def system_test_client(mock_app_state: Any) -> Iterator[TestClient]:
     """Mount the extracted system router directly for focused route tests."""
     app = FastAPI()
     app.include_router(system_routes.router)

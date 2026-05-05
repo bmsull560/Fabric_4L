@@ -59,7 +59,7 @@ class LLMDifferenceItem(BaseModel):
     """Schema for individual difference items from LLM response.
 
     CONTRACT §2.5: Structured schema for LLM output validation.
-    Replaces raw json.loads with Pydantic model validation.
+    Replaces raw JSON parsing with Pydantic model validation.
     """
 
     category: str = Field(
@@ -306,7 +306,7 @@ Return a JSON array of EconomicDifference objects with these fields:
                 temperature=0.2,
             )
             raw = response.content or "{}"
-            # CONTRACT §2.5: Use Pydantic model validation instead of json.loads
+            # CONTRACT §2.5: Use Pydantic model validation for LLM JSON output.
             try:
                 validated = LLMDifferencesResponse.model_validate_json(raw)
                 differences_raw = validated.differences
