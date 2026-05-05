@@ -76,6 +76,8 @@ export const GraphNodeSchema = z.object({
   type: z.string().min(1),
   properties: z.record(z.string(), z.unknown()).optional(),
   confidence_score: z.number().min(0).max(1).optional(),
+  segment: z.string().optional(),
+  version: z.string().optional(),
 });
 
 export const GraphEdgeSchema = z.object({
@@ -116,6 +118,9 @@ export const PackSummarySchema = z.object({
   name: z.string().min(1),
   industry: z.string(),
   status: z.string(),
+  driver_count: z.number().int().nonnegative().optional(),
+  formula_count: z.number().int().nonnegative().optional(),
+  benchmark_count: z.number().int().nonnegative().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -182,6 +187,11 @@ export const FeatureFlagResponseSchema = z.object({
   flag_key: z.string().min(1),
   enabled: z.boolean(),
   rollout_percentage: z.number().int().min(0).max(100),
+  description: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+  updated_by: z.string().optional(),
 });
 
 
@@ -310,6 +320,8 @@ export const TruthObjectResponseSchema = z.object({
   freshness: z.string(),
   is_stale: z.boolean(),
   applies_to: z.record(z.string(), z.unknown()).nullable().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 export const TruthObjectSummarySchema = z.object({
@@ -411,6 +423,11 @@ export const fixtures = {
     flag_key: 'advanced_analytics',
     enabled: true,
     rollout_percentage: 100,
+    description: 'Enable advanced analytics dashboard',
+    metadata: { region: 'us-east-1' },
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-15T00:00:00Z',
+    updated_by: 'admin@example.com',
   }),
 
 
@@ -485,6 +502,21 @@ export const fixtures = {
     freshness: '2024-01-15T10:00:00Z',
     is_stale: false,
     applies_to: { account_id: 'acct-456' },
+    ...overrides,
+  }),
+
+  truthObjectSummary: (overrides?: Partial<z.infer<typeof TruthObjectSummarySchema>>): z.infer<typeof TruthObjectSummarySchema> => ({
+    id: '550e8400-e29b-41d4-a716-446655440002',
+    claim: 'Manual reporting costs 12 hours/week per analyst',
+    claim_type: 'quantitative',
+    confidence: 0.82,
+    status: 'supported',
+    maturity_level: 2,
+    is_stale: false,
+    source_count: 3,
+    approved_by: 'admin@example.com',
+    freshness: '2024-01-15T10:00:00Z',
+    created_at: '2024-01-10T08:00:00Z',
     ...overrides,
   }),
 

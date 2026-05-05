@@ -122,3 +122,65 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  frontend-e2e-backend-integrated:
+    name: Frontend E2E Backend-Integrated
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Skip on forks - requires repository secrets
+    if: github.event_name != 'pull_request' || github.repository_owner == 'bmsull560'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'apps/web/pnpm-lock.yaml'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: '10.18.1'
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        working-directory: apps/web
+        run: pnpm run build
+
+      - name: Set up Docker Compose
+        run: docker compose version
+
+      - name: Start E2E backend stack
+        run: |
+          docker compose -f docker-compose.e2e.yml up -d --wait
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run backend-integrated E2E tests
+        working-directory: apps/web
+        env:
+          PLAYWRIGHT_BACKEND_URL: http://localhost:8004
+          CI: true
+        run: pnpm run test:e2e:backend
+
+      - name: Upload E2E results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-backend-integrated-results-${{ github.run_id }}
+          path: |
+            apps/web/e2e-results/
+            apps/web/e2e-results/junit.xml
+          retention-days: 14
+
+      - name: Tear down E2E backend
+        if: always()
+        run: docker compose -f docker-compose.e2e.yml down -v

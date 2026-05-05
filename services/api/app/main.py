@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from value_fabric.shared.fastapi_framework import create_fabric_app
+from value_fabric.shared.security import validate_production_safety
 
 from app.core.config import get_settings
 from app.routers import (
@@ -23,6 +24,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    validate_production_safety()
     if settings.seed_demo_data:
         seed_all()
     yield

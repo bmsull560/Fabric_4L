@@ -5,13 +5,13 @@ on:
     branches: [main]
     paths:
       - 'monitoring/alerting/rules.yml'
-      - 'docs/runbooks/**'
+      - 'docs/troubleshooting/runbooks/**'
       - '.github/scripts/validate-runbooks.py'
   pull_request:
     branches: [main]
     paths:
       - 'monitoring/alerting/rules.yml'
-      - 'docs/runbooks/**'
+      - 'docs/troubleshooting/runbooks/**'
       - '.github/scripts/validate-runbooks.py'
 
 jobs:

@@ -42,10 +42,14 @@ _LOCALHOST_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
 class SecurityConfig(BaseModel):
     """Security middleware configuration."""
 
-    # CORS
-    cors_origins: list[str] = Field(default=["*"], description="Allowed CORS origins")
-    cors_methods: list[str] = Field(default=["*"], description="Allowed CORS methods")
-    cors_headers: list[str] = Field(default=["*"], description="Allowed CORS headers")
+    # CORS — fail-closed defaults. Wildcards are never permitted in production-like
+    # environments and are only used as a dev convenience when explicitly enabled.
+    _DEFAULT_CORS_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    _DEFAULT_CORS_HEADERS = ["Authorization", "Content-Type", "X-Request-ID", "X-Tenant-ID"]
+
+    cors_origins: list[str] = Field(default=[], description="Allowed CORS origins")
+    cors_methods: list[str] = Field(default=_DEFAULT_CORS_METHODS, description="Allowed CORS methods")
+    cors_headers: list[str] = Field(default=_DEFAULT_CORS_HEADERS, description="Allowed CORS headers")
     
     # Security headers
     enable_hsts: bool = Field(default=True, description="Enable HSTS header")

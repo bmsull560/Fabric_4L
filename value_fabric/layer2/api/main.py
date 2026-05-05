@@ -61,7 +61,8 @@ except Exception:
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
 # Hard imports - fail fast if security components unavailable
-from value_fabric.shared.security import SecurityConfig, add_security_middleware
+from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
+from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
 
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
@@ -155,31 +156,8 @@ app = FastAPI(
 )
 
 # CORS middleware with production validation (P0-20) — OUTERMOST
-# Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec.
-_cors_origins_env = os.getenv("CORS_ORIGINS", "")
-allow_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
-
-if _is_production_like():
-    if not allow_origins:
-        raise RuntimeError(
-            "FATAL: CORS_ORIGINS environment variable must be set in production-like Layer 2 runtimes. "
-            "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
-        )
-    if "*" in allow_origins:
-        raise RuntimeError("FATAL: wildcard CORS_ORIGINS is not allowed in production-like Layer 2 runtimes")
-else:
-    allow_origins = allow_origins or ["*"]
-
-# Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
-allow_credentials = "*" not in allow_origins
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allow_origins,
-    allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_policy = resolve_cors_policy()
+app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
 
 # SecurityMiddleware — input validation and security headers (mandatory)
 # P1-14 FIX: Removed /v1/extract paths from skip list
@@ -669,7 +647,9 @@ _VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production wit
 @app.on_event("startup")
 async def startup_event() -> None:
     global redis_rate_limiter, _retry_task
-    
+
+    validate_production_safety()
+
     # Initialize Redis rate limiter
     redis_rate_limiter = await _init_redis_rate_limiter()
     

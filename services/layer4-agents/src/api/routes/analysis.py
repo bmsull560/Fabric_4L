@@ -697,10 +697,6 @@ class WorkspaceTabData(BaseModel):
     stakeholders: list[dict[str, Any]] = Field(default_factory=list)
 
 
-# In-memory workspace data store (replace with Redis/DB for production)
-_workspace_data: dict[str, dict[str, Any]] = {}
-
-
 @router.get("/cases", response_model=CaseListResponse)
 async def list_cases(
     account_id: str,
@@ -758,14 +754,6 @@ async def create_case(
     )
     db.add(record)
 
-    # Initialize empty workspace data
-    _workspace_data[case_id] = {
-        "signals": [],
-        "drivers": [],
-        "evidence": [],
-        "stakeholders": [],
-    }
-
     return CreateCaseResponse(
         case_id=case_id,
         account_id=request.account_id,
@@ -783,19 +771,18 @@ async def get_workspace_tab(
 ) -> dict[str, Any]:
     """Get workspace tab data.
 
-    Returns data for a specific workspace tab:
-    - Intelligence: signals, drivers, evidence, stakeholders
-    - Value Studio: action-plan, value-model, narrative
+    Workspace tab persistence is not yet implemented. This endpoint fails closed
+    with 501 instead of returning misleading in-memory data that would be lost
+    on restart.
     """
     valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative"}
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
 
-    # Get workspace data or return empty
-    workspace = _workspace_data.get(case_id, {})
-    data = workspace.get(tab_key, [])
-
-    return get_workspace_tabResult.model_validate({tab_key: data})
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workspace tab retrieval requires a persisted storage integration and will not return ephemeral data.",
+    )
 
 
 @router.put("/cases/{case_id}/workspace/{tab_key}")
@@ -807,25 +794,18 @@ async def update_workspace_tab(
 ) -> dict[str, Any]:
     """Update workspace tab data.
 
-    Updates data for a specific workspace tab.
+    Workspace tab persistence is not yet implemented. This endpoint fails closed
+    with 501 instead of accepting updates that would be stored only in memory
+    and lost on restart.
     """
     valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative"}
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
 
-    # Initialize workspace if needed
-    if case_id not in _workspace_data:
-        _workspace_data[case_id] = {
-            "signals": [],
-            "drivers": [],
-            "evidence": [],
-            "stakeholders": [],
-        }
-
-    # Update the specific tab data
-    _workspace_data[case_id][tab_key] = payload.get(tab_key, payload)
-
-    return update_workspace_tabResult.model_validate({"case_id": case_id, "tab": tab_key, "updated": True})
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Workspace tab updates require a persisted storage integration and will not accept ephemeral data.",
+    )
 
 
 @router.post("/cases/{case_id}/workspace/generate")

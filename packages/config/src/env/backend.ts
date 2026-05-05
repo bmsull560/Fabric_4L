@@ -27,6 +27,24 @@ export const backendEnvSchema = z.object({
     }),
 });
 
+/**
+ * Relaxed schema for development/test environments.
+ * Allows wildcard CORS and does not require all production-only fields.
+ */
+const devBackendEnvSchema = z.object({
+  NODE_ENV: z.string().trim().min(1),
+  LOG_LEVEL: logLevelSchema,
+  PORT: portSchema.optional(),
+  DATABASE_URL: z.string().trim().min(1, "DATABASE_URL must be set"),
+  REDIS_URL: z.string().trim().min(1, "REDIS_URL must be set"),
+  JWT_SECRET: z.string().trim().min(1, "JWT_SECRET must be set"),
+  API_KEY_HMAC_SECRET: z.string().trim().min(1, "API_KEY_HMAC_SECRET must be set"),
+  SERVICE_AUTH_SECRET: z.string().trim().min(1, "SERVICE_AUTH_SECRET must be set"),
+  OPENAI_API_KEY: z.string().trim().min(1, "OPENAI_API_KEY must be set"),
+  NEO4J_PASSWORD: z.string().trim().min(1, "NEO4J_PASSWORD must be set"),
+  CORS_ORIGINS: z.string().trim().min(1, "CORS_ORIGINS must be set"),
+});
+
 export type BackendEnv = z.infer<typeof backendEnvSchema>;
 
 export function loadBackendEnv(env: Record<string, unknown>): BackendEnv {
@@ -201,6 +219,10 @@ export function validateBackendEnvForProductionLike(
     );
   }
 
-  // Also run the base schema validation so type-narrowing still works
-  loadBackendEnv(env);
+  // Run appropriate schema validation so type-narrowing still works
+  if (isProductionLike) {
+    parseEnvOrThrow(backendEnvSchema, env);
+  } else {
+    parseEnvOrThrow(devBackendEnvSchema, env);
+  }
 }

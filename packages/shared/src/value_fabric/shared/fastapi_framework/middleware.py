@@ -13,6 +13,10 @@ from value_fabric.shared.error_handling import RequestIDMiddleware
 from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
+from value_fabric.shared.security.config import is_production_like_environment
+
+_EXPLICIT_CORS_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+_EXPLICIT_CORS_HEADERS = ["Authorization", "Content-Type", "X-Request-ID", "X-Tenant-ID"]
 
 
 @dataclass(frozen=True)
@@ -37,24 +41,44 @@ def resolve_cors_policy(
     *,
     environment: str | None = None,
     origins_env: str | None = None,
-    production_environments: Iterable[str] = ("production",),
+    production_environments: Iterable[str] | None = None,
 ) -> CorsPolicy:
+    """Build a fail-safe CORS policy.
+
+    Unknown/custom environments are treated as production-like so security
+    controls are never accidentally relaxed.
+    """
     environment_name = environment or os.getenv("ENVIRONMENT", "development")
     raw_origins = origins_env if origins_env is not None else os.getenv("CORS_ORIGINS", "")
     origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
-    if environment_name in set(production_environments) and not origins:
+    is_production_like = is_production_like_environment(environment_name)
+
+    if is_production_like and not origins:
         raise RuntimeError(
-            "FATAL: CORS_ORIGINS environment variable must be set in production. "
+            "FATAL: CORS_ORIGINS environment variable must be set in production-like environments. "
             "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
         )
 
     allow_origins = origins or ["*"]
+
+    if is_production_like:
+        if "*" in allow_origins:
+            raise RuntimeError(
+                "FATAL: wildcard CORS origins are not permitted in production-like environments."
+            )
+        for origin in allow_origins:
+            if "*" in origin:
+                raise RuntimeError(
+                    f"FATAL: CORS origin '{origin}' contains a wildcard. "
+                    "Specify exact allowed origins."
+                )
+
     return CorsPolicy(
         allow_origins=allow_origins,
         allow_credentials="*" not in allow_origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=_EXPLICIT_CORS_METHODS,
+        allow_headers=_EXPLICIT_CORS_HEADERS,
     )
 
 

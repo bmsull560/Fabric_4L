@@ -76,9 +76,9 @@ jobs:
           required_files=(
             "docs/reliability/dr-policy.md"
             "docs/api-versioning-policy.md"
-            "docs/runbooks/dr-gameday-service-failover.md"
-            "docs/runbooks/dr-gameday-region-loss.md"
-            "docs/runbooks/dr-evidence-log-template.md"
+            "docs/troubleshooting/runbooks/incident/dr-gameday-service-failover.md"
+            "docs/troubleshooting/runbooks/incident/dr-gameday-region-loss.md"
+            "docs/troubleshooting/runbooks/incident/dr-evidence-log-template.md"
             ".github/pull_request_template.md"
           )
 
@@ -989,23 +989,23 @@ jobs:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
         include:
           - layer: layer1-ingestion
-            context: .
-            dockerfile: ./services/layer1-ingestion/Dockerfile
+            context: services/layer1-ingestion
+            dockerfile: ./Dockerfile
           - layer: layer2-extraction
-            context: .
-            dockerfile: ./services/layer2-extraction/Dockerfile
+            context: services/layer2-extraction
+            dockerfile: ./Dockerfile
           - layer: layer3-knowledge
-            context: .
-            dockerfile: ./services/layer3-knowledge/Dockerfile
+            context: services/layer3-knowledge
+            dockerfile: ./Dockerfile
           - layer: layer4-agents
-            context: .
-            dockerfile: ./services/layer4-agents/Dockerfile
+            context: services/layer4-agents
+            dockerfile: ./Dockerfile
           - layer: layer5-ground-truth
-            context: .
-            dockerfile: ./services/layer5-ground-truth/Dockerfile
+            context: services/layer5-ground-truth
+            dockerfile: ./Dockerfile
           - layer: layer6-benchmarks
-            context: .
-            dockerfile: ./services/layer6-benchmarks/Dockerfile
+            context: services/layer6-benchmarks
+            dockerfile: ./Dockerfile
           - layer: frontend
             context: apps/web
             dockerfile: ./Dockerfile
@@ -1029,7 +1029,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         if: matrix.layer != 'frontend'
         with:
-          dockerfile: ${{ matrix.dockerfile }}
+          dockerfile: ${{ matrix.context }}/${{ matrix.dockerfile }}
           ignore: DL3008,DL3013
 
   # Alertmanager configuration validation

@@ -120,7 +120,7 @@ tests/contract/ @value-fabric/backend-leads @value-fabric/architects
 docs/ @value-fabric/tech-writers @value-fabric/maintainers
 docs/operations/ @value-fabric/sre-leads @value-fabric/tech-writers
 docs/compliance/ @value-fabric/compliance-team @value-fabric/security-leads
-value-fabric/ADRs/ @value-fabric/architects @value-fabric/maintainers
+docs/explanations/adr/ @value-fabric/architects @value-fabric/maintainers
 
 # ============================================
 # AGENT DEFINITIONS

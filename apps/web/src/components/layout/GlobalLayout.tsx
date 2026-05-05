@@ -75,7 +75,8 @@ export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode
 
 export function GlobalLayout() {
   const [leftNavCollapsed, setLeftNavCollapsed] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Mobile navigation uses persistent icon rail (MobilePersistentSidebar).
+  // Hamburger menu drawer is not implemented; no open/close state needed.
   const [currentTier, setCurrentTier] = useState<UserTier>("standard");
   const [isAdvancedModeEnabled, setIsAdvancedModeEnabled] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentChatMode>("closed");
@@ -114,14 +115,10 @@ export function GlobalLayout() {
     >
       <LeftNavigation
         collapsed={leftNavCollapsed}
-        mobileOpen={mobileNavOpen}
         onToggle={toggleLeftNav}
-        onMobileOpenChange={setMobileNavOpen}
       />
 
       <MobileNavigation
-        open={mobileNavOpen}
-        onOpenChange={setMobileNavOpen}
         currentTier={currentTier}
         onTierChange={setCurrentTier}
         isAdvancedModeEnabled={isAdvancedModeEnabled}
@@ -131,7 +128,7 @@ export function GlobalLayout() {
       <div className="flex min-w-0 flex-col overflow-hidden">
         <AppHeader
           onToggleLeftNav={toggleLeftNav}
-          onOpenMobileNav={() => setMobileNavOpen(true)}
+          // Mobile nav is persistent icon rail; no hamburger toggle needed.
           leftNavCollapsed={leftNavCollapsed}
         />
 

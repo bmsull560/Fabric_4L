@@ -17,9 +17,7 @@ import { NavLink } from "react-router-dom";
 
 interface LeftNavigationProps {
   collapsed: boolean;
-  mobileOpen: boolean;
   onToggle: () => void;
-  onMobileOpenChange: (open: boolean) => void;
 }
 
 const navItems = [

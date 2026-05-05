@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, PanelLeftClose, PanelLeftOpen, Search, Bell, User, LogOut, Settings, ChevronDown } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search, Bell, User, LogOut, Settings, ChevronDown } from "lucide-react";
 import { useMatches, Link } from "react-router-dom";
 import { useAuthContext } from "@/contexts/AuthContext";
 import {
@@ -16,7 +16,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 interface AppHeaderProps {
   leftNavCollapsed: boolean;
   onToggleLeftNav: () => void;
-  onOpenMobileNav: () => void;
 }
 
 interface RouteHandle {
@@ -124,22 +123,12 @@ function UserMenu() {
 export function AppHeader({
   leftNavCollapsed,
   onToggleLeftNav,
-  onOpenMobileNav,
 }: AppHeaderProps) {
   const { title, subtitle } = useHeaderMeta();
 
   return (
     <header className="z-20 flex h-14 shrink-0 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="flex min-w-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={onOpenMobileNav}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md border hover:bg-accent md:hidden"
-          aria-label="Open navigation"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
-
         <button
           type="button"
           onClick={onToggleLeftNav}

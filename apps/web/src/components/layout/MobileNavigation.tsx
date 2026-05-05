@@ -6,8 +6,6 @@ import { useAccounts } from "@/hooks";
 import { useAuthContext } from "@/contexts/AuthContext";
 
 interface MobileNavigationProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   currentTier: UserTier;
   onTierChange: (tier: UserTier) => void;
   isAdvancedModeEnabled?: boolean;
@@ -15,8 +13,6 @@ interface MobileNavigationProps {
 }
 
 export function MobileNavigation({
-  open,
-  onOpenChange,
   currentTier,
   onTierChange,
   isAdvancedModeEnabled = false,

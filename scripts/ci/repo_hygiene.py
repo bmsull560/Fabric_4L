@@ -458,7 +458,7 @@ def main() -> int:
             print()
 
         if report.passed:
-            print("✅ Repository layout is canonical. No obsolete path references found.")
+            print("[PASS] Repository layout is canonical. No obsolete path references found.")
 
     return 0 if report.passed else 1
 

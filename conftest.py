@@ -126,10 +126,14 @@ def pytest_configure(config) -> None:
     Runs before collection so the error is immediate and unambiguous,
     rather than surfacing as a cryptic ImportError mid-collection.
 
-    Pass --no-mandatory-dep-check to skip this check (e.g. for dry-run
-    collection audits from a clean checkout).
+    Automatically bypassed during --collect-only so test inventory works
+    from a clean checkout.  Use --no-mandatory-dep-check for other
+    lightweight collection scenarios.
     """
     if getattr(config.option, "no_mandatory_dep_check", False):
+        return
+
+    if getattr(config.option, "collectonly", False):
         return
 
     missing = [
