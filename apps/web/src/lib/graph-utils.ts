@@ -3,7 +3,7 @@
  * Pure functions with no React dependencies.
  */
 
-import type { GraphNode, GraphRelationship } from "@/hooks/useGraphQuery";
+import type { GraphNode } from "@/features/graph/domain/graph.model";
 
 // SVG viewBox dimensions — chosen to fit ~20 nodes comfortably
 // at default zoom while maintaining readable labels
@@ -46,10 +46,16 @@ export function wrapTextIntoLines(text: string, maxLineLength: number): string[]
  * @param layout — layout algorithm name
  * @returns Array of positioned nodes with x, y coordinates
  */
+export interface PositionedNode extends GraphNode {
+  x: number;
+  y: number;
+  r: number;
+}
+
 export function calculateLayout(
   nodes: GraphNode[],
   layout: "force" | "circular" | "hierarchical" = "circular"
-): Array<GraphNode & { x: number; y: number; r: number }> {
+): PositionedNode[] {
   if (!nodes.length) return [];
 
   const centerX = VIEWBOX_WIDTH / 2;
@@ -88,7 +94,7 @@ export function calculateLayout(
       ...node,
       x,
       y,
-      r: getNodeRadius(node.entity_type),
+      r: getNodeRadius(node.entityType),
     };
   });
 }
@@ -104,11 +110,11 @@ export function getNodeRadius(entityType: string | undefined): number {
 /**
  * Count nodes by their type field.
  */
-export function countNodeTypes<T extends { entity_type?: string }>(
-  nodes: T[]
+export function countNodeTypes(
+  nodes: GraphNode[]
 ): Record<string, number> {
   return nodes.reduce((acc, node) => {
-    const type = node.entity_type || "Unknown";
+    const type = node.entityType || "Unknown";
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

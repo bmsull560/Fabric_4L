@@ -15,7 +15,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
@@ -97,6 +97,15 @@ class WorkflowInputs(BaseModel):
     custom_data: dict[str, Any] | None = Field(default_factory=dict)
 
 
+VALID_WORKFLOW_TYPES = {
+    "roi_calculator",
+    "whitespace_analysis",
+    "business_case",
+    "business_case_generation",
+    "orchestrator",
+}
+
+
 class WorkflowCreateRequest(BaseModel):
     """Request to submit a new workflow - OpenAPI spec compliant.
 
@@ -110,13 +119,20 @@ class WorkflowCreateRequest(BaseModel):
     workflow_type: str = Field(
         ...,
         description="Type of workflow to run",
-        enum=["roi_calculator", "whitespace_analysis", "business_case", "business_case_generation", "orchestrator"],
+        json_schema_extra={"enum": list(VALID_WORKFLOW_TYPES)},
     )
     tenant_id: str | None = Field(None, description="Tenant identifier")
     user_id: str | None = Field(None, description="User identifier")
     inputs: WorkflowInputs = Field(default_factory=WorkflowInputs, description="Workflow inputs")
     priority: str = Field(default="NORMAL", description="Execution priority")
     workflow_id: str | None = Field(None, description="Optional workflow ID")
+
+    @field_validator("workflow_type")
+    @classmethod
+    def _validate_workflow_type(cls, v: str) -> str:
+        if v not in VALID_WORKFLOW_TYPES:
+            raise ValueError(f"Invalid workflow_type: {v!r}. Must be one of: {', '.join(sorted(VALID_WORKFLOW_TYPES))}")
+        return v
 
 
 class WorkflowCreateResponse(BaseModel):

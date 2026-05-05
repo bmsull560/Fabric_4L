@@ -903,22 +903,35 @@ export const handlers = [
   }),
 
   http.get('/api/v1/agents/workflows', () => {
-    return HttpResponse.json([
-      {
-        workflow_id: 'workflow-bc-1',
-        workflow_type: 'business_case',
-        status: 'completed',
-        created_at: '2024-01-15T09:00:00Z',
-        completed_at: '2024-01-15T10:00:00Z',
-        output: {
-          title: 'Test Business Case',
-          company_name: 'Test Company',
-          total_investment: 300000,
-          total_benefit: 1200000,
-          roi_percentage: 300,
+    return HttpResponse.json({
+      items: [
+        {
+          workflow_instance_id: 'workflow-bc-1',
+          workflow_type: 'business_case',
+          status: 'completed',
+          current_state: null,
+          current_node: null,
+          progress_percentage: 100,
+          started_at: '2024-01-15T09:00:00Z',
+          completed_at: '2024-01-15T10:00:00Z',
+          error_count: 0,
+          has_output: true,
+          results: {
+            title: 'Test Business Case',
+            company_name: 'Test Company',
+            total_investment: 300000,
+            total_benefit: 1200000,
+            roi_percentage: 300,
+          },
+          tenant_id: 'tenant-001',
+          user_id: 'user-001',
         },
-      },
-    ]);
+      ],
+      total: 1,
+      limit: 50,
+      offset: 0,
+      has_more: false,
+    });
   }),
 
   http.get('/api/v1/agents/workflows/active', () => {
@@ -934,11 +947,8 @@ export const handlers = [
     const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({
       workflow_instance_id: 'wf-created',
-      workflow_id: 'wf-created',
-      name: body.name ?? 'Created Workflow',
-      workflow_type: body.workflow_type ?? 'analysis',
       status: 'pending',
-      progress: 0,
+      estimated_duration_seconds: 300,
     }, { status: 201 });
   }),
 
@@ -947,7 +957,39 @@ export const handlers = [
   }),
 
   http.get('/api/v1/agents/workflows/:id', ({ params }) => {
-    return HttpResponse.json({ id: params.id, name: 'Extraction Pipeline', status: 'running', progress: 80 });
+    return HttpResponse.json({
+      workflow_instance_id: String(params.id),
+      workflow_type: 'business_case',
+      status: 'running',
+      current_state: 'data_collection',
+      current_node: 'collect_metrics',
+      progress_percentage: 80,
+      started_at: '2024-01-15T10:00:00Z',
+      completed_at: null,
+      error_count: 0,
+      has_output: false,
+      results: null,
+      tenant_id: 'tenant-001',
+      user_id: 'user-001',
+      priority: 5,
+      scheduler_status: 'scheduled',
+      progress: {
+        step_id: 'collect_metrics',
+        status: 'running',
+        percent: 80,
+        message: 'Collecting metrics',
+        started_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:05:00Z',
+        completed_at: null,
+        actionable_next_state: {
+          can_retry: false,
+          can_resume: false,
+          can_cancel: true,
+          requires_user_action: false,
+          next_action: 'wait',
+        },
+      },
+    });
   }),
 
   // Health check

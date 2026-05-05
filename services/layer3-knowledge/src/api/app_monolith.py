@@ -182,6 +182,7 @@ from .models import (
     EntitySummary,
     GraphEdge,
     GraphNode,
+    GraphNodeWithLayout,
     GraphRAGQuery,
     GraphRAGResponse,
     GraphResponse,
@@ -790,17 +791,31 @@ def _build_graph_node(
     y: float | None = None,
     r: float | None = None,
     properties: dict[str, Any] | None = None,
-) -> GraphNode:
-    """Construct a graph node using the canonical visualization contract."""
+) -> GraphNode | GraphNodeWithLayout:
+    """Construct a graph node using the canonical visualization contract.
+
+    Returns GraphNodeWithLayout when layout coordinates are provided,
+    otherwise returns plain GraphNode.
+    """
+    if x is not None or y is not None or r is not None:
+        return GraphNodeWithLayout.model_validate(
+            {
+                "id": node_id,
+                "label": label,
+                "type": node_type,
+                "confidence": confidence,
+                "x": x,
+                "y": y,
+                "r": r,
+                "properties": properties or {},
+            }
+        )
     return GraphNode.model_validate(
         {
             "id": node_id,
             "label": label,
             "type": node_type,
             "confidence": confidence,
-            "x": x,
-            "y": y,
-            "r": r,
             "properties": properties or {},
         }
     )

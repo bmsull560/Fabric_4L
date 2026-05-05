@@ -28,10 +28,11 @@ const WorkflowCreateRequestSchema = z.object({
     'roi_calculator',
     'whitespace_analysis',
     'business_case',
+    'business_case_generation',
     'orchestrator',
   ]),
-  tenant_id: z.string().min(1),
-  user_id: z.string().min(1),
+  tenant_id: z.string().min(1).optional(),
+  user_id: z.string().min(1).optional(),
   inputs: z
     .object({
       prospect_id: z.string().optional(),
@@ -97,11 +98,11 @@ describe('Contract: POST /v1/workflows', () => {
     );
   });
 
-  it('rejects missing required fields', () => {
-    assertSchemaRejects(
+  it('accepts minimal request without tenant_id and user_id', () => {
+    assertSchema(
       WorkflowCreateRequestSchema,
       { workflow_type: 'roi_calculator' },
-      'WorkflowCreateRequest missing tenant_id and user_id'
+      'WorkflowCreateRequest minimal (auth context fallback)'
     );
   });
 
@@ -366,14 +367,14 @@ describe('Contract: workflow list pagination', () => {
     const PaginatedWorkflowSchema = z.object({
       items: z.array(WorkflowStatusResponseSchema),
       total: z.number().int().nonnegative(),
-      page: z.number().int().positive(),
-      page_size: z.number().int().positive(),
+      limit: z.number().int().positive(),
+      offset: z.number().int().nonnegative(),
       has_more: z.boolean(),
     });
 
     const resp = assertSchema(
       PaginatedWorkflowSchema,
-      { items: [], total: 0, page: 1, page_size: 20, has_more: false },
+      { items: [], total: 0, limit: 50, offset: 0, has_more: false },
       'PaginatedWorkflows (empty)'
     );
     expect(resp.has_more).toBe(false);

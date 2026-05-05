@@ -4491,15 +4491,7 @@ export interface components {
         };
         /**
          * GraphNode
-         * @description Node in the knowledge graph.
-         *
-         *     NOTE: This model provides backward-compatible field aliases for frontend contract stability:
-         *     - 'name' is an alias for 'label' (frontend expects 'name')
-         *     - 'entity_type' is an alias for 'type' (frontend expects 'entity_type')
-         *     - 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')
-         *
-         *     The legacy fields (label, type, confidence) are preserved for backward compatibility.
-         *     TODO: Deprecate legacy fields once all consumers migrate to new field names.
+         * @description Node in the knowledge graph. Visualization fields (x, y, r) have been removed; use GraphNodeWithLayout for pre-computed positions.
          */
         GraphNode: {
             /**
@@ -4523,21 +4515,6 @@ export interface components {
              * @default 0.8
              */
             confidence: number;
-            /**
-             * X
-             * @description X position for visualization
-             */
-            x?: number | null;
-            /**
-             * Y
-             * @description Y position for visualization
-             */
-            y?: number | null;
-            /**
-             * R
-             * @description Radius for visualization
-             */
-            r?: number | null;
             /**
              * Properties
              * @description Additional node properties
@@ -4612,7 +4589,7 @@ export interface components {
              * Context Graph
              * @description Context graph structure
              */
-            context_graph: {
+            context_graph: unknown | {
                 [key: string]: unknown;
             };
             /**
@@ -4638,14 +4615,14 @@ export interface components {
         };
         /**
          * GraphResponse
-         * @description Full graph response for visualization.
+         * @description Full graph response for visualization. Nodes include layout coordinates.
          */
         GraphResponse: {
             /**
              * Nodes
              * @description Graph nodes
              */
-            nodes: components["schemas"]["GraphNode"][];
+            nodes: unknown[];
             /**
              * Edges
              * @description Graph edges
@@ -7612,6 +7589,43 @@ export interface components {
             }[];
             /** @description Tree statistics */
             stats: components["schemas"]["ValueTreeStats"];
+        };
+        /**
+         * GraphNodeWithLayout
+         * @description Graph node with visualization layout coordinates. Use only for endpoints that intentionally return pre-computed layout positions.
+         */
+        GraphNodeWithLayout: unknown & {
+            /**
+             * X
+             * @description X position for visualization
+             */
+            x?: number | null;
+            /**
+             * Y
+             * @description Y position for visualization
+             */
+            y?: number | null;
+            /**
+             * R
+             * @description Radius for visualization
+             */
+            r?: number | null;
+        };
+        /**
+         * ContextGraph
+         * @description Typed context graph structure for GraphRAG responses.
+         */
+        ContextGraph: {
+            /**
+             * Nodes
+             * @description Nodes in the context graph
+             */
+            nodes: unknown[];
+            /**
+             * Edges
+             * @description Edges in the context graph
+             */
+            edges: unknown[];
         };
     };
     responses: never;

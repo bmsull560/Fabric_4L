@@ -4,16 +4,16 @@
  */
 
 import { useMemo } from "react";
-import type { GraphNode, GraphRelationship } from "./useGraphQuery";
-import { calculateLayout, countNodeTypes } from "@/lib/graph-utils";
+import type { GraphNode, GraphEdge, GraphSubgraph, GraphQueryResult, EntityContext } from "@/features/graph/domain/graph.model";
+import { calculateLayout, countNodeTypes, type PositionedNode } from "@/lib/graph-utils";
 
 export interface GraphData {
-  nodes: GraphNode[];
-  edges: GraphRelationship[];
+  nodes: PositionedNode[];
+  edges: GraphEdge[];
   stats: {
-    total_nodes: number;
-    total_edges: number;
-    node_types: Record<string, number>;
+    totalNodes: number;
+    totalEdges: number;
+    nodeTypes: Record<string, number>;
     communities: number;
     density: number;
   };
@@ -21,28 +21,11 @@ export interface GraphData {
 
 export interface UseGraphDataOptions {
   /** Coherent subgraph from backend */
-  subgraph?: {
-    nodes: GraphNode[];
-    edges: GraphRelationship[];
-    stats?: {
-      total_nodes?: number;
-      total_edges?: number;
-      density?: number;
-    };
-  } | null;
+  subgraph?: GraphSubgraph | null;
   /** Entity context when a node is selected */
-  entityContext?: {
-    center: GraphNode;
-    neighbors: GraphNode[];
-    relationships: GraphRelationship[];
-    entity_count: number;
-    relationship_count: number;
-  } | null;
+  entityContext?: EntityContext | null;
   /** Search results to display */
-  searchResults?: {
-    entities: GraphNode[];
-    relationships: GraphRelationship[];
-  } | null;
+  searchResults?: { entities: GraphNode[]; relationships: GraphEdge[] } | null;
   /** Layout algorithm for positioning nodes */
   layout?: "force" | "circular" | "hierarchical";
 }
@@ -54,17 +37,6 @@ export interface UseGraphDataOptions {
  * 1. searchResults (if provided)
  * 2. entityContext (if a node is selected)
  * 3. subgraph (default view)
- *
- * @param options - Data sources and configuration
- * @returns Unified graph data with calculated layout and statistics
- *
- * @example
- * const { data: graphData, isEmpty, nodeTypeCounts } = useGraphData({
- *   subgraph: subgraphData,
- *   entityContext: selectedNode ? contextData : null,
- *   searchResults: searchQuery ? searchData : null,
- *   layout: "circular",
- * });
  */
 export function useGraphData(options: UseGraphDataOptions): {
   data: GraphData;
@@ -74,56 +46,50 @@ export function useGraphData(options: UseGraphDataOptions): {
   const { subgraph, entityContext, searchResults, layout = "circular" } = options;
 
   return useMemo(() => {
-    // Priority: searchResults > entityContext > subgraph
     let nodes: GraphNode[] = [];
-    let edges: GraphRelationship[] = [];
+    let edges: GraphEdge[] = [];
     let stats: GraphData["stats"] = {
-      total_nodes: 0,
-      total_edges: 0,
-      node_types: {},
+      totalNodes: 0,
+      totalEdges: 0,
+      nodeTypes: {},
       communities: 0,
       density: 0,
     };
 
     if (searchResults?.entities?.length) {
-      // Use search results
       nodes = searchResults.entities;
       edges = searchResults.relationships || [];
       stats = {
-        total_nodes: nodes.length,
-        total_edges: edges.length,
-        node_types: countNodeTypes(nodes),
+        totalNodes: nodes.length,
+        totalEdges: edges.length,
+        nodeTypes: countNodeTypes(nodes),
         communities: 0,
         density: 0,
       };
     } else if (entityContext) {
-      // Use entity context for detailed neighborhood view
       nodes = [entityContext.center, ...entityContext.neighbors];
       edges = entityContext.relationships;
       stats = {
-        total_nodes: entityContext.entity_count,
-        total_edges: entityContext.relationship_count,
-        node_types: countNodeTypes(nodes),
+        totalNodes: entityContext.entityCount,
+        totalEdges: entityContext.relationshipCount,
+        nodeTypes: countNodeTypes(nodes),
         communities: 0,
         density: 0,
       };
     } else if (subgraph) {
-      // Use coherent subgraph from backend
       nodes = subgraph.nodes || [];
       edges = subgraph.edges || [];
       stats = {
-        total_nodes: subgraph.stats?.total_nodes ?? nodes.length,
-        total_edges: subgraph.stats?.total_edges ?? edges.length,
-        node_types: countNodeTypes(nodes),
-        communities: 0,
+        totalNodes: subgraph.stats?.totalNodes ?? nodes.length,
+        totalEdges: subgraph.stats?.totalEdges ?? edges.length,
+        nodeTypes: countNodeTypes(nodes),
+        communities: subgraph.stats?.communities ?? 0,
         density: subgraph.stats?.density || 0,
       };
     }
 
-    // Apply layout positioning to nodes that don't have coordinates
-    const positionedNodes = applyLayoutToNodes(nodes, layout);
-
-    const isEmpty = positionedNodes.length === 0;
+    // Apply layout calculation
+    const positionedNodes = calculateLayout(nodes, layout);
 
     return {
       data: {
@@ -131,52 +97,8 @@ export function useGraphData(options: UseGraphDataOptions): {
         edges,
         stats,
       },
-      isEmpty,
-      nodeTypeCounts: stats.node_types,
+      isEmpty: nodes.length === 0,
+      nodeTypeCounts: stats.nodeTypes,
     };
   }, [subgraph, entityContext, searchResults, layout]);
-}
-
-/**
- * Apply layout to nodes, preserving existing coordinates.
- * PERF: Memoized to prevent recalculation when node data hasn't changed
- */
-function applyLayoutToNodes(
-  nodes: GraphNode[],
-  layout: "force" | "circular" | "hierarchical"
-): GraphNode[] {
-  // Early return for empty arrays - avoids unnecessary calculations
-  if (!nodes.length) return [];
-
-  // PERF: Use Map for O(1) lookup instead of multiple filter scans
-  const positioned: GraphNode[] = [];
-  const unpositioned: GraphNode[] = [];
-
-  // Single pass O(n) instead of two filter passes O(2n)
-  for (const node of nodes) {
-    if (typeof node.x === "number" && typeof node.y === "number") {
-      positioned.push(node);
-    } else {
-      unpositioned.push(node);
-    }
-  }
-
-  // Apply layout only to unpositioned nodes
-  const laidOut = calculateLayout(unpositioned, layout);
-
-  // Merge back together (positioned nodes keep their coordinates)
-  return [...positioned, ...laidOut];
-}
-
-/**
- * Create a stable signature for nodes to enable memoization comparison.
- * Only considers properties that affect layout/positioning.
- */
-function getNodesSignature(nodes: GraphNode[]): string {
-  if (!nodes.length) return "empty";
-  // Hash of IDs and positions - stable for memoization
-  return nodes
-    .map((n) => `${n.id}:${n.x ?? "-"}:${n.y ?? "-"}`)
-    .sort()
-    .join("|");
 }

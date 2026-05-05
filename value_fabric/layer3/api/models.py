@@ -237,15 +237,28 @@ class GraphRAGQuery(BaseModel):
     )
 
 
+class ContextGraph(BaseModel):
+    """Typed context graph structure for GraphRAG responses."""
+
+    nodes: list["GraphNode"] = Field(..., description="Nodes in the context graph")
+    edges: list["GraphEdge"] = Field(..., description="Edges in the context graph")
+
+
 class GraphRAGResponse(BaseModel):
     """Response from graph-based question answering."""
 
     query: str = Field(..., max_length=1000, description="Original query")
-    entities: list[dict[str, Any]] = Field(..., description="Relevant entities found")
-    relationships: list[dict[str, Any]] = Field(
-        ..., description="Relevant relationships found"
+    entities: list[dict[str, Any]] = Field(
+        ...,
+        description="Relevant entities found. Typed as dict for flexibility until GraphRAG engine normalizes to GraphNode.",
     )
-    context_graph: dict[str, Any] = Field(..., description="Context graph structure")
+    relationships: list[dict[str, Any]] = Field(
+        ...,
+        description="Relevant relationships found. Typed as dict for flexibility until GraphRAG engine normalizes to GraphEdge.",
+    )
+    context_graph: ContextGraph | dict[str, Any] = Field(
+        ..., description="Context graph structure"
+    )
     confidence_score: float = Field(
         ..., ge=0.0, le=1.0, description="Overall confidence score"
     )
@@ -990,9 +1003,6 @@ class GraphNode(BaseModel):
     confidence: float = Field(
         default=0.8, ge=0.0, le=1.0, description="Confidence score (legacy: use 'confidence_score')"
     )
-    x: float | None = Field(None, description="X position for visualization")
-    y: float | None = Field(None, description="Y position for visualization")
-    r: float | None = Field(None, description="Radius for visualization")
     properties: dict[str, Any] = Field(
         default_factory=dict, description="Additional node properties"
     )
@@ -1041,6 +1051,20 @@ class GraphNode(BaseModel):
         for alias, source in GraphNodeAliasMap.items():
             data[alias] = getattr(self, alias)
         return data
+
+
+class GraphNodeWithLayout(GraphNode):
+    """Graph node with visualization layout coordinates.
+
+    Use this model only for endpoints that intentionally return
+    pre-computed layout positions (e.g., full graph export).
+    For subgraph and query responses, use plain GraphNode and
+    compute layout client-side.
+    """
+
+    x: float | None = Field(None, description="X position for visualization")
+    y: float | None = Field(None, description="Y position for visualization")
+    r: float | None = Field(None, description="Radius for visualization")
 
 
 # Mapping for GraphEdge alias fields
@@ -1105,7 +1129,7 @@ class GraphStats(BaseModel):
 class GraphResponse(BaseModel):
     """Full graph response for visualization."""
 
-    nodes: list[GraphNode] = Field(..., description="Graph nodes")
+    nodes: list[GraphNodeWithLayout] = Field(..., description="Graph nodes with layout")
     edges: list[GraphEdge] = Field(..., description="Graph edges")
     stats: GraphStats = Field(..., description="Graph statistics")
 

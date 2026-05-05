@@ -78,6 +78,11 @@ export const EntityListResponseSchema = z.object({
 // Layer 4: Workflow Validation
 // ============================================================================
 
+/**
+ * @deprecated Use `WorkflowStatusEnum` from contract helpers or types
+ * from `@/api/workflows` instead. This schema uses `active` status which
+ * does not exist in the backend API.
+ */
 export const WorkflowSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
@@ -86,6 +91,9 @@ export const WorkflowSchema = z.object({
   configuration: z.record(z.string(), z.unknown()).optional(),
 });
 
+/**
+ * @deprecated Use types from `@/api/workflows` instead.
+ */
 export const WorkflowExecutionSchema = z.object({
   id: z.string().uuid(),
   workflow_id: z.string().uuid(),

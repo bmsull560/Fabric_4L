@@ -26,8 +26,8 @@ export const PaginatedSchema = <T extends z.ZodTypeAny>(item: T) =>
   z.object({
     items: z.array(item),
     total: z.number().int().nonnegative(),
-    page: z.number().int().positive(),
-    page_size: z.number().int().positive(),
+    limit: z.number().int().positive(),
+    offset: z.number().int().nonnegative(),
     has_more: z.boolean(),
   });
 
@@ -154,6 +154,24 @@ export const WorkflowStatusResponseSchema = z.object({
   results: z.record(z.string(), z.unknown()).nullable(),
   tenant_id: z.string().nullable(),
   user_id: z.string().nullable(),
+  priority: z.number().nullable().optional(),
+  scheduler_status: z.string().nullable().optional(),
+  progress: z.object({
+    step_id: z.string().nullable(),
+    status: z.enum(['pending', 'running', 'paused', 'completed', 'failed', 'cancelled', 'unknown']),
+    percent: z.number().min(0).max(100),
+    message: z.string(),
+    started_at: z.string().nullable().optional(),
+    updated_at: z.string(),
+    completed_at: z.string().nullable().optional(),
+    actionable_next_state: z.object({
+      can_retry: z.boolean(),
+      can_resume: z.boolean(),
+      can_cancel: z.boolean(),
+      requires_user_action: z.boolean(),
+      next_action: z.string().nullable(),
+    }),
+  }).nullable().optional(),
 });
 
 export const WorkflowResultResponseSchema = z.object({
@@ -525,11 +543,11 @@ export const fixtures = {
     ...overrides,
   }),
 
-  paginatedSignals: (page = 1, hasMore = false): z.infer<ReturnType<typeof PaginatedSchema>> => ({
+  paginatedSignals: (offset = 0, hasMore = false): z.infer<ReturnType<typeof PaginatedSchema>> => ({
     items: [],
     total: 0,
-    page,
-    page_size: 20,
+    limit: 50,
+    offset,
     has_more: hasMore,
   }),
 

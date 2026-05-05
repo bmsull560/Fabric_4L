@@ -10,7 +10,8 @@ import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/
 import { PageShell } from "@/components/layout/PageShell";
 import { GraphVisualization } from "@/components/graph/GraphVisualization";
 import { GraphInspectorPanel } from "@/components/graph/GraphInspectorPanel";
-import { useSubgraph, useEntityContext, useEntityTraversal, useGraphQuery, type GraphNode, type GraphRelationship } from "@/hooks/useGraphQuery";
+import { useSubgraph, useEntityContext, useEntityTraversal, useGraphQuery } from "@/hooks/useGraphQuery";
+import type { GraphNode, GraphEdge } from "@/features/graph/domain/graph.model";
 import { useGraphCanvas } from "@/hooks/useGraphCanvas";
 import { useGraphData } from "@/hooks/useGraphData";
 import { getEntityBadgeClasses } from "@/lib/graph-utils";
@@ -27,7 +28,7 @@ export default function GraphExplorer() {
   const [selected, setSelected] = useState<string | null>(null);
   const [queryText, setQueryText] = useState("");
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<{ entities: GraphNode[]; relationships: GraphRelationship[] } | null>(null);
+  const [searchResults, setSearchResults] = useState<{ entities: GraphNode[]; relationships: GraphEdge[] } | null>(null);
 
   const { data: subgraph, isLoading: subgraphLoading, error: subgraphError, refetch: refetchSubgraph } = useSubgraph({
     query: '',
@@ -242,11 +243,11 @@ export default function GraphExplorer() {
             <div className="space-y-1.5">
               <div className="flex justify-between text-[12px]">
                 <span className="text-muted-foreground">Nodes</span>
-                <span className="font-bold text-foreground">{graphData.stats.total_nodes.toLocaleString()}</span>
+                <span className="font-bold text-foreground">{graphData.stats.totalNodes.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[12px]">
                 <span className="text-muted-foreground">Edges</span>
-                <span className="font-bold text-foreground">{graphData.stats.total_edges.toLocaleString()}</span>
+                <span className="font-bold text-foreground">{graphData.stats.totalEdges.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-[12px]">
                 <span className="text-muted-foreground">Density</span>

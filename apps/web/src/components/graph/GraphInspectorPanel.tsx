@@ -9,13 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Info, BarChart3, FileText, MousePointer2, RotateCcw } from "lucide-react";
 import { Btn } from "@/components/WfPrimitives";
-import type { GraphNode } from "@/hooks/useGraphQuery";
+import type { GraphNode } from "@/features/graph/domain/graph.model";
 import { getEntityBadgeClasses } from "@/lib/graph-utils";
 
-/** Node details for the inspector panel - extends GraphNode, making confidence_score optional */
-export type GraphNodeDetails = Omit<GraphNode, 'confidence_score'> & {
-  confidence_score?: number;
-};
+/** Node details for the inspector panel */
+export type GraphNodeDetails = GraphNode;
 
 export interface GraphInspectorPanelProps {
   /** Selected node details (null shows empty state) */
@@ -64,9 +62,9 @@ export function GraphInspectorPanel({
     );
   }
 
-  const badgeClasses = getEntityBadgeClasses(node.entity_type);
-  const typeLabel = node.entity_type
-    ? node.entity_type.charAt(0).toUpperCase() + node.entity_type.slice(1)
+  const badgeClasses = getEntityBadgeClasses(node.entityType);
+  const typeLabel = node.entityType
+    ? node.entityType.charAt(0).toUpperCase() + node.entityType.slice(1)
     : "Unknown";
 
   return (
@@ -95,7 +93,7 @@ export function GraphInspectorPanel({
             <BarChart3 className="h-4 w-4" />
             <span>Confidence</span>
           </div>
-          <ConfidenceBar value={node.confidence_score ?? DEFAULT_CONFIDENCE} />
+          <ConfidenceBar value={node.confidenceScore ?? DEFAULT_CONFIDENCE} />
         </div>
 
         {/* Description */}

@@ -11803,42 +11803,6 @@
             "description": "Confidence score (legacy: use 'confidence_score')",
             "default": 0.8
           },
-          "x": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "X",
-            "description": "X position for visualization"
-          },
-          "y": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Y",
-            "description": "Y position for visualization"
-          },
-          "r": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "R",
-            "description": "Radius for visualization"
-          },
           "properties": {
             "additionalProperties": true,
             "type": "object",
@@ -11853,7 +11817,7 @@
           "type"
         ],
         "title": "GraphNode",
-        "description": "Node in the knowledge graph.\n\nNOTE: This model provides backward-compatible field aliases for frontend contract stability:\n- 'name' is an alias for 'label' (frontend expects 'name')\n- 'entity_type' is an alias for 'type' (frontend expects 'entity_type')\n- 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')\n\nThe legacy fields (label, type, confidence) are preserved for backward compatibility.\nTODO: Deprecate legacy fields once all consumers migrate to new field names."
+        "description": "Node in the knowledge graph. Visualization fields (x, y, r) have been removed; use GraphNodeWithLayout for pre-computed positions."
       },
       "GraphRAGQuery": {
         "properties": {
@@ -11943,8 +11907,15 @@
             "description": "Relevant relationships found"
           },
           "context_graph": {
-            "additionalProperties": true,
-            "type": "object",
+            "anyOf": [
+              {
+                "": "#/components/schemas/ContextGraph"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ],
             "title": "Context Graph",
             "description": "Context graph structure"
           },
@@ -12007,7 +11978,7 @@
         "properties": {
           "nodes": {
             "items": {
-              "$ref": "#/components/schemas/GraphNode"
+              "": "#/components/schemas/GraphNodeWithLayout"
             },
             "type": "array",
             "title": "Nodes",
@@ -12033,7 +12004,7 @@
           "stats"
         ],
         "title": "GraphResponse",
-        "description": "Full graph response for visualization."
+        "description": "Full graph response for visualization. Nodes include layout coordinates."
       },
       "GraphStats": {
         "properties": {
@@ -17819,6 +17790,83 @@
         ],
         "title": "ValueTreeResponse",
         "description": "Complete value tree response."
+      },
+      "GraphNodeWithLayout": {
+        "allOf": [
+          {
+            "": "#/components/schemas/GraphNode"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "x": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "X",
+                "description": "X position for visualization"
+              },
+              "y": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Y",
+                "description": "Y position for visualization"
+              },
+              "r": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "R",
+                "description": "Radius for visualization"
+              }
+            }
+          }
+        ],
+        "title": "GraphNodeWithLayout",
+        "description": "Graph node with visualization layout coordinates. Use only for endpoints that intentionally return pre-computed layout positions."
+      },
+      "ContextGraph": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "": "#/components/schemas/GraphNode"
+            },
+            "type": "array",
+            "title": "Nodes",
+            "description": "Nodes in the context graph"
+          },
+          "edges": {
+            "items": {
+              "": "#/components/schemas/GraphEdge"
+            },
+            "type": "array",
+            "title": "Edges",
+            "description": "Edges in the context graph"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "ContextGraph",
+        "description": "Typed context graph structure for GraphRAG responses."
       }
     },
     "securitySchemes": {

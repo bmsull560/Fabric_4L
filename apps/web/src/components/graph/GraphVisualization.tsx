@@ -12,13 +12,13 @@ import {
   getEntityHexColors,
   getNodeRadius,
 } from "@/lib/graph-utils";
-import type { GraphNode, GraphRelationship } from "@/hooks/useGraphQuery";
+import type { GraphNode, GraphEdge } from "@/features/graph/domain/graph.model";
 
 export interface GraphVisualizationProps {
-  /** Nodes to render */
-  nodes: GraphNode[];
+  /** Nodes to render (must include x/y from layout) */
+  nodes: Array<GraphNode & { x: number; y: number; r: number }>;
   /** Edges/relationships to render */
-  edges: GraphRelationship[];
+  edges: GraphEdge[];
   /** Currently selected node ID */
   selectedNodeId: string | null;
   /** Called when a node is clicked */
@@ -35,18 +35,11 @@ export interface GraphVisualizationProps {
 
 const MAX_LABEL_LINE_LENGTH = 12;
 
-/** Type guard to check if a node has position coordinates */
-function hasPosition(node: GraphNode): node is GraphNode & { x: number; y: number } {
-  return typeof node.x === "number" && typeof node.y === "number";
-}
-
-/** Get node coordinates with fallback to center */
+/** Get node coordinates (all nodes in props have x/y) */
 function getNodePosition(
-  node: GraphNode
+  node: GraphNode & { x: number; y: number }
 ): { x: number; y: number } {
-  return hasPosition(node)
-    ? { x: node.x, y: node.y }
-    : { x: VIEWBOX_WIDTH / 2, y: VIEWBOX_HEIGHT / 2 };
+  return { x: node.x, y: node.y };
 }
 
 /**
@@ -111,8 +104,8 @@ export function GraphVisualization({
         <g transform={transform}>
           {/* Edges */}
           {edges.map((edge, index) => {
-            const source = nodeMap.get(edge.source);
-            const target = nodeMap.get(edge.target);
+            const source = nodeMap.get(edge.sourceId);
+            const target = nodeMap.get(edge.targetId);
             if (!source || !target) return null;
 
             const sourcePos = getNodePosition(source);
@@ -120,7 +113,7 @@ export function GraphVisualization({
 
             return (
               <line
-                key={`edge-${edge.source}-${edge.target}-${index}`}
+                key={`edge-${edge.sourceId}-${edge.targetId}-${index}`}
                 x1={sourcePos.x}
                 y1={sourcePos.y}
                 x2={targetPos.x}
@@ -133,9 +126,9 @@ export function GraphVisualization({
 
           {/* Nodes */}
           {nodes.map((node) => {
-            const colors = getEntityHexColors(node.entity_type);
+            const colors = getEntityHexColors(node.entityType);
             const isSelected = node.id === selectedNodeId;
-            const radius = getNodeRadius(node.entity_type);
+            const radius = getNodeRadius(node.entityType);
             const position = getNodePosition(node);
 
             const lines = wrapTextIntoLines(node.name, MAX_LABEL_LINE_LENGTH);
