@@ -10,3 +10,5 @@ resources:
   - gateway.yaml
   - virtualservice.yaml
   - destinationrule.yaml
+  - peerauthentication.yaml
+  - authorizationpolicy.yaml

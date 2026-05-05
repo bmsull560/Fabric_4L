@@ -1,8 +1,7 @@
-# Deployment: prod-istio (EXPERIMENTAL)
+# Deployment: prod-istio
 
-> **Status: EXPERIMENTAL.** Render-only in CI. Requires Istio service mesh that
-> is not assumed by the Value Fabric platform contract. Use `prod-nginx` for
-> production.
+> **Status: production-capable when operator prerequisites are satisfied.**
+> Requires Istio service mesh, sidecar injection, and TLS secret prerequisites.
 
 Composes `envs/prod` + `routing/istio`.
 
@@ -20,7 +19,7 @@ kustomize build k8s/deployments/prod-istio | kubectl apply -f -
 | Frontend host | `app.value-fabric.example.com` |
 | API host | `api.value-fabric.example.com` |
 
-## Render-only validation
+## Validation
 
 ```bash
 kustomize build k8s/deployments/prod-istio | kubeconform -strict -summary \

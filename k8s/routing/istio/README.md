@@ -1,8 +1,8 @@
-# Routing Stack: Istio (EXPERIMENTAL)
+# Routing Stack: Istio
 
-> **Status: EXPERIMENTAL.** This routing variant is rendered and validated in CI
-> but is **NOT** production-ready. It depends on a cluster-installed Istio service mesh
-> and lacks critical security controls. Use `prod-nginx` for production.
+> **Status: production-capable when cluster prerequisites are installed.** This
+> routing variant depends on a cluster-installed Istio service mesh and external
+> edge controls listed below.
 
 ## What this stack defines
 
@@ -10,30 +10,12 @@
   `__HOST__` (frontend) and `__API_HOST__` (layer APIs).
 - `VirtualService` resources binding the gateway to Services rendered by the
   env overlay (path-prefixed `/layer1`..`/layer6`).
-- `DestinationRule` resources with `ISTIO_MUTUAL` **(client-side mTLS only)**.
+- `DestinationRule` resources with `ISTIO_MUTUAL`.
+- `PeerAuthentication` with STRICT server-side mTLS for the `value-fabric`
+  namespace.
+- Baseline `AuthorizationPolicy` for ingress and namespace-internal traffic.
 
-## Critical Security Gaps (NOT IMPLEMENTED)
-
-### Server-Side mTLS: NOT ENFORCED
-
-**WARNING**: `DestinationRule` with `mode: ISTIO_MUTUAL` configures the **client**
-to use mTLS. It does **NOT** enforce that servers only accept mTLS connections.
-
-To enforce server-side mTLS, you **must** add:
-```yaml
-apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
-metadata:
-  name: default
-  namespace: value-fabric
-spec:
-  mtls:
-    mode: STRICT
-```
-
-Without `PeerAuthentication`, plaintext connections are still accepted.
-
-**Status**: NOT IMPLEMENTED. Add before production use.
+## Remaining Edge Controls
 
 ### Edge Authentication: NOT IMPLEMENTED
 
@@ -78,7 +60,8 @@ No WAF at Istio layer. Requires:
 ## Production Readiness Checklist
 
 Before promoting from EXPERIMENTAL:
-- [ ] Add `PeerAuthentication` STRICT mode for server-side mTLS enforcement
+- [x] Add `PeerAuthentication` STRICT mode for server-side mTLS enforcement
+- [x] Add baseline namespace `AuthorizationPolicy`
 - [ ] Implement edge authentication (`AuthorizationPolicy` + `RequestAuthentication`)
 - [ ] Implement rate limiting (local or global)
 - [ ] Add security headers via `EnvoyFilter` or application layer

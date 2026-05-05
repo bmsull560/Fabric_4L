@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: value-fabric-workload-quota
+  namespace: value-fabric
+  labels:
+    app.kubernetes.io/name: value-fabric
+    app.kubernetes.io/component: tenant-safety
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 64Gi
+    limits.cpu: "60"
+    limits.memory: 160Gi
+    pods: "120"
+    persistentvolumeclaims: "40"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: value-fabric-default-limits
+  namespace: value-fabric
+  labels:
+    app.kubernetes.io/name: value-fabric
+    app.kubernetes.io/component: tenant-safety
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      default:
+        cpu: "1"
+        memory: 1Gi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 25m
+        memory: 64Mi

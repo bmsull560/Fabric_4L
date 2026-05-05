@@ -1,0 +1,19 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: value-fabric-ingress-and-internal
+  namespace: value-fabric
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            namespaces:
+              - istio-system
+              - value-fabric
+    - to:
+        - operation:
+            paths:
+              - /health
+              - /healthz
+              - /ready

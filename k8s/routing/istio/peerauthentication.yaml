@@ -1,0 +1,8 @@
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: value-fabric-strict-mtls
+  namespace: value-fabric
+spec:
+  mtls:
+    mode: STRICT
