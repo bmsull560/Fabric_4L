@@ -72,16 +72,6 @@ export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: strin
 export function usePersistWorkspaceTab(tabKey: string) {
   return useMutation({
     mutationFn: async ({ caseId, payload }: { caseId: string; payload: unknown }) => {
-      await apiClient.post('l4', '/workflows', {
-        workflow_type: 'workspace_tab_persist',
-        name: `Persist ${tabKey}`,
-        input: {
-          case_id: caseId,
-          tab: tabKey,
-          payload,
-        },
-      });
-
       try {
         const response = await apiClient.put('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
         return response.data;

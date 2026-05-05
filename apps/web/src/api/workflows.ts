@@ -5,8 +5,8 @@ import type { LayerKey } from './client';
 
 export interface WorkflowCreateRequest {
   workflow_type: 'roi_calculator' | 'whitespace_analysis' | 'business_case' | 'business_case_generation' | 'orchestrator';
-  tenant_id: string;
-  user_id: string;
+  tenant_id?: string;
+  user_id?: string;
   inputs?: WorkflowInputs;
   priority?: 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW' | 'BACKGROUND';
 }
@@ -25,6 +25,23 @@ export interface WorkflowCreateResponse {
   estimated_duration_seconds: number;
 }
 
+export interface WorkflowProgress {
+  step_id: string | null;
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'unknown';
+  percent: number;
+  message: string;
+  started_at: string | null;
+  updated_at: string;
+  completed_at: string | null;
+  actionable_next_state: {
+    can_retry: boolean;
+    can_resume: boolean;
+    can_cancel: boolean;
+    requires_user_action: boolean;
+    next_action: string | null;
+  };
+}
+
 export interface WorkflowStatusResponse {
   workflow_instance_id: string;
   workflow_type: string;
@@ -41,6 +58,7 @@ export interface WorkflowStatusResponse {
   user_id: string | null;
   priority: number | null;
   scheduler_status: string | null;
+  progress: WorkflowProgress | null;
 }
 
 export type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'paused' | 'interrupted';

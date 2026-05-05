@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
-import type { components } from "@/api/generated/l5-types";
+import type { components } from "@/api/generated/l5";
 import { QK } from "./queryKeys";
 import {
   withApiError,

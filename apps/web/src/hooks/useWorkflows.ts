@@ -17,7 +17,7 @@ const CANCEL_DELAY_MS = 500;
 export interface Workflow {
   id: string;
   name: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'running' | 'paused' | 'interrupted' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   createdAt?: string;
   updatedAt?: string;
@@ -26,8 +26,9 @@ export interface Workflow {
 
 function normalizeWorkflowStatus(status: unknown): Workflow['status'] {
   const value = typeof status === 'string' ? status.toLowerCase() : '';
-  if (value === 'pending' || value === 'running' || value === 'completed' || value === 'failed' || value === 'cancelled') {
-    return value;
+  const validStatuses: Workflow['status'][] = ['pending', 'running', 'paused', 'interrupted', 'completed', 'failed', 'cancelled'];
+  if (validStatuses.includes(value as Workflow['status'])) {
+    return value as Workflow['status'];
   }
   return 'pending';
 }
@@ -201,11 +202,13 @@ export function useCreateWorkflow() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { name: string; type: string; config?: Record<string, unknown> }) => {
+    mutationFn: async (params: { type: string; inputs?: Record<string, unknown>; priority?: 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW' | 'BACKGROUND' }) => {
       const response = await apiClient.post('l4', '/workflows', {
-        name: params.name,
         workflow_type: params.type,
-        config: params.config || {},
+        inputs: {
+          custom_data: params.inputs || {},
+        },
+        priority: params.priority || 'NORMAL',
       }) as { data: Record<string, unknown> };
       const workflowId = response.data?.workflow_instance_id || response.data?.workflow_id;
       if (!workflowId) {
@@ -385,7 +388,16 @@ export function useWorkflowTypes() {
     queryKey: [...QK.workflows.all, 'types'],
     queryFn: async () => {
       const response = await apiClient.get('l4', '/workflows/types') as { data: unknown };
-      return response.data as { types: { id: string; name: string; description: string }[] };
+      const data = response.data as { workflows?: { type: string; name: string; description: string }[] };
+      // Normalize backend shape { workflows: [{ type, name, description }] }
+      // to frontend shape { types: [{ id, name, description }] }
+      return {
+        types: (data.workflows || []).map((w) => ({
+          id: w.type,
+          name: w.name,
+          description: w.description,
+        })),
+      };
     },
     staleTime: 60_000,
   });

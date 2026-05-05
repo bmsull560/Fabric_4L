@@ -1,0 +1,11 @@
+{
+  "name": "fabric-4l-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "generate:api": "pnpm --filter ./apps/web run generate:types"
+  },
+  "packageManager": "pnpm@10.18.1"
+}

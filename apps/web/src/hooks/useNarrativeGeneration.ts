@@ -78,15 +78,16 @@ export function useGenerateNarrative() {
       const workflowType = OUTPUT_TYPE_TO_WORKFLOW[outputType];
 
       const response = await apiClient.post('l4', '/workflows', {
-        name: `${outputType} — ${industry}`,
         workflow_type: workflowType,
-        config: {
-          prompt,
-          industry,
-          output_type: outputType,
-          sections: outputType === 'narrative'
-            ? ['executive_summary', 'current_state', 'proposed_solution', 'roi_analysis', 'implementation', 'next_steps']
-            : undefined,
+        inputs: {
+          custom_data: {
+            prompt,
+            industry,
+            output_type: outputType,
+            sections: outputType === 'narrative'
+              ? ['executive_summary', 'current_state', 'proposed_solution', 'roi_analysis', 'implementation', 'next_steps']
+              : undefined,
+          },
         },
       });
 

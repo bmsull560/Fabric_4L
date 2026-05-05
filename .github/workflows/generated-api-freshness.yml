@@ -1,0 +1,73 @@
+name: Generated API Freshness
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'services/**/src/api/**'
+      - 'services/**/src/**/routes/**'
+      - 'contracts/openapi/**'
+      - 'apps/web/src/api/**'
+      - 'apps/web/scripts/generate-api-types.ts'
+      - '.github/workflows/generated-api-freshness.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'services/**/src/api/**'
+      - 'services/**/src/**/routes/**'
+      - 'contracts/openapi/**'
+      - 'apps/web/src/api/**'
+      - 'apps/web/scripts/generate-api-types.ts'
+      - '.github/workflows/generated-api-freshness.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: generated-api-freshness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generated-api-freshness:
+    name: Generated API Freshness Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: '10.18.1'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/web
+
+      - name: Generate API types
+        run: pnpm run generate:api
+        working-directory: ${{ github.workspace }}
+
+      - name: Check for stale generated files
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet apps/web/src/api/generated/; then
+            echo "::error::Generated API client files are stale."
+            echo ""
+            echo "To fix locally, run:"
+            echo "  pnpm run generate:api"
+            echo "  git add apps/web/src/api/generated"
+            echo "  git commit"
+            echo ""
+            node apps/web/scripts/report-generated-type-drift.mjs
+            exit 1
+          fi
+          echo "✅ Generated API client files are fresh."

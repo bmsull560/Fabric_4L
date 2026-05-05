@@ -67,6 +67,7 @@ ESTIMATED_DURATION_SECONDS: dict[str, int] = {
     "roi_calculator": 120,
     "whitespace_analysis": 300,
     "business_case": 400,
+    "business_case_generation": 400,
     "orchestrator": 180,
 }
 
@@ -109,10 +110,10 @@ class WorkflowCreateRequest(BaseModel):
     workflow_type: str = Field(
         ...,
         description="Type of workflow to run",
-        enum=["roi_calculator", "whitespace_analysis", "business_case", "orchestrator"],
+        enum=["roi_calculator", "whitespace_analysis", "business_case", "business_case_generation", "orchestrator"],
     )
-    tenant_id: str = Field(..., description="Tenant identifier")
-    user_id: str = Field(..., description="User identifier")
+    tenant_id: str | None = Field(None, description="Tenant identifier")
+    user_id: str | None = Field(None, description="User identifier")
     inputs: WorkflowInputs = Field(default_factory=WorkflowInputs, description="Workflow inputs")
     priority: str = Field(default="NORMAL", description="Execution priority")
     workflow_id: str | None = Field(None, description="Optional workflow ID")
@@ -264,15 +265,23 @@ async def create_workflow(
     Returns:
         201 Created with workflow_instance_id and estimated duration
     """
+    # Use auth context defaults when not explicitly provided
+    tenant_id = request.tenant_id or _ctx.tenant_id
+    user_id = request.user_id or _ctx.user_id
+
+    # Validate tenant_id is required
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id is required")
+
     # Validate tenant_id matches authenticated tenant
-    if _ctx.tenant_id and request.tenant_id != _ctx.tenant_id:
+    if _ctx.tenant_id and tenant_id != _ctx.tenant_id:
         raise HTTPException(status_code=403, detail="tenant_id mismatch")
 
     try:
         # Map priority string to enum
         priority = PRIORITY_MAP.get(request.priority.upper(), TaskPriority.NORMAL)
         # Convert inputs to dict for execution
-        input_data = request.inputs.dict(exclude_none=True) if request.inputs else {}
+        input_data = request.inputs.model_dump(exclude_none=True) if request.inputs else {}
 
         # Execute workflow (async - returns immediately with scheduled task)
         result = await executor.execute_workflow(
@@ -280,8 +289,8 @@ async def create_workflow(
             input_data=input_data,
             workflow_id=request.workflow_id,
             priority=priority,
-            tenant_id=request.tenant_id,
-            user_id=request.user_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
         # Estimate duration based on workflow type
@@ -673,13 +682,15 @@ async def get_workflow_events(
     """
     # Enforce tenant isolation before streaming
     status = await executor.get_workflow_status(workflow_id)
-    if status:
-        workflow_tenant = status.get("tenant_id")
-        if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
-            raise HTTPException(
-                status_code=403,
-                detail=f"Workflow {workflow_id} does not belong to the current tenant",
-            )
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+
+    workflow_tenant = status.get("tenant_id")
+    if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )
 
     async def event_generator():
         """Generate SSE events for workflow."""

@@ -6,12 +6,12 @@ import path from 'node:path';
 const GENERATED_ROOT = 'apps/web/src/api/generated';
 
 const OUTPUT_TO_SPEC = new Map([
-  ['apps/web/src/api/generated/l1-types.ts', 'contracts/openapi/layer1-ingestion.json'],
-  ['apps/web/src/api/generated/l2-types.ts', 'contracts/openapi/layer2-extraction.json'],
-  ['apps/web/src/api/generated/l3-types.ts', 'contracts/openapi/layer3-knowledge.json'],
-  ['apps/web/src/api/generated/l4-types.ts', 'contracts/openapi/layer4-agents.json'],
-  ['apps/web/src/api/generated/l5-types.ts', 'contracts/openapi/layer5-ground-truth.json'],
-  ['apps/web/src/api/generated/signals-types.ts', 'contracts/openapi/signals.json'],
+  ['apps/web/src/api/generated/l1/index.ts', 'contracts/openapi/layer1-ingestion.json'],
+  ['apps/web/src/api/generated/l2/index.ts', 'contracts/openapi/layer2-extraction.json'],
+  ['apps/web/src/api/generated/l3/index.ts', 'contracts/openapi/layer3-knowledge.json'],
+  ['apps/web/src/api/generated/l4/index.ts', 'contracts/openapi/layer4-agents.json'],
+  ['apps/web/src/api/generated/l5/index.ts', 'contracts/openapi/layer5-ground-truth.json'],
+  ['apps/web/src/api/generated/signals/index.ts', 'contracts/openapi/signals.json'],
 ]);
 
 function run(cmd) {
@@ -54,6 +54,6 @@ for (const file of changedFiles) {
 }
 
 console.error(`\nTo fix locally from ${repoRoot}:`);
-console.error('  pnpm --dir apps/web run generate:types');
+console.error('  pnpm run generate:api');
 console.error('  git add apps/web/src/api/generated');
 console.error('  git commit');

@@ -15,13 +15,13 @@
 
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// ── Configuration ──────────────────────────────────────────────────────────
+// ── Configuration ────────────────────────────────────────────────────────────
 
 const ROOT = resolve(__dirname, '..', '..', '..');
 const OPENAPI_DIR = resolve(ROOT, 'contracts', 'openapi');
@@ -30,7 +30,7 @@ const OUTPUT_DIR = resolve(ROOT, 'apps', 'web', 'src', 'api', 'generated');
 interface LayerSpec {
   key: string;
   specFile: string;
-  outputFile: string;
+  outputDir: string;
   description: string;
 }
 
@@ -38,48 +38,48 @@ const LAYERS: LayerSpec[] = [
   {
     key: 'l1',
     specFile: 'layer1-ingestion.json',
-    outputFile: 'l1-types.ts',
+    outputDir: 'l1',
     description: 'Layer 1 — Ingestion',
   },
   {
     key: 'l2',
     specFile: 'layer2-extraction.json',
-    outputFile: 'l2-types.ts',
+    outputDir: 'l2',
     description: 'Layer 2 — Extraction',
   },
   {
     key: 'l3',
     specFile: 'layer3-knowledge.json',
-    outputFile: 'l3-types.ts',
+    outputDir: 'l3',
     description: 'Layer 3 — Knowledge Graph',
   },
   {
     key: 'l4',
     specFile: 'layer4-agents.json',
-    outputFile: 'l4-types.ts',
+    outputDir: 'l4',
     description: 'Layer 4 — Agents',
   },
   {
     key: 'l5',
     specFile: 'layer5-ground-truth.json',
-    outputFile: 'l5-types.ts',
+    outputDir: 'l5',
     description: 'Layer 5 — Ground Truth',
   },
   {
     key: 'l6',
     specFile: 'layer6-benchmarks.json',
-    outputFile: 'l6-types.ts',
+    outputDir: 'l6',
     description: 'Layer 6 — Benchmarks',
   },
   {
     key: 'signals',
     specFile: 'signals.json',
-    outputFile: 'signals-types.ts',
+    outputDir: 'signals',
     description: 'Signals Service',
   },
 ];
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function log(msg: string): void {
   console.log(`[generate-api-types] ${msg}`);
@@ -89,7 +89,7 @@ function error(msg: string): void {
   console.error(`[generate-api-types] ERROR: ${msg}`);
 }
 
-// ── Main ────────────────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   // Parse CLI args for optional layer filtering
@@ -110,13 +110,19 @@ async function main(): Promise<void> {
     }
 
     const specPath = resolve(OPENAPI_DIR, layer.specFile);
-    const outputPath = resolve(OUTPUT_DIR, layer.outputFile);
+    const layerOutputDir = resolve(OUTPUT_DIR, layer.outputDir);
+    const outputPath = join(layerOutputDir, 'index.ts');
 
     // Check if spec file exists
     if (!existsSync(specPath)) {
       error(`Spec file not found: ${specPath}`);
       results.push({ layer: layer.key, status: 'skipped', message: `Spec file missing: ${layer.specFile}` });
       continue;
+    }
+
+    // Ensure layer output directory exists
+    if (!existsSync(layerOutputDir)) {
+      mkdirSync(layerOutputDir, { recursive: true });
     }
 
     log(`Generating types for ${layer.description} ...`);
@@ -144,8 +150,8 @@ async function main(): Promise<void> {
         ].join('\n');
 
         writeFileSync(outputPath, header + content);
-        log(`  ✓ Generated ${layer.outputFile}`);
-        results.push({ layer: layer.key, status: 'success', message: layer.outputFile });
+        log(`  ✓ Generated ${layer.outputDir}/index.ts`);
+        results.push({ layer: layer.key, status: 'success', message: `${layer.outputDir}/index.ts` });
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -162,10 +168,10 @@ async function main(): Promise<void> {
   ];
 
   for (const layer of LAYERS) {
-    const outputPath = resolve(OUTPUT_DIR, layer.outputFile);
-    if (existsSync(outputPath)) {
-      const moduleName = layer.outputFile.replace('.ts', '');
-      indexLines.push(`export * as ${layer.key} from './${moduleName}';`);
+    const layerOutputDir = resolve(OUTPUT_DIR, layer.outputDir);
+    const indexPath = join(layerOutputDir, 'index.ts');
+    if (existsSync(indexPath)) {
+      indexLines.push(`export * as ${layer.key} from './${layer.outputDir}';`);
     }
   }
   indexLines.push('');
@@ -175,7 +181,7 @@ async function main(): Promise<void> {
 
   // Summary
   log('');
-  log('═══ Generation Summary ═══');
+  log('━━━ Generation Summary ━━━');
   for (const r of results) {
     const icon = r.status === 'success' ? '✓' : r.status === 'skipped' ? '⊘' : '✗';
     log(`  ${icon} ${r.layer}: ${r.message}`);

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { apiClient } from './client';
-import type { components, operations } from './generated/l3-types';
+import type { components, operations } from './generated/l3';
 import {
   ValuePackSchema,
   ValuePackListSchema,

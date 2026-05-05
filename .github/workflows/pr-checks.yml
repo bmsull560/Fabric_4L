@@ -534,7 +534,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate frontend API types
-        run: pnpm run generate:types
+        run: pnpm run generate:api
 
       - name: Check generated API type drift
         working-directory: ${{ github.workspace }}

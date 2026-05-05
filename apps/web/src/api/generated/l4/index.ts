@@ -6408,17 +6408,17 @@ export interface components {
              * @description Type of workflow to run
              * @enum {string}
              */
-            workflow_type: "roi_calculator" | "whitespace_analysis" | "business_case" | "orchestrator";
+            workflow_type: "roi_calculator" | "whitespace_analysis" | "business_case" | "business_case_generation" | "orchestrator";
             /**
              * Tenant Id
              * @description Tenant identifier
              */
-            tenant_id: string;
+            tenant_id?: string | null;
             /**
              * User Id
              * @description User identifier
              */
-            user_id: string;
+            user_id?: string | null;
             /** @description Workflow inputs */
             inputs?: components["schemas"]["WorkflowInputs"];
             /**

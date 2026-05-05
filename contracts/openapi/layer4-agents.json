@@ -14908,18 +14908,33 @@
               "roi_calculator",
               "whitespace_analysis",
               "business_case",
+              "business_case_generation",
               "orchestrator"
             ],
             "title": "Workflow Type",
             "description": "Type of workflow to run"
           },
           "tenant_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Tenant Id",
             "description": "Tenant identifier"
           },
           "user_id": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "User Id",
             "description": "User identifier"
           },
@@ -14948,9 +14963,7 @@
         },
         "type": "object",
         "required": [
-          "workflow_type",
-          "tenant_id",
-          "user_id"
+          "workflow_type"
         ],
         "title": "WorkflowCreateRequest",
         "description": "Request to submit a new workflow - OpenAPI spec compliant.\n\nSpec requires:\n- workflow_type: enum [whitespace_analysis, business_case_generation]\n- tenant_id: string\n- user_id: string\n- inputs: object"

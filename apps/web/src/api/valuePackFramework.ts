@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { apiClient } from './client';
-import type { operations } from './generated/l3-types';
+import type { operations } from './generated/l3';
 
 export interface ValuePackFrameworkData {
   industry_id: string;
@@ -101,7 +101,7 @@ export interface ValuePackComparisonData {
 }
 
 type ListFrameworkResponse =
-  operations['list_valuepacks']['responses'][200]['content']['application/json'];
+  operations['list_valuepacks_v1_valuepacks_get']['responses'][200]['content']['application/json'];
 
 const SwitchingCostSchema = z.enum(['low', 'medium', 'high']);
 const FeedbackSpeedSchema = z.enum(['slow', 'medium', 'fast']);

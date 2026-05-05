@@ -201,10 +201,12 @@ export function useCreateBusinessCase() {
     mutationFn: async (payload) => {
       const response = await apiClient.post('l4', '/workflows', {
         workflow_type: 'business_case',
-        name: payload.name,
-        input: {
-          company_name: payload.company,
-          description: payload.description,
+        inputs: {
+          prospect_company: payload.company,
+          custom_data: {
+            name: payload.name,
+            description: payload.description,
+          },
         },
       });
       return (response as { data: CreateBusinessCaseResponse }).data;
