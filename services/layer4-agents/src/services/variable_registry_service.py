@@ -324,18 +324,31 @@ class Neo4jVariableRegistry(IVariableRegistry):
             source_type = variable.source_binding.source_type
             source_location = variable.source_binding.source_location
 
-            # Simulate source resolution based on type
+            # Resolve from source integration or fail closed.
+            # Never return synthetic placeholder strings.
             if source_type == VariableSourceType.USER_INPUT:
                 # Look for value in context variables
-                value = context.workspace_id  # Placeholder
+                value = context.workspace_id
             elif source_type == VariableSourceType.CRM_FIELD:
-                value = f"crm_value_{variable_id}"  # Placeholder
+                raise ValueError(
+                    f"CRM integration not configured for variable {variable_id}. "
+                    "Set CRM_API_URL and CRM_API_KEY."
+                )
             elif source_type == VariableSourceType.BENCHMARK_LOOKUP:
-                value = f"benchmark_value_{variable_id}"  # Placeholder
+                raise ValueError(
+                    f"Benchmark integration not configured for variable {variable_id}. "
+                    "Set BENCHMARK_API_URL and BENCHMARK_API_KEY."
+                )
             elif source_type == VariableSourceType.FORMULA_CALCULATION:
-                value = f"calculated_value_{variable_id}"  # Placeholder
+                raise ValueError(
+                    f"Formula calculation service not configured for variable {variable_id}. "
+                    "Set FORMULA_SERVICE_URL."
+                )
             elif source_type == VariableSourceType.GROUND_TRUTH:
-                value = f"ground_truth_value_{variable_id}"  # Placeholder
+                raise ValueError(
+                    f"Ground-truth integration not configured for variable {variable_id}. "
+                    "Set LAYER5_BASE_URL."
+                )
             else:
                 value = variable.source_binding.fallback_value
 

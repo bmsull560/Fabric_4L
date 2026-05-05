@@ -105,4 +105,6 @@ metadata:
   namespace: vault
 type: Opaque
 stringData:
-  token: "dev-root-token-change-in-production"
+  # Dev-only: Vault in dev mode auto-generates a root token if this is unset.
+  # For production, use Helm chart with auto-unseal and proper secret management.
+  token: ""

@@ -51,6 +51,11 @@ class ValidationResult:
     confidence: float
 
 
+def _is_production_like() -> bool:
+    env = (os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "").strip().lower()
+    return env in {"production", "prod", "staging", "stage"}
+
+
 class OutputGuard:
     """Validate and sanitize LLM outputs.
 
@@ -59,6 +64,11 @@ class OutputGuard:
     - Refusal/uncertainty indicators
     - Format compliance for structured outputs
     - Incomplete responses
+
+    Semantics:
+    - Fail closed in production-like environments by default.
+    - Explicit dev bypass requires LLM_SAFETY_DEV_BYPASS=true (loudly logged).
+    - sanitize() is a no-op placeholder; in fail-closed mode it raises.
     """
 
     # Toxic/harmful content patterns (basic heuristic-based detection)
@@ -98,11 +108,32 @@ class OutputGuard:
             fail_closed: If True, raise exception on unsafe content.
         """
         self.enabled = os.getenv("LLM_OUTPUT_VALIDATION", "true").lower() not in ("false", "0", "no")
-        self.fail_closed = (
-            fail_closed
-            if fail_closed is not None
-            else os.getenv("LLM_SAFETY_FAIL_CLOSED", "").lower() in ("true", "1", "yes")
-        )
+
+        if fail_closed is not None:
+            self.fail_closed = fail_closed
+        else:
+            env_val = os.getenv("LLM_SAFETY_FAIL_CLOSED", "").strip().lower()
+            if env_val in ("true", "1", "yes"):
+                self.fail_closed = True
+            elif env_val in ("false", "0", "no"):
+                self.fail_closed = False
+            else:
+                # Default: fail closed in production-like environments
+                self.fail_closed = _is_production_like()
+
+        # Explicit dev bypass (loud)
+        if os.getenv("LLM_SAFETY_DEV_BYPASS", "").lower() in ("true", "1", "yes"):
+            if _is_production_like():
+                logger.error(
+                    "LLM_SAFETY_DEV_BYPASS is set but ignored in production-like environments."
+                )
+            else:
+                logger.warning(
+                    "SECURITY: LLM_SAFETY_DEV_BYPASS=true — output guard is BYPASSED. "
+                    "This must never be used in production."
+                )
+                self.enabled = False
+                self.fail_closed = False
 
     def validate(
         self,
@@ -254,8 +285,24 @@ class OutputGuard:
     def sanitize(self, content: str) -> str:
         """Sanitize content by removing potentially harmful sections.
 
-        Currently a placeholder - real implementation would use more sophisticated
-        content filtering or return refusal.
+        In fail-closed mode this raises because a real sanitizer is not yet
+        implemented. To bypass in development, set LLM_SAFETY_DEV_BYPASS=true
+        (loudly logged). NEVER bypass in production.
         """
-        # For now, just return as-is; real implementation could redact sections
+        if not self.enabled:
+            return content
+
+        if self.fail_closed:
+            raise OutputValidationError(
+                message=(
+                    "Output sanitization is not implemented. "
+                    "In fail-closed mode, content cannot be passed through un-sanitized."
+                ),
+                validation_type=ValidationType.CONTENT_SAFETY.value,
+                details={"note": "Implement a real sanitizer or explicitly disable fail_closed"},
+            )
+
+        logger.warning(
+            "sanitize() is a no-op placeholder. Implement real content filtering before production use."
+        )
         return content

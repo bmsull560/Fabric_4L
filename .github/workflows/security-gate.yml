@@ -53,3 +53,7 @@ jobs:
               fi
             fi
           done
+
+      - name: Run production stub / synthetic value scan
+        run: |
+          python scripts/ci/prod_stub_scan.py

@@ -21,11 +21,7 @@ logger = get_logger(__name__)
 # Production-like environment detection
 _PRODUCTION_ENVS = {"production", "prod", "staging", "stage"}
 
-# Development-only mock values (not for production use)
-_DEV_MOCK_BENCHMARK_VALUE = 75.5
-_DEV_MOCK_FORMULA_VALUE = 100.0
-
-# Error messages for production fail-closed scenarios
+# Error messages for fail-closed scenarios
 _ERROR_BENCHMARK_NOT_CONFIGURED = (
     "Benchmark integration not configured. Configure BENCHMARK_API_URL and "
     "BENCHMARK_API_KEY for production-like environments."
@@ -536,29 +532,32 @@ async def resolve_variable(
         source_type = v.get("sourceType", "user_input")
         source_location = v.get("sourceLocation")
 
-    # Resolve variable value based on source type
-    # In production, this queries CRM, benchmarks, formulas, etc.
+    # Resolve variable value based on source type.
+    # Never fabricate synthetic values. Fail closed for unimplemented integrations.
     value = None
     if source_type == "user_input":
-        value = f"input_value_for_{request.workspace_id}"
+        # User input must be provided by the caller; do not fabricate.
+        value = v.get("fallbackValue")
     elif source_type == "crm_field":
-        value = f"crm_value_for_{request.entity_id or 'unknown'}"
+        raise HTTPException(
+            status_code=503,
+            detail="CRM integration not configured. Set CRM_API_URL and CRM_API_KEY.",
+        )
     elif source_type == "benchmark_lookup":
-        if _is_production_like():
-            raise HTTPException(
-                status_code=503,
-                detail=_ERROR_BENCHMARK_NOT_CONFIGURED
-            )
-        logger.warning("Using mock benchmark value in development environment")
-        value = _DEV_MOCK_BENCHMARK_VALUE
+        raise HTTPException(
+            status_code=503,
+            detail=_ERROR_BENCHMARK_NOT_CONFIGURED,
+        )
     elif source_type == "formula_calculation":
-        if _is_production_like():
-            raise HTTPException(
-                status_code=503,
-                detail=_ERROR_FORMULA_NOT_CONFIGURED
-            )
-        logger.warning("Using mock formula calculation value in development environment")
-        value = _DEV_MOCK_FORMULA_VALUE
+        raise HTTPException(
+            status_code=503,
+            detail=_ERROR_FORMULA_NOT_CONFIGURED,
+        )
+    elif source_type == "ground_truth":
+        raise HTTPException(
+            status_code=503,
+            detail="Ground-truth integration not configured. Set LAYER5_BASE_URL.",
+        )
     else:
         value = v.get("fallbackValue")
 
@@ -578,7 +577,7 @@ async def resolve_variable(
         data_type=data_type,
         source_type=source_type,
         source_location=source_location,
-        confidence=1.0,
+        confidence=1.0 if value is not None else 0.0,
         extracted_at=datetime.now(UTC).isoformat(),
     )
 

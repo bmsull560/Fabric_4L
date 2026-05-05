@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     neo4j_max_pool_size: int = Field(default=50, alias="NEO4J_MAX_POOL_SIZE")
 
     # Security Configuration
-    jwt_secret: str = Field(default="changeme", alias="JWT_SECRET")
+    jwt_secret: str = Field(default="", alias="JWT_SECRET")
     cors_origins: list[str] = Field(default=[], alias="CORS_ORIGINS")
 
     @field_validator("jwt_secret")

@@ -1,0 +1,500 @@
+kind: Environment
+name: 'Fabric Dev'
+type: primary
+components:
+    -
+        kind: Application
+        name: frontend
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: apps/web
+        dockerCompose:
+            build:
+                context: .
+                dockerfile: ./apps/web/Dockerfile.dev
+            environment:
+                PLAYWRIGHT_LIVE_MODE: 'true'
+                VITE_API_BASE: /api/v1
+                VITE_ENABLE_MOCK_FALLBACK: 'false'
+                VITE_ENABLE_SSE: 'true'
+                VITE_PROXY_L1_URL: 'http://layer1:8000'
+                VITE_PROXY_L2_URL: 'http://layer2:8000'
+                VITE_PROXY_L3_URL: 'http://layer3:8001'
+                VITE_PROXY_L4_URL: 'http://layer4:8000'
+                VITE_PROXY_L5_URL: 'http://layer5:8005'
+                VITE_PROXY_L6_URL: 'http://layer6:8006'
+                VITE_USE_MOCKS: 'false'
+            healthcheck:
+                test:
+                    - CMD
+                    - node
+                    - '-e'
+                    - 'require(''http'').get(''http://127.0.0.1:3001'', (res) => process.exit(res.statusCode < 500 ? 0 : 1)).on(''error'', () => process.exit(1))'
+                timeout: 5s
+                interval: 15s
+                retries: 10
+                start_period: 20s
+            ports:
+                - '3001:3001'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+        hosts:
+            -
+                hostname: 'frontend-{{ env.base_domain }}'
+                path: /
+                servicePort: 3001
+    -
+        kind: Application
+        name: layer1
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer1-ingestion
+        dockerCompose:
+            build:
+                context: ./services/layer1-ingestion
+                dockerfile: ./Dockerfile
+                args:
+                    INSTALL_PLAYWRIGHT_BROWSERS: 'false'
+            environment:
+                JWT_SECRET: ${JWT_SECRET}
+                LAYER1_API_PORT: '8000'
+                LAYER1_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/ingestion'
+                LAYER1_DEBUG: 'true'
+                LAYER1_ENVIRONMENT: development
+                LAYER1_REDIS_URL: 'redis://redis:6379/0'
+                LAYER1_RELEASE_SMOKE_LIGHT_HEALTH: 'true'
+                LAYER1_S3_ACCESS_KEY: minioadmin
+                LAYER1_S3_BUCKET: layer1-raw-html
+                LAYER1_S3_ENDPOINT: 'http://minio:9000'
+                LAYER1_S3_SECRET_KEY: minioadmin
+            healthcheck:
+                test:
+                    - CMD
+                    - curl
+                    - '-f'
+                    - 'http://localhost:8000/health'
+                timeout: 5s
+                interval: 15s
+                retries: 5
+                start_period: 10s
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+    -
+        kind: Application
+        name: layer1-worker
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer1-ingestion
+        dockerCompose:
+            build:
+                context: ./services/layer1-ingestion
+                dockerfile: ./Dockerfile
+                args:
+                    INSTALL_PLAYWRIGHT_BROWSERS: 'false'
+            command:
+                - celery
+                - '-A'
+                - src.shared.tasks
+                - worker
+                - '--loglevel=info'
+                - '--concurrency=2'
+            environment:
+                LAYER1_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/ingestion'
+                LAYER1_ENVIRONMENT: development
+                LAYER1_REDIS_URL: 'redis://redis:6379/0'
+                LAYER1_S3_ACCESS_KEY: minioadmin
+                LAYER1_S3_ENDPOINT: 'http://minio:9000'
+                LAYER1_S3_SECRET_KEY: minioadmin
+                PYTHONPATH: /app
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+    -
+        kind: Application
+        name: layer2
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer2-extraction
+        dockerCompose:
+            build:
+                context: ./services/layer2-extraction
+                dockerfile: ./Dockerfile
+            environment:
+                ENVIRONMENT: development
+                LAYER2_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/layer2_extraction'
+                LAYER2_HEALTH_SKIP_LAYER3: 'true'
+                LAYER3_API_URL: 'http://layer3:8001'
+                LLM_MODEL: gpt-4o
+                LOG_LEVEL: info
+                NEO4J_PASSWORD: devpassword
+                NEO4J_URI: 'bolt://neo4j:7687'
+                NEO4J_USER: neo4j
+                OPENAI_API_KEY: ${OPENAI_API_KEY}
+                POSTGRES_DB: layer2_extraction
+                POSTGRES_HOST: postgres
+                POSTGRES_PASSWORD: postgres
+                POSTGRES_PORT: '5432'
+                POSTGRES_USER: postgres
+                REDIS_URL: 'redis://redis:6379/0'
+            healthcheck:
+                test:
+                    - CMD
+                    - curl
+                    - '-f'
+                    - 'http://localhost:8000/health'
+                timeout: 5s
+                interval: 15s
+                retries: 5
+                start_period: 10s
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+    -
+        kind: Application
+        name: layer3
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer3-knowledge
+        dockerCompose:
+            build:
+                context: ./services/layer3-knowledge
+                dockerfile: ./Dockerfile
+            environment:
+                LOG_LEVEL: info
+                NEO4J_PASSWORD: devpassword
+                NEO4J_URI: 'bolt://neo4j:7687'
+                NEO4J_USER: neo4j
+                POSTGRES_USER: postgres
+                REDIS_URL: 'redis://redis:6379/0'
+            healthcheck:
+                test:
+                    - CMD
+                    - curl
+                    - '-f'
+                    - 'http://localhost:8000/health'
+                timeout: 5s
+                interval: 15s
+                retries: 5
+                start_period: 10s
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+    -
+        kind: Application
+        name: layer4
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer4-agents
+        dockerCompose:
+            build:
+                context: ./services/layer4-agents
+                dockerfile: ./Dockerfile
+            environment:
+                ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+                CHECKPOINT_DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
+                DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents'
+                DEV_AUTH_BYPASS: 'true'
+                JWT_SECRET: ${JWT_SECRET}
+                LAYER1_API_URL: 'http://layer1:8000'
+                LAYER1_URL: 'http://layer1:8000'
+                LAYER2_API_URL: 'http://layer2:8000'
+                LAYER2_URL: 'http://layer2:8000'
+                LAYER3_API_URL: 'http://layer3:8001'
+                LAYER3_URL: 'http://layer3:8001'
+                LAYER5_GROUND_TRUTH_URL: 'http://layer5:8005'
+                LAYER6_BENCHMARKS_URL: 'http://layer6:8006'
+                LLM_MODEL: gpt-4o
+                LOG_LEVEL: debug
+                NEO4J_PASSWORD: devpassword
+                NEO4J_URI: 'bolt://neo4j:7687'
+                NEO4J_USER: neo4j
+                OPENAI_API_KEY: ${OPENAI_API_KEY}
+                PYTHONPATH: /app
+                REDIS_URL: 'redis://redis:6379/0'
+                SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
+            healthcheck:
+                test:
+                    - CMD
+                    - python
+                    - '-c'
+                    - 'import urllib.request; urllib.request.urlopen(''http://localhost:8000/health'')'
+                timeout: 5s
+                interval: 15s
+                retries: 5
+                start_period: 15s
+            ports:
+                - '8004:8000'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.5'
+                        memory: '512MiB'
+        hosts:
+            -
+                hostname: 'layer4-{{ env.base_domain }}'
+                path: /
+                servicePort: 8004
+    -
+        kind: Application
+        name: layer5
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer5-ground-truth
+        dockerCompose:
+            build:
+                context: ./services/layer5-ground-truth
+                dockerfile: ./Dockerfile
+            environment:
+                API_PORT: '8005'
+                DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
+                DATABASE_URL_SYNC: 'postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth'
+                ENVIRONMENT: development
+                JWT_ALGORITHM: HS256
+                JWT_SECRET: ${JWT_SECRET}
+                LAYER3_BASE_URL: 'http://layer3:8001'
+                LAYER3_SYNC_ENABLED: 'true'
+                LOG_LEVEL: info
+                REDIS_URL: 'redis://redis:6379/0'
+                SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
+            healthcheck:
+                test:
+                    - CMD
+                    - curl
+                    - '-f'
+                    - 'http://localhost:8005/api/v1/health'
+                timeout: 5s
+                interval: 15s
+                retries: 5
+                start_period: 20s
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+    -
+        kind: Application
+        name: layer5-migrate
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer5-ground-truth
+        dockerCompose:
+            build:
+                context: ./services/layer5-ground-truth
+                dockerfile: ./Dockerfile
+            command:
+                - sh
+                - '-lc'
+                - |
+                    attempts=0
+                    until alembic upgrade head; do
+                      attempts=$$((attempts + 1))
+                      if [ "$$attempts" -ge 24 ]; then
+                        echo "layer5 migration failed after $${attempts} attempts"
+                        exit 1
+                      fi
+                      echo "waiting for layer5 database ($${attempts}/24)"
+                      sleep 5
+                    done
+            environment:
+                DATABASE_URL_SYNC: 'postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth'
+                MIGRATION_CONNECT_ATTEMPTS: '12'
+                MIGRATION_CONNECT_DELAY_SECONDS: '5'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+    -
+        kind: Application
+        name: layer6
+        gitRepo: 'https://github.com/bmsull560/Fabric_4L.git'
+        gitBranch: main
+        gitApplicationPath: services/layer6-benchmarks
+        dockerCompose:
+            build:
+                context: ./services/layer6-benchmarks
+                dockerfile: ./Dockerfile
+            environment:
+                ENVIRONMENT: development
+                LOG_LEVEL: info
+                NEO4J_PASSWORD: devpassword
+                NEO4J_URI: 'bolt://neo4j:7687'
+                NEO4J_USER: neo4j
+                PORT: '8006'
+                REDIS_URL: 'redis://redis:6379/0'
+            healthcheck:
+                test:
+                    - CMD
+                    - curl
+                    - '-f'
+                    - 'http://localhost:8006/health'
+                timeout: 5s
+                interval: 15s
+                retries: 5
+                start_period: 5s
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+    -
+        kind: Service
+        name: minio
+        dockerCompose:
+            command:
+                - server
+                - /data
+                - '--console-address'
+                - ':9001'
+            environment:
+                MINIO_ROOT_PASSWORD: minioadmin
+                MINIO_ROOT_USER: minioadmin
+            healthcheck:
+                test:
+                    - CMD
+                    - curl
+                    - '-f'
+                    - 'http://localhost:9000/minio/health/live'
+                timeout: 5s
+                interval: 10s
+                retries: 5
+            image: 'minio/minio:latest'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+        volumes:
+            -
+                name: live-minio-data
+                mount: /data
+                subPath: ''
+    -
+        kind: Service
+        name: minio-init
+        dockerCompose:
+            entrypoint:
+                - /bin/sh
+                - '-c'
+                - |4-
+                     until /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin; do
+                      echo 'waiting for minio';
+                      sleep 2;
+                    done; /usr/bin/mc mb myminio/layer1-raw-html || true; /usr/bin/mc anonymous set none myminio/layer1-raw-html || true; exit 0; 
+            image: 'minio/mc:latest'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '128MiB'
+    -
+        kind: Service
+        name: neo4j
+        dockerCompose:
+            environment:
+                NEO4J_AUTH: neo4j/devpassword
+                NEO4J_PLUGINS: '["apoc"]'
+                NEO4J_dbms_memory_heap_max__size: 1G
+                NEO4J_dbms_memory_pagecache_size: 512m
+            healthcheck:
+                test:
+                    - CMD-SHELL
+                    - 'wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1'
+                timeout: 5s
+                interval: 10s
+                retries: 10
+                start_period: 1m0s
+            image: 'neo4j:5-community'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.5'
+                        memory: '512MiB'
+        volumes:
+            -
+                name: live-neo4j-data
+                mount: /data
+                subPath: ''
+    -
+        kind: Database
+        name: postgres
+        dockerCompose:
+            environment:
+                POSTGRES_DB: ingestion
+                POSTGRES_HOST_AUTH_METHOD: trust
+                POSTGRES_INITDB_ARGS: '-E UTF8 --locale=C'
+                POSTGRES_MULTIPLE_DATABASES: 'ingestion,layer2_extraction,ground_truth,layer4_agents'
+                POSTGRES_PASSWORD: postgres
+                POSTGRES_USER: postgres
+            healthcheck:
+                test:
+                    - CMD-SHELL
+                    - 'pg_isready -U postgres'
+                timeout: 3s
+                interval: 5s
+                retries: 5
+            image: 'postgres:15-alpine'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '2'
+                        memory: '2GiB'
+        volumes:
+            -
+                name: live-postgres-data
+                mount: /var/lib/postgresql/data
+                subPath: ''
+    -
+        kind: Service
+        name: redis
+        dockerCompose:
+            command:
+                - redis-server
+            healthcheck:
+                test:
+                    - CMD
+                    - redis-cli
+                    - ping
+                timeout: 3s
+                interval: 5s
+                retries: 3
+            image: 'redis:7-alpine'
+            deploy:
+                resources:
+                    limits:
+                        cpus: '0.25'
+                        memory: '256MiB'
+        volumes:
+            -
+                name: live-redis-data
+                mount: /data
+                subPath: ''
+volumes:
+    -
+        name: live-minio-data
+        size: 1Gi
+        type: disk
+    -
+        name: live-neo4j-data
+        size: 1Gi
+        type: disk
+    -
+        name: live-postgres-data
+        size: 1Gi
+        type: disk
+    -
+        name: live-redis-data
+        size: 1Gi
+        type: disk

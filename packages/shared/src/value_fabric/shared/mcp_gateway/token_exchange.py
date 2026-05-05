@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 import httpx
 
 from .mcp_types import DelegatedToken, GatewayError
+from value_fabric.shared.identity.jwt import encode_jwt
 
 logger = logging.getLogger(__name__)
 
@@ -138,8 +139,9 @@ class TokenExchanger:
             actor_token_data.update(additional_claims)
         
         # Actor token identifies the delegating party (the tool/runtime)
-        # In a full implementation, this would be a JWT signed by the platform
-        data["actor_token"] = self._create_actor_token(actor_token_data)
+        # Must be a real JWT signed with configured key material; fails closed
+        # if no signing key is configured.
+        data["actor_token"] = self._create_actor_token(actor_token_data, tenant_id)
         data["actor_token_type"] = "urn:ietf:params:oauth:token-type:jwt"
         
         # Add client authentication if configured
@@ -201,27 +203,23 @@ class TokenExchanger:
                 f"Failed to exchange token for tool '{tool_name}': {e}"
             ) from e
     
-    def _create_actor_token(self, claims: dict[str, Any]) -> str:
-        """Create a simple actor token for the delegation.
-        
-        In production, this should be a proper JWT signed with the platform's
-        private key. For now, we create a placeholder that includes the claims.
-        
+    def _create_actor_token(self, claims: dict[str, Any], tenant_id: UUID) -> str:
+        """Create a signed actor JWT for the delegation.
+
+        Fails closed if no signing key material is configured.
+
         Args:
             claims: Claims to include in the actor token
-            
+            tenant_id: Tenant ID for the token scope
+
         Returns:
-            Actor token string (JWT in production)
+            Signed JWT actor token
         """
-        # Placeholder: In production, sign a JWT with platform key
-        # import jwt
-        # return jwt.encode(claims, private_key, algorithm="RS256")
-        
-        # For now, return a base64-encoded JSON (not for production!)
-        import base64
-        import json
-        payload = json.dumps(claims).encode()
-        return base64.urlsafe_b64encode(payload).decode().rstrip("=")
+        return encode_jwt(
+            tenant_id=tenant_id,
+            extra_claims=claims,
+            expires_in_seconds=300,  # short-lived actor token
+        )
     
     async def close(self) -> None:
         """Close HTTP client connections."""

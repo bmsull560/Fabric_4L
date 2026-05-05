@@ -403,7 +403,12 @@ def _sqlite_path_from_url(database_url: str) -> str:
         raise UnsupportedDatabaseURL("sqlite database_url must include a database file path")
     if parsed.path == "/:memory:":
         return ":memory:"
-    db_path = Path(parsed.path)
+    # Strip leading slash on Windows so absolute paths work correctly
+    raw_path = parsed.path
+    import sys
+    if sys.platform == "win32" and len(raw_path) >= 3 and raw_path[0] == "/" and raw_path[2] == ":":
+        raw_path = raw_path[1:]
+    db_path = Path(raw_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     return str(db_path)
 
@@ -429,4 +434,48 @@ def create_database() -> InMemoryDatabase | SQLiteDatabase:
     return SQLiteDatabase(settings.database_url)
 
 
-db = create_database()
+# Lazy proxy to avoid import-time side effects when settings haven't been
+# configured yet (e.g. during test module loading).
+class _LazyDB:
+    """Lazy database proxy that creates the backing instance on first use."""
+
+    _instance: InMemoryDatabase | SQLiteDatabase | None = None
+
+    @classmethod
+    def _get(cls) -> InMemoryDatabase | SQLiteDatabase:
+        if cls._instance is None:
+            cls._instance = create_database()
+        return cls._instance
+
+    def __getattr__(self, name: str):
+        return getattr(self._get(), name)
+
+    def __setattr__(self, name: str, value):
+        if name == "_instance":
+            super().__setattr__(name, value)
+        else:
+            setattr(self._get(), name, value)
+
+    def __call__(self, *args, **kwargs):
+        return self._get()(*args, **kwargs)
+
+    def __iter__(self):
+        return iter(self._get())
+
+    def __contains__(self, item):
+        return item in self._get()
+
+    def __len__(self):
+        return len(self._get())
+
+    def __getitem__(self, key):
+        return self._get()[key]
+
+    def __setitem__(self, key, value):
+        self._get()[key] = value
+
+    def __delitem__(self, key):
+        del self._get()[key]
+
+
+db: InMemoryDatabase | SQLiteDatabase = _LazyDB()  # type: ignore[assignment]

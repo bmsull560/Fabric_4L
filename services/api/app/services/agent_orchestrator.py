@@ -223,4 +223,40 @@ class AgentOrchestrator:
         return run
 
 
-orchestrator = AgentOrchestrator()
+_orchestrator: AgentOrchestrator | None = None
+
+
+def get_orchestrator() -> AgentOrchestrator:
+    """Return the global orchestrator, creating it lazily on first use."""
+    global _orchestrator
+    if _orchestrator is None:
+        _orchestrator = AgentOrchestrator()
+    return _orchestrator
+
+
+# Lazy proxy for backward-compatible direct imports.
+class _LazyOrchestrator:
+    """Lazy proxy that instantiates AgentOrchestrator on first use."""
+
+    _instance: AgentOrchestrator | None = None
+
+    @classmethod
+    def _get(cls) -> AgentOrchestrator:
+        if cls._instance is None:
+            cls._instance = AgentOrchestrator()
+        return cls._instance
+
+    def __getattr__(self, name: str):
+        return getattr(self._get(), name)
+
+    def __setattr__(self, name: str, value):
+        if name == "_instance":
+            super().__setattr__(name, value)
+        else:
+            setattr(self._get(), name, value)
+
+    def __call__(self, *args, **kwargs):
+        return self._get()(*args, **kwargs)
+
+
+orchestrator: AgentOrchestrator = _LazyOrchestrator()  # type: ignore[assignment]

@@ -18,13 +18,16 @@ logger = logging.getLogger(__name__)
 # SECURITY: Secret key for HMAC-SHA256 key fingerprinting
 # Must be set in production to prevent key hash collisions
 _API_KEY_CACHE_SECRET = os.getenv("API_KEY_CACHE_SECRET")
-if not _API_KEY_CACHE_SECRET:
-    logger.warning(
-        "API_KEY_CACHE_SECRET not set. Using fallback (not recommended for production). "
-        "Set a 32+ byte random secret for secure API key caching."
-    )
-    # Fallback for backward compatibility - deterministic but not secure
-    _API_KEY_CACHE_SECRET = "CHANGE-ME-IN-PRODUCTION-32-BYTES-MIN"
+
+
+def _get_cache_secret() -> str:
+    secret = _API_KEY_CACHE_SECRET
+    if not secret:
+        raise RuntimeError(
+            "API_KEY_CACHE_SECRET environment variable is required. "
+            "Generate a 32+ byte random secret and set it before startup."
+        )
+    return secret
 
 # Redis client singleton
 _redis_client: redis.Redis | None = None
@@ -59,7 +62,7 @@ def _build_api_key_cache_key(api_key: str, tenant_id: UUID) -> str:
     """
     # SECURITY: Use HMAC-SHA256 for stable, secure key fingerprinting
     key_hash = hmac.new(
-        _API_KEY_CACHE_SECRET.encode('utf-8'),
+        _get_cache_secret().encode('utf-8'),
         api_key.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()[:32]  # First 32 chars (128 bits) sufficient for cache keys

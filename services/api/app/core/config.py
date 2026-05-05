@@ -83,12 +83,12 @@ class Settings(BaseSettings):
     secret_key: str = _DEFAULT_DEV_SECRET
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
-    mock_persistence: bool = True
+    mock_persistence: bool = False
     database_url: str | None = None
-    llm_provider: str = "mock"
+    llm_provider: str = ""
     llm_model: str | None = None
     allow_mock_llm: bool = False
-    seed_demo_data: bool = True
+    seed_demo_data: bool = False
     # Empty list = no cross-origin requests allowed by default (fail-closed).
     # Development get_settings() supplies localhost defaults only after warning.
     cors_origins: list[str] | str = []

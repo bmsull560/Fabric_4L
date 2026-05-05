@@ -720,60 +720,17 @@ async def calculate_scenario(
     ROI and payback metrics based on adjusted input variables.
     """
 
-    try:
-        # NOTE: Business case repository not yet implemented.
-        # Using representative demo data with explicit warning to API consumers.
-        # When repository is available, replace this block with actual fetch.
-        base_case_data = {
-            "total_value": 500000,
-            "implementation_cost": 200000,
-            "roi_ratio": 1.5,
-            "payback_months": 12.0,
-            "confidence_score": 0.85,
-        }
-        warnings = [
-            f"Using demo base case data (base_case_id={request.base_case_id} not found in repository). "
-            "Results are illustrative only."
-        ]
-        logger.warning(
-            f"Scenario calculation using demo data for base_case_id={request.base_case_id}. "
-            "Business case repository not yet implemented."
-        )
-
-        # Convert input adjustments to engine format
-        adjustments = [
-            VariableAdjustment(
-                name=adj.name,
-                value=adj.value,
-                original_value=adj.original_value,
-            )
-            for adj in request.adjustments
-        ]
-
-        # Calculate scenario with deterministic ID
-        result = scenario_engine.calculate_scenario(
-            base_case_data=base_case_data,
-            adjustments=adjustments,
-            scenario_id=None,  # Let engine generate deterministic ID
-        )
-
-        return ScenarioResponse(
-            scenario_id=result.scenario_id,
-            original_value=result.original_value,
-            adjusted_value=result.adjusted_value,
-            delta_percentage=result.delta_percentage,
-            new_roi=result.new_roi,
-            new_payback_months=result.new_payback_months,
-            formula_used=result.formula_used,
-            calculation_steps=result.calculation_steps,
-            warnings=warnings,
-        )
-
-    except Exception as e:
-        logger.exception("Scenario calculation failed for base_case_id=%s", request.base_case_id)
-        raise HTTPException(
-            status_code=400, detail=f"Scenario calculation failed: {type(e).__name__}"
-        ) from e
+    # Business case repository not yet implemented.
+    # Fail closed with 501 Not Implemented until real scenario calculation is wired.
+    logger.warning(
+        "Scenario calculation requested for base_case_id=%s but business case repository "
+        "is not yet implemented. Returning 501 Not Implemented.",
+        request.base_case_id,
+    )
+    raise HTTPException(
+        status_code=501,
+        detail="Scenario calculation is not yet implemented. Business case repository is pending.",
+    )
 
 
 # ============================================================================
