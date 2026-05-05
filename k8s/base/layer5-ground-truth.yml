@@ -37,9 +37,9 @@ spec:
           env:
             - name: DATABASE_URL_SYNC
               valueFrom:
-                configMapKeyRef:
-                  name: value-fabric-config
-                  key: LAYER5_DATABASE_URL_SYNC
+                secretKeyRef:
+                  name: layer5-db-credentials
+                  key: DATABASE_URL_SYNC
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -66,9 +66,15 @@ spec:
                 name: value-fabric-config
           env:
             - name: DATABASE_URL
-              value: "postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth"
+              valueFrom:
+                secretKeyRef:
+                  name: layer5-db-credentials
+                  key: DATABASE_URL
             - name: DATABASE_URL_SYNC
-              value: "postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth"
+              valueFrom:
+                secretKeyRef:
+                  name: layer5-db-credentials
+                  key: DATABASE_URL_SYNC
             - name: LAYER3_BASE_URL
               valueFrom:
                 configMapKeyRef:

@@ -11,7 +11,9 @@ data:
   LAYER4_API_URL: "http://layer4-agents:8000"
   LAYER5_API_URL: "http://layer5-ground-truth:8005"
   LAYER6_API_URL: "http://layer6-benchmarks:8006"
-  LAYER5_DATABASE_URL_SYNC: "postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth"
+  # Layer 5 database URLs are supplied by Secret `layer5-db-credentials`.
+  # Do not store database credentials in ConfigMaps; use k8s/external-secrets/layer5-secrets.yaml
+  # or create a Secret manually with DATABASE_URL and DATABASE_URL_SYNC keys.
   PINECONE_INDEX: ""
   
   # Neo4j configuration
