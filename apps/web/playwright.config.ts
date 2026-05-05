@@ -25,6 +25,10 @@ import { defineConfig, devices } from '@playwright/test';
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 const BACKEND_URL = process.env.PLAYWRIGHT_BACKEND_URL || '';
 const CI = process.env.CI === 'true';
+const LIVE_MODE = process.env.PLAYWRIGHT_LIVE_MODE === 'true';
+const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_REPORT || 'playwright-report';
+const JUNIT_OUTPUT_FILE = process.env.PLAYWRIGHT_JUNIT_FILE || 'e2e-results/junit.xml';
+const TEST_OUTPUT_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || 'e2e-results/';
 
 export default defineConfig({
   testDir: "./e2e",
@@ -44,8 +48,8 @@ export default defineConfig({
   /* Reporter configuration */
   reporter: [
     ['list'],
-    ['html', { open: 'never' }],
-    ['junit', { outputFile: 'e2e-results/junit.xml' }],
+    ['html', { open: 'never', outputFolder: HTML_REPORT_DIR }],
+    ['junit', { outputFile: JUNIT_OUTPUT_FILE }],
   ],
 
   /* Shared settings for all projects */
@@ -53,10 +57,10 @@ export default defineConfig({
     /* Base URL for all tests */
     baseURL: BASE_URL,
 
-    /* Collect trace on first retry, screenshot on failure */
-    trace: 'on-first-retry',
+    /* Collect complete traces in live mode so the validation gate has durable evidence. */
+    trace: LIVE_MODE ? 'on' : 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'on-first-retry',
+    video: LIVE_MODE ? 'retain-on-failure' : 'on-first-retry',
 
     /* Action timeout - generous for slower operations */
     actionTimeout: 15000,
@@ -143,7 +147,7 @@ export default defineConfig({
   },
 
   /* Output directories */
-  outputDir: 'e2e-results/',
+  outputDir: TEST_OUTPUT_DIR,
 
   /* Global setup/teardown if needed */
   // globalSetup: require.resolve('./e2e/global-setup'),

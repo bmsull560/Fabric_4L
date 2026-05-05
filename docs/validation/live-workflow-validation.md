@@ -280,3 +280,16 @@ If the gate fails, live validation remains `BLOCKED`. Do not substitute mocked E
 ## Scope Note
 
 This setup creates the live stack required to run validation. It does not imply that live workflows already pass.
+
+## Second Sprint Loop: Evidence, Seed, and Browser Artifact Hardening
+
+The second live-readiness loop extends the fail-closed validation model. The canonical command remains `scripts/ci/run_live_workflow_validation.sh`, but the runner now writes a richer evidence bundle under `artifacts/live-workflow-validation` or the `ARTIFACT_DIR` override. The bundle includes a Markdown summary, resolved compose configuration, container status, JSON-lines health state, endpoint probe results, sanitized per-service logs, optional seed output, and optional Playwright evidence.
+
+| Area | New behavior | Operational effect |
+|---|---|---|
+| Gate evidence | Failure paths collect sanitized container status, health, endpoint probes, and service logs. | A blocked or failed run now leaves enough evidence for remediation without requiring noisy raw console logs. |
+| Seed verification | `scripts/db/seed-e2e-data.ts` supports `SEED_REPORT_JSON`, `--report-json`, `SEED_STRICT=true`, and `--strict`. | Deterministic seed readiness is machine-readable, and strict seed runs fail closed when any required seed area is not present. |
+| Live Playwright | Live mode writes HTML, JUnit, and trace artifacts to deterministic locations via `PLAYWRIGHT_HTML_REPORT`, `PLAYWRIGHT_JUNIT_FILE`, and `PLAYWRIGHT_OUTPUT_DIR`. | A requested browser validation cannot be treated as complete unless durable browser evidence exists. |
+| Mock ban | The central `mockSequentialResponses` helper rejects live mode, and backend-required tests reject mock flags. | Live P0 validation cannot silently pass through route fulfillment helpers intended for fixture-only tests. |
+
+For a configuration-only check, run `ARTIFACT_DIR=/tmp/fabric-live-config ./scripts/ci/run_live_workflow_validation.sh --config-only`. For a full live run with deterministic seed and browser evidence, run `RUN_LIVE_SEED=true RUN_LIVE_PLAYWRIGHT=true ./scripts/ci/run_live_workflow_validation.sh --seed --playwright` against the live stack. A result should only be considered live-valid when the summary reports `PASS` and the referenced seed and Playwright artifacts exist.

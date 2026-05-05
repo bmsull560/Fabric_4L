@@ -170,6 +170,13 @@ export async function mockSequentialResponses(
   pattern: string,
   responses: Array<{ status?: number; body: unknown; delay?: number }>,
 ): Promise<void> {
+  if (isLiveValidationMode()) {
+    throw new Error(
+      `mockSequentialResponses cannot be used during live validation for pattern ${pattern}. ` +
+      'Live workflow validation must use real backend responses and route.fallback() only.',
+    );
+  }
+
   let callIndex = 0;
   await page.route(pattern, async (route: Route) => {
     const resp = responses[Math.min(callIndex, responses.length - 1)];
@@ -298,12 +305,40 @@ export async function attemptOptionalAction(page: Page, actionName: RegExp): Pro
 }
 
 export function requireBackendOrThrow(testName: string): void {
-  if (!process.env.PLAYWRIGHT_BACKEND_URL) {
+  const backendUrl = process.env.PLAYWRIGHT_BACKEND_URL;
+  if (!backendUrl) {
     throw new Error(
       `PLAYWRIGHT_BACKEND_URL is required for ${testName}. ` +
       'Run this suite in the backend-integrated project against seeded validation data.',
     );
   }
+
+  try {
+    const parsed = new URL(backendUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`unsupported protocol ${parsed.protocol}`);
+    }
+  } catch (error) {
+    throw new Error(
+      `PLAYWRIGHT_BACKEND_URL must be a valid http(s) URL for ${testName}. ` +
+      `Received: ${backendUrl}. ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  if (isTruthyEnv('VITE_USE_MOCKS') || isTruthyEnv('VITE_ENABLE_MOCK_FALLBACK') || isTruthyEnv('MSW') || isTruthyEnv('MOCKS_ENABLED')) {
+    throw new Error(
+      `Mock environment flags are forbidden for backend-integrated live validation in ${testName}. ` +
+      'Disable VITE_USE_MOCKS, VITE_ENABLE_MOCK_FALLBACK, MSW, and MOCKS_ENABLED.',
+    );
+  }
+}
+
+function isLiveValidationMode(): boolean {
+  return process.env.PLAYWRIGHT_LIVE_MODE === 'true';
+}
+
+function isTruthyEnv(name: string): boolean {
+  return /^(1|true|yes|on)$/i.test(process.env[name] ?? 'false');
 }
 
 export async function expectButtonStateIfVisible(

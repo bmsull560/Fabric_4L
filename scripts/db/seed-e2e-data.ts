@@ -21,10 +21,21 @@
 // Configuration
 // ---------------------------------------------------------------------------
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+
 const BASE_URL =
   process.argv.find((a) => a.startsWith('--base-url='))?.split('=')[1] ??
   process.env.PLAYWRIGHT_BACKEND_URL ??
   'http://localhost:8004';
+
+const REPORT_JSON =
+  process.argv.find((a) => a.startsWith('--report-json='))?.split('=')[1] ??
+  process.env.SEED_REPORT_JSON ??
+  '';
+
+const STRICT_SEED =
+  process.argv.includes('--strict') || /^(1|true|yes|on)$/i.test(process.env.SEED_STRICT ?? 'false');
 
 const E2E_TENANT_ID = '00000000-0000-4000-e2e0-000000000001';
 const E2E_TENANT_BETA_ID = '00000000-0000-4000-e2e0-000000000002';
@@ -103,6 +114,52 @@ function printSeedReport(): void {
       `| ${row.seedArea} | ${row.recordsCreated} | ${row.method} | ${row.persistenceVerified} | ${row.status} |`,
     );
   }
+}
+
+function aggregateSeedStatus(): SeedStatus {
+  if (reportRows.some((row) => row.status === 'blocked')) {
+    return 'blocked';
+  }
+  if (reportRows.some((row) => row.status === 'partial' || row.status === 'missing')) {
+    return 'partial';
+  }
+  return 'present';
+}
+
+function writeSeedReportJson(): void {
+  if (!REPORT_JSON) {
+    return;
+  }
+
+  const aggregateStatus = aggregateSeedStatus();
+  const requiredRowsPresent = reportRows.every((row) => row.status === 'present');
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    backendUrl: BASE_URL,
+    strictSeed: STRICT_SEED,
+    aggregateStatus,
+    requiredRowsPresent,
+    tenant: {
+      alphaTenantId: E2E_TENANT_ID,
+      betaTenantId: E2E_TENANT_BETA_ID,
+    },
+    users: {
+      admin: E2E_ADMIN_USER_ID,
+      reviewer: E2E_REVIEWER_USER_ID,
+      readOnly: E2E_READ_ONLY_USER_ID,
+      sales: E2E_SALES_USER_ID,
+    },
+    fixture: {
+      accountId: MERIDIAN_FIXTURE.account.id,
+      caseId: MERIDIAN_FIXTURE.case.id,
+      accountName: MERIDIAN_FIXTURE.account.name,
+    },
+    rows: reportRows,
+  };
+
+  mkdirSync(dirname(REPORT_JSON), { recursive: true });
+  writeFileSync(REPORT_JSON, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  console.log(`\nSeed report JSON written to ${REPORT_JSON}`);
 }
 
 async function verifyAccountExists(accountId: string): Promise<boolean> {
@@ -369,6 +426,12 @@ async function main() {
   }
   console.log('══════════════════════════════════════════════════════════');
   printSeedReport();
+  writeSeedReportJson();
+
+  if (STRICT_SEED && reportRows.some((row) => row.status !== 'present')) {
+    console.error('Strict seed verification failed: one or more required seed areas are not present.');
+    process.exit(1);
+  }
 }
 
 main().catch((err) => {
