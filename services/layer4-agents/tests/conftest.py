@@ -27,6 +27,58 @@ try:
 except ImportError:
     sys.modules["jinja2"] = MagicMock()
 
+try:
+    import opentelemetry  # noqa: F401
+except ImportError:
+    import types
+    class _AutoModule(types.ModuleType):
+        def __init__(self, name):
+            super().__init__(name)
+            self.__path__ = []
+        def __getattr__(self, name):
+            if name.startswith("_"):
+                raise AttributeError(name)
+            if name not in self.__dict__:
+                mod = _AutoModule(f"{self.__name__}.{name}")
+                self.__dict__[name] = mod
+                sys.modules[mod.__name__] = mod
+            return self.__dict__[name]
+    _otel = _AutoModule("opentelemetry")
+    sys.modules["opentelemetry"] = _otel
+    _otel.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter = type("OTLPSpanExporter", (), {})
+
+try:
+    import botocore  # noqa: F401
+except ImportError:
+    import types
+    _botocore = types.ModuleType("botocore")
+    _botocore.client = types.ModuleType("botocore.client")
+    _botocore.client.BaseClient = MagicMock()
+    _botocore.config = types.ModuleType("botocore.config")
+    _botocore.config.Config = MagicMock()
+    sys.modules["botocore"] = _botocore
+    sys.modules["botocore.client"] = _botocore.client
+    sys.modules["botocore.config"] = _botocore.config
+
+try:
+    import langgraph.checkpoint.postgres  # noqa: F401
+except ImportError:
+    import types
+    _lg_pg = types.ModuleType("langgraph.checkpoint.postgres")
+    _lg_pg_aio = types.ModuleType("langgraph.checkpoint.postgres.aio")
+    _lg_pg_aio.AsyncPostgresSaver = MagicMock()
+    _lg_pg.aio = _lg_pg_aio
+    sys.modules["langgraph.checkpoint.postgres"] = _lg_pg
+    sys.modules["langgraph.checkpoint.postgres.aio"] = _lg_pg_aio
+
+try:
+    import openai  # noqa: F401
+except ImportError:
+    import types
+    _openai = types.ModuleType("openai")
+    _openai.AsyncOpenAI = MagicMock
+    sys.modules["openai"] = _openai
+
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
 @pytest.fixture

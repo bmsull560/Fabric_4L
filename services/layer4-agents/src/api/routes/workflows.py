@@ -264,6 +264,10 @@ async def create_workflow(
     Returns:
         201 Created with workflow_instance_id and estimated duration
     """
+    # Validate tenant_id matches authenticated tenant
+    if _ctx.tenant_id and request.tenant_id != _ctx.tenant_id:
+        raise HTTPException(status_code=403, detail="tenant_id mismatch")
+
     try:
         # Map priority string to enum
         priority = PRIORITY_MAP.get(request.priority.upper(), TaskPriority.NORMAL)
@@ -399,6 +403,14 @@ async def get_workflow_status(
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
 
+    # Enforce tenant isolation
+    workflow_tenant = status.get("tenant_id")
+    if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )
+
     return WorkflowStatusResponse(
         workflow_instance_id=status.get("workflow_id", workflow_id),
         workflow_type=status.get("workflow_type", "unknown"),
@@ -431,6 +443,14 @@ async def get_workflow_result(
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
 
+    # Enforce tenant isolation
+    workflow_tenant = status.get("tenant_id")
+    if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )
+
     if status.get("status") not in TERMINAL_STATUSES:
         raise HTTPException(
             status_code=400,
@@ -453,6 +473,19 @@ async def cancel_workflow(
     _ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Cancel a running workflow - OpenAPI spec compliant (DELETE method)."""
+    status = await executor.get_workflow_status(workflow_id)
+
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+
+    # Enforce tenant isolation
+    workflow_tenant = status.get("tenant_id")
+    if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )
+
     cancelled = await executor.cancel_workflow(workflow_id)
 
     if not cancelled:
@@ -502,6 +535,14 @@ async def resume_workflow(
     status = await executor.get_workflow_status(workflow_id)
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+
+    # Enforce tenant isolation
+    workflow_tenant = status.get("tenant_id")
+    if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )
 
     if status.get("status") in TERMINAL_STATUSES:
         raise HTTPException(
@@ -569,6 +610,14 @@ async def pause_workflow(
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
 
+    # Enforce tenant isolation
+    workflow_tenant = status.get("tenant_id")
+    if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )
+
     current_status = status.get("status")
     if current_status in TERMINAL_STATUSES:
         raise HTTPException(
@@ -622,6 +671,15 @@ async def get_workflow_events(
         Event: workflow_event
         data: {"event_id": "...", "event_type": "node_started", ...}
     """
+    # Enforce tenant isolation before streaming
+    status = await executor.get_workflow_status(workflow_id)
+    if status:
+        workflow_tenant = status.get("tenant_id")
+        if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Workflow {workflow_id} does not belong to the current tenant",
+            )
 
     async def event_generator():
         """Generate SSE events for workflow."""

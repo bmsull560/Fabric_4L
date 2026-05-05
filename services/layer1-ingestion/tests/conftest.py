@@ -3,6 +3,31 @@
 import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
+
+# Stub optional heavy deps before any imports that transitively require them
+try:
+    import opentelemetry  # noqa: F401
+except ImportError:
+    import types
+    import importlib.util
+    def _make_pkg(name):
+        m = types.ModuleType(name)
+        m.__path__ = []
+        spec = importlib.util.spec_from_loader(name, loader=None)
+        spec.submodule_search_locations = []
+        m.__spec__ = spec
+        sys.modules[name] = m
+        return m
+    _otel = _make_pkg("opentelemetry")
+    _otel_sdk = _make_pkg("opentelemetry.sdk")
+    _otel_sdk.resources = _make_pkg("opentelemetry.sdk.resources")
+    _otel_sdk.resources.Resource = type("Resource", (), {})
+
+try:
+    import psycopg2  # noqa: F401
+except ImportError:
+    sys.modules["psycopg2"] = MagicMock()
 
 # Add src directory to Python path for imports
 src_path = str(Path(__file__).parent.parent / "src")

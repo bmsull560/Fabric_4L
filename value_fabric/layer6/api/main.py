@@ -7,6 +7,7 @@ P1-29: OpenTelemetry tracing integration for observability.
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -20,33 +21,18 @@ except ImportError:
     pass  # shared package not available; env vars used directly
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-# P1-29: OpenTelemetry imports for distributed tracing
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-try:
-    from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
-    from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
-except ImportError:
-    add_security_middleware = None
-    SecurityConfig = None
-    resolve_cors_policy = None
-    validate_production_safety = None
-
-if not SecurityConfig and os.getenv("ENVIRONMENT") in ("production", "staging"):
-    raise RuntimeError("SecurityMiddleware required in production")
-
-try:
-    from value_fabric.shared.observability import verify_metrics_access
-except ImportError:  # pragma: no cover
-    verify_metrics_access = None  # type: ignore[assignment]
+from ..shared_bootstrap import (
+    SecurityConfig,
+    add_security_middleware,
+    build_health_response,
+    create_fabric_app,
+    register_health_endpoint,
+    resolve_cors_policy,
+    validate_production_safety,
+    verify_metrics_access,
+)
 
 from ..database import close_driver, get_driver
 from ..database import health_check as neo4j_health_check
@@ -63,31 +49,6 @@ from .routes import benchmarks, system
 # Neo4j-backed repository (initialized in lifespan)
 _benchmark_repo: BenchmarkRepository | None = None
 _neo4j_startup_error: str | None = None
-
-# P1-29: OpenTelemetry tracer provider (initialized on startup)
-_tracer_provider: TracerProvider | None = None
-
-
-def init_telemetry() -> TracerProvider | None:
-    """Initialize OpenTelemetry tracing if endpoint configured.
-
-    P1-29: OpenTelemetry integration for distributed tracing.
-    """
-    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if not otel_endpoint:
-        return None
-
-    resource = Resource.create({SERVICE_NAME: "layer6-benchmarks"})
-    provider = TracerProvider(resource=resource)
-
-    exporter = OTLPSpanExporter(
-        endpoint=f"{otel_endpoint}/v1/traces"
-    )
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
-
-    trace.set_tracer_provider(provider)
-    return provider
 
 
 async def _init_seed_data():
@@ -129,14 +90,9 @@ async def _init_seed_data():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global _tracer_provider
+    validate_production_safety()
 
-    if validate_production_safety:
-        validate_production_safety()
-
-    # P1-29: Initialize OpenTelemetry
-    _tracer_provider = init_telemetry()
-    if _tracer_provider:
+    if app.state.telemetry_provider is not None:
         logger.info("L6: OpenTelemetry tracing initialized")
 
     # Initialize Prometheus metrics
@@ -178,16 +134,18 @@ async def lifespan(app: FastAPI):
     _benchmark_repo = None
 
 
-app = FastAPI(
+app = create_fabric_app(
+    service_name="layer6-benchmarks",
     title="Value Fabric - Benchmark Service",
     description="Comparative intelligence and peer benchmarking API",
     version="1.0.0",
     lifespan=lifespan,
+    cors_policy=resolve_cors_policy(),
+    telemetry_service_name="layer6-benchmarks",
+    instrument_telemetry=True,
 )
 
-# P1-29: Instrument FastAPI with OpenTelemetry (after app creation)
-if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-    FastAPIInstrumentor.instrument_app(app)
+if app.state.telemetry_provider is not None:
     logger.info("L6: FastAPI instrumented with OpenTelemetry")
 
 # Initialize Prometheus metrics and middleware at module level (before app starts)
@@ -199,12 +157,11 @@ if _metrics_instance:
 
 # SecurityMiddleware — input validation and security headers (before CORS)
 # L6 has no skip paths — all endpoints require strict validation
-if SecurityConfig and add_security_middleware:
-    _security_config_l6 = SecurityConfig.from_env(
-        skip_validation_paths=frozenset(),
-        strict_mode=True,
-    )
-    add_security_middleware(app, config=_security_config_l6)
+_security_config_l6 = SecurityConfig.from_env(
+    skip_validation_paths=frozenset(),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l6)
 
 # GovernanceMiddleware — provides auth and tenant context
 try:
@@ -221,11 +178,6 @@ except ImportError:
     logging.getLogger(__name__).warning(
         "shared.identity not importable — GovernanceMiddleware skipped in dev."
     )
-
-# CORS middleware with production validation (P0-20)
-if resolve_cors_policy:
-    _cors_policy = resolve_cors_policy()
-    app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
 
 # Custom metrics endpoint using our PrometheusMetrics class
 @app.get("/metrics", include_in_schema=False)
@@ -265,7 +217,6 @@ async def metrics_endpoint(request: Request):
 # Pydantic models for API (defined in schemas.py to avoid circular imports)
 # API Routes
 import time
-from datetime import datetime
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
@@ -293,9 +244,9 @@ class list_industriesResult(TypedDictModel):
     industries: Any
 
 
-async def health_check(request: Request = None):
+async def health_check(request: Request | None = None):
     """Health check endpoint with dependency and system status."""
-    import psutil
+    import psutil  # type: ignore[import-untyped]
 
     start_time = time.time()
 
@@ -343,20 +294,20 @@ async def health_check(request: Request = None):
         request.app.state.metrics.set_health_status(overall_status == "healthy", component="api")
         request.app.state.metrics.set_datasets_loaded(dataset_count)
 
-    return health_checkResult.model_validate({
-        "status": overall_status,
-        "service": "layer6-benchmarks",
-        "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat(),
-        "response_time_ms": response_time_ms,
-        "datasets_loaded": dataset_count,
-        "dependencies": dependencies,
-        "system": {
+    return health_checkResult.model_validate(build_health_response(
+        service_name="layer6-benchmarks",
+        status=overall_status,
+        version="1.0.0",
+        timestamp=datetime.utcnow().isoformat(),
+        response_time_ms=response_time_ms,
+        datasets_loaded=dataset_count,
+        dependencies=dependencies,
+        system={
             "memory_usage_mb": round(memory_info.used / (1024 * 1024), 2),
             "memory_percent": memory_info.percent,
             "cpu_percent": cpu_percent,
         },
-    })
+    ))
 
 
 async def list_datasets(
@@ -539,6 +490,9 @@ async def list_industries():
     datasets = await _benchmark_repo.list_datasets()
     industries = {d.industry for d in datasets}
     return list_industriesResult.model_validate({"industries": sorted(industries)})
+
+
+register_health_endpoint(app, service_name="layer6-benchmarks", handler=health_check)
 
 app.include_router(system.router)
 app.include_router(benchmarks.router)
