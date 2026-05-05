@@ -293,3 +293,19 @@ The second live-readiness loop extends the fail-closed validation model. The can
 | Mock ban | The central `mockSequentialResponses` helper rejects live mode, and backend-required tests reject mock flags. | Live P0 validation cannot silently pass through route fulfillment helpers intended for fixture-only tests. |
 
 For a configuration-only check, run `ARTIFACT_DIR=/tmp/fabric-live-config ./scripts/ci/run_live_workflow_validation.sh --config-only`. For a full live run with deterministic seed and browser evidence, run `RUN_LIVE_SEED=true RUN_LIVE_PLAYWRIGHT=true ./scripts/ci/run_live_workflow_validation.sh --seed --playwright` against the live stack. A result should only be considered live-valid when the summary reports `PASS` and the referenced seed and Playwright artifacts exist.
+
+## Third Sprint Loop: Machine-Readable Evidence and Seed Preflight Contract
+
+The third live-readiness loop hardens the validation gate for CI and operator consumption. In addition to the existing Markdown summary, the live validation runner now emits `live-workflow-validation-summary.json` and `artifact-manifest.json` under the configured artifact directory. The JSON summary is the preferred machine-readable contract for CI promotion rules because it records the validation status, detail, requested seed and Playwright modes, resolved endpoint URLs, and expected artifact paths. The artifact manifest records every generated file with relative path, type, and size so a downstream job can archive evidence without scraping the console log.
+
+| Artifact | Purpose | Required for config-only gate | Required for full live gate |
+|---|---|---:|---:|
+| `live-workflow-validation-summary.md` | Human-readable gate result and artifact index. | Yes | Yes |
+| `live-workflow-validation-summary.json` | Machine-readable status, detail, URL, and artifact-presence contract. | Yes | Yes |
+| `artifact-manifest.json` | Durable inventory of files generated beneath the artifact root. | Yes | Yes |
+| `docker-compose.live.resolved.yml` | Resolved compose configuration used by the gate. | Yes | Yes |
+| `endpoint-probes.tsv` | Frontend and backend endpoint status codes. | No | Yes |
+| `seed-report.json` | Strict deterministic seed contract and backend preflight details. | Only when seed is requested | Required when seed is requested |
+| `playwright/html`, `playwright/junit.xml`, and trace ZIP files | Browser validation evidence. | Only when Playwright is requested | Required when Playwright is requested |
+
+The deterministic seed runner now performs a backend contract preflight before mutating data. Required probes include `/health`, the account read route, and the analysis case list route. Optional probes, such as tenant settings discovery, are recorded in the seed report but do not independently block seeding unless the strict seed report later records a required seed area as missing or blocked. This preserves the fail-closed rule: a full live validation cannot be promoted as **PASS** from partial seed data or missing browser artifacts.

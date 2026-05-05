@@ -54,6 +54,16 @@ interface SeedReportRow {
   status: SeedStatus;
 }
 
+interface BackendEndpointProbe {
+  name: string;
+  method: string;
+  path: string;
+  status: number | 'network-error';
+  acceptedStatuses: number[];
+  ok: boolean;
+  required: boolean;
+}
+
 // Headers injected on every request — DEV_AUTH_BYPASS reads these
 const HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
@@ -65,6 +75,7 @@ const HEADERS: Record<string, string> = {
 };
 
 const reportRows: SeedReportRow[] = [];
+const backendEndpointProbes: BackendEndpointProbe[] = [];
 
 // ---------------------------------------------------------------------------
 // Canonical Fixture: Meridian Automotive
@@ -98,6 +109,67 @@ async function api(
   }
 
   return { status: res.status, data };
+}
+
+
+async function probeBackendEndpoint(
+  name: string,
+  method: string,
+  path: string,
+  acceptedStatuses: number[],
+  required = true,
+): Promise<BackendEndpointProbe> {
+  try {
+    const result = await api(method, path);
+    const probe = {
+      name,
+      method,
+      path,
+      status: result.status,
+      acceptedStatuses,
+      ok: acceptedStatuses.includes(result.status),
+      required,
+    } satisfies BackendEndpointProbe;
+    backendEndpointProbes.push(probe);
+    return probe;
+  } catch {
+    const probe = {
+      name,
+      method,
+      path,
+      status: 'network-error',
+      acceptedStatuses,
+      ok: false,
+      required,
+    } satisfies BackendEndpointProbe;
+    backendEndpointProbes.push(probe);
+    return probe;
+  }
+}
+
+async function runBackendPreflight(): Promise<boolean> {
+  console.log('[0/7] Backend contract preflight...');
+  const probes = [
+    await probeBackendEndpoint('Backend health', 'GET', '/health', [200], true),
+    await probeBackendEndpoint('Account read route', 'GET', `/v1/accounts/${MERIDIAN_FIXTURE.account.id}`, [200, 404], true),
+    await probeBackendEndpoint('Analysis case list route', 'GET', `/v1/analysis/cases?account_id=${MERIDIAN_FIXTURE.account.id}`, [200], true),
+    await probeBackendEndpoint('Tenant settings route', 'GET', '/v1/tenant/settings', [200, 404, 405], false),
+  ];
+
+  for (const probe of probes) {
+    console.log(`  ${probe.ok ? '✓' : '✗'} ${probe.method} ${probe.path} -> ${probe.status}`);
+  }
+
+  const failedRequired = probes.filter((probe) => probe.required && !probe.ok);
+  recordSeed({
+    seedArea: 'Backend endpoint preflight',
+    recordsCreated: 'n/a',
+    method: probes.map((probe) => `${probe.method} ${probe.path}`).join('; '),
+    persistenceVerified: failedRequired.length === 0 ? 'all required endpoint probes accepted' : `${failedRequired.length} required probe(s) failed`,
+    status: failedRequired.length === 0 ? 'present' : 'blocked',
+  });
+
+  return failedRequired.length === 0;
 }
 
 function recordSeed(row: SeedReportRow): void {
@@ -153,6 +225,11 @@ function writeSeedReportJson(): void {
       accountId: MERIDIAN_FIXTURE.account.id,
       caseId: MERIDIAN_FIXTURE.case.id,
       accountName: MERIDIAN_FIXTURE.account.name,
+    },
+    backendPreflight: {
+      requiredProbeCount: backendEndpointProbes.filter((probe) => probe.required).length,
+      failedRequiredProbeCount: backendEndpointProbes.filter((probe) => probe.required && !probe.ok).length,
+      probes: backendEndpointProbes,
     },
     rows: reportRows,
   };
@@ -274,25 +351,18 @@ async function main() {
   console.log(`  Tenant:  ${E2E_TENANT_ID}`);
   console.log('');
 
-  // Step 0: Health check
-  console.log('[0/6] Health check...');
-  const health = await api('GET', '/health');
-  if (health.status !== 200) {
-    console.error(`  ✗ Backend not healthy (status ${health.status})`);
-    console.error('  → Is docker-compose.e2e.yml running?');
+  // Step 0: Backend contract preflight
+  const preflightOk = await runBackendPreflight();
+  if (!preflightOk) {
+    console.error('  ✗ Backend contract preflight failed. Aborting before mutating seed data.');
+    printSeedReport();
+    writeSeedReportJson();
     process.exit(1);
   }
-  console.log('  ✓ Backend healthy');
-  recordSeed({
-    seedArea: 'Backend health',
-    recordsCreated: 'n/a',
-    method: 'GET /health',
-    persistenceVerified: '200 OK',
-    status: 'present',
-  });
+  console.log('  ✓ Backend preflight passed');
 
   // Step 1: Seed account
-  console.log('\n[1/6] Seeding account...');
+  console.log('\n[1/7] Seeding account...');
   await upsertAccount(MERIDIAN_FIXTURE.account);
   recordSeed({
     seedArea: 'Tenant Alpha account',
@@ -303,7 +373,7 @@ async function main() {
   });
 
   // Step 2: Ensure case exists
-  console.log('\n[2/6] Ensuring case workspace...');
+  console.log('\n[2/7] Ensuring case workspace...');
   const caseId = await ensureCase(
     MERIDIAN_FIXTURE.account.id,
     MERIDIAN_FIXTURE.case,
@@ -322,7 +392,7 @@ async function main() {
   });
 
   // Step 3: Seed workspace tabs (intelligence)
-  console.log('\n[3/6] Seeding intelligence workspace...');
+  console.log('\n[3/7] Seeding intelligence workspace...');
   await seedWorkspaceTab(caseId, 'signals', MERIDIAN_FIXTURE.workspace.signals);
   await seedWorkspaceTab(caseId, 'drivers', MERIDIAN_FIXTURE.workspace.drivers);
   await seedWorkspaceTab(caseId, 'evidence', MERIDIAN_FIXTURE.workspace.evidence);
@@ -348,7 +418,7 @@ async function main() {
   });
 
   // Step 4: Seed value studio tabs
-  console.log('\n[4/6] Seeding value studio workspace...');
+  console.log('\n[4/7] Seeding value studio workspace...');
   await seedWorkspaceTab(caseId, 'value-model', MERIDIAN_FIXTURE.workspace.valueModel);
   await seedWorkspaceTab(caseId, 'narrative', MERIDIAN_FIXTURE.workspace.narrative);
   await seedWorkspaceTab(caseId, 'action-plan', MERIDIAN_FIXTURE.workspace.actionPlan);
@@ -371,7 +441,7 @@ async function main() {
   });
 
   // Step 5: Seed platform settings
-  console.log('\n[5/6] Seeding platform settings...');
+  console.log('\n[5/7] Seeding platform settings...');
   const settingsResult = await api('PATCH', '/v1/tenant/settings', MERIDIAN_FIXTURE.settings);
   if (settingsResult.status >= 200 && settingsResult.status < 300) {
     console.log('  ✓ Platform settings seeded');
@@ -387,7 +457,7 @@ async function main() {
   });
 
   // Step 6: Verification
-  console.log('\n[6/6] Verifying seed data...');
+  console.log('\n[6/7] Verifying seed data...');
   const verifyAccount = await api(
     'GET',
     `/v1/accounts/${MERIDIAN_FIXTURE.account.id}`,

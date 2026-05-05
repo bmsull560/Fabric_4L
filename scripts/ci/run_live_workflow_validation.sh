@@ -74,6 +74,8 @@ done
 mkdir -p "$ARTIFACT_DIR"
 LOG_FILE="$ARTIFACT_DIR/live-workflow-validation.log"
 SUMMARY_FILE="$ARTIFACT_DIR/live-workflow-validation-summary.md"
+SUMMARY_JSON_FILE="$ARTIFACT_DIR/live-workflow-validation-summary.json"
+ARTIFACT_MANIFEST_FILE="$ARTIFACT_DIR/artifact-manifest.json"
 COMPOSE_CONFIG_FILE="$ARTIFACT_DIR/docker-compose.live.resolved.yml"
 CONTAINER_STATUS_FILE="$ARTIFACT_DIR/container-status.txt"
 HEALTH_STATUS_FILE="$ARTIFACT_DIR/container-health.jsonl"
@@ -119,6 +121,8 @@ write_summary() {
 | seed_requested | ${RUN_LIVE_SEED} |
 | playwright_requested | ${RUN_LIVE_PLAYWRIGHT} |
 | log_file | ${LOG_FILE} |
+| summary_json | ${SUMMARY_JSON_FILE} |
+| artifact_manifest | ${ARTIFACT_MANIFEST_FILE} |
 | compose_config | ${COMPOSE_CONFIG_FILE} |
 | container_status | ${CONTAINER_STATUS_FILE} |
 | health_status | ${HEALTH_STATUS_FILE} |
@@ -128,6 +132,77 @@ write_summary() {
 | playwright_artifacts | ${PLAYWRIGHT_ARTIFACT_DIR} |
 
 SUMMARY
+  write_machine_summary "$status" "$detail"
+  write_artifact_manifest "$status"
+}
+
+write_machine_summary() {
+  local status="$1"
+  local detail="$2"
+  STATUS="$status" DETAIL="$detail"   SUMMARY_JSON_FILE="$SUMMARY_JSON_FILE"   LOG_FILE="$LOG_FILE" SUMMARY_FILE="$SUMMARY_FILE"   ARTIFACT_MANIFEST_FILE="$ARTIFACT_MANIFEST_FILE"   COMPOSE_FILE="$COMPOSE_FILE" COMPOSE_CONFIG_FILE="$COMPOSE_CONFIG_FILE"   CONTAINER_STATUS_FILE="$CONTAINER_STATUS_FILE" HEALTH_STATUS_FILE="$HEALTH_STATUS_FILE"   ENDPOINT_PROBES_FILE="$ENDPOINT_PROBES_FILE" SERVICE_LOG_DIR="$SERVICE_LOG_DIR"   SEED_REPORT_JSON="$SEED_REPORT_JSON" PLAYWRIGHT_ARTIFACT_DIR="$PLAYWRIGHT_ARTIFACT_DIR"   FRONTEND_URL="$FRONTEND_URL" BACKEND_URL="$BACKEND_URL"   RUN_LIVE_SEED="$RUN_LIVE_SEED" RUN_LIVE_PLAYWRIGHT="$RUN_LIVE_PLAYWRIGHT"   node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const exists = (p) => Boolean(p) && fs.existsSync(p);
+const payload = {
+  generatedAt: new Date().toISOString(),
+  status: process.env.STATUS,
+  detail: process.env.DETAIL,
+  composeFile: process.env.COMPOSE_FILE,
+  frontendUrl: process.env.FRONTEND_URL,
+  backendUrl: process.env.BACKEND_URL,
+  seedRequested: process.env.RUN_LIVE_SEED === 'true',
+  playwrightRequested: process.env.RUN_LIVE_PLAYWRIGHT === 'true',
+  artifacts: {
+    markdownSummary: process.env.SUMMARY_FILE,
+    jsonSummary: process.env.SUMMARY_JSON_FILE,
+    manifest: process.env.ARTIFACT_MANIFEST_FILE,
+    log: process.env.LOG_FILE,
+    composeConfig: process.env.COMPOSE_CONFIG_FILE,
+    containerStatus: process.env.CONTAINER_STATUS_FILE,
+    healthStatus: process.env.HEALTH_STATUS_FILE,
+    endpointProbes: process.env.ENDPOINT_PROBES_FILE,
+    serviceLogs: process.env.SERVICE_LOG_DIR,
+    seedReportJson: process.env.SEED_REPORT_JSON,
+    playwrightArtifacts: process.env.PLAYWRIGHT_ARTIFACT_DIR,
+  },
+  artifactPresence: {
+    log: exists(process.env.LOG_FILE),
+    composeConfig: exists(process.env.COMPOSE_CONFIG_FILE),
+    containerStatus: exists(process.env.CONTAINER_STATUS_FILE),
+    healthStatus: exists(process.env.HEALTH_STATUS_FILE),
+    endpointProbes: exists(process.env.ENDPOINT_PROBES_FILE),
+    seedReportJson: exists(process.env.SEED_REPORT_JSON),
+    playwrightArtifacts: exists(process.env.PLAYWRIGHT_ARTIFACT_DIR),
+  },
+};
+fs.mkdirSync(path.dirname(process.env.SUMMARY_JSON_FILE), { recursive: true });
+fs.writeFileSync(process.env.SUMMARY_JSON_FILE, `${JSON.stringify(payload, null, 2)}
+`);
+NODE
+}
+
+write_artifact_manifest() {
+  local status="$1"
+  STATUS="$status" ARTIFACT_DIR="$ARTIFACT_DIR" ARTIFACT_MANIFEST_FILE="$ARTIFACT_MANIFEST_FILE" node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const root = process.env.ARTIFACT_DIR;
+const entries = [];
+function walk(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const name of fs.readdirSync(dir).sort()) {
+    const abs = path.join(dir, name);
+    const rel = path.relative(root, abs) || '.';
+    const stat = fs.statSync(abs);
+    entries.push({ path: rel, type: stat.isDirectory() ? 'directory' : 'file', bytes: stat.isFile() ? stat.size : 0 });
+    if (stat.isDirectory()) walk(abs);
+  }
+}
+walk(root);
+const payload = { generatedAt: new Date().toISOString(), status: process.env.STATUS, artifactRoot: root, entries };
+fs.writeFileSync(process.env.ARTIFACT_MANIFEST_FILE, `${JSON.stringify(payload, null, 2)}
+`);
+NODE
 }
 
 compose_ps_safe() {
