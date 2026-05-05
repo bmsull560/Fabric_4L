@@ -53,4 +53,6 @@ class TestPackagedSystemRoutes:
         response = test_client.get("/metrics")
 
         assert response.status_code == 403
-        assert response.json() == {"detail": "Metrics endpoint requires internal access"}
+        data = response.json()
+        assert data["code"] == "AUTHORIZATION_ERROR"
+        assert data["message"] == "Metrics endpoint requires internal access"

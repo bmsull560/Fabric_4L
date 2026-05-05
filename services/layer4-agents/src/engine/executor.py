@@ -12,6 +12,7 @@ This implements the OrchestrationController agent type from the specification.
 
 import asyncio
 import logging
+import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -39,6 +40,8 @@ from ..tools.registry import ToolRegistry
 from ..workflows import create_workflow
 from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from .state_manager import StateManager
+
+sys.modules.setdefault("src.engine.executor", sys.modules[__name__])
 
 
 class OrchestrationController_get_resultResult(TypedDictModel):

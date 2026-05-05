@@ -2130,7 +2130,7 @@ async def list_entities(
         raise HTTPException(status_code=500, detail="Entity listing failed. Please try again later.")
 
 
-@app.get("/v1/entities/{{entity_id}}", response_model=EntityDetail)
+@app.get("/v1/entities/{entity_id}", response_model=EntityDetail)
 async def get_entity_detail(
     entity_id: str,
     request: Request,  # Sprint 5: For tenant context extraction
@@ -2206,7 +2206,7 @@ async def get_entity_detail(
                     confidence_label = "low"
 
             # Build relationships if requested
-            relationships = EntityRelationships()
+            relationships = EntityRelationships(total_count=0)
             if include_relationships:
                 # Outgoing relationships with mandatory tenant filtering
                 outgoing_query = """
@@ -2332,9 +2332,9 @@ async def query_entities(
         return await list_entities(
             request=fastapi_request,
             search_text=request.search_text,
-            entity_types=request.entity_types,
+            entity_types=[str(entity_type) for entity_type in request.entity_types] if request.entity_types else None,
             domains=request.domains,
-            statuses=request.statuses,
+            statuses=[str(status) for status in request.statuses] if request.statuses else None,
             min_confidence=request.min_confidence,
             max_confidence=request.max_confidence,
             limit=request.limit,

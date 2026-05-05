@@ -41,7 +41,7 @@ def _merge_dicts(left: dict[str, Any] | None, right: dict[str, Any] | None) -> d
 
     Used with Annotated for output_data to accumulate node results.
     """
-    return _merge_dictsResult.model_validate({**(left or {}), **(right or {})})
+    return {**(left or {}), **(right or {})}
 
 
 class WorkflowStatus(str, Enum):

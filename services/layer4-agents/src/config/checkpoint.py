@@ -46,7 +46,11 @@ class CheckpointConfig:
     @classmethod
     def get_database_url(cls) -> str:
         """Get checkpoint database URL from environment."""
-        url = os.getenv("CHECKPOINT_DATABASE_URL")
+        url = (
+            os.getenv("CHECKPOINT_DATABASE_URL")
+            or os.getenv("DATABASE_URL")
+            or "postgresql://localhost/value_fabric_checkpoints"
+        )
         if not url:
             raise RuntimeError(
                 "CHECKPOINT_DATABASE_URL environment variable is required. "
