@@ -11,7 +11,7 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
-import Ajv, { ValidateFunction } from 'ajv';
+import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -104,7 +104,7 @@ export function assertOpenApiSchema(
 
   if (!valid) {
     const issues = (validate.errors || [])
-      .map((e) => `  ${e.instancePath || '(root)'}: ${e.message}`)
+      .map((e: ErrorObject) => `  ${e.instancePath || '(root)'}: ${e.message}`)
       .join('\n');
     throw new Error(`OpenAPI contract violation for ${label} (${specFile} ${ref}):\n${issues}`);
   }

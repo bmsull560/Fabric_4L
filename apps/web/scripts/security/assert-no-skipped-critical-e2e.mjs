@@ -38,6 +38,9 @@ const criticalFiles = [
   'e2e/journeys/j10-layer-ui-validation-deep.spec.ts',
   'e2e/security/tenant-isolation-deep.spec.ts',
   'e2e/export/export-workflows-deep.spec.ts',
+  'docs/frontend-workflow-coverage-matrix.md',
+  'scripts/quality/assert-frontend-workflow-matrix.mjs',
+  'scripts/quality/verify-frontend.mjs',
 ];
 
 const forbidden = [
@@ -129,6 +132,26 @@ const requiredEvidence = [
     file: 'e2e/journeys/j9-agent-grounding-deep.spec.ts',
     pattern: /AG-DEEP-001/,
     label: 'deep agent grounding validation coverage',
+  },
+  {
+    file: 'docs/frontend-workflow-coverage-matrix.md',
+    pattern: /P0-ACCOUNT-LIFECYCLE[\s\S]*P0-CALC-EVIDENCE[\s\S]*P0-APPROVAL-EXPORT[\s\S]*P0-AGENT-GOVERNANCE[\s\S]*P0-LAYER-VALIDATION/,
+    label: 'P0 workflow coverage matrix rows',
+  },
+  {
+    file: 'package.json',
+    pattern: /verify:frontend/,
+    label: 'single frontend verification command',
+  },
+  {
+    file: 'package.json',
+    pattern: /test:workflow-matrix/,
+    label: 'workflow matrix validation command',
+  },
+  {
+    file: 'package.json',
+    pattern: /test:bundle-budget/,
+    label: 'frontend bundle-budget command',
   },
   {
     file: 'e2e/export/export-workflows-deep.spec.ts',
