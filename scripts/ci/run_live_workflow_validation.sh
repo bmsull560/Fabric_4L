@@ -97,11 +97,12 @@ section() {
 }
 
 sanitize_stream() {
-  sed -E \
-    -e 's#(postgresql|postgres|mysql|redis|mongodb)://[^[:space:]@]+:[^[:space:]@]+@#\1://[REDACTED]@#Ig' \
-    -e 's#(Authorization: )[^
-[:space:]]+#\1[REDACTED]#Ig' \
-    -e 's#((password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)[[:space:]_:-]*=)[^[:space:],;]+#\1[REDACTED]#Ig'
+  perl -pe '
+    s#(postgresql|postgres|mysql|redis|mongodb)://[^\s@]+:[^\s@]+@#$1://[REDACTED]@#ig;
+    s#(Authorization:\s*)\S+#$1[REDACTED]#ig;
+    s#((?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)\s*[=:]\s*)\S+#$1[REDACTED]#ig;
+    s#(^\s*[A-Z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|ACCESS_KEY|PRIVATE_KEY)[A-Z0-9_]*:\s*)\S+#$1[REDACTED]#ig;
+  '
 }
 
 write_summary() {
@@ -309,7 +310,7 @@ section "frontend guardrails"
 )
 
 section "compose config"
-docker-compose -f "$COMPOSE_FILE" config > "$COMPOSE_CONFIG_FILE"
+docker-compose -f "$COMPOSE_FILE" config | sanitize_stream > "$COMPOSE_CONFIG_FILE"
 echo "resolved compose saved to $COMPOSE_CONFIG_FILE"
 
 if [[ "$CONFIG_ONLY" == "true" ]]; then
