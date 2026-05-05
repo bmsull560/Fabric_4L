@@ -173,6 +173,7 @@ from .models import (
     SearchRequest,
     SearchResponse,
     SearchResult,
+    SearchType,
     ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
@@ -876,6 +877,7 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
                 DependencyStatus(
                     name="neo4j",
                     status="degraded",
+                    response_time_ms=None,
                     error="Neo4j not initialized",
                     details={
                         "uri": settings.neo4j_uri,
@@ -911,6 +913,7 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
             DependencyStatus(
                 name="neo4j",
                 status="unhealthy",
+                response_time_ms=None,
                 error=str(e),
                 details={"uri": settings.neo4j_uri},
             )
@@ -928,12 +931,18 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
                     name="pinecone",
                     status="healthy",
                     response_time_ms=response_time,
+                    error=None,
                     details={"index": settings.pinecone_index},
                 )
             )
         except Exception as e:
             dependencies.append(
-                DependencyStatus(name="pinecone", status="unhealthy", error=str(e))
+                DependencyStatus(
+                    name="pinecone",
+                    status="unhealthy",
+                    response_time_ms=None,
+                    error=str(e),
+                )
             )
 
     return dependencies
@@ -1145,8 +1154,11 @@ async def health_check(
     metrics = get_system_metrics()
 
     # Check Neo4j health (handle case where schema_initializer is None)
-    neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
-    schema_status = {"status": "unknown", "message": "Schema initializer not available"}
+    neo4j_health: dict[str, Any] = {"status": "unavailable", "message": "Neo4j not initialized"}
+    schema_status: dict[str, Any] = {
+        "status": "unknown",
+        "message": "Schema initializer not available",
+    }
 
     if schema_initializer is not None:
         try:
@@ -1155,7 +1167,11 @@ async def health_check(
                 schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
             else:
                 health_result = await schema_initializer.health_check()
-                neo4j_health = health_result.model_dump() if health_result else None
+                neo4j_health = (
+                    health_result.model_dump()
+                    if health_result
+                    else {"status": "unknown", "message": "Neo4j health unavailable"}
+                )
                 schema_status = await schema_initializer.verify_schema()
         except Exception:
             logger.warning(
@@ -1168,7 +1184,7 @@ async def health_check(
             schema_status = {"status": "error", "message": error_msg}
 
     # Determine overall status (priority: unhealthy > degraded > healthy)
-    overall_status = "healthy"
+    overall_status: Literal["healthy", "unhealthy", "degraded"] = "healthy"
     if schema_initializer is None or (schema_initializer is not None and getattr(schema_initializer, "_driver", None) is None):
         overall_status = "degraded"
     elif any(dep.status == "unhealthy" for dep in dependencies):
@@ -1308,15 +1324,22 @@ async def detailed_health_check(
     # Basic health check
     dependencies = await check_dependencies(schema_initializer=schema_initializer)
     metrics = get_system_metrics()
+    neo4j_health: dict[str, Any]
+    schema_status: dict[str, Any]
     if getattr(schema_initializer, "_driver", None) is None:
         neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
         schema_status = {"status": "degraded", "message": "Schema initializer has no Neo4j driver"}
     else:
-        neo4j_health = await schema_initializer.health_check()
+        health_result = await schema_initializer.health_check()
+        neo4j_health = (
+            health_result.model_dump()
+            if hasattr(health_result, "model_dump")
+            else dict(health_result)
+        )
         schema_status = await schema_initializer.verify_schema()
 
     # Determine overall status
-    overall_status = "healthy"
+    overall_status: Literal["healthy", "unhealthy", "degraded"] = "healthy"
     if any(dep.status == "unhealthy" for dep in dependencies):
         overall_status = "unhealthy"
     elif any(dep.status == "degraded" for dep in dependencies):
@@ -1562,6 +1585,7 @@ async def _execute_graph_rag_query(
         confidence_score=result.confidence_score,
         sources=result.sources,
         processing_time_ms=processing_time,
+        answer=getattr(result, "answer", None),
     )
 
 
@@ -1736,6 +1760,7 @@ async def _execute_hybrid_search(
     weights: dict | None,
 ) -> SearchResponse:
     """Execute hybrid search (extracted for caching/deduplication)."""
+    start_time = time.time()
     if search_type == "vector":
         results = await hybrid_search.semantic_search(query, entity_type, top_k)
     elif search_type == "fulltext":
@@ -1752,12 +1777,14 @@ async def _execute_hybrid_search(
     search_results = [
         SearchResult(**asdict(result)) for result in results
     ]
+    processing_time_ms = (time.time() - start_time) * 1000
 
     return SearchResponse(
         query=query,
         results=search_results,
         total_results=len(search_results),
-        search_type=search_type,
+        search_type=SearchType(search_type),
+        processing_time_ms=processing_time_ms,
     )
 
 
