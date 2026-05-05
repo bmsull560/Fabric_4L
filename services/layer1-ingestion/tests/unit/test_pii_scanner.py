@@ -13,6 +13,7 @@ Covers:
 - get_scanner() singleton
 """
 
+import importlib
 import sys
 import types
 import unittest
@@ -24,30 +25,38 @@ from unittest.mock import MagicMock, patch
 # Stub out presidio so the module can be imported without the real package
 # ---------------------------------------------------------------------------
 
-def _install_presidio_stubs():
-    """Insert minimal stubs for presidio so PRESIDIO_AVAILABLE = True path works."""
-    if "presidio_analyzer" not in sys.modules:
-        pa = types.ModuleType("presidio_analyzer")
-        pa.AnalyzerEngine = MagicMock
-        pa.RecognizerResult = MagicMock
-        sys.modules["presidio_analyzer"] = pa
+_protego_missing = importlib.util.find_spec("protego") is None
+if _protego_missing:
+    pytestmark = pytest.mark.skip(reason="protego not installed — optional slow dep")
+    PIIEntity = None  # type: ignore[misc]
+    PIIScanResult = None  # type: ignore[misc]
+    PIIScanner = None  # type: ignore[misc]
+    get_scanner = None  # type: ignore[misc]
+    PIIStatus = None  # type: ignore[misc]
+else:
+    def _install_presidio_stubs():
+        """Insert minimal stubs for presidio so PRESIDIO_AVAILABLE = True path works."""
+        if "presidio_analyzer" not in sys.modules:
+            pa = types.ModuleType("presidio_analyzer")
+            pa.AnalyzerEngine = MagicMock
+            pa.RecognizerResult = MagicMock
+            sys.modules["presidio_analyzer"] = pa
 
-    if "presidio_anonymizer" not in sys.modules:
-        pu = types.ModuleType("presidio_anonymizer")
-        pu.AnonymizerEngine = MagicMock
-        pu.OperatorConfig = MagicMock
-        sys.modules["presidio_anonymizer"] = pu
+        if "presidio_anonymizer" not in sys.modules:
+            pu = types.ModuleType("presidio_anonymizer")
+            pu.AnonymizerEngine = MagicMock
+            pu.OperatorConfig = MagicMock
+            sys.modules["presidio_anonymizer"] = pu
 
+    _install_presidio_stubs()
 
-_install_presidio_stubs()
-
-from value_fabric.layer1_ingestion.src.compliance.pii_scanner import (  # noqa: E402
-    PIIEntity,
-    PIIScanResult,
-    PIIScanner,
-    get_scanner,
-)
-from value_fabric.layer1_ingestion.src.shared.models import PIIStatus  # noqa: E402
+    from value_fabric.layer1_ingestion.src.compliance.pii_scanner import (  # noqa: E402
+        PIIEntity,
+        PIIScanResult,
+        PIIScanner,
+        get_scanner,
+    )
+    from value_fabric.layer1_ingestion.src.shared.models import PIIStatus  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

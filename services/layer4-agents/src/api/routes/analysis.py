@@ -37,15 +37,6 @@ class export_business_caseResult(TypedDictModel):
     truth_references: Any
     url_expires_at: Any | None = None
 
-class get_workspace_tabResult(TypedDictModel):
-    """Workspace tab data result - allows any fields for dynamic tab data."""
-    model_config = ConfigDict(extra="allow")
-
-class update_workspace_tabResult(TypedDictModel):
-    case_id: Any
-    tab: Any
-    updated: bool
-
 class generate_workspace_intelligenceResult(TypedDictModel):
     account_id: Any
     case_id: Any

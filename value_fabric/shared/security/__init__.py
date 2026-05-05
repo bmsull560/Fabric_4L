@@ -9,6 +9,10 @@ from .middleware import (
     XSS_PATTERNS,
     NOSQL_INJECTION_PATTERNS,
 )
+from .config import (
+    validate_production_safety,
+    is_production_like_environment,
+)
 from .redaction import redact_credentials
 
 __all__ = [
@@ -20,4 +24,6 @@ __all__ = [
     "XSS_PATTERNS",
     "NOSQL_INJECTION_PATTERNS",
     "redact_credentials",
+    "validate_production_safety",
+    "is_production_like_environment",
 ]

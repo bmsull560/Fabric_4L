@@ -53,8 +53,18 @@ export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: strin
     enabled: Boolean(caseId),
     queryFn: async () => {
       if (!caseId) throw new Error('Missing case_id');
-      const response = await apiClient.get('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`);
-      return response.data as TData;
+      try {
+        const response = await apiClient.get('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`);
+        return response.data as TData;
+      } catch (error: unknown) {
+        // 501 = workspace tab persistence not yet implemented (H-01).
+        // Return empty tab data so the UI renders empty states rather than errors.
+        const apiError = error as { statusCode?: number };
+        if (apiError.statusCode === 501) {
+          return { [tabKey]: [] } as TData;
+        }
+        throw error;
+      }
     },
   });
 }
@@ -72,8 +82,18 @@ export function usePersistWorkspaceTab(tabKey: string) {
         },
       });
 
-      const response = await apiClient.put('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
-      return response.data;
+      try {
+        const response = await apiClient.put('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
+        return response.data;
+      } catch (error: unknown) {
+        // 501 = workspace tab persistence not yet implemented (H-01).
+        // Surface as a soft warning so the UI does not crash.
+        const apiError = error as { statusCode?: number };
+        if (apiError.statusCode === 501) {
+          return { case_id: caseId, tab: tabKey, updated: false, not_implemented: true };
+        }
+        throw error;
+      }
     },
   });
 }

@@ -6,7 +6,7 @@ import pytest
 from starlette.requests import Request
 
 from value_fabric.layer3_knowledge.src.api.exceptions import ValueFabricException
-from value_fabric.layer3_knowledge.src.api.main import global_exception_handler, value_fabric_exception_handler
+from value_fabric.layer3_knowledge.src.api.app_monolith import global_exception_handler, value_fabric_exception_handler
 
 
 def _make_request() -> Request:

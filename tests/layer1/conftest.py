@@ -7,9 +7,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import fixtures from security conftest
-pytest_plugins = ["tests.security.conftest"]
-
 # Constants
 DEFAULT_LAYER1_URL = "http://localhost:8001"
 DEFAULT_TIMEOUT = 10.0

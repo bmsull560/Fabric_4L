@@ -257,7 +257,7 @@ async def test_generate_workspace_intelligence_fails_closed_without_production_w
         def __init__(self, db: Any) -> None:
             self.db = db
 
-        async def get_account(self, account_id: str) -> Any:
+        async def get_account(self, account_id: str, tenant_id: str | None = None) -> Any:
             return SimpleNamespace(id=account_id, name="Acme")
 
     analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated

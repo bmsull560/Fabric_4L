@@ -6,9 +6,6 @@ from typing import AsyncGenerator
 import pytest
 from httpx import AsyncClient
 
-# Import fixtures from security conftest
-pytest_plugins = ["tests.security.conftest"]
-
 # Constants
 DEFAULT_LAYER4_URL = "http://localhost:8004"
 DEFAULT_TIMEOUT = 10.0

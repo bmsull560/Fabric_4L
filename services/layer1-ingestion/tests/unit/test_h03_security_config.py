@@ -38,6 +38,8 @@ def test_layer1_rejects_wildcard_and_placeholder_cors_in_production_like_env(mon
             jwt_secret="x" * 48,
             database_url="postgresql://fabric:example@db.internal:5432/layer1",
             cors_origins=["https://*.example.com", "CHANGE_ME"],
+            s3_access_key="custom_access_key",
+            s3_secret_key="custom_secret_key",
         )
 
     message = str(exc_info.value)
@@ -52,6 +54,8 @@ def test_layer1_cors_policy_uses_explicit_origins_methods_and_headers(monkeypatc
         jwt_secret="x" * 48,
         database_url="postgresql://fabric:example@db.internal:5432/layer1",
         cors_origins=["https://app.example.com"],
+        s3_access_key="custom_access_key",
+        s3_secret_key="custom_secret_key",
     )
 
     assert settings.cors_policy == {

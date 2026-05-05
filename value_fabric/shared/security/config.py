@@ -44,6 +44,19 @@ def is_staging() -> bool:
     return current_environment() in {"staging", "stage", "preprod", "pre-production"}
 
 
+def is_production_like_environment(environment: str | None = None) -> bool:
+    """Return True for production, staging, or any unknown environment.
+
+    This is the canonical fail-safe policy: unknown/custom environments are
+    treated as production-like so security controls are never accidentally
+    relaxed.
+    """
+    env = (environment or current_environment()).strip().lower()
+    dev_envs = {"development", "dev", "test", "testing", "ci", "local"}
+    prod_envs = {"production", "prod", "staging", "stage"}
+    return env in prod_envs or env not in dev_envs
+
+
 def _split_origins(value: str) -> list[str]:
     return [origin.strip() for origin in value.split(",") if origin.strip()]
 
@@ -147,6 +160,16 @@ def validate_all_controls() -> None:
     validate_cors_config()
     validate_database_config()
     validate_rls_prerequisites()
+
+
+def validate_production_safety(environment: str | None = None) -> None:
+    """Fail-closed gate: raise RuntimeError if required production dependencies are missing.
+
+    This is the canonical entry-point that every service should call during startup.
+    """
+    if not is_production_like_environment(environment):
+        return
+    validate_all_controls()
 
 
 def get_startup_summary() -> dict[str, Any]:

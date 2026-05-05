@@ -14,9 +14,11 @@ import pytest
 # Tests are collected but skipped when it is not installed.
 # Install with: pip install pymupdf4llm
 _pymupdf4llm_missing = importlib.util.find_spec("pymupdf4llm") is None
+_pdf2image_missing = importlib.util.find_spec("pdf2image") is None
 pytestmark = [
     pytest.mark.slow,
     pytest.mark.skipif(_pymupdf4llm_missing, reason="pymupdf4llm not installed — optional slow dep"),
+    pytest.mark.skipif(_pdf2image_missing, reason="pdf2image not installed — optional slow dep"),
 ]
 
 try:
@@ -35,7 +37,12 @@ except Exception:
     TESSERACT_AVAILABLE = False
 
 from value_fabric.layer1_ingestion.src.adapters.base import AdapterType, FilingDocument
-from value_fabric.layer1_ingestion.src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
+
+if _pdf2image_missing:
+    PDFAdapter = None  # type: ignore[misc]
+    PDFAdapterConfig = None  # type: ignore[misc]
+else:
+    from value_fabric.layer1_ingestion.src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
 
 
 class TestPDFAdapter:

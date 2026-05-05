@@ -41,7 +41,6 @@ def resolve_cors_policy(
     *,
     environment: str | None = None,
     origins_env: str | None = None,
-    production_environments: Iterable[str] | None = None,
 ) -> CorsPolicy:
     """Build a fail-safe CORS policy.
 

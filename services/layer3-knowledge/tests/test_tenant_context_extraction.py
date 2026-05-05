@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # Import the helper under test
-from value_fabric.layer3_knowledge.src.api.main import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
+from value_fabric.layer3_knowledge.src.api.app_monolith import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
 
 
 class TestExtractTenantId:
