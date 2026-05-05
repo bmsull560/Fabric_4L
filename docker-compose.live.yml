@@ -6,13 +6,11 @@
 # Playwright can validate real user workflows against live services.
 #
 # Usage:
-#   docker compose -f docker-compose.live.yml config
-#   docker compose -f docker-compose.live.yml up -d
-#   docker compose -f docker-compose.live.yml ps
-#   docker compose -f docker-compose.live.yml --profile seed run --rm live-seed
+#   docker-compose -f docker-compose.live.yml config
+#   docker-compose -f docker-compose.live.yml up -d
+#   docker-compose -f docker-compose.live.yml ps
+#   docker-compose -f docker-compose.live.yml --profile seed run --rm live-seed
 # =============================================================================
-
-name: fabric4l-live
 
 services:
   # ---------------------------------------------------------------------------
@@ -125,6 +123,8 @@ services:
       LAYER1_S3_BUCKET: layer1-raw-html
       LAYER1_DEBUG: "true"
       LAYER1_API_PORT: 8000
+      # Keep Docker readiness non-blocking during live-stack startup; full API checks run after the stack is ready.
+      LAYER1_RELEASE_SMOKE_LIGHT_HEALTH: "true"
       JWT_SECRET: dev-local-secret-do-not-use-in-production-minimum-32-chars
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
@@ -179,6 +179,8 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: devpassword
       LAYER3_API_URL: http://layer3:8001
+      # Keep Docker readiness non-blocking during live-stack startup; full L2→L3 checks run after stack readiness.
+      LAYER2_HEALTH_SKIP_LAYER3: "true"
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LLM_MODEL: gpt-4o
       LOG_LEVEL: info
@@ -304,16 +306,21 @@ services:
       - |
         attempts=0
         until alembic upgrade head; do
-          attempts=$((attempts + 1))
-          if [ "$attempts" -ge 24 ]; then
-            echo "layer5 migration failed after ${attempts} attempts"
+          attempts=$$((attempts + 1))
+          if [ "$$attempts" -ge 24 ]; then
+            echo "layer5 migration failed after $${attempts} attempts"
             exit 1
           fi
-          echo "waiting for layer5 database (${attempts}/24)"
+          echo "waiting for layer5 database ($${attempts}/24)"
           sleep 5
         done
     environment:
       DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth
+      MIGRATION_CONNECT_ATTEMPTS: 12
+      MIGRATION_CONNECT_DELAY_SECONDS: 5
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
@@ -392,7 +399,7 @@ services:
       context: .
       dockerfile: ./apps/web/Dockerfile.dev
     container_name: vf-live-seed
-    command: ["sh", "-lc", "PLAYWRIGHT_LIVE_MODE=true PLAYWRIGHT_BACKEND_URL=http://layer4:8000 pnpm run seed:e2e"]
+    command: ["sh", "-lc", "PLAYWRIGHT_LIVE_MODE=true PLAYWRIGHT_BACKEND_URL=http://layer4:8000 pnpm run seed:live"]
     environment:
       PLAYWRIGHT_LIVE_MODE: "true"
       PLAYWRIGHT_BACKEND_URL: http://layer4:8000

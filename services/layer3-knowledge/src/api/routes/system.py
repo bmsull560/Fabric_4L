@@ -14,7 +14,7 @@ from fastapi.responses import Response
 from value_fabric.layer3.config import get_settings
 
 from ..shared_bootstrap import verify_metrics_access
-from ..dependencies import get_schema_initializer
+from ..dependencies import get_schema_initializer, recover_neo4j_state
 from ..models import (
     DependencyStatus,
     DetailedHealthResponse,
@@ -222,6 +222,9 @@ async def health_check(
     """Check service health and Neo4j connectivity."""
     start_time = time.time()
     request_id = getattr(request.state, "request_id", "unknown")
+    if schema_initializer is None or getattr(schema_initializer, "_driver", None) is None:
+        recovered_state = await recover_neo4j_state(request.app)
+        schema_initializer = recovered_state.schema_initializer
     dependencies = await check_dependencies(schema_initializer=schema_initializer)
     metrics = get_system_metrics()
 
@@ -283,9 +286,13 @@ async def health_check(
     summary="Detailed Health Check",
 )
 async def detailed_health_check(
+    request: Request,
     schema_initializer: Any = Depends(get_schema_initializer),
 ) -> DetailedHealthResponse:
     """Get detailed health information with system info and configuration."""
+    if schema_initializer is None or getattr(schema_initializer, "_driver", None) is None:
+        recovered_state = await recover_neo4j_state(request.app)
+        schema_initializer = recovered_state.schema_initializer
     dependencies = await check_dependencies(schema_initializer=schema_initializer)
     metrics = get_system_metrics()
 

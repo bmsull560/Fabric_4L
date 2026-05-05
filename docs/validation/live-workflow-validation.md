@@ -24,7 +24,7 @@ The frontend runs its existing Vite dev server on container port `3001` and is p
 - Public frontend URL: `http://localhost:3001`
 - Internal frontend health URL: `http://frontend:3001`
 
-The Vite proxy is configured to route live API traffic to Docker service names inside the live stack.
+The Vite proxy is configured to route live API traffic to Docker service names inside the live stack. For local backend-integrated runs outside Docker, `pnpm run dev:live` starts Vite on port `3001` with mocks disabled and proxy targets defaulted to the backend-integrated host ports (`8001` through `8006`).
 
 Important:
 
@@ -80,8 +80,10 @@ Manual live seed from the frontend workspace:
 
 ```bash
 cd apps/web
-PLAYWRIGHT_BACKEND_URL=http://localhost:8004 pnpm run seed:e2e
+PLAYWRIGHT_BACKEND_URL=http://localhost:8004 pnpm run seed:live
 ```
+
+`seed:live` fails closed if `PLAYWRIGHT_BACKEND_URL` is missing or if frontend mock flags are enabled. The older `seed:e2e` command remains available for non-live backend-integrated development, but live validation should use `seed:live` so the guardrails are enforced consistently.
 
 Or use the compose one-off service:
 
@@ -104,6 +106,17 @@ The seed path is intended to create or reconcile the live validation tenant and 
 
 The seed service is not started automatically.
 
+## Automated Live Validation Gate
+
+From repo root, run the fail-closed automation gate:
+
+```bash
+scripts/ci/run_live_workflow_validation.sh --config-only
+scripts/ci/run_live_workflow_validation.sh --seed --playwright
+```
+
+The first command validates compose resolution and live-mode guardrails without starting containers. The second command starts or rebuilds the canonical live stack, waits for required service health, probes the frontend and Layer 4 health endpoints, then runs guarded seed and P0 Playwright validation. Evidence is written to `artifacts/live-workflow-validation/`, including a resolved compose file, execution log, and Markdown summary.
+
 ## Playwright Live Commands
 
 From `apps/web`:
@@ -117,6 +130,8 @@ pnpm run test:e2e:live:p0
 
 Available scripts in [apps/web/package.json](/workspaces/Fabric_4L/apps/web/package.json):
 
+- `dev:live`
+- `seed:live`
 - `test:e2e:live`
 - `test:e2e:live:p0`
 - `test:e2e:live:golden-path`
@@ -131,6 +146,8 @@ They fail closed if any of these are missing:
 - `PLAYWRIGHT_LIVE_MODE`
 - `PLAYWRIGHT_LIVE_FRONTEND_URL`
 - `PLAYWRIGHT_BACKEND_URL`
+
+They also fail closed if `VITE_USE_MOCKS`, `VITE_ENABLE_MOCK_FALLBACK`, `MSW`, or `MOCKS_ENABLED` is truthy. A live PASS cannot be produced from a mock-enabled browser session.
 
 ## Bunnyshell Usage
 
@@ -253,9 +270,10 @@ If the gate fails, live validation remains `BLOCKED`. Do not substitute mocked E
 | browser API path verified from source | Yes |
 | local dev fallback preserved | Yes |
 | health checks defined | Yes |
-| seed path documented | Yes |
-| Playwright live command documented | Yes |
-| runtime health validation | Blocked |
+| automated live validation gate | Yes — `scripts/ci/run_live_workflow_validation.sh` |
+| seed path documented | Yes — guarded by `seed:live` |
+| Playwright live command documented | Yes — guarded by `live-env-guard.mjs` |
+| runtime health validation | Sprint 1 backend-integrated L1-L6 startup now healthy; canonical `docker-compose.live.yml` still requires full runtime validation |
 | Playwright live execution | Blocked |
 | Bunnyshell import target | `docker-compose.live.yml` |
 

@@ -7,10 +7,12 @@ that Alembic requires (Alembic does not support asyncpg natively).
 """
 
 import os
+import time
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.exc import OperationalError
 
 # Import the declarative Base so Alembic can detect model changes
 from layer5_ground_truth.models import Base
@@ -67,11 +69,21 @@ def run_migrations_offline() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _migration_retry_settings() -> tuple[int, float]:
+    """Return bounded migration connection retry settings for container startup."""
+    attempts = int(os.environ.get("MIGRATION_CONNECT_ATTEMPTS", "12"))
+    delay_seconds = float(os.environ.get("MIGRATION_CONNECT_DELAY_SECONDS", "5"))
+    return max(attempts, 1), max(delay_seconds, 0.1)
+
+
 def run_migrations_online() -> None:
     """
     Run migrations in 'online' mode.
 
-    Creates a synchronous engine connection and applies migrations directly.
+    Creates a synchronous engine connection and applies migrations directly. In
+    compose-based live validation Postgres can be marked healthy before the
+    target database accepts the first application connection, so connection
+    acquisition is retried for a bounded window before Alembic fails closed.
     """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -79,16 +91,33 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,
-            compare_server_default=True,
-        )
+    attempts, delay_seconds = _migration_retry_settings()
+    last_error: OperationalError | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            with connectable.connect() as connection:
+                context.configure(
+                    connection=connection,
+                    target_metadata=target_metadata,
+                    compare_type=True,
+                    compare_server_default=True,
+                )
 
-        with context.begin_transaction():
-            context.run_migrations()
+                with context.begin_transaction():
+                    context.run_migrations()
+            return
+        except OperationalError as exc:
+            last_error = exc
+            if attempt == attempts:
+                break
+            print(
+                f"Alembic database connection failed on attempt {attempt}/{attempts}; "
+                f"retrying in {delay_seconds:.1f}s..."
+            )
+            time.sleep(delay_seconds)
+
+    if last_error is not None:
+        raise last_error
 
 
 # ---------------------------------------------------------------------------
