@@ -1,0 +1,48 @@
+{
+  "version": "2026-05-05",
+  "status": "provider_required_before_production_pass",
+  "purpose": "Enterprise SSO/OIDC readiness contract for Fabric_4L deployments.",
+  "failClosed": true,
+  "requiredProviderSettings": [
+    "issuer",
+    "client_id",
+    "client_secret_external_secret_ref",
+    "authorization_endpoint",
+    "token_endpoint",
+    "jwks_uri",
+    "redirect_uri",
+    "post_logout_redirect_uri"
+  ],
+  "requiredClaims": [
+    "iss",
+    "sub",
+    "aud",
+    "exp",
+    "iat",
+    "email",
+    "tenant_id"
+  ],
+  "tenantMapping": {
+    "primaryClaim": "tenant_id",
+    "fallbackClaims": ["org_id", "hd"],
+    "fallbackRequiresExplicitAllowList": true
+  },
+  "securityControls": {
+    "pkceRequired": true,
+    "stateNonceRequired": true,
+    "jwksSignatureValidationRequired": true,
+    "clockSkewSeconds": 120,
+    "allowedAlgorithms": ["RS256", "ES256"],
+    "localPasswordFallbackAllowed": false,
+    "serviceAccountsUseOidc": false,
+    "serviceAccountAuthMechanism": "rotated_api_keys_or_workload_identity"
+  },
+  "productionEvidenceRequired": [
+    "Provider discovery document captured without secrets",
+    "JWKS validation test passed",
+    "Callback route exercised with authorization-code flow",
+    "Tenant mapping verified for at least one enterprise tenant",
+    "Logout and session-expiry behavior verified",
+    "Audit event emitted for login success and failure"
+  ]
+}

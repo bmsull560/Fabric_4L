@@ -1,0 +1,40 @@
+{
+  "version": "2026-05-05",
+  "status": "foundation_ready_auditor_review_evidence_required",
+  "purpose": "SOC2 and ISO-oriented compliance control readiness policy for Fabric_4L production operations.",
+  "controlFamilies": [
+    "access_control",
+    "change_management",
+    "incident_response",
+    "vendor_management",
+    "availability",
+    "confidentiality",
+    "logging_and_monitoring",
+    "backup_and_recovery",
+    "secure_development_lifecycle"
+  ],
+  "minimumEvidenceTypes": [
+    "policy_document",
+    "control_owner",
+    "ci_validation_artifact",
+    "deployment_record",
+    "access_review_record",
+    "incident_or_drill_record",
+    "exception_register_entry"
+  ],
+  "repositoryControls": {
+    "secretScanningRequired": true,
+    "dependencyScanningRequired": true,
+    "codeOwnerReviewRequired": true,
+    "runbookValidationRequired": true,
+    "auditEvidenceWorkflowRequired": true,
+    "environmentPromotionEvidenceRequired": true
+  },
+  "productionEvidenceRequired": [
+    "Control owner assigned for every in-scope family",
+    "Quarterly access review completed",
+    "Change-management sample links ticket, review, CI, and deployment evidence",
+    "Incident drill evidence retained",
+    "Auditor or compliance owner signs off on scope and evidence retention"
+  ]
+}

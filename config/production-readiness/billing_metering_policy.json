@@ -1,0 +1,37 @@
+{
+  "version": "2026-05-05",
+  "status": "foundation_ready_provider_reconciliation_evidence_required",
+  "purpose": "Commercial billing and usage-metering readiness policy for Fabric_4L tenants.",
+  "meteredDimensions": [
+    "api_request",
+    "workflow_run",
+    "agent_action",
+    "llm_token",
+    "ingested_page",
+    "benchmark_run",
+    "storage_gib_day"
+  ],
+  "eventRequirements": {
+    "tenantIdRequired": true,
+    "idempotencyKeyRequired": true,
+    "eventTimestampRequired": true,
+    "sourceServiceRequired": true,
+    "rawProviderCostOptional": true,
+    "customerVisibleQuantityRequired": true
+  },
+  "controls": {
+    "usageEventDeduplicationRequired": true,
+    "tenantIsolationRequired": true,
+    "invoiceReconciliationRequired": true,
+    "budgetThresholdAlertsRequired": true,
+    "providerWebhookSignatureVerificationRequired": true,
+    "testModeCannotCreateProductionInvoices": true
+  },
+  "productionEvidenceRequired": [
+    "Usage event accepted with tenant ID and idempotency key",
+    "Duplicate usage event is ignored or marked duplicate",
+    "Provider webhook signature validation passes and fails as expected",
+    "Invoice quantity reconciles with internal usage ledger",
+    "Budget threshold alert fires before hard spend cap is reached"
+  ]
+}
