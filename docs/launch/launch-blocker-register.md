@@ -1,0 +1,42 @@
+# Launch Blocker Register
+
+This register is the authoritative pre-launch risk ledger for final testing. It does not convert environment-dependent work into a pass condition. Items that require a configured staging or production-like environment remain open until evidence is attached by the responsible owner.
+
+## Current Launch Decision Posture
+
+| Area | Current Position | Rationale |
+|---|---|---|
+| Repository-owned launch package | Ready for validation | Required launch-gate documents and local validators are expected to run without live services. |
+| Live production readiness | Not yet claimed | SSO, telemetry, billing, rollback, notification, performance, and full E2E validation require a proper launch environment. |
+| Go/no-go rule | Evidence-driven | Missing evidence is treated as an explicit launch decision, not as implied readiness. |
+
+## P0 Launch Blocker
+
+| ID | Item | Owner | Required Evidence | Current Status | Decision Rule |
+|---|---|---|---|---|---|
+| P0-001 | Production-like E2E launch rehearsal not yet executed in a proper environment. | Test owner | Critical user journey evidence with real login, live backing services, persisted state, logs, and release-candidate SHA. | REQUIRES_ENVIRONMENT | Blocks launch until completed or the affected journey is removed from launch scope. |
+| P0-002 | Rollback and restore drill requires launch-environment execution. | SRE owner | Redacted rollback transcript, restore proof, data-integrity check, owner approval, and timing notes. | REQUIRES_ENVIRONMENT | Blocks launch if rollback or restore cannot be executed within the approved recovery target. |
+| P0-003 | Enterprise SSO/OIDC provider validation requires configured provider credentials and tenant mapping. | Identity owner | Provider configuration evidence, successful login/logout, failed-login handling, group/role mapping, and redacted audit event. | REQUIRES_ENVIRONMENT | Blocks enterprise launch if identity validation is incomplete or fails closed incorrectly. |
+| P0-004 | Raw secret exposure in launch artifacts or production-readiness config. | Security owner | Automated launch-gate secret hygiene passes and any findings are remediated. | REQUIRED_PASS | Blocks launch immediately if detected. |
+
+## P1 Launch Blocker
+
+| ID | Item | Owner | Required Evidence | Current Status | Decision Rule |
+|---|---|---|---|---|---|
+| P1-001 | Notification and alert receiver validation requires provider-level test delivery. | SRE owner | Redacted alert receiver proof, escalation route, notification test payload, and acknowledgement record. | REQUIRES_ENVIRONMENT | Blocks launch unless an approved monitored workaround is accepted. |
+| P1-002 | Telemetry dashboard and alert validation requires live metric/log/trace flow. | Observability owner | Dashboard link, alert rule evidence, threshold rationale, and redacted event/log samples. | REQUIRES_ENVIRONMENT | Blocks launch if primary incident detection path is not operational. |
+| P1-003 | Billing and metering provider validation requires live or provider sandbox integration. | Billing owner | Meter event proof, invoice or usage aggregation sample, idempotency check, and reconciliation owner sign-off. | REQUIRES_ENVIRONMENT | Blocks paid launch unless billing is removed from launch scope. |
+| P1-004 | Performance and reliability smoke test requires production-like capacity assumptions. | Performance owner | Smoke-test command, timing output, error-rate summary, and release-candidate SHA. | REQUIRES_ENVIRONMENT | Blocks launch if thresholds fail or are not approved by release owner. |
+| P1-005 | Dependency automation coverage must remain complete. | Build owner | `python3 scripts/ci/check_dependabot_coverage.py` passes. | REQUIRED_PASS | Blocks final testing if manifests are uncovered without waiver. |
+
+## P2 Follow-Up
+
+| ID | Item | Owner | Required Evidence | Current Status | Decision Rule |
+|---|---|---|---|---|---|
+| P2-001 | Long-term CI timing trend storage and dashboarding. | Build owner | Timing artifacts from `scripts/ci/run_timed_ci_checks.py` are retained by CI after workflow wiring. | DEFERRED_TO_MAINTAINER | Does not block launch; workflow wiring requires maintainer permissions. |
+| P2-002 | Post-launch compliance evidence package for SOC 2 and ISO 27001 mapping. | Compliance owner | Completed evidence package linking policies, controls, owners, and post-launch audit artifacts. | PLANNED | Does not block initial launch if core security and incident gates pass. |
+| P2-003 | SDK and CLI adoption feedback loop. | Developer experience owner | First-user feedback, documented defects, and follow-up prioritization. | PLANNED | Does not block launch if core API and documentation remain available. |
+
+## Waiver Requirements
+
+Any accepted P0 or P1 risk must include the approving owner, expiration date, customer impact statement, rollback plan, monitoring plan, and explicit scope reduction if the missing evidence affects a launch-critical capability. P2 items require owner and target date but do not require executive waiver.
