@@ -14,7 +14,7 @@ from enum import Enum as PyEnum
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import declarative_base, relationship, synonym
+from sqlalchemy.orm import declared_attr, declarative_base, relationship, synonym
 
 Base = declarative_base()
 
@@ -150,8 +150,13 @@ class PIIStatus(str, PyEnum):
 
 
 class TenantScoped:
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    tenant_id = synonym("organization_id")
+    @declared_attr
+    def organization_id(cls):
+        return Column(UUID(as_uuid=True), nullable=False, index=True)
+
+    @declared_attr
+    def tenant_id(cls):
+        return synonym("organization_id")
 
 
 class ScrapingTarget(TenantScoped, Base):
