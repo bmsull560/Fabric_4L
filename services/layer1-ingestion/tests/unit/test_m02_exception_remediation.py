@@ -36,10 +36,6 @@ class TestNoOpExecutionLoggerProductionGuard:
 class TestDatabaseRedisAvailability:
     """database.py must expose REDIS_AVAILABLE and log on import failure."""
 
-    @pytest.fixture(autouse=True)
-    def _skip_if_no_psycopg2(self):
-        pytest.importorskip("psycopg2")
-
     def test_redis_available_flag_exists(self):
         from value_fabric.layer1_ingestion.src.shared.database import REDIS_AVAILABLE
         # In test environments without a real Redis, this should be False

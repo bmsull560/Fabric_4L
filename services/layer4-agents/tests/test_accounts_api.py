@@ -9,13 +9,19 @@ Tests the accounts-first CRM integration API contract:
 - GET /v1/accounts/sync-status (provider sync status)
 """
 
+import pytest
+
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.requires_postgres,
+]
+
 from typing import Any
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 

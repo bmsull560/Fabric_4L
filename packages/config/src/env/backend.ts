@@ -8,7 +8,7 @@ const requiredSecretSchema = z
   .refine((value) => !/^CHANGE_ME/i.test(value), "must not use a CHANGE_ME placeholder");
 
 export const backendEnvSchema = z.object({
-  NODE_ENV: nodeEnvSchema,
+  NODE_ENV: z.string().trim().min(1, "NODE_ENV must be set"),
   LOG_LEVEL: logLevelSchema,
   PORT: portSchema.optional(),
   DATABASE_URL: z.string().trim().min(1, "DATABASE_URL must be set"),
@@ -81,12 +81,7 @@ export function validateBackendEnvForProductionLike(
   env: Record<string, unknown>,
 ): void {
   const nodeEnv = String(env.NODE_ENV ?? "development").trim().toLowerCase();
-
-  if (!isProductionLikeEnvironment(nodeEnv)) {
-    // Development/test environments: basic schema validation only
-    loadBackendEnv(env);
-    return;
-  }
+  const isProductionLike = isProductionLikeEnvironment(nodeEnv);
 
   const violations: ProductionSafetyViolation[] = [];
 
@@ -212,7 +207,7 @@ export function validateBackendEnvForProductionLike(
     violations.push({ control: "debug", message: "SEED_DEMO_DATA must be false or unset in production-like environments" });
   }
 
-  if (violations.length > 0) {
+  if (isProductionLike && violations.length > 0) {
     const lines = violations.map((v) => `  • [${v.control}] ${v.message}`);
     throw new Error(
       `Production safety validation failed for environment='${nodeEnv}':\n${lines.join("\n")}`,

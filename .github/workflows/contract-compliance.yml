@@ -16,16 +16,13 @@ on:
     branches: [main, develop]
     paths:
       - 'apps/web/**'
-      - 'apps/web/**'
       - 'examples/canonical/**'
       - 'packages/eslint-plugin-fabric-contracts/**'
       - 'packages/shared/**'
       - 'services/**/src/**'
-      - 'services/**/src/api/**'
-      - 'services/**/api/**'
       - 'packages/platform-contract/**'
       - 'contracts/openapi/**'
-      - 'tests/contracts/**'
+      - 'tests/contract/**'
       - 'scripts/ci/platform_contract_lint.py'
       - '.github/workflows/contract-compliance.yml'
   schedule:
@@ -114,12 +111,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/web/package.json
+          cache: 'pnpm'
+          cache-dependency-path: apps/web/pnpm-lock.yaml
 
       - name: Install frontend dependencies
         working-directory: apps/web
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Link plugin to frontend
         run: |

@@ -44,7 +44,8 @@ from value_fabric.shared.identity.feature_flags import (
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.vault_check import is_vault_healthy
-from value_fabric.shared.security import SecurityConfig, add_security_middleware
+from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
+from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
 
 from ..config.checkpoint import CheckpointConfig
 from ..config.settings import settings
@@ -157,6 +158,8 @@ def init_telemetry() -> TracerProvider | None:
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     global workflow_executor, state_manager, checkpoint_saver, _tracer_provider, crm_sync_scheduler
+
+    validate_production_safety()
 
     # P1-29: Initialize OpenTelemetry
     _tracer_provider = init_telemetry()
@@ -364,25 +367,9 @@ app.add_middleware(
     tenant_settings_resolver=_tenant_settings_lookup,
 )
 
-# CORS middleware — restrict origins in production via the CORS_ORIGINS env var
+# CORS middleware — fail-safe via shared resolve_cors_policy()
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
-# F-9 FIX: Fail-closed in production — require explicit CORS_ORIGINS
-
-_cors_raw = os.getenv("CORS_ORIGINS", "")
-_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] if _cors_raw else ["*"]
-_cors_credentials = "*" not in _cors_origins  # Must be False when using wildcard origins
-
-if "*" in _cors_origins:
-    env = os.getenv("ENVIRONMENT", "development")
-    if env == "production":
-        raise RuntimeError(
-            "CORS_ORIGINS must be set to specific origins in production. "
-            "Wildcard origins are not permitted."
-        )
-    logging.getLogger(__name__).warning(
-        "CORS_ORIGINS not set — using wildcard origins. "
-        "Set CORS_ORIGINS to specific origins in production."
-    )
+_cors_policy = resolve_cors_policy()
 
 # SecurityMiddleware — input validation and security headers (mandatory)
 # P1-14 FIX: Removed /agents/v1 paths from skip list
@@ -396,13 +383,7 @@ _security_config_l4 = SecurityConfig.from_env(
 )
 add_security_middleware(app, config=_security_config_l4)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=_cors_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
 
 # Task 61: Request ID middleware for trace correlation (after CORS)
 if SHARED_ERROR_HANDLING_AVAILABLE:

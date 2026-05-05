@@ -189,11 +189,6 @@ export const OPENAPI_SCHEMA_MAP: Record<
     ref: '#/components/schemas/WorkflowStatusResponse',
     description: 'L4 GET /v1/workflows/{workflow_id} response',
   },
-  WorkflowResultResponseSchema: {
-    specFile: 'layer4-agents.json',
-    ref: '#/components/schemas/WorkflowResultResponse',
-    description: 'L4 workflow result response',
-  },
   WorkflowResumeResponseSchema: {
     specFile: 'layer4-agents.json',
     ref: '#/components/schemas/WorkflowResumeResponse',

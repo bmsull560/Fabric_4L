@@ -224,7 +224,7 @@ describe('Contract: graph tenant context', () => {
     });
     const node = assertSchema(
       TenantScopedGraphNodeSchema,
-      { id: 'node-001', name: 'Cloud Migration', type: 'capability', tenant_id: '550e8400-e29b-41d4-a716-446655440000' },
+      { id: 'node-001', name: 'Cloud Migration', label: 'Cloud Migration', type: 'capability', tenant_id: '550e8400-e29b-41d4-a716-446655440000' },
       'TenantScopedGraphNode'
     );
     expect(node.tenant_id).toBe('550e8400-e29b-41d4-a716-446655440000');

@@ -191,7 +191,8 @@ def pytest_collection_modifyitems(config, items) -> None:
     mandatory_markers = {"unit", "contract", "security", "tenant_boundary"}
     exclusion_markers = {
         "slow", "requires_postgres", "requires_redis", "requires_neo4j",
-        "requires_openai", "e2e", "integration", "performance", "flaky", "quarantine"
+        "requires_docker", "requires_openai", "e2e", "integration", "performance",
+        "flaky", "quarantine"
     }
 
     for item in items:

@@ -44,10 +44,13 @@ from value_fabric.layer3_knowledge.src.retrieval.vector_store import VectorStore
 from value_fabric.layer3_knowledge.src.schema.initializer import SchemaInitializer
 
 # Skip entire module if testcontainers not installed
-pytestmark = pytest.mark.skipif(
-    not HAS_TESTCONTAINERS,
-    reason="testcontainers not installed - run: pip install testcontainers[neo4j]"
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not HAS_TESTCONTAINERS,
+        reason="testcontainers not installed - run: pip install testcontainers[neo4j]"
+    ),
+    pytest.mark.integration,
+]
 
 
 # Test configuration

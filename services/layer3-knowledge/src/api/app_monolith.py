@@ -30,6 +30,7 @@ from value_fabric.shared.fastapi_framework import (
     include_router_mounts,
     resolve_cors_policy,
 )
+from value_fabric.shared.security import validate_production_safety
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from .dependencies import (
@@ -347,6 +348,8 @@ def init_telemetry() -> TracerProvider | None:
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     global _tracer_provider
+
+    validate_production_safety()
 
     # P1-29: Initialize OpenTelemetry
     _tracer_provider = init_telemetry()

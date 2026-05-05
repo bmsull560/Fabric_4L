@@ -32,10 +32,13 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 try:
-    from value_fabric.shared.security import SecurityConfig, add_security_middleware
+    from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
+    from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
 except ImportError:
     add_security_middleware = None
     SecurityConfig = None
+    resolve_cors_policy = None
+    validate_production_safety = None
 
 if not SecurityConfig and os.getenv("ENVIRONMENT") in ("production", "staging"):
     raise RuntimeError("SecurityMiddleware required in production")
@@ -128,6 +131,9 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     global _tracer_provider
 
+    if validate_production_safety:
+        validate_production_safety()
+
     # P1-29: Initialize OpenTelemetry
     _tracer_provider = init_telemetry()
     if _tracer_provider:
@@ -217,28 +223,9 @@ except ImportError:
     )
 
 # CORS middleware with production validation (P0-20)
-# Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
-_environment = os.getenv("ENVIRONMENT", "development")
-_cors_origins_env = os.getenv("CORS_ORIGINS", "")
-
-if _environment == "production" and not _cors_origins_env:
-    raise RuntimeError(
-        "FATAL: CORS_ORIGINS environment variable must be set in production. "
-        "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
-    )
-
-# Parse CORS origins, filtering out empty strings from trailing commas
-allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
-# Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
-allow_credentials = "*" not in allow_origins
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allow_origins,
-    allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if resolve_cors_policy:
+    _cors_policy = resolve_cors_policy()
+    app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
 
 # Custom metrics endpoint using our PrometheusMetrics class
 @app.get("/metrics", include_in_schema=False)

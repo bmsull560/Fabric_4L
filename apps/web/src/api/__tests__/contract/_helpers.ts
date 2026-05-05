@@ -73,6 +73,7 @@ export const ExtractionStatusSchema = z.object({
 export const GraphNodeSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  label: z.string().min(1),
   type: z.string().min(1),
   properties: z.record(z.string(), z.unknown()).optional(),
   confidence_score: z.number().min(0).max(1).optional(),
@@ -117,10 +118,12 @@ export const PackSummarySchema = z.object({
   pack_id: z.string().min(1),
   name: z.string().min(1),
   industry: z.string(),
+  segment: z.string().nullable(),
   status: z.string(),
-  driver_count: z.number().int().nonnegative().optional(),
-  formula_count: z.number().int().nonnegative().optional(),
-  benchmark_count: z.number().int().nonnegative().optional(),
+  version: z.string().min(1),
+  driver_count: z.number().int().nonnegative(),
+  formula_count: z.number().int().nonnegative(),
+  benchmark_count: z.number().int().nonnegative(),
 });
 
 // ---------------------------------------------------------------------------
@@ -187,11 +190,11 @@ export const FeatureFlagResponseSchema = z.object({
   flag_key: z.string().min(1),
   enabled: z.boolean(),
   rollout_percentage: z.number().int().min(0).max(100),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
-  updated_by: z.string().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  updated_by: z.string().uuid().nullable(),
 });
 
 
@@ -427,7 +430,7 @@ export const fixtures = {
     metadata: { region: 'us-east-1' },
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-15T00:00:00Z',
-    updated_by: 'admin@example.com',
+    updated_by: '550e8400-e29b-41d4-a716-446655440000',
   }),
 
 
@@ -502,6 +505,8 @@ export const fixtures = {
     freshness: '2024-01-15T10:00:00Z',
     is_stale: false,
     applies_to: { account_id: 'acct-456' },
+    created_at: '2024-01-10T08:00:00Z',
+    updated_at: '2024-01-15T10:00:00Z',
     ...overrides,
   }),
 
@@ -531,15 +536,23 @@ export const fixtures = {
   graphNode: (): z.infer<typeof GraphNodeSchema> => ({
     id: 'node-001',
     name: 'Cloud Migration',
+    label: 'Cloud Migration',
     type: 'capability',
     confidence_score: 0.95,
+    segment: 'cloud',
+    version: '1.0',
   }),
 
   packSummary: (): z.infer<typeof PackSummarySchema> => ({
     pack_id: 'pack-saas-001',
     name: 'SaaS Value Pack',
     industry: 'Technology',
+    segment: 'saas',
     status: 'active',
+    version: '2.1.0',
+    driver_count: 12,
+    formula_count: 8,
+    benchmark_count: 5,
   }),
 };
 

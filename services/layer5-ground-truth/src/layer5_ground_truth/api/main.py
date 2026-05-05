@@ -26,10 +26,13 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 try:
-    from value_fabric.shared.security import SecurityConfig, add_security_middleware
+    from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
+    from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
 except ImportError:
     add_security_middleware = None
     SecurityConfig = None
+    resolve_cors_policy = None
+    validate_production_safety = None
 
 if not SecurityConfig and os.getenv("ENVIRONMENT") in ("production", "staging"):
     raise RuntimeError("SecurityMiddleware required in production")
@@ -91,6 +94,9 @@ def init_telemetry() -> TracerProvider | None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifecycle — database init and teardown."""
     global _tracer_provider
+
+    if validate_production_safety:
+        validate_production_safety()
 
     # Initialize OpenTelemetry tracing
     _tracer_provider = init_telemetry()
@@ -260,19 +266,10 @@ def create_app() -> FastAPI:
             "API endpoints are UNPROTECTED. This is only allowed in development with ALLOW_INSECURE_DEV_AUTH_BYPASS=true."
         )
 
-    # CORS — use validated settings so production-like runtimes fail closed before startup.
-    # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec.
-    _cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
-    if not _cors_origins and settings.debug:
-        _cors_origins = ["*"]
-    _cors_credentials = "*" not in _cors_origins  # Must be False when using wildcard origins
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=_cors_origins,
-        allow_credentials=_cors_credentials,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # CORS — fail-safe via shared resolve_cors_policy()
+    if resolve_cors_policy:
+        _cors_policy = resolve_cors_policy()
+        app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
 
     # Mount the API routers
     app.include_router(router)

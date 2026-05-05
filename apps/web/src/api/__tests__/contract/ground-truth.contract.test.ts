@@ -177,14 +177,15 @@ describe('Contract: GET /api/v1/truths/{truth_id}', () => {
 // ── GET /api/v1/truths (list) ─────────────────────────────────────────────────
 
 describe('Contract: GET /api/v1/truths', () => {
-  it('list response has items, total, page, page_size', () => {
+  it('list response has items, total, limit, offset, has_more', () => {
     const resp = assertSchema(
       TruthObjectListResponseSchema,
       {
-        items: [fixtures.truthObject()],
+        items: [fixtures.truthObjectSummary()],
         total: 1,
-        page: 1,
-        page_size: 20,
+        limit: 20,
+        offset: 0,
+        has_more: false,
       },
       'TruthObjectListResponse'
     );
@@ -195,7 +196,7 @@ describe('Contract: GET /api/v1/truths', () => {
   it('empty list is valid', () => {
     const resp = assertSchema(
       TruthObjectListResponseSchema,
-      { items: [], total: 0, page: 1, page_size: 20 },
+      { items: [], total: 0, limit: 20, offset: 0, has_more: false },
       'TruthObjectListResponse (empty)'
     );
     expect(resp.items).toHaveLength(0);
@@ -204,7 +205,7 @@ describe('Contract: GET /api/v1/truths', () => {
   it('rejects negative total', () => {
     assertSchemaRejects(
       TruthObjectListResponseSchema,
-      { items: [], total: -1, page: 1, page_size: 20 },
+      { items: [], total: -1, limit: 20, offset: 0, has_more: false },
       'TruthObjectListResponse with negative total'
     );
   });
