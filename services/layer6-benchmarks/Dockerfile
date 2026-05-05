@@ -18,6 +18,9 @@ COPY uv.lock .
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project
 
+# Shared identity imports require additional runtime packages in the container.
+RUN uv pip install "sqlalchemy>=2.0" "pyjwt>=2.8.0"
+
 # Copy source code
 COPY src/ ./src/
 

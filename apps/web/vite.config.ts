@@ -18,6 +18,13 @@ const PROJECT_ROOT = __dirname;
 const LOG_DIR = path.join(PROJECT_ROOT, ".manus-logs");
 const MAX_LOG_SIZE_BYTES = 1 * 1024 * 1024; // 1MB per log file
 const TRIM_TARGET_BYTES = Math.floor(MAX_LOG_SIZE_BYTES * 0.6); // Trim to 60% to avoid constant re-trimming
+const VITE_API_BASE_URL = process.env.VITE_API_BASE_URL || "http://localhost:8004";
+const VITE_PROXY_L1_URL = process.env.VITE_PROXY_L1_URL || "http://localhost:8001";
+const VITE_PROXY_L2_URL = process.env.VITE_PROXY_L2_URL || "http://localhost:8002";
+const VITE_PROXY_L3_URL = process.env.VITE_PROXY_L3_URL || "http://localhost:8003";
+const VITE_PROXY_L4_URL = process.env.VITE_PROXY_L4_URL || VITE_API_BASE_URL;
+const VITE_PROXY_L5_URL = process.env.VITE_PROXY_L5_URL || "http://localhost:8005";
+const VITE_PROXY_L6_URL = process.env.VITE_PROXY_L6_URL || "http://localhost:8006";
 
 type LogSource = "browserConsole" | "networkRequests" | "sessionReplay";
 
@@ -191,37 +198,37 @@ export default defineConfig({
     // Each layer runs on a different port; unified under /api/v1 for future gateway compatibility
     proxy: {
       '/api/v1/ingest': {
-        target: 'http://localhost:8001',
+        target: VITE_PROXY_L1_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/ingest/, '/api/v1/ingestion'),
       },
       '/api/v1/extract': {
-        target: 'http://localhost:8002',
+        target: VITE_PROXY_L2_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/extract/, ''),
       },
       '/api/v1/graph': {
-        target: 'http://localhost:8003',
+        target: VITE_PROXY_L3_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/graph/, '/v1'),
       },
       '/api/v1/audit': {
-        target: 'http://localhost:8004',
+        target: VITE_PROXY_L4_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/audit/, '/v1/audit'),
       },
       '/api/v1/agents': {
-        target: 'http://localhost:8004',
+        target: VITE_PROXY_L4_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/agents/, '/v1'),
       },
       '/api/v1/truths': {
-        target: 'http://localhost:8005',
+        target: VITE_PROXY_L5_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/truths/, '/api/v1'),
       },
       '/api/v1/benchmarks': {
-        target: 'http://localhost:8006',
+        target: VITE_PROXY_L6_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/benchmarks/, '/v1/benchmarks'),
       },

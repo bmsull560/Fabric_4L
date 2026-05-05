@@ -244,7 +244,7 @@ class list_industriesResult(TypedDictModel):
     industries: Any
 
 
-async def health_check(request: Request | None = None):
+async def health_check(request: Request):
     """Health check endpoint with dependency and system status."""
     import psutil  # type: ignore[import-untyped]
 
