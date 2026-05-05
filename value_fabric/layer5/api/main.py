@@ -12,40 +12,28 @@ Or via Docker:
 import logging
 import os
 import re
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
+import inspect
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from ..shared_bootstrap import (
+    SecurityConfig,
+    add_security_middleware,
+    create_fabric_app,
+    install_metrics_middleware,
+    resolve_cors_policy,
+    validate_production_safety,
+    verify_metrics_access,
+)
 
-try:
-    from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
-    from value_fabric.shared.security import SecurityConfig, add_security_middleware, validate_production_safety
-except ImportError:
-    add_security_middleware = None
-    SecurityConfig = None
-    resolve_cors_policy = None
-    validate_production_safety = None
-
-if not SecurityConfig and os.getenv("ENVIRONMENT") in ("production", "staging"):
-    raise RuntimeError("SecurityMiddleware required in production")
+is_vault_healthy: Callable[[str], Awaitable[bool] | bool] | None
 
 try:
     from value_fabric.shared.identity.vault_check import is_vault_healthy
 except ImportError:
     is_vault_healthy = None
-
-try:
-    from value_fabric.shared.observability import verify_metrics_access
-except ImportError:  # pragma: no cover
-    verify_metrics_access = None  # type: ignore[assignment]
 
 from metrics import MetricsMiddleware, get_metrics, initialize_metrics
 
@@ -63,28 +51,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-_tracer_provider: TracerProvider | None = None
-
-
-def init_telemetry() -> TracerProvider | None:
-    """Initialize OpenTelemetry tracing if OTLP endpoint is configured."""
-    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if not otel_endpoint:
-        return None
-
-    resource = Resource.create({SERVICE_NAME: "layer5-ground-truth"})
-    provider = TracerProvider(resource=resource)
-
-    exporter = OTLPSpanExporter(
-        endpoint=f"{otel_endpoint}/v1/traces"
-    )
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
-
-    trace.set_tracer_provider(provider)
-    return provider
-
-
 # ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
 # ---------------------------------------------------------------------------
@@ -93,14 +59,9 @@ def init_telemetry() -> TracerProvider | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifecycle — database init and teardown."""
-    global _tracer_provider
+    validate_production_safety()
 
-    if validate_production_safety:
-        validate_production_safety()
-
-    # Initialize OpenTelemetry tracing
-    _tracer_provider = init_telemetry()
-    if _tracer_provider:
+    if getattr(app.state, "telemetry_provider", None):
         logger.info("L5: OpenTelemetry tracing initialized")
 
     settings = get_settings()
@@ -118,9 +79,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy:
+        if vault_addr and is_vault_healthy is not None:
             logger.info("L5: Checking Vault connectivity at %s", vault_addr)
-            ok = await is_vault_healthy(vault_addr)
+            health_result = is_vault_healthy(vault_addr)
+            ok = await health_result if inspect.isawaitable(health_result) else health_result
             if not ok:
                 logger.error("L5: Vault unreachable — cannot start in production without secrets backend")
                 raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
@@ -163,10 +125,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.warning(f"L5: Error closing Redis connection: {e}")
 
     # Shutdown OpenTelemetry tracer provider to flush pending spans
-    if _tracer_provider:
+    if getattr(app.state, "telemetry_provider", None):
         logger.info("L5: Shutting down OpenTelemetry tracer provider")
-        _tracer_provider.shutdown()
-        _tracer_provider = None
+        app.state.telemetry_provider.shutdown()
+        app.state.telemetry_provider = None
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +139,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 def create_app() -> FastAPI:
     settings = get_settings()
 
-    app = FastAPI(
+    app = create_fabric_app(
+        service_name="layer5-ground-truth",
         title="Value Fabric — Ground Truth Layer (L5)",
         description=(
             "Evidence-backed, CFO-defensible facts for the Value Fabric platform. "
@@ -189,6 +152,8 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         openapi_url="/openapi.json",
         lifespan=lifespan,
+        telemetry_service_name="layer5-ground-truth",
+        instrument_telemetry=True,
         contact={
             "name": "Value Fabric Engineering",
             "url": "https://github.com/bmsull560/Fabric_4L",
@@ -218,21 +183,20 @@ def create_app() -> FastAPI:
         ],
     )
 
-    # Initialize Prometheus metrics and middleware at module level (before app starts)
-    _metrics_instance = initialize_metrics()
-    if _metrics_instance:
-        app.state.metrics = _metrics_instance
-        app.middleware("http")(MetricsMiddleware(_metrics_instance))
-        logger.info("L5: Metrics middleware installed")
+    install_metrics_middleware(
+        app,
+        metrics=initialize_metrics(),
+        middleware_factory=MetricsMiddleware,
+        logger=logger,
+    )
 
     # SecurityMiddleware — input validation and security headers (before CORS)
     # L5 has no skip paths — all endpoints require strict validation
-    if SecurityConfig and add_security_middleware:
-        _security_config_l5 = SecurityConfig.from_env(
-            skip_validation_paths=frozenset(),
-            strict_mode=True,
-        )
-        add_security_middleware(app, config=_security_config_l5)
+    _security_config_l5 = SecurityConfig.from_env(
+        skip_validation_paths=frozenset(),
+        strict_mode=True,
+    )
+    add_security_middleware(app, config=_security_config_l5)
 
     # GovernanceMiddleware — provides auth and tenant context with rate limiting
     # Production/staging: fail closed if auth middleware is missing
@@ -267,20 +231,10 @@ def create_app() -> FastAPI:
         )
 
     # CORS — fail-safe via shared resolve_cors_policy()
-    if resolve_cors_policy:
-        _cors_policy = resolve_cors_policy()
-        app.add_middleware(CORSMiddleware, **_cors_policy.as_kwargs())
+    app.state.cors_policy = resolve_cors_policy()
 
     # Mount the API routers
     app.include_router(router)
-
-    # Note: metrics middleware is installed inside `lifespan()` because
-    # `app.state.metrics` is only initialized there.
-
-    # Instrument FastAPI with OpenTelemetry after all other middleware
-    if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        FastAPIInstrumentor.instrument_app(app)
-        logger.info("L5: FastAPI instrumented with OpenTelemetry")
 
     # Mount the Model Registry router
     try:
@@ -295,7 +249,7 @@ def create_app() -> FastAPI:
         """Prometheus metrics endpoint — requires internal access token."""
         # Verify internal access for metrics (blocks public ingress access).
         # Delegated to shared.observability so all layers stay aligned.
-        if verify_metrics_access is None or not verify_metrics_access(request):
+        if not verify_metrics_access(request):
             raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
         
         metrics = get_metrics()

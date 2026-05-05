@@ -16,6 +16,7 @@ try:
         formulas,
         products,
         roi_calculator,
+        system,
         value_packs,
         value_trees,
         variables,
@@ -37,5 +38,6 @@ __all__ = [
     "evidence",
     "competitive_intel",
     "roi_calculator",
+    "system",
     "_utils",
 ]

@@ -28,6 +28,7 @@ from ..shared_bootstrap import (
     add_security_middleware,
     build_health_response,
     create_fabric_app,
+    install_metrics_middleware,
     register_health_endpoint,
     resolve_cors_policy,
     validate_production_safety,
@@ -95,11 +96,9 @@ async def lifespan(app: FastAPI):
     if app.state.telemetry_provider is not None:
         logger.info("L6: OpenTelemetry tracing initialized")
 
-    # Initialize Prometheus metrics
-    metrics = initialize_metrics()
+    metrics = getattr(app.state, "metrics", None)
     if metrics:
         logger.info("Prometheus metrics initialized")
-    app.state.metrics = metrics
 
     # Startup: initialize Neo4j and seed data. Neo4j can be slow to accept
     # Bolt connections in constrained release-smoke environments even after the
@@ -149,11 +148,12 @@ if app.state.telemetry_provider is not None:
     logger.info("L6: FastAPI instrumented with OpenTelemetry")
 
 # Initialize Prometheus metrics and middleware at module level (before app starts)
-_metrics_instance = initialize_metrics()
-if _metrics_instance:
-    app.state.metrics = _metrics_instance
-    app.middleware("http")(MetricsMiddleware(_metrics_instance))
-    logger.info("L6: Metrics middleware installed")
+install_metrics_middleware(
+    app,
+    metrics=initialize_metrics(),
+    middleware_factory=MetricsMiddleware,
+    logger=logger,
+)
 
 # SecurityMiddleware — input validation and security headers (before CORS)
 # L6 has no skip paths — all endpoints require strict validation
