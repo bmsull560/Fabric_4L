@@ -36,15 +36,14 @@ jobs:
         ports:
           - 6379:6379
       neo4j:
-        image: neo4j:5-enterprise
+        image: neo4j:5-community
         env:
-          NEO4J_AUTH: neo4j/test
-          NEO4J_ACCEPT_LICENSE_AGREEMENT: yes
+          NEO4J_AUTH: neo4j/testpassword
         options: >-
-          --health-cmd "cypher-shell -u neo4j -p test 'RETURN 1'"
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-timeout 10s
+          --health-retries 12
         ports:
           - 7687:7687
           - 7474:7474
@@ -86,7 +85,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687
           NEO4J_USER: neo4j
-          NEO4J_PASSWORD: test
+          NEO4J_PASSWORD: testpassword
 
       - name: Run integration tests
         run: pytest -m integration --timeout=120
@@ -95,7 +94,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687
           NEO4J_USER: neo4j
-          NEO4J_PASSWORD: test
+          NEO4J_PASSWORD: testpassword
 
       - name: Run contract tests
         run: pytest -m contract --timeout=60
@@ -104,7 +103,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687
           NEO4J_USER: neo4j
-          NEO4J_PASSWORD: test
+          NEO4J_PASSWORD: testpassword
 
       - name: Run security tests
         run: pytest -m security --timeout=60
@@ -113,7 +112,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687
           NEO4J_USER: neo4j
-          NEO4J_PASSWORD: test
+          NEO4J_PASSWORD: testpassword
 
       - name: Generate coverage report
         run: |
