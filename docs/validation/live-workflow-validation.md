@@ -29,7 +29,9 @@ The Vite proxy is configured to route live API traffic to Docker service names i
 Important:
 
 - This repo still uses `VITE_API_BASE` for the browser path prefix.
-- `VITE_API_BASE_URL` is now supported as the Layer 4 proxy target override and defaults to `http://localhost:8004` for local development.
+- Browser API clients use relative `/api/v1` paths and do not call `VITE_API_BASE_URL` directly.
+- The Vite dev server proxies those browser requests server-side to `VITE_PROXY_L4_URL` and the other layer proxy targets.
+- `VITE_API_BASE_URL` is intentionally not set in the live stack, so the browser is never pointed at Docker-internal hostnames like `http://layer4:8000`.
 - `VITE_USE_MOCKS` is forced to `false` in the live stack.
 - `VITE_ENABLE_MOCK_FALLBACK` is forced to `false` in the live stack.
 
@@ -66,7 +68,6 @@ docker compose -f docker-compose.live.yml ps
 ## Health Verification
 
 ```bash
-curl http://localhost:5173
 curl http://localhost:3001
 curl http://localhost:8004/health
 ```
@@ -165,13 +166,19 @@ Frontend live stack settings:
 
 ```env
 VITE_API_BASE=/api/v1
-VITE_API_BASE_URL=http://layer4:8000
+VITE_PROXY_L1_URL=http://layer1:8000
+VITE_PROXY_L2_URL=http://layer2:8000
+VITE_PROXY_L3_URL=http://layer3:8001
+VITE_PROXY_L4_URL=http://layer4:8000
+VITE_PROXY_L5_URL=http://layer5:8005
+VITE_PROXY_L6_URL=http://layer6:8006
 ```
 
 Local development fallback remains:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8004
+VITE_API_BASE=/api/v1
+VITE_PROXY_L4_URL=http://localhost:8004
 ```
 
 Playwright live validation settings:
@@ -188,6 +195,51 @@ PLAYWRIGHT_BACKEND_URL=http://localhost:8004
 - `FAIL`: compose resolves but one or more required services, seed steps, or Playwright live tests fail.
 - `BLOCKED`: compose foundation exists, but runtime health validation or Playwright live execution was not performed or could not be completed in the current environment.
 
+## Live Environment Gate
+
+Run these checks in order before any P0 live workflow validation:
+
+1. Bunnyshell deploy succeeds.
+2. Frontend public URL opens.
+3. Layer 4 public health responds.
+4. The frontend can make a real API call to Layer 4 from browser context.
+5. Layer 1 internal health passes.
+6. Layer 2 internal health passes.
+7. Layer 3 internal health passes at `http://layer3:8001/health`.
+8. Layer 5 internal health passes at `http://layer5:8005/api/v1/health`.
+9. Layer 6 internal health passes at `http://layer6:8006/health`.
+10. Postgres, Redis, Neo4j, and MinIO are healthy.
+11. Layer 5 migration completes successfully.
+12. MinIO init completes successfully.
+13. Seed command succeeds or the seed blocker is documented.
+14. Playwright can open the frontend.
+15. Playwright can authenticate into the app.
+
+If the gate fails, live validation remains `BLOCKED`. Do not substitute mocked E2E for this gate.
+
+## Bunnyshell Live Environment Gate Report
+
+| Check | Status | Evidence | Fix Needed |
+| --- | --- | --- | --- |
+| Bunnyshell deploy | Blocked | Not run from this environment | Run Bunnyshell deployment |
+| Frontend public URL | Blocked | Not run from this environment | Open `https://frontend-{{ env.base_domain }}` |
+| Layer 4 public health | Blocked | Not run from this environment | Check `https://layer4-{{ env.base_domain }}/health` |
+| Browser API call to Layer 4 | Blocked | Browser connectivity not validated | Verify a real `/api/v1/agents/...` request in browser devtools |
+| L1 internal health | Blocked | Not run from this environment | Check `http://layer1:8000/health` inside network |
+| L2 internal health | Blocked | Not run from this environment | Check `http://layer2:8000/health` inside network |
+| L3 internal health | Blocked | Not run from this environment | Check `http://layer3:8001/health` inside network |
+| L5 internal health | Blocked | Not run from this environment | Check `http://layer5:8005/api/v1/health` inside network |
+| L6 internal health | Blocked | Not run from this environment | Check `http://layer6:8006/health` inside network |
+| Postgres | Blocked | Not run from this environment | Confirm service healthy in Bunnyshell |
+| Redis | Blocked | Not run from this environment | Confirm service healthy in Bunnyshell |
+| Neo4j | Blocked | Not run from this environment | Confirm service healthy in Bunnyshell |
+| MinIO | Blocked | Not run from this environment | Confirm service healthy in Bunnyshell |
+| Layer 5 migration | Blocked | Migration not executed here | Review `layer5-migrate` completion |
+| MinIO init | Blocked | Init job not executed here | Review `minio-init` completion |
+| Seed command | Blocked | Seed not executed here | Run seed or document blocker |
+| Playwright opens frontend | Blocked | Live Playwright not executed | Run live Playwright after gate passes |
+| Playwright authenticates | Blocked | Live Playwright not executed | Validate login or dev-auth flow |
+
 ## Validation Report
 
 | Check | Result |
@@ -198,6 +250,7 @@ PLAYWRIGHT_BACKEND_URL=http://localhost:8004
 | backing stores included | Yes |
 | frontend port | 3001 |
 | Vite proxy env-driven | Yes |
+| browser API path verified from source | Yes |
 | local dev fallback preserved | Yes |
 | health checks defined | Yes |
 | seed path documented | Yes |

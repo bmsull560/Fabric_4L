@@ -92,19 +92,18 @@ services:
   minio-init:
     image: minio/mc:latest
     container_name: vf-live-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
+      until /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin; do
+        echo 'waiting for minio';
+        sleep 2;
+      done;
       /usr/bin/mc mb myminio/layer1-raw-html || true;
-      /usr/bin/mc anonymous set none myminio/layer1-raw-html;
+      /usr/bin/mc anonymous set none myminio/layer1-raw-html || true;
       exit 0;
       "
     networks:
       - live-network
-    restart: "no"
 
   # ---------------------------------------------------------------------------
   # Layer 1: Ingestion Service (internal container port 8000)
@@ -127,13 +126,6 @@ services:
       LAYER1_DEBUG: "true"
       LAYER1_API_PORT: 8000
       JWT_SECRET: dev-local-secret-do-not-use-in-production-minimum-32-chars
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
@@ -163,11 +155,6 @@ services:
       PYTHONPATH: /app
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - live-network
 
@@ -197,13 +184,6 @@ services:
       LOG_LEVEL: info
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
     networks:
       - live-network
     healthcheck:
@@ -229,11 +209,6 @@ services:
       LOG_LEVEL: info
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
-    depends_on:
-      neo4j:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - live-network
     healthcheck:
@@ -276,23 +251,6 @@ services:
       LLM_MODEL: gpt-4o
       LOG_LEVEL: debug
       PYTHONPATH: /app
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      layer1:
-        condition: service_healthy
-      layer2:
-        condition: service_healthy
-      layer3:
-        condition: service_healthy
-      layer5:
-        condition: service_healthy
-      layer6:
-        condition: service_healthy
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
@@ -324,13 +282,6 @@ services:
       LOG_LEVEL: info
       API_PORT: 8005
       REDIS_URL: redis://redis:6379/0
-    depends_on:
-      postgres:
-        condition: service_healthy
-      layer5-migrate:
-        condition: service_completed_successfully
-      layer3:
-        condition: service_healthy
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
@@ -347,17 +298,26 @@ services:
       context: ./services/layer5-ground-truth
       dockerfile: ./Dockerfile
     container_name: vf-live-layer5-migrate
-    command: alembic upgrade head
+    command:
+      - sh
+      - -lc
+      - |
+        attempts=0
+        until alembic upgrade head; do
+          attempts=$((attempts + 1))
+          if [ "$attempts" -ge 24 ]; then
+            echo "layer5 migration failed after ${attempts} attempts"
+            exit 1
+          fi
+          echo "waiting for layer5 database (${attempts}/24)"
+          sleep 5
+        done
     environment:
       DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth
-    depends_on:
-      postgres:
-        condition: service_healthy
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
       - live-network
-    restart: "no"
 
   # ---------------------------------------------------------------------------
   # Layer 6: Benchmarks Service (internal container port 8006)
@@ -375,11 +335,6 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: devpassword
       REDIS_URL: redis://redis:6379/0
-    depends_on:
-      neo4j:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
@@ -403,7 +358,6 @@ services:
       - "3001:3001"
     environment:
       VITE_API_BASE: /api/v1
-      VITE_API_BASE_URL: http://layer4:8000
       VITE_USE_MOCKS: "false"
       VITE_ENABLE_MOCK_FALLBACK: "false"
       VITE_ENABLE_SSE: "true"
@@ -417,19 +371,6 @@ services:
     volumes:
       - ./apps/web:/app
       - /app/node_modules
-    depends_on:
-      layer1:
-        condition: service_healthy
-      layer2:
-        condition: service_healthy
-      layer3:
-        condition: service_healthy
-      layer4:
-        condition: service_healthy
-      layer5:
-        condition: service_healthy
-      layer6:
-        condition: service_healthy
     networks:
       - live-network
     healthcheck:
@@ -458,22 +399,8 @@ services:
     volumes:
       - ./apps/web:/app
       - /app/node_modules
-    depends_on:
-      layer1:
-        condition: service_healthy
-      layer2:
-        condition: service_healthy
-      layer3:
-        condition: service_healthy
-      layer4:
-        condition: service_healthy
-      layer5:
-        condition: service_healthy
-      layer6:
-        condition: service_healthy
     networks:
       - live-network
-    restart: "no"
 
 volumes:
   live-postgres-data:
