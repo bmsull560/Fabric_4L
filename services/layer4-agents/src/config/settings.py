@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="LAYER4_",
         case_sensitive=False,
+        populate_by_name=True,
         extra="ignore",  # Allow extra env vars without error
     )
 

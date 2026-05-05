@@ -6,6 +6,7 @@ import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
+import src.services.llm_budget_guardrails as budget_module
 from src.services.llm_budget_guardrails import LLMBudgetGuardrails
 from src.workflows.whitespace import ExtractedNeedsResponse
 
@@ -42,10 +43,7 @@ class FakeRedis:
 def test_llm_budget_guardrails_use_redis_backend(monkeypatch):
     async def scenario():
         tenant_id = uuid4()
-        monkeypatch.setattr(
-            "src.services.llm_budget_guardrails.require_context",
-            lambda: SimpleNamespace(tenant_id=tenant_id),
-        )
+        monkeypatch.setattr(budget_module, "require_context", lambda: SimpleNamespace(tenant_id=tenant_id))
         redis = FakeRedis()
         guardrails = LLMBudgetGuardrails(redis_client=redis)
 

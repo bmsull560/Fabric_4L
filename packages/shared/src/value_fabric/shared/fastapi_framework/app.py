@@ -129,6 +129,7 @@ def create_fabric_app(
     include_request_id_middleware: bool = True,
     telemetry_service_name: str | None = None,
     instrument_telemetry: bool = False,
+    **fastapi_kwargs: Any,
 ) -> FastAPI:
     """Create a FastAPI application with Value Fabric defaults.
 
@@ -142,6 +143,7 @@ def create_fabric_app(
         version=version,
         description=description,
         lifespan=lifespan,
+        **fastapi_kwargs,
     )
     app.state.service_name = service_name
     app.state.telemetry_provider = None
