@@ -18,6 +18,7 @@ from layer2_extraction.models import (
     Relationship,
     UseCase,
     ValueDriver,
+    ValueMetric,
 )
 
 # Namespaces
@@ -78,6 +79,10 @@ class RDFGenerator:
         for value_driver in result.value_drivers:
             self._add_value_driver(value_driver)
 
+        # Add value metrics
+        for value_metric in result.value_metrics:
+            self._add_value_metric(value_metric)
+
         # Add features
         for feature in result.features:
             self._add_feature(feature)
@@ -114,6 +119,17 @@ class RDFGenerator:
         self.graph.add((VF.ValueDriver, RDF.type, OWL.Class))
         self.graph.add((VF.ValueDriver, RDFS.label, Literal("Value Driver")))
 
+        # ValueMetric class
+        self.graph.add((VF.ValueMetric, RDF.type, OWL.Class))
+        self.graph.add((VF.ValueMetric, RDFS.label, Literal("Value Metric")))
+        self.graph.add(
+            (
+                VF.ValueMetric,
+                RDFS.comment,
+                Literal("A measurable KPI that quantifies the impact of a ValueDriver"),
+            )
+        )
+
         # Feature class
         self.graph.add((VF.Feature, RDF.type, OWL.Class))
         self.graph.add((VF.Feature, RDFS.label, Literal("Feature")))
@@ -145,6 +161,7 @@ class RDFGenerator:
             (VF.implements, "implements", "Feature implements a capability"),
             (VF.delivers, "delivers", "UseCase delivers value"),
             (VF.involves, "involves", "UseCase involves persona"),
+            (VF.impacts, "impacts", "ValueDriver impacts ValueMetric"),
         ]
 
         for uri, label, comment in predicates:
@@ -349,6 +366,48 @@ class RDFGenerator:
             self._add_provenance(
                 statement, relationship.extraction_job_id, relationship.extracted_at
             )
+
+    def _add_value_metric(self, value_metric: ValueMetric) -> None:
+        """Add a ValueMetric instance to graph."""
+        uri = URIRef(f"http://valuefabric.io/entity/{value_metric.id}")
+
+        self.graph.add((uri, RDF.type, VF.ValueMetric))
+        self.graph.add((uri, VF.id, Literal(value_metric.id)))
+        self.graph.add((uri, VF.name, Literal(value_metric.name)))
+        self.graph.add((uri, VF.description, Literal(value_metric.description)))
+        self.graph.add((uri, VF.unit, Literal(value_metric.unit)))
+        direction_value = getattr(value_metric.direction, "value", value_metric.direction)
+        self.graph.add((uri, VF.direction, Literal(direction_value)))
+        self.graph.add((uri, VF.confidence, Literal(value_metric.confidence, datatype=XSD.float)))
+
+        # Optional numeric values
+        if value_metric.baseline_value is not None:
+            self.graph.add(
+                (uri, VF.baselineValue, Literal(value_metric.baseline_value, datatype=XSD.float))
+            )
+        if value_metric.target_value is not None:
+            self.graph.add(
+                (uri, VF.targetValue, Literal(value_metric.target_value, datatype=XSD.float))
+            )
+
+        # Benchmark source
+        if value_metric.benchmark_source:
+            self.graph.add((uri, VF.benchmarkSource, Literal(value_metric.benchmark_source)))
+
+        # Formula
+        if value_metric.formula_string:
+            self.graph.add((uri, VF.formulaString, Literal(value_metric.formula_string)))
+
+        # Links to ValueDrivers via canonical impacts relationship
+        for driver_id in value_metric.value_driver_ids:
+            driver_uri = URIRef(f"http://valuefabric.io/entity/{driver_id}")
+            self.graph.add((driver_uri, VF.impacts, uri))
+
+        # Source references
+        for source in value_metric.source_refs:
+            self.graph.add((uri, VF.sourceUrl, Literal(source)))
+
+        self._add_provenance(uri, value_metric.extraction_job_id, value_metric.extracted_at)
 
     def _add_feature(self, feature: Feature) -> None:
         """Add a Feature instance to graph."""

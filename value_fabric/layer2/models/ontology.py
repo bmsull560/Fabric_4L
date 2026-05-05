@@ -267,6 +267,91 @@ class ValueDriver(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class MetricDirection(str, Enum):
+    """Direction of improvement for a value metric.
+
+    Indicates whether a higher or lower value represents improvement.
+    """
+
+    HIGHER_IS_BETTER = "higher_is_better"
+    LOWER_IS_BETTER = "lower_is_better"
+    TARGET_VALUE = "target_value"
+
+
+class ValueMetric(BaseModel):
+    """A measurable KPI that quantifies the impact of a ValueDriver.
+
+    ValueMetrics sit at the leaf of the value chain:
+    Capability → enables → UseCase → delivers → ValueDriver → impacts → ValueMetric
+
+    They provide the concrete, numeric evidence that a value driver has been
+    realized, e.g. "Days Sales Outstanding reduced by 8 days".
+
+    Attributes:
+        id: Unique identifier (UUID)
+        name: Human-readable metric name (e.g. "Days Sales Outstanding")
+        description: Detailed description of what this metric measures
+        unit: Unit of measurement (days, USD, %, FTEs, etc.)
+        direction: Whether higher or lower values represent improvement
+        baseline_value: Typical pre-solution baseline (optional)
+        target_value: Expected post-solution value (optional)
+        benchmark_source: Where the benchmark data came from (optional)
+        formula_string: Mathematical formula for computing this metric (optional)
+        value_driver_ids: IDs of ValueDrivers this metric quantifies
+        source_refs: URLs where this metric was extracted from
+        confidence: LLM confidence score (0.0-1.0)
+        extracted_at: Timestamp of extraction
+        extraction_job_id: Reference to extraction job
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(..., min_length=10)
+    unit: str = Field(..., min_length=1, max_length=100)
+    direction: MetricDirection = Field(default=MetricDirection.LOWER_IS_BETTER)
+    baseline_value: float | None = None
+    target_value: float | None = None
+    benchmark_source: str | None = None
+    formula_string: str | None = None
+    value_driver_ids: list[str] = Field(default_factory=list)
+    source_refs: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    extraction_job_id: str | None = None
+
+    @field_validator("value_driver_ids")
+    @classmethod
+    def validate_driver_refs(cls, v: list[str]) -> list[str]:
+        """Ensure all value driver references are valid UUID strings."""
+        for ref in v:
+            try:
+                UUID(ref)
+            except ValueError:
+                raise ValueError(f"Invalid value driver reference: {ref}")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, v: str) -> str:
+        """Normalize name for matching while preserving original in display."""
+        return v.strip()
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "name": "Days Sales Outstanding",
+                "description": "Average number of days to collect payment after a sale",
+                "unit": "days",
+                "direction": "lower_is_better",
+                "baseline_value": 45.0,
+                "target_value": 37.0,
+                "confidence": 0.88,
+            }
+        },
+    )
+
+
 class Feature(BaseModel):
     """A product feature that implements a capability.
 
@@ -333,6 +418,7 @@ class ExtractionResult(BaseModel):
     use_cases: list[UseCase] = Field(default_factory=list)
     personas: list[Persona] = Field(default_factory=list)
     value_drivers: list[ValueDriver] = Field(default_factory=list)
+    value_metrics: list[ValueMetric] = Field(default_factory=list)
     features: list[Feature] = Field(default_factory=list)
     processed_at: datetime = Field(default_factory=datetime.utcnow)
     chunks_processed: int = 0
@@ -341,7 +427,12 @@ class ExtractionResult(BaseModel):
     def get_all_entities(self) -> list[BaseModel]:
         """Return all extracted entities as a flat list."""
         return (
-            self.capabilities + self.use_cases + self.personas + self.value_drivers + self.features
+            self.capabilities
+            + self.use_cases
+            + self.personas
+            + self.value_drivers
+            + self.value_metrics
+            + self.features
         )
 
     def get_entity_by_id(self, entity_id: str) -> BaseModel | None:

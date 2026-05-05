@@ -6,7 +6,7 @@ They wrap the ontology models for use with OpenAI's structured outputs API.
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .ontology import Capability, Feature, Persona, UseCase, ValueDriver
+from .ontology import Capability, Feature, Persona, UseCase, ValueDriver, ValueMetric
 from .relationships import Relationship
 
 
@@ -77,6 +77,20 @@ class FeatureExtractionResponse(BaseModel):
         default_factory=list,
         description="Extracted product features from the source text. "
         "Features are concrete product functionality that implements capabilities.",
+    )
+
+
+class ValueMetricExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    """Structured response for value metric extraction.
+
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
+    value_metrics: list[ValueMetric] = Field(
+        default_factory=list,
+        description="Extracted measurable KPIs that quantify value driver impact. "
+        "Include units, direction of improvement, baseline/target values where stated.",
     )
 
 

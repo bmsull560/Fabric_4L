@@ -8,17 +8,20 @@ from .extraction_response import (
     RelationshipExtractionResponse,
     UseCaseExtractionResponse,
     ValueDriverExtractionResponse,
+    ValueMetricExtractionResponse,
 )
 from .ontology import (
     Capability,
     ExtractionResult,
     Feature,
+    MetricDirection,
     Persona,
     RoleType,
     SeniorityLevel,
     UseCase,
     ValueCategory,
     ValueDriver,
+    ValueMetric,
 )
 from .operational_signal_extraction import (
     ExtractionMetadata,
@@ -40,6 +43,8 @@ __all__ = [
     "UseCase",
     "Persona",
     "ValueDriver",
+    "ValueMetric",
+    "MetricDirection",
     "Feature",
     "RoleType",
     "SeniorityLevel",
@@ -58,6 +63,7 @@ __all__ = [
     "UseCaseExtractionResponse",
     "PersonaExtractionResponse",
     "ValueDriverExtractionResponse",
+    "ValueMetricExtractionResponse",
     "FeatureExtractionResponse",
     "RelationshipExtractionResponse",
     "OperationalSignalExtractionResponse",

@@ -24,6 +24,7 @@ from layer2_extraction.models import (
     Relationship,
     UseCase,
     ValueDriver,
+    ValueMetric,
 )
 from layer2_extraction.models.extraction_response import (
     CapabilityExtractionResponse,
@@ -32,6 +33,7 @@ from layer2_extraction.models.extraction_response import (
     RelationshipExtractionResponse,
     UseCaseExtractionResponse,
     ValueDriverExtractionResponse,
+    ValueMetricExtractionResponse,
 )
 from layer2_extraction.shared.llm_client import CostRecord, LLMClient
 
@@ -269,6 +271,44 @@ class EntityExtractor:
         "additionalProperties": False,
     }
 
+    VALUEMETRIC_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "Metric name (e.g. 'Days Sales Outstanding', 'Inventory Turns')",
+            },
+            "description": {
+                "type": "string",
+                "description": "Detailed description of what this metric measures and how it is calculated",
+            },
+            "unit": {
+                "type": "string",
+                "description": "Unit of measurement (days, USD, %, FTEs, hours, etc.)",
+            },
+            "direction": {
+                "type": "string",
+                "enum": ["higher_is_better", "lower_is_better", "target_value"],
+                "description": "Direction in which the metric improves: lower_is_better (e.g. DSO, churn rate), higher_is_better (e.g. NPS, throughput)",
+            },
+            "baseline_value": {
+                "type": "number",
+                "description": "Typical pre-solution baseline value (optional)",
+            },
+            "target_value": {
+                "type": "number",
+                "description": "Expected or stated post-solution value (optional)",
+            },
+            "benchmark_source": {
+                "type": "string",
+                "description": "Source of benchmark data (e.g. 'Gartner 2024', 'industry average') (optional)",
+            },
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        },
+        "required": ["name", "description", "unit", "confidence"],
+        "additionalProperties": False,
+    }
+
     def __init__(self, api_key: str | None = None, model: str = "gpt-4o", timeout: float = 60.0):
         """Initialize extractor with OpenAI client.
 
@@ -369,13 +409,15 @@ class EntityExtractor:
             confidence_threshold: Minimum confidence to include
 
         Returns:
-            Dict with keys: capabilities, use_cases, personas, value_drivers, features
+            Dict with keys: capabilities, use_cases, personas, value_drivers,
+            value_metrics, features
         """
-        results = {
+        results: dict[str, list[BaseModel]] = {
             "capabilities": [],
             "use_cases": [],
             "personas": [],
             "value_drivers": [],
+            "value_metrics": [],
             "features": [],
         }
 
@@ -390,6 +432,9 @@ class EntityExtractor:
             text, source_url, extraction_job_id, confidence_threshold
         )
         results["value_drivers"] = await self._extract_value_drivers(
+            text, source_url, extraction_job_id, confidence_threshold
+        )
+        results["value_metrics"] = await self._extract_value_metrics(
             text, source_url, extraction_job_id, confidence_threshold
         )
         results["features"] = await self._extract_features(
@@ -441,6 +486,15 @@ class EntityExtractor:
         return await self._extract_entities_generic(
             "feature", text, source_url, extraction_job_id, confidence_threshold,
             FeatureExtractionResponse, "features", "extract_features"
+        )
+
+    async def _extract_value_metrics(
+        self, text: str, source_url: str, extraction_job_id: str, confidence_threshold: float
+    ) -> list[ValueMetric]:
+        """Extract value metrics (KPIs) from text using structured outputs."""
+        return await self._extract_entities_generic(
+            "valuemetric", text, source_url, extraction_job_id, confidence_threshold,
+            ValueMetricExtractionResponse, "value_metrics", "extract_value_metrics"
         )
 
 
