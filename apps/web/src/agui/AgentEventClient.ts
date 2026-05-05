@@ -23,14 +23,11 @@
  */
 
 import { apiClient } from "@/api/client";
-import {
-  AgentEventType,
-  type AgentEvent,
-  type RunMetadata,
-} from "./events";
+import { AgentEventType, type AgentEvent, type RunMetadata } from "./events";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { parseAgentEventJson } from "./eventSchemas";
 
-const log = createFeatureLogger('AgentEventClient');
+const log = createFeatureLogger("AgentEventClient");
 
 // ── Step Templates ──────────────────────────────────────────────────────────
 
@@ -39,7 +36,10 @@ const log = createFeatureLogger('AgentEventClient');
  * phases the agent goes through when processing a request. The backend may
  * override these with actual steps in the future.
  */
-const TAB_STEP_TEMPLATES: Record<string, Array<{ id: string; label: string }>> = {
+const TAB_STEP_TEMPLATES: Record<
+  string,
+  Array<{ id: string; label: string }>
+> = {
   signals: [
     { id: "load-context", label: "Loading account context" },
     { id: "analyze-signals", label: "Analyzing pain signals" },
@@ -111,7 +111,7 @@ export interface AgentEventClientOptions {
 export async function* sendAgentMessage(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   options: AgentEventClientOptions,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): AsyncGenerator<AgentEvent, void, unknown> {
   const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const now = () => new Date().toISOString();
@@ -176,7 +176,9 @@ export async function* sendAgentMessage(
     if (signal?.aborted) return;
 
     const data = response.data;
-    const content = data?.content ?? "I received your message but couldn't generate a response.";
+    const content =
+      data?.content ??
+      "I received your message but couldn't generate a response.";
     const metadata: RunMetadata = {
       traceId: data?.metadata?.trace_id,
       workflowId: data?.metadata?.workflow_id,
@@ -261,7 +263,7 @@ export async function* sendAgentMessage(
 export async function* streamAgentEvents(
   url: string,
   body: Record<string, unknown>,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): AsyncGenerator<AgentEvent, void, unknown> {
   const response = await fetch(url, {
     method: "POST",
@@ -307,11 +309,10 @@ export async function* streamAgentEvents(
       if (!trimmed || !trimmed.startsWith("data: ")) continue;
 
       try {
-        const event = JSON.parse(trimmed.slice(6)) as AgentEvent;
-        yield event;
+        yield parseAgentEventJson(trimmed.slice(6));
       } catch {
         if (import.meta.env.DEV) {
-          log.warn('Malformed SSE chunk');
+          log.warn("Malformed SSE chunk");
         }
       }
     }

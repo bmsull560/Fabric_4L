@@ -1,13 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
-import { apiClient } from '@/api/client';
-import { QK } from './queryKeys';
-import { STALE_TIME } from './useApiShared';
-import { API_BASE, L4_PREFIX } from '@/lib/apiConfig';
-import { POLL_INTERVALS } from './usePolling';
-import { createFeatureLogger } from '@/lib/telemetry';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { apiClient } from "@/api/client";
+import { QK } from "./queryKeys";
+import { STALE_TIME } from "./useApiShared";
+import { API_BASE, L4_PREFIX } from "@/lib/apiConfig";
+import { POLL_INTERVALS } from "./usePolling";
+import { createFeatureLogger } from "@/lib/telemetry";
+import { parseJsonValue } from "@/agui/eventSchemas";
+import { z } from "zod";
 
-const log = createFeatureLogger('useWorkflows');
+const log = createFeatureLogger("useWorkflows");
 
 // Constants for workflow SSE
 // POLL_INTERVAL_MS removed — use POLL_INTERVALS.workflows from usePolling
@@ -17,28 +19,71 @@ const CANCEL_DELAY_MS = 500;
 export interface Workflow {
   id: string;
   name: string;
-  status: 'pending' | 'running' | 'paused' | 'interrupted' | 'completed' | 'failed' | 'cancelled';
+  status:
+    | "pending"
+    | "running"
+    | "paused"
+    | "interrupted"
+    | "completed"
+    | "failed"
+    | "cancelled";
   progress: number;
   createdAt?: string;
   updatedAt?: string;
 }
 
-
-function normalizeWorkflowStatus(status: unknown): Workflow['status'] {
-  const value = typeof status === 'string' ? status.toLowerCase() : '';
-  const validStatuses: Workflow['status'][] = ['pending', 'running', 'paused', 'interrupted', 'completed', 'failed', 'cancelled'];
-  if (validStatuses.includes(value as Workflow['status'])) {
-    return value as Workflow['status'];
+function normalizeWorkflowStatus(status: unknown): Workflow["status"] {
+  const value = typeof status === "string" ? status.toLowerCase() : "";
+  const validStatuses: Workflow["status"][] = [
+    "pending",
+    "running",
+    "paused",
+    "interrupted",
+    "completed",
+    "failed",
+    "cancelled",
+  ];
+  if (validStatuses.includes(value as Workflow["status"])) {
+    return value as Workflow["status"];
   }
-  return 'pending';
+  return "pending";
 }
 
 function normalizeWorkflowProgress(rawProgress: unknown): number {
-  const numeric = typeof rawProgress === 'number' ? rawProgress : Number(rawProgress);
+  const numeric =
+    typeof rawProgress === "number" ? rawProgress : Number(rawProgress);
   if (Number.isNaN(numeric)) {
     return 0;
   }
   return Math.min(100, Math.max(0, numeric));
+}
+
+const WorkflowSseMessageSchema = z.object({
+  payload: z.unknown().optional(),
+});
+
+export function parseWorkflowSseMessageJson(
+  eventJson: string
+): RawWorkflow | null {
+  try {
+    const parsed = WorkflowSseMessageSchema.safeParse(
+      parseJsonValue(eventJson)
+    );
+    if (!parsed.success) {
+      log.warn("Failed to validate workflow SSE message", {
+        errorCode: parsed.error.issues.map(issue => issue.message).join(", "),
+      });
+      return null;
+    }
+    return parsed.data.payload &&
+      typeof parsed.data.payload === "object" &&
+      !Array.isArray(parsed.data.payload)
+      ? (parsed.data.payload as RawWorkflow)
+      : null;
+  } catch (err) {
+    log.warn("Failed to parse SSE message", { errorCode: String(err) });
+    return null;
+  }
 }
 
 interface RawWorkflow {
@@ -58,15 +103,43 @@ interface RawWorkflow {
   completed_at?: string;
 }
 
+const WorkflowCheckpointSchema = z
+  .object({
+    id: z.string().min(1),
+    created_at: z.string().min(1),
+  })
+  .passthrough();
+
+const WorkflowDetailSchema = z
+  .object({
+    result: z.unknown().optional(),
+    checkpoints: z.array(WorkflowCheckpointSchema).optional(),
+  })
+  .passthrough();
+
+const WorkflowTypeSchema = z.object({
+  type: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string().default(""),
+});
+
+const WorkflowTypesResponseSchema = z
+  .object({
+    workflows: z.array(WorkflowTypeSchema).default([]),
+  })
+  .passthrough();
+
 function normalizeWorkflow(raw: RawWorkflow): Workflow | null {
   const normalizedId = raw.workflow_id || raw.workflow_instance_id || raw.id;
-  const normalizedIdText = String(normalizedId || '').trim();
+  const normalizedIdText = String(normalizedId || "").trim();
   if (!normalizedIdText) {
     return null;
   }
 
-  const normalizedName = raw.name || raw.workflow_type || 'workflow';
-  const normalizedProgress = normalizeWorkflowProgress(raw.progress ?? raw.progress_percentage ?? 0);
+  const normalizedName = raw.name || raw.workflow_type || "workflow";
+  const normalizedProgress = normalizeWorkflowProgress(
+    raw.progress ?? raw.progress_percentage ?? 0
+  );
 
   return {
     id: normalizedIdText,
@@ -75,6 +148,24 @@ function normalizeWorkflow(raw: RawWorkflow): Workflow | null {
     progress: normalizedProgress,
     createdAt: raw.createdAt || raw.created_at || raw.started_at,
     updatedAt: raw.updatedAt || raw.updated_at || raw.completed_at,
+  };
+}
+
+export type WorkflowDetail = Workflow & {
+  result?: unknown;
+  checkpoints?: Array<z.infer<typeof WorkflowCheckpointSchema>>;
+};
+
+function parseWorkflowDetail(data: unknown): WorkflowDetail {
+  const parsed = WorkflowDetailSchema.parse(data);
+  const workflow = normalizeWorkflow(data as RawWorkflow);
+  if (!workflow) {
+    throw new Error("Workflow detail response missing workflow id");
+  }
+  return {
+    ...workflow,
+    result: parsed.result,
+    checkpoints: parsed.checkpoints,
   };
 }
 
@@ -96,17 +187,25 @@ function normalizeWorkflowList(data: unknown): Workflow[] {
 
 function extractWorkflowList(data: unknown): RawWorkflow[] {
   // Handle new paginated response format: { items: [...], total, limit, offset, has_more }
-  if (data && typeof data === 'object' && Array.isArray((data as { items?: unknown[] }).items)) {
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { items?: unknown[] }).items)
+  ) {
     return (data as { items: RawWorkflow[] }).items;
   }
-  
+
   // Handle legacy array format
   if (Array.isArray(data)) {
     return data as RawWorkflow[];
   }
 
   // Handle legacy { workflows: [...] } format
-  if (data && typeof data === 'object' && Array.isArray((data as { workflows?: unknown[] }).workflows)) {
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { workflows?: unknown[] }).workflows)
+  ) {
     return (data as { workflows: RawWorkflow[] }).workflows;
   }
 
@@ -126,9 +225,12 @@ export interface PaginatedWorkflows {
  * Parse API response into PaginatedWorkflows structure.
  * Handles both new paginated format and legacy formats.
  */
-function parsePaginatedResponse(data: unknown, items: Workflow[]): PaginatedWorkflows {
+function parsePaginatedResponse(
+  data: unknown,
+  items: Workflow[]
+): PaginatedWorkflows {
   // Check if response is already paginated
-  if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
+  if (data && typeof data === "object" && "items" in data && "total" in data) {
     const paginated = data as PaginatedWorkflows;
     return {
       items,
@@ -138,7 +240,7 @@ function parsePaginatedResponse(data: unknown, items: Workflow[]): PaginatedWork
       has_more: paginated.has_more,
     };
   }
-  
+
   // Legacy fallback: treat all as single page
   return {
     items,
@@ -152,23 +254,28 @@ function parsePaginatedResponse(data: unknown, items: Workflow[]): PaginatedWork
 /**
  * Fetch and poll active workflows from Layer 4 with pagination support.
  * Polls every 5 seconds, stops on window focus (already polling).
- * 
+ *
  * @param limit - Maximum number of workflows to fetch (default: 50, max: 100)
  * @param offset - Number of workflows to skip for pagination (default: 0)
  * @param status - Optional status filter ('pending' | 'running' | 'completed' | 'failed' | 'cancelled')
  */
-export function useActiveWorkflows(options: { limit?: number; offset?: number; status?: string } = {}) {
+export function useActiveWorkflows(
+  options: { limit?: number; offset?: number; status?: string } = {}
+) {
   const { limit = 50, offset = 0, status } = options;
 
   return useQuery<PaginatedWorkflows, Error>({
     queryKey: [...QK.workflows.active(), { limit, offset, status }],
     queryFn: async () => {
       const params = new URLSearchParams();
-      params.set('limit', String(limit));
-      params.set('offset', String(offset));
-      if (status) params.set('status', status);
-      
-      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`) as { data: unknown };
+      params.set("limit", String(limit));
+      params.set("offset", String(offset));
+      if (status) params.set("status", status);
+
+      const response = (await apiClient.get(
+        "l4",
+        `/workflows/active?${params.toString()}`
+      )) as { data: unknown };
       const items = normalizeWorkflowList(response.data);
       return parsePaginatedResponse(response.data, items);
     },
@@ -178,7 +285,9 @@ export function useActiveWorkflows(options: { limit?: number; offset?: number; s
   });
 }
 
-export function useWorkflowHistory(options: { limit?: number; offset?: number } = {}) {
+export function useWorkflowHistory(
+  options: { limit?: number; offset?: number } = {}
+) {
   const { limit = 50, offset = 0 } = options;
 
   return useQuery<PaginatedWorkflows, Error>({
@@ -187,10 +296,13 @@ export function useWorkflowHistory(options: { limit?: number; offset?: number } 
       // NOTE: Using /workflows/active with pagination params.
       // Backend now supports limit/offset for paginated workflow lists.
       const params = new URLSearchParams();
-      params.set('limit', String(limit));
-      params.set('offset', String(offset));
-      
-      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`) as { data: unknown };
+      params.set("limit", String(limit));
+      params.set("offset", String(offset));
+
+      const response = (await apiClient.get(
+        "l4",
+        `/workflows/active?${params.toString()}`
+      )) as { data: unknown };
       const items = normalizeWorkflowList(response.data);
       return parsePaginatedResponse(response.data, items);
     },
@@ -202,17 +314,22 @@ export function useCreateWorkflow() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { type: string; inputs?: Record<string, unknown>; priority?: 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW' | 'BACKGROUND' }) => {
-      const response = await apiClient.post('l4', '/workflows', {
+    mutationFn: async (params: {
+      type: string;
+      inputs?: Record<string, unknown>;
+      priority?: "CRITICAL" | "HIGH" | "NORMAL" | "LOW" | "BACKGROUND";
+    }) => {
+      const response = (await apiClient.post("l4", "/workflows", {
         workflow_type: params.type,
         inputs: {
           custom_data: params.inputs || {},
         },
-        priority: params.priority || 'NORMAL',
-      }) as { data: Record<string, unknown> };
-      const workflowId = response.data?.workflow_instance_id || response.data?.workflow_id;
+        priority: params.priority || "NORMAL",
+      })) as { data: Record<string, unknown> };
+      const workflowId =
+        response.data?.workflow_instance_id || response.data?.workflow_id;
       if (!workflowId) {
-        throw new Error('Workflow creation response missing workflow id');
+        throw new Error("Workflow creation response missing workflow id");
       }
       return String(workflowId);
     },
@@ -232,12 +349,12 @@ export function useCancelWorkflow() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete('l4', `/workflows/${id}`);
+      await apiClient.delete("l4", `/workflows/${id}`);
     },
     onSuccess: async () => {
       // Brief delay to allow backend to process cancellation
       // before refetching to avoid stale "running" state
-      await new Promise((resolve) => setTimeout(resolve, CANCEL_DELAY_MS));
+      await new Promise(resolve => setTimeout(resolve, CANCEL_DELAY_MS));
       await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
       await queryClient.invalidateQueries({ queryKey: QK.workflows.history() });
     },
@@ -281,23 +398,22 @@ export function useWorkflowSSE(workflowId: string | null) {
         es.close();
         eventSourceRef.current = null;
         setIsConnected(false);
-        setError(new Error(`SSE connection timeout after ${SSE_TIMEOUT_MS / 1000}s`));
+        setError(
+          new Error(`SSE connection timeout after ${SSE_TIMEOUT_MS / 1000}s`)
+        );
       }
     }, SSE_TIMEOUT_MS);
 
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.payload) {
-          const normalized = normalizeWorkflow(data.payload);
-          if (normalized) {
-            setWorkflow(normalized);
-            // Keep connection open for ongoing updates, don't close
-          }
-        }
-      } catch (err) {
-        // Log parse errors for debugging but don't break the connection
-        log.warn('Failed to parse SSE message', { errorCode: String(err) });
+    es.onmessage = event => {
+      const payload = parseWorkflowSseMessageJson(event.data);
+      if (!payload) {
+        return;
+      }
+
+      const normalized = normalizeWorkflow(payload);
+      if (normalized) {
+        setWorkflow(normalized);
+        // Keep connection open for ongoing updates, don't close
       }
     };
 
@@ -307,7 +423,7 @@ export function useWorkflowSSE(workflowId: string | null) {
       }
       if (eventSourceRef.current === es) {
         setIsConnected(false);
-        setError(new Error('SSE connection failed'));
+        setError(new Error("SSE connection failed"));
       }
       es.close();
     };
@@ -336,7 +452,7 @@ export function usePauseWorkflow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.post('l4', `/workflows/${id}/pause`, {});
+      await apiClient.post("l4", `/workflows/${id}/pause`, {});
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
@@ -352,7 +468,7 @@ export function useResumeWorkflow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.post('l4', `/workflows/${id}/resume`, {});
+      await apiClient.post("l4", `/workflows/${id}/resume`, {});
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
@@ -366,13 +482,13 @@ export function useResumeWorkflow() {
  */
 export function useWorkflowDetail(workflowId: string | null) {
   return useQuery({
-    queryKey: QK.workflows.detail(workflowId ?? ''),
+    queryKey: QK.workflows.detail(workflowId ?? ""),
     queryFn: async () => {
-      const response = await apiClient.get('l4', `/workflows/${workflowId}`) as { data: unknown };
-      return response.data as Workflow & {
-        result?: unknown;
-        checkpoints?: { id: string; created_at: string }[];
-      };
+      const response = (await apiClient.get(
+        "l4",
+        `/workflows/${workflowId}`
+      )) as { data: unknown };
+      return parseWorkflowDetail(response.data);
     },
     enabled: !!workflowId,
     staleTime: 5_000,
@@ -385,14 +501,16 @@ export function useWorkflowDetail(workflowId: string | null) {
  */
 export function useWorkflowTypes() {
   return useQuery({
-    queryKey: [...QK.workflows.all, 'types'],
+    queryKey: [...QK.workflows.all, "types"],
     queryFn: async () => {
-      const response = await apiClient.get('l4', '/workflows/types') as { data: unknown };
-      const data = response.data as { workflows?: { type: string; name: string; description: string }[] };
+      const response = (await apiClient.get("l4", "/workflows/types")) as {
+        data: unknown;
+      };
+      const data = WorkflowTypesResponseSchema.parse(response.data);
       // Normalize backend shape { workflows: [{ type, name, description }] }
       // to frontend shape { types: [{ id, name, description }] }
       return {
-        types: (data.workflows || []).map((w) => ({
+        types: data.workflows.map(w => ({
           id: w.type,
           name: w.name,
           description: w.description,

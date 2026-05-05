@@ -1,32 +1,34 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
-import { createLogger } from '@/lib/telemetry';
-import { QK } from './queryKeys';
-import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/api/client";
+import { createLogger } from "@/lib/telemetry";
+import { QK } from "./queryKeys";
+import {
+  withApiError,
+  BaseApiError,
+  STALE_TIME,
+  RETRY_CONFIG,
+} from "./useApiShared";
+import {
+  parseConnectionTestResult,
+  parseIntegration,
+  parseIntegrations,
+  parseSyncTriggerResult,
+  type CRMProvider,
+  type ConnectionTestResult,
+  type Integration,
+  type IntegrationListResponse,
+  type SyncTriggerResult,
+} from "@/lib/schemas/integrations";
 
-const log = createLogger('useIntegrations');
+const log = createLogger("useIntegrations");
 
-export type CRMProvider = 'salesforce' | 'hubspot';
-
-export interface Integration {
-  id: string;
-  tenant_id: string;
-  provider: CRMProvider;
-  enabled: boolean;
-  instance_url: string | null;
-  sync_interval_minutes: number;
-  sync_batch_size: number;
-  last_sync_at: string | null;
-  last_successful_sync_at: string | null;
-  records_synced: number;
-  records_updated: number;
-  records_failed: number;
-  status: 'idle' | 'running' | 'failed' | 'pending' | 'degraded';
-  last_error_message: string | null;
-  has_refresh_token: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type {
+  CRMProvider,
+  ConnectionTestResult,
+  Integration,
+  IntegrationListResponse,
+  SyncTriggerResult,
+};
 
 export interface IntegrationConfig {
   provider: CRMProvider;
@@ -46,34 +48,16 @@ export interface IntegrationCreateRequest {
   salesforce_org_id?: string;
 }
 
-export interface ConnectionTestResult {
-  success: boolean;
-  message: string;
-  details?: Record<string, unknown>;
-  error_code?: string;
-}
-
-export interface SyncTriggerResult {
-  sync_id: string;
-  status: string;
-  provider: string;
-}
-
-export interface IntegrationListResponse {
-  integrations: Integration[];
-}
-
 export class IntegrationApiError extends BaseApiError {
   constructor(message: string, statusCode?: number, responseData?: unknown) {
     super(message, statusCode, responseData);
-    this.name = 'IntegrationApiError';
+    this.name = "IntegrationApiError";
   }
 }
 
 async function fetchIntegrations(): Promise<Integration[]> {
-  const response = await apiClient.get('l4', '/integrations');
-  const data = response.data as IntegrationListResponse;
-  return data.integrations;
+  const response = await apiClient.get("l4", "/integrations");
+  return parseIntegrations(response.data);
 }
 
 export function useIntegrations() {
@@ -87,15 +71,15 @@ export function useIntegrations() {
 }
 
 async function fetchIntegration(provider: CRMProvider): Promise<Integration> {
-  const response = await apiClient.get('l4', `/integrations/${provider}`);
-  return response.data as Integration;
+  const response = await apiClient.get("l4", `/integrations/${provider}`);
+  return parseIntegration(response.data);
 }
 
 export function useIntegration(provider: CRMProvider | null) {
   return useQuery<Integration, IntegrationApiError>({
-    queryKey: QK.integrations.detail(provider || ''),
+    queryKey: QK.integrations.detail(provider || ""),
     queryFn: async () => {
-      if (!provider) throw new IntegrationApiError('No provider specified');
+      if (!provider) throw new IntegrationApiError("No provider specified");
       return withApiError(fetchIntegration(provider), IntegrationApiError);
     },
     enabled: !!provider,
@@ -108,16 +92,24 @@ export function useIntegration(provider: CRMProvider | null) {
 export function useCreateOrUpdateIntegration() {
   const queryClient = useQueryClient();
 
-  return useMutation<Integration, IntegrationApiError, { provider: CRMProvider; data: IntegrationCreateRequest }>({
+  return useMutation<
+    Integration,
+    IntegrationApiError,
+    { provider: CRMProvider; data: IntegrationCreateRequest }
+  >({
     mutationFn: async ({ provider, data }) => {
-      const response = await apiClient.post('l4', `/integrations/${provider}`, data);
-      return response.data as Integration;
+      const response = await apiClient.post(
+        "l4",
+        `/integrations/${provider}`,
+        data
+      );
+      return parseIntegration(response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.integrations.all });
     },
-    onError: (error) => {
-      log.error('CreateOrUpdate failed', { error: error.message });
+    onError: error => {
+      log.error("CreateOrUpdate failed", { error: error.message });
     },
   });
 }
@@ -126,26 +118,30 @@ export function useDeleteIntegration() {
   const queryClient = useQueryClient();
 
   return useMutation<void, IntegrationApiError, CRMProvider>({
-    mutationFn: async (provider) => {
-      await apiClient.delete('l4', `/integrations/${provider}`);
+    mutationFn: async provider => {
+      await apiClient.delete("l4", `/integrations/${provider}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.integrations.all });
     },
-    onError: (error) => {
-      log.error('Delete failed', { error: error.message });
+    onError: error => {
+      log.error("Delete failed", { error: error.message });
     },
   });
 }
 
 export function useTestIntegration() {
   return useMutation<ConnectionTestResult, IntegrationApiError, CRMProvider>({
-    mutationFn: async (provider) => {
-      const response = await apiClient.post('l4', `/integrations/${provider}/test`, {});
-      return response.data as ConnectionTestResult;
+    mutationFn: async provider => {
+      const response = await apiClient.post(
+        "l4",
+        `/integrations/${provider}/test`,
+        {}
+      );
+      return parseConnectionTestResult(response.data);
     },
-    onError: (error) => {
-      log.error('Test failed', { error: error.message });
+    onError: error => {
+      log.error("Test failed", { error: error.message });
     },
   });
 }
@@ -154,15 +150,19 @@ export function useSyncIntegration() {
   const queryClient = useQueryClient();
 
   return useMutation<SyncTriggerResult, IntegrationApiError, CRMProvider>({
-    mutationFn: async (provider) => {
-      const response = await apiClient.post('l4', `/integrations/${provider}/sync`, {});
-      return response.data as SyncTriggerResult;
+    mutationFn: async provider => {
+      const response = await apiClient.post(
+        "l4",
+        `/integrations/${provider}/sync`,
+        {}
+      );
+      return parseSyncTriggerResult(response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.integrations.all });
     },
-    onError: (error) => {
-      log.error('Sync failed', { error: error.message });
+    onError: error => {
+      log.error("Sync failed", { error: error.message });
     },
   });
 }

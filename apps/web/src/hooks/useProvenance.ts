@@ -1,42 +1,25 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
-import { QK } from './queryKeys';
-import { STALE_TIME } from './useApiShared';
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiClient } from "@/api/client";
+import { QK } from "./queryKeys";
+import { STALE_TIME } from "./useApiShared";
+import {
+  parseAuditLogResponse,
+  parseProvenanceTrail,
+  type AuditLogEntry,
+  type AuditLogResponse,
+  type ProvenanceStep,
+  type ProvenanceTrail,
+} from "@/lib/schemas/provenance";
 
-export interface ProvenanceStep {
-  step: number;
-  label: string;
-  detail: string;
-  timestamp: string;
-  agent?: string;
-  entity_id?: string;
-}
-
-export interface ProvenanceTrail {
-  entity_id: string;
-  entity_type: string;
-  entity_name: string;
-  created_at: string;
-  source: string;
-  extraction_job_id?: string;
-  steps: ProvenanceStep[];
-  confidence_score?: number;
-}
-
-export interface AuditLogEntry {
-  id: string;
-  timestamp: string;
-  source: 'provenance' | 'access_log';
-  event_type: string;
-  entity_id?: string;
-  entity_type?: string;
-  action: string;
-  agent: string;
-  details: Record<string, unknown>;
-}
+export type {
+  AuditLogEntry,
+  AuditLogResponse,
+  ProvenanceStep,
+  ProvenanceTrail,
+};
 
 export interface AuditLogFilter {
-  source?: 'provenance' | 'access' | 'all';
+  source?: "provenance" | "access" | "all";
   from_date?: string;
   to_date?: string;
   entity_type?: string;
@@ -44,21 +27,16 @@ export interface AuditLogFilter {
   agent?: string;
 }
 
-export interface AuditLogResponse {
-  entries: AuditLogEntry[];
-  total: number;
-  page: number;
-  per_page: number;
-}
-
-
 export function useProvenanceTrail(entityId: string | null) {
   return useQuery({
-    queryKey: QK.provenance.trail(entityId || ''),
+    queryKey: QK.provenance.trail(entityId || ""),
     queryFn: async () => {
-      if (!entityId) throw new Error('No entity ID provided');
-      const response = await apiClient.get('l3', `/provenance/${encodeURIComponent(entityId)}`);
-      return response.data as ProvenanceTrail;
+      if (!entityId) throw new Error("No entity ID provided");
+      const response = await apiClient.get(
+        "l3",
+        `/provenance/${encodeURIComponent(entityId)}`
+      );
+      return parseProvenanceTrail(response.data);
     },
     enabled: !!entityId,
     staleTime: STALE_TIME.activity,
@@ -70,15 +48,18 @@ export function useAuditLogs(filters: AuditLogFilter = {}) {
     queryKey: QK.provenance.audit(filters),
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.source) params.set('source', filters.source);
-      if (filters.from_date) params.set('from_date', filters.from_date);
-      if (filters.to_date) params.set('to_date', filters.to_date);
-      if (filters.entity_type) params.set('entity_type', filters.entity_type);
-      if (filters.event_type) params.set('event_type', filters.event_type);
-      if (filters.agent) params.set('agent', filters.agent);
+      if (filters.source) params.set("source", filters.source);
+      if (filters.from_date) params.set("from_date", filters.from_date);
+      if (filters.to_date) params.set("to_date", filters.to_date);
+      if (filters.entity_type) params.set("entity_type", filters.entity_type);
+      if (filters.event_type) params.set("event_type", filters.event_type);
+      if (filters.agent) params.set("agent", filters.agent);
 
-      const response = await apiClient.get('l3', `/audit/logs?${params.toString()}`);
-      return response.data as AuditLogResponse;
+      const response = await apiClient.get(
+        "l3",
+        `/audit/logs?${params.toString()}`
+      );
+      return parseAuditLogResponse(response.data);
     },
     staleTime: STALE_TIME.poll,
   });
@@ -88,13 +69,13 @@ export function useExportProvenance() {
   return useMutation({
     mutationFn: async ({
       entityId,
-      format = 'json',
+      format = "json",
     }: {
       entityId: string;
-      format?: 'json' | 'prov-o';
+      format?: "json" | "prov-o";
     }) => {
       const response = await apiClient.get(
-        'l3',
+        "l3",
         `/provenance/${encodeURIComponent(entityId)}?format=${format}`
       );
       return response.data;
