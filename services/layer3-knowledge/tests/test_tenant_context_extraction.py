@@ -5,12 +5,21 @@ from FastAPI request objects for multi-tenant security.
 """
 
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Import the helper under test
 from value_fabric.layer3_knowledge.src.api.app_monolith import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
+
+
+@pytest.fixture(autouse=True)
+def _ensure_neo4j_tenant_available():
+    """Patch NEO4J_TENANT_AVAILABLE so tests run without optional neo4j dependency."""
+    with patch(
+        "value_fabric.layer3_knowledge.src.api.app_monolith.NEO4J_TENANT_AVAILABLE", True
+    ):
+        yield
 
 
 class TestExtractTenantId:
@@ -23,7 +32,7 @@ class TestExtractTenantId:
         mock_context.tenant_id = uuid.uuid4()
         
         mock_request = MagicMock()
-        mock_request.state.governance_context = mock_context
+        mock_request.state.context = mock_context
         
         # Act
         result = _extract_tenant_id(mock_request)
@@ -36,8 +45,8 @@ class TestExtractTenantId:
         """Should return None when request has no tenant context."""
         # Arrange
         mock_request = MagicMock()
-        mock_request.state.governance_context = MagicMock()
-        mock_request.state.governance_context.tenant_id = None
+        mock_request.state.context = MagicMock()
+        mock_request.state.context.tenant_id = None
         
         # Act
         result = _extract_tenant_id(mock_request)
@@ -50,7 +59,7 @@ class TestExtractTenantId:
         # Arrange
         mock_request = MagicMock()
         mock_request.state = MagicMock()
-        mock_request.state.governance_context = None
+        mock_request.state.context = None
         
         # Act
         result = _extract_tenant_id(mock_request)
@@ -74,7 +83,7 @@ class TestExtractTenantId:
         mock_context.tenant_id = tenant_uuid
         
         mock_request = MagicMock()
-        mock_request.state.governance_context = mock_context
+        mock_request.state.context = mock_context
         
         # Act
         result = _extract_tenant_id(mock_request)
@@ -90,7 +99,7 @@ class TestExtractTenantId:
         mock_context.tenant_id = "tenant-123-abc"
         
         mock_request = MagicMock()
-        mock_request.state.governance_context = mock_context
+        mock_request.state.context = mock_context
         
         # Act
         result = _extract_tenant_id(mock_request)
@@ -116,7 +125,7 @@ class TestExtractTenantId:
             )
             
             mock_request = MagicMock()
-            mock_request.state.governance_context = ctx
+            mock_request.state.context = ctx
             
             # Act
             result = _extract_tenant_id(mock_request)
@@ -138,7 +147,7 @@ class TestExtractTenantIdDeterminism:
         mock_context.tenant_id = tenant_uuid
         
         mock_request = MagicMock()
-        mock_request.state.governance_context = mock_context
+        mock_request.state.context = mock_context
         
         # Act - call multiple times
         results = [_extract_tenant_id(mock_request) for _ in range(5)]

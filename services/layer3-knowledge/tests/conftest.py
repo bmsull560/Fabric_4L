@@ -8,6 +8,19 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+# Stub optional heavy deps before any imports that transitively require them
+try:
+    import redis.asyncio  # noqa: F401
+except ImportError:
+    _redis_mock = MagicMock()
+    sys.modules["redis"] = _redis_mock
+    sys.modules["redis.asyncio"] = _redis_mock.asyncio
+
+try:
+    import psutil  # noqa: F401
+except ImportError:
+    sys.modules["psutil"] = MagicMock()
+
 _LAYER3_SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_LAYER3_SRC) not in sys.path:
     sys.path.insert(0, str(_LAYER3_SRC))

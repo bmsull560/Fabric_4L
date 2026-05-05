@@ -16,7 +16,7 @@ import { C1MessageSchema, ApiErrorSchema, assertSchema, assertSchemaRejects } fr
 const C1StreamRequestSchema = z.object({
   messages: z.array(C1MessageSchema).min(1),
   business_case_id: z.string().min(1),
-  business_case_data: z.record(z.unknown()).nullable().optional(),
+  business_case_data: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 // SSE event payload shapes emitted by the stream
@@ -24,7 +24,7 @@ const C1StreamEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('token'), content: z.string() }),
   z.object({ type: z.literal('done'), finish_reason: z.string() }),
   z.object({ type: z.literal('error'), message: z.string(), code: z.string().optional() }),
-  z.object({ type: z.literal('tool_call'), tool_name: z.string(), arguments: z.record(z.unknown()) }),
+  z.object({ type: z.literal('tool_call'), tool_name: z.string(), arguments: z.record(z.string(), z.unknown()) }),
 ]);
 
 // ── POST /v1/c1/stream — request body ────────────────────────────────────────

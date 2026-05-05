@@ -35,10 +35,10 @@ const TruthObjectCreateSchema = z.object({
     })
     .nullable()
     .optional(),
-  applies_to: z.record(z.unknown()).nullable().optional(),
+  applies_to: z.record(z.string(), z.unknown()).nullable().optional(),
   extraction_job_id: z.string().max(255).nullable().optional(),
   extraction_model: z.string().max(128).nullable().optional(),
-  sources: z.array(z.record(z.unknown())).optional(),
+  sources: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 const AddSourceRequestSchema = z.object({

@@ -26,8 +26,8 @@ import {
 const FormulaEvaluateRequestSchema = z.object({
   formula_id: z.string().nullable().optional(),
   expression: z.string().nullable().optional(),
-  variables: z.record(z.number()),
-  context: z.record(z.unknown()).optional(),
+  variables: z.record(z.string(), z.number()),
+  context: z.record(z.string(), z.unknown()).optional(),
 });
 
 const FormulaScenarioRequestSchema = z.object({
@@ -35,7 +35,7 @@ const FormulaScenarioRequestSchema = z.object({
   scenarios: z.array(
     z.object({
       name: z.string().min(1),
-      variables: z.record(z.number()),
+      variables: z.record(z.string(), z.number()),
     })
   ).min(1),
 });

@@ -27,7 +27,7 @@ const ExtractRequestSchema = z.object({
   content_id: z.string().min(1),
   source_url: z.string().min(1),
   markdown_content: z.string().min(1),
-  extraction_config: z.record(z.unknown()).optional(),
+  extraction_config: z.record(z.string(), z.unknown()).optional(),
 });
 
 const BatchExtractRequestSchema = z.object({

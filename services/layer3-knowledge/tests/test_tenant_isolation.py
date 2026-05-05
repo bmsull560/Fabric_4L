@@ -9,6 +9,13 @@ from fastapi import HTTPException, Request
 from value_fabric.layer3.api.app_monolith import _extract_tenant_id, list_entities, get_full_graph
 
 
+@pytest.fixture(autouse=True)
+def _ensure_neo4j_tenant_available():
+    """Patch NEO4J_TENANT_AVAILABLE so tests run without optional neo4j dependency."""
+    with patch("value_fabric.layer3.api.app_monolith.NEO4J_TENANT_AVAILABLE", True):
+        yield
+
+
 class TestTenantIsolation:
     """Verify tenant isolation on all Neo4j read endpoints."""
 
@@ -17,8 +24,8 @@ class TestTenantIsolation:
         """Create a mock request with tenant context."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
-        request.state.governance_context = MagicMock()
-        request.state.governance_context.tenant_id = "tenant-a"
+        request.state.context = MagicMock()
+        request.state.context.tenant_id = "tenant-a"
         return request
 
     @pytest.fixture
@@ -26,7 +33,7 @@ class TestTenantIsolation:
         """Create a mock request without tenant context."""
         request = MagicMock(spec=Request)
         request.state = MagicMock()
-        request.state.governance_context = None
+        request.state.context = None
         return request
 
     @pytest.fixture
@@ -46,7 +53,25 @@ class TestTenantIsolation:
 
     def test_extract_tenant_id_with_context(self, mock_request_with_tenant):
         """_extract_tenant_id should return tenant_id from request context."""
+        import value_fabric.layer3.api.app_monolith as _m
+        import dis
+        print("DEBUG module:", _extract_tenant_id.__module__)
+        print("DEBUG module file:", _m.__file__)
+        print("DEBUG NEO4J_TENANT_AVAILABLE:", _m.NEO4J_TENANT_AVAILABLE)
+        print("DEBUG id(NEO4J):", id(_m.NEO4J_TENANT_AVAILABLE))
+        # Check if function closure has captured NEO4J_TENANT_AVAILABLE
+        print("DEBUG func globals id(NEO4J):", id(_extract_tenant_id.__globals__.get("NEO4J_TENANT_AVAILABLE")))
+        print("DEBUG func globals NEO4J:", _extract_tenant_id.__globals__.get("NEO4J_TENANT_AVAILABLE"))
+        req = mock_request_with_tenant
+        st = req.state
+        ctx = getattr(st, "context", None)
+        print("DEBUG state:", st)
+        print("DEBUG context:", ctx)
+        print("DEBUG ctx.tenant_id:", ctx.tenant_id if ctx else "None")
+        print("DEBUG ctx truthy:", bool(ctx))
+        print("DEBUG ctx.tenant_id truthy:", bool(ctx.tenant_id) if ctx else False)
         tenant_id = _extract_tenant_id(mock_request_with_tenant)
+        print("DEBUG tenant_id:", tenant_id)
         assert tenant_id == "tenant-a"
 
     def test_extract_tenant_id_without_context(self, mock_request_no_tenant):
@@ -128,7 +153,7 @@ class TestTenantIsolation:
         mock_state = MagicMock()
         mock_state.neo4j_manager = AsyncMock()
 
-        with patch("api.main.get_app_state", return_value=mock_state):
+        with patch("value_fabric.layer3.api.app_monolith.get_app_state", return_value=mock_state):
             with pytest.raises(HTTPException) as exc_info:
                 await get_full_graph(
                     limit=1000,
@@ -149,7 +174,7 @@ class TestTenantIsolation:
         mock_neo4j.execute_query.return_value = []
         mock_state.neo4j_manager = mock_neo4j
 
-        with patch("api.main.get_app_state", return_value=mock_state):
+        with patch("value_fabric.layer3.api.app_monolith.get_app_state", return_value=mock_state):
             await get_full_graph(
                 limit=1000,
                 app_state=mock_state,
