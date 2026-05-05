@@ -1,0 +1,55 @@
+{
+  "version": "2026-05-05",
+  "status": "foundation_ready_load_test_evidence_required",
+  "purpose": "Tenant-scoped quota and rate-limiting policy for Fabric_4L APIs, workflows, and agent execution paths.",
+  "scopeRequired": "tenant",
+  "denyWhenTenantMissing": true,
+  "policyDimensions": [
+    "api_requests_per_minute",
+    "workflow_starts_per_hour",
+    "agent_actions_per_hour",
+    "llm_tokens_per_day",
+    "ingestion_pages_per_day",
+    "benchmark_runs_per_day"
+  ],
+  "defaultTiers": {
+    "free": {
+      "api_requests_per_minute": 60,
+      "workflow_starts_per_hour": 5,
+      "agent_actions_per_hour": 50,
+      "llm_tokens_per_day": 100000,
+      "ingestion_pages_per_day": 500,
+      "benchmark_runs_per_day": 2
+    },
+    "pro": {
+      "api_requests_per_minute": 600,
+      "workflow_starts_per_hour": 100,
+      "agent_actions_per_hour": 1000,
+      "llm_tokens_per_day": 2000000,
+      "ingestion_pages_per_day": 10000,
+      "benchmark_runs_per_day": 20
+    },
+    "enterprise": {
+      "api_requests_per_minute": 6000,
+      "workflow_starts_per_hour": 1000,
+      "agent_actions_per_hour": 25000,
+      "llm_tokens_per_day": 50000000,
+      "ingestion_pages_per_day": 500000,
+      "benchmark_runs_per_day": 250
+    }
+  },
+  "enforcementRequirements": {
+    "rateLimitHeadersRequired": true,
+    "quotaExceededAuditEventRequired": true,
+    "tenantOverrideRequiresApproval": true,
+    "serviceBypassAllowed": false,
+    "testModeRequiresExplicitEnvironment": true
+  },
+  "productionEvidenceRequired": [
+    "Per-tenant counters isolated across at least two tenants",
+    "Quota exceeded path returns deterministic 429 response",
+    "Rate-limit headers include limit, remaining, and reset time",
+    "Noisy-tenant load test preserves control-tenant latency",
+    "Approved override is audit logged and expires"
+  ]
+}

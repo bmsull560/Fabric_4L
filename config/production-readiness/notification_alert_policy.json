@@ -1,0 +1,37 @@
+{
+  "version": "2026-05-05",
+  "status": "foundation_ready_receiver_delivery_evidence_required",
+  "purpose": "Production notification and alert-routing policy for operational incidents, workflow pauses, and customer-impacting failures.",
+  "receiverTypes": [
+    "pager",
+    "slack_or_teams",
+    "email",
+    "webhook",
+    "in_app"
+  ],
+  "secretHandling": {
+    "receiverCredentialsInGitAllowed": false,
+    "externalSecretRequired": true,
+    "redactedEvidenceRequired": true
+  },
+  "routingRequirements": {
+    "sev1PagesHuman": true,
+    "sev2NotifiesServiceOwner": true,
+    "workflowPauseNotifiesAssignedApprover": true,
+    "billingIncidentNotifiesCommercialOwner": true,
+    "authIncidentNotifiesSecurityOwner": true
+  },
+  "deliveryReliability": {
+    "deduplicationRequired": true,
+    "retryRequired": true,
+    "deadLetterOrAuditRequired": true,
+    "quietHoursCannotSuppressSev1": true
+  },
+  "productionEvidenceRequired": [
+    "Test alert delivered to configured receiver",
+    "Secret references resolved from external secret manager",
+    "SEV-1 route pages a human or on-call integration",
+    "Workflow pause notification reaches assigned approver",
+    "Delivery failure is logged and retry behavior is visible"
+  ]
+}

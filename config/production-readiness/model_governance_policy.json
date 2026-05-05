@@ -1,0 +1,54 @@
+{
+  "version": "2026-05-05",
+  "status": "registry_foundation_ready_external_runtime_evidence_required",
+  "purpose": "Central model governance policy for LLM, embedding, extraction, and benchmark models used by Fabric_4L.",
+  "registryAuthority": "Layer 5 model registry",
+  "allowedLifecycleStates": [
+    "draft",
+    "candidate",
+    "approved",
+    "production",
+    "deprecated",
+    "blocked",
+    "rolled_back"
+  ],
+  "promotionRequirements": {
+    "draftToCandidate": [
+      "owner assigned",
+      "model card present",
+      "intended use documented",
+      "data handling constraints documented"
+    ],
+    "candidateToApproved": [
+      "golden trace evals passed",
+      "cost envelope reviewed",
+      "safety and tenant-isolation checks passed",
+      "rollback target identified"
+    ],
+    "approvedToProduction": [
+      "change approved by model steward",
+      "deployment window recorded",
+      "monitoring and alert routes active",
+      "audit event emitted"
+    ]
+  },
+  "runtimeSelectionRules": {
+    "mustResolveFromRegistry": true,
+    "environmentOverridesAllowed": false,
+    "blockedStatesDenied": ["draft", "candidate", "blocked", "deprecated", "rolled_back"],
+    "productionRequiresImmutableVersion": true
+  },
+  "rollbackRequirements": [
+    "previous production version retained",
+    "rollback reason captured",
+    "impact window captured",
+    "post-rollback eval evidence attached"
+  ],
+  "productionEvidenceRequired": [
+    "At least one model promoted through approved to production",
+    "Runtime service reads model version from registry rather than free-form config",
+    "Deprecation blocks new traffic",
+    "Rollback drill completed",
+    "Audit trail links change request, approver, and deployment evidence"
+  ]
+}

@@ -8,10 +8,11 @@ import argparse
 import ast
 import json
 import re
+import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, Pattern
 
 
 @dataclass
@@ -34,12 +35,21 @@ class LintReport:
     exit_code: int = 0
 
 
-CONTRACT_CHECKS = {
+@dataclass(frozen=True)
+class RegexCheck:
+    contract_id: str
+    severity: str
+    pattern: Pattern[str]
+    description: str
+    preferred_pattern: str
+
+
+CONTRACT_CHECKS: dict[str, dict[str, Any]] = {
     "tenant_context": {
         "severity": "critical",
         "patterns": [
             (r"def\s+\w+.*\(\s*[^)]*tenant_id\s*:", "tenant_id function parameter"),
-            (r'request\.headers\[[\x27\x22]x-tenant-id[\x27\x22]\]', "direct header access for tenant"),
+            (r"request\.headers\[[\x27\x22]x-tenant-id[\x27\x22]\]", "direct header access for tenant"),
             (r"request\.headers\.get\([\x27\x22]x-tenant-id[\x27\x22]", "direct header get for tenant"),
         ],
         "ast_patterns": [
@@ -98,104 +108,26 @@ CONTRACT_CHECKS = {
     },
 }
 
-
-def is_test_or_stub_file(file_path: Path) -> bool:
-    """Check if file is a test or stub that might legitimately have certain patterns."""
-    name = file_path.name.lower()
-    return (
-        "test_" in name or
-        "_test.py" in name or
-        name.startswith("test") or
-        "stub" in name or
-        "mock" in name
+REGEX_CHECKS: tuple[RegexCheck, ...] = tuple(
+    RegexCheck(
+        contract_id=contract_id,
+        severity=str(config["severity"]),
+        pattern=re.compile(pattern, re.IGNORECASE),
+        description=description,
+        preferred_pattern=str(config["preferred_pattern"]),
     )
+    for contract_id, config in CONTRACT_CHECKS.items()
+    for pattern, description in config.get("patterns", [])
+)
 
+SCAN_GLOBS = (
+    "value-fabric/**/*.py",
+    "shared/**/*.py",
+    "tests/**/*.py",
+)
 
-def check_file_with_regex(file_path: Path, content: str) -> list[ContractFinding]:
-    """Check file using regex patterns."""
-    findings = []
-    lines = content.split("\n")
-
-    for contract_id, config in CONTRACT_CHECKS.items():
-        patterns = config.get("patterns", [])
-
-        for pattern, description in patterns:
-            for i, line in enumerate(lines, start=1):
-                # Skip comments and strings that contain patterns
-                code_part = line.split("#")[0]  # Remove comments
-
-                if re.search(pattern, code_part, re.IGNORECASE):
-                    # Skip some false positives
-                    if "example" in line.lower() or "placeholder" in line.lower():
-                        continue
-                    if "CHANGE_ME" in line or "fake" in line.lower():
-                        continue
-                    if contract_id == "secret_in_source" and "test" in str(file_path).lower():
-                        # Allow test fixtures to have fake secrets
-                        if "test" in line.lower() or "mock" in line.lower() or "example" in line.lower():
-                            continue
-
-                    findings.append(ContractFinding(
-                        contract_id=contract_id,
-                        severity=config["severity"],
-                        path=str(file_path),
-                        line=i,
-                        column=line.find(re.search(pattern, code_part).group()) if re.search(pattern, code_part) else 0,
-                        message=f"Found: {description}",
-                        preferred_pattern=config["preferred_pattern"],
-                        snippet=line.strip()[:100],
-                    ))
-
-    return findings
-
-
-def check_file_with_ast(file_path: Path, content: str) -> list[ContractFinding]:
-    """Check file using AST analysis."""
-    findings = []
-
-    try:
-        tree = ast.parse(content)
-    except SyntaxError:
-        return findings  # Skip files with syntax errors
-
-    for node in ast.walk(tree):
-        # Check for tenant_id parameter
-        if isinstance(node, ast.arg) and node.arg == "tenant_id":
-            # Check if it's in a service/repository function
-            findings.append(ContractFinding(
-                contract_id="tenant_context",
-                severity="critical",
-                path=str(file_path),
-                line=getattr(node, "lineno", 0),
-                column=getattr(node, "col_offset", 0),
-                message="tenant_id as function parameter - use get_tenant_context() instead",
-                preferred_pattern="Use get_tenant_context() or middleware-resolved tenant",
-            ))
-
-        # Check for raise statements in certain contexts
-        if isinstance(node, ast.Raise):
-            # Check if we're in a tool-related file
-            if "tool" in str(file_path).lower() or "agent" in str(file_path).lower():
-                findings.append(ContractFinding(
-                    contract_id="tool_error_contract",
-                    severity="high",
-                    path=str(file_path),
-                    line=getattr(node, "lineno", 0),
-                    column=getattr(node, "col_offset", 0),
-                    message="raise statement in tool/agent code - return structured error instead",
-                    preferred_pattern="Return ToolResult with status='error'",
-                ))
-
-    return findings
-
-
-def should_scan_file(file_path: Path) -> bool:
-    """Determine if a file should be scanned."""
-    if not file_path.suffix == ".py":
-        return False
-
-    # Skip generated files
-    skip_patterns = [
+SKIP_PATH_PARTS = frozenset(
+    {
         "__pycache__",
         ".eggs",
         "dist",
@@ -204,45 +136,176 @@ def should_scan_file(file_path: Path) -> bool:
         ".venv",
         "venv",
         "node_modules",
-        "migrations/versions",  # Alembic migrations
-    ]
+    }
+)
 
-    for pattern in skip_patterns:
-        if pattern in str(file_path):
-            return False
 
-    return True
+def is_test_or_stub_file(file_path: Path) -> bool:
+    """Check if file is a test or stub that might legitimately have certain patterns."""
+    name = file_path.name.lower()
+    return (
+        "test_" in name
+        or "_test.py" in name
+        or name.startswith("test")
+        or "stub" in name
+        or "mock" in name
+    )
+
+
+def _is_false_positive(file_path: Path, contract_id: str, line: str) -> bool:
+    line_lower = line.lower()
+    if "example" in line_lower or "placeholder" in line_lower:
+        return True
+    if "CHANGE_ME" in line or "fake" in line_lower:
+        return True
+    if contract_id == "secret_in_source" and "test" in str(file_path).lower():
+        return "test" in line_lower or "mock" in line_lower or "example" in line_lower
+    return False
+
+
+def check_file_with_regex(file_path: Path, content: str) -> list[ContractFinding]:
+    """Check file using precompiled regex patterns with a single pass over lines."""
+    findings: list[ContractFinding] = []
+
+    for line_number, line in enumerate(content.splitlines(), start=1):
+        code_part = line.split("#", 1)[0]
+        if not code_part and not line.lstrip().startswith(('#', '"', "'")):
+            continue
+
+        for check in REGEX_CHECKS:
+            match = check.pattern.search(code_part)
+            if match is None:
+                continue
+            if _is_false_positive(file_path, check.contract_id, line):
+                continue
+
+            findings.append(
+                ContractFinding(
+                    contract_id=check.contract_id,
+                    severity=check.severity,
+                    path=str(file_path),
+                    line=line_number,
+                    column=match.start(),
+                    message=f"Found: {check.description}",
+                    preferred_pattern=check.preferred_pattern,
+                    snippet=line.strip()[:100],
+                )
+            )
+
+    return findings
+
+
+def check_file_with_ast(file_path: Path, content: str) -> list[ContractFinding]:
+    """Check file using AST analysis."""
+    findings: list[ContractFinding] = []
+
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return findings  # Skip files with syntax errors
+
+    path_lower = str(file_path).lower()
+    is_tool_or_agent = "tool" in path_lower or "agent" in path_lower
+
+    for node in ast.walk(tree):
+        # Check for tenant_id parameter
+        if isinstance(node, ast.arg) and node.arg == "tenant_id":
+            # Check if it's in a service/repository function
+            findings.append(
+                ContractFinding(
+                    contract_id="tenant_context",
+                    severity="critical",
+                    path=str(file_path),
+                    line=getattr(node, "lineno", 0),
+                    column=getattr(node, "col_offset", 0),
+                    message="tenant_id as function parameter - use get_tenant_context() instead",
+                    preferred_pattern="Use get_tenant_context() or middleware-resolved tenant",
+                )
+            )
+
+        # Check for raise statements in certain contexts
+        if is_tool_or_agent and isinstance(node, ast.Raise):
+            findings.append(
+                ContractFinding(
+                    contract_id="tool_error_contract",
+                    severity="high",
+                    path=str(file_path),
+                    line=getattr(node, "lineno", 0),
+                    column=getattr(node, "col_offset", 0),
+                    message="raise statement in tool/agent code - return structured error instead",
+                    preferred_pattern="Return ToolResult with status='error'",
+                )
+            )
+
+    return findings
+
+
+def should_scan_file(file_path: Path) -> bool:
+    """Determine if a file should be scanned."""
+    if file_path.suffix != ".py":
+        return False
+
+    path_parts = set(file_path.parts)
+    if path_parts & SKIP_PATH_PARTS:
+        return False
+
+    return "migrations/versions" not in file_path.as_posix()
+
+
+def _within_scan_scope(path: Path, repo_root: Path) -> bool:
+    """Return True when a path belongs to the same roots used by full scans."""
+    try:
+        rel = path.relative_to(repo_root).as_posix()
+    except ValueError:
+        return False
+    return rel.startswith(("value-fabric/", "shared/", "tests/"))
+
+
+def _changed_python_files(repo_root: Path) -> list[Path]:
+    """Return changed Python files from git when --changed-only is requested."""
+    try:
+        completed = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=ACMR", "HEAD"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return []
+
+    files: list[Path] = []
+    for raw_path in completed.stdout.splitlines():
+        path = repo_root / raw_path
+        if path.exists() and should_scan_file(path) and _within_scan_scope(path, repo_root):
+            files.append(path)
+    return sorted(set(files))
+
+
+def _all_python_files(repo_root: Path) -> list[Path]:
+    python_files: set[Path] = set()
+    for pattern in SCAN_GLOBS:
+        python_files.update(path for path in repo_root.glob(pattern) if should_scan_file(path))
+    return sorted(python_files)
+
+
+def _iter_scan_files(repo_root: Path, changed_only: bool) -> Iterable[Path]:
+    if changed_only:
+        return _changed_python_files(repo_root)
+    return _all_python_files(repo_root)
 
 
 def scan_repository(repo_root: Path, changed_only: bool = False) -> LintReport:
     """Scan repository for contract violations."""
     report = LintReport(repo_root=str(repo_root))
 
-    if changed_only:
-        # TODO: Implement git diff scanning
-        pass
-
-    # Find all Python files
-    python_files = []
-    for pattern in [
-        "value-fabric/**/*.py",
-        "shared/**/*.py",
-        "tests/**/*.py",
-    ]:
-        python_files.extend(repo_root.glob(pattern))
-
-    for file_path in python_files:
-        if not should_scan_file(file_path):
-            continue
-
+    for file_path in _iter_scan_files(repo_root, changed_only):
         try:
             content = file_path.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
+        except OSError:
             continue
 
         report.files_scanned += 1
-
-        # Run checks
         report.findings.extend(check_file_with_regex(file_path, content))
         report.findings.extend(check_file_with_ast(file_path, content))
 
@@ -271,7 +334,7 @@ def filter_with_baseline(findings: list[ContractFinding], baseline: set[str]) ->
     return filtered
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Python contract linter for Fabric_4L"
     )
@@ -294,23 +357,26 @@ def main():
         report.findings = filter_with_baseline(report.findings, baseline)
 
     # Determine exit code
-    critical_high = [f for f in report.findings if f.severity in ("critical", "high")]
-    report.exit_code = 1 if (args.strict and critical_high) else 0
+    severity_counts = {
+        severity: sum(1 for finding in report.findings if finding.severity == severity)
+        for severity in ("critical", "high", "medium", "low")
+    }
+    report.exit_code = 1 if (args.strict and (severity_counts["critical"] or severity_counts["high"])) else 0
 
     # Output
     if args.json:
-        print(json.dumps({
-            "repo_root": report.repo_root,
-            "files_scanned": report.files_scanned,
-            "exit_code": report.exit_code,
-            "findings_by_severity": {
-                "critical": len([f for f in report.findings if f.severity == "critical"]),
-                "high": len([f for f in report.findings if f.severity == "high"]),
-                "medium": len([f for f in report.findings if f.severity == "medium"]),
-                "low": len([f for f in report.findings if f.severity == "low"]),
-            },
-            "findings": [asdict(f) for f in report.findings],
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "repo_root": report.repo_root,
+                    "files_scanned": report.files_scanned,
+                    "exit_code": report.exit_code,
+                    "findings_by_severity": severity_counts,
+                    "findings": [asdict(f) for f in report.findings],
+                },
+                indent=2,
+            )
+        )
     else:
         print(f"\n{'='*60}")
         print("PYTHON CONTRACT LINT REPORT")
@@ -321,7 +387,7 @@ def main():
 
         # Severity breakdown
         for severity in ["critical", "high", "medium", "low"]:
-            count = len([f for f in report.findings if f.severity == severity])
+            count = severity_counts[severity]
             if count > 0:
                 print(f"  {severity.upper()}: {count}")
 

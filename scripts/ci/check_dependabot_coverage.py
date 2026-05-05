@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -56,58 +57,59 @@ PIP_MANIFESTS = {"pyproject.toml", "requirements.txt", "setup.py", "setup.cfg"}
 # Manifest filenames that indicate an npm-managed directory
 NPM_MANIFESTS = {"package.json"}
 
+# package.json files under these directories are build outputs rather than package roots.
+NPM_SKIP_PARENTS = {"dist", "build", ".next", "coverage", "out"}
 
-def _excluded(path: Path, root: Path) -> bool:
-    """Return True if any component of path (relative to root) is in EXCLUDE_DIRS."""
-    try:
-        rel = path.relative_to(root)
-    except ValueError:
-        return False
-    return any(part in EXCLUDE_DIRS for part in rel.parts)
+
+def _repo_directory(path: Path, root: Path) -> str:
+    """Return Dependabot's leading-slash directory form for a repo path."""
+    rel = path.relative_to(root).as_posix()
+    return f"/{rel}" if rel != "." else "/"
+
+
+def discover_manifest_dirs(root: Path) -> tuple[set[str], set[str], set[str]]:
+    """Return pip, npm, and docker manifest directories using one pruned walk.
+
+    The previous implementation performed separate recursive glob traversals for
+    pip manifests, npm manifests, and Dockerfiles. A single ``os.walk`` with
+    in-place directory pruning avoids revisiting the same large subtrees while
+    preserving the same exclusion rules.
+    """
+    pip_dirs: set[str] = set()
+    npm_dirs: set[str] = set()
+    docker_dirs: set[str] = set()
+
+    for current_root, dirs, files in os.walk(root):
+        dirs[:] = [directory for directory in dirs if directory not in EXCLUDE_DIRS]
+        current_path = Path(current_root)
+        parts = set(current_path.relative_to(root).parts)
+        file_names = set(files)
+
+        if file_names & PIP_MANIFESTS:
+            pip_dirs.add(_repo_directory(current_path, root))
+
+        if file_names & NPM_MANIFESTS and not (parts & NPM_SKIP_PARENTS):
+            npm_dirs.add(_repo_directory(current_path, root))
+
+        if any(name == "Dockerfile" or name.startswith("Dockerfile.") for name in files):
+            docker_dirs.add(_repo_directory(current_path, root))
+
+    return pip_dirs, npm_dirs, docker_dirs
 
 
 def discover_pip_dirs(root: Path) -> set[str]:
     """Return repo-relative directory paths that contain a pip manifest."""
-    dirs: set[str] = set()
-    for name in PIP_MANIFESTS:
-        for p in root.rglob(name):
-            if _excluded(p, root):
-                continue
-            rel = "/" + str(p.parent.relative_to(root))
-            dirs.add(rel)
-    return dirs
+    return discover_manifest_dirs(root)[0]
 
 
 def discover_npm_dirs(root: Path) -> set[str]:
-    """Return repo-relative directory paths that contain a package.json.
-
-    Skips package.json files that are clearly not workspace roots
-    (e.g. inside a dist/ or build/ subdirectory).
-    """
-    skip_parents = {"dist", "build", ".next", "coverage", "out"}
-    dirs: set[str] = set()
-    for p in root.rglob("package.json"):
-        if _excluded(p, root):
-            continue
-        if any(part in skip_parents for part in p.parts):
-            continue
-        rel = "/" + str(p.parent.relative_to(root))
-        dirs.add(rel)
-    return dirs
+    """Return repo-relative directory paths that contain a package.json."""
+    return discover_manifest_dirs(root)[1]
 
 
 def discover_docker_dirs(root: Path) -> set[str]:
     """Return repo-relative directory paths that contain a Dockerfile."""
-    dirs: set[str] = set()
-    for p in root.rglob("Dockerfile*"):
-        if _excluded(p, root):
-            continue
-        # Only match files named exactly Dockerfile or Dockerfile.<suffix>
-        if not (p.name == "Dockerfile" or p.name.startswith("Dockerfile.")):
-            continue
-        rel = "/" + str(p.parent.relative_to(root))
-        dirs.add(rel)
-    return dirs
+    return discover_manifest_dirs(root)[2]
 
 
 def load_dependabot_entries(dependabot_path: Path) -> dict[str, set[str]]:
@@ -142,9 +144,7 @@ def main() -> int:
     npm_covered = covered.get("npm", set())
     docker_covered = covered.get("docker", set())
 
-    pip_dirs = discover_pip_dirs(root)
-    npm_dirs = discover_npm_dirs(root)
-    docker_dirs = discover_docker_dirs(root)
+    pip_dirs, npm_dirs, docker_dirs = discover_manifest_dirs(root)
 
     missing_pip = sorted(pip_dirs - pip_covered)
     missing_npm = sorted(npm_dirs - npm_covered)

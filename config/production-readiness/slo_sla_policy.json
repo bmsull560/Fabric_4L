@@ -1,0 +1,43 @@
+{
+  "version": "2026-05-05",
+  "status": "foundation_ready_live_dashboard_evidence_required",
+  "purpose": "SLO, SLA, and error-budget policy for Fabric_4L production operations.",
+  "serviceLevelObjectives": {
+    "api_availability_monthly": 99.9,
+    "login_success_rate_monthly": 99.5,
+    "workflow_start_success_rate_monthly": 99.0,
+    "p95_api_latency_ms": 1000,
+    "p95_agent_action_latency_ms": 5000,
+    "evidence_artifact_validation_success_rate": 99.0
+  },
+  "errorBudgetPolicy": {
+    "burnRateAlertsRequired": true,
+    "releaseFreezeAtBudgetRemainingPercent": 10,
+    "postIncidentReviewRequiredForSev1AndSev2": true,
+    "customerCommunicationRequiredForSlaBreach": true
+  },
+  "alertMappings": [
+    {
+      "slo": "api_availability_monthly",
+      "alert": "high_error_rate_or_service_down",
+      "severity": "sev1_or_sev2"
+    },
+    {
+      "slo": "login_success_rate_monthly",
+      "alert": "auth_callback_or_provider_failure",
+      "severity": "sev1_or_sev2"
+    },
+    {
+      "slo": "workflow_start_success_rate_monthly",
+      "alert": "workflow_queue_or_agent_failure",
+      "severity": "sev2"
+    }
+  ],
+  "productionEvidenceRequired": [
+    "Dashboards display SLI values from live metrics",
+    "Burn-rate alert fires during controlled failure test",
+    "Release-freeze process is documented and exercised",
+    "SLA communication template is approved",
+    "Post-incident review links SLO impact to remediation"
+  ]
+}

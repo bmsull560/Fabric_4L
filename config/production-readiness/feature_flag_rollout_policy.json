@@ -1,0 +1,39 @@
+{
+  "version": "2026-05-05",
+  "status": "foundation_ready_runtime_enforcement_evidence_required",
+  "purpose": "Tenant-safe feature flag policy for agent capabilities, workflow behavior, and enterprise rollouts.",
+  "defaultBehavior": {
+    "unknownFlag": "deny",
+    "missingTenantContext": "deny",
+    "missingEnvironmentContext": "deny",
+    "evaluationFailure": "deny"
+  },
+  "requiredFlagFields": [
+    "key",
+    "owner",
+    "description",
+    "default_state",
+    "allowed_environments",
+    "tenant_allow_list",
+    "expires_at",
+    "rollback_plan"
+  ],
+  "rolloutStages": [
+    "internal",
+    "single_tenant_canary",
+    "limited_tenant_percentage",
+    "general_availability"
+  ],
+  "agentCapabilityControls": {
+    "requiresHumanApprovalForAutonomousActions": true,
+    "killSwitchRequired": true,
+    "auditEveryEvaluationForHighRiskFlags": true
+  },
+  "productionEvidenceRequired": [
+    "Flag evaluation denies unknown flags",
+    "Tenant allow-list is enforced",
+    "Kill switch disables feature without redeploy",
+    "Audit event emitted for high-risk flag evaluation",
+    "Expired flags are reported by CI or operational check"
+  ]
+}
