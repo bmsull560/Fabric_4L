@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from ..app import create_fabric_app, register_health_endpoint
+from ..app import create_fabric_app, install_metrics_middleware, register_health_endpoint
 
 
 def test_create_fabric_app_applies_shared_defaults() -> None:
@@ -58,3 +58,44 @@ def test_register_health_endpoint_uses_service_defaults() -> None:
     assert payload["service"] == "test-health-service"
     assert payload["status"] == "ok"
     assert "timestamp" in payload
+
+
+def test_install_metrics_middleware_sets_state_and_wraps_requests() -> None:
+    app = create_fabric_app(
+        service_name="test-metrics-service",
+        title="Test Metrics Service",
+        version="1.0.0",
+        description="test app",
+    )
+
+    class Recorder:
+        seen_paths: list[str]
+
+        def __init__(self) -> None:
+            self.seen_paths = []
+
+    class Middleware:
+        def __init__(self, metrics: Recorder) -> None:
+            self.metrics = metrics
+
+        async def __call__(self, request, call_next):
+            self.metrics.seen_paths.append(request.url.path)
+            response = await call_next(request)
+            response.headers["x-metrics-installed"] = "true"
+            return response
+
+    metrics = Recorder()
+    install_metrics_middleware(app, metrics=metrics, middleware_factory=Middleware)
+    install_metrics_middleware(app, metrics=metrics, middleware_factory=Middleware)
+
+    @app.get("/ok")
+    async def ok() -> dict[str, str]:
+        return {"status": "ok"}
+
+    client = TestClient(app)
+    response = client.get("/ok")
+
+    assert response.status_code == 200
+    assert response.headers["x-metrics-installed"] == "true"
+    assert app.state.metrics is metrics
+    assert metrics.seen_paths == ["/ok"]

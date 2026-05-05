@@ -93,6 +93,30 @@ def register_health_endpoint(
     )
 
 
+def install_metrics_middleware(
+    app: FastAPI,
+    *,
+    metrics: Any | None,
+    middleware_factory: Callable[[Any], Any],
+    logger: Any | None = None,
+) -> Any | None:
+    """Attach a service metrics instance and install its HTTP middleware once."""
+
+    if metrics is None:
+        return None
+
+    app.state.metrics = metrics
+    if getattr(app.state, "_metrics_middleware_installed", False):
+        return metrics
+
+    app.middleware("http")(middleware_factory(metrics))
+    app.state._metrics_middleware_installed = True
+    if logger is not None:
+        logger.info("Metrics middleware installed")
+
+    return metrics
+
+
 def create_fabric_app(
     *,
     service_name: str,

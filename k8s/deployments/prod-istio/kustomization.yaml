@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # prod-istio: prod environment + Istio routing.
-# EXPERIMENTAL: render-only in CI; not the supported production path.
+# Requires cluster-installed Istio CRDs, sidecar injection, and gateway controller.
 
 namespace: value-fabric
 

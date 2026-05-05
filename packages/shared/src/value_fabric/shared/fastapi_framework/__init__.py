@@ -4,6 +4,7 @@ from .app import (
     build_health_response,
     create_fabric_app,
     init_telemetry,
+    install_metrics_middleware,
     instrument_fastapi_app,
     register_health_endpoint,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "create_fabric_app",
     "init_telemetry",
     "include_router_mounts",
+    "install_metrics_middleware",
     "instrument_fastapi_app",
     "register_health_endpoint",
     "resolve_cors_policy",

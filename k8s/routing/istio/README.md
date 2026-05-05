@@ -59,7 +59,7 @@ No WAF at Istio layer. Requires:
 
 ## Production Readiness Checklist
 
-Before promoting from EXPERIMENTAL:
+Before applying this routing stack:
 - [x] Add `PeerAuthentication` STRICT mode for server-side mTLS enforcement
 - [x] Add baseline namespace `AuthorizationPolicy`
 - [ ] Implement edge authentication (`AuthorizationPolicy` + `RequestAuthentication`)

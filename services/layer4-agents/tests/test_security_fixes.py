@@ -138,6 +138,8 @@ class ProductionSettingsValidationTests(unittest.TestCase):
     VALID_HMAC = "h" * 40
     VALID_DB = "postgresql://layer4:strong-unique-password@db.example.com:5432/layer4"
     VALID_CORS = "https://app.valuefabric.io"
+    VALID_NEO4J_URI = "neo4j+s://example.databases.neo4j.io"
+    VALID_NEO4J_PASSWORD = "strong-neo4j-password"
 
     def _settings(self, **overrides: object) -> Settings:
         values: dict[str, object] = {
@@ -146,6 +148,8 @@ class ProductionSettingsValidationTests(unittest.TestCase):
             "api_key_hmac_secret": self.VALID_HMAC,
             "database_url": self.VALID_DB,
             "cors_origins": self.VALID_CORS,
+            "neo4j_uri": self.VALID_NEO4J_URI,
+            "neo4j_password": self.VALID_NEO4J_PASSWORD,
         }
         values.update(overrides)
         return Settings(**values)
