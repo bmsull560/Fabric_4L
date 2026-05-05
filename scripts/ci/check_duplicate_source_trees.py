@@ -27,6 +27,20 @@ LAYER_MAP: dict[str, str] = {
     "layer4": "services/layer4-agents/src",
 }
 
+# __init__.py files under this size are considered redirect shims, not duplicates
+SHIM_MAX_BYTES: int = 1024
+
+
+def _files_equal(a: Path, b: Path) -> bool:
+    """Return True if two files have identical contents."""
+    try:
+        a_content = a.read_text(encoding="utf-8")
+        b_content = b.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        a_content = a.read_bytes()
+        b_content = b.read_bytes()
+    return a_content == b_content
+
 
 def find_duplicates(
     *, layer_map: dict[str, str] | None = None, strict: bool = False
@@ -44,7 +58,7 @@ def find_duplicates(
 
         for vf_file in vf_dir.rglob("*.py"):
             # Skip redirect-shim __init__.py files (single-file packages)
-            if vf_file.name == "__init__.py" and vf_file.stat().st_size < 1024:
+            if vf_file.name == "__init__.py" and vf_file.stat().st_size < SHIM_MAX_BYTES:
                 continue
 
             rel = vf_file.relative_to(vf_dir)
@@ -54,17 +68,8 @@ def find_duplicates(
                 if strict:
                     # In strict mode, any co-existing file is a violation
                     duplicates.append((vf_file, svc_file))
-                else:
-                    # In normal mode, only flag if contents are identical
-                    try:
-                        vf_text = vf_file.read_text(encoding="utf-8")
-                        svc_text = svc_file.read_text(encoding="utf-8")
-                    except UnicodeDecodeError:
-                        # Compare raw bytes for binary-ish files
-                        vf_text = vf_file.read_bytes()
-                        svc_text = svc_file.read_bytes()
-                    if vf_text == svc_text:
-                        duplicates.append((vf_file, svc_file))
+                elif _files_equal(vf_file, svc_file):
+                    duplicates.append((vf_file, svc_file))
 
     return duplicates
 

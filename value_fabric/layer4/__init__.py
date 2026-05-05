@@ -8,8 +8,15 @@ without duplicating source files.
 
 from pathlib import Path
 
-_repo_root = Path(__file__).resolve().parent.parent.parent
-_canonical = str(_repo_root / "services" / "layer4-agents" / "src")
+_repo_root: Path = Path(__file__).resolve().parent.parent.parent
+_canonical: str = str(_repo_root / "services" / "layer4-agents" / "src")
 
-if _canonical not in __path__:
-    __path__.insert(0, _canonical)
+# Only register the canonical path if it exists; fail fast otherwise.
+if (_repo_root / "services" / "layer4-agents" / "src").exists():
+    if _canonical not in __path__:
+        __path__.insert(0, _canonical)
+else:
+    raise FileNotFoundError(
+        f"Canonical Layer 4 source tree not found at {_canonical}. "
+        "Expected services/layer4-agents/src/ to exist."
+    )

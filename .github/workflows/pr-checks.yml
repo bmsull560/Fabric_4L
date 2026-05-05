@@ -57,6 +57,7 @@ jobs:
           path: |
             artifacts/structural-preflight.json
             artifacts/python-contract-lint.json
+            artifacts/duplicate-source-tree.json
           retention-days: 14
 
   governance-docs-check:

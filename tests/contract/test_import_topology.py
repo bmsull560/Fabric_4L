@@ -72,9 +72,10 @@ class TestImportTopology:
         """value_fabric.layer4.* must resolve via services/layer4-agents/src/."""
         import value_fabric.layer4
 
-        canonical = str(REPO_ROOT / "services" / "layer4-agents" / "src")
+        canonical = (REPO_ROOT / "services" / "layer4-agents" / "src").resolve()
         assert any(
-            canonical in str(p) for p in value_fabric.layer4.__path__
+            Path(str(p)).resolve() == canonical
+            for p in value_fabric.layer4.__path__
         ), (
             f"Canonical path {canonical} not found in value_fabric.layer4.__path__: "
             f"{value_fabric.layer4.__path__}"
