@@ -7,6 +7,23 @@
  */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Check */
+        get: operations["health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/benchmarks/datasets": {
         parameters: {
             query?: never;
@@ -14,11 +31,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * GET /v1/benchmarks/datasets
-         * @description Discovered from router source (value-fabric\layer6-benchmarks\src\api\routes\benchmarks.py).
-         */
-        get: operations["discovered_get_v1_benchmarks_datasets"];
+        /** List Datasets */
+        get: operations["list_datasets_v1_benchmarks_datasets_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34,11 +48,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * GET /v1/benchmarks/datasets/{dataset_id}
-         * @description Discovered from router source (value-fabric\layer6-benchmarks\src\api\routes\benchmarks.py).
-         */
-        get: operations["discovered_get_v1_benchmarks_datasets_dataset_id"];
+        /** Get Dataset */
+        get: operations["get_dataset_v1_benchmarks_datasets__dataset_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -56,11 +67,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * POST /v1/benchmarks/compare
-         * @description Discovered from router source (value-fabric\layer6-benchmarks\src\api\routes\benchmarks.py).
-         */
-        post: operations["discovered_post_v1_benchmarks_compare"];
+        /** Compare */
+        post: operations["compare_v1_benchmarks_compare_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -76,11 +84,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * POST /v1/benchmarks/validate
-         * @description Discovered from router source (value-fabric\layer6-benchmarks\src\api\routes\benchmarks.py).
-         */
-        post: operations["discovered_post_v1_benchmarks_validate"];
+        /** Validate */
+        post: operations["validate_v1_benchmarks_validate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -94,31 +99,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * GET /v1/benchmarks/industries
-         * @description Discovered from router source (value-fabric\layer6-benchmarks\src\api\routes\benchmarks.py).
-         */
-        get: operations["discovered_get_v1_benchmarks_industries"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /health
-         * @description Discovered from router source (value-fabric\layer6-benchmarks\src\api\routes\system.py).
-         */
-        get: operations["discovered_get_health"];
+        /** List Industries */
+        get: operations["list_industries_v1_benchmarks_industries_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -130,7 +112,153 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /**
+         * ComparisonRequestPayload
+         * @description Payload for comparison request.
+         */
+        ComparisonRequestPayload: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Metric */
+            metric: string;
+            /**
+             * Company Value
+             * @description Company value as string (Decimal)
+             */
+            company_value: string;
+            /** Industry */
+            industry: string;
+            /** Segment */
+            segment?: string | null;
+        };
+        /**
+         * ComparisonResponse
+         * @description Response from comparison.
+         */
+        ComparisonResponse: {
+            /** Percentile */
+            percentile: number;
+            /** Peer Median */
+            peer_median: string;
+            /** Peer Range */
+            peer_range: [
+                string,
+                string
+            ];
+            /** Sample Size */
+            sample_size: number;
+            /** Confidence */
+            confidence: string;
+            /** Assessment */
+            assessment: string;
+        };
+        /**
+         * DatasetDetail
+         * @description Detailed benchmark dataset.
+         */
+        DatasetDetail: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Industry */
+            industry: string;
+            /** Segment */
+            segment: string | null;
+            /** Geography */
+            geography: string | null;
+            /** Metrics */
+            metrics: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Version */
+            version: string;
+            /** Data Source */
+            data_source: string | null;
+        };
+        /**
+         * DatasetSummary
+         * @description Summary of benchmark dataset.
+         */
+        DatasetSummary: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Name */
+            name: string;
+            /** Industry */
+            industry: string;
+            /** Segment */
+            segment: string | null;
+            /** Metrics */
+            metrics: string[];
+            /** Version */
+            version: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /**
+         * ValidationRequestPayload
+         * @description Payload for validation request.
+         */
+        ValidationRequestPayload: {
+            /** Dataset Id */
+            dataset_id: string;
+            /** Metric */
+            metric: string;
+            /**
+             * Value
+             * @description Value as string (Decimal)
+             */
+            value: string;
+            /**
+             * Tolerance Percent
+             * @default 10
+             */
+            tolerance_percent: number;
+        };
+        /**
+         * ValidationResponse
+         * @description Response from validation.
+         */
+        ValidationResponse: {
+            /** Is Valid */
+            is_valid: boolean;
+            /** Expected Range */
+            expected_range: [
+                string,
+                string
+            ];
+            /** Actual Value */
+            actual_value: string;
+            /** Deviation Percent */
+            deviation_percent: number | null;
+            /** Severity */
+            severity: string;
+            /** Message */
+            message: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -139,7 +267,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    discovered_get_v1_benchmarks_datasets: {
+    health_check_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -153,20 +281,20 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": unknown;
                 };
-                content?: never;
             };
         };
     };
-    discovered_get_v1_benchmarks_datasets_dataset_id: {
+    list_datasets_v1_benchmarks_datasets_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter by industry */
+                industry?: string | null;
+                /** @description Filter by segment */
+                segment?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -178,22 +306,28 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DatasetSummary"][];
+                };
             };
             /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
-    discovered_post_v1_benchmarks_compare: {
+    get_dataset_v1_benchmarks_datasets__dataset_id__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                dataset_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -203,68 +337,88 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DatasetDetail"];
+                };
             };
             /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
-    discovered_post_v1_benchmarks_validate: {
+    compare_v1_benchmarks_compare_post: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparisonRequestPayload"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ComparisonResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
-    discovered_get_v1_benchmarks_industries: {
+    validate_v1_benchmarks_validate_post: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationRequestPayload"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ValidationResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
-    discovered_get_health: {
+    list_industries_v1_benchmarks_industries_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -278,14 +432,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": unknown;
                 };
-                content?: never;
             };
         };
     };

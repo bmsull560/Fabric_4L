@@ -6,6 +6,466 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/v1/ingest": {
+      "post": {
+        "tags": [
+          "Compatibility"
+        ],
+        "summary": "Short Ingest Compatibility Boundary",
+        "operationId": "short_ingest_compatibility_boundary_v1_ingest_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Short Ingest Compatibility Boundary V1 Ingest Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion/sources": {
+      "post": {
+        "tags": [
+          "Compatibility"
+        ],
+        "summary": "Create Ingestion Source Compatibility Boundary",
+        "operationId": "create_ingestion_source_compatibility_boundary_api_v1_ingestion_sources_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Ingestion Source Compatibility Boundary Api V1 Ingestion Sources Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion/sources/{source_id}": {
+      "get": {
+        "tags": [
+          "Compatibility"
+        ],
+        "summary": "Get Ingestion Source Compatibility Boundary",
+        "operationId": "get_ingestion_source_compatibility_boundary_api_v1_ingestion_sources__source_id__get",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Ingestion Source Compatibility Boundary Api V1 Ingestion Sources  Source Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities": {
+      "get": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "Entity Security Boundary",
+        "operationId": "entity_security_boundary_api_v1_entities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {},
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Entity Security Boundary Api V1 Entities Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/entities/{entity_id}": {
+      "delete": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "Entity Delete Security Boundary",
+        "operationId": "entity_delete_security_boundary_api_v1_entities__entity_id__delete",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RequestContext"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Context"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Entity Delete Security Boundary Api V1 Entities  Entity Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/profile": {
+      "get": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "User Profile Security Boundary",
+        "operationId": "user_profile_security_boundary_api_v1_user_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response User Profile Security Boundary Api V1 User Profile Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/{user_id}/private-data": {
+      "get": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "User Private Data Security Boundary",
+        "operationId": "user_private_data_security_boundary_api_v1_user__user_id__private_data_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response User Private Data Security Boundary Api V1 User  User Id  Private Data Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/tenants": {
+      "get": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "Admin Read Security Boundary",
+        "operationId": "admin_read_security_boundary_api_admin_tenants_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RequestContext"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Context"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Admin Read Security Boundary Api Admin Tenants Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/audit-logs": {
+      "get": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "Admin Read Security Boundary",
+        "operationId": "admin_read_security_boundary_api_admin_audit_logs_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RequestContext"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Context"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Admin Read Security Boundary Api Admin Audit Logs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/config": {
+      "get": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "Admin Read Security Boundary",
+        "operationId": "admin_read_security_boundary_api_admin_config_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RequestContext"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Context"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Admin Read Security Boundary Api Admin Config Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "Security Compatibility"
+        ],
+        "summary": "Admin Read Security Boundary",
+        "operationId": "admin_read_security_boundary_api_admin_users_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RequestContext"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Context"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Admin Read Security Boundary Api Admin Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ingestion/targets": {
       "get": {
         "summary": "List Targets",
@@ -101,6 +561,7 @@
                   "type": "null"
                 }
               ],
+              "description": "Filter by source category",
               "title": "Source Category"
             },
             "description": "Filter by source category"
@@ -125,6 +586,38 @@
               "pattern": "^(asc|desc)$",
               "default": "desc",
               "title": "Sort Order"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -172,6 +665,38 @@
         "description": "Create a new scraping target.",
         "operationId": "create_target_api_v1_ingestion_targets_post",
         "parameters": [
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
           {
             "name": "X-Organization-ID",
             "in": "header",
@@ -226,9 +751,41 @@
     "/api/v1/ingestion/targets/stats": {
       "get": {
         "summary": "Get Target Stats",
-        "description": "Get aggregated statistics for all scraping targets.",
+        "description": "Get aggregated statistics for all scraping targets.\n\nComputes counts by derived connection status and average health score\nserver-side to avoid transferring large target lists to the client.",
         "operationId": "get_target_stats_api_v1_ingestion_targets_stats_get",
         "parameters": [
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
           {
             "name": "X-Organization-ID",
             "in": "header",
@@ -287,6 +844,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -339,6 +928,38 @@
               "type": "string",
               "format": "uuid",
               "title": "Target Id"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -419,6 +1040,38 @@
             "description": "Hard delete if no jobs exist"
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -466,6 +1119,38 @@
               "type": "string",
               "format": "uuid",
               "title": "Target Id"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -533,6 +1218,38 @@
               "type": "string",
               "format": "uuid",
               "title": "Target Id"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -615,6 +1332,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -673,6 +1422,38 @@
               "type": "string",
               "format": "uuid",
               "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -741,6 +1522,38 @@
               "minimum": 1,
               "default": 7,
               "title": "Days"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -974,6 +1787,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -1028,6 +1873,38 @@
               "type": "string",
               "format": "uuid",
               "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -1086,6 +1963,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -1138,6 +2047,38 @@
               "type": "string",
               "format": "uuid",
               "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -1261,6 +2202,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -1313,6 +2286,38 @@
               "type": "string",
               "format": "uuid",
               "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -1411,6 +2416,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -1476,6 +2513,38 @@
               "pattern": "^(json|markdown|flattened)$",
               "default": "json",
               "title": "Format"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -1595,6 +2664,38 @@
               "minimum": 1,
               "default": 20,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
             }
           },
           {
@@ -1768,6 +2869,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -1833,6 +2966,38 @@
             }
           },
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -1879,6 +3044,38 @@
         "description": "Enhanced health check endpoint.",
         "operationId": "health_check_api_v1_ingestion_health_get",
         "parameters": [
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
           {
             "name": "X-Organization-ID",
             "in": "header",
@@ -1985,6 +3182,38 @@
         "operationId": "create_proxy_pool_endpoint_api_v1_ingestion_proxy_pools_post",
         "parameters": [
           {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
             "name": "X-Organization-ID",
             "in": "header",
             "required": false,
@@ -2086,8 +3315,7 @@
           "BASIC",
           "OAUTH2"
         ],
-        "title": "AuthenticationType",
-        "description": "Authentication types for targets."
+        "title": "AuthenticationType"
       },
       "BrowserConfigInput": {
         "properties": {
@@ -2159,8 +3387,7 @@
           "firefox",
           "webkit"
         ],
-        "title": "BrowserEngine",
-        "description": "Browser engines."
+        "title": "BrowserEngine"
       },
       "ComplianceEventType": {
         "type": "string",
@@ -2176,8 +3403,7 @@
           "TERMS_VIOLATION",
           "DATA_RETENTION_DELETION"
         ],
-        "title": "ComplianceEventType",
-        "description": "Compliance event types."
+        "title": "ComplianceEventType"
       },
       "ComplianceInput": {
         "properties": {
@@ -2420,8 +3646,7 @@
           "browser",
           "fast_fallback"
         ],
-        "title": "CrawlPath",
-        "description": "Ingestion path selection for a scraping target.\n\nControls whether the crawler uses HTTPX fast path,\nPlaywright browser automation, or hybrid fallback."
+        "title": "CrawlPath"
       },
       "CreateProxyPoolRequest": {
         "properties": {
@@ -2839,8 +4064,7 @@
           "DETERMINISTIC",
           "HYBRID"
         ],
-        "title": "ExtractionMethod",
-        "description": "Content extraction methods."
+        "title": "ExtractionMethod"
       },
       "HTTPValidationError": {
         "properties": {
@@ -3202,8 +4426,7 @@
           "CANCELLED",
           "PARTIAL_SUCCESS"
         ],
-        "title": "JobStatus",
-        "description": "Job lifecycle states - 11 states as per spec."
+        "title": "JobStatus"
       },
       "JobSummary": {
         "properties": {
@@ -3278,8 +4501,34 @@
           "anthropic",
           "azure_openai"
         ],
-        "title": "LLMProvider",
-        "description": "LLM providers for AI extraction."
+        "title": "LLMProvider"
+      },
+      "Permission": {
+        "type": "string",
+        "enum": [
+          "read:health",
+          "read:metrics",
+          "read:schema",
+          "read:search",
+          "read:graphrag",
+          "read:analytics",
+          "read:ingestion",
+          "read:agents",
+          "read:models",
+          "write:models",
+          "admin:models",
+          "write:ingestion",
+          "write:extraction",
+          "write:schema",
+          "write:analytics",
+          "write:agents",
+          "admin:api_keys",
+          "admin:users",
+          "admin:tenants",
+          "admin:system"
+        ],
+        "title": "Permission",
+        "description": "Fine-grained permissions enforced at endpoint level."
       },
       "ProxyConfigInput": {
         "properties": {
@@ -3370,8 +4619,7 @@
           "SESSION_BASED",
           "LEAST_USED"
         ],
-        "title": "ProxyRotationStrategy",
-        "description": "Proxy rotation strategies."
+        "title": "ProxyRotationStrategy"
       },
       "RateLimitInput": {
         "properties": {
@@ -3524,6 +4772,186 @@
         "title": "RawContentResponse",
         "description": "Raw content response."
       },
+      "RequestContext": {
+        "properties": {
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "api_key_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Id"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Permission"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array",
+                "uniqueItems": true
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Permission"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Permissions"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "jwt_claim"
+          },
+          "raw": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Raw"
+          },
+          "auth_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Source"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "org_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          },
+          "tenant_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Role"
+          },
+          "isolation_tier": {
+            "type": "string",
+            "title": "Isolation Tier",
+            "default": "shared"
+          },
+          "service_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Account Id"
+          },
+          "service_account_scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Service Account Scopes"
+          },
+          "accessed_tenant_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Accessed Tenant Ids"
+          },
+          "privileged_session_start": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Privileged Session Start"
+          },
+          "_locked": {
+            "type": "boolean",
+            "title": "Locked",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "RequestContext",
+        "description": "Identity context carried by a single request.\n\n``RequestContext`` is deliberately shared by L1-L5 governance code.  It\npreserves tenant scoping and trace propagation while supporting legacy\ncallers that still pass ``source`` and newer middleware that passes the\nexplicit ``auth_source`` field."
+      },
       "ResourceUsageDetail": {
         "properties": {
           "browser_sessions_used": {
@@ -3559,8 +4987,7 @@
           "fixed",
           "exponential"
         ],
-        "title": "RetryBackoff",
-        "description": "Retry backoff strategies."
+        "title": "RetryBackoff"
       },
       "RetryJobRequest": {
         "properties": {
@@ -3697,6 +5124,8 @@
           },
           "max_concurrent_jobs": {
             "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
             "title": "Max Concurrent Jobs",
             "default": 1
           }
@@ -4147,6 +5576,17 @@
         "title": "ScrapingTargetSummary",
         "description": "Summary of a scraping target."
       },
+      "SourceCategory": {
+        "type": "string",
+        "enum": [
+          "crm",
+          "database",
+          "file",
+          "api",
+          "cloud_storage"
+        ],
+        "title": "SourceCategory"
+      },
       "TargetListResponse": {
         "properties": {
           "data": {
@@ -4217,8 +5657,7 @@
           "ARCHIVED",
           "ERROR"
         ],
-        "title": "TargetStatus",
-        "description": "Scraping target lifecycle status."
+        "title": "TargetStatus"
       },
       "TargetType": {
         "type": "string",
@@ -4228,20 +5667,7 @@
           "SPIDER",
           "API_ENDPOINT"
         ],
-        "title": "TargetType",
-        "description": "Scraping target types."
-      },
-      "SourceCategory": {
-        "type": "string",
-        "enum": [
-          "crm",
-          "database",
-          "file",
-          "api",
-          "cloud_storage"
-        ],
-        "title": "SourceCategory",
-        "description": "Semantic category of the data source (what it is)."
+        "title": "TargetType"
       },
       "UpdateTargetRequest": {
         "properties": {

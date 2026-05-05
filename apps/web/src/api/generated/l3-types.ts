@@ -100,7 +100,11 @@ export interface paths {
          */
         get: operations["list_formulas_v1_formulas_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Formula
+         * @description Create a new formula with variables and initial version.
+         */
+        post: operations["create_formula_v1_formulas_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -121,10 +125,18 @@ export interface paths {
         get: operations["get_formula_v1_formulas__formula_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Formula
+         * @description Delete a formula and all its versions. Admin only.
+         */
+        delete: operations["delete_formula_v1_formulas__formula_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Formula
+         * @description Update an existing formula. Creates new version if expression changes.
+         */
+        patch: operations["update_formula_v1_formulas__formula_id__patch"];
         trace?: never;
     };
     "/v1/formulas/scenario": {
@@ -156,7 +168,7 @@ export interface paths {
         };
         /**
          * List Packs
-         * @description List available Value Packs.
+         * @description List Value Packs with optional filtering.
          */
         get: operations["list_packs_v1_packs_get"];
         put?: never;
@@ -252,6 +264,155 @@ export interface paths {
          * @description Apply/Deploy a Value Pack (alias for execute endpoint). Requires authentication.
          */
         post: operations["apply_pack_v1_packs__pack_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/valuepacks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Valuepacks
+         * @description List all ValuePacks with optional filtering.
+         *
+         *     Returns paginated list of ValuePack summaries.
+         */
+        get: operations["list_valuepacks_v1_valuepacks_get"];
+        put?: never;
+        /**
+         * Create Valuepack
+         * @description Create a new ValuePack.
+         *
+         *     All fields must conform to ValuePack Schema v1.0.
+         */
+        post: operations["create_valuepack_v1_valuepacks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/valuepacks/{industry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Valuepack
+         * @description Get a specific ValuePack by industry_id.
+         *
+         *     Returns complete ValuePack schema v1.0 data.
+         */
+        get: operations["get_valuepack_v1_valuepacks__industry_id__get"];
+        /**
+         * Update Valuepack
+         * @description Update an existing ValuePack.
+         *
+         *     Only provided fields are updated; others remain unchanged.
+         */
+        put: operations["update_valuepack_v1_valuepacks__industry_id__put"];
+        post?: never;
+        /**
+         * Delete Valuepack
+         * @description Soft-delete a ValuePack (marks as inactive).
+         */
+        delete: operations["delete_valuepack_v1_valuepacks__industry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/valuepacks/ontology-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ontology Map
+         * @description Get cross-industry ontology map.
+         *
+         *     Returns shared drivers, model types, and proof patterns across all industries.
+         */
+        get: operations["get_ontology_map_v1_valuepacks_ontology_map_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/valuepacks/composable-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Composable Templates
+         * @description Get the composable template library.
+         *
+         *     Returns reusable calculation patterns and their industry usage.
+         */
+        get: operations["get_composable_templates_v1_valuepacks_composable_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/valuepacks/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compare Valuepacks
+         * @description Compare multiple ValuePacks side-by-side.
+         *
+         *     Returns detailed comparison across all schema dimensions.
+         */
+        post: operations["compare_valuepacks_v1_valuepacks_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/valuepacks/{industry_id}/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Valuepack Data
+         * @description Seed ValuePack data into Neo4j knowledge graph.
+         *
+         *     Creates nodes and relationships for the ValuePack's economic graph,
+         *     value drivers, use cases, and ontology tags.
+         */
+        post: operations["seed_valuepack_data_v1_valuepacks__industry_id__seed_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -570,86 +731,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/benchmarks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Benchmarks
-         * @description List benchmarks with optional filters.
-         */
-        get: operations["list_benchmarks_v1_benchmarks_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/benchmarks/policies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Benchmark Policies
-         * @description List benchmark policy configurations.
-         */
-        get: operations["list_benchmark_policies_v1_benchmarks_policies_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/benchmarks/{benchmark_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Benchmark
-         * @description Get a single benchmark by ID.
-         */
-        get: operations["get_benchmark_v1_benchmarks__benchmark_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/benchmarks/policies/{policy_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Update Benchmark Policy
-         * @description Update a benchmark policy.
-         */
-        put: operations["update_benchmark_policy_v1_benchmarks_policies__policy_id__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/models": {
         parameters: {
             query?: never;
@@ -718,7 +799,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/metrics": {
+    "/v1/v1/entities": {
         parameters: {
             query?: never;
             header?: never;
@@ -726,36 +807,784 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Prometheus Metrics
-         * @description Export Prometheus metrics for monitoring.
+         * List Entities
+         * @description List entities with optional filtering and pagination.
          *
-         *         This endpoint provides metrics in Prometheus format for:
-         *         - HTTP requests and response times
-         *         - Database operations
-         *         - Cache performance
-         *         - Search queries
-         *         - System resources
-         *         - Error rates
-         *
-         *         **Usage:**
-         *         Configure Prometheus to scrape this endpoint:
-         *         ```yaml
-         *         scrape_configs:
-         *           - job_name: 'value-fabric-layer3'
-         *             static_configs:
-         *               - targets: ['localhost:8001']
-         *             metrics_path: '/metrics'
-         *         ```
-         *
-         *         **Response Headers:**
-         *         - `Content-Type`: `text/plain; version=0.0.4; charset=utf-8`
-         *
-         *         **Status Codes:**
-         *         - `200`: Metrics exported successfully
-         *         - `503`: Metrics collection disabled
+         *     This is the canonical entity browser endpoint per the Value Fabric API spec.
+         *     Returns high-quality entity summaries with consistent field naming.
          */
-        get: operations["get_metrics_metrics_get"];
+        get: operations["list_entities_v1_v1_entities_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/v1/entities/{entity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Entity Detail
+         * @description Get detailed information about a specific entity.
+         *
+         *     Returns complete entity details including properties, provenance,
+         *     and optionally related entities and their relationships.
+         */
+        get: operations["get_entity_detail_v1_v1_entities__entity_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/v1/entities/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Query Entities
+         * @description Query entities using Cypher-like filter conditions.
+         *
+         *     Supports complex filtering with multiple conditions, logical operators,
+         *     and custom sorting.
+         */
+        post: operations["query_entities_v1_v1_entities_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/v1/entity/traverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Traverse Value Tree
+         * @description Traverse the value tree starting from a root entity.
+         *
+         *     Performs graph traversal to find value-related entities and their
+         *     relationships, returning a structured tree representation.
+         */
+        post: operations["traverse_value_tree_v1_v1_entity_traverse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Products
+         * @description List products with optional filtering.
+         */
+        get: operations["list_products_v1_products_get"];
+        put?: never;
+        /**
+         * Create Product
+         * @description Create a new product in the knowledge graph.
+         */
+        post: operations["create_product_v1_products_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/{product_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Product
+         * @description Get a product by ID with its features and capabilities.
+         */
+        get: operations["get_product_v1_products__product_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Product
+         * @description Delete a product and its orphaned features.
+         */
+        delete: operations["delete_product_v1_products__product_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Product
+         * @description Update a product's properties.
+         */
+        patch: operations["update_product_v1_products__product_id__patch"];
+        trace?: never;
+    };
+    "/v1/products/{product_id}/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Feature
+         * @description Add a feature to a product.
+         */
+        post: operations["add_feature_v1_products__product_id__features_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/{product_id}/features/{feature_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Feature
+         * @description Remove a feature from a product.
+         */
+        delete: operations["remove_feature_v1_products__product_id__features__feature_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/{product_id}/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link Capability
+         * @description Link a product to a capability with a strength score.
+         */
+        post: operations["link_capability_v1_products__product_id__capabilities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/{product_id}/capabilities/{capability_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink Capability
+         * @description Remove a product-capability link.
+         */
+        delete: operations["unlink_capability_v1_products__product_id__capabilities__capability_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/matching/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Match Signals
+         * @description Match pain signals to products via shared capabilities.
+         *
+         *     Returns products ranked by match score, with the top matching
+         *     signals and capabilities for each product.
+         */
+        get: operations["match_signals_v1_products_matching_signals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/analytics/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Portfolio Summary
+         * @description Get a summary of the product portfolio.
+         */
+        get: operations["portfolio_summary_v1_products_analytics_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/analytics/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Capability Coverage
+         * @description Show capability coverage: which are addressed by products, which are gaps.
+         */
+        get: operations["capability_coverage_v1_products_analytics_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/evidence/case-studies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search case studies
+         * @description Search case studies with optional filters.
+         *
+         *     Returns paginated results with linked products.
+         */
+        get: operations["search_case_studies_v1_evidence_case_studies_get"];
+        put?: never;
+        /**
+         * Create a case study
+         * @description Create a new case study in the evidence library.
+         *
+         *     The case study is stored as an Evidence node in the knowledge graph
+         *     and linked to any referenced products and pain signals.
+         */
+        post: operations["create_case_study_v1_evidence_case_studies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/evidence/case-studies/{case_study_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a case study
+         * @description Get a case study by ID with linked products and signals.
+         */
+        get: operations["get_case_study_v1_evidence_case_studies__case_study_id__get"];
+        /**
+         * Update a case study
+         * @description Update a case study's properties.
+         */
+        put: operations["update_case_study_v1_evidence_case_studies__case_study_id__put"];
+        post?: never;
+        /**
+         * Delete a case study
+         * @description Delete a case study and its relationships.
+         */
+        delete: operations["delete_case_study_v1_evidence_case_studies__case_study_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/evidence/case-studies/bulk-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk import case studies
+         * @description Import multiple case studies in a single operation.
+         *
+         *     Accepts up to 100 case studies per request.
+         */
+        post: operations["bulk_import_case_studies_v1_evidence_case_studies_bulk_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/evidence/stats/by-industry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Case study counts by industry
+         * @description Get case study counts grouped by industry.
+         */
+        get: operations["stats_by_industry_v1_evidence_stats_by_industry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/evidence/stats/by-product": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Case study counts by product
+         * @description Get case study counts grouped by product.
+         */
+        get: operations["stats_by_product_v1_evidence_stats_by_product_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/evidence/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Semantic evidence search
+         * @description Search evidence using vector similarity.
+         *
+         *     Uses the existing evidence embedding index for semantic matching.
+         *     Returns ranked results with relevance scores.
+         */
+        post: operations["semantic_search_v1_evidence_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/competitive/competitors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Competitors
+         * @description List competitors with optional filtering.
+         */
+        get: operations["list_competitors_v1_competitive_competitors_get"];
+        put?: never;
+        /**
+         * Add Competitor
+         * @description Add a new competitor to the knowledge graph.
+         */
+        post: operations["add_competitor_v1_competitive_competitors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/competitive/competitors/{competitor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Competitor
+         * @description Get a competitor with related products and battlecards.
+         */
+        get: operations["get_competitor_v1_competitive_competitors__competitor_id__get"];
+        /**
+         * Update Competitor
+         * @description Update a competitor's properties.
+         *
+         *     Only allowlisted fields are accepted (V-006 remediation).
+         */
+        put: operations["update_competitor_v1_competitive_competitors__competitor_id__put"];
+        post?: never;
+        /**
+         * Delete Competitor
+         * @description Delete a competitor and its battlecards.
+         */
+        delete: operations["delete_competitor_v1_competitive_competitors__competitor_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/competitive/competitors/{competitor_id}/battlecards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Battlecards
+         * @description Get battlecards for a competitor.
+         */
+        get: operations["get_battlecards_v1_competitive_competitors__competitor_id__battlecards_get"];
+        put?: never;
+        /**
+         * Add Battlecard
+         * @description Create a battlecard for a competitor + product pair.
+         */
+        post: operations["add_battlecard_v1_competitive_competitors__competitor_id__battlecards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/competitive/competitors/{competitor_id}/battlecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Battlecard Compat
+         * @description Compatibility alias for /competitors/{id}/battlecards.
+         */
+        get: operations["get_battlecard_compat_v1_competitive_competitors__competitor_id__battlecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/competitive/win-loss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Win Loss
+         * @description Record a competitive win or loss.
+         */
+        post: operations["record_win_loss_v1_competitive_win_loss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/competitive/win-loss/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Win Loss Summary
+         * @description Get aggregated win/loss data across all competitors.
+         */
+        get: operations["get_win_loss_summary_v1_competitive_win_loss_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/competitive/landscape": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Competitive Landscape
+         * @description Analyze the competitive landscape.
+         */
+        get: operations["get_competitive_landscape_v1_competitive_landscape_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calculate Roi
+         * @description Calculate ROI from inputs.
+         *
+         *     Optionally saves the calculation to the knowledge graph if save=True.
+         */
+        post: operations["calculate_roi_v1_roi_calculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compare Scenarios
+         * @description Compare ROI across multiple scenarios.
+         */
+        post: operations["compare_scenarios_v1_roi_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Templates
+         * @description List available ROI templates.
+         */
+        get: operations["list_templates_v1_roi_templates_get"];
+        put?: never;
+        /**
+         * Create Template
+         * @description Create a new ROI calculation template.
+         */
+        post: operations["create_template_v1_roi_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/calculations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Calculations
+         * @description List saved ROI calculations.
+         */
+        get: operations["list_calculations_v1_roi_calculations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/calculations/{calc_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Calculation
+         * @description Get a saved ROI calculation.
+         */
+        get: operations["get_calculation_v1_roi_calculations__calc_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/benchmarks/{industry}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Industry Benchmarks
+         * @description Get industry-specific benchmarks for ROI assumptions.
+         */
+        get: operations["get_industry_benchmarks_v1_roi_benchmarks__industry__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/benchmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Benchmarks
+         * @description List benchmarks with optional filters.
+         */
+        get: operations["list_benchmarks_v1_roi_benchmarks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/benchmarks/policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Benchmark Policies
+         * @description List benchmark policy configurations.
+         */
+        get: operations["list_benchmark_policies_v1_roi_benchmarks_policies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/benchmarks/{benchmark_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Benchmark
+         * @description Get a single benchmark by ID.
+         */
+        get: operations["get_benchmark_v1_roi_benchmarks__benchmark_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roi/benchmarks/policies/{policy_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Benchmark Policy
+         * @description Update a benchmark policy.
+         */
+        put: operations["update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -943,26 +1772,6 @@ export interface paths {
          * @description Get synchronization status for a source.
          */
         get: operations["get_sync_status_v1_ingest_status__source_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ingest/{source_id}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Sync Status Alias
-         * @description Get synchronization status for a source (backward-compatible alias).
-         */
-        get: operations["get_sync_status_alias_v1_ingest__source_id__status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1245,7 +2054,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/entities/{{entity_id}}": {
+    "/v1/entities/{entity_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1268,7 +2077,7 @@ export interface paths {
          *
          *     **Response:** Returns EntityDetail with full canonical contract.
          */
-        get: operations["get_entity_detail_v1_entities___entity_id___get"];
+        get: operations["get_entity_detail_v1_entities__entity_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1674,822 +2483,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/valuepacks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List ValuePacks
-         * @description Returns paginated list of ValuePacks with optional filtering by tier, search term
-         */
-        get: operations["list_valuepacks"];
-        put?: never;
-        /**
-         * Create ValuePack
-         * @description Create a new ValuePack. All fields must conform to ValuePack Schema v1.0.
-         */
-        post: operations["create_valuepack"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/valuepacks/{industry_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get ValuePack
-         * @description Get a specific ValuePack by industry_id. Returns complete ValuePack schema v1.0 data.
-         */
-        get: operations["get_valuepack"];
-        /**
-         * Update ValuePack
-         * @description Update an existing ValuePack. Only provided fields are updated.
-         */
-        put: operations["update_valuepack"];
-        post?: never;
-        /**
-         * Delete ValuePack
-         * @description Soft-delete a ValuePack (marks as inactive)
-         */
-        delete: operations["delete_valuepack"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/valuepacks/ontology-map": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Ontology Map
-         * @description Get cross-industry ontology map showing shared drivers, models, and proof patterns
-         */
-        get: operations["get_ontology_map"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/valuepacks/composable-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Composable Templates
-         * @description Get the composable template library with reusable calculation patterns
-         */
-        get: operations["get_composable_templates"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/valuepacks/compare": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Compare ValuePacks
-         * @description Compare multiple ValuePacks side-by-side across all schema dimensions
-         */
-        post: operations["compare_valuepacks"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/valuepacks/{industry_id}/seed": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Seed ValuePack Data
-         * @description Seed ValuePack data into Neo4j knowledge graph with nodes and relationships
-         */
-        post: operations["seed_valuepack_data"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/competitive/competitors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/competitive/competitors
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        get: operations["discovered_get_v1_competitive_competitors"];
-        put?: never;
-        /**
-         * POST /v1/competitive/competitors
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        post: operations["discovered_post_v1_competitive_competitors"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/competitive/competitors/{competitor_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/competitive/competitors/{competitor_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        get: operations["discovered_get_v1_competitive_competitors_competitor_id"];
-        /**
-         * PUT /v1/competitive/competitors/{competitor_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        put: operations["discovered_put_v1_competitive_competitors_competitor_id"];
-        post?: never;
-        /**
-         * DELETE /v1/competitive/competitors/{competitor_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        delete: operations["discovered_delete_v1_competitive_competitors_competitor_id"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/competitive/competitors/{competitor_id}/battlecards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/competitive/competitors/{competitor_id}/battlecards
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        get: operations["discovered_get_v1_competitive_competitors_competitor_id_battlecards"];
-        put?: never;
-        /**
-         * POST /v1/competitive/competitors/{competitor_id}/battlecards
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        post: operations["discovered_post_v1_competitive_competitors_competitor_id_battlecards"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/competitive/competitors/{competitor_id}/battlecard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/competitive/competitors/{competitor_id}/battlecard
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        get: operations["discovered_get_v1_competitive_competitors_competitor_id_battlecard"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/competitive/win-loss": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/competitive/win-loss
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        post: operations["discovered_post_v1_competitive_win-loss"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/competitive/win-loss/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/competitive/win-loss/summary
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        get: operations["discovered_get_v1_competitive_win-loss_summary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/competitive/landscape": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/competitive/landscape
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\competitive_intel.py).
-         */
-        get: operations["discovered_get_v1_competitive_landscape"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/v1/entities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/v1/entities
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\entities.py).
-         */
-        get: operations["discovered_get_v1_v1_entities"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/v1/entities/{entity_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/v1/entities/{entity_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\entities.py).
-         */
-        get: operations["discovered_get_v1_v1_entities_entity_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/v1/entities/query": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/v1/entities/query
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\entities.py).
-         */
-        post: operations["discovered_post_v1_v1_entities_query"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/v1/entity/traverse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/v1/entity/traverse
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\entities.py).
-         */
-        post: operations["discovered_post_v1_v1_entity_traverse"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/evidence/case-studies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/evidence/case-studies
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        get: operations["discovered_get_v1_evidence_case-studies"];
-        put?: never;
-        /**
-         * POST /v1/evidence/case-studies
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        post: operations["discovered_post_v1_evidence_case-studies"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/evidence/case-studies/{case_study_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/evidence/case-studies/{case_study_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        get: operations["discovered_get_v1_evidence_case-studies_case_study_id"];
-        /**
-         * PUT /v1/evidence/case-studies/{case_study_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        put: operations["discovered_put_v1_evidence_case-studies_case_study_id"];
-        post?: never;
-        /**
-         * DELETE /v1/evidence/case-studies/{case_study_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        delete: operations["discovered_delete_v1_evidence_case-studies_case_study_id"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/evidence/case-studies/bulk-import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/evidence/case-studies/bulk-import
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        post: operations["discovered_post_v1_evidence_case-studies_bulk-import"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/evidence/stats/by-industry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/evidence/stats/by-industry
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        get: operations["discovered_get_v1_evidence_stats_by-industry"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/evidence/stats/by-product": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/evidence/stats/by-product
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        get: operations["discovered_get_v1_evidence_stats_by-product"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/evidence/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/evidence/search
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\evidence.py).
-         */
-        post: operations["discovered_post_v1_evidence_search"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products/{product_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/products/{product_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        get: operations["discovered_get_v1_products_product_id"];
-        put?: never;
-        post?: never;
-        /**
-         * DELETE /v1/products/{product_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        delete: operations["discovered_delete_v1_products_product_id"];
-        options?: never;
-        head?: never;
-        /**
-         * PATCH /v1/products/{product_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        patch: operations["discovered_patch_v1_products_product_id"];
-        trace?: never;
-    };
-    "/v1/products/{product_id}/features": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/products/{product_id}/features
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        post: operations["discovered_post_v1_products_product_id_features"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products/{product_id}/features/{feature_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * DELETE /v1/products/{product_id}/features/{feature_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        delete: operations["discovered_delete_v1_products_product_id_features_feature_id"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products/{product_id}/capabilities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/products/{product_id}/capabilities
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        post: operations["discovered_post_v1_products_product_id_capabilities"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products/{product_id}/capabilities/{capability_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * DELETE /v1/products/{product_id}/capabilities/{capability_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        delete: operations["discovered_delete_v1_products_product_id_capabilities_capability_id"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products/matching/signals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/products/matching/signals
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        get: operations["discovered_get_v1_products_matching_signals"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products/analytics/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/products/analytics/summary
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        get: operations["discovered_get_v1_products_analytics_summary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products/analytics/coverage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/products/analytics/coverage
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        get: operations["discovered_get_v1_products_analytics_coverage"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/roi/calculate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/roi/calculate
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\roi_calculator.py).
-         */
-        post: operations["discovered_post_v1_roi_calculate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/roi/compare": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/roi/compare
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\roi_calculator.py).
-         */
-        post: operations["discovered_post_v1_roi_compare"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/roi/templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/roi/templates
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\roi_calculator.py).
-         */
-        get: operations["discovered_get_v1_roi_templates"];
-        put?: never;
-        /**
-         * POST /v1/roi/templates
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\roi_calculator.py).
-         */
-        post: operations["discovered_post_v1_roi_templates"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/roi/calculations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/roi/calculations
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\roi_calculator.py).
-         */
-        get: operations["discovered_get_v1_roi_calculations"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/roi/calculations/{calc_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/roi/calculations/{calc_id}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\roi_calculator.py).
-         */
-        get: operations["discovered_get_v1_roi_calculations_calc_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/roi/benchmarks/{industry}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/roi/benchmarks/{industry}
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\roi_calculator.py).
-         */
-        get: operations["discovered_get_v1_roi_benchmarks_industry"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/products
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        get: operations["discovered_get_v1_products"];
-        put?: never;
-        /**
-         * POST /v1/products
-         * @description Discovered from router source (value-fabric\layer3-knowledge\src\api\routes\products.py).
-         */
-        post: operations["discovered_post_v1_products"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2699,17 +2692,11 @@ export interface components {
              * @description Whether analysis succeeded
              */
             success: boolean;
-            /**
-             * Metrics
-             * @description Analytics metrics
-             */
+            /** Metrics */
             metrics?: {
                 [key: string]: unknown;
             } | null;
-            /**
-             * Error
-             * @description Error message if failed
-             */
+            /** Error */
             error?: string | null;
         };
         /**
@@ -2818,6 +2805,28 @@ export interface components {
             error?: string | null;
         };
         /**
+         * BattlecardCreateRequest
+         * @description Request to create a battlecard.
+         */
+        BattlecardCreateRequest: {
+            /** Product Id */
+            product_id: string;
+            /** Positioning */
+            positioning: string;
+            /** Differentiators */
+            differentiators?: string[];
+            /** Objection Handlers */
+            objection_handlers?: {
+                [key: string]: string;
+            }[];
+            /** Talk Tracks */
+            talk_tracks?: string[];
+            /** Win Themes */
+            win_themes?: string[];
+            /** Trap Questions */
+            trap_questions?: string[];
+        };
+        /**
          * BenchmarkPolicy
          * @description Benchmark policy configuration.
          */
@@ -2877,6 +2886,11 @@ export interface components {
             request: components["schemas"]["ApproveRequest"];
             settings?: components["schemas"]["Settings"] | null;
         };
+        /** Body_create_formula_v1_formulas_post */
+        Body_create_formula_v1_formulas_post: {
+            request: components["schemas"]["CreateFormulaRequest"];
+            settings?: components["schemas"]["Settings"] | null;
+        };
         /** Body_create_formula_version_v1_formulas__formula_id__versions_post */
         Body_create_formula_version_v1_formulas__formula_id__versions_post: {
             request: components["schemas"]["CreateVersionRequest"];
@@ -2922,9 +2936,14 @@ export interface components {
             request: components["schemas"]["SubmitForReviewRequest"];
             settings?: components["schemas"]["Settings"] | null;
         };
-        /** Body_update_benchmark_policy_v1_benchmarks_policies__policy_id__put */
-        Body_update_benchmark_policy_v1_benchmarks_policies__policy_id__put: {
+        /** Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put */
+        Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put: {
             update: components["schemas"]["BenchmarkPolicyUpdate"];
+            settings?: components["schemas"]["Settings"] | null;
+        };
+        /** Body_update_formula_v1_formulas__formula_id__patch */
+        Body_update_formula_v1_formulas__formula_id__patch: {
+            request: components["schemas"]["UpdateFormulaRequest"];
             settings?: components["schemas"]["Settings"] | null;
         };
         /** Body_update_pack_v1_packs__pack_id__put */
@@ -2941,6 +2960,14 @@ export interface components {
         Body_validate_value_v1_variables__variable_id__validate_post: {
             request: components["schemas"]["ValidateRequest"];
             settings?: components["schemas"]["Settings"] | null;
+        };
+        /** BulkImportRequest */
+        BulkImportRequest: {
+            /**
+             * Case Studies
+             * @description List of case studies to import
+             */
+            case_studies: components["schemas"]["CreateCaseStudyRequest"][];
         };
         /**
          * CalculationStep
@@ -2962,6 +2989,37 @@ export interface components {
              * @description Intermediate result
              */
             result: string;
+        };
+        /**
+         * CapabilityCoverageItem
+         * @description Single capability coverage entry.
+         */
+        CapabilityCoverageItem: {
+            /** Capability */
+            capability: {
+                [key: string]: unknown;
+            };
+            /** Products */
+            products: {
+                [key: string]: unknown;
+            }[];
+            /** Signal Demand */
+            signal_demand: number;
+            /** Status */
+            status: string;
+        };
+        /**
+         * CapabilityLinkRequest
+         * @description Request body for linking a product to a capability.
+         */
+        CapabilityLinkRequest: {
+            /** Capability Id */
+            capability_id: string;
+            /**
+             * Strength
+             * @default 1
+             */
+            strength: number;
         };
         /** CentralityRequest */
         CentralityRequest: {
@@ -3054,6 +3112,258 @@ export interface components {
             modularity: number | null;
         };
         /**
+         * CompetitorCreateRequest
+         * @description Request to create a competitor.
+         */
+        CompetitorCreateRequest: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Domain */
+            domain?: string | null;
+            /** Founded Year */
+            founded_year?: number | null;
+            /** Strengths */
+            strengths?: string[];
+            /** Weaknesses */
+            weaknesses?: string[];
+            /**
+             * Market Position
+             * @default challenger
+             */
+            market_position: string;
+            /**
+             * Pricing Tier
+             * @default mid
+             */
+            pricing_tier: string;
+            /** Target Segments */
+            target_segments?: string[];
+        };
+        /**
+         * CompetitorUpdateRequest
+         * @description Request to update a competitor.
+         */
+        CompetitorUpdateRequest: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Domain */
+            domain?: string | null;
+            /** Strengths */
+            strengths?: string[] | null;
+            /** Weaknesses */
+            weaknesses?: string[] | null;
+            /** Market Position */
+            market_position?: string | null;
+            /** Pricing Tier */
+            pricing_tier?: string | null;
+            /** Target Segments */
+            target_segments?: string[] | null;
+        };
+        /**
+         * ComposableModelTemplate
+         * @description Reusable calculation pattern that works across industries.
+         */
+        ComposableModelTemplate: {
+            /**
+             * Template Id
+             * @description Unique template identifier
+             */
+            template_id: string;
+            /**
+             * Template Name
+             * @description Human-readable name
+             */
+            template_name: string;
+            /**
+             * Formula Pattern
+             * @description Mathematical pattern
+             */
+            formula_pattern: string;
+            /**
+             * Inputs Required
+             * @description Input variables
+             */
+            inputs_required: string[];
+            /**
+             * Output Definition
+             * @description What this calculates
+             */
+            output_definition: string;
+            /**
+             * Applicable Industries
+             * @description Industry IDs using this template
+             */
+            applicable_industries: string[];
+            /**
+             * Example Calculation
+             * @description Concrete example
+             */
+            example_calculation: string;
+        };
+        /**
+         * ComposableTemplateLibraryResponse
+         * @description Composable template library response.
+         */
+        ComposableTemplateLibraryResponse: {
+            /**
+             * Templates
+             * @description All reusable templates
+             */
+            templates: components["schemas"]["ComposableModelTemplate"][];
+            /**
+             * Template Usage
+             * @description Template ID -> Industry IDs using it
+             */
+            template_usage: {
+                [key: string]: string[];
+            };
+        };
+        /**
+         * CoreUseCase
+         * @description What customers actually buy - the use case.
+         */
+        CoreUseCase: {
+            /**
+             * Id
+             * @description Unique identifier
+             */
+            id: string;
+            /**
+             * Name
+             * @description Use case name
+             */
+            name: string;
+            /**
+             * Description
+             * @description Detailed description
+             */
+            description: string;
+            /**
+             * Target Persona
+             * @description Primary buyer/user persona
+             */
+            target_persona: string;
+            /**
+             * Business Problem
+             * @description Problem this solves
+             */
+            business_problem: string;
+        };
+        /** CreateCaseStudyRequest */
+        CreateCaseStudyRequest: {
+            /**
+             * Title
+             * @description Case study title
+             */
+            title: string;
+            /**
+             * Content
+             * @description Full case study narrative
+             */
+            content: string;
+            /**
+             * Industry
+             * @description Industry vertical
+             */
+            industry: string;
+            /**
+             * Summary
+             * @description 2-3 sentence abstract
+             */
+            summary?: string | null;
+            /**
+             * Company Name
+             * @description Customer company name (can be anonymized)
+             */
+            company_name?: string | null;
+            /**
+             * Company Size
+             * @description small, medium, large, or enterprise
+             */
+            company_size?: string | null;
+            /**
+             * Products Used
+             * @description Product names used in this case
+             */
+            products_used?: string[] | null;
+            /**
+             * Pain Signals Addressed
+             * @description Pain signals this case addresses
+             */
+            pain_signals_addressed?: string[] | null;
+            /**
+             * Outcomes
+             * @description Quantified outcomes
+             */
+            outcomes?: components["schemas"]["OutcomeModel"][] | null;
+            /**
+             * Time To Value Days
+             * @description Days to first value
+             */
+            time_to_value_days?: number | null;
+            /**
+             * Deal Size Usd
+             * @description Deal size in USD
+             */
+            deal_size_usd?: number | null;
+            /**
+             * Published Date
+             * @description Publication date (YYYY-MM-DD)
+             */
+            published_date?: string | null;
+            /**
+             * Tags
+             * @description Searchable tags
+             */
+            tags?: string[] | null;
+        };
+        /**
+         * CreateFormulaRequest
+         * @description Request to create a new formula.
+         */
+        CreateFormulaRequest: {
+            /**
+             * Name
+             * @description Formula name
+             */
+            name: string;
+            /**
+             * Description
+             * @description Formula description
+             */
+            description: string;
+            /**
+             * Expression
+             * @description Formula expression template
+             */
+            expression: string;
+            /**
+             * Variables
+             * @description Required variables
+             */
+            variables?: components["schemas"]["VariableMetadata"][];
+            /**
+             * Output Unit
+             * @description Output unit
+             */
+            output_unit: string;
+            /**
+             * Category
+             * @description Formula category
+             * @default Custom
+             */
+            category: string;
+            /**
+             * Owner
+             * @description Formula owner email
+             */
+            owner?: string | null;
+        };
+        /**
          * CreateResponse
          * @description Response after successful model creation.
          */
@@ -3084,6 +3394,11 @@ export interface components {
             /** Created By */
             created_by: string;
         };
+        /**
+         * DataRichness
+         * @enum {string}
+         */
+        DataRichness: "low" | "medium" | "high";
         /**
          * DeleteResponse
          * @description Response after successful model deletion.
@@ -3290,6 +3605,146 @@ export interface components {
              * @description Human-readable status message
              */
             message?: string | null;
+        };
+        /**
+         * EconomicModelType
+         * @description How value is calculated for this industry.
+         */
+        EconomicModelType: {
+            /**
+             * Id
+             * @description Unique identifier
+             */
+            id: string;
+            /**
+             * Name
+             * @description Model name
+             */
+            name: string;
+            /**
+             * Formula Shape
+             * @description Input → Calculation → Output structure
+             */
+            formula_shape: string;
+            /**
+             * Inputs
+             * @description Required input variables
+             */
+            inputs?: string[];
+            /**
+             * Output Unit
+             * @description What the output represents
+             */
+            output_unit: string;
+            /**
+             * Typical Range
+             * @description Typical output range
+             */
+            typical_range?: string | null;
+        };
+        /**
+         * EconomicNode
+         * @description Node in the pre-built economic graph.
+         */
+        EconomicNode: {
+            /**
+             * Node Id
+             * @description Unique node ID
+             */
+            node_id: string;
+            /**
+             * Node Type
+             * @enum {string}
+             */
+            node_type: "driver" | "intervention" | "outcome" | "metric";
+            /**
+             * Name
+             * @description Node name
+             */
+            name: string;
+            /**
+             * Description
+             * @description Node description
+             */
+            description: string;
+            /**
+             * Default Value
+             * @description Default/typical value
+             */
+            default_value?: string | null;
+        };
+        /**
+         * EconomicRelationship
+         * @description Relationship between nodes in the economic graph.
+         */
+        EconomicRelationship: {
+            /**
+             * From Node Id
+             * @description Source node ID
+             */
+            from_node_id: string;
+            /**
+             * To Node Id
+             * @description Target node ID
+             */
+            to_node_id: string;
+            /**
+             * Relationship Type
+             * @enum {string}
+             */
+            relationship_type: "drives" | "enables" | "measures" | "depends_on";
+            /**
+             * Weight
+             * @description Relationship strength 0-1
+             */
+            weight?: number | null;
+            /**
+             * Formula
+             * @description Calculation between nodes
+             */
+            formula?: string | null;
+        };
+        /**
+         * EndpointContribution
+         * @description What this ValuePack contributes to a specific endpoint.
+         */
+        EndpointContribution: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Contribution Summary
+             * @description What this ValuePack adds
+             */
+            contribution_summary: string;
+            /**
+             * Data Format
+             * @description Format of contribution
+             */
+            data_format: string;
+            /**
+             * Specific Assets
+             * @description Asset IDs/URLs
+             */
+            specific_assets?: string[];
+        };
+        /**
+         * EndpointMappings
+         * @description How this ValuePack maps to each of the 5 product endpoints.
+         */
+        EndpointMappings: {
+            /** @description Context enrichment */
+            intelligence: components["schemas"]["EndpointContribution"];
+            /** @description Hypothesis generation */
+            ai_model: components["schemas"]["EndpointContribution"];
+            /** @description Pre-built structures */
+            driver_tree: components["schemas"]["EndpointContribution"];
+            /** @description Pre-defined formulas */
+            calculator: components["schemas"]["EndpointContribution"];
+            /** @description Industry-specific narratives */
+            value_case: components["schemas"]["EndpointContribution"];
         };
         /** EntityComparisonRequest */
         EntityComparisonRequest: {
@@ -3670,6 +4125,82 @@ export interface components {
          */
         EntityType: "Capability" | "UseCase" | "Persona" | "ValueDriver" | "ValueMetric" | "Product" | "Feature" | "Service" | "Solution" | "Technology" | "Organization" | "BusinessUnit" | "Process" | "Activity" | "APQCProcess" | "BIANServiceDomain" | "FIBOEntity" | "Industry" | "MarketSegment" | "Geography" | "Regulation" | "DataSource" | "ExtractionEvent" | "ConfidenceScore";
         /**
+         * EvidenceFramework
+         * @description Evidence types, hierarchy, and validation rules.
+         */
+        EvidenceFramework: {
+            /**
+             * Hierarchy
+             * @description Evidence ranking
+             */
+            hierarchy: components["schemas"]["EvidenceHierarchyRule"][];
+            /** @description Minimum level for this industry */
+            required_level: components["schemas"]["EvidenceLevel"];
+            /**
+             * Validation Rules
+             * @description Custom validation
+             */
+            validation_rules?: string[];
+        };
+        /**
+         * EvidenceHierarchyRule
+         * @description Validation rule for evidence in this industry.
+         */
+        EvidenceHierarchyRule: {
+            /** @description Hierarchy level */
+            level: components["schemas"]["EvidenceLevel"];
+            /**
+             * Label
+             * @description Human-readable label
+             */
+            label: string;
+            /**
+             * Requirements
+             * @description Requirements to meet this level
+             */
+            requirements: string[];
+            /**
+             * Acceptable Sources
+             * @description Acceptable evidence sources
+             */
+            acceptable_sources: string[];
+        };
+        /**
+         * EvidenceLevel
+         * @description Universal evidence hierarchy (Level 1 = highest).
+         * @enum {integer}
+         */
+        EvidenceLevel: 1 | 2 | 3 | 4 | 5;
+        /**
+         * FeatureCreateRequest
+         * @description Request body for adding a feature to a product.
+         */
+        FeatureCreateRequest: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /**
+             * Feature Type
+             * @default core
+             */
+            feature_type: string;
+            /**
+             * Maturity
+             * @default ga
+             */
+            maturity: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * FeedbackLoopSpeed
+         * @enum {string}
+         */
+        FeedbackLoopSpeed: "slow" | "medium" | "fast";
+        /**
          * FoldersResponse
          * @description Response for folder listing endpoint.
          */
@@ -3798,6 +4329,11 @@ export interface components {
              */
             id: string;
             /**
+             * Formula Id
+             * @description Alias for id (frontend compatibility)
+             */
+            formula_id?: string | null;
+            /**
              * Name
              * @description Formula name
              */
@@ -3827,6 +4363,44 @@ export interface components {
              * @description Output unit
              */
             output_unit: string;
+            /**
+             * Version
+             * @description Formula version (semver)
+             * @default 1.0.0
+             */
+            version: string;
+            /**
+             * Status
+             * @description Formula status
+             * @default active
+             */
+            status: string;
+            /**
+             * Updated At
+             * @description Last updated timestamp
+             */
+            updated_at?: string | null;
+            /**
+             * Created At
+             * @description Creation timestamp
+             */
+            created_at?: string | null;
+            /**
+             * Used In Count
+             * @description Number of packs using this formula
+             * @default 0
+             */
+            used_in_count: number;
+            /**
+             * Owner
+             * @description Formula owner email
+             */
+            owner?: string | null;
+            /**
+             * Governance Score
+             * @description Governance score 0-1
+             */
+            governance_score?: number | null;
         };
         /**
          * FormulaSummary
@@ -4513,6 +5087,91 @@ export interface components {
             is_shared: boolean;
         };
         /**
+         * OntologyMapResponse
+         * @description Cross-industry ontology map response.
+         */
+        OntologyMapResponse: {
+            /**
+             * Shared Drivers
+             * @description Value drivers appearing across industries
+             */
+            shared_drivers: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Shared Model Types
+             * @description Model types used across industries
+             */
+            shared_model_types: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Shared Proof Patterns
+             * @description Proof patterns used across industries
+             */
+            shared_proof_patterns: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Cross Reference Matrix
+             * @description Overlap density matrix
+             */
+            cross_reference_matrix: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+        };
+        /**
+         * OntologyTag
+         * @description Taxonomy tag for cross-industry linkage.
+         */
+        OntologyTag: {
+            /**
+             * Tag
+             * @description Tag name
+             */
+            tag: string;
+            /**
+             * Category
+             * @description Tag category (driver, model, proof, etc.)
+             */
+            category: string;
+            /**
+             * Related Tags
+             * @description Related tags
+             */
+            related_tags?: string[];
+        };
+        /** OutcomeModel */
+        OutcomeModel: {
+            /**
+             * Metric
+             * @description The metric being measured
+             */
+            metric: string;
+            /**
+             * Before Value
+             * @description Value before implementation
+             */
+            before_value?: string | null;
+            /**
+             * After Value
+             * @description Value after implementation
+             */
+            after_value?: string | null;
+            /**
+             * Improvement Pct
+             * @description Percentage improvement
+             */
+            improvement_pct?: number | null;
+            /**
+             * Time To Achieve Days
+             * @description Days to achieve this outcome
+             */
+            time_to_achieve_days?: number | null;
+        };
+        /**
          * PackCreateRequest
          * @description Request to create a Value Pack.
          */
@@ -4665,8 +5324,12 @@ export interface components {
         PackSummary: {
             /** Pack Id */
             pack_id: string;
+            /** Id */
+            id?: string | null;
             /** Name */
             name: string;
+            /** Description */
+            description?: string | null;
             /** Industry */
             industry: string;
             /** Segment */
@@ -4719,6 +5382,167 @@ export interface components {
             formula_ids?: string[] | null;
             /** Benchmark Ids */
             benchmark_ids?: string[] | null;
+        };
+        /**
+         * PortfolioSummaryResponse
+         * @description Portfolio analytics summary.
+         */
+        PortfolioSummaryResponse: {
+            /** Total Products */
+            total_products: number;
+            /** Total Features */
+            total_features: number;
+            /** Total Capabilities */
+            total_capabilities: number;
+            /** Categories */
+            categories: string[];
+            /** Avg Features Per Product */
+            avg_features_per_product: number;
+            /** Avg Capabilities Per Product */
+            avg_capabilities_per_product: number;
+        };
+        /**
+         * PreBuiltEconomicGraph
+         * @description Pre-built driver-tree skeleton with node relationships.
+         */
+        PreBuiltEconomicGraph: {
+            /**
+             * Nodes
+             * @description All nodes in the graph
+             */
+            nodes: components["schemas"]["EconomicNode"][];
+            /**
+             * Relationships
+             * @description Node relationships
+             */
+            relationships: components["schemas"]["EconomicRelationship"][];
+            /**
+             * Root Node Id
+             * @description Root node of the graph
+             */
+            root_node_id: string;
+            /**
+             * Graph Description
+             * @description What this graph represents
+             */
+            graph_description: string;
+        };
+        /**
+         * ProductCreateRequest
+         * @description Request body for creating a product.
+         */
+        ProductCreateRequest: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Category */
+            category?: string | null;
+            /** Sku */
+            sku?: string | null;
+            /** Pricing Model */
+            pricing_model?: string | null;
+            /** Target Personas */
+            target_personas?: string[];
+            /** Industries */
+            industries?: string[];
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ProductListResponse
+         * @description Paginated product list response.
+         */
+        ProductListResponse: {
+            /** Products */
+            products: {
+                [key: string]: unknown;
+            }[];
+            /** Total */
+            total: number;
+            /** Skip */
+            skip: number;
+            /** Limit */
+            limit: number;
+        };
+        /**
+         * ProductResponse
+         * @description Standard product response.
+         */
+        ProductResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Sku */
+            sku?: string | null;
+            /** Pricing Model */
+            pricing_model?: string | null;
+            /** Target Personas */
+            target_personas?: string[];
+            /** Industries */
+            industries?: string[];
+            /** Features */
+            features?: {
+                [key: string]: unknown;
+            }[];
+            /** Capabilities */
+            capabilities?: {
+                [key: string]: unknown;
+            }[];
+            /** Created At */
+            created_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * ProductUpdateRequest
+         * @description Request body for updating a product.
+         */
+        ProductUpdateRequest: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Sku */
+            sku?: string | null;
+            /** Pricing Model */
+            pricing_model?: string | null;
+            /** Target Personas */
+            target_personas?: string[] | null;
+            /** Industries */
+            industries?: string[] | null;
+        };
+        /**
+         * ProofRequirement
+         * @description What makes a value claim credible in this industry.
+         */
+        ProofRequirement: {
+            /**
+             * Id
+             * @description Unique identifier
+             */
+            id: string;
+            /**
+             * Requirement
+             * @description What proof is required
+             */
+            requirement: string;
+            /**
+             * Evidence Type
+             * @description Type of evidence needed
+             */
+            evidence_type: string;
+            /** @description Minimum evidence hierarchy level */
+            minimum_level: components["schemas"]["EvidenceLevel"];
         };
         /**
          * ProvenanceEvent
@@ -4835,6 +5659,96 @@ export interface components {
             confidence_score?: number | null;
         };
         /**
+         * ROICalculateRequest
+         * @description Request to calculate ROI.
+         */
+        ROICalculateRequest: {
+            /**
+             * Annual Revenue
+             * @default 0
+             */
+            annual_revenue: number;
+            /**
+             * Num Employees
+             * @default 0
+             */
+            num_employees: number;
+            /**
+             * Avg Salary
+             * @default 75000
+             */
+            avg_salary: number;
+            /**
+             * Current Cost Annual
+             * @default 0
+             */
+            current_cost_annual: number;
+            /**
+             * Implementation Cost
+             * @default 0
+             */
+            implementation_cost: number;
+            /**
+             * Annual License Cost
+             * @default 0
+             */
+            annual_license_cost: number;
+            /**
+             * Training Cost
+             * @default 0
+             */
+            training_cost: number;
+            /**
+             * Productivity Gain Pct
+             * @default 0.1
+             */
+            productivity_gain_pct: number;
+            /**
+             * Error Reduction Pct
+             * @default 0.2
+             */
+            error_reduction_pct: number;
+            /**
+             * Time Savings Hours Per Week
+             * @default 5
+             */
+            time_savings_hours_per_week: number;
+            /**
+             * Affected Employees Pct
+             * @default 0.25
+             */
+            affected_employees_pct: number;
+            /** Custom Inputs */
+            custom_inputs?: {
+                [key: string]: number;
+            };
+            /**
+             * Time Horizon Months
+             * @default 36
+             */
+            time_horizon_months: number;
+            /**
+             * Discount Rate
+             * @default 0.1
+             */
+            discount_rate: number;
+            /**
+             * Scenario
+             * @default moderate
+             */
+            scenario: string;
+            /** Account Id */
+            account_id?: string | null;
+            /** Template Id */
+            template_id?: string | null;
+            /**
+             * Save
+             * @description Whether to persist the calculation
+             * @default false
+             */
+            save: boolean;
+        };
+        /**
          * RelationshipPreview
          * @description Lightweight relationship for preview lists in entity detail.
          */
@@ -4892,6 +5806,91 @@ export interface components {
             confidence: number;
             /** Extracted At */
             extracted_at: string;
+        };
+        /**
+         * ScenarioCompareRequest
+         * @description Request to compare scenarios.
+         */
+        ScenarioCompareRequest: {
+            /**
+             * Annual Revenue
+             * @default 0
+             */
+            annual_revenue: number;
+            /**
+             * Num Employees
+             * @default 0
+             */
+            num_employees: number;
+            /**
+             * Avg Salary
+             * @default 75000
+             */
+            avg_salary: number;
+            /**
+             * Current Cost Annual
+             * @default 0
+             */
+            current_cost_annual: number;
+            /**
+             * Implementation Cost
+             * @default 0
+             */
+            implementation_cost: number;
+            /**
+             * Annual License Cost
+             * @default 0
+             */
+            annual_license_cost: number;
+            /**
+             * Training Cost
+             * @default 0
+             */
+            training_cost: number;
+            /**
+             * Productivity Gain Pct
+             * @default 0.1
+             */
+            productivity_gain_pct: number;
+            /**
+             * Error Reduction Pct
+             * @default 0.2
+             */
+            error_reduction_pct: number;
+            /**
+             * Time Savings Hours Per Week
+             * @default 5
+             */
+            time_savings_hours_per_week: number;
+            /**
+             * Affected Employees Pct
+             * @default 0.25
+             */
+            affected_employees_pct: number;
+            /** Custom Inputs */
+            custom_inputs?: {
+                [key: string]: number;
+            };
+            /**
+             * Time Horizon Months
+             * @default 36
+             */
+            time_horizon_months: number;
+            /**
+             * Discount Rate
+             * @default 0.1
+             */
+            discount_rate: number;
+            /**
+             * Scenarios
+             * @description Scenario names to compare
+             * @default [
+             *       "conservative",
+             *       "moderate",
+             *       "aggressive"
+             *     ]
+             */
+            scenarios: string[];
         };
         /**
          * ScenarioRequest
@@ -4958,7 +5957,7 @@ export interface components {
             }[];
             /**
              * Warnings
-             * @description Warning messages (e.g., mock data usage)
+             * @description Warning messages (e.g., incomplete data, calculation warnings)
              */
             warnings?: string[];
         };
@@ -5113,6 +6112,25 @@ export interface components {
          * @enum {string}
          */
         SearchType: "hybrid" | "vector" | "fulltext" | "graph";
+        /** SemanticSearchRequest */
+        SemanticSearchRequest: {
+            /**
+             * Query
+             * @description Natural language search query
+             */
+            query: string;
+            /**
+             * Evidence Types
+             * @description Filter by evidence type
+             */
+            evidence_types?: string[] | null;
+            /**
+             * Limit
+             * @description Max results
+             * @default 10
+             */
+            limit: number;
+        };
         /**
          * ServiceMetrics
          * @description System and service performance metrics.
@@ -5399,6 +6417,24 @@ export interface components {
              */
             INGESTION_TIMEOUT_SECONDS: number;
         };
+        /**
+         * SignalMatchResponse
+         * @description Signal-to-product match result.
+         */
+        SignalMatchResponse: {
+            /** Product */
+            product: {
+                [key: string]: unknown;
+            };
+            /** Total Score */
+            total_score: number;
+            /** Signal Count */
+            signal_count: number;
+            /** Top Matches */
+            top_matches: {
+                [key: string]: unknown;
+            }[];
+        };
         /** SimilarityRequest */
         SimilarityRequest: {
             /** Entity Id */
@@ -5538,6 +6574,11 @@ export interface components {
             submitted_by: string;
         };
         /**
+         * SwitchingCost
+         * @enum {string}
+         */
+        SwitchingCost: "low" | "medium" | "high";
+        /**
          * SyncStatusResponse
          * @description Response for synchronization status.
          */
@@ -5574,6 +6615,33 @@ export interface components {
             error?: string | null;
         };
         /**
+         * TemplateCreateRequest
+         * @description Request to create an ROI template.
+         */
+        TemplateCreateRequest: {
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /**
+             * Category
+             * @default general
+             */
+            category: string;
+            /** Input Schema */
+            input_schema?: {
+                [key: string]: unknown;
+            };
+            /** Default Assumptions */
+            default_assumptions?: {
+                [key: string]: number;
+            };
+            /** Applicable Industries */
+            applicable_industries?: string[];
+            /** Applicable Products */
+            applicable_products?: string[];
+        };
+        /**
          * TransitionResponse
          * @description Governance transition result.
          */
@@ -5593,6 +6661,69 @@ export interface components {
              * @default false
              */
             requires_approval: boolean;
+        };
+        /** UpdateCaseStudyRequest */
+        UpdateCaseStudyRequest: {
+            /** Title */
+            title?: string | null;
+            /** Content */
+            content?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Industry */
+            industry?: string | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Company Size */
+            company_size?: string | null;
+            /** Products Used */
+            products_used?: string[] | null;
+            /** Pain Signals Addressed */
+            pain_signals_addressed?: string[] | null;
+            /** Outcomes */
+            outcomes?: components["schemas"]["OutcomeModel"][] | null;
+            /** Time To Value Days */
+            time_to_value_days?: number | null;
+            /** Deal Size Usd */
+            deal_size_usd?: number | null;
+            /** Tags */
+            tags?: string[] | null;
+        };
+        /**
+         * UpdateFormulaRequest
+         * @description Request to update an existing formula.
+         */
+        UpdateFormulaRequest: {
+            /**
+             * Name
+             * @description Formula name
+             */
+            name?: string | null;
+            /**
+             * Description
+             * @description Formula description
+             */
+            description?: string | null;
+            /**
+             * Expression
+             * @description Formula expression template
+             */
+            expression?: string | null;
+            /**
+             * Variables
+             * @description Required variables
+             */
+            variables?: components["schemas"]["VariableMetadata"][] | null;
+            /**
+             * Output Unit
+             * @description Output unit
+             */
+            output_unit?: string | null;
+            /**
+             * Category
+             * @description Formula category
+             */
+            category?: string | null;
         };
         /**
          * ValidateRequest
@@ -5652,6 +6783,37 @@ export interface components {
             error_message: string;
         };
         /**
+         * ValueDriver
+         * @description A primary value driver that moves money for this industry.
+         */
+        ValueDriver: {
+            /**
+             * Id
+             * @description Unique identifier for this driver
+             */
+            id: string;
+            /**
+             * Name
+             * @description Human-readable driver name
+             */
+            name: string;
+            /**
+             * Description
+             * @description What this driver means in this industry context
+             */
+            description: string;
+            /**
+             * Typical Impact
+             * @description Typical financial impact range
+             */
+            typical_impact: string;
+            /**
+             * Measurement Approach
+             * @description How to measure this driver
+             */
+            measurement_approach: string;
+        };
+        /**
          * ValueDriverSummary
          * @description Summary of value driver in pack.
          */
@@ -5667,6 +6829,310 @@ export interface components {
              * @default 1
              */
             weight: number;
+        };
+        /**
+         * ValuePackComparisonRequest
+         * @description Request to compare multiple ValuePacks.
+         */
+        ValuePackComparisonRequest: {
+            /**
+             * Industry Ids
+             * @description Industries to compare
+             */
+            industry_ids: string[];
+            /**
+             * Dimensions
+             * @description Specific dimensions to compare
+             */
+            dimensions?: string[] | null;
+        };
+        /**
+         * ValuePackComparisonResponse
+         * @description Response for ValuePack comparison.
+         */
+        ValuePackComparisonResponse: {
+            /**
+             * Valuepacks
+             * @description Full ValuePack data
+             */
+            valuepacks: components["schemas"]["ValuePackResponse"][];
+            /**
+             * Comparison Matrix
+             * @description Dimension-by-dimension comparison
+             */
+            comparison_matrix: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /**
+             * Shared Templates
+             * @description Templates shared between industries
+             */
+            shared_templates: string[];
+            /**
+             * Differentiation Analysis
+             * @description Analysis of unique aspects
+             */
+            differentiation_analysis: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * ValuePackCreate
+         * @description Model for creating a new ValuePack.
+         */
+        ValuePackCreate: {
+            /**
+             * Industry Id
+             * @description Unique industry slug
+             */
+            industry_id: string;
+            /** @description ValuePack tier classification */
+            tier: components["schemas"]["ValuePackTier"];
+            /**
+             * Display Name
+             * @description Human-readable industry name
+             */
+            display_name: string;
+            /**
+             * Description
+             * @description Industry overview
+             */
+            description: string;
+            /**
+             * Primary Value Drivers
+             * @description What moves money (max 4)
+             */
+            primary_value_drivers: components["schemas"]["ValueDriver"][];
+            /**
+             * Core Use Cases
+             * @description What customers buy (max 4)
+             */
+            core_use_cases: components["schemas"]["CoreUseCase"][];
+            /**
+             * Economic Model Types
+             * @description How value is calculated (max 4)
+             */
+            economic_model_types: components["schemas"]["EconomicModelType"][];
+            /**
+             * Proof Requirements
+             * @description What makes it credible (max 3)
+             */
+            proof_requirements: components["schemas"]["ProofRequirement"][];
+            /**
+             * Why It Wins
+             * @description Platform differentiation (max 3)
+             */
+            why_it_wins: components["schemas"]["WinStatement"][];
+            /** @description 5 endpoint contributions */
+            endpoint_mappings: components["schemas"]["EndpointMappings"];
+            /**
+             * Composable Model Templates
+             * @description Reusable calculation patterns
+             */
+            composable_model_templates?: components["schemas"]["ComposableModelTemplate"][];
+            /**
+             * Pre Wired Ontology Tags
+             * @description Taxonomy tags
+             */
+            pre_wired_ontology_tags?: components["schemas"]["OntologyTag"][];
+            /** @description Driver-tree skeleton */
+            pre_built_economic_graph: components["schemas"]["PreBuiltEconomicGraph"];
+            /** @description Evidence hierarchy and rules */
+            evidence_framework: components["schemas"]["EvidenceFramework"];
+            /** @description Market characteristics */
+            metadata: components["schemas"]["ValuePackMetadata"];
+            /**
+             * Version
+             * @description Schema version
+             * @default 1.0
+             */
+            version: string;
+            /**
+             * Is Active
+             * @description Whether this ValuePack is active
+             * @default true
+             */
+            is_active: boolean;
+            /**
+             * Created At
+             * @description Creation timestamp
+             */
+            created_at?: string | null;
+            /**
+             * Updated At
+             * @description Last update timestamp
+             */
+            updated_at?: string | null;
+        };
+        /**
+         * ValuePackListResponse
+         * @description Paginated list of ValuePacks.
+         */
+        ValuePackListResponse: {
+            /** Items */
+            items: components["schemas"]["ValuePackResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Has More */
+            has_more: boolean;
+        };
+        /**
+         * ValuePackMetadata
+         * @description Metadata about this ValuePack's market characteristics.
+         */
+        ValuePackMetadata: {
+            /**
+             * Deal Size Range
+             * @description Typical deal size
+             */
+            deal_size_range: string;
+            /**
+             * Sales Cycle Length
+             * @description Typical sales cycle
+             */
+            sales_cycle_length: string;
+            /** @description Customer switching difficulty */
+            switching_cost: components["schemas"]["SwitchingCost"];
+            /** @description Data availability in industry */
+            data_richness: components["schemas"]["DataRichness"];
+            /** @description Speed of value realization */
+            feedback_loop_speed: components["schemas"]["FeedbackLoopSpeed"];
+        };
+        /**
+         * ValuePackResponse
+         * @description Model for ValuePack API responses.
+         */
+        ValuePackResponse: {
+            /**
+             * Industry Id
+             * @description Unique industry slug
+             */
+            industry_id: string;
+            /** @description ValuePack tier classification */
+            tier: components["schemas"]["ValuePackTier"];
+            /**
+             * Display Name
+             * @description Human-readable industry name
+             */
+            display_name: string;
+            /**
+             * Description
+             * @description Industry overview
+             */
+            description: string;
+            /**
+             * Primary Value Drivers
+             * @description What moves money (max 4)
+             */
+            primary_value_drivers: components["schemas"]["ValueDriver"][];
+            /**
+             * Core Use Cases
+             * @description What customers buy (max 4)
+             */
+            core_use_cases: components["schemas"]["CoreUseCase"][];
+            /**
+             * Economic Model Types
+             * @description How value is calculated (max 4)
+             */
+            economic_model_types: components["schemas"]["EconomicModelType"][];
+            /**
+             * Proof Requirements
+             * @description What makes it credible (max 3)
+             */
+            proof_requirements: components["schemas"]["ProofRequirement"][];
+            /**
+             * Why It Wins
+             * @description Platform differentiation (max 3)
+             */
+            why_it_wins: components["schemas"]["WinStatement"][];
+            /** @description 5 endpoint contributions */
+            endpoint_mappings: components["schemas"]["EndpointMappings"];
+            /**
+             * Composable Model Templates
+             * @description Reusable calculation patterns
+             */
+            composable_model_templates?: components["schemas"]["ComposableModelTemplate"][];
+            /**
+             * Pre Wired Ontology Tags
+             * @description Taxonomy tags
+             */
+            pre_wired_ontology_tags?: components["schemas"]["OntologyTag"][];
+            /** @description Driver-tree skeleton */
+            pre_built_economic_graph: components["schemas"]["PreBuiltEconomicGraph"];
+            /** @description Evidence hierarchy and rules */
+            evidence_framework: components["schemas"]["EvidenceFramework"];
+            /** @description Market characteristics */
+            metadata: components["schemas"]["ValuePackMetadata"];
+            /**
+             * Version
+             * @description Schema version
+             * @default 1.0
+             */
+            version: string;
+            /**
+             * Is Active
+             * @description Whether this ValuePack is active
+             * @default true
+             */
+            is_active: boolean;
+            /**
+             * Created At
+             * @description Creation timestamp
+             */
+            created_at?: string | null;
+            /**
+             * Updated At
+             * @description Last update timestamp
+             */
+            updated_at?: string | null;
+            /**
+             * Completeness Score
+             * @description Schema completeness 0-1
+             */
+            completeness_score?: number | null;
+        };
+        /**
+         * ValuePackTier
+         * @description Tier classification for ValuePacks.
+         * @enum {integer}
+         */
+        ValuePackTier: 1 | 2 | 3;
+        /**
+         * ValuePackUpdate
+         * @description Model for updating an existing ValuePack.
+         */
+        ValuePackUpdate: {
+            tier?: components["schemas"]["ValuePackTier"] | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Primary Value Drivers */
+            primary_value_drivers?: components["schemas"]["ValueDriver"][] | null;
+            /** Core Use Cases */
+            core_use_cases?: components["schemas"]["CoreUseCase"][] | null;
+            /** Economic Model Types */
+            economic_model_types?: components["schemas"]["EconomicModelType"][] | null;
+            /** Proof Requirements */
+            proof_requirements?: components["schemas"]["ProofRequirement"][] | null;
+            /** Why It Wins */
+            why_it_wins?: components["schemas"]["WinStatement"][] | null;
+            endpoint_mappings?: components["schemas"]["EndpointMappings"] | null;
+            /** Composable Model Templates */
+            composable_model_templates?: components["schemas"]["ComposableModelTemplate"][] | null;
+            /** Pre Wired Ontology Tags */
+            pre_wired_ontology_tags?: components["schemas"]["OntologyTag"][] | null;
+            pre_built_economic_graph?: components["schemas"]["PreBuiltEconomicGraph"] | null;
+            evidence_framework?: components["schemas"]["EvidenceFramework"] | null;
+            metadata?: components["schemas"]["ValuePackMetadata"] | null;
+            /** Is Active */
+            is_active?: boolean | null;
         };
         /**
          * ValueTreeEdge
@@ -5990,6 +7456,57 @@ export interface components {
              */
             categories?: string[];
         };
+        /**
+         * WinLossRequest
+         * @description Request to record a win or loss.
+         */
+        WinLossRequest: {
+            /** Competitor Id */
+            competitor_id: string;
+            /** Product Id */
+            product_id: string;
+            /**
+             * Outcome
+             * @description 'won' or 'lost'
+             */
+            outcome: string;
+            /**
+             * Deal Size Usd
+             * @default 0
+             */
+            deal_size_usd: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Industry
+             * @default
+             */
+            industry: string;
+        };
+        /**
+         * WinStatement
+         * @description Why THIS platform is uniquely strong for this industry.
+         */
+        WinStatement: {
+            /**
+             * Statement
+             * @description The win statement
+             */
+            statement: string;
+            /**
+             * Differentiation
+             * @description How this differs from generic claims
+             */
+            differentiation: string;
+            /**
+             * Proof Point
+             * @description Specific evidence supporting this claim
+             */
+            proof_point: string;
+        };
         /** ValueTreeResponse */
         layer3_knowledge__api__models__ValueTreeResponse: {
             /** Start Entity Id */
@@ -6095,117 +7612,6 @@ export interface components {
             }[];
             /** @description Tree statistics */
             stats: components["schemas"]["ValueTreeStats"];
-        };
-        /**
-         * ValuePackResponse
-         * @description Complete ValuePack Framework v1.0 data
-         */
-        ValuePackResponse: {
-            /** @description Unique industry slug */
-            industry_id: string;
-            /** @description Human-readable industry name */
-            display_name: string;
-            /**
-             * @description 1=Immediate Traction, 2=High ROI Underserved, 3=Complex but Powerful
-             * @enum {integer}
-             */
-            tier: 1 | 2 | 3;
-            /** @description Industry overview */
-            description: string;
-            primary_value_drivers: components["schemas"]["ValueDriver"][];
-            core_use_cases: components["schemas"]["CoreUseCase"][];
-            economic_model_types: components["schemas"]["EconomicModelType"][];
-            proof_requirements: components["schemas"]["ProofRequirement"][];
-            why_it_wins: components["schemas"]["WinStatement"][];
-            endpoint_mappings: components["schemas"]["EndpointMappings"];
-            /** @description Schema completeness 0-1 */
-            completeness_score?: number;
-            metadata: components["schemas"]["ValuePackMetadata"];
-        };
-        /** ValueDriver */
-        ValueDriver: {
-            id: string;
-            name: string;
-            description: string;
-            typical_impact: string;
-            measurement_approach: string;
-        };
-        /** CoreUseCase */
-        CoreUseCase: {
-            id: string;
-            name: string;
-            description: string;
-            target_persona: string;
-            business_problem: string;
-        };
-        /** EconomicModelType */
-        EconomicModelType: {
-            id: string;
-            name: string;
-            /** @description Input → Calculation → Output */
-            formula_shape: string;
-            inputs: string[];
-            output_unit: string;
-            typical_range?: string;
-        };
-        /** ProofRequirement */
-        ProofRequirement: {
-            id: string;
-            requirement: string;
-            evidence_type: string;
-            minimum_level: number;
-        };
-        /** WinStatement */
-        WinStatement: {
-            statement: string;
-            differentiation: string;
-            proof_point: string;
-        };
-        /** EndpointMappings */
-        EndpointMappings: {
-            intelligence: components["schemas"]["EndpointContribution"];
-            ai_model: components["schemas"]["EndpointContribution"];
-            driver_tree: components["schemas"]["EndpointContribution"];
-            calculator: components["schemas"]["EndpointContribution"];
-            value_case: components["schemas"]["EndpointContribution"];
-        };
-        /** EndpointContribution */
-        EndpointContribution: {
-            enabled: boolean;
-            contribution_summary: string;
-            data_format: string;
-            specific_assets?: string[];
-        };
-        /** ValuePackMetadata */
-        ValuePackMetadata: {
-            deal_size_range: string;
-            sales_cycle_length: string;
-            /** @enum {string} */
-            switching_cost: "low" | "medium" | "high";
-            /** @enum {string} */
-            data_richness: "low" | "medium" | "high";
-            /** @enum {string} */
-            feedback_loop_speed: "slow" | "medium" | "fast";
-        };
-        /** ValuePackListResponse */
-        ValuePackListResponse: {
-            items: components["schemas"]["ValuePackResponse"][];
-            total: number;
-            page: number;
-            page_size: number;
-            has_more: boolean;
-        };
-        /** OntologyMapResponse */
-        OntologyMapResponse: {
-            shared_drivers: Record<string, never>[];
-            shared_model_types: Record<string, never>[];
-            shared_proof_patterns: Record<string, never>[];
-            cross_reference_matrix: Record<string, never>;
-        };
-        /** ComposableTemplateLibraryResponse */
-        ComposableTemplateLibraryResponse: {
-            templates: Record<string, never>[];
-            template_usage: Record<string, never>;
         };
     };
     responses: never;
@@ -6450,6 +7856,39 @@ export interface operations {
             };
         };
     };
+    create_formula_v1_formulas_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_create_formula_v1_formulas_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaMetadata"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_formula_v1_formulas__formula_id__get: {
         parameters: {
             query?: never;
@@ -6460,6 +7899,78 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormulaMetadata"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_formula_v1_formulas__formula_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formula_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Settings"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_formula_v1_formulas__formula_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                formula_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_update_formula_v1_formulas__formula_id__patch"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -6552,15 +8063,10 @@ export interface operations {
     list_packs_v1_packs_get: {
         parameters: {
             query?: {
-                /** @description Filter by industry */
                 industry?: string | null;
-                /** @description Filter by status */
                 status?: string | null;
-                /** @description Filter by category */
                 category?: string | null;
-                /** @description Search by name or description */
                 search?: string | null;
-                /** @description Maximum results to return */
                 limit?: number;
             };
             header?: never;
@@ -6788,6 +8294,282 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PackExecuteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_valuepacks_v1_valuepacks_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by tier (1, 2, or 3) */
+                tier?: number | null;
+                /** @description Search in name/description */
+                search?: string | null;
+                /** @description Only active ValuePacks */
+                is_active?: boolean;
+                /** @description Page number */
+                page?: number;
+                /** @description Items per page */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuePackListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_valuepack_v1_valuepacks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValuePackCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuePackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_valuepack_v1_valuepacks__industry_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                industry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuePackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_valuepack_v1_valuepacks__industry_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                industry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValuePackUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuePackResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_valuepack_v1_valuepacks__industry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                industry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ontology_map_v1_valuepacks_ontology_map_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OntologyMapResponse"];
+                };
+            };
+        };
+    };
+    get_composable_templates_v1_valuepacks_composable_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComposableTemplateLibraryResponse"];
+                };
+            };
+        };
+    };
+    compare_valuepacks_v1_valuepacks_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValuePackComparisonRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuePackComparisonResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seed_valuepack_data_v1_valuepacks__industry_id__seed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                industry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Settings"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -7443,153 +9225,6 @@ export interface operations {
             };
         };
     };
-    list_benchmarks_v1_benchmarks_get: {
-        parameters: {
-            query?: {
-                /** @description Filter by industry */
-                industry?: string | null;
-                /** @description Filter by status */
-                status?: string | null;
-                /** @description Filter by confidence level */
-                confidence?: string | null;
-                /** @description Search benchmarks by name */
-                search?: string | null;
-                /** @description Maximum results to return */
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["layer3_knowledge__api__routes__benchmarks__BenchmarkSummary"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_benchmark_policies_v1_benchmarks_policies_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BenchmarkPolicy"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_benchmark_v1_benchmarks__benchmark_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                benchmark_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["layer3_knowledge__api__routes__benchmarks__BenchmarkSummary"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_benchmark_policy_v1_benchmarks_policies__policy_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                policy_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Body_update_benchmark_policy_v1_benchmarks_policies__policy_id__put"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BenchmarkPolicy"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_models_v1_models_get: {
         parameters: {
             query?: {
@@ -7839,7 +9474,485 @@ export interface operations {
             };
         };
     };
-    get_metrics_metrics_get: {
+    list_entities_v1_v1_entities_get: {
+        parameters: {
+            query?: {
+                /** @description Search across name and description */
+                search_text?: string | null;
+                /** @description Filter by entity types */
+                entity_types?: string[] | null;
+                /** @description Minimum confidence score */
+                confidence_min?: number;
+                /** @description Number of results to return */
+                limit?: number;
+                /** @description Offset for pagination */
+                offset?: number;
+                /** @description Sort field: confidence, name, created_at */
+                sort_by?: string;
+                /** @description Sort order: asc, desc */
+                sort_order?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_entity_detail_v1_v1_entities__entity_id__get: {
+        parameters: {
+            query?: {
+                /** @description Include provenance chain */
+                include_provenance?: boolean;
+                /** @description Include related entities */
+                include_relationships?: boolean;
+            };
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    query_entities_v1_v1_entities_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityFilterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    traverse_value_tree_v1_v1_entity_traverse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValueTreeTraversal"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["layer3_knowledge__api__models__ValueTreeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_products_v1_products_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                industry?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_product_v1_products_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_product_v1_products__product_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_product_v1_products__product_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_product_v1_products__product_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_feature_v1_products__product_id__features_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeatureCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_feature_v1_products__product_id__features__feature_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+                feature_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_capability_v1_products__product_id__capabilities_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapabilityLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlink_capability_v1_products__product_id__capabilities__capability_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+                capability_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_signals_v1_products_matching_signals_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+                min_confidence?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalMatchResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portfolio_summary_v1_products_analytics_summary_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -7848,37 +9961,1052 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Prometheus metrics exported successfully */
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioSummaryResponse"];
+                };
+            };
+        };
+    };
+    capability_coverage_v1_products_analytics_coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapabilityCoverageItem"][];
+                };
+            };
+        };
+    };
+    search_case_studies_v1_evidence_case_studies_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by industry */
+                industry?: string | null;
+                /** @description Filter by company size */
+                company_size?: string | null;
+                /** @description Filter by product name */
+                product?: string | null;
+                /** @description Filter by tag */
+                tag?: string | null;
+                /** @description Minimum deal size USD */
+                min_deal_size?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_case_study_v1_evidence_case_studies_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCaseStudyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_case_study_v1_evidence_case_studies__case_study_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_study_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_case_study_v1_evidence_case_studies__case_study_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_study_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCaseStudyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_case_study_v1_evidence_case_studies__case_study_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_study_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_import_case_studies_v1_evidence_case_studies_bulk_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stats_by_industry_v1_evidence_stats_by_industry_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    stats_by_product_v1_evidence_stats_by_product_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    semantic_search_v1_evidence_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SemanticSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_competitors_v1_competitive_competitors_get: {
+        parameters: {
+            query?: {
+                market_position?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": unknown;
-                    /**
-                     * @example # HELP value_fabric_http_requests_total Total HTTP requests
-                     *     # TYPE value_fabric_http_requests_total counter
-                     *     value_fabric_http_requests_total{method="GET",endpoint="/health",status_code="200",namespace="layer3"} 42
-                     *     # HELP value_fabric_http_request_duration_seconds HTTP request duration in seconds
-                     *     # TYPE value_fabric_http_request_duration_seconds histogram
-                     *     value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="0.1"} 40
-                     *     value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="0.25"} 41
-                     *     value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="0.5"} 42
-                     *     value_fabric_http_request_duration_seconds_bucket{method="GET",endpoint="/health",namespace="layer3",le="+Inf"} 42
-                     *     value_fabric_http_request_duration_seconds_sum{method="GET",endpoint="/health",namespace="layer3"} 8.5
-                     *     value_fabric_http_request_duration_seconds_count{method="GET",endpoint="/health",namespace="layer3"} 42
-                     */
-                    "text/plain": unknown;
                 };
             };
-            /** @description Metrics collection disabled */
-            503: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example Metrics collection is disabled */
-                    "text/plain": unknown;
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_competitor_v1_competitive_competitors_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompetitorCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_competitor_v1_competitive_competitors__competitor_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_competitor_v1_competitive_competitors__competitor_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompetitorUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_competitor_v1_competitive_competitors__competitor_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_battlecards_v1_competitive_competitors__competitor_id__battlecards_get: {
+        parameters: {
+            query?: {
+                product_id?: string | null;
+            };
+            header?: never;
+            path: {
+                competitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_battlecard_v1_competitive_competitors__competitor_id__battlecards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                competitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BattlecardCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_battlecard_compat_v1_competitive_competitors__competitor_id__battlecard_get: {
+        parameters: {
+            query?: {
+                product_id?: string | null;
+            };
+            header?: never;
+            path: {
+                competitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_win_loss_v1_competitive_win_loss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WinLossRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_win_loss_summary_v1_competitive_win_loss_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_competitive_landscape_v1_competitive_landscape_get: {
+        parameters: {
+            query?: {
+                product_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calculate_roi_v1_roi_calculate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ROICalculateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_scenarios_v1_roi_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScenarioCompareRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_v1_roi_templates_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                industry?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_v1_roi_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_calculations_v1_roi_calculations_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_calculation_v1_roi_calculations__calc_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_industry_benchmarks_v1_roi_benchmarks__industry__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                industry: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_benchmarks_v1_roi_benchmarks_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by industry */
+                industry?: string | null;
+                /** @description Filter by status */
+                status?: string | null;
+                /** @description Filter by confidence level */
+                confidence?: string | null;
+                /** @description Search benchmarks by name */
+                search?: string | null;
+                /** @description Maximum results to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Settings"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["layer3_knowledge__api__routes__benchmarks__BenchmarkSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_benchmark_policies_v1_roi_benchmarks_policies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Settings"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenchmarkPolicy"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_benchmark_v1_roi_benchmarks__benchmark_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                benchmark_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["Settings"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["layer3_knowledge__api__routes__benchmarks__BenchmarkSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                policy_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenchmarkPolicy"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -8217,37 +11345,6 @@ export interface operations {
         };
     };
     get_sync_status_v1_ingest_status__source_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                source_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SyncStatusResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_sync_status_alias_v1_ingest__source_id__status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -8633,17 +11730,18 @@ export interface operations {
             };
         };
     };
-    get_entity_detail_v1_entities___entity_id___get: {
+    get_entity_detail_v1_entities__entity_id__get: {
         parameters: {
-            query: {
-                entity_id: string;
+            query?: {
                 /** @description Include provenance chain */
                 include_provenance?: boolean;
                 /** @description Include related entities */
                 include_relationships?: boolean;
             };
             header?: never;
-            path?: never;
+            path: {
+                entity_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -9449,1409 +12547,6 @@ export interface operations {
             };
             /** @description Internal server error */
             500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_valuepacks: {
-        parameters: {
-            query?: {
-                tier?: 1 | 2 | 3;
-                search?: string;
-                page?: number;
-                page_size?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValuePackListResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    create_valuepack: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValuePackResponse"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValuePackResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ValuePack already exists */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_valuepack: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                industry_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValuePackResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ValuePack not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    update_valuepack: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                industry_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValuePackResponse"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValuePackResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ValuePack not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    delete_valuepack: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                industry_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ValuePack not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_ontology_map: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OntologyMapResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_composable_templates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ComposableTemplateLibraryResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    compare_valuepacks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    industry_ids: string[];
-                    dimensions?: string[];
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ValuePack not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    seed_valuepack_data: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                industry_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Seeded successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ValuePack not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_competitive_competitors: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_competitive_competitors: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_competitive_competitors_competitor_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_put_v1_competitive_competitors_competitor_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_delete_v1_competitive_competitors_competitor_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_competitive_competitors_competitor_id_battlecards: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_competitive_competitors_competitor_id_battlecards: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_competitive_competitors_competitor_id_battlecard: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_post_v1_competitive_win-loss": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_get_v1_competitive_win-loss_summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_competitive_landscape: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_v1_entities: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_v1_entities_entity_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_v1_entities_query: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_v1_entity_traverse: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_get_v1_evidence_case-studies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_post_v1_evidence_case-studies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_get_v1_evidence_case-studies_case_study_id": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_put_v1_evidence_case-studies_case_study_id": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_delete_v1_evidence_case-studies_case_study_id": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_post_v1_evidence_case-studies_bulk-import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_get_v1_evidence_stats_by-industry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_get_v1_evidence_stats_by-product": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_evidence_search: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_products_product_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_delete_v1_products_product_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_patch_v1_products_product_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_products_product_id_features: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_delete_v1_products_product_id_features_feature_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_products_product_id_capabilities: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_delete_v1_products_product_id_capabilities_capability_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_products_matching_signals: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_products_analytics_summary: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_products_analytics_coverage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_roi_calculate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_roi_compare: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_roi_templates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_roi_templates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_roi_calculations: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_roi_calculations_calc_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_roi_benchmarks_industry: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_products: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_products: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
                 headers: {
                     [name: string]: unknown;
                 };

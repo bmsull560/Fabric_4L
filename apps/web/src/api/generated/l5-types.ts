@@ -146,7 +146,7 @@ export interface paths {
          * Get maturity ladder definition
          * @description Returns the full 0–5 maturity ladder with descriptions and advancement criteria.
          */
-        get: operations["get_maturity_ladder_api_v1_maturity_ladder_get"];
+        get: operations["wrapper_api_v1_maturity_ladder_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -222,8 +222,222 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health check */
+        /**
+         * Health check
+         * @description Public health check - returns minimal safe information only.
+         *
+         *     Note: This is a liveness check only. It does not check database or Layer 3 connectivity
+         *     to avoid requiring tenant context headers.
+         */
         get: operations["health_check_api_v1_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List ModelVersions
+         * @description Paginated, filterable list of model versions for the organization.
+         */
+        get: operations["list_model_versions_api_v1_models_get"];
+        put?: never;
+        /**
+         * Register a new ModelVersion
+         * @description Register a new LLM model version with cost tracking and capabilities.
+         */
+        post: operations["create_model_version_api_v1_models_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a ModelVersion
+         * @description Retrieve a single ModelVersion with full details.
+         */
+        get: operations["get_model_version_api_v1_models__model_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/deprecate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deprecate a ModelVersion
+         * @description Mark a model version as deprecated (soft delete).
+         */
+        post: operations["deprecate_model_version_api_v1_models__model_id__deprecate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/set-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set as default model
+         * @description Set this model version as the default for its provider.
+         */
+        post: operations["set_default_model_version_api_v1_models__model_id__set_default_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote model to environment
+         * @description Deploy or update a model version in a specific environment.
+         */
+        post: operations["promote_model_api_v1_models__model_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get model deployments
+         * @description Get all deployments for a specific model version.
+         */
+        get: operations["get_model_deployments_api_v1_models__model_id__deployments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all deployments
+         * @description List all model deployments across all versions.
+         */
+        get: operations["list_deployments_api_v1_deployments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deployments/{deployment_id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rollback a deployment
+         * @description Rollback a deployment to previous state.
+         */
+        post: operations["rollback_deployment_api_v1_deployments__deployment_id__rollback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List evaluations
+         * @description List model evaluations with optional filtering.
+         */
+        get: operations["list_evaluations_api_v1_evaluations_get"];
+        put?: never;
+        /**
+         * Record model evaluation
+         * @description Record benchmark evaluation results for a model version.
+         */
+        post: operations["create_evaluation_api_v1_evaluations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get model evaluations
+         * @description Get all evaluations for a specific model version.
+         */
+        get: operations["get_model_evaluations_api_v1_models__model_id__evaluations_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -294,6 +508,12 @@ export interface components {
          */
         ClaimType: "cost_savings_baseline" | "revenue_impact" | "efficiency_gain" | "risk_reduction" | "compliance_requirement" | "customer_outcome" | "technical_capability" | "market_benchmark" | "persona_pain_point" | "value_driver_metric" | "other";
         /**
+         * DeploymentEnvironment
+         * @description Deployment environments for traffic routing.
+         * @enum {string}
+         */
+        DeploymentEnvironment: "development" | "staging" | "production";
+        /**
          * DisputeReason
          * @description Reason a truth object was marked as disputed.
          * @enum {string}
@@ -306,7 +526,7 @@ export interface components {
         };
         /**
          * HealthResponse
-         * @description Health check response.
+         * @description Health check response - public endpoint returns only safe fields.
          */
         HealthResponse: {
             /** Status */
@@ -319,11 +539,11 @@ export interface components {
              */
             timestamp: string;
             /** Database */
-            database: string;
+            database?: string | null;
             /** Layer3 Connected */
-            layer3_connected: boolean;
+            layer3_connected?: boolean | null;
             /** Layer3 Url */
-            layer3_url: string;
+            layer3_url?: string | null;
         };
         /**
          * MaturityHistoryResponse
@@ -375,6 +595,470 @@ export interface components {
             advancement_trigger: string;
         };
         /**
+         * ModelCapability
+         * @description Model capabilities for feature detection.
+         * @enum {string}
+         */
+        ModelCapability: "json_mode" | "function_calling" | "vision" | "streaming" | "system_prompt" | "tools";
+        /**
+         * ModelDeploymentListResponse
+         * @description List of ModelDeployments.
+         */
+        ModelDeploymentListResponse: {
+            /** Items */
+            items: components["schemas"]["ModelDeploymentResponse"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * ModelDeploymentResponse
+         * @description Schema for a ModelDeployment in API responses.
+         */
+        ModelDeploymentResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Model Version Id
+             * Format: uuid
+             */
+            model_version_id: string;
+            /** Environment */
+            environment: string;
+            /** Status */
+            status: string;
+            /** Traffic Percentage */
+            traffic_percentage: number;
+            /** Is Default For Env */
+            is_default_for_env: boolean;
+            /** Deployed At */
+            deployed_at: string | null;
+            /** Deployed By */
+            deployed_by: string | null;
+            /** Deployment Notes */
+            deployment_notes: string | null;
+            /** Error Rate 5M */
+            error_rate_5m: number | null;
+            /** Latency P50 Ms */
+            latency_p50_ms: number | null;
+            /** Latency P99 Ms */
+            latency_p99_ms: number | null;
+            /** Last Health Check */
+            last_health_check: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ModelEvaluationCreate
+         * @description Schema for recording a model evaluation.
+         */
+        ModelEvaluationCreate: {
+            /**
+             * Model Version Id
+             * Format: uuid
+             * @description ID of the evaluated model version
+             */
+            model_version_id: string;
+            /**
+             * Benchmark Name
+             * @description Name of the benchmark
+             */
+            benchmark_name: string;
+            /**
+             * Benchmark Version
+             * @description Version of the benchmark dataset
+             */
+            benchmark_version?: string | null;
+            /**
+             * Score
+             * @description Primary score (0.0-1.0)
+             */
+            score: number;
+            /**
+             * Score Details
+             * @description Detailed scores by category
+             */
+            score_details?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Sample Size
+             * @description Number of samples evaluated
+             */
+            sample_size?: number | null;
+            /**
+             * Cost Usd
+             * @description Total cost of evaluation in USD
+             */
+            cost_usd?: number | null;
+            /**
+             * Duration Seconds
+             * @description Duration of evaluation in seconds
+             */
+            duration_seconds?: number | null;
+            /**
+             * Evaluation Config
+             * @description Configuration used for evaluation
+             */
+            evaluation_config?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Notes
+             * @description Human notes about the evaluation
+             */
+            notes?: string | null;
+            /**
+             * Artifact Urls
+             * @description Links to evaluation artifacts
+             */
+            artifact_urls?: string[];
+        };
+        /**
+         * ModelEvaluationListResponse
+         * @description List of ModelEvaluations.
+         */
+        ModelEvaluationListResponse: {
+            /** Items */
+            items: components["schemas"]["ModelEvaluationResponse"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * ModelEvaluationResponse
+         * @description Schema for a ModelEvaluation in API responses.
+         */
+        ModelEvaluationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Model Version Id
+             * Format: uuid
+             */
+            model_version_id: string;
+            /** Benchmark Name */
+            benchmark_name: string;
+            /** Benchmark Version */
+            benchmark_version: string | null;
+            /** Score */
+            score: number;
+            /** Score Details */
+            score_details: {
+                [key: string]: unknown;
+            };
+            /** Sample Size */
+            sample_size: number | null;
+            /** Cost Usd */
+            cost_usd: number | null;
+            /** Duration Seconds */
+            duration_seconds: number | null;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Evaluated By */
+            evaluated_by: string | null;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ModelProvider
+         * @description Supported LLM providers.
+         * @enum {string}
+         */
+        ModelProvider: "openai" | "anthropic" | "cohere" | "google" | "azure" | "other";
+        /**
+         * ModelVersionCreate
+         * @description Schema for registering a new ModelVersion.
+         */
+        ModelVersionCreate: {
+            /**
+             * Name
+             * @description Model name, e.g., 'gpt-4-turbo'
+             */
+            name: string;
+            /** @description LLM provider */
+            provider: components["schemas"]["ModelProvider"];
+            /**
+             * Version
+             * @description Semver or provider version string
+             */
+            version: string;
+            /**
+             * Model Identifier
+             * @description Provider's API identifier
+             */
+            model_identifier: string;
+            /**
+             * Capabilities
+             * @description List of supported capabilities
+             */
+            capabilities?: components["schemas"]["ModelCapability"][];
+            /**
+             * Context Window
+             * @description Maximum context window in tokens
+             * @default 4096
+             */
+            context_window: number;
+            /**
+             * Max Output Tokens
+             * @description Maximum output tokens
+             */
+            max_output_tokens?: number | null;
+            /**
+             * Cost Per 1K Input
+             * @description Cost per 1,000 input tokens in USD
+             * @default 0
+             */
+            cost_per_1k_input: number;
+            /**
+             * Cost Per 1K Output
+             * @description Cost per 1,000 output tokens in USD
+             * @default 0
+             */
+            cost_per_1k_output: number;
+            /**
+             * Cost Per 1K Cached
+             * @description Cost per 1,000 cached tokens
+             */
+            cost_per_1k_cached?: number | null;
+            /**
+             * Description
+             * @description Human-readable description
+             */
+            description?: string | null;
+            /**
+             * Extra Metadata
+             * @description Additional provider-specific metadata
+             */
+            extra_metadata?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Is Default
+             * @description Whether this is the default model for the provider
+             * @default false
+             */
+            is_default: boolean;
+        };
+        /**
+         * ModelVersionListResponse
+         * @description Paginated list of ModelVersions.
+         */
+        ModelVersionListResponse: {
+            /** Items */
+            items: components["schemas"]["ModelVersionSummary"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Has More */
+            has_more: boolean;
+        };
+        /**
+         * ModelVersionResponse
+         * @description Schema for a ModelVersion in API responses.
+         */
+        ModelVersionResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /** Version */
+            version: string;
+            /** Model Identifier */
+            model_identifier: string;
+            /** Capabilities */
+            capabilities: string[];
+            /** Context Window */
+            context_window: number;
+            /** Max Output Tokens */
+            max_output_tokens: number | null;
+            /** Cost Per 1K Input */
+            cost_per_1k_input: number;
+            /** Cost Per 1K Output */
+            cost_per_1k_output: number;
+            /** Cost Per 1K Cached */
+            cost_per_1k_cached: number | null;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Description */
+            description: string | null;
+            /** Extra Metadata */
+            extra_metadata: {
+                [key: string]: unknown;
+            };
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ModelVersionSummary
+         * @description Summary view of a ModelVersion for list responses.
+         */
+        ModelVersionSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /** Version */
+            version: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Cost Per 1K Input */
+            cost_per_1k_input: number;
+            /** Cost Per 1K Output */
+            cost_per_1k_output: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * PromoteModelRequest
+         * @description Schema for promoting a model to an environment.
+         */
+        PromoteModelRequest: {
+            /** @description Target environment */
+            environment: components["schemas"]["DeploymentEnvironment"];
+            /**
+             * Traffic Percentage
+             * @description Traffic percentage (0-100)
+             * @default 100
+             */
+            traffic_percentage: number;
+            /**
+             * Make Default
+             * @description Whether to make this the default model for the environment
+             * @default false
+             */
+            make_default: boolean;
+        };
+        /**
+         * PromoteModelResponse
+         * @description Response after promoting a model.
+         */
+        PromoteModelResponse: {
+            /**
+             * Deployment Id
+             * Format: uuid
+             */
+            deployment_id: string;
+            /**
+             * Model Version Id
+             * Format: uuid
+             */
+            model_version_id: string;
+            /** Environment */
+            environment: string;
+            /** Status */
+            status: string;
+            /** Traffic Percentage */
+            traffic_percentage: number;
+            /** Is Default For Env */
+            is_default_for_env: boolean;
+            /**
+             * Deployed At
+             * Format: date-time
+             */
+            deployed_at: string;
+            /** Message */
+            message: string;
+        };
+        /**
+         * RollbackModelRequest
+         * @description Schema for rolling back a deployment.
+         */
+        RollbackModelRequest: {
+            /**
+             * Reason
+             * @description Reason for rollback
+             */
+            reason: string;
+        };
+        /**
+         * RollbackModelResponse
+         * @description Response after rolling back a deployment.
+         */
+        RollbackModelResponse: {
+            /**
+             * Deployment Id
+             * Format: uuid
+             */
+            deployment_id: string;
+            /** Previous Status */
+            previous_status: string;
+            /** New Status */
+            new_status: string;
+            /**
+             * Rolled Back At
+             * Format: date-time
+             */
+            rolled_back_at: string;
+            /** Message */
+            message: string;
+        };
+        /**
          * SourceType
          * @description Type of evidence source.
          * @enum {string}
@@ -384,7 +1068,7 @@ export interface components {
          * TruthObjectCreate
          * @description Schema for POST /truths — create a new TruthObject.
          *
-         *     The organization_id is injected from the auth context in the router;
+         *     The tenant_id is injected from the auth context in the router;
          *     it is not accepted from the request body.
          */
         TruthObjectCreate: {
@@ -478,10 +1162,10 @@ export interface components {
              */
             id: string;
             /**
-             * Organization Id
+             * Tenant Id
              * Format: uuid
              */
-            organization_id: string;
+            tenant_id: string;
             /** Claim */
             claim: string;
             /** Claim Type */
@@ -700,10 +1384,10 @@ export interface components {
              */
             truth_object_id: string;
             /**
-             * Organization Id
+             * Tenant Id
              * Format: uuid
              */
-            organization_id: string;
+            tenant_id: string;
             /**
              * Created At
              * Format: date-time
@@ -863,7 +1547,7 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -898,7 +1582,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -935,7 +1619,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -979,7 +1663,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1014,7 +1698,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1069,7 +1753,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1117,7 +1801,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1154,7 +1838,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1187,9 +1871,12 @@ export interface operations {
             };
         };
     };
-    get_maturity_ladder_api_v1_maturity_ladder_get: {
+    wrapper_api_v1_maturity_ladder_get: {
         parameters: {
-            query?: never;
+            query: {
+                args: unknown;
+                kwargs: unknown;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1205,6 +1892,15 @@ export interface operations {
                     "application/json": components["schemas"]["MaturityLadderResponse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     check_stale_api_v1_truths_check_stale_post: {
@@ -1213,7 +1909,7 @@ export interface operations {
                 /** @description Preview only, don't mark stale */
                 dry_run?: boolean;
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1252,7 +1948,7 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1289,7 +1985,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                organization_id?: string | null;
+                tenant_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -1338,6 +2034,472 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    list_model_versions_api_v1_models_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by provider */
+                provider?: string | null;
+                /** @description Filter by active status */
+                is_active?: boolean | null;
+                /** @description Filter by default flag */
+                is_default?: boolean | null;
+                limit?: number;
+                offset?: number;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_model_version_api_v1_models_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelVersionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_version_api_v1_models__model_id__get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deprecate_model_version_api_v1_models__model_id__deprecate_post: {
+        parameters: {
+            query?: {
+                /** @description Deprecation reason */
+                reason?: string | null;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_default_model_version_api_v1_models__model_id__set_default_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_model_api_v1_models__model_id__promote_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoteModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoteModelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_deployments_api_v1_models__model_id__deployments_get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelDeploymentListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_deployments_api_v1_deployments_get: {
+        parameters: {
+            query?: {
+                environment?: components["schemas"]["DeploymentEnvironment"] | null;
+                status?: string | null;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelDeploymentListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rollback_deployment_api_v1_deployments__deployment_id__rollback_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                deployment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollbackModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollbackModelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_evaluations_api_v1_evaluations_get: {
+        parameters: {
+            query?: {
+                model_version_id?: string | null;
+                benchmark_name?: string | null;
+                limit?: number;
+                offset?: number;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelEvaluationListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_evaluation_api_v1_evaluations_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelEvaluationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelEvaluationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_evaluations_api_v1_models__model_id__evaluations_get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelEvaluationListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

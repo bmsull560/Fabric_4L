@@ -7,6 +7,193 @@
  */
 
 export interface paths {
+    "/v1/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Short Ingest Compatibility Boundary */
+        post: operations["short_ingest_compatibility_boundary_v1_ingest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Ingestion Source Compatibility Boundary */
+        post: operations["create_ingestion_source_compatibility_boundary_api_v1_ingestion_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ingestion Source Compatibility Boundary */
+        get: operations["get_ingestion_source_compatibility_boundary_api_v1_ingestion_sources__source_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entity Security Boundary */
+        get: operations["entity_security_boundary_api_v1_entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/entities/{entity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Entity Delete Security Boundary */
+        delete: operations["entity_delete_security_boundary_api_v1_entities__entity_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** User Profile Security Boundary */
+        get: operations["user_profile_security_boundary_api_v1_user_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user/{user_id}/private-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** User Private Data Security Boundary */
+        get: operations["user_private_data_security_boundary_api_v1_user__user_id__private_data_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Read Security Boundary */
+        get: operations["admin_read_security_boundary_api_admin_tenants_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Read Security Boundary */
+        get: operations["admin_read_security_boundary_api_admin_audit_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Read Security Boundary */
+        get: operations["admin_read_security_boundary_api_admin_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Read Security Boundary */
+        get: operations["admin_read_security_boundary_api_admin_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/targets": {
         parameters: {
             query?: never;
@@ -41,6 +228,9 @@ export interface paths {
         /**
          * Get Target Stats
          * @description Get aggregated statistics for all scraping targets.
+         *
+         *     Computes counts by derived connection status and average health score
+         *     server-side to avoid transferring large target lists to the client.
          */
         get: operations["get_target_stats_api_v1_ingestion_targets_stats_get"];
         put?: never;
@@ -508,7 +698,6 @@ export interface components {
         };
         /**
          * AuthenticationType
-         * @description Authentication types for targets.
          * @enum {string}
          */
         AuthenticationType: "NONE" | "BEARER" | "API_KEY" | "BASIC" | "OAUTH2";
@@ -556,13 +745,11 @@ export interface components {
         };
         /**
          * BrowserEngine
-         * @description Browser engines.
          * @enum {string}
          */
         BrowserEngine: "chromium" | "firefox" | "webkit";
         /**
          * ComplianceEventType
-         * @description Compliance event types.
          * @enum {string}
          */
         ComplianceEventType: "ROBOTS_TXT_CHECK" | "RATE_LIMIT_APPLIED" | "PII_DETECTED" | "PII_REDACTED" | "DOMAIN_BLOCKED" | "DOMAIN_ALLOWED" | "CAPTCHA_ENCOUNTERED" | "BLOCKED_BY_TARGET" | "TERMS_VIOLATION" | "DATA_RETENTION_DELETION";
@@ -678,10 +865,6 @@ export interface components {
         };
         /**
          * CrawlPath
-         * @description Ingestion path selection for a scraping target.
-         *
-         *     Controls whether the crawler uses HTTPX fast path,
-         *     Playwright browser automation, or hybrid fallback.
          * @enum {string}
          */
         CrawlPath: "fast" | "browser" | "fast_fallback";
@@ -869,7 +1052,6 @@ export interface components {
         };
         /**
          * ExtractionMethod
-         * @description Content extraction methods.
          * @enum {string}
          */
         ExtractionMethod: "AI_LLM" | "DETERMINISTIC" | "HYBRID";
@@ -1020,7 +1202,6 @@ export interface components {
         };
         /**
          * JobStatus
-         * @description Job lifecycle states - 11 states as per spec.
          * @enum {string}
          */
         JobStatus: "PENDING" | "QUEUED" | "VALIDATING" | "BROWSER_ACQUIRING" | "NAVIGATING" | "EXTRACTING" | "TRANSFORMING" | "STORING" | "COMPLETED" | "FAILED" | "CANCELLED" | "PARTIAL_SUCCESS";
@@ -1057,10 +1238,15 @@ export interface components {
         };
         /**
          * LLMProvider
-         * @description LLM providers for AI extraction.
          * @enum {string}
          */
         LLMProvider: "openai" | "anthropic" | "azure_openai";
+        /**
+         * Permission
+         * @description Fine-grained permissions enforced at endpoint level.
+         * @enum {string}
+         */
+        Permission: "read:health" | "read:metrics" | "read:schema" | "read:search" | "read:graphrag" | "read:analytics" | "read:ingestion" | "read:agents" | "read:models" | "write:models" | "admin:models" | "write:ingestion" | "write:extraction" | "write:schema" | "write:analytics" | "write:agents" | "admin:api_keys" | "admin:users" | "admin:tenants" | "admin:system";
         /**
          * ProxyConfigInput
          * @description Proxy configuration.
@@ -1107,7 +1293,6 @@ export interface components {
         };
         /**
          * ProxyRotationStrategy
-         * @description Proxy rotation strategies.
          * @enum {string}
          */
         ProxyRotationStrategy: "ROUND_ROBIN" | "RANDOM" | "GEO_BASED" | "SESSION_BASED" | "LEAST_USED";
@@ -1197,6 +1382,62 @@ export interface components {
             created_at: string;
         };
         /**
+         * RequestContext
+         * @description Identity context carried by a single request.
+         *
+         *     ``RequestContext`` is deliberately shared by L1-L5 governance code.  It
+         *     preserves tenant scoping and trace propagation while supporting legacy
+         *     callers that still pass ``source`` and newer middleware that passes the
+         *     explicit ``auth_source`` field.
+         */
+        RequestContext: {
+            /** Tenant Id */
+            tenant_id?: string | null;
+            /** User Id */
+            user_id?: unknown | null;
+            /** Roles */
+            roles?: string[];
+            /** Api Key Id */
+            api_key_id?: string | null;
+            /** Permissions */
+            permissions?: (components["schemas"]["Permission"] | string)[] | (components["schemas"]["Permission"] | string)[];
+            /**
+             * Source
+             * @default jwt_claim
+             */
+            source: string;
+            /** Raw */
+            raw?: {
+                [key: string]: unknown;
+            };
+            /** Auth Source */
+            auth_source?: string | null;
+            /** Request Id */
+            request_id?: string | null;
+            /** Org Id */
+            org_id?: unknown | null;
+            /** Tenant Role */
+            tenant_role?: string | null;
+            /**
+             * Isolation Tier
+             * @default shared
+             */
+            isolation_tier: string;
+            /** Service Account Id */
+            service_account_id?: string | null;
+            /** Service Account Scopes */
+            service_account_scopes?: string[];
+            /** Accessed Tenant Ids */
+            accessed_tenant_ids?: string[];
+            /** Privileged Session Start */
+            privileged_session_start?: number | null;
+            /**
+             * Locked
+             * @default false
+             */
+            _locked: boolean;
+        };
+        /**
          * ResourceUsageDetail
          * @description Resource usage metrics.
          */
@@ -1212,7 +1453,6 @@ export interface components {
         };
         /**
          * RetryBackoff
-         * @description Retry backoff strategies.
          * @enum {string}
          */
         RetryBackoff: "fixed" | "exponential";
@@ -1477,6 +1717,11 @@ export interface components {
             tags: string[];
         };
         /**
+         * SourceCategory
+         * @enum {string}
+         */
+        SourceCategory: "crm" | "database" | "file" | "api" | "cloud_storage";
+        /**
          * TargetListResponse
          * @description List of scraping targets.
          */
@@ -1508,22 +1753,14 @@ export interface components {
         };
         /**
          * TargetStatus
-         * @description Scraping target lifecycle status.
          * @enum {string}
          */
         TargetStatus: "ACTIVE" | "PAUSED" | "ARCHIVED" | "ERROR";
         /**
          * TargetType
-         * @description Scraping target types.
          * @enum {string}
          */
         TargetType: "SINGLE_PAGE" | "PAGINATED" | "SPIDER" | "API_ENDPOINT";
-        /**
-         * SourceCategory
-         * @description Semantic category of the data source (what it is).
-         * @enum {string}
-         */
-        SourceCategory: "crm" | "database" | "file" | "api" | "cloud_storage";
         /**
          * UpdateTargetRequest
          * @description Request to update a scraping target.
@@ -1626,6 +1863,337 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    short_ingest_compatibility_boundary_v1_ingest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    create_ingestion_source_compatibility_boundary_api_v1_ingestion_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_ingestion_source_compatibility_boundary_api_v1_ingestion_sources__source_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entity_security_boundary_api_v1_entities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown[];
+                    };
+                };
+            };
+        };
+    };
+    entity_delete_security_boundary_api_v1_entities__entity_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestContext"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    user_profile_security_boundary_api_v1_user_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+    };
+    user_private_data_security_boundary_api_v1_user__user_id__private_data_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_read_security_boundary_api_admin_tenants_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestContext"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_read_security_boundary_api_admin_audit_logs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestContext"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_read_security_boundary_api_admin_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestContext"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_read_security_boundary_api_admin_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestContext"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_targets_api_v1_ingestion_targets_get: {
         parameters: {
             query?: {
@@ -1635,10 +2203,14 @@ export interface operations {
                 /** @description Search in name, description, url */
                 search?: string | null;
                 tags?: string[] | null;
+                /** @description Filter by source category */
+                source_category?: components["schemas"]["SourceCategory"] | null;
                 sort_by?: string;
                 sort_order?: string;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;
@@ -1666,41 +2238,12 @@ export interface operations {
             };
         };
     };
-    get_target_stats_api_v1_ingestion_targets_stats_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-Organization-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TargetStatsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     create_target_api_v1_ingestion_targets_post: {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;
@@ -1732,10 +2275,45 @@ export interface operations {
             };
         };
     };
+    get_target_stats_api_v1_ingestion_targets_stats_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
+                "X-Organization-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_target_api_v1_ingestion_targets__target_id__get: {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -1769,6 +2347,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -1809,6 +2389,8 @@ export interface operations {
                 force?: boolean;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -1840,6 +2422,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -1877,6 +2461,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -1916,6 +2502,8 @@ export interface operations {
                 limit?: number;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -1949,6 +2537,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -1984,6 +2574,8 @@ export interface operations {
                 days?: number;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2030,6 +2622,8 @@ export interface operations {
                 sort_order?: string;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;
@@ -2061,6 +2655,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2094,6 +2690,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2127,6 +2725,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2166,6 +2766,8 @@ export interface operations {
                 fields?: string[] | null;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2199,6 +2801,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2240,6 +2844,8 @@ export interface operations {
                 include_har?: boolean;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2275,6 +2881,8 @@ export interface operations {
                 format?: string;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path: {
@@ -2314,6 +2922,8 @@ export interface operations {
                 limit?: number;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;
@@ -2354,6 +2964,8 @@ export interface operations {
                 limit?: number;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;
@@ -2388,6 +3000,8 @@ export interface operations {
                 period_end: string;
             };
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;
@@ -2419,6 +3033,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;
@@ -2501,6 +3117,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
                 "X-Organization-ID"?: string | null;
             };
             path?: never;

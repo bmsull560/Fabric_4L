@@ -1,9 +1,16 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Value Fabric - Layer 5: Ground Truth",
-    "description": "Evidence-backed, CFO-defensible facts with validation state machine",
-    "version": "1.0.0"
+    "title": "Value Fabric \u2014 Ground Truth Layer (L5)",
+    "description": "Evidence-backed, CFO-defensible facts for the Value Fabric platform. Provides a validation state machine (extracted \u2192 supported \u2192 corroborated \u2192 approved), a 0\u20135 maturity ladder, and bidirectional integration with the Layer 3 Knowledge Graph.",
+    "contact": {
+      "name": "Value Fabric Engineering",
+      "url": "https://github.com/bmsull560/Fabric_4L"
+    },
+    "license": {
+      "name": "Proprietary"
+    },
+    "version": "0.1.0"
   },
   "paths": {
     "/api/v1/truths": {
@@ -16,7 +23,7 @@
         "operationId": "create_truth_api_v1_truths_post",
         "parameters": [
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -29,7 +36,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -236,7 +243,7 @@
             }
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -249,7 +256,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -330,7 +337,7 @@
             }
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -343,7 +350,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -425,7 +432,7 @@
             }
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -438,7 +445,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -512,7 +519,7 @@
             }
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -525,7 +532,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -622,7 +629,7 @@
             }
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -635,7 +642,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -729,7 +736,7 @@
             }
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -742,7 +749,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -817,7 +824,7 @@
         "operationId": "sync_to_kg_api_v1_truths_sync_kg_post",
         "parameters": [
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -830,7 +837,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -900,7 +907,25 @@
         ],
         "summary": "Get maturity ladder definition",
         "description": "Returns the full 0\u20135 maturity ladder with descriptions and advancement criteria.",
-        "operationId": "get_maturity_ladder_api_v1_maturity_ladder_get",
+        "operationId": "wrapper_api_v1_maturity_ladder_get",
+        "parameters": [
+          {
+            "name": "args",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Args"
+            }
+          },
+          {
+            "name": "kwargs",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Kwargs"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -908,6 +933,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MaturityLadderResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -937,7 +972,7 @@
             "description": "Preview only, don't mark stale"
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -950,7 +985,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -1046,7 +1081,7 @@
             }
           },
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -1059,7 +1094,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -1132,7 +1167,7 @@
         "operationId": "freshness_summary_api_v1_truths_freshness_summary_get",
         "parameters": [
           {
-            "name": "organization_id",
+            "name": "tenant_id",
             "in": "query",
             "required": false,
             "schema": {
@@ -1145,7 +1180,7 @@
                 }
               ],
               "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
-              "title": "Organization Id"
+              "title": "Tenant Id"
             },
             "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
@@ -1215,6 +1250,7 @@
           "system"
         ],
         "summary": "Health check",
+        "description": "Public health check - returns minimal safe information only.\n\nNote: This is a liveness check only. It does not check database or Layer 3 connectivity\nto avoid requiring tenant context headers.",
         "operationId": "health_check_api_v1_health_get",
         "responses": {
           "200": {
@@ -1223,6 +1259,1303 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models": {
+      "post": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Register a new ModelVersion",
+        "description": "Register a new LLM model version with cost tracking and capabilities.",
+        "operationId": "create_model_version_api_v1_models_post",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelVersionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelVersionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "List ModelVersions",
+        "description": "Paginated, filterable list of model versions for the organization.",
+        "operationId": "list_model_versions_api_v1_models_get",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by provider",
+              "title": "Provider"
+            },
+            "description": "Filter by provider"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by active status",
+              "title": "Is Active"
+            },
+            "description": "Filter by active status"
+          },
+          {
+            "name": "is_default",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by default flag",
+              "title": "Is Default"
+            },
+            "description": "Filter by default flag"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelVersionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}": {
+      "get": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Get a ModelVersion",
+        "description": "Retrieve a single ModelVersion with full details.",
+        "operationId": "get_model_version_api_v1_models__model_id__get",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelVersionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}/deprecate": {
+      "post": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Deprecate a ModelVersion",
+        "description": "Mark a model version as deprecated (soft delete).",
+        "operationId": "deprecate_model_version_api_v1_models__model_id__deprecate_post",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Deprecation reason",
+              "title": "Reason"
+            },
+            "description": "Deprecation reason"
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelVersionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}/set-default": {
+      "post": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Set as default model",
+        "description": "Set this model version as the default for its provider.",
+        "operationId": "set_default_model_version_api_v1_models__model_id__set_default_post",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelVersionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}/promote": {
+      "post": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Promote model to environment",
+        "description": "Deploy or update a model version in a specific environment.",
+        "operationId": "promote_model_api_v1_models__model_id__promote_post",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoteModelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoteModelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}/deployments": {
+      "get": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Get model deployments",
+        "description": "Get all deployments for a specific model version.",
+        "operationId": "get_model_deployments_api_v1_models__model_id__deployments_get",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelDeploymentListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deployments": {
+      "get": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "List all deployments",
+        "description": "List all model deployments across all versions.",
+        "operationId": "list_deployments_api_v1_deployments_get",
+        "parameters": [
+          {
+            "name": "environment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DeploymentEnvironment"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Environment"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelDeploymentListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deployments/{deployment_id}/rollback": {
+      "post": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Rollback a deployment",
+        "description": "Rollback a deployment to previous state.",
+        "operationId": "rollback_deployment_api_v1_deployments__deployment_id__rollback_post",
+        "parameters": [
+          {
+            "name": "deployment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Deployment Id"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackModelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RollbackModelResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/evaluations": {
+      "post": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Record model evaluation",
+        "description": "Record benchmark evaluation results for a model version.",
+        "operationId": "create_evaluation_api_v1_evaluations_post",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelEvaluationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelEvaluationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "List evaluations",
+        "description": "List model evaluations with optional filtering.",
+        "operationId": "list_evaluations_api_v1_evaluations_get",
+        "parameters": [
+          {
+            "name": "model_version_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Version Id"
+            }
+          },
+          {
+            "name": "benchmark_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Benchmark Name"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelEvaluationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/models/{model_id}/evaluations": {
+      "get": {
+        "tags": [
+          "model-registry"
+        ],
+        "summary": "Get model evaluations",
+        "description": "Get all evaluations for a specific model version.",
+        "operationId": "get_model_evaluations_api_v1_models__model_id__evaluations_get",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Tenant Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelEvaluationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1353,6 +2686,16 @@
         "title": "ClaimType",
         "description": "Semantic category of the claim being recorded."
       },
+      "DeploymentEnvironment": {
+        "type": "string",
+        "enum": [
+          "development",
+          "staging",
+          "production"
+        ],
+        "title": "DeploymentEnvironment",
+        "description": "Deployment environments for traffic routing."
+      },
       "DisputeReason": {
         "type": "string",
         "enum": [
@@ -1395,15 +2738,36 @@
             "title": "Timestamp"
           },
           "database": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Database"
           },
           "layer3_connected": {
-            "type": "boolean",
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Layer3 Connected"
           },
           "layer3_url": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Layer3 Url"
           }
         },
@@ -1411,13 +2775,10 @@
         "required": [
           "status",
           "version",
-          "timestamp",
-          "database",
-          "layer3_connected",
-          "layer3_url"
+          "timestamp"
         ],
         "title": "HealthResponse",
-        "description": "Health check response."
+        "description": "Health check response - public endpoint returns only safe fields."
       },
       "MaturityHistoryResponse": {
         "properties": {
@@ -1539,6 +2900,942 @@
           "advancement_trigger"
         ],
         "title": "MaturityLevelDetail"
+      },
+      "ModelCapability": {
+        "type": "string",
+        "enum": [
+          "json_mode",
+          "function_calling",
+          "vision",
+          "streaming",
+          "system_prompt",
+          "tools"
+        ],
+        "title": "ModelCapability",
+        "description": "Model capabilities for feature detection."
+      },
+      "ModelDeploymentListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ModelDeploymentResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ModelDeploymentListResponse",
+        "description": "List of ModelDeployments."
+      },
+      "ModelDeploymentResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "model_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Model Version Id"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "traffic_percentage": {
+            "type": "integer",
+            "title": "Traffic Percentage"
+          },
+          "is_default_for_env": {
+            "type": "boolean",
+            "title": "Is Default For Env"
+          },
+          "deployed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployed At"
+          },
+          "deployed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployed By"
+          },
+          "deployment_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployment Notes"
+          },
+          "error_rate_5m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Rate 5M"
+          },
+          "latency_p50_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency P50 Ms"
+          },
+          "latency_p99_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency P99 Ms"
+          },
+          "last_health_check": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Health Check"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "model_version_id",
+          "environment",
+          "status",
+          "traffic_percentage",
+          "is_default_for_env",
+          "deployed_at",
+          "deployed_by",
+          "deployment_notes",
+          "error_rate_5m",
+          "latency_p50_ms",
+          "latency_p99_ms",
+          "last_health_check",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ModelDeploymentResponse",
+        "description": "Schema for a ModelDeployment in API responses."
+      },
+      "ModelEvaluationCreate": {
+        "properties": {
+          "model_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Model Version Id",
+            "description": "ID of the evaluated model version"
+          },
+          "benchmark_name": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Benchmark Name",
+            "description": "Name of the benchmark"
+          },
+          "benchmark_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Version",
+            "description": "Version of the benchmark dataset"
+          },
+          "score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "description": "Primary score (0.0-1.0)"
+          },
+          "score_details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Score Details",
+            "description": "Detailed scores by category"
+          },
+          "sample_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Size",
+            "description": "Number of samples evaluated"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd",
+            "description": "Total cost of evaluation in USD"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds",
+            "description": "Duration of evaluation in seconds"
+          },
+          "evaluation_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Evaluation Config",
+            "description": "Configuration used for evaluation"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Human notes about the evaluation"
+          },
+          "artifact_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Artifact Urls",
+            "description": "Links to evaluation artifacts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_version_id",
+          "benchmark_name",
+          "score"
+        ],
+        "title": "ModelEvaluationCreate",
+        "description": "Schema for recording a model evaluation."
+      },
+      "ModelEvaluationListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ModelEvaluationResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ModelEvaluationListResponse",
+        "description": "List of ModelEvaluations."
+      },
+      "ModelEvaluationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "model_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Model Version Id"
+          },
+          "benchmark_name": {
+            "type": "string",
+            "title": "Benchmark Name"
+          },
+          "benchmark_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Version"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "score_details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Score Details"
+          },
+          "sample_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Size"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "evaluated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Evaluated At"
+          },
+          "evaluated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated By"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "model_version_id",
+          "benchmark_name",
+          "benchmark_version",
+          "score",
+          "score_details",
+          "sample_size",
+          "cost_usd",
+          "duration_seconds",
+          "evaluated_at",
+          "evaluated_by",
+          "notes",
+          "created_at"
+        ],
+        "title": "ModelEvaluationResponse",
+        "description": "Schema for a ModelEvaluation in API responses."
+      },
+      "ModelProvider": {
+        "type": "string",
+        "enum": [
+          "openai",
+          "anthropic",
+          "cohere",
+          "google",
+          "azure",
+          "other"
+        ],
+        "title": "ModelProvider",
+        "description": "Supported LLM providers."
+      },
+      "ModelVersionCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Name",
+            "description": "Model name, e.g., 'gpt-4-turbo'"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ModelProvider",
+            "description": "LLM provider"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Version",
+            "description": "Semver or provider version string"
+          },
+          "model_identifier": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Model Identifier",
+            "description": "Provider's API identifier"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCapability"
+            },
+            "type": "array",
+            "title": "Capabilities",
+            "description": "List of supported capabilities"
+          },
+          "context_window": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Context Window",
+            "description": "Maximum context window in tokens",
+            "default": 4096
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens",
+            "description": "Maximum output tokens"
+          },
+          "cost_per_1k_input": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cost Per 1K Input",
+            "description": "Cost per 1,000 input tokens in USD",
+            "default": 0.0
+          },
+          "cost_per_1k_output": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cost Per 1K Output",
+            "description": "Cost per 1,000 output tokens in USD",
+            "default": 0.0
+          },
+          "cost_per_1k_cached": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per 1K Cached",
+            "description": "Cost per 1,000 cached tokens"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Human-readable description"
+          },
+          "extra_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra Metadata",
+            "description": "Additional provider-specific metadata"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "description": "Whether this is the default model for the provider",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "provider",
+          "version",
+          "model_identifier"
+        ],
+        "title": "ModelVersionCreate",
+        "description": "Schema for registering a new ModelVersion."
+      },
+      "ModelVersionListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ModelVersionSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "ModelVersionListResponse",
+        "description": "Paginated list of ModelVersions."
+      },
+      "ModelVersionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "model_identifier": {
+            "type": "string",
+            "title": "Model Identifier"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities"
+          },
+          "context_window": {
+            "type": "integer",
+            "title": "Context Window"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Output Tokens"
+          },
+          "cost_per_1k_input": {
+            "type": "number",
+            "title": "Cost Per 1K Input"
+          },
+          "cost_per_1k_output": {
+            "type": "number",
+            "title": "Cost Per 1K Output"
+          },
+          "cost_per_1k_cached": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per 1K Cached"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "extra_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra Metadata"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "provider",
+          "version",
+          "model_identifier",
+          "capabilities",
+          "context_window",
+          "max_output_tokens",
+          "cost_per_1k_input",
+          "cost_per_1k_output",
+          "cost_per_1k_cached",
+          "is_active",
+          "is_default",
+          "description",
+          "extra_metadata",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ModelVersionResponse",
+        "description": "Schema for a ModelVersion in API responses."
+      },
+      "ModelVersionSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "cost_per_1k_input": {
+            "type": "number",
+            "title": "Cost Per 1K Input"
+          },
+          "cost_per_1k_output": {
+            "type": "number",
+            "title": "Cost Per 1K Output"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "version",
+          "is_active",
+          "is_default",
+          "cost_per_1k_input",
+          "cost_per_1k_output",
+          "created_at"
+        ],
+        "title": "ModelVersionSummary",
+        "description": "Summary view of a ModelVersion for list responses."
+      },
+      "PromoteModelRequest": {
+        "properties": {
+          "environment": {
+            "$ref": "#/components/schemas/DeploymentEnvironment",
+            "description": "Target environment"
+          },
+          "traffic_percentage": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Traffic Percentage",
+            "description": "Traffic percentage (0-100)",
+            "default": 100
+          },
+          "make_default": {
+            "type": "boolean",
+            "title": "Make Default",
+            "description": "Whether to make this the default model for the environment",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "environment"
+        ],
+        "title": "PromoteModelRequest",
+        "description": "Schema for promoting a model to an environment."
+      },
+      "PromoteModelResponse": {
+        "properties": {
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Deployment Id"
+          },
+          "model_version_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Model Version Id"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "traffic_percentage": {
+            "type": "integer",
+            "title": "Traffic Percentage"
+          },
+          "is_default_for_env": {
+            "type": "boolean",
+            "title": "Is Default For Env"
+          },
+          "deployed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Deployed At"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deployment_id",
+          "model_version_id",
+          "environment",
+          "status",
+          "traffic_percentage",
+          "is_default_for_env",
+          "deployed_at",
+          "message"
+        ],
+        "title": "PromoteModelResponse",
+        "description": "Response after promoting a model."
+      },
+      "RollbackModelRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason",
+            "description": "Reason for rollback"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "RollbackModelRequest",
+        "description": "Schema for rolling back a deployment."
+      },
+      "RollbackModelResponse": {
+        "properties": {
+          "deployment_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Deployment Id"
+          },
+          "previous_status": {
+            "type": "string",
+            "title": "Previous Status"
+          },
+          "new_status": {
+            "type": "string",
+            "title": "New Status"
+          },
+          "rolled_back_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Rolled Back At"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deployment_id",
+          "previous_status",
+          "new_status",
+          "rolled_back_at",
+          "message"
+        ],
+        "title": "RollbackModelResponse",
+        "description": "Response after rolling back a deployment."
       },
       "SourceType": {
         "type": "string",
@@ -1679,7 +3976,7 @@
           "confidence"
         ],
         "title": "TruthObjectCreate",
-        "description": "Schema for POST /truths \u2014 create a new TruthObject.\n\nThe organization_id is injected from the auth context in the router;\nit is not accepted from the request body."
+        "description": "Schema for POST /truths \u2014 create a new TruthObject.\n\nThe tenant_id is injected from the auth context in the router;\nit is not accepted from the request body."
       },
       "TruthObjectListResponse": {
         "properties": {
@@ -1725,10 +4022,10 @@
             "format": "uuid",
             "title": "Id"
           },
-          "organization_id": {
+          "tenant_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Organization Id"
+            "title": "Tenant Id"
           },
           "claim": {
             "type": "string",
@@ -1954,7 +4251,7 @@
         "type": "object",
         "required": [
           "id",
-          "organization_id",
+          "tenant_id",
           "claim",
           "claim_type",
           "confidence",
@@ -2250,10 +4547,10 @@
             "format": "uuid",
             "title": "Truth Object Id"
           },
-          "organization_id": {
+          "tenant_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Organization Id"
+            "title": "Tenant Id"
           },
           "created_at": {
             "type": "string",
@@ -2276,7 +4573,7 @@
         "required": [
           "id",
           "truth_object_id",
-          "organization_id",
+          "tenant_id",
           "created_at"
         ],
         "title": "TruthSourceResponse",
@@ -2546,5 +4843,19 @@
         "description": "Schema for a ValidationEvent in API responses."
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "ground-truth",
+      "description": "CRUD and validation operations for TruthObject records. All endpoints are scoped to an tenant_id for multi-tenancy."
+    },
+    {
+      "name": "model-registry",
+      "description": "LLM model versioning, deployment, and evaluation tracking. Manages model lifecycles with cost attribution and canary releases."
+    },
+    {
+      "name": "system",
+      "description": "Health check and operational endpoints."
+    }
+  ]
 }

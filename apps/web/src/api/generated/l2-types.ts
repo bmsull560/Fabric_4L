@@ -24,17 +24,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/metrics": {
+    "/v1/extract/signals": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Metrics Endpoint */
-        get: operations["metrics_endpoint_metrics_get"];
+        get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Extract Signals
+         * @description Extract operational pain signals from prospect setup data.
+         *
+         *     Uses LLM-based structured extraction to identify operational signals
+         *     (equipment downtime, changeover inefficiency, quality defects, etc.)
+         *     from prospect-provided business context.
+         *
+         *     Args:
+         *         request: Signal extraction request with prospect data
+         *         http_request: HTTP request object
+         *         x_tenant_id: Tenant ID from header
+         *         x_trace_id: Optional trace ID from header
+         *
+         *     Returns:
+         *         SignalExtractionResponse with extracted signals
+         */
+        post: operations["extract_signals_v1_extract_signals_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -480,546 +496,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/audit//trace/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/audit//trace/{job_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\audit.py).
-         */
-        get: operations["discovered_get_v1_audit__trace_job_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/audit//entity/{entity_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/audit//entity/{entity_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\audit.py).
-         */
-        get: operations["discovered_get_v1_audit__entity_entity_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1//extract/signals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1//extract/signals
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        post: operations["discovered_post_v1__extract_signals"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1//extract": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1//extract
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        post: operations["discovered_post_v1__extract"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1//extract-and-ingest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1//extract-and-ingest
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        post: operations["discovered_post_v1__extract-and-ingest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1//extract/status/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1//extract/status/{job_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        get: operations["discovered_get_v1__extract_status_job_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1//jobs/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1//jobs/{job_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        get: operations["discovered_get_v1__jobs_job_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1//extract/batch": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1//extract/batch
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        post: operations["discovered_post_v1__extract_batch"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1//extract/jobs/{job_id}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1//extract/jobs/{job_id}/events
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        get: operations["discovered_get_v1__extract_jobs_job_id_events"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//entities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//entities
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__entities"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//relationships/{entity_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//relationships/{entity_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__relationships_entity_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//schema
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__schema"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/ontology//schema/validate
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        post: operations["discovered_post_v1_ontology__schema_validate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/ontology//schema/publish
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        post: operations["discovered_post_v1_ontology__schema_publish"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/ontology//schema/import
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        post: operations["discovered_post_v1_ontology__schema_import"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//schema/export
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__schema_export"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/types": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//schema/types
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__schema_types"];
-        put?: never;
-        /**
-         * POST /v1/ontology//schema/types
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        post: operations["discovered_post_v1_ontology__schema_types"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/types/{type_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//schema/types/{type_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__schema_types_type_id"];
-        /**
-         * PUT /v1/ontology//schema/types/{type_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        put: operations["discovered_put_v1_ontology__schema_types_type_id"];
-        post?: never;
-        /**
-         * DELETE /v1/ontology//schema/types/{type_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        delete: operations["discovered_delete_v1_ontology__schema_types_type_id"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/types/{type_id}/properties": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/ontology//schema/types/{type_id}/properties
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        post: operations["discovered_post_v1_ontology__schema_types_type_id_properties"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/types/{type_id}/properties/{property_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * PUT /v1/ontology//schema/types/{type_id}/properties/{property_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        put: operations["discovered_put_v1_ontology__schema_types_type_id_properties_property_id"];
-        post?: never;
-        /**
-         * DELETE /v1/ontology//schema/types/{type_id}/properties/{property_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        delete: operations["discovered_delete_v1_ontology__schema_types_type_id_properties_property_id"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/relationships": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//schema/relationships
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__schema_relationships"];
-        put?: never;
-        /**
-         * POST /v1/ontology//schema/relationships
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        post: operations["discovered_post_v1_ontology__schema_relationships"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/relationships/{relationship_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * DELETE /v1/ontology//schema/relationships/{relationship_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        delete: operations["discovered_delete_v1_ontology__schema_relationships_relationship_id"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/versions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//schema/versions
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__schema_versions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ontology//schema/versions/{version}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/ontology//schema/versions/{version}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\ontology.py).
-         */
-        get: operations["discovered_get_v1_ontology__schema_versions_version"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/extract/signals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /v1/extract/signals
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        post: operations["discovered_post_v1_extract_signals"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/jobs/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /v1/jobs/{job_id}
-         * @description Discovered from router source (value-fabric\layer2-extraction\src\layer2_extraction\api\routes\extraction.py).
-         */
-        get: operations["discovered_get_v1_jobs_job_id"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1134,11 +610,8 @@ export interface components {
             last_error?: string | null;
             /** Next Retry At */
             next_retry_at?: string | null;
-            /**
-             * Started At
-             * Format: date-time
-             */
-            started_at: string;
+            /** Started At */
+            started_at?: string | null;
             /** Completed At */
             completed_at: string | null;
         };
@@ -1203,7 +676,7 @@ export interface components {
          */
         OntologySchema: {
             /** Types */
-            types?: components["schemas"]["OntologyType-Output"][];
+            types?: components["schemas"]["OntologyType"][];
             /** Relationships */
             relationships?: components["schemas"]["TypeRelationship"][];
             /**
@@ -1237,63 +710,7 @@ export interface components {
          *         created_at: Creation timestamp
          *         updated_at: Last update timestamp
          */
-        "OntologyType-Input": {
-            /** Id */
-            id?: string;
-            /** Name */
-            name: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /** Properties */
-            properties?: components["schemas"]["OntologyProperty"][];
-            /** Parent Type Id */
-            parent_type_id?: string | null;
-            /**
-             * Is Active
-             * @default true
-             */
-            is_active: boolean;
-            /**
-             * Version
-             * @default 1
-             */
-            version: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at?: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at?: string;
-        };
-        /**
-         * OntologyType
-         * @description An ontology type definition (schema-level).
-         *
-         *     Defines the structure for a category of entities that can be extracted.
-         *     For example, "Capability" type defines that all capabilities have:
-         *     - name (required string)
-         *     - description (required string)
-         *     - technical_features (optional array)
-         *
-         *     Attributes:
-         *         id: Unique type identifier (e.g., "capability", "use_case")
-         *         name: Human-readable type name
-         *         description: Type description
-         *         properties: Property definitions for this type
-         *         parent_type_id: Parent type for inheritance (optional)
-         *         is_active: Whether this type is currently active
-         *         version: Schema version number
-         *         created_at: Creation timestamp
-         *         updated_at: Last update timestamp
-         */
-        "OntologyType-Output": {
+        OntologyType: {
             /** Id */
             id?: string;
             /** Name */
@@ -1364,6 +781,59 @@ export interface components {
          */
         PropertyType: "string" | "number" | "boolean" | "date" | "array" | "object" | "reference";
         /**
+         * ProspectDataInput
+         * @description Prospect data for signal extraction.
+         */
+        ProspectDataInput: {
+            /**
+             * Account Id
+             * @description Account identifier
+             */
+            account_id: string;
+            /**
+             * Company Name
+             * @description Company name
+             */
+            company_name: string;
+            /**
+             * Industry
+             * @description Industry vertical
+             */
+            industry?: string | null;
+            /**
+             * Business Pains
+             * @description Business pains
+             */
+            business_pains?: string[];
+            /**
+             * Friction Points
+             * @description Friction points
+             */
+            friction_points?: string[];
+            /**
+             * Desired Outcomes
+             * @description Desired outcomes
+             */
+            desired_outcomes?: string[];
+            /**
+             * Prompt Text
+             * @description Freeform prompt text
+             */
+            prompt_text: string;
+            /**
+             * Prompt Id
+             * @description Prompt identifier
+             */
+            prompt_id?: string | null;
+            /**
+             * Attachments
+             * @description Attachments
+             */
+            attachments?: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
          * ProvenanceResponse
          * @description Provenance chain for an entity or output.
          */
@@ -1410,6 +880,115 @@ export interface components {
          */
         RelationshipType: "depends_on" | "extends" | "relates_to" | "contains";
         /**
+         * SignalExtractionRequest
+         * @description Request for operational signal extraction.
+         */
+        SignalExtractionRequest: {
+            /** @description Prospect information */
+            prospect_data: components["schemas"]["ProspectDataInput"];
+            /**
+             * Extraction Type
+             * @description Extraction type
+             * @default operational_signals
+             */
+            extraction_type: string;
+            /**
+             * Category
+             * @description Signal category
+             * @default Operational
+             */
+            category: string;
+        };
+        /**
+         * SignalExtractionResponse
+         * @description Response from signal extraction.
+         */
+        SignalExtractionResponse: {
+            /**
+             * Signals
+             * @description Extracted signals
+             */
+            signals?: components["schemas"]["SignalExtractionResult"][];
+            /**
+             * Duration Ms
+             * @description Processing duration
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Model Version
+             * @description LLM model used
+             * @default gpt-4o-2024-08-06
+             */
+            model_version: string;
+            /**
+             * Prompt Version
+             * @description Prompt version
+             * @default 1.0.0
+             */
+            prompt_version: string;
+        };
+        /**
+         * SignalExtractionResult
+         * @description Single extracted signal result.
+         */
+        SignalExtractionResult: {
+            /**
+             * Name
+             * @description Signal name
+             */
+            name: string;
+            /**
+             * Category
+             * @description Signal category
+             * @default Operational
+             */
+            category: string;
+            /**
+             * Description
+             * @description Signal description
+             */
+            description: string;
+            /**
+             * Confidence Score
+             * @description Confidence 0.0-1.0
+             */
+            confidence_score: number;
+            /**
+             * Confidence Explanation
+             * @description Why this confidence
+             * @default
+             */
+            confidence_explanation: string;
+            /**
+             * Impact Indicators
+             * @description Impact clues
+             */
+            impact_indicators?: string[];
+            /**
+             * Trend Direction
+             * @description increasing|decreasing|stable|new
+             * @default new
+             */
+            trend_direction: string;
+            /**
+             * Trend Explanation
+             * @description Why this trend
+             * @default
+             */
+            trend_explanation: string;
+            /**
+             * Stakeholder Quotes
+             * @description Evidence quotes
+             */
+            stakeholder_quotes?: string[];
+            /**
+             * Likely Value Drivers
+             * @description Mapped value drivers
+             */
+            likely_value_drivers?: string[];
+        };
+        /**
          * TypeRelationship
          * @description A relationship definition between two ontology types.
          *
@@ -1453,7 +1032,7 @@ export interface components {
         /** ValidateSchemaRequest */
         ValidateSchemaRequest: {
             /** Types */
-            types: components["schemas"]["OntologyType-Input"][];
+            types: components["schemas"]["OntologyType"][];
             /** Relationships */
             relationships: components["schemas"]["TypeRelationship"][];
         };
@@ -1518,14 +1097,23 @@ export interface operations {
             };
         };
     };
-    metrics_endpoint_metrics_get: {
+    extract_signals_v1_extract_signals_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Tenant ID for scoping */
+                "x-tenant-id": string;
+                /** @description Trace ID for observability */
+                "x-trace-id"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignalExtractionRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -1533,7 +1121,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SignalExtractionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1916,7 +1513,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OntologyType-Output"][];
+                    "application/json": components["schemas"]["OntologyType"][];
                 };
             };
         };
@@ -1940,7 +1537,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OntologyType-Output"];
+                    "application/json": components["schemas"]["OntologyType"];
                 };
             };
             /** @description Validation Error */
@@ -1971,7 +1568,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OntologyType-Output"];
+                    "application/json": components["schemas"]["OntologyType"];
                 };
             };
             /** @description Validation Error */
@@ -2006,7 +1603,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OntologyType-Output"];
+                    "application/json": components["schemas"]["OntologyType"];
                 };
             };
             /** @description Validation Error */
@@ -2072,7 +1669,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OntologyType-Output"];
+                    "application/json": components["schemas"]["OntologyType"];
                 };
             };
             /** @description Validation Error */
@@ -2108,7 +1705,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OntologyType-Output"];
+                    "application/json": components["schemas"]["OntologyType"];
                 };
             };
             /** @description Validation Error */
@@ -2348,781 +1945,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
-            };
-        };
-    };
-    discovered_get_v1_audit__trace_job_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_audit__entity_entity_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1__extract_signals: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1__extract: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    "discovered_post_v1__extract-and-ingest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1__extract_status_job_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1__jobs_job_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1__extract_batch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1__extract_jobs_job_id_events: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__entities: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__relationships_entity_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__schema: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_ontology__schema_validate: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_ontology__schema_publish: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_ontology__schema_import: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__schema_export: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__schema_types: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_ontology__schema_types: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__schema_types_type_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_put_v1_ontology__schema_types_type_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_delete_v1_ontology__schema_types_type_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_ontology__schema_types_type_id_properties: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_put_v1_ontology__schema_types_type_id_properties_property_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_delete_v1_ontology__schema_types_type_id_properties_property_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__schema_relationships: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_ontology__schema_relationships: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_delete_v1_ontology__schema_relationships_relationship_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__schema_versions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_ontology__schema_versions_version: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_post_v1_extract_signals: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    discovered_get_v1_jobs_job_id: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

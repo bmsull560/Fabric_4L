@@ -1,25 +1,99 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Layer 6 — Benchmarks API",
-    "version": "1.0.0",
-    "description": "Benchmark and dataset comparison endpoints. Generated via merge script."
+    "title": "Value Fabric - Benchmark Service",
+    "description": "Comparative intelligence and peer benchmarking API",
+    "version": "1.0.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/benchmarks/datasets": {
       "get": {
         "tags": [
-          "layer6-benchmarks"
+          "benchmarks"
         ],
-        "summary": "GET /v1/benchmarks/datasets",
-        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
-        "operationId": "discovered_get_v1_benchmarks_datasets",
+        "summary": "List Datasets",
+        "operationId": "list_datasets_v1_benchmarks_datasets_get",
+        "parameters": [
+          {
+            "name": "industry",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by industry",
+              "title": "Industry"
+            },
+            "description": "Filter by industry"
+          },
+          {
+            "name": "segment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by segment",
+              "title": "Segment"
+            },
+            "description": "Filter by segment"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetSummary"
+                  },
+                  "title": "Response List Datasets V1 Benchmarks Datasets Get"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Validation Error"
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -27,17 +101,41 @@
     "/v1/benchmarks/datasets/{dataset_id}": {
       "get": {
         "tags": [
-          "layer6-benchmarks"
+          "benchmarks"
         ],
-        "summary": "GET /v1/benchmarks/datasets/{dataset_id}",
-        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
-        "operationId": "discovered_get_v1_benchmarks_datasets_dataset_id",
+        "summary": "Get Dataset",
+        "operationId": "get_dataset_v1_benchmarks_datasets__dataset_id__get",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dataset Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetDetail"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Validation Error"
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -45,17 +143,40 @@
     "/v1/benchmarks/compare": {
       "post": {
         "tags": [
-          "layer6-benchmarks"
+          "benchmarks"
         ],
-        "summary": "POST /v1/benchmarks/compare",
-        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
-        "operationId": "discovered_post_v1_benchmarks_compare",
+        "summary": "Compare",
+        "operationId": "compare_v1_benchmarks_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComparisonRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonResponse"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Validation Error"
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -63,17 +184,40 @@
     "/v1/benchmarks/validate": {
       "post": {
         "tags": [
-          "layer6-benchmarks"
+          "benchmarks"
         ],
-        "summary": "POST /v1/benchmarks/validate",
-        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
-        "operationId": "discovered_post_v1_benchmarks_validate",
+        "summary": "Validate",
+        "operationId": "validate_v1_benchmarks_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationRequestPayload"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationResponse"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Validation Error"
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -81,37 +225,381 @@
     "/v1/benchmarks/industries": {
       "get": {
         "tags": [
-          "layer6-benchmarks"
+          "benchmarks"
         ],
-        "summary": "GET /v1/benchmarks/industries",
-        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
-        "operationId": "discovered_get_v1_benchmarks_industries",
+        "summary": "List Industries",
+        "operationId": "list_industries_v1_benchmarks_industries_get",
         "responses": {
           "200": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error"
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
           }
         }
       }
-    },
-    "/health": {
-      "get": {
-        "tags": [
-          "layer6-benchmarks"
-        ],
-        "summary": "GET /health",
-        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\system.py).",
-        "operationId": "discovered_get_health",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
+    }
+  },
+  "components": {
+    "schemas": {
+      "ComparisonRequestPayload": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
           },
-          "422": {
-            "description": "Validation Error"
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "company_value": {
+            "type": "string",
+            "title": "Company Value",
+            "description": "Company value as string (Decimal)"
+          },
+          "industry": {
+            "type": "string",
+            "title": "Industry"
+          },
+          "segment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment"
           }
-        }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "metric",
+          "company_value",
+          "industry"
+        ],
+        "title": "ComparisonRequestPayload",
+        "description": "Payload for comparison request."
+      },
+      "ComparisonResponse": {
+        "properties": {
+          "percentile": {
+            "type": "integer",
+            "title": "Percentile"
+          },
+          "peer_median": {
+            "type": "string",
+            "title": "Peer Median"
+          },
+          "peer_range": {
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Peer Range"
+          },
+          "sample_size": {
+            "type": "integer",
+            "title": "Sample Size"
+          },
+          "confidence": {
+            "type": "string",
+            "title": "Confidence"
+          },
+          "assessment": {
+            "type": "string",
+            "title": "Assessment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "percentile",
+          "peer_median",
+          "peer_range",
+          "sample_size",
+          "confidence",
+          "assessment"
+        ],
+        "title": "ComparisonResponse",
+        "description": "Response from comparison."
+      },
+      "DatasetDetail": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "industry": {
+            "type": "string",
+            "title": "Industry"
+          },
+          "segment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment"
+          },
+          "geography": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Metrics"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "data_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "name",
+          "description",
+          "industry",
+          "segment",
+          "geography",
+          "metrics",
+          "version",
+          "data_source"
+        ],
+        "title": "DatasetDetail",
+        "description": "Detailed benchmark dataset."
+      },
+      "DatasetSummary": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "industry": {
+            "type": "string",
+            "title": "Industry"
+          },
+          "segment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment"
+          },
+          "metrics": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "name",
+          "industry",
+          "segment",
+          "metrics",
+          "version"
+        ],
+        "title": "DatasetSummary",
+        "description": "Summary of benchmark dataset."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationRequestPayload": {
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "Value as string (Decimal)"
+          },
+          "tolerance_percent": {
+            "type": "integer",
+            "title": "Tolerance Percent",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "dataset_id",
+          "metric",
+          "value"
+        ],
+        "title": "ValidationRequestPayload",
+        "description": "Payload for validation request."
+      },
+      "ValidationResponse": {
+        "properties": {
+          "is_valid": {
+            "type": "boolean",
+            "title": "Is Valid"
+          },
+          "expected_range": {
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Expected Range"
+          },
+          "actual_value": {
+            "type": "string",
+            "title": "Actual Value"
+          },
+          "deviation_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deviation Percent"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_valid",
+          "expected_range",
+          "actual_value",
+          "deviation_percent",
+          "severity",
+          "message"
+        ],
+        "title": "ValidationResponse",
+        "description": "Response from validation."
       }
     }
   }
