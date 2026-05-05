@@ -97,13 +97,13 @@ class WorkflowInputs(BaseModel):
     custom_data: dict[str, Any] | None = Field(default_factory=dict)
 
 
-VALID_WORKFLOW_TYPES = {
+VALID_WORKFLOW_TYPES = (
+    "business_case_generation",
+    "business_case",
     "roi_calculator",
     "whitespace_analysis",
-    "business_case",
-    "business_case_generation",
     "orchestrator",
-}
+)
 
 
 class WorkflowCreateRequest(BaseModel):
@@ -131,7 +131,7 @@ class WorkflowCreateRequest(BaseModel):
     @classmethod
     def _validate_workflow_type(cls, v: str) -> str:
         if v not in VALID_WORKFLOW_TYPES:
-            raise ValueError(f"Invalid workflow_type: {v!r}. Must be one of: {', '.join(sorted(VALID_WORKFLOW_TYPES))}")
+            raise ValueError(f"Invalid workflow_type: {v!r}. Must be one of: {', '.join(VALID_WORKFLOW_TYPES)}")
         return v
 
 

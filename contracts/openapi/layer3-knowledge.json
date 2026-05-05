@@ -9502,6 +9502,33 @@
         "title": "ComposableTemplateLibraryResponse",
         "description": "Composable template library response."
       },
+      "ContextGraph": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "type": "array",
+            "title": "Nodes",
+            "description": "Nodes in the context graph"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            },
+            "type": "array",
+            "title": "Edges",
+            "description": "Edges in the context graph"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "ContextGraph",
+        "description": "Typed context graph structure for GraphRAG responses."
+      },
       "CoreUseCase": {
         "properties": {
           "id": {
@@ -11817,7 +11844,84 @@
           "type"
         ],
         "title": "GraphNode",
-        "description": "Node in the knowledge graph. Visualization fields (x, y, r) have been removed; use GraphNodeWithLayout for pre-computed positions."
+        "description": "Node in the knowledge graph.\n\nNOTE: This model provides backward-compatible field aliases for frontend contract stability:\n- 'name' is an alias for 'label' (frontend expects 'name')\n- 'entity_type' is an alias for 'type' (frontend expects 'entity_type')\n- 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')\n\nThe legacy fields (label, type, confidence) are preserved for backward compatibility.\nTODO: Deprecate legacy fields once all consumers migrate to new field names."
+      },
+      "GraphNodeWithLayout": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique node identifier"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Display label (legacy: use 'name')"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Node type (legacy: use 'entity_type')"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Confidence score (legacy: use 'confidence_score')",
+            "default": 0.8
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties",
+            "description": "Additional node properties"
+          },
+          "x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "X",
+            "description": "X position for visualization"
+          },
+          "y": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Y",
+            "description": "Y position for visualization"
+          },
+          "r": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R",
+            "description": "Radius for visualization"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "type"
+        ],
+        "title": "GraphNodeWithLayout",
+        "description": "Graph node with visualization layout coordinates.\n\nUse this model only for endpoints that intentionally return\npre-computed layout positions (e.g., full graph export).\nFor subgraph and query responses, use plain GraphNode and\ncompute layout client-side."
       },
       "GraphRAGQuery": {
         "properties": {
@@ -11895,7 +11999,7 @@
             },
             "type": "array",
             "title": "Entities",
-            "description": "Relevant entities found"
+            "description": "Relevant entities found. Typed as dict for flexibility until GraphRAG engine normalizes to GraphNode."
           },
           "relationships": {
             "items": {
@@ -11904,12 +12008,12 @@
             },
             "type": "array",
             "title": "Relationships",
-            "description": "Relevant relationships found"
+            "description": "Relevant relationships found. Typed as dict for flexibility until GraphRAG engine normalizes to GraphEdge."
           },
           "context_graph": {
             "anyOf": [
               {
-                "": "#/components/schemas/ContextGraph"
+                "$ref": "#/components/schemas/ContextGraph"
               },
               {
                 "additionalProperties": true,
@@ -11978,11 +12082,11 @@
         "properties": {
           "nodes": {
             "items": {
-              "": "#/components/schemas/GraphNodeWithLayout"
+              "$ref": "#/components/schemas/GraphNodeWithLayout"
             },
             "type": "array",
             "title": "Nodes",
-            "description": "Graph nodes"
+            "description": "Graph nodes with layout"
           },
           "edges": {
             "items": {
@@ -12004,7 +12108,7 @@
           "stats"
         ],
         "title": "GraphResponse",
-        "description": "Full graph response for visualization. Nodes include layout coordinates."
+        "description": "Full graph response for visualization."
       },
       "GraphStats": {
         "properties": {
@@ -17790,83 +17894,6 @@
         ],
         "title": "ValueTreeResponse",
         "description": "Complete value tree response."
-      },
-      "GraphNodeWithLayout": {
-        "allOf": [
-          {
-            "": "#/components/schemas/GraphNode"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "x": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "X",
-                "description": "X position for visualization"
-              },
-              "y": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Y",
-                "description": "Y position for visualization"
-              },
-              "r": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "R",
-                "description": "Radius for visualization"
-              }
-            }
-          }
-        ],
-        "title": "GraphNodeWithLayout",
-        "description": "Graph node with visualization layout coordinates. Use only for endpoints that intentionally return pre-computed layout positions."
-      },
-      "ContextGraph": {
-        "properties": {
-          "nodes": {
-            "items": {
-              "": "#/components/schemas/GraphNode"
-            },
-            "type": "array",
-            "title": "Nodes",
-            "description": "Nodes in the context graph"
-          },
-          "edges": {
-            "items": {
-              "": "#/components/schemas/GraphEdge"
-            },
-            "type": "array",
-            "title": "Edges",
-            "description": "Edges in the context graph"
-          }
-        },
-        "type": "object",
-        "required": [
-          "nodes",
-          "edges"
-        ],
-        "title": "ContextGraph",
-        "description": "Typed context graph structure for GraphRAG responses."
       }
     },
     "securitySchemes": {

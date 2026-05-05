@@ -6408,7 +6408,7 @@ export interface components {
              * @description Type of workflow to run
              * @enum {string}
              */
-            workflow_type: "roi_calculator" | "whitespace_analysis" | "business_case" | "business_case_generation" | "orchestrator";
+            workflow_type: "business_case_generation" | "business_case" | "roi_calculator" | "whitespace_analysis" | "orchestrator";
             /**
              * Tenant Id
              * @description Tenant identifier

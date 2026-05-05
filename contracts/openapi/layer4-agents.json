@@ -14905,10 +14905,10 @@
           "workflow_type": {
             "type": "string",
             "enum": [
+              "business_case_generation",
+              "business_case",
               "roi_calculator",
               "whitespace_analysis",
-              "business_case",
-              "business_case_generation",
               "orchestrator"
             ],
             "title": "Workflow Type",

@@ -15,20 +15,16 @@ import {
   ExternalLink,
 } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
-import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import RightRail, {
+  type RightRailMode,
+} from "@/components/workspace/RightRail";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import {
-  useCaseStudies,
-  useEvidenceSearch,
-  type CaseStudy,
-  type CaseStudyListResponse,
-  type EvidenceSearchResult,
-} from "@/hooks/useEvidence";
+import { useCaseStudies, type CaseStudy } from "@/hooks/useEvidence";
 
 // ── Case Study Card ────────────────────────────────────────────────────────────
 function CaseStudyCard({
@@ -40,11 +36,9 @@ function CaseStudyCard({
   selected: boolean;
   onClick: () => void;
 }) {
-  const improvementKeys = Object.keys(study.improvement_pct ?? {});
-  const topImprovement =
-    improvementKeys.length > 0
-      ? study.improvement_pct[improvementKeys[0]]
-      : null;
+  const topImprovement = study.outcomes.find(
+    outcome => outcome.improvement_pct != null
+  )?.improvement_pct;
 
   return (
     <button
@@ -66,10 +60,10 @@ function CaseStudyCard({
               {study.industry}
             </span>
           )}
-          {study.product_ids && study.product_ids.length > 0 && (
+          {study.products_used.length > 0 && (
             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
               <Tag size={9} />
-              {study.product_ids[0]}
+              {study.products_used[0]}
             </span>
           )}
         </div>
@@ -89,7 +83,9 @@ function CaseStudyCard({
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function StudioEvidenceTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(
+    accountId ?? null
+  );
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
   const [searchQuery, setSearchQuery] = useState("");
   const [industryFilter, setIndustryFilter] = useState("");
@@ -99,16 +95,20 @@ export default function StudioEvidenceTab() {
   const { data: studiesData, isLoading } = useCaseStudies({
     industry: industryFilter || undefined,
   });
-  const evidenceSearch = useEvidenceSearch();
-
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
+  const {
+    messages,
+    sendMessage,
+    suggestedActions,
+    steps,
+    isStreaming,
+    metadata,
+  } = useAgentEvents({
     activeTab: "evidence",
     accountName: account?.name ?? "Account",
   });
 
-  const listResponse = studiesData as CaseStudyListResponse | undefined;
-  const studies = listResponse?.case_studies ?? [];
-  const totalCount = listResponse?.total ?? studies.length;
+  const studies = studiesData?.items ?? [];
+  const totalCount = studiesData?.total ?? studies.length;
 
   // Collect unique industries for filter
   const industries = Array.from(
@@ -124,7 +124,9 @@ export default function StudioEvidenceTab() {
   }
 
   if (!account) {
-    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+    return (
+      <div className="p-6 text-sm text-destructive">Account not found.</div>
+    );
   }
 
   return (
@@ -149,41 +151,41 @@ export default function StudioEvidenceTab() {
                     {selectedStudy.industry}
                   </p>
                 )}
-                {selectedStudy.challenge && (
+                {selectedStudy.summary && (
                   <div>
-                    <p className="text-[11px] font-semibold mb-1">Challenge</p>
-                    <p className="text-xs">{selectedStudy.challenge}</p>
+                    <p className="text-[11px] font-semibold mb-1">Summary</p>
+                    <p className="text-xs">{selectedStudy.summary}</p>
                   </div>
                 )}
-                {selectedStudy.solution && (
+                {selectedStudy.content && (
                   <div>
-                    <p className="text-[11px] font-semibold mb-1">Solution</p>
-                    <p className="text-xs">{selectedStudy.solution}</p>
+                    <p className="text-[11px] font-semibold mb-1">Evidence</p>
+                    <p className="text-xs">{selectedStudy.content}</p>
                   </div>
                 )}
-                {selectedStudy.outcome && (
+                {selectedStudy.outcomes.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-semibold mb-1">Outcome</p>
-                    <p className="text-xs">{selectedStudy.outcome}</p>
-                  </div>
-                )}
-                {Object.keys(selectedStudy.improvement_pct ?? {}).length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-semibold mb-1">Improvements</p>
+                    <p className="text-[11px] font-semibold mb-1">Outcomes</p>
                     <div className="space-y-1">
-                      {Object.entries(selectedStudy.improvement_pct).map(
-                        ([metric, pct]: [string, number], i: number) => (
-                          <div
-                            key={i}
-                            className="text-[10px] border border-border rounded px-2 py-1"
-                          >
-                            <span className="font-medium">{metric}: </span>
+                      {selectedStudy.outcomes.map((outcome, i) => (
+                        <div
+                          key={i}
+                          className="text-[10px] border border-border rounded px-2 py-1"
+                        >
+                          <span className="font-medium">
+                            {outcome.metric}:{" "}
+                          </span>
+                          {outcome.improvement_pct != null ? (
                             <span className="text-green-600">
-                              +{pct.toFixed(0)}%
+                              +{outcome.improvement_pct.toFixed(0)}%
                             </span>
-                          </div>
-                        )
-                      )}
+                          ) : (
+                            <span className="text-muted-foreground">
+                              {outcome.after_value ?? "Measured"}
+                            </span>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -194,9 +196,9 @@ export default function StudioEvidenceTab() {
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
-            steps={steps}
-            isStreaming={isStreaming}
-            runMetadata={metadata}
+          steps={steps}
+          isStreaming={isStreaming}
+          runMetadata={metadata}
         />
       }
     >
@@ -211,9 +213,7 @@ export default function StudioEvidenceTab() {
           label="Account Industry Match"
           value={
             account.industry
-              ? studies.some(
-                  (s: CaseStudy) => s.industry === account.industry
-                )
+              ? studies.some((s: CaseStudy) => s.industry === account.industry)
                 ? "Yes"
                 : "No matches"
               : "N/A"
@@ -231,18 +231,18 @@ export default function StudioEvidenceTab() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search evidence (min 3 characters)..."
             className="w-full text-xs border border-border rounded-md pl-8 pr-3 py-1.5"
           />
         </div>
         <select
           value={industryFilter}
-          onChange={(e) => setIndustryFilter(e.target.value)}
+          onChange={e => setIndustryFilter(e.target.value)}
           className="text-xs border border-border rounded-md px-2 py-1.5"
         >
           <option value="">All Industries</option>
-          {industries.map((ind) => (
+          {industries.map(ind => (
             <option key={ind} value={ind}>
               {ind}
             </option>

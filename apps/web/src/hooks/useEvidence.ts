@@ -7,105 +7,111 @@
  * Backend: layer3-knowledge/src/api/routes/evidence.py
  * Endpoints: 9
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
-import { QK } from './queryKeys';
-import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/api/client";
+import { QK } from "./queryKeys";
+import {
+  withApiError,
+  BaseApiError,
+  STALE_TIME,
+  RETRY_CONFIG,
+} from "./useApiShared";
+import {
+  parseBulkImportResponse,
+  parseCaseStudy,
+  parseCaseStudyListResponse,
+  parseCaseStudyMutationResponse,
+  parseDeleteCaseStudyResponse,
+  parseEvidenceSearchResponse,
+  parseEvidenceStatsResponse,
+  type BulkImportResponse,
+  type CaseStudy,
+  type CaseStudyListResponse,
+  type CaseStudyMutationResponse,
+  type DeleteCaseStudyResponse,
+  type EvidenceSearchResponse,
+  type EvidenceSearchResult,
+  type IndustryStats,
+  type ProductStats,
+} from "@/lib/schemas/evidence";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export interface CaseStudy {
-  id: string;
-  title: string;
-  customer_name: string;
-  industry: string;
-  product_ids: string[];
-  challenge: string;
-  solution: string;
-  outcome: string;
-  metrics_before: Record<string, number>;
-  metrics_after: Record<string, number>;
-  improvement_pct: Record<string, number>;
-  tags: string[];
-  published: boolean;
-  created_at: string;
-  updated_at: string;
+export type {
+  BulkImportResponse,
+  CaseStudy,
+  CaseStudyListResponse,
+  CaseStudyMutationResponse,
+  DeleteCaseStudyResponse,
+  EvidenceSearchResponse,
+  EvidenceSearchResult,
+  IndustryStats,
+  ProductStats,
+} from "@/lib/schemas/evidence";
+
+export interface CaseStudyOutcomeInput {
+  metric: string;
+  before_value?: string | null;
+  after_value?: string | null;
+  improvement_pct?: number | null;
+  time_to_achieve_days?: number | null;
 }
 
 export interface CreateCaseStudyRequest {
   title: string;
-  customer_name: string;
+  content: string;
   industry: string;
-  product_ids?: string[];
-  challenge: string;
-  solution: string;
-  outcome: string;
-  metrics_before?: Record<string, number>;
-  metrics_after?: Record<string, number>;
-  tags?: string[];
-  published?: boolean;
+  summary?: string | null;
+  company_name?: string | null;
+  company_size?: string | null;
+  products_used?: string[] | null;
+  pain_signals_addressed?: string[] | null;
+  outcomes?: CaseStudyOutcomeInput[] | null;
+  time_to_value_days?: number | null;
+  deal_size_usd?: number | null;
+  published_date?: string | null;
+  tags?: string[] | null;
 }
 
 export interface UpdateCaseStudyRequest {
   title?: string;
-  customer_name?: string;
+  content?: string;
+  summary?: string | null;
   industry?: string;
-  product_ids?: string[];
-  challenge?: string;
-  solution?: string;
-  outcome?: string;
-  metrics_before?: Record<string, number>;
-  metrics_after?: Record<string, number>;
-  tags?: string[];
-  published?: boolean;
+  company_name?: string | null;
+  company_size?: string | null;
+  products_used?: string[] | null;
+  pain_signals_addressed?: string[] | null;
+  outcomes?: CaseStudyOutcomeInput[] | null;
+  time_to_value_days?: number | null;
+  deal_size_usd?: number | null;
+  tags?: string[] | null;
 }
 
 export interface CaseStudyListFilters {
   industry?: string;
+  company_size?: string;
+  product?: string;
   product_id?: string;
+  tag?: string;
+  min_deal_size?: number;
   search?: string;
   published?: boolean;
   skip?: number;
   limit?: number;
-}
-
-export interface CaseStudyListResponse {
-  case_studies: CaseStudy[];
-  total: number;
-}
-
-export interface IndustryStats {
-  industry: string;
-  count: number;
-}
-
-export interface ProductStats {
-  product_id: string;
-  product_name: string;
-  count: number;
+  offset?: number;
 }
 
 export interface EvidenceSearchRequest {
   query: string;
+  evidence_types?: string[] | null;
+  limit?: number;
   industry?: string;
   product_id?: string;
-  limit?: number;
-}
-
-export interface EvidenceSearchResult {
-  case_study_id: string;
-  title: string;
-  relevance_score: number;
-  snippet: string;
 }
 
 export interface BulkImportRequest {
   case_studies: CreateCaseStudyRequest[];
-}
-
-export interface BulkImportResponse {
-  created: number;
-  errors: string[];
 }
 
 // ── Domain Error ───────────────────────────────────────────────────────────
@@ -113,7 +119,7 @@ export interface BulkImportResponse {
 export class EvidenceApiError extends BaseApiError {
   constructor(message: string, statusCode?: number, responseData?: unknown) {
     super(message, statusCode, responseData);
-    this.name = 'EvidenceApiError';
+    this.name = "EvidenceApiError";
   }
 }
 
@@ -121,34 +127,45 @@ export class EvidenceApiError extends BaseApiError {
 
 function buildEvidenceParams(filters: CaseStudyListFilters): string {
   const params = new URLSearchParams();
-  if (filters.industry) params.set('industry', filters.industry);
-  if (filters.product_id) params.set('product_id', filters.product_id);
-  if (filters.search) params.set('search', filters.search);
-  if (filters.published != null) params.set('published', String(filters.published));
-  if (filters.skip != null) params.set('skip', filters.skip.toString());
-  if (filters.limit != null) params.set('limit', filters.limit.toString());
+  if (filters.industry) params.set("industry", filters.industry);
+  if (filters.company_size) params.set("company_size", filters.company_size);
+  if (filters.product ?? filters.product_id) {
+    params.set("product", filters.product ?? filters.product_id ?? "");
+  }
+  if (filters.tag) params.set("tag", filters.tag);
+  if (filters.min_deal_size != null) {
+    params.set("min_deal_size", filters.min_deal_size.toString());
+  }
+  if (filters.limit != null) params.set("limit", filters.limit.toString());
+  const offset = filters.offset ?? filters.skip;
+  if (offset != null) params.set("offset", offset.toString());
   const qs = params.toString();
-  return qs ? `?${qs}` : '';
+  return qs ? `?${qs}` : "";
 }
 
-async function fetchCaseStudies(filters: CaseStudyListFilters): Promise<CaseStudyListResponse> {
-  const response = await apiClient.get('l3', `/v1/evidence/case-studies${buildEvidenceParams(filters)}`);
-  return response.data as CaseStudyListResponse;
+async function fetchCaseStudies(
+  filters: CaseStudyListFilters
+): Promise<CaseStudyListResponse> {
+  const response = await apiClient.get(
+    "l3",
+    `/v1/evidence/case-studies${buildEvidenceParams(filters)}`
+  );
+  return parseCaseStudyListResponse(response.data);
 }
 
 async function fetchCaseStudy(id: string): Promise<CaseStudy> {
-  const response = await apiClient.get('l3', `/v1/evidence/case-studies/${id}`);
-  return response.data as CaseStudy;
+  const response = await apiClient.get("l3", `/v1/evidence/case-studies/${id}`);
+  return parseCaseStudy(response.data);
 }
 
-async function fetchIndustryStats(): Promise<IndustryStats[]> {
-  const response = await apiClient.get('l3', '/v1/evidence/stats/by-industry');
-  return response.data as IndustryStats[];
+async function fetchIndustryStats(): Promise<IndustryStats> {
+  const response = await apiClient.get("l3", "/v1/evidence/stats/by-industry");
+  return parseEvidenceStatsResponse(response.data);
 }
 
-async function fetchProductStats(): Promise<ProductStats[]> {
-  const response = await apiClient.get('l3', '/v1/evidence/stats/by-product');
-  return response.data as ProductStats[];
+async function fetchProductStats(): Promise<ProductStats> {
+  const response = await apiClient.get("l3", "/v1/evidence/stats/by-product");
+  return parseEvidenceStatsResponse(response.data);
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
@@ -165,9 +182,9 @@ export function useCaseStudies(filters: CaseStudyListFilters = {}) {
 
 export function useCaseStudy(id: string | null) {
   return useQuery<CaseStudy, EvidenceApiError>({
-    queryKey: QK.evidence.detail(id || ''),
+    queryKey: QK.evidence.detail(id || ""),
     queryFn: async () => {
-      if (!id) throw new EvidenceApiError('No case study ID provided');
+      if (!id) throw new EvidenceApiError("No case study ID provided");
       return withApiError(fetchCaseStudy(id), EvidenceApiError);
     },
     enabled: !!id,
@@ -178,7 +195,7 @@ export function useCaseStudy(id: string | null) {
 }
 
 export function useEvidenceIndustryStats() {
-  return useQuery<IndustryStats[], EvidenceApiError>({
+  return useQuery<IndustryStats, EvidenceApiError>({
     queryKey: QK.evidence.industryStats(),
     queryFn: () => withApiError(fetchIndustryStats(), EvidenceApiError),
     staleTime: STALE_TIME.stats,
@@ -188,7 +205,7 @@ export function useEvidenceIndustryStats() {
 }
 
 export function useEvidenceProductStats() {
-  return useQuery<ProductStats[], EvidenceApiError>({
+  return useQuery<ProductStats, EvidenceApiError>({
     queryKey: QK.evidence.productStats(),
     queryFn: () => withApiError(fetchProductStats(), EvidenceApiError),
     staleTime: STALE_TIME.stats,
@@ -201,10 +218,18 @@ export function useEvidenceProductStats() {
 
 export function useCreateCaseStudy() {
   const queryClient = useQueryClient();
-  return useMutation<CaseStudy, EvidenceApiError, CreateCaseStudyRequest>({
-    mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/evidence/case-studies', params);
-      return response.data as CaseStudy;
+  return useMutation<
+    CaseStudyMutationResponse,
+    EvidenceApiError,
+    CreateCaseStudyRequest
+  >({
+    mutationFn: async params => {
+      const response = await apiClient.post(
+        "l3",
+        "/v1/evidence/case-studies",
+        params
+      );
+      return parseCaseStudyMutationResponse(response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.evidence.all });
@@ -214,10 +239,18 @@ export function useCreateCaseStudy() {
 
 export function useUpdateCaseStudy() {
   const queryClient = useQueryClient();
-  return useMutation<CaseStudy, EvidenceApiError, { id: string; data: UpdateCaseStudyRequest }>({
+  return useMutation<
+    CaseStudyMutationResponse,
+    EvidenceApiError,
+    { id: string; data: UpdateCaseStudyRequest }
+  >({
     mutationFn: async ({ id, data }) => {
-      const response = await apiClient.put('l3', `/v1/evidence/case-studies/${id}`, data);
-      return response.data as CaseStudy;
+      const response = await apiClient.put(
+        "l3",
+        `/v1/evidence/case-studies/${id}`,
+        data
+      );
+      return parseCaseStudyMutationResponse(response.data);
     },
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: QK.evidence.all });
@@ -228,9 +261,13 @@ export function useUpdateCaseStudy() {
 
 export function useDeleteCaseStudy() {
   const queryClient = useQueryClient();
-  return useMutation<void, EvidenceApiError, string>({
-    mutationFn: async (id) => {
-      await apiClient.delete('l3', `/v1/evidence/case-studies/${id}`);
+  return useMutation<DeleteCaseStudyResponse, EvidenceApiError, string>({
+    mutationFn: async id => {
+      const response = await apiClient.delete(
+        "l3",
+        `/v1/evidence/case-studies/${id}`
+      );
+      return parseDeleteCaseStudyResponse(response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.evidence.all });
@@ -241,9 +278,13 @@ export function useDeleteCaseStudy() {
 export function useBulkImportCaseStudies() {
   const queryClient = useQueryClient();
   return useMutation<BulkImportResponse, EvidenceApiError, BulkImportRequest>({
-    mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/evidence/case-studies/bulk-import', params);
-      return response.data as BulkImportResponse;
+    mutationFn: async params => {
+      const response = await apiClient.post(
+        "l3",
+        "/v1/evidence/case-studies/bulk-import",
+        params
+      );
+      return parseBulkImportResponse(response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.evidence.all });
@@ -252,10 +293,18 @@ export function useBulkImportCaseStudies() {
 }
 
 export function useEvidenceSearch() {
-  return useMutation<EvidenceSearchResult[], EvidenceApiError, EvidenceSearchRequest>({
-    mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/evidence/search', params);
-      return response.data as EvidenceSearchResult[];
+  return useMutation<
+    EvidenceSearchResponse,
+    EvidenceApiError,
+    EvidenceSearchRequest
+  >({
+    mutationFn: async params => {
+      const response = await apiClient.post("l3", "/v1/evidence/search", {
+        query: params.query,
+        evidence_types: params.evidence_types,
+        limit: params.limit,
+      });
+      return parseEvidenceSearchResponse(response.data);
     },
   });
 }

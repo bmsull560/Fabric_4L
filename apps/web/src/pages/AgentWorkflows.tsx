@@ -4,21 +4,39 @@
  * Data Flow: React Query for server state, Zustand for UI state
  */
 import { useState } from "react";
-import { 
-  Bot, Clock, AlertTriangle, ChevronLeft, ChevronRight, RefreshCw,
-  Eye, Pause, Play, Plus, MoreHorizontal, Loader2
+import {
+  Bot,
+  Clock,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Eye,
+  Pause,
+  Play,
+  Plus,
+  MoreHorizontal,
+  Loader2,
 } from "lucide-react";
-import { 
-  useActiveWorkflows, 
-  useWorkflowHistory, 
+import {
+  useActiveWorkflows,
+  useWorkflowHistory,
   useCancelWorkflow,
   usePauseWorkflow,
   useResumeWorkflow,
   useCreateWorkflow,
   useWorkflowTypes,
-  type Workflow 
+  type Workflow,
 } from "@/hooks/useWorkflows";
-import { PageHeader, MetricCard, DataTable, StatusBadge as StatusBadgePrimitive, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
+import {
+  PageHeader,
+  MetricCard,
+  DataTable,
+  StatusBadge as StatusBadgePrimitive,
+  Btn,
+  SectionCard,
+  Tabs,
+} from "@/components/WfPrimitives";
 import { QueryState } from "@/components/QueryState";
 import { WorkflowDetail } from "@/components/WorkflowDetail";
 import { Progress } from "@/components/ui/progress";
@@ -27,7 +45,11 @@ import { cn } from "@/lib/utils";
 const ITEMS_PER_PAGE = 10;
 
 // Pagination display range helper
-function getDisplayRange(page: number, itemsPerPage: number, total: number): string {
+function getDisplayRange(
+  page: number,
+  itemsPerPage: number,
+  total: number
+): string {
   const start = page * itemsPerPage + 1;
   const end = Math.min((page + 1) * itemsPerPage, total);
   return `Showing ${start} - ${end} of ${total}`;
@@ -60,7 +82,9 @@ function PaginationControls({
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">{displayRange}</span>
         {hasMore && (
-          <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded">More available</span>
+          <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+            More available
+          </span>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -99,15 +123,17 @@ function PaginationControls({
 
 export default function AgentWorkflows() {
   const [activeTab, setActiveTab] = useState("Workflow Dashboard");
-  
+
   // Pagination state
   const [activePage, setActivePage] = useState(0);
   const [historyPage, setHistoryPage] = useState(0);
-  
+
   // Detail drawer state
-  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(
+    null
+  );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  
+
   // Mutations
   const cancelWorkflow = useCancelWorkflow();
   const pauseWorkflow = usePauseWorkflow();
@@ -121,9 +147,9 @@ export default function AgentWorkflows() {
     isLoading: activeLoading,
     error: activeError,
     refetch: refetchActive,
-  } = useActiveWorkflows({ 
-    limit: ITEMS_PER_PAGE, 
-    offset: activePage * ITEMS_PER_PAGE 
+  } = useActiveWorkflows({
+    limit: ITEMS_PER_PAGE,
+    offset: activePage * ITEMS_PER_PAGE,
   });
 
   const {
@@ -131,21 +157,25 @@ export default function AgentWorkflows() {
     isLoading: historyLoading,
     error: historyError,
     refetch: refetchHistory,
-  } = useWorkflowHistory({ 
-    limit: ITEMS_PER_PAGE, 
-    offset: historyPage * ITEMS_PER_PAGE 
+  } = useWorkflowHistory({
+    limit: ITEMS_PER_PAGE,
+    offset: historyPage * ITEMS_PER_PAGE,
   });
 
   // Extract items from paginated response
   const activeWorkflows = activeData?.items ?? [];
   const historyWorkflows = historyData?.items ?? [];
-  
+
   const isLoading = activeLoading || historyLoading;
   const error = activeError || historyError;
-  
+
   // Pagination helpers
-  const activeTotalPages = activeData ? Math.ceil(activeData.total / ITEMS_PER_PAGE) : 0;
-  const historyTotalPages = historyData ? Math.ceil(historyData.total / ITEMS_PER_PAGE) : 0;
+  const activeTotalPages = activeData
+    ? Math.ceil(activeData.total / ITEMS_PER_PAGE)
+    : 0;
+  const historyTotalPages = historyData
+    ? Math.ceil(historyData.total / ITEMS_PER_PAGE)
+    : 0;
 
   return (
     <div className="p-6 max-w-5xl">
@@ -158,8 +188,8 @@ export default function AgentWorkflows() {
             variant="primary"
             onClick={() => {
               const types = workflowTypesData?.types;
-              const defaultType = types?.[0]?.id || 'analysis';
-              createWorkflow.mutate({ name: `New ${defaultType} workflow`, type: defaultType });
+              const defaultType = types?.[0]?.id || "analysis";
+              createWorkflow.mutate({ type: defaultType });
             }}
             disabled={createWorkflow.isPending}
           >
@@ -183,20 +213,30 @@ export default function AgentWorkflows() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <MetricCard
           label="Active Workflows"
-          value={activeWorkflows.filter((w: Workflow) => w.status === 'running').length.toString()}
+          value={activeWorkflows
+            .filter((w: Workflow) => w.status === "running")
+            .length.toString()}
           trend={isLoading ? "Loading..." : "Running now"}
           trendUp
         />
         <MetricCard
           label="Completed Today"
-          value={historyWorkflows.filter((w: Workflow) => w.status === 'completed').length.toString()}
+          value={historyWorkflows
+            .filter((w: Workflow) => w.status === "completed")
+            .length.toString()}
           trend="+4 vs yesterday"
           trendUp
         />
-        <MetricCard label="Avg. Completion Time" value="3.2m" trend="Target: <5m" />
+        <MetricCard
+          label="Avg. Completion Time"
+          value="3.2m"
+          trend="Target: <5m"
+        />
         <MetricCard
           label="Human-in-Loop Pending"
-          value={activeWorkflows.filter((w: Workflow) => w.status === 'pending').length.toString()}
+          value={activeWorkflows
+            .filter((w: Workflow) => w.status === "pending")
+            .length.toString()}
           trend="Needs review"
         />
       </div>
@@ -216,73 +256,92 @@ export default function AgentWorkflows() {
               <div
                 key={workflow.id}
                 className={`flex items-start gap-3 p-3 rounded-lg border ${
-                  workflow.status === 'pending'
+                  workflow.status === "pending"
                     ? "bg-amber-50 border-amber-200"
                     : "bg-muted/30 border-border"
                 }`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                  workflow.status === 'pending' ? "bg-amber-100" : "bg-blue-100"
-                }`}>
-                  {workflow.status === 'pending'
-                    ? <AlertTriangle size={14} className="text-amber-600"/>
-                    : <Bot size={14} className="text-blue-600"/>
-                  }
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    workflow.status === "pending"
+                      ? "bg-amber-100"
+                      : "bg-blue-100"
+                  }`}
+                >
+                  {workflow.status === "pending" ? (
+                    <AlertTriangle size={14} className="text-amber-600" />
+                  ) : (
+                    <Bot size={14} className="text-blue-600" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[12px] font-bold text-foreground font-mono">{workflow.id}</span>
-                    <StatusBadgePrimitive status={workflow.status}/>
+                    <span className="text-[12px] font-bold text-foreground font-mono">
+                      {workflow.id}
+                    </span>
+                    <StatusBadgePrimitive
+                      status={
+                        workflow.status === "interrupted"
+                          ? "failed"
+                          : workflow.status
+                      }
+                    />
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     <span className="font-semibold">{workflow.name}</span>
                     {workflow.progress > 0 && (
                       <div className="flex items-center gap-2 mt-1.5">
-                        <Progress value={workflow.progress} className="h-1.5 w-24" />
-                        <span className="text-[10px] text-muted-foreground/70">{workflow.progress}%</span>
+                        <Progress
+                          value={workflow.progress}
+                          className="h-1.5 w-24"
+                        />
+                        <span className="text-[10px] text-muted-foreground/70">
+                          {workflow.progress}%
+                        </span>
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
-                    <Clock size={10}/>
+                    <Clock size={10} />
                     {workflow.status}
                   </div>
-                  {workflow.status === 'running' && (
-                    <Btn 
-                      variant="ghost" 
+                  {workflow.status === "running" && (
+                    <Btn
+                      variant="ghost"
                       className="text-[11px] text-amber-600 hover:text-amber-700"
                       onClick={() => pauseWorkflow.mutate(workflow.id)}
                       disabled={pauseWorkflow.isPending}
                     >
                       <Pause size={12} className="mr-1" />
-                      {pauseWorkflow.isPending ? '...' : 'Pause'}
+                      {pauseWorkflow.isPending ? "..." : "Pause"}
                     </Btn>
                   )}
-                  {workflow.status === 'pending' && (
-                    <Btn 
-                      variant="ghost" 
+                  {workflow.status === "pending" && (
+                    <Btn
+                      variant="ghost"
                       className="text-[11px] text-green-600 hover:text-green-700"
                       onClick={() => resumeWorkflow.mutate(workflow.id)}
                       disabled={resumeWorkflow.isPending}
                     >
                       <Play size={12} className="mr-1" />
-                      {resumeWorkflow.isPending ? '...' : 'Resume'}
+                      {resumeWorkflow.isPending ? "..." : "Resume"}
                     </Btn>
                   )}
-                  {(workflow.status === 'running' || workflow.status === 'pending') && (
-                    <Btn 
-                      variant="ghost" 
+                  {(workflow.status === "running" ||
+                    workflow.status === "pending") && (
+                    <Btn
+                      variant="ghost"
                       className="text-[11px] text-red-600 hover:text-red-700"
                       onClick={() => cancelWorkflow.mutate(workflow.id)}
                       disabled={cancelWorkflow.isPending}
                     >
-                      {cancelWorkflow.isPending ? 'Cancelling...' : 'Cancel'}
+                      {cancelWorkflow.isPending ? "Cancelling..." : "Cancel"}
                     </Btn>
                   )}
-                  <Btn 
-                    variant="ghost" 
+                  <Btn
+                    variant="ghost"
                     className="text-[11px]"
                     onClick={() => {
                       setSelectedWorkflow(workflow);
@@ -296,7 +355,7 @@ export default function AgentWorkflows() {
               </div>
             ))}
           </QueryState>
-          
+
           {/* Active Workflows Pagination */}
           {activeData && activeData.total > ITEMS_PER_PAGE && (
             <PaginationControls
@@ -304,9 +363,15 @@ export default function AgentWorkflows() {
               totalPages={activeTotalPages}
               hasMore={activeData.has_more}
               isLoading={activeLoading}
-              displayRange={getDisplayRange(activePage, ITEMS_PER_PAGE, activeData.total)}
+              displayRange={getDisplayRange(
+                activePage,
+                ITEMS_PER_PAGE,
+                activeData.total
+              )}
               onPrevious={() => setActivePage(p => Math.max(0, p - 1))}
-              onNext={() => setActivePage(p => Math.min(activeTotalPages - 1, p + 1))}
+              onNext={() =>
+                setActivePage(p => Math.min(activeTotalPages - 1, p + 1))
+              }
               onRefresh={refetchActive}
             />
           )}
@@ -322,15 +387,30 @@ export default function AgentWorkflows() {
           emptyMessage="No workflow history available."
         >
           <DataTable
-            columns={["Job ID", "Name", "Status", "Progress", "Created", "Actions"]}
+            columns={[
+              "Job ID",
+              "Name",
+              "Status",
+              "Progress",
+              "Created",
+              "Actions",
+            ]}
             rows={historyWorkflows.map((w: Workflow) => [
-              <span className="font-mono text-[11px] text-muted-foreground">{w.id}</span>,
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {w.id}
+              </span>,
               <span className="text-foreground font-semibold">{w.name}</span>,
-              <StatusBadgePrimitive status={w.status}/>,
-              <span className="text-muted-foreground text-[11px]">{w.progress}%</span>,
-              <span className="text-muted-foreground/60 text-[11px]">{w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '-'}</span>,
+              <StatusBadgePrimitive
+                status={w.status === "interrupted" ? "failed" : w.status}
+              />,
+              <span className="text-muted-foreground text-[11px]">
+                {w.progress}%
+              </span>,
+              <span className="text-muted-foreground/60 text-[11px]">
+                {w.createdAt ? new Date(w.createdAt).toLocaleDateString() : "-"}
+              </span>,
               <div className="flex gap-2">
-                <button 
+                <button
                   className="text-blue-600 text-[11px] hover:underline flex items-center gap-1"
                   onClick={() => {
                     setSelectedWorkflow(w);
@@ -344,7 +424,7 @@ export default function AgentWorkflows() {
             ])}
           />
         </QueryState>
-        
+
         {/* Pagination Controls */}
         {historyData && historyData.total > ITEMS_PER_PAGE && (
           <PaginationControls
@@ -352,14 +432,20 @@ export default function AgentWorkflows() {
             totalPages={historyTotalPages}
             hasMore={historyData.has_more}
             isLoading={historyLoading}
-            displayRange={getDisplayRange(historyPage, ITEMS_PER_PAGE, historyData.total)}
+            displayRange={getDisplayRange(
+              historyPage,
+              ITEMS_PER_PAGE,
+              historyData.total
+            )}
             onPrevious={() => setHistoryPage(p => Math.max(0, p - 1))}
-            onNext={() => setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))}
+            onNext={() =>
+              setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))
+            }
             onRefresh={refetchHistory}
           />
         )}
       </SectionCard>
-      
+
       {/* Workflow Detail Drawer */}
       <WorkflowDetail
         workflow={selectedWorkflow}
@@ -368,7 +454,7 @@ export default function AgentWorkflows() {
           setIsDetailOpen(false);
           setSelectedWorkflow(null);
         }}
-        onCancel={(id) => cancelWorkflow.mutate(id)}
+        onCancel={id => cancelWorkflow.mutate(id)}
       />
     </div>
   );
