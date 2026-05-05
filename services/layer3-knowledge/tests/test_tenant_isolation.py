@@ -5,7 +5,7 @@ to prevent cross-tenant data exposure.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, Mock
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from value_fabric.layer3.api.app_monolith import _extract_tenant_id, list_entities, get_full_graph
 
 
@@ -22,7 +22,7 @@ class TestTenantIsolation:
     @pytest.fixture
     def mock_request_with_tenant(self):
         """Create a mock request with tenant context."""
-        request = MagicMock(spec=Request)
+        request = MagicMock()
         request.state = MagicMock()
         request.state.context = MagicMock()
         request.state.context.tenant_id = "tenant-a"
@@ -31,7 +31,7 @@ class TestTenantIsolation:
     @pytest.fixture
     def mock_request_no_tenant(self):
         """Create a mock request without tenant context."""
-        request = MagicMock(spec=Request)
+        request = MagicMock()
         request.state = MagicMock()
         request.state.context = None
         return request
@@ -39,10 +39,12 @@ class TestTenantIsolation:
     @pytest.fixture
     def mock_neo4j_driver(self):
         """Create a mock Neo4j driver."""
-        driver = AsyncMock()
+        driver = MagicMock()
         session = AsyncMock()
-        driver.session.return_value.__aenter__.return_value = session
-        driver.session.return_value.__aexit__ = AsyncMock(return_value=False)
+        driver.session.return_value = MagicMock(
+            __aenter__=AsyncMock(return_value=session),
+            __aexit__=AsyncMock(return_value=False),
+        )
 
         # Mock count result
         count_result = AsyncMock()
@@ -53,25 +55,7 @@ class TestTenantIsolation:
 
     def test_extract_tenant_id_with_context(self, mock_request_with_tenant):
         """_extract_tenant_id should return tenant_id from request context."""
-        import value_fabric.layer3.api.app_monolith as _m
-        import dis
-        print("DEBUG module:", _extract_tenant_id.__module__)
-        print("DEBUG module file:", _m.__file__)
-        print("DEBUG NEO4J_TENANT_AVAILABLE:", _m.NEO4J_TENANT_AVAILABLE)
-        print("DEBUG id(NEO4J):", id(_m.NEO4J_TENANT_AVAILABLE))
-        # Check if function closure has captured NEO4J_TENANT_AVAILABLE
-        print("DEBUG func globals id(NEO4J):", id(_extract_tenant_id.__globals__.get("NEO4J_TENANT_AVAILABLE")))
-        print("DEBUG func globals NEO4J:", _extract_tenant_id.__globals__.get("NEO4J_TENANT_AVAILABLE"))
-        req = mock_request_with_tenant
-        st = req.state
-        ctx = getattr(st, "context", None)
-        print("DEBUG state:", st)
-        print("DEBUG context:", ctx)
-        print("DEBUG ctx.tenant_id:", ctx.tenant_id if ctx else "None")
-        print("DEBUG ctx truthy:", bool(ctx))
-        print("DEBUG ctx.tenant_id truthy:", bool(ctx.tenant_id) if ctx else False)
         tenant_id = _extract_tenant_id(mock_request_with_tenant)
-        print("DEBUG tenant_id:", tenant_id)
         assert tenant_id == "tenant-a"
 
     def test_extract_tenant_id_without_context(self, mock_request_no_tenant):

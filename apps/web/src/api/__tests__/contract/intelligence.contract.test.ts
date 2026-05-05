@@ -55,8 +55,8 @@ const PipelineSummaryResponseSchema = z.object({
 // ── GET /v1/intelligence/account/{account_id}/briefing ───────────────────────
 
 describe('Contract: GET /v1/intelligence/account/{account_id}/briefing', () => {
-  it('briefing response has account_id and signals array', () => {
-    const resp = assertSchema(
+  it('briefing response passes schema with valid payload', () => {
+    assertSchema(
       AccountBriefingResponseSchema,
       {
         account_id: 'acct-001',
@@ -70,10 +70,25 @@ describe('Contract: GET /v1/intelligence/account/{account_id}/briefing', () => {
       },
       'AccountBriefingResponse'
     );
+  });
+
+  it('briefing response account_id matches request', () => {
+    const resp = assertSchema(
+      AccountBriefingResponseSchema,
+      {
+        account_id: 'acct-001',
+        signals: [
+          { id: 'sig-1', name: 'Operational inefficiency', category: 'Operational', confidence: 85, impact: 'High', trend: 'Increasing' },
+        ],
+        top_opportunities: ['Automate approval workflows'],
+        risk_factors: ['Budget freeze in Q2'],
+        recommended_actions: ['Schedule executive briefing'],
+        generated_at: '2024-01-15T10:00:00Z',
+      },
+      'AccountBriefingResponse (account_id)'
+    );
     expect(resp.account_id).toBe('acct-001');
     expect(resp.signals).toHaveLength(1);
-    expect(resp.signals[0].confidence).toBeGreaterThanOrEqual(0);
-    expect(resp.signals[0].confidence).toBeLessThanOrEqual(100);
   });
 
   it('briefing with empty signals is valid', () => {

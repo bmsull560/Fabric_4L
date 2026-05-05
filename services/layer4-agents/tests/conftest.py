@@ -19,6 +19,13 @@ if str(_layer4_src) not in sys.path:
     sys.path.insert(0, str(_layer4_src))
 
 import pytest
+from unittest.mock import MagicMock
+
+# Stub optional heavy deps before any imports that transitively require them
+try:
+    import jinja2  # noqa: F401
+except ImportError:
+    sys.modules["jinja2"] = MagicMock()
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────

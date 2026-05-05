@@ -159,17 +159,14 @@ describe('Contract: GET /v1/workflows/{workflow_id}', () => {
     expect(resp.error_count).toBeGreaterThan(0);
   });
 
-  it('all valid status values are accepted', () => {
-    const statuses: z.infer<typeof WorkflowStatusEnum>[] = [
-      'pending', 'running', 'completed', 'failed', 'cancelled', 'paused', 'interrupted',
-    ];
-    for (const status of statuses) {
-      assertSchema(
-        WorkflowStatusResponseSchema,
-        fixtures.workflowStatus({ status }),
-        `WorkflowStatusResponse (${status})`
-      );
-    }
+  it.each([
+    'pending', 'running', 'completed', 'failed', 'cancelled', 'paused', 'interrupted',
+  ] as const)('accepts valid status value "%s"', (status) => {
+    assertSchema(
+      WorkflowStatusResponseSchema,
+      fixtures.workflowStatus({ status }),
+      `WorkflowStatusResponse (${status})`
+    );
   });
 
   it('rejects unknown status value', () => {
@@ -331,6 +328,33 @@ describe('Contract: POST /v1/analysis/whitespace', () => {
         recommendations: [],
       },
       'WhitespaceAnalysisResponse with score > 1'
+    );
+  });
+
+  it('rejects opportunity_score < 0', () => {
+    assertSchemaRejects(
+      WhitespaceAnalysisResponseSchema,
+      {
+        prospect_id: 'p',
+        extracted_needs: [],
+        gap_analysis: [],
+        opportunity_score: -0.1,
+        recommendations: [],
+      },
+      'WhitespaceAnalysisResponse with score < 0'
+    );
+  });
+
+  it('accepts boundary opportunity_score values 0 and 1', () => {
+    assertSchema(
+      WhitespaceAnalysisResponseSchema,
+      { prospect_id: 'p', extracted_needs: [], gap_analysis: [], opportunity_score: 0, recommendations: [] },
+      'WhitespaceAnalysisResponse score=0'
+    );
+    assertSchema(
+      WhitespaceAnalysisResponseSchema,
+      { prospect_id: 'p', extracted_needs: [], gap_analysis: [], opportunity_score: 1, recommendations: [] },
+      'WhitespaceAnalysisResponse score=1'
     );
   });
 });

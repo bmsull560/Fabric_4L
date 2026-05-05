@@ -122,23 +122,38 @@ describe('Contract: POST /api/v1/truths', () => {
       'TruthObjectCreate with negative confidence'
     );
   });
+
+  it('accepts boundary confidence values 0 and 1', () => {
+    assertSchema(TruthObjectCreateSchema, { claim: 'Boundary 0', confidence: 0 }, 'TruthObjectCreate confidence=0');
+    assertSchema(TruthObjectCreateSchema, { claim: 'Boundary 1', confidence: 1 }, 'TruthObjectCreate confidence=1');
+  });
 });
 
 // ── GET /api/v1/truths/{truth_id} ─────────────────────────────────────────────
 
 describe('Contract: GET /api/v1/truths/{truth_id}', () => {
-  it('response has required fields including organization_id', () => {
+  it('response passes schema with valid fixture', () => {
+    assertSchema(TruthObjectResponseSchema, fixtures.truthObject(), 'TruthObjectResponse');
+  });
+
+  it('response id is a valid UUID', () => {
     const resp = assertSchema(
       TruthObjectResponseSchema,
       fixtures.truthObject(),
-      'TruthObjectResponse'
+      'TruthObjectResponse (UUID)'
     );
     expect(resp.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     );
-    expect(resp.organization_id).toBeTruthy();
-    expect(resp.confidence).toBeGreaterThanOrEqual(0);
-    expect(resp.confidence).toBeLessThanOrEqual(1);
+  });
+
+  it('response contains organization_id as tenant proxy', () => {
+    const resp = assertSchema(
+      TruthObjectResponseSchema,
+      fixtures.truthObject(),
+      'TruthObjectResponse (tenant)'
+    );
+    expect(resp.organization_id).toBe('550e8400-e29b-41d4-a716-446655440000');
   });
 
   it('is_stale is a boolean', () => {
@@ -225,9 +240,10 @@ describe('Contract: POST /api/v1/truths/{truth_id}/validate', () => {
       },
       'ValidateResponse'
     );
-    expect(resp.previous_status).toBeTruthy();
-    expect(resp.new_status).toBeTruthy();
-    expect(resp.maturity_level).toBeGreaterThanOrEqual(0);
+    expect(resp.truth_id).toBe('550e8400-e29b-41d4-a716-446655440002');
+    expect(resp.previous_status).toBe('extracted');
+    expect(resp.new_status).toBe('supported');
+    expect(resp.maturity_level).toBe(2);
   });
 
   it('rejects non-UUID truth_id', () => {
