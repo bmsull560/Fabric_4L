@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from value_fabric.shared.security.neo4j import validate_neo4j_aura_config
 
 
 class Settings(BaseSettings):
@@ -44,6 +46,16 @@ class Settings(BaseSettings):
                 "Please set a secure password via NEO4J_PASSWORD environment variable."
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_prod_neo4j_aura(self) -> "Settings":
+        """Production/staging must use managed Aura, not in-cluster Neo4j."""
+        validate_neo4j_aura_config(
+            uri=self.neo4j_uri,
+            password=self.neo4j_password,
+            environment=os.getenv("ENVIRONMENT") or os.getenv("ENV"),
+        )
+        return self
 
     @property
     def neo4j_auth(self) -> tuple[str, str]:

@@ -1,7 +1,7 @@
 # Test Inventory
 
 Generated: 2026-05-04 (Autonomous Test Assurance Agent — Phase 1 Complete)
-Collection Status: **4603 tests collected, 0 collection errors**
+Collection Status: **4623 tests collected, 0 collection errors**
 
 ## Backend Tests
 | Layer | Unit Tests | Integration Tests | Security Tests | E2E Tests |
@@ -55,3 +55,9 @@ Collection Status: **4603 tests collected, 0 collection errors**
   6. `_extract_tenant_id` import path in test_tenant_context_extraction.py
   7. `_extract_tenant_id` import path in test_tenant_isolation.py
   8. `pytest_plugins` double-registration conflict in tests/conftest.py
+  9. `redis` / `psutil` missing in services/layer3-knowledge/tests/conftest.py
+  10. `MagicMock(spec=Request)` falsy issue in test_tenant_isolation.py
+  11. `async with` mock fix for mock_neo4j_driver in test_tenant_isolation.py
+  12. `opentelemetry` / `psycopg2` / `asyncpg` / `jinja2` / `botocore` / `langgraph.checkpoint.postgres` missing across layer1/2/4 conftests
+  13. Import file mismatch across services fixed with `--import-mode=importlib`
+  14. Idempotent opentelemetry stub strategy across conftests to prevent partial-stub conflicts

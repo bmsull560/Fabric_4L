@@ -28,24 +28,57 @@ except ImportError:
     sys.modules["jinja2"] = MagicMock()
 
 try:
-    import opentelemetry  # noqa: F401
+    import redis.asyncio  # noqa: F401
 except ImportError:
     import types
-    class _AutoModule(types.ModuleType):
-        def __init__(self, name):
-            super().__init__(name)
-            self.__path__ = []
-        def __getattr__(self, name):
-            if name.startswith("_"):
-                raise AttributeError(name)
-            if name not in self.__dict__:
-                mod = _AutoModule(f"{self.__name__}.{name}")
-                self.__dict__[name] = mod
-                sys.modules[mod.__name__] = mod
-            return self.__dict__[name]
-    _otel = _AutoModule("opentelemetry")
-    sys.modules["opentelemetry"] = _otel
-    _otel.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter = type("OTLPSpanExporter", (), {})
+    _redis = types.ModuleType("redis")
+    _redis.asyncio = MagicMock()
+    sys.modules["redis"] = _redis
+    sys.modules["redis.asyncio"] = _redis.asyncio
+
+try:
+    import opentelemetry  # noqa: F401
+except ImportError:
+    pass
+
+import types
+import importlib.util
+
+def _make_pkg(name):
+    m = types.ModuleType(name)
+    m.__path__ = []
+    spec = importlib.util.spec_from_loader(name, loader=None)
+    spec.submodule_search_locations = []
+    m.__spec__ = spec
+    sys.modules[name] = m
+    return m
+
+# Idempotently ensure opentelemetry stubs exist (another conftest may have created a partial stub)
+_otel = sys.modules.get("opentelemetry") or _make_pkg("opentelemetry")
+if not hasattr(_otel, "trace"):
+    _otel.trace = _make_pkg("opentelemetry.trace")
+
+_exp = sys.modules.get("opentelemetry.exporter") or _make_pkg("opentelemetry.exporter")
+_otlp = sys.modules.get("opentelemetry.exporter.otlp") or _make_pkg("opentelemetry.exporter.otlp")
+_proto = sys.modules.get("opentelemetry.exporter.otlp.proto") or _make_pkg("opentelemetry.exporter.otlp.proto")
+_http = sys.modules.get("opentelemetry.exporter.otlp.proto.http") or _make_pkg("opentelemetry.exporter.otlp.proto.http")
+_txe = sys.modules.get("opentelemetry.exporter.otlp.proto.http.trace_exporter") or _make_pkg("opentelemetry.exporter.otlp.proto.http.trace_exporter")
+_txe.OTLPSpanExporter = getattr(_txe, "OTLPSpanExporter", type("OTLPSpanExporter", (), {}))
+
+_inst = sys.modules.get("opentelemetry.instrumentation") or _make_pkg("opentelemetry.instrumentation")
+if not hasattr(_inst, "fastapi"):
+    _inst.fastapi = _make_pkg("opentelemetry.instrumentation.fastapi")
+_inst.fastapi.FastAPIInstrumentor = getattr(_inst.fastapi, "FastAPIInstrumentor", type("FastAPIInstrumentor", (), {}))
+
+_sdk_res = sys.modules.get("opentelemetry.sdk.resources") or _make_pkg("opentelemetry.sdk.resources")
+_sdk_res.SERVICE_NAME = getattr(_sdk_res, "SERVICE_NAME", "test")
+_sdk_res.Resource = getattr(_sdk_res, "Resource", type("Resource", (), {}))
+
+_sdk_trace = sys.modules.get("opentelemetry.sdk.trace") or _make_pkg("opentelemetry.sdk.trace")
+_sdk_trace.TracerProvider = getattr(_sdk_trace, "TracerProvider", type("TracerProvider", (), {}))
+
+_sdk_trace_exp = sys.modules.get("opentelemetry.sdk.trace.export") or _make_pkg("opentelemetry.sdk.trace.export")
+_sdk_trace_exp.BatchSpanProcessor = getattr(_sdk_trace_exp, "BatchSpanProcessor", type("BatchSpanProcessor", (), {}))
 
 try:
     import botocore  # noqa: F401
