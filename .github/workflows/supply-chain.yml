@@ -22,12 +22,20 @@ env:
   REGISTRY: ghcr.io
   IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
 
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+  actions: read
+  id-token: write
+
 jobs:
   # ============================================
   # SBOM Generation and Vulnerability Scan
   # ============================================
   sbom-scan:
     name: SBOM + Vulnerability Scan
+    if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -87,12 +95,13 @@ jobs:
   # ============================================
   provenance:
     name: SLSA Provenance
+    if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
+      packages: read
       id-token: write
-      actions: read
 
     strategy:
       fail-fast: false
@@ -134,6 +143,7 @@ jobs:
   # ============================================
   verify-signatures:
     name: Verify Image Signatures
+    if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

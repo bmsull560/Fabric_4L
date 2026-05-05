@@ -37,8 +37,20 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           
       - name: Start ephemeral services
-        working-directory: ./value-fabric
+        working-directory: value-fabric
         run: |
+          cat > .env <<'EOF'
+          OPENAI_API_KEY=sk-ci-test-key
+          ANTHROPIC_API_KEY=sk-ci-test-key
+          NEO4J_PASSWORD=valuefabric
+          JWT_SECRET=ci-jwt-secret-value-for-ephemeral-compose-only
+          JWT_ALGORITHM=HS256
+          AUTH_BYPASS_ENABLED=true
+          ENVIRONMENT=ci
+          REDIS_PASSWORD=valuefabric
+          FLOWER_PASSWORD=valuefabric
+          GRAFANA_ADMIN_PASSWORD=valuefabric
+          EOF
           docker compose up -d neo4j redis postgres
           
           # Wait for services
@@ -72,8 +84,20 @@ jobs:
         uses: grafana/setup-k6-action@v1
         
       - name: Start services under test
-        working-directory: ./value-fabric
+        working-directory: value-fabric
         run: |
+          cat > .env <<'EOF'
+          OPENAI_API_KEY=sk-ci-test-key
+          ANTHROPIC_API_KEY=sk-ci-test-key
+          NEO4J_PASSWORD=valuefabric
+          JWT_SECRET=ci-jwt-secret-value-for-ephemeral-compose-only
+          JWT_ALGORITHM=HS256
+          AUTH_BYPASS_ENABLED=true
+          ENVIRONMENT=ci
+          REDIS_PASSWORD=valuefabric
+          FLOWER_PASSWORD=valuefabric
+          GRAFANA_ADMIN_PASSWORD=valuefabric
+          EOF
           # Start layer services with PR code
           docker compose up -d --build layer2-extraction layer3-knowledge layer4-agents
           
@@ -180,9 +204,24 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+
       - name: Cleanup Docker Compose
-        working-directory: ./value-fabric
+        working-directory: value-fabric
         run: |
+          cat > .env <<'EOF'
+          OPENAI_API_KEY=sk-ci-test-key
+          ANTHROPIC_API_KEY=sk-ci-test-key
+          NEO4J_PASSWORD=valuefabric
+          JWT_SECRET=ci-jwt-secret-value-for-ephemeral-compose-only
+          JWT_ALGORITHM=HS256
+          AUTH_BYPASS_ENABLED=true
+          ENVIRONMENT=ci
+          REDIS_PASSWORD=valuefabric
+          FLOWER_PASSWORD=valuefabric
+          GRAFANA_ADMIN_PASSWORD=valuefabric
+          EOF
           docker compose down -v
           docker system prune -f
 
