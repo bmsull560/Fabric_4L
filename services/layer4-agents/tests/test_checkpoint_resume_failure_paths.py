@@ -419,3 +419,85 @@ class TestPartialResume:
         assert result.output_data["node_2"] == {"result": "more_data"}
         assert result.output_data["node_3"] == {"result": "new_data"}
         assert result.output_data["resumed"] is True
+
+
+@pytest.mark.asyncio
+class TestAgentCheckpointSafety:
+    """Focused checkpoint/resume safety contracts for agent workflows."""
+
+    async def test_agent_checkpoint_preserves_tenant_context(self, state_manager):
+        workflow_id = "tenant-checkpoint-wf"
+        state = BaseAgentState(
+            workflow_id=workflow_id,
+            workflow_type=TEST_WORKFLOW_TYPE,
+            status=WorkflowStatus.PAUSED,
+            input_data={"tenant_id": "tenant-a", "account_id": "account-a"},
+            output_data={},
+            errors=[],
+            metadata={"tenant_id": "tenant-a", "user_id": "user-a"},
+        )
+
+        await state_manager.save_state(workflow_id, state)
+        loaded = await state_manager.load_state(workflow_id)
+
+        assert loaded is not None
+        assert loaded.input_data["tenant_id"] == "tenant-a"
+        assert loaded.metadata["tenant_id"] == "tenant-a"
+
+    async def test_agent_resume_missing_checkpoint_fails_safely(self, mock_tool_registry, state_manager):
+        controller = OrchestrationController(
+            tool_registry=mock_tool_registry,
+            state_manager=state_manager,
+        )
+
+        with pytest.raises(WorkflowExecutionError) as exc_info:
+            await controller.resume_workflow("missing-checkpoint", user_id="user-a")
+
+        assert "no state found" in str(exc_info.value).lower()
+
+    async def test_agent_checkpoint_does_not_store_secrets(self, state_manager):
+        workflow_id = "secret-checkpoint-wf"
+        state = BaseAgentState(
+            workflow_id=workflow_id,
+            workflow_type=TEST_WORKFLOW_TYPE,
+            status=WorkflowStatus.PAUSED,
+            input_data={
+                "tenant_id": "tenant-a",
+                "api_key": "sk-live-secret",
+                "nested": {"password": "p@ssw0rd", "token": "tok-secret"},
+            },
+            output_data={"safe": True},
+            errors=[],
+        )
+
+        await state_manager.save_state(workflow_id, state)
+        stored = state_manager._memory_store[state_manager._get_key(workflow_id)]["data"]
+        rendered = str(stored)
+
+        assert "sk-live-secret" not in rendered
+        assert "p@ssw0rd" not in rendered
+        assert "tok-secret" not in rendered
+        assert stored["input_data"]["api_key"] == "[redacted]"
+        assert stored["input_data"]["nested"]["password"] == "[redacted]"
+
+    async def test_agent_resume_does_not_repeat_mutation(self, mock_tool_registry, state_manager):
+        workflow_id = "mutation-resume-wf"
+        state = BaseAgentState(
+            workflow_id=workflow_id,
+            workflow_type=TEST_WORKFLOW_TYPE,
+            status=WorkflowStatus.COMPLETED,
+            input_data={"tenant_id": "tenant-a"},
+            output_data={"mutation_applied": True},
+            errors=[],
+        )
+        await state_manager.save_state(workflow_id, state)
+        controller = OrchestrationController(
+            tool_registry=mock_tool_registry,
+            state_manager=state_manager,
+        )
+        controller._workflow_metadata[workflow_id] = {"workflow_type": TEST_WORKFLOW_TYPE}
+
+        with pytest.raises(WorkflowExecutionError):
+            await controller.resume_workflow(workflow_id, user_id="user-a")
+
+        mock_tool_registry.execute.assert_not_called()

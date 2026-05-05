@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
@@ -14,6 +15,10 @@ if TYPE_CHECKING:
     from ..api.websocket.manager import WorkflowWebSocketManager
 
 logger = logging.getLogger(__name__)
+_SECRET_KEY_PATTERN = re.compile(
+    r"(secret|token|password|api[_-]?key|authorization|credential|private[_-]?key)",
+    re.IGNORECASE,
+)
 
 # Redis key constants
 _WORKFLOW_KEY_PREFIX = "layer4:workflow"
@@ -90,7 +95,7 @@ class StateManager:
         key = self._get_key(workflow_id)
 
         # Serialize state
-        state_dict = state.model_dump()
+        state_dict = self._redact_secrets(state.model_dump())
         state_json = json.dumps(state_dict, default=str)
 
         if self.redis:
@@ -131,6 +136,20 @@ class StateManager:
             return 100.0
         elif status == WorkflowStatus.FAILED:
             return 0.0
+
+    def _redact_secrets(self, value: Any) -> Any:
+        """Recursively redact secret-bearing keys before checkpoint persistence."""
+        if isinstance(value, dict):
+            redacted: dict[str, Any] = {}
+            for key, item in value.items():
+                if _SECRET_KEY_PATTERN.search(str(key)):
+                    redacted[key] = "[redacted]"
+                else:
+                    redacted[key] = self._redact_secrets(item)
+            return redacted
+        if isinstance(value, list):
+            return [self._redact_secrets(item) for item in value]
+        return value
         elif status == WorkflowStatus.PAUSED:
             # Estimate based on whether we have output
             return 50.0 if state.output_data else 25.0

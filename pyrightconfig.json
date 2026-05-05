@@ -5,6 +5,7 @@
     "tests"
   ],
   "extraPaths": [
-    "packages/shared/src"
+    "packages/shared/src",
+    "services/layer2-extraction/src"
   ]
 }

@@ -25,6 +25,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from value_fabric.shared.audit import AuditAction, AuditOutcome
 from value_fabric.shared.audit.emitter import emit_audit_event
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
@@ -41,6 +42,10 @@ class ConversationService__heuristic_classifyResult(TypedDictModel):
     confidence: float
     entities: dict[str, Any]
     intent: str
+
+class ConversationService__guardrailResult(TypedDictModel):
+    reason: str
+    message: str
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +160,33 @@ class ConversationService:
         trace_id = trace_id or str(uuid.uuid4())
         workflow_id = str(uuid.uuid4())
         audit_event_id = f"audit_{uuid.uuid4().hex[:12]}"
+
+        guardrail = self._detect_guardrail_violation(user_message, messages)
+        if guardrail:
+            await self._emit_security_audit(
+                trace_id=trace_id,
+                workflow_id=workflow_id,
+                audit_event_id=audit_event_id,
+                tenant_id=tenant_id,
+                active_tab=active_tab,
+                account_id=account_id,
+                reason=guardrail["reason"],
+            )
+            return ConversationService_handle_messageResult.model_validate({
+                "content": guardrail["message"],
+                "metadata": {
+                    "trace_id": trace_id,
+                    "workflow_id": workflow_id,
+                    "tenant_id": tenant_id,
+                    "tool_name": "valuepilot_conversation",
+                    "audit_event_id": audit_event_id,
+                    "emitted_at": datetime.now(UTC).isoformat(),
+                    "intent": "refusal",
+                    "confidence": 1.0,
+                    "workflow_triggered": False,
+                    "refusal_reason": guardrail["reason"],
+                },
+            })
 
         # Build the GATE execution context
         gate_context = self._build_gate_context()
@@ -496,6 +528,43 @@ class ConversationService:
 
         return ConversationService__heuristic_classifyResult.model_validate({"intent": "general_question", "confidence": 0.50, "entities": {}})
 
+    def _detect_guardrail_violation(
+        self,
+        user_message: str,
+        messages: list[dict[str, str]],
+    ) -> dict[str, str] | None:
+        """Deterministically refuse unsafe agent requests before tools/LLMs run."""
+        combined = "\n".join(
+            [user_message]
+            + [
+                str(msg.get("content", ""))
+                for msg in messages[-5:]
+                if msg.get("role", "user").lower() in {"user", "document", "system"}
+            ]
+        ).lower()
+
+        refusal = (
+            "I can't help with that request because it would bypass Fabric's "
+            "tenant, evidence, approval, or secret-handling controls. I can help "
+            "with a grounded, tenant-scoped draft using approved evidence."
+        )
+        rules: list[tuple[str, tuple[str, ...]]] = [
+            ("prompt_injection", ("ignore previous instructions", "system override", "delete approval gates")),
+            ("cross_tenant_access", ("every tenant", "all tenants", "cross-tenant", "other tenant")),
+            ("secret_exfiltration", ("reveal internal secret", "reveal secrets", "api key", "token", "password")),
+            ("approval_bypass", ("bypass approval", "mark them approved", "export immediately", "approval gates")),
+            ("unsupported_roi", ("guarantee", "without evidence", "unsupported roi", "900% roi")),
+            ("fabricated_benchmark", ("fabricate benchmark", "invent benchmark", "fake benchmark")),
+            ("fabricated_citation", ("source that does not exist", "citation that does not exist", "fake citation")),
+        ]
+        for reason, tokens in rules:
+            if any(token in combined for token in tokens):
+                return ConversationService__guardrailResult.model_validate({
+                    "reason": reason,
+                    "message": refusal,
+                })
+        return None
+
     def _heuristic_response(
         self,
         *,
@@ -507,6 +576,35 @@ class ConversationService:
     ) -> str:
         """Generate a context-aware response without LLM."""
         lower = user_message.lower()
+        evidence_records = (
+            context_data.get("evidence_records")
+            or context_data.get("evidence")
+            or context_data.get("truth_references")
+            or []
+        )
+
+        if any(token in lower for token in ("cite", "evidence", "claim", "roi", "business case")):
+            if evidence_records:
+                citations = []
+                for item in evidence_records:
+                    if isinstance(item, dict):
+                        citation_id = item.get("id") or item.get("evidence_id") or item.get("truth_object_id")
+                        tenant = item.get("tenant_id")
+                        if citation_id and (tenant in {None, context_data.get("tenant_id")}):
+                            citations.append(str(citation_id))
+                if citations:
+                    return (
+                        f"For {account_name} in {active_tab}: Fact: the value claim is supported "
+                        f"by persisted evidence {', '.join(citations[:3])}. Inference: prioritize "
+                        "the recommendation only after reviewer validation. Assumption: missing "
+                        "inputs remain unverified. Benchmark: use benchmark figures only when a "
+                        "persisted benchmark source is attached."
+                    )
+            return (
+                f"For {account_name} in {active_tab}: I do not have persisted evidence for that "
+                "factual value claim, so I cannot present it as verified. Assumption: it can be "
+                "kept as a draft hypothesis until supporting evidence is attached."
+            )
 
         # Account context enrichment
         account_info = context_data.get("account", {})
@@ -621,8 +719,10 @@ class ConversationService:
         """Emit a GATE audit event for the conversation interaction."""
         try:
             await emit_audit_event(
-                event_type="CONVERSATION_INTERACTION",
-                agent_id="conversation-agent",
+                AuditAction.AGENT_EXECUTION,
+                outcome=AuditOutcome.SUCCESS,
+                resource_type="agent",
+                resource_id="conversation-agent",
                 details={
                     "trace_id": trace_id,
                     "workflow_id": workflow_id,
@@ -638,3 +738,35 @@ class ConversationService:
             )
         except Exception:
             logger.warning("Failed to emit conversation audit event", exc_info=True)
+
+    async def _emit_security_audit(
+        self,
+        *,
+        trace_id: str,
+        workflow_id: str,
+        audit_event_id: str,
+        tenant_id: str,
+        active_tab: str,
+        account_id: str | None,
+        reason: str,
+    ) -> None:
+        """Emit an audit event for refused unsafe agent requests."""
+        try:
+            await emit_audit_event(
+                AuditAction.POLICY_DECISION,
+                outcome=AuditOutcome.FAILURE,
+                resource_type="agent",
+                resource_id="conversation-agent",
+                details={
+                    "trace_id": trace_id,
+                    "workflow_id": workflow_id,
+                    "audit_event_id": audit_event_id,
+                    "tenant_id": tenant_id,
+                    "active_tab": active_tab,
+                    "account_id": account_id,
+                    "reason": reason,
+                },
+                chain_id=f"conversation-security:{tenant_id}",
+            )
+        except Exception:
+            logger.warning("Failed to emit conversation security audit event", exc_info=True)

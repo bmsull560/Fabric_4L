@@ -1,4 +1,4 @@
-"""Focused service-level tests for extracted Layer 3 system routes."""
+"""Focused tests for the extracted Layer 3 system routes."""
 
 from typing import Any
 
@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from conftest import TestUtils
-from api.dependencies import get_schema_initializer
-from api.routes import system as system_routes
+from value_fabric.layer3.api.dependencies import get_schema_initializer
+from value_fabric.layer3.api.routes import system as system_routes
 
 
 @pytest.fixture

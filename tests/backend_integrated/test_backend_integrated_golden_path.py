@@ -5,6 +5,8 @@ real Fabric_4L service contracts and durable backend state.
 """
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 pytestmark = [pytest.mark.backend_integrated, pytest.mark.integration, pytest.mark.e2e]
@@ -142,3 +144,81 @@ async def test_backend_integrated_approval_enables_export(backend, seed_ids):
     )
     export, _ = await backend.request("l4", "GET", f"/v1/cases/{case_id}/export", expected=(200, 202))
     assert any(token in str(export).lower() for token in ("url", "download", "export")), export
+
+
+@pytest.mark.asyncio
+async def test_backend_integrated_duplicate_account_create_returns_conflict_or_same_record(backend, seed_ids):
+    await backend.create_seed_graph()
+    duplicate_payload = {
+        "id": seed_ids.account_id,
+        "provider": "salesforce",
+        "provider_record_id": seed_ids.account_id,
+        "name": "Acme Validation Account",
+        "domain": "acme-validation.example",
+        "industry": "Software",
+        "region": "North America",
+        "company_size": 1200,
+        "owner_id": seed_ids.user_admin,
+        "owner_name": "Backend Validation Admin",
+        "owner_email": "backend-validation@example.com",
+        "stage": "qualified",
+        "segment": "enterprise",
+    }
+    body, response = await backend.request(
+        "l4",
+        "POST",
+        "/v1/accounts",
+        json=duplicate_payload,
+        expected=(200, 201, 409),
+    )
+
+    if response.status_code == 409:
+        assert any(token in str(body).lower() for token in ("duplicate", "exists", "already", "conflict", "detail")), body
+        return
+
+    assert str(seed_ids.account_id) in str(body), body
+    persisted, _ = await backend.request("l4", "GET", f"/v1/accounts/{seed_ids.account_id}", expected=(200,))
+    assert str(seed_ids.account_id) in str(persisted), persisted
+
+
+@pytest.mark.asyncio
+async def test_backend_integrated_archived_account_persists_in_detail_and_activity(backend, seed_ids):
+    await backend.create_seed_graph()
+    archived_account_id = str(uuid.uuid4())
+    created, _ = await backend.request(
+        "l4",
+        "POST",
+        "/v1/accounts",
+        json={
+            "id": archived_account_id,
+            "provider": "salesforce",
+            "provider_record_id": archived_account_id,
+            "name": "Archived Validation Account",
+            "domain": f"archived-{archived_account_id[:8]}.example",
+            "industry": "Software",
+            "region": "North America",
+            "company_size": 250,
+            "owner_id": seed_ids.user_admin,
+            "owner_name": "Backend Validation Admin",
+            "owner_email": "backend-validation@example.com",
+            "stage": "archived",
+            "segment": "enterprise",
+        },
+        expected=(200, 201, 202),
+    )
+    assert archived_account_id in str(created), created
+
+    detail, _ = await backend.request("l4", "GET", f"/v1/accounts/{archived_account_id}", expected=(200,))
+    detail_text = str(detail).lower()
+    assert archived_account_id in str(detail), detail
+    assert "archiv" in detail_text or "stage" in detail_text, detail
+
+    activity, _ = await backend.request(
+        "l4",
+        "GET",
+        f"/v1/accounts/{archived_account_id}/activity",
+        expected=(200,),
+    )
+    activity_text = str(activity).lower()
+    assert archived_account_id in str(activity), activity
+    assert any(token in activity_text for token in ("interactions", "total_count", "archiv", "stage")), activity

@@ -106,6 +106,21 @@ journeyTest.describe('Full End-to-End Adversarial Path', () => {
     await expectNotVisible(authedPage, /ignore.*governance|override.*policy|reveal.*secret|system.*prompt/i);
   });
 
+  journeyTest('ADV-003A: ingestion surfaces PII redaction without exposing raw sensitive content', async ({ authedPage }) => {
+    await authedPage.goto('/context/ingestion/jobs', { waitUntil: 'domcontentloaded' });
+
+    await expectAnyVisible(
+      authedPage,
+      [/pii|redacted|sensitive/i, /email|names|storage/i],
+      'PII redaction warning is visible on the ingestion surface',
+    );
+
+    await expectNotVisible(
+      authedPage,
+      /[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\b\d{3}-\d{2}-\d{4}\b|social security/i,
+    );
+  });
+
   journeyTest('ADV-004: signals page does not show injected directive as a valid signal', async ({ authedPage }) => {
     await authedPage.goto(`/intelligence/${DEEP_ACCOUNT_ID}/signals`, { waitUntil: 'domcontentloaded' });
 

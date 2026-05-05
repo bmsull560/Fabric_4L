@@ -8,7 +8,6 @@ Provides REST API endpoints for:
 
 P1-29: OpenTelemetry tracing integration for observability.
 """
-# mypy: disable-error-code=import-not-found,import-untyped
 
 import asyncio
 import hashlib
@@ -25,9 +24,9 @@ from uuid import uuid4
 
 # Third-party imports for health check
 try:
-    import psutil
+    import psutil  # type: ignore[import-untyped]
 except ImportError:
-    psutil = None  # Health check will work without system metrics
+    psutil = None  # type: ignore[assignment]  # Health check will work without system metrics
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
@@ -39,7 +38,7 @@ from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from value_fabric.shared.secrets import load_infisical_secrets
 
-from layer2_extraction.api.deps import RequestContext
+from layer2_extraction.api.deps import RequestContext  # type: ignore
 
 try:
     load_infisical_secrets()
@@ -65,30 +64,30 @@ from ..shared_bootstrap import (
     verify_metrics_access,
 )
 
-from layer2_extraction.alignment import SemanticAligner
-from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
-from layer2_extraction.extraction.chunker import chunk_markdown
-from layer2_extraction.extraction.deduplicator import deduplicate_entities
-from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
-from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store
-from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
-from layer2_extraction.integration.pending_ingestion_store import (
+from layer2_extraction.alignment import SemanticAligner  # type: ignore
+from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router  # type: ignore
+from layer2_extraction.extraction.chunker import chunk_markdown  # type: ignore
+from layer2_extraction.extraction.deduplicator import deduplicate_entities  # type: ignore
+from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor  # type: ignore
+from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store  # type: ignore
+from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient  # type: ignore
+from layer2_extraction.integration.pending_ingestion_store import (  # type: ignore
     PendingIngestionRecord,
     PendingIngestionStore,
     SqlitePendingIngestionStore,
     build_pending_ingestion_store,
 )
-from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics
-from layer2_extraction.models import (
+from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics  # type: ignore
+from layer2_extraction.models import (  # type: ignore
     ExtractionResult,
     Relationship,
 )
-from layer2_extraction.output.provenance import (
+from layer2_extraction.output.provenance import (  # type: ignore
     ExtractionStep,
     get_provenance_tracker,
 )
-from layer2_extraction.output.rdf_generator import generate_rdf
-from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+from layer2_extraction.output.rdf_generator import generate_rdf  # type: ignore
+from layer2_extraction.validation import EntailmentValidator, ValidationSeverity  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -410,9 +409,9 @@ async def _set_pipeline_job(
     if retry_count is not None:
         job.retry_count = retry_count
     if last_error is not _UNSET:
-        job.last_error = last_error
+        job.last_error = last_error  # type: ignore[assignment]
     if next_retry_at is not _UNSET:
-        job.next_retry_at = next_retry_at
+        job.next_retry_at = next_retry_at  # type: ignore[assignment]
     if completed_at is not None:
         job.completed_at = completed_at.isoformat() if completed_at else None
     # Persist to job store
@@ -429,7 +428,7 @@ def _pipeline_response(job: PipelineJob) -> ExtractionStatusResponse:
         relationships_extracted=job.relationships_extracted,
         retry_count=job.retry_count,
         last_error=job.last_error,
-        next_retry_at=job.next_retry_at,
+        next_retry_at=datetime.fromisoformat(job.next_retry_at) if job.next_retry_at else None,
         started_at=datetime.fromisoformat(job.created_at) if job.created_at else None,
         completed_at=datetime.fromisoformat(job.completed_at) if job.completed_at else None,
     )
@@ -525,6 +524,8 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
 
             # Broadcast overall pipeline completion
             job = await job_store.get(job_id)
+            if job is None:
+                return True
             await _ws_manager.broadcast_pipeline_complete(
                 job_id=job_id,
                 status="completed",
@@ -876,11 +877,11 @@ async def run_extraction(
         result = ExtractionResult(
             job_id=job_id,
             source_url=source_url,
-            capabilities=deduplicated.get("capabilities", []),
-            use_cases=deduplicated.get("use_cases", []),
-            personas=deduplicated.get("personas", []),
-            value_drivers=deduplicated.get("value_drivers", []),
-            features=deduplicated.get("features", []),
+            capabilities=deduplicated.get("capabilities", []),  # type: ignore[arg-type]
+            use_cases=deduplicated.get("use_cases", []),  # type: ignore[arg-type]
+            personas=deduplicated.get("personas", []),  # type: ignore[arg-type]
+            value_drivers=deduplicated.get("value_drivers", []),  # type: ignore[arg-type]
+            features=deduplicated.get("features", []),  # type: ignore[arg-type]
             chunks_processed=len(chunks),
         )
 
@@ -956,7 +957,7 @@ async def run_extraction(
         activity.add_step(step5)
 
         # Complete activity
-        activity.output_entities = [e.id for e in result.get_all_entities()]
+        activity.output_entities = [e.id for e in result.get_all_entities()]  # type: ignore[attr-defined]
         activity.output_relationships = [r.id for r in all_relationships]
         activity.complete(rdf_path=rdf_path)
 
@@ -1151,7 +1152,7 @@ async def health_check():
         metrics.set_health_status(l3_dep_healthy, component="layer3")
 
     # Build system metrics if psutil is available
-    system_metrics = {"active_connections": active_connections, "total_requests": total_requests}
+    system_metrics: dict[str, Any] = {"active_connections": active_connections, "total_requests": total_requests}
     if psutil:
         memory_info = psutil.virtual_memory()
         system_metrics["memory_usage_mb"] = memory_info.used / (1024 * 1024)

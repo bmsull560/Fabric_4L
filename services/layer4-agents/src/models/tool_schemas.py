@@ -6,7 +6,7 @@ Pydantic models defining the interface for all 24 tools in the registry.
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ToolCategory(str, Enum):
@@ -156,6 +156,14 @@ class EvaluateFormulaInput(BaseModel):
     variables: dict[str, float] = Field(default_factory=dict)
     unit: str = "USD"
 
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_expression_alias(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "formula" not in data and "expression" in data:
+            data = dict(data)
+            data["formula"] = data["expression"]
+        return data
+
     @field_validator("formula")
     @classmethod
     def validate_formula_chars(cls, v: str) -> str:
@@ -182,6 +190,32 @@ class CalculateROIInput(BaseModel):
     returns: list[float] = Field(default_factory=list)
     time_periods: int = Field(default=3, ge=1)
     discount_rate: float = Field(default=0.1, ge=0.0, le=1.0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_benefit_cost_shape(cls, data: Any) -> Any:
+        if not isinstance(data, dict) or "investment" in data:
+            return data
+
+        costs = data.get("costs")
+        benefits = data.get("benefits")
+        if costs is None and benefits is None:
+            return data
+
+        def _amounts(items: Any) -> list[float]:
+            amounts: list[float] = []
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, dict) and item.get("amount") is not None:
+                        amounts.append(float(item["amount"]))
+            return amounts
+
+        normalized = dict(data)
+        normalized["investment"] = sum(_amounts(costs))
+        normalized["returns"] = _amounts(benefits)
+        if data.get("timeframe_months"):
+            normalized["time_periods"] = max(1, int(data["timeframe_months"]) // 12)
+        return normalized
 
 
 class CalculateROIOutput(BaseModel):

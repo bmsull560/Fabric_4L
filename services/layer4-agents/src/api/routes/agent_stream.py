@@ -18,7 +18,7 @@ import os
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from opentelemetry import trace
 from pydantic import BaseModel, ConfigDict, Field
 from value_fabric.shared.error_handling.middleware import get_request_id
@@ -169,6 +169,12 @@ async def agent_stream_chat(
     3. Delegate to ConversationService.handle_message()
     4. Return response with governance metadata
     """
+    if not ctx.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Validated tenant context required for agent requests",
+        )
+
     # Extract the last user message
     last_user_message = next(
         (msg.content for msg in reversed(payload.messages) if msg.role.lower() == "user"),

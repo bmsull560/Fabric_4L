@@ -34,13 +34,13 @@ try:
 except ImportError:
     HAS_TESTCONTAINERS = False
 
-from value_fabric.layer3_knowledge.src.api.dependencies import (
+from value_fabric.layer3.api.dependencies import (
     get_graph_rag,
     get_hybrid_search,
     get_schema_initializer,
     get_sync_manager,
 )
-from value_fabric.layer3_knowledge.src.api.main import app
+from value_fabric.layer3.api.main import app
 from value_fabric.layer3_knowledge.src.config import Settings
 from value_fabric.layer3_knowledge.src.ingestion.neo4j_loader import Neo4jLoader
 from value_fabric.layer3_knowledge.src.ingestion.sync_manager import SyncManager

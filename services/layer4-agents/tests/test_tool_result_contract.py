@@ -349,7 +349,7 @@ class TestLLMNoRawJsonLoads:
         test_llm_response_model_validates_correct_json above.
         """
         import inspect
-        from tools.competitive_tools import AnalyzeCompetitionTool
+        from value_fabric.layer4.tools.competitive_tools import AnalyzeCompetitionTool
 
         # Get source of _extract_differences_via_llm
         source = inspect.getsource(AnalyzeCompetitionTool._extract_differences_via_llm)
@@ -376,6 +376,134 @@ class TestRealToolsReturnToolResult:
 
         assert isinstance(result, ToolResult)
         validate_tool_result(result)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Focused Agent Tool Result Safety Additions
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestFocusedAgentToolResultContract:
+    """Focused production-safety checks for agent-facing tool execution."""
+
+    @pytest.mark.asyncio
+    async def test_agent_tool_success_returns_structured_result(self):
+        class Input(BaseModel):
+            value: int
+
+        class Output(BaseModel):
+            doubled: int
+
+        class Tool(BaseTool):
+            name = "agent_success_tool"
+            input_schema = Input
+            output_schema = Output
+
+            async def execute(self, input_data):
+                return Output(doubled=input_data.value * 2)
+
+        result = await Tool(config={"tenant_id": "tenant-a"}).run(
+            {"value": 3, "trace_id": "trace-success", "request_id": "req-success"}
+        )
+
+        assert isinstance(result, ToolResult)
+        assert result.status == "success"
+        assert result.data == {"doubled": 6}
+        assert result.metadata["trace_id"] == "trace-success"
+        assert result.metadata["request_id"] == "req-success"
+        assert result.metadata["tenant_id"] == "tenant-a"
+
+    @pytest.mark.asyncio
+    async def test_agent_tool_exception_returns_structured_error_result(self):
+        class Input(BaseModel):
+            value: str
+
+        class Tool(BaseTool):
+            name = "agent_exception_tool"
+            input_schema = Input
+            output_schema = BaseModel
+
+            async def execute(self, input_data):
+                raise RuntimeError("database password is hunter2")
+
+        result = await Tool().run({"value": "boom", "trace_id": "trace-error"})
+
+        assert result.status == "error"
+        assert result.error["code"] == "TOOL_EXECUTION_ERROR"
+        assert "hunter2" not in result.error["message"]
+        assert "password" not in result.error["message"].lower()
+        assert result.metadata["trace_id"] == "trace-error"
+
+    @pytest.mark.asyncio
+    async def test_agent_tool_error_does_not_leak_secret_values(self):
+        class Input(BaseModel):
+            required_value: int
+
+        class Tool(BaseTool):
+            name = "agent_secret_validation_tool"
+            input_schema = Input
+            output_schema = BaseModel
+
+            async def execute(self, input_data):
+                return {}
+
+        secret = "sk-live-super-secret-token"
+        result = await Tool().run(
+            {"api_key": secret, "password": "p@ssw0rd", "trace_id": "trace-secret"}
+        )
+
+        assert result.status == "error"
+        rendered = str(result.model_dump())
+        assert secret not in rendered
+        assert "p@ssw0rd" not in rendered
+        assert "api_key" not in rendered
+        assert "[redacted]" in rendered
+
+    @pytest.mark.asyncio
+    async def test_agent_tool_result_preserves_request_context(self):
+        class Input(BaseModel):
+            value: int
+
+        class Tool(BaseTool):
+            name = "agent_context_tool"
+            input_schema = Input
+            output_schema = BaseModel
+
+            async def execute(self, input_data):
+                return {"ok": True}
+
+        result = await Tool(config={"tenant_id": "tenant-context"}).run(
+            {"value": 1, "trace_id": "trace-context", "request_id": "req-context"}
+        )
+
+        assert result.metadata["trace_id"] == "trace-context"
+        assert result.metadata["request_id"] == "req-context"
+        assert result.metadata["tenant_id"] == "tenant-context"
+
+    @pytest.mark.asyncio
+    async def test_agent_tool_timeout_returns_structured_degraded_response(self):
+        import asyncio
+
+        class Input(BaseModel):
+            value: int
+
+        class SlowTool(BaseTool):
+            name = "agent_slow_tool"
+            input_schema = Input
+            output_schema = BaseModel
+            timeout_seconds = 0.01
+
+            async def execute(self, input_data):
+                await asyncio.sleep(0.1)
+                return {"ok": True}
+
+        result = await SlowTool().run({"value": 1, "trace_id": "trace-timeout"})
+
+        assert result.status == "error"
+        assert result.error["code"] == "TOOL_TIMEOUT"
+        assert result.error["recoverable"] is True
+        assert "timed out" in result.error["message"]
+        assert result.metadata["trace_id"] == "trace-timeout"
         
         if result.status == "success":
             assert "result" in result.data

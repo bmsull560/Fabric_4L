@@ -212,6 +212,21 @@ async def quick_roi_analysis(
                 raise HTTPException(status_code=422, detail="account_id must be a UUID for smoke-mode ROI validation") from exc
             account = await _require_tenant_account(db, account_uuid, context)
             trace_id = _validation_trace_id(http_request)
+            emit_audit_event(
+                AuditAction.ROI_CALCULATED,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                api_key_id=context.api_key_id,
+                resource_type="ROIAnalysis",
+                resource_id=str(account.id),
+                request_id=trace_id,
+                details={
+                    "mode": "smoke",
+                    "status": "draft",
+                    "account_id": str(account.id),
+                    "requires_full_analysis": True,
+                },
+            )
             return ROIAnalysisResponse(
                 prospect_id=prospect_id,
                 aggregated_roi={
@@ -353,6 +368,23 @@ async def generate_business_case(
                 opportunity_id=request.opportunity_id,
                 status="draft",
                 document_url=None,
+            )
+            emit_audit_event(
+                AuditAction.BUSINESS_CASE_GENERATED,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                api_key_id=context.api_key_id,
+                resource_type="BusinessCase",
+                resource_id=case_id,
+                request_id=trace_id,
+                details={
+                    "mode": "smoke",
+                    "status": "draft",
+                    "account_id": str(account.id),
+                    "approval_required": True,
+                    "export_allowed": False,
+                    "requires_full_generation": True,
+                },
             )
             return BusinessCaseResponse(
                 case_id=case_id,

@@ -6,10 +6,11 @@ Provides centralized tool registration, discovery, and execution.
 import asyncio
 import logging
 import os
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -97,6 +98,39 @@ class get_tool_metadataResult(TypedDictModel):
     tenant_scoped: Any
 
 logger = logging.getLogger(__name__)
+
+_SENSITIVE_KEY_PATTERN = re.compile(
+    r"(secret|token|password|api[_-]?key|authorization|credential|private[_-]?key)",
+    re.IGNORECASE,
+)
+
+
+def _safe_metadata(
+    *,
+    trace_id: str | None = None,
+    tenant_id: str | None = None,
+    request_id: str | None = None,
+    execution_time_ms: int | None = None,
+) -> dict[str, Any]:
+    """Build trace metadata without copying untrusted inputs."""
+    metadata: dict[str, Any] = {
+        "trace_id": trace_id or request_id or str(uuid4()),
+    }
+    if request_id:
+        metadata["request_id"] = request_id
+    if tenant_id:
+        metadata["tenant_id"] = tenant_id
+    if execution_time_ms is not None:
+        metadata["execution_time_ms"] = execution_time_ms
+    return metadata
+
+
+def _safe_input_keys(input_dict: dict[str, Any]) -> list[str]:
+    """Expose only non-sensitive input key names in diagnostic details."""
+    return [
+        key if not _SENSITIVE_KEY_PATTERN.search(str(key)) else "[redacted]"
+        for key in input_dict.keys()
+    ]
 
 
 class ToolError(Exception):
@@ -210,12 +244,19 @@ class BaseTool(ABC):
             ToolResult with status, data, and error information
         """
         start_time = asyncio.get_event_loop().time()
+        request_id = input_dict.get("request_id")
+        tenant_id = self.get_tenant_id() or input_dict.get("tenant_id")
+        base_metadata = _safe_metadata(
+            trace_id=trace_id or input_dict.get("trace_id"),
+            request_id=request_id,
+            tenant_id=tenant_id,
+        )
 
         if self.input_schema is None:
             return ToolResult.failure(
-                code="TOOL_CONFIGURATION_ERROR",
+                code="CONFIGURATION_ERROR",
                 message=f"Tool '{self.name}' has no input schema defined",
-                trace_id=trace_id,
+                metadata=base_metadata,
                 recoverable=False,
             )
 
@@ -223,11 +264,12 @@ class BaseTool(ABC):
         try:
             validated_input = self.input_schema(**input_dict)
         except Exception as e:
+            logger.info("Tool input validation failed: %s", self.name, exc_info=e)
             return ToolResult.failure(
                 code="INPUT_VALIDATION_ERROR",
-                message=f"Invalid input for tool '{self.name}': {e}",
-                details={"input_keys": list(input_dict.keys())},
-                trace_id=trace_id,
+                message=f"Invalid input for tool '{self.name}'",
+                details={"input_keys": _safe_input_keys(input_dict)},
+                metadata=base_metadata,
                 recoverable=False,
             )
 
@@ -238,13 +280,15 @@ class BaseTool(ABC):
             )
         except TimeoutError:
             elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
-            metadata = {"execution_time_ms": elapsed_ms}
-            if trace_id:
-                metadata["trace_id"] = trace_id
+            metadata = _safe_metadata(
+                trace_id=trace_id or input_dict.get("trace_id"),
+                request_id=request_id,
+                tenant_id=tenant_id,
+                execution_time_ms=elapsed_ms,
+            )
             return ToolResult.failure(
                 code="TOOL_TIMEOUT",
                 message=f"Tool '{self.name}' timed out after {self.timeout_seconds}s",
-                trace_id=trace_id,
                 recoverable=True,
                 metadata=metadata,
             )
@@ -252,13 +296,15 @@ class BaseTool(ABC):
             # Log the full exception internally, return safe error to caller
             logger.exception("Tool execution failed: %s", self.name)
             elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
-            metadata = {"execution_time_ms": elapsed_ms}
-            if trace_id:
-                metadata["trace_id"] = trace_id
+            metadata = _safe_metadata(
+                trace_id=trace_id or input_dict.get("trace_id"),
+                request_id=request_id,
+                tenant_id=tenant_id,
+                execution_time_ms=elapsed_ms,
+            )
             return ToolResult.failure(
                 code="TOOL_EXECUTION_ERROR",
                 message=f"Tool '{self.name}' execution failed",
-                trace_id=trace_id,
                 recoverable=False,
                 metadata=metadata,
             )
@@ -276,7 +322,12 @@ class BaseTool(ABC):
         elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
         return ToolResult.success(
             data=result_data,
-            metadata={"execution_time_ms": elapsed_ms, "trace_id": trace_id},
+            metadata=_safe_metadata(
+                trace_id=trace_id or input_dict.get("trace_id"),
+                request_id=request_id,
+                tenant_id=tenant_id,
+                execution_time_ms=elapsed_ms,
+            ),
         )
 
 
@@ -314,6 +365,7 @@ class TenantAwareTool(BaseTool):
                 code="TENANT_CONTEXT_MISSING",
                 message=f"Tool '{self.name}' requires tenant context but no tenant_id provided",
                 recoverable=False,
+                metadata=_safe_metadata(),
             )
         return "", None
 

@@ -157,7 +157,7 @@ def test_client(test_settings: TestSettings, mock_app_state: AppState) -> TestCl
     app.dependency_overrides[get_settings] = lambda: test_settings
     
     # Override app state dependencies
-    from value_fabric.layer3_knowledge.src.api.dependencies import (
+    from value_fabric.layer3.api.dependencies import (
         get_app_state,
         get_centrality_analyzer,
         get_community_detector,
@@ -191,7 +191,7 @@ async def async_client(test_settings: TestSettings, mock_app_state: AppState) ->
     app.dependency_overrides[get_settings] = lambda: test_settings
     
     # Override app state dependencies
-    from value_fabric.layer3_knowledge.src.api.dependencies import (
+    from value_fabric.layer3.api.dependencies import (
         get_app_state,
         get_centrality_analyzer,
         get_community_detector,
