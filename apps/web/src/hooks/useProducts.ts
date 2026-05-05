@@ -9,43 +9,54 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import {
+  parseCapabilityCoverageList,
+  parseCapabilityMutationResponse,
+  parseFeatureMutationResponse,
+  parsePortfolioSummary,
+  parseProduct,
+  parseProductListResponse,
+  parseSignalMatchList,
+  type CapabilityCoverage,
+  type CapabilityMutationResponse,
+  type FeatureMutationResponse,
+  type PortfolioSummary,
+  type Product,
+  type ProductFeature,
+  type ProductListResponse,
+  type SignalMatch,
+} from '@/lib/schemas/products';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
-// ── Types ──────────────────────────────────────────────────────────────────
-// These will migrate to generated types once OpenAPI specs include DIL endpoints.
-
-export interface Product {
-  id: string;
-  name: string;
-  category: string;
-  description?: string;
-  target_personas: string[];
-  capabilities: string[];
-  features: ProductFeature[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProductFeature {
-  id: string;
-  name: string;
-  description?: string;
-  differentiator: boolean;
-}
+export type {
+  CapabilityCoverage,
+  PortfolioSummary,
+  Product,
+  ProductFeature,
+  ProductListResponse,
+  SignalMatch,
+} from '@/lib/schemas/products';
 
 export interface CreateProductRequest {
   name: string;
-  category: string;
-  description?: string;
+  description: string;
+  category?: string | null;
+  sku?: string | null;
+  pricing_model?: string | null;
   target_personas?: string[];
+  industries?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface UpdateProductRequest {
-  name?: string;
-  category?: string;
-  description?: string;
-  target_personas?: string[];
+  name?: string | null;
+  description?: string | null;
+  category?: string | null;
+  sku?: string | null;
+  pricing_model?: string | null;
+  target_personas?: string[] | null;
+  industries?: string[] | null;
 }
 
 export interface ProductListFilters {
@@ -55,43 +66,17 @@ export interface ProductListFilters {
   limit?: number;
 }
 
-export interface ProductListResponse {
-  products: Product[];
-  total: number;
-}
-
-export interface SignalMatch {
-  signal_id: string;
-  signal_text: string;
-  product_id: string;
-  product_name: string;
-  matched_capabilities: string[];
-  relevance_score: number;
-}
-
-export interface PortfolioSummary {
-  total_products: number;
-  total_features: number;
-  total_capabilities: number;
-  categories: Record<string, number>;
-  avg_features_per_product: number;
-}
-
-export interface CapabilityCoverage {
-  capability: string;
-  product_count: number;
-  products: string[];
-  coverage_ratio: number;
-}
-
 export interface AddFeatureRequest {
   name: string;
-  description?: string;
-  differentiator?: boolean;
+  description: string;
+  feature_type?: string;
+  maturity?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AddCapabilityRequest {
-  capability_name: string;
+  capability_id: string;
+  strength?: number;
 }
 
 // ── Domain Error ───────────────────────────────────────────────────────────
@@ -117,28 +102,30 @@ function buildProductParams(filters: ProductListFilters): string {
 
 async function fetchProducts(filters: ProductListFilters): Promise<ProductListResponse> {
   const response = await apiClient.get('l3', `/v1/products${buildProductParams(filters)}`);
-  return response.data as ProductListResponse;
+  return parseProductListResponse(response.data);
 }
 
 async function fetchProduct(productId: string): Promise<Product> {
   const response = await apiClient.get('l3', `/v1/products/${productId}`);
-  return response.data as Product;
+  return parseProduct(response.data);
 }
 
 async function fetchSignalMatching(accountId?: string): Promise<SignalMatch[]> {
-  const qs = accountId ? `?account_id=${accountId}` : '';
-  const response = await apiClient.get('l3', `/v1/products/matching/signals${qs}`);
-  return response.data as SignalMatch[];
+  const params = new URLSearchParams();
+  if (accountId) params.set('account_id', accountId);
+  const qs = params.toString();
+  const response = await apiClient.get('l3', `/v1/products/matching/signals${qs ? `?${qs}` : ''}`);
+  return parseSignalMatchList(response.data);
 }
 
 async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
   const response = await apiClient.get('l3', '/v1/products/analytics/summary');
-  return response.data as PortfolioSummary;
+  return parsePortfolioSummary(response.data);
 }
 
 async function fetchCapabilityCoverage(): Promise<CapabilityCoverage[]> {
   const response = await apiClient.get('l3', '/v1/products/analytics/coverage');
-  return response.data as CapabilityCoverage[];
+  return parseCapabilityCoverageList(response.data);
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
@@ -204,7 +191,7 @@ export function useCreateProduct() {
   return useMutation<Product, ProductApiError, CreateProductRequest>({
     mutationFn: async (params) => {
       const response = await apiClient.post('l3', '/v1/products', params);
-      return response.data as Product;
+      return parseProduct(response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.products.all });
@@ -217,7 +204,7 @@ export function useUpdateProduct() {
   return useMutation<Product, ProductApiError, { productId: string; data: UpdateProductRequest }>({
     mutationFn: async ({ productId, data }) => {
       const response = await apiClient.patch('l3', `/v1/products/${productId}`, data);
-      return response.data as Product;
+      return parseProduct(response.data);
     },
     onSuccess: (_data, { productId }) => {
       queryClient.invalidateQueries({ queryKey: QK.products.all });
@@ -240,10 +227,10 @@ export function useDeleteProduct() {
 
 export function useAddProductFeature() {
   const queryClient = useQueryClient();
-  return useMutation<ProductFeature, ProductApiError, { productId: string; data: AddFeatureRequest }>({
+  return useMutation<FeatureMutationResponse, ProductApiError, { productId: string; data: AddFeatureRequest }>({
     mutationFn: async ({ productId, data }) => {
       const response = await apiClient.post('l3', `/v1/products/${productId}/features`, data);
-      return response.data as ProductFeature;
+      return parseFeatureMutationResponse(response.data);
     },
     onSuccess: (_data, { productId }) => {
       queryClient.invalidateQueries({ queryKey: QK.products.detail(productId) });
@@ -266,10 +253,10 @@ export function useDeleteProductFeature() {
 
 export function useAddProductCapability() {
   const queryClient = useQueryClient();
-  return useMutation<{ capability_id: string }, ProductApiError, { productId: string; data: AddCapabilityRequest }>({
+  return useMutation<CapabilityMutationResponse, ProductApiError, { productId: string; data: AddCapabilityRequest }>({
     mutationFn: async ({ productId, data }) => {
       const response = await apiClient.post('l3', `/v1/products/${productId}/capabilities`, data);
-      return response.data as { capability_id: string };
+      return parseCapabilityMutationResponse(response.data);
     },
     onSuccess: (_data, { productId }) => {
       queryClient.invalidateQueries({ queryKey: QK.products.detail(productId) });
