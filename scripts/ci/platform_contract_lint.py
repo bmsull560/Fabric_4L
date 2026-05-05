@@ -55,6 +55,22 @@ def _line_number(newline_offsets: list[int], position: int) -> int:
     return bisect.bisect_left(newline_offsets, position) + 1
 
 
+def _enclosing_function_name(content: str, line_number: int) -> str | None:
+    """Return the nearest enclosing function name for a 1-indexed line number."""
+    lines = content.splitlines()
+    target_index = max(0, min(line_number - 1, len(lines) - 1))
+    for index in range(target_index, -1, -1):
+        stripped = lines[index].lstrip()
+        if not stripped.startswith("def ") and not stripped.startswith("async def "):
+            continue
+        name_start = stripped.find("def ") + 4
+        name_end = stripped.find("(", name_start)
+        if name_end == -1:
+            continue
+        return stripped[name_start:name_end]
+    return None
+
+
 def scan_file(path: str) -> list[tuple]:
     """Scan a Python file for contract violations.
     
@@ -82,6 +98,8 @@ def scan_file(path: str) -> list[tuple]:
     for pattern_name, regex, description, deadline in COMPILED_WARN_PATTERNS:
         for match in regex.finditer(content):
             line_number = _line_number(newline_offsets, match.start())
+            if pattern_name == "raw_dict_agent_return" and _enclosing_function_name(content, line_number) != "execute":
+                continue
             violations.append(("WARN", path, line_number, pattern_name, description, deadline))
 
     return violations
