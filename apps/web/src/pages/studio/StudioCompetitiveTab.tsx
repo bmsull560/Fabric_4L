@@ -16,7 +16,9 @@ import {
   ChevronUp,
 } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
-import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import RightRail, {
+  type RightRailMode,
+} from "@/components/workspace/RightRail";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
@@ -46,12 +48,54 @@ function ThreatBadge({ level }: { level: string }) {
     <span
       className={cn(
         "text-[10px] px-1.5 py-0.5 rounded font-semibold",
-        THREAT_COLORS[level] ?? "bg-gray-100 text-gray-600"
+        THREAT_COLORS[level.toLowerCase()] ?? "bg-gray-100 text-gray-600"
       )}
     >
       {level}
     </span>
   );
+}
+
+function getThreatLevel(entry?: LandscapeEntry): string {
+  if (!entry) return "No data";
+  if (entry.win_rate < 0.35 || entry.overlap_score >= 0.75) return "High";
+  if (entry.win_rate < 0.6 || entry.overlap_score >= 0.4) return "Medium";
+  return "Low";
+}
+
+function getBattlecardDifferentiators(bc: Battlecard): string[] {
+  return [...(bc.differentiators ?? []), ...(bc.key_differentiators ?? [])];
+}
+
+function formatObjectionHandlers(
+  handlers: Battlecard["objection_handlers"]
+): Array<{ label: string; value: string }> {
+  if (!handlers) return [];
+
+  if (Array.isArray(handlers)) {
+    return handlers.flatMap(handler => {
+      if (typeof handler === "string") {
+        const [label, ...valueParts] = handler.split(":");
+        return [
+          {
+            label: valueParts.length > 0 ? label.trim() : "Objection",
+            value:
+              valueParts.length > 0 ? valueParts.join(":").trim() : handler,
+          },
+        ];
+      }
+
+      return Object.entries(handler).map(([label, value]) => ({
+        label,
+        value: String(value),
+      }));
+    });
+  }
+
+  return Object.entries(handlers).map(([label, value]) => ({
+    label,
+    value: String(value),
+  }));
 }
 
 // ── Competitor Row ─────────────────────────────────────────────────────────────
@@ -98,8 +142,12 @@ function BattlecardPanel({ battlecards }: { battlecards: Battlecard[] }) {
 
   return (
     <div className="space-y-2">
-      {battlecards.map((bc) => {
+      {battlecards.map(bc => {
         const expanded = expandedId === bc.id;
+        const differentiators = getBattlecardDifferentiators(bc);
+        const objectionHandlers = formatObjectionHandlers(
+          bc.objection_handlers
+        );
         return (
           <div key={bc.id} className="border border-border rounded-md">
             <button
@@ -114,26 +162,28 @@ function BattlecardPanel({ battlecards }: { battlecards: Battlecard[] }) {
             </button>
             {expanded && (
               <div className="px-3 pb-3 space-y-2 text-[11px]">
-                {bc.key_differentiators && bc.key_differentiators.length > 0 && (
+                {differentiators.length > 0 && (
                   <div>
                     <p className="font-semibold text-green-600 mb-1">
                       Key Differentiators
                     </p>
                     <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
-                      {bc.key_differentiators.map((d: string, i: number) => (
+                      {differentiators.map((d: string, i: number) => (
                         <li key={i}>{d}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {bc.objection_handlers && Object.keys(bc.objection_handlers).length > 0 && (
+                {objectionHandlers.length > 0 && (
                   <div>
                     <p className="font-semibold text-red-600 mb-1">
                       Objection Handlers
                     </p>
                     <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
-                      {Object.entries(bc.objection_handlers).map(([objection, handler]: [string, string], i: number) => (
-                        <li key={i}><strong>{objection}:</strong> {handler}</li>
+                      {objectionHandlers.map(({ label, value }, i: number) => (
+                        <li key={i}>
+                          <strong>{label}:</strong> {value}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -162,7 +212,9 @@ function BattlecardPanel({ battlecards }: { battlecards: Battlecard[] }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function StudioCompetitiveTab() {
   const { accountId } = useParams<{ accountId: string }>();
-  const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
+  const { data: account, isLoading: accountLoading } = useAccount(
+    accountId ?? null
+  );
   const { data: competitorsData } = useCompetitors();
   const { data: landscapeData } = useLandscape();
   const { data: winLossData } = useWinLossSummary();
@@ -175,15 +227,22 @@ export default function StudioCompetitiveTab() {
     selectedCompetitor?.id ?? null
   );
 
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
+  const {
+    messages,
+    sendMessage,
+    suggestedActions,
+    steps,
+    isStreaming,
+    metadata,
+  } = useAgentEvents({
     activeTab: "competitive",
     accountName: account?.name ?? "Account",
   });
 
   const competitors = competitorsData?.competitors ?? [];
-  const landscape = landscapeData as LandscapeEntry[] | undefined;
-  const winLoss = (winLossData as WinLossSummary[]) ?? [];
-  const battlecards = (battlecardsData as Battlecard[]) ?? [];
+  const landscape = landscapeData?.landscape ?? [];
+  const winLoss = winLossData?.competitors ?? [];
+  const battlecards = battlecardsData ?? [];
 
   // Aggregate win/loss stats
   const totalWins = winLoss.reduce((s, w) => s + (w.wins ?? 0), 0);
@@ -202,7 +261,9 @@ export default function StudioCompetitiveTab() {
   }
 
   if (!account) {
-    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+    return (
+      <div className="p-6 text-sm text-destructive">Account not found.</div>
+    );
   }
 
   return (
@@ -222,9 +283,9 @@ export default function StudioCompetitiveTab() {
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
-            steps={steps}
-            isStreaming={isStreaming}
-            runMetadata={metadata}
+          steps={steps}
+          isStreaming={isStreaming}
+          runMetadata={metadata}
         />
       }
     >
@@ -239,9 +300,11 @@ export default function StudioCompetitiveTab() {
         <MetricCard
           label="Threat Level"
           value={
-            landscape && landscape.length > 0
-              ? landscape[0].threat_level
-              : (competitors.length > 0 ? "Assessed" : "No data")
+            landscape.length > 0
+              ? getThreatLevel(landscape[0])
+              : competitors.length > 0
+                ? "Assessed"
+                : "No data"
           }
         />
       </div>
@@ -304,7 +367,7 @@ export default function StudioCompetitiveTab() {
                   className="flex items-center gap-4 px-3 py-2 border border-border rounded-md text-[12px]"
                 >
                   <span className="font-medium flex-1">
-                    {w.competitor_name}
+                    {w.competitor.name ?? "Unknown competitor"}
                   </span>
                   <div className="flex items-center gap-1">
                     <TrendingUp size={11} className="text-green-600" />
