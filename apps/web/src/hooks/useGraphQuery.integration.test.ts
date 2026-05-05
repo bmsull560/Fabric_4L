@@ -141,8 +141,8 @@ describe('useSubgraph Integration [L2-Integration]', () => {
       expect(result.current.data?.nodes).toHaveLength(3);
       expect(result.current.data?.edges).toHaveLength(2);
       expect(result.current.data?.stats).toMatchObject({
-        total_nodes: 3,
-        total_edges: 2,
+        totalNodes: 3,
+        totalEdges: 2,
       });
     });
 
@@ -306,7 +306,7 @@ describe('useSubgraph Integration [L2-Integration]', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       // Verify cascade - querying capability returns driver and usecase
-      const nodeTypes = result.current.data?.nodes.map((n) => n.entity_type);
+      const nodeTypes = result.current.data?.nodes.map((n) => n.entityType);
       expect(nodeTypes).toContain('ValueDriver');
       expect(nodeTypes).toContain('Capability');
       expect(nodeTypes).toContain('UseCase');
@@ -397,7 +397,7 @@ describe('useEntityContext Integration [L2-Integration]', () => {
 
       // Capability connects to driver and usecase
       expect(result.current.data?.neighbors).toHaveLength(2);
-      expect(result.current.data?.entity_count).toBe(3);
+      expect(result.current.data?.entityCount).toBe(3);
     });
 
     it('handles deep traversal (2+ hops)', async () => {
@@ -428,7 +428,7 @@ describe('useEntityContext Integration [L2-Integration]', () => {
       );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.entity_count).toBeGreaterThanOrEqual(2);
+      expect(result.current.data?.entityCount).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -500,7 +500,7 @@ describe('useGraphQuery Integration [L2-Integration]', () => {
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.processing_time_ms).toBeGreaterThanOrEqual(0);
+      expect(result.current.data?.processingTimeMs).toBeGreaterThanOrEqual(0);
       expect(result.current.data?.sources).toBeInstanceOf(Array);
     });
   });
@@ -550,7 +550,7 @@ describe('useEntityTraversal Integration [L2-Integration]', () => {
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.paths[0].value_score).toBeGreaterThan(0);
+      expect(result.current.data?.paths[0].valueScore).toBeGreaterThan(0);
     });
   });
 });

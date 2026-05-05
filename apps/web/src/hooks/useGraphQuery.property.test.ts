@@ -146,13 +146,13 @@ describe('useSubgraph Properties [L3-Property]', () => {
     expect(typeof result.current.data?.depth).toBe('number');
 
     // Stats must be present
-    expect(typeof result.current.data?.stats.total_nodes).toBe('number');
-    expect(typeof result.current.data?.stats.total_edges).toBe('number');
+    expect(typeof result.current.data?.stats.totalNodes).toBe('number');
+    expect(typeof result.current.data?.stats.totalEdges).toBe('number');
     expect(typeof result.current.data?.stats.density).toBe('number');
 
     // Node count must match stats
-    expect(result.current.data?.nodes.length).toBe(result.current.data?.stats.total_nodes);
-    expect(result.current.data?.edges.length).toBe(result.current.data?.stats.total_edges);
+    expect(result.current.data?.nodes.length).toBe(result.current.data?.stats.totalNodes);
+    expect(result.current.data?.edges.length).toBe(result.current.data?.stats.totalEdges);
   });
 
   /**
@@ -213,8 +213,8 @@ describe('useSubgraph Properties [L3-Property]', () => {
       // Every edge source/target must exist in nodes
       const data = result.current.data!;
       for (const edge of data.edges) {
-        expect(nodeIds.has(edge.source)).toBe(true);
-        expect(nodeIds.has(edge.target)).toBe(true);
+        expect(nodeIds.has(edge.sourceId)).toBe(true);
+        expect(nodeIds.has(edge.targetId)).toBe(true);
       }
     });
   });
@@ -270,7 +270,7 @@ describe('useSubgraph Properties [L3-Property]', () => {
 
     expect(result.current.data?.nodes).toEqual([]);
     expect(result.current.data?.edges).toEqual([]);
-    expect(result.current.data?.stats.total_nodes).toBe(0);
+    expect(result.current.data?.stats.totalNodes).toBe(0);
     expect(result.current.data?.stats.density).toBe(0);
   });
 });

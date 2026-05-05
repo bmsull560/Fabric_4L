@@ -337,7 +337,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(result.current.data?.root_entity_id).toBeDefined();
+      expect(result.current.data?.rootEntityId).toBeDefined();
     });
 
     it('handles empty subgraph response', async () => {
@@ -355,7 +355,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
 
       expect(result.current.data?.nodes).toEqual([]);
       expect(result.current.data?.edges).toEqual([]);
-      expect(result.current.data?.stats.total_nodes).toBe(0);
+      expect(result.current.data?.stats.totalNodes).toBe(0);
     });
   });
 
@@ -403,7 +403,7 @@ describe('useSubgraph [L1-Unit-Async]', () => {
       );
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.stats.total_nodes).toBe(500);
+      expect(result.current.data?.stats.totalNodes).toBe(500);
     });
 
     it('handles minimum depth of 1', async () => {
@@ -775,7 +775,7 @@ describe('useGraphQuery [L1-Unit-Async]', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       expect(result.current.data?.entities).toBeInstanceOf(Array);
-      expect(result.current.data?.confidence_score).toBeGreaterThan(0);
+      expect(result.current.data?.confidenceScore).toBeGreaterThan(0);
     });
 
     it('caches entities on success', async () => {

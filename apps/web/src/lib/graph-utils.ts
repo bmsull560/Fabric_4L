@@ -52,6 +52,10 @@ export interface PositionedNode extends GraphNode {
   r: number;
 }
 
+function getNodeEntityType(node: GraphNode): string | undefined {
+  return node.entityType ?? (node as { entity_type?: string }).entity_type;
+}
+
 export function calculateLayout(
   nodes: GraphNode[],
   layout: "force" | "circular" | "hierarchical" = "circular"
@@ -94,7 +98,7 @@ export function calculateLayout(
       ...node,
       x,
       y,
-      r: getNodeRadius(node.entityType),
+      r: getNodeRadius(getNodeEntityType(node)),
     };
   });
 }
@@ -114,7 +118,7 @@ export function countNodeTypes(
   nodes: GraphNode[]
 ): Record<string, number> {
   return nodes.reduce((acc, node) => {
-    const type = node.entityType || "Unknown";
+    const type = getNodeEntityType(node) || "Unknown";
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

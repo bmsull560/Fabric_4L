@@ -332,6 +332,7 @@ export const TruthStatusEnum = z.enum([
 
 export const TruthObjectResponseSchema = z.object({
   id: z.string().uuid(),
+  tenant_id: z.string().uuid(),
   organization_id: z.string().uuid(),
   claim: z.string().min(1),
   claim_type: z.string(),
@@ -514,6 +515,7 @@ export const fixtures = {
 
   truthObject: (overrides?: Partial<z.infer<typeof TruthObjectResponseSchema>>): z.infer<typeof TruthObjectResponseSchema> => ({
     id: '550e8400-e29b-41d4-a716-446655440002',
+    tenant_id: '550e8400-e29b-41d4-a716-446655440000',
     organization_id: '550e8400-e29b-41d4-a716-446655440000',
     claim: 'Manual reporting costs 12 hours/week per analyst',
     claim_type: 'quantitative',

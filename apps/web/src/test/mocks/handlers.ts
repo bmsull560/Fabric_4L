@@ -321,6 +321,9 @@ const mockGraphRelationships = [
   { source: 'entity-003', target: 'entity-001', type: 'owns', confidence: 0.86 },
 ];
 
+const mockSubgraphNodes = mockGraphNodes.slice(0, 2);
+const mockSubgraphRelationships = mockGraphRelationships.slice(0, 1);
+
 const mockBusinessCase = {
   case_id: 'case-001',
   title: 'Test Business Case',
@@ -763,14 +766,14 @@ export const handlers = [
     const depth = Number(url.searchParams.get('depth') ?? '2');
     return HttpResponse.json({
       root_entity_id: centerEntityId,
-      nodes: mockGraphNodes,
-      edges: mockGraphRelationships,
-      relationships: mockGraphRelationships,
+      nodes: mockSubgraphNodes,
+      edges: mockSubgraphRelationships,
+      relationships: mockSubgraphRelationships,
       depth,
       stats: {
-        total_nodes: mockGraphNodes.length,
-        total_edges: mockGraphRelationships.length,
-        density: 0.33,
+        total_nodes: mockSubgraphNodes.length,
+        total_edges: mockSubgraphRelationships.length,
+        density: 0.5,
       },
     });
   }),
@@ -781,14 +784,14 @@ export const handlers = [
     const depth = Number(url.searchParams.get('depth') ?? '2');
     return HttpResponse.json({
       root_entity_id: centerEntityId,
-      nodes: mockGraphNodes,
-      edges: mockGraphRelationships,
-      relationships: mockGraphRelationships,
+      nodes: mockSubgraphNodes,
+      edges: mockSubgraphRelationships,
+      relationships: mockSubgraphRelationships,
       depth,
       stats: {
-        total_nodes: mockGraphNodes.length,
-        total_edges: mockGraphRelationships.length,
-        density: 0.33,
+        total_nodes: mockSubgraphNodes.length,
+        total_edges: mockSubgraphRelationships.length,
+        density: 0.5,
       },
     });
   }),

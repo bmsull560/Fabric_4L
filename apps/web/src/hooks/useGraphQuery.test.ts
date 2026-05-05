@@ -40,7 +40,7 @@ describe('useGraphQuery', () => {
 
     expect(result.current.data).toBeDefined();
     expect(result.current.data?.entities).toBeDefined();
-    expect(result.current.data?.confidence_score).toBeGreaterThan(0);
+    expect(result.current.data?.confidenceScore).toBeGreaterThan(0);
   });
 
   it('handles query errors', async () => {
@@ -92,7 +92,7 @@ describe('useEntityContext', () => {
     const { result } = renderHook(() => useEntityContext('entity-1', 3), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.entity_count).toBeGreaterThan(0);
+    expect(result.current.data?.entityCount).toBeGreaterThan(0);
   });
 
   it('disables query when entityId is null', async () => {
@@ -132,7 +132,7 @@ describe('useEntityTraversal', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.paths).toBeInstanceOf(Array);
-    expect(result.current.data?.path_count).toBeGreaterThanOrEqual(0);
+    expect(result.current.data?.pathCount).toBeGreaterThanOrEqual(0);
   });
 
   it('handles traversal errors', async () => {
@@ -193,8 +193,8 @@ describe('useFullGraph', () => {
     // Should return coherent graph with both nodes AND edges
     expect(result.current.data?.nodes).toHaveLength(2);
     expect(result.current.data?.edges).toHaveLength(1);
-    expect(result.current.data?.edges[0].source).toBe('ent-1');
-    expect(result.current.data?.edges[0].target).toBe('ent-2');
+    expect(result.current.data?.edges[0].sourceId).toBe('ent-1');
+    expect(result.current.data?.edges[0].targetId).toBe('ent-2');
   });
 
   it('handles empty subgraph', async () => {

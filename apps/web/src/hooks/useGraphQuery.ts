@@ -224,7 +224,7 @@ export function useSubgraph(options: SubgraphRequest) {
       params.set('depth', depth.toString());
       params.set('limit', limit.toString());
 
-      const response = await apiClient.get('l3', `/graph/subgraph?${params.toString()}`);
+      const response = await apiClient.get('l3', `/subgraph?${params.toString()}`);
 
       const validated = validateOrThrow(SubgraphResponseSchema, response.data, 'SubgraphResponse');
       return mapSubgraphResponseDtoToDomain(validated);
