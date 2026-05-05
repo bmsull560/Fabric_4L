@@ -17,6 +17,18 @@ Usage Example:
         return expensive_computation(tenant_id, param)
 """
 
+import hashlib
+import json
+import logging
+from typing import Any, Callable, TypeVar
+
+import redis.asyncio as redis
+
+from .config import get_settings
+
+logger = logging.getLogger(__name__)
+T = TypeVar("T")
+
 
 class CacheManager:
     """Simple async Redis cache manager."""

@@ -437,12 +437,17 @@ def build_pending_ingestion_store() -> PendingIngestionStore:
 
     pytest_import_context = bool(os.getenv("PYTEST_CURRENT_TEST"))
     explicit_test_mode = os.getenv("TESTING", "").strip().lower() in {"1", "true", "yes"}
-    if (explicit_test_mode or pytest_import_context) and not explicit_service_db_url:
-        # Repository-level contract tests may run with a broad DATABASE_URL and
-        # production-like APP_ENV values set for other layers.  Do not let those
-        # ambient values force a live Layer 2 Postgres connection during pytest
-        # imports.  Runtime production remains fail-closed below because
-        # PYTEST_CURRENT_TEST is only present inside pytest execution.
+    if (
+        (explicit_test_mode or pytest_import_context)
+        and not explicit_service_db_url
+        and not _is_production_like()
+    ):
+        # Repository-level contract tests may run with a broad DATABASE_URL set
+        # for other layers. Keep the historical SQLite fallback only in
+        # non-production-like pytest/development contexts. Staging and production
+        # must exercise the same fail-closed policy under pytest that they use at
+        # runtime, so production-like environments intentionally bypass this
+        # shortcut and are validated by the checks below.
         service_db_url = None
         return SqlitePendingIngestionStore(
             os.getenv("PENDING_INGESTION_SQLITE_PATH", "./data/pending_ingestion.db")

@@ -102,3 +102,4 @@ python_version = "3.11"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short"
+pythonpath = ["src", "../.."]

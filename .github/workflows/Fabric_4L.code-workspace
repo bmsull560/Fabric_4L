@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../Fabric_4L Docs"
+		}
+	],
+	"settings": {
+		"makefile.configureOnOpen": false
+	}
+}

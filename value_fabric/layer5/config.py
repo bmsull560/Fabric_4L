@@ -1,6 +1,7 @@
 """Configuration for Layer 5 Ground Truth service."""
 
 from functools import lru_cache
+from typing import ClassVar
 from urllib.parse import urlparse
 
 from pydantic import Field, field_validator, model_validator
@@ -185,6 +186,23 @@ class Settings(BaseSettings):
         alias="ALLOW_INSECURE_DEV_AUTH_BYPASS",
     )
 
+    # Service-to-service auth shared secret — matches GovernanceMiddleware
+    # SERVICE_AUTH_HEADER validation (X-Service-Auth). Required in
+    # production-like runtimes; empty in dev lets GovernanceMiddleware reject
+    # any ``X-Tenant-ID`` header fallback by design (see middleware.py).
+    service_auth_secret: str = Field(
+        default="",
+        alias="SERVICE_AUTH_SECRET",
+        description=(
+            "Shared secret for X-Service-Auth header used for service-to-service "
+            "X-Tenant-ID handoffs. Minimum 32 characters in production-like envs."
+        ),
+    )
+
+    # Minimum length must stay in sync with
+    # ``value_fabric.shared.identity.middleware.MIN_SERVICE_SECRET_LENGTH`` (32).
+    _MIN_SERVICE_AUTH_SECRET_LENGTH: ClassVar[int] = 32
+
     @property
     def effective_environment(self) -> str:
         """Return the environment value used for production-like policy checks."""
@@ -225,6 +243,16 @@ class Settings(BaseSettings):
             errors.append("ALLOW_INSECURE_DEV_AUTH_BYPASS must be false")
         if self.default_tenant_id.strip().lower() == "default":
             errors.append("DEFAULT_TENANT_ID must not use the implicit 'default' fallback tenant")
+        # SERVICE_AUTH_SECRET must be present and meet the GovernanceMiddleware
+        # minimum length in any production-like runtime so cross-service
+        # X-Tenant-ID handoffs cannot bypass HMAC verification.
+        if len(self.service_auth_secret) < self._MIN_SERVICE_AUTH_SECRET_LENGTH:
+            errors.append(
+                "SERVICE_AUTH_SECRET must be set to a value of at least "
+                f"{self._MIN_SERVICE_AUTH_SECRET_LENGTH} characters"
+            )
+        elif self.service_auth_secret.strip().lower() in WEAK_JWT_SECRETS:
+            errors.append("SERVICE_AUTH_SECRET must not be a known placeholder value")
         if _is_local_database_url(self.database_url) or _has_default_database_credentials(self.database_url):
             errors.append("DATABASE_URL must point to non-local PostgreSQL with non-default credentials")
         if _is_local_database_url(self.database_url_sync) or _has_default_database_credentials(self.database_url_sync):

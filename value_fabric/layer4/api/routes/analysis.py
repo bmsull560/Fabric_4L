@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditEmitter, emit_audit_event
@@ -17,6 +17,7 @@ from ...config.settings import settings
 from ...database import get_db_from_context
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
+from ...models.business_case_record import BusinessCaseRecord
 from ...services.account_service import AccountService
 from ...services.business_case_service import BusinessCaseService
 from ...services.export_provenance import build_export_provenance_manifest
@@ -58,13 +59,19 @@ router = APIRouter()
 class ROIAnalysisRequest(BaseModel):
     """Quick ROI analysis request."""
 
-    prospect_id: str = Field(..., description="Prospect identifier")
-    value_driver_ids: list[str] = Field(..., description="Value drivers to calculate")
+    prospect_id: str | None = Field(None, description="Prospect identifier")
+    value_driver_ids: list[str] = Field(default_factory=list, description="Value drivers to calculate")
     prospect_data: dict[str, float] = Field(
         default_factory=dict, description="Prospect-specific variables"
     )
     industry_vertical: str | None = None
     company_size: str | None = None
+
+    # Legacy/release-smoke compatibility fields. Canonical clients should continue
+    # to send prospect_id, value_driver_ids, and prospect_data.
+    account_id: str | None = None
+    variables: dict[str, float] = Field(default_factory=dict)
+    formula_id: str | None = None
 
 
 class ROIAnalysisResponse(BaseModel):
@@ -143,17 +150,43 @@ class BusinessCaseResponse(BaseModel):
 
 def get_executor() -> WorkflowExecutor:
     """Get workflow executor instance."""
-    from .main import workflow_executor
+    from ..main import workflow_executor
 
     if workflow_executor is None:
         raise HTTPException(status_code=503, detail="Workflow executor not initialized")
     return workflow_executor
 
 
+def _is_smoke_mode(http_request: Request, *, body_mode: str | None = None) -> bool:
+    """Return true only for explicit validation smoke-mode requests."""
+    validation_mode = http_request.headers.get("X-Validation-Mode", "").strip().lower()
+    smoke_header = http_request.headers.get("X-Fabric-Smoke-Test", "").strip().lower()
+    body_mode_normalized = (body_mode or "").strip().lower()
+    return validation_mode == "smoke" or smoke_header in {"1", "true", "yes"} or body_mode_normalized == "smoke"
+
+
+def _validation_trace_id(http_request: Request) -> str:
+    """Return a stable request trace identifier for validation responses."""
+    return http_request.headers.get("X-Validation-Run-ID") or http_request.headers.get("X-Request-ID") or str(uuid4())
+
+
+async def _require_tenant_account(db: AsyncSession, account_id: UUID, context: RequestContext) -> Any:
+    """Load an account through the authenticated tenant boundary or fail closed."""
+    account = await AccountService(db).get_account(account_id, tenant_id=str(context.tenant_id))
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Account not found: {account_id}",
+        )
+    return account
+
+
 @router.post("/analysis/roi", response_model=ROIAnalysisResponse)
 async def quick_roi_analysis(
-    request: ROIAnalysisRequest,
+    http_request: Request,
+    request: ROIAnalysisRequest = Body(...),
     executor: WorkflowExecutor = Depends(get_executor),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_authenticated),
 ) -> ROIAnalysisResponse:
     """Quick ROI analysis for a prospect.
@@ -169,10 +202,47 @@ async def quick_roi_analysis(
         }
     """
     try:
+        prospect_id = request.prospect_id or request.account_id
+        if not prospect_id:
+            raise HTTPException(status_code=422, detail="prospect_id or account_id is required")
+        value_driver_ids = request.value_driver_ids or ([request.formula_id] if request.formula_id else list(request.variables.keys()))
+        if not value_driver_ids:
+            value_driver_ids = ["roi"]
+        prospect_data = request.prospect_data or request.variables
+
+        if _is_smoke_mode(http_request):
+            if not request.account_id:
+                raise HTTPException(status_code=422, detail="account_id is required for smoke-mode ROI validation")
+            try:
+                account_uuid = UUID(request.account_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail="account_id must be a UUID for smoke-mode ROI validation") from exc
+            account = await _require_tenant_account(db, account_uuid, context)
+            trace_id = _validation_trace_id(http_request)
+            return ROIAnalysisResponse(
+                prospect_id=prospect_id,
+                aggregated_roi={
+                    "status": "draft",
+                    "mode": "smoke",
+                    "calculation": "roi",
+                    "result": {
+                        "total_value": 0,
+                        "roi": None,
+                        "payback_months": None,
+                    },
+                    "requires_full_analysis": True,
+                    "trace_id": trace_id,
+                    "tenant_id": str(context.tenant_id),
+                    "account_id": str(account.id),
+                },
+                detailed_results=[],
+                benchmark_comparison={"mode": "smoke", "status": "not_evaluated"},
+            )
+
         input_data = ROIInputData(
-            prospect_id=request.prospect_id,
-            value_driver_ids=request.value_driver_ids,
-            prospect_data=request.prospect_data,
+            prospect_id=prospect_id,
+            value_driver_ids=value_driver_ids,
+            prospect_data=prospect_data,
             industry_vertical=request.industry_vertical,
             company_size=request.company_size,
         )
@@ -187,12 +257,14 @@ async def quick_roi_analysis(
         aggregate = result.output_data.get("aggregate", {})
 
         return ROIAnalysisResponse(
-            prospect_id=request.prospect_id,
-            aggregated_roi=aggregate.get("aggregated", {}),
+            prospect_id=prospect_id,
+            aggregated_roi=aggregate.get("aggregated", {}) or {"calculation": "roi", "result": aggregate},
             detailed_results=aggregate.get("detailed_results", []),
             benchmark_comparison=result.output_data.get("fetch_benchmarks", {}).get("benchmarks"),
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ROI analysis failed: {str(e)}")
 
@@ -248,6 +320,7 @@ async def quick_whitespace_analysis(
 async def generate_business_case(
     request: BusinessCaseRequest,
     background_tasks: BackgroundTasks,
+    http_request: Request,
     executor: WorkflowExecutor = Depends(get_executor),
     db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_authenticated),
@@ -266,7 +339,7 @@ async def generate_business_case(
     """
     try:
         account_service = AccountService(db)
-        account = await account_service.get_account(request.account_id)
+        account = await account_service.get_account(request.account_id, tenant_id=str(context.tenant_id))
         if not account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -275,6 +348,41 @@ async def generate_business_case(
 
         custom_inputs = dict(request.custom_inputs)
         custom_inputs["provider_record_id"] = account.provider_record_id
+
+        if _is_smoke_mode(http_request, body_mode=str(custom_inputs.get("mode", ""))):
+            trace_id = _validation_trace_id(http_request)
+            case_id = f"smoke-case-{uuid4()}"
+            business_case_service = BusinessCaseService(db)
+            await business_case_service.upsert_case_record(
+                case_id=case_id,
+                workflow_id=case_id,
+                account_id=request.account_id,
+                opportunity_id=request.opportunity_id,
+                status="draft",
+                document_url=None,
+            )
+            return BusinessCaseResponse(
+                case_id=case_id,
+                title="Business Case Draft",
+                summary="Draft smoke-mode business case; full generation is still required.",
+                status="draft",
+                created_at=datetime.now(UTC).isoformat(),
+                remediation_items=[
+                    {
+                        "code": "FULL_GENERATION_REQUIRED",
+                        "message": "Run full business-case generation before approval or export.",
+                    }
+                ],
+                case_metadata={
+                    "mode": "smoke",
+                    "trace_id": trace_id,
+                    "tenant_id": str(context.tenant_id),
+                    "account_id": str(account.id),
+                    "approval_required": True,
+                    "export_allowed": False,
+                    "requires_full_generation": True,
+                },
+            )
 
         input_data = BusinessCaseInputData(
             account_id=request.account_id,
@@ -320,6 +428,8 @@ async def generate_business_case(
             case_metadata=case_metadata,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Business case generation failed: {str(e)}")
 
@@ -363,6 +473,7 @@ async def export_business_case(
     case_id: str,
     format: str = "pdf",
     executor: WorkflowExecutor = Depends(get_executor),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Export a generated business case.
@@ -371,11 +482,15 @@ async def export_business_case(
     1. Truth-gating / blocking behavior
     2. Provenance manifest generation, storage upload, and audit events
     """
-    if not settings.export_storage_endpoint:
-        raise HTTPException(status_code=503, detail="Export storage endpoint is not configured")
-
     result = await executor.get_result(case_id)
     if not result:
+        record = await db.get(BusinessCaseRecord, case_id)
+        if record:
+            await _require_tenant_account(db, record.account_id, context)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Business case draft is not approved or document bytes unavailable",
+            )
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
 
     output = result.get("output", {})
@@ -422,6 +537,9 @@ async def export_business_case(
 
     if not isinstance(document_bytes, bytes):
         document_bytes = bytes(document_bytes)
+
+    if not settings.export_storage_endpoint:
+        raise HTTPException(status_code=503, detail="Export storage endpoint is not configured")
 
     workflow_id = (
         result.get("workflow_id")
@@ -733,7 +851,7 @@ async def generate_workspace_intelligence(
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
     account_service = AccountService(db)
-    account = await account_service.get_account(record.account_id)
+    account = await account_service.get_account(record.account_id, tenant_id=str(context.tenant_id))
     if not account:
         raise HTTPException(status_code=404, detail=f"Account for case {case_id} not found")
 

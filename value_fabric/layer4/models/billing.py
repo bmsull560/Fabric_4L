@@ -226,7 +226,6 @@ class BillingUsageEvent(Base):
         # Query optimization indexes
         Index("ix_billing_usage_events_customer_timestamp", "customer_id", "timestamp"),
         Index("ix_billing_usage_events_status_created", "status", "created_at"),
-        Index("ix_billing_usage_events_event_name", "event_name"),
     )
 
     def __repr__(self) -> str:

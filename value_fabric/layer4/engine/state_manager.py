@@ -57,6 +57,11 @@ class StateManager:
         self._max_memory_entries = max_memory_entries
         self._ws_manager: WorkflowWebSocketManager | None = ws_manager
 
+    @property
+    def redis_client(self):
+        """Return the configured Redis client for compatibility with startup integrations."""
+        return self.redis
+
     def _get_key(self, workflow_id: str) -> str:
         """Generate Redis key for workflow state."""
         return f"{_WORKFLOW_KEY_PREFIX}:{workflow_id}"

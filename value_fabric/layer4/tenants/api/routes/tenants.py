@@ -17,6 +17,7 @@ from uuid import UUID
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated, require_super_admin
 from value_fabric.shared.identity.models import (
@@ -130,7 +131,14 @@ async def api_create_tenant(
     db: AsyncSession = Depends(get_db_from_context),
 ) -> TenantModel:
     """Create a new tenant. Requires ``super_admin`` role."""
-    return await create_tenant(db, request)
+    try:
+        return await create_tenant(db, request)
+    except IntegrityError as exc:
+        await db.rollback()
+        message = str(exc.orig if getattr(exc, "orig", None) is not None else exc)
+        if "uix_tenant_slug" in message or "duplicate key value" in message and "slug" in message:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Tenant slug already exists") from exc
+        raise
 
 
 @router.get("", response_model=list[TenantModel])

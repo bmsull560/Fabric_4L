@@ -324,6 +324,11 @@ services:
       LAYER3_SYNC_ENABLED: "true"
       JWT_SECRET: dev-local-secret-do-not-use-in-production-minimum-32-chars
       JWT_ALGORITHM: HS256
+      # Service-to-service HMAC secret for X-Service-Auth handoffs. Must match
+      # the value provided to callers (Layer 4 Layer5GroundTruthClient). Dev-only
+      # value; production-like runtimes enforce length/placeholder checks in
+      # Settings.validate_production_fail_closed.
+      SERVICE_AUTH_SECRET: dev-local-service-auth-secret-do-not-use-in-production-32c
       LOG_LEVEL: info
       API_PORT: 8005
       REDIS_URL: redis://redis:6379/0
