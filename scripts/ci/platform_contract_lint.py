@@ -6,6 +6,7 @@ Scans value-fabric/ and shared/ for non-canonical patterns.
  - WARN: violations that escalate to ERROR after the migration deadline.
 """
 
+import bisect
 import os
 import re
 import sys
@@ -24,6 +25,10 @@ ERROR_PATTERNS = [
     ("manual_db_commit", r"await\s*db\s*\.\s*commit\s*\(", "Route handlers MUST NOT call db.commit() or db.rollback()"),
     ("manual_db_rollback", r"await\s*db\s*\.\s*rollback\s*\(", "Route handlers MUST NOT call db.commit() or db.rollback()"),
 ]
+COMPILED_ERROR_PATTERNS = [
+    (pattern_name, re.compile(regex), description)
+    for pattern_name, regex, description in ERROR_PATTERNS
+]
 
 # Warn patterns: (pattern, regex, description, deadline)
 WARN_PATTERNS = [
@@ -31,10 +36,23 @@ WARN_PATTERNS = [
     ("raw_dict_agent_return", r"return\s*\{", "Agent execute() should return a Pydantic model or use AgentResultEnvelope", "2026-06-30"),
     ("inline_tool_definition", r"class\s*\w+Tool\s*\(.*name\s*=\s*\"\w+\"", "Tools must be defined in their own module and registered", "2026-06-15"),
 ]
+COMPILED_WARN_PATTERNS = [
+    (pattern_name, re.compile(regex), description, deadline)
+    for pattern_name, regex, description, deadline in WARN_PATTERNS
+]
 
 
 def should_skip_dir(dirname: str) -> bool:
     return dirname in SKIP_DIRS
+
+
+def _newline_offsets(content: str) -> list[int]:
+    """Return offsets for newlines so match positions map to line numbers in O(log n)."""
+    return [index for index, char in enumerate(content) if char == "\n"]
+
+
+def _line_number(newline_offsets: list[int], position: int) -> int:
+    return bisect.bisect_left(newline_offsets, position) + 1
 
 
 def scan_file(path: str) -> list[tuple]:
@@ -52,17 +70,18 @@ def scan_file(path: str) -> list[tuple]:
 
     # manual_db_commit/rollback are route-handler rules; skip tests and services
     is_route_handler_file = "api" in Path(path).parts
+    newline_offsets = _newline_offsets(content)
 
-    for pattern_name, regex, description in ERROR_PATTERNS:
+    for pattern_name, regex, description in COMPILED_ERROR_PATTERNS:
         if pattern_name in ("manual_db_commit", "manual_db_rollback") and not is_route_handler_file:
             continue
-        for match in re.finditer(regex, content):
-            line_number = content[:match.start()].count("\n") + 1
+        for match in regex.finditer(content):
+            line_number = _line_number(newline_offsets, match.start())
             violations.append(("ERROR", path, line_number, pattern_name, description))
 
-    for pattern_name, regex, description, deadline in WARN_PATTERNS:
-        for match in re.finditer(regex, content):
-            line_number = content[:match.start()].count("\n") + 1
+    for pattern_name, regex, description, deadline in COMPILED_WARN_PATTERNS:
+        for match in regex.finditer(content):
+            line_number = _line_number(newline_offsets, match.start())
             violations.append(("WARN", path, line_number, pattern_name, description, deadline))
 
     return violations
