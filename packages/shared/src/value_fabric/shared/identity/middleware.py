@@ -97,6 +97,19 @@ _tenant_rate_limit_buckets: dict[str, tuple[float, int]] = {}
 _RATE_LIMIT_WINDOW_SECONDS = 60
 
 
+def _runtime_environment() -> str:
+    return (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("ENV")
+        or os.getenv("APP_ENV")
+        or "development"
+    ).strip().lower()
+
+
+def _is_production_like_environment() -> bool:
+    return _runtime_environment() in {"prod", "production", "staging", "stage"}
+
+
 def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[bool, int]:
     """Check a process-local per-tenant fixed-window rate limit.
 
@@ -317,16 +330,21 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         app: Any,
         api_key_resolver: Optional[Callable] = None,
         rate_limiter: Optional[RedisRateLimiter] = None,
+        redis_client: Any | None = None,
         tenant_settings_resolver: Optional[Callable] = None,
         on_rate_limit_hit: Optional[Callable[[str, str], None]] = None,
     ) -> None:
         super().__init__(app)
+        if rate_limiter is None and redis_client is not None:
+            rate_limiter = RedisRateLimiter(redis_client)
         self._api_key_resolver = api_key_resolver
         self._rate_limiter = rate_limiter
         self._redis_client = rate_limiter
+        self._rate_limiter_backend = "redis" if rate_limiter is not None else "memory"
         self._tenant_settings_resolver = tenant_settings_resolver
         self._on_rate_limit_hit = on_rate_limit_hit
         self._validate_multi_worker_rate_limit_configuration(rate_limiter)
+        logger.info("rate_limiter_backend_selected=%s", self._rate_limiter_backend)
         # P0 FIX: Query param tenant authentication removed entirely
         self._allow_query_param = False
 
@@ -343,6 +361,8 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         if worker_count > 1 and rate_limiter is None:
             raise MultiWorkerRateLimitError()
+        if _is_production_like_environment() and rate_limiter is None:
+            raise RateLimiterConfigurationError(_runtime_environment())
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         token: Any = _current_context.set(None)  # always reset at start
@@ -423,11 +443,11 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             if ctx is not None and self._rate_limiter is not None:
                 rate_limit_result = await self._check_rate_limit(request, ctx)
                 if rate_limit_result is not None and not rate_limit_result.allowed:
-                    config = self._resolve_rate_limit_config(request, ctx)
+                    config = getattr(request.state, "rate_limit_config", None)
                     rate_limit_rpm = config.requests_per_minute if config else ""
                     headers = {
                         "X-RateLimit-Limit": str(rate_limit_rpm),
-                        "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Remaining": str(max(0, rate_limit_result.remaining)),
                         "X-RateLimit-Reset": str(int(rate_limit_result.reset_at)),
                         "Retry-After": str(rate_limit_result.retry_after) if rate_limit_result.retry_after is not None else "60",
                     }
@@ -452,12 +472,9 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         # Add rate limit headers if we performed a rate limit check
         if ctx is not None and self._rate_limiter is not None:
-            config = self._resolve_rate_limit_config(request, ctx)
-            if config is not None:
-                # We need the actual result to set remaining accurately.
-                # Re-run check (Redis script is idempotent for allowed requests)
-                rate_key = self._build_rate_limit_key(request, ctx, config)
-                result = await self._rate_limiter.check(rate_key, config)
+            config = getattr(request.state, "rate_limit_config", None)
+            result = getattr(request.state, "rate_limit_result", None)
+            if config is not None and result is not None:
                 response.headers["X-RateLimit-Limit"] = str(config.requests_per_minute)
                 response.headers["X-RateLimit-Remaining"] = str(max(0, result.remaining))
                 response.headers["X-RateLimit-Reset"] = str(int(result.reset_at))
@@ -617,7 +634,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
     def _resolve_rate_limit_config(
         self, request: Request, ctx: RequestContext
     ) -> Optional[RateLimitConfig]:
-        """Determine the effective rate limit config for the request."""
+        """Determine the non-tenant-resolver rate limit config for the request."""
         # super_admin and system are unlimited
         if ctx.has_any_role(Role.SUPER_ADMIN, Role.SYSTEM):
             return None
@@ -633,14 +650,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     scope=RateLimitScope.API_KEY,
                 )
 
-        # 2. Tenant settings override
-        if self._tenant_settings_resolver is not None:
-            # Fire-and-forget async call — we need to handle this in dispatch
-            # Since this is sync, we'll skip the async tenant resolver here
-            # and handle it in _check_rate_limit instead.
-            pass
-
-        # 3. Role defaults
+        # 2. Role defaults
         for role_str in ctx.roles:
             try:
                 role = Role(role_str)
@@ -652,6 +662,59 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         return ROLE_DEFAULT_RATE_LIMITS.get(Role.READ_ONLY)
 
+    async def _resolve_effective_rate_limit_config(
+        self, request: Request, ctx: RequestContext
+    ) -> Optional[RateLimitConfig]:
+        """Resolve API-key, tenant, then role-default rate limit settings."""
+        base_config = self._resolve_rate_limit_config(request, ctx)
+        if base_config is None:
+            return None
+
+        if (
+            ctx.source == "api_key"
+            and hasattr(request.state, "api_key_record")
+            and getattr(request.state, "api_key_record").get("rate_limit_per_minute") is not None
+        ):
+            return base_config
+
+        if self._tenant_settings_resolver is None:
+            return base_config
+
+        try:
+            settings = await self._tenant_settings_resolver(ctx.tenant_id)
+        except Exception as exc:
+            logger.warning("Tenant settings resolver failed: %s", exc)
+            return base_config
+
+        try:
+            tenant_config = self._rate_limit_config_from_tenant_settings(settings)
+        except Exception as exc:
+            logger.warning("Tenant rate limit settings invalid: %s", exc)
+            return base_config
+        return tenant_config or base_config
+
+    @staticmethod
+    def _rate_limit_config_from_tenant_settings(settings: Any) -> Optional[RateLimitConfig]:
+        """Build shared rate-limit config from tenant settings dictionaries."""
+        if not isinstance(settings, dict):
+            return None
+        rate_limits = settings.get("rate_limits")
+        if not isinstance(rate_limits, dict):
+            return None
+
+        requests_per_minute = rate_limits.get("requests_per_minute")
+        if requests_per_minute is None:
+            return None
+
+        burst_size = rate_limits.get("burst_size", rate_limits.get("burst", 10))
+        scope = rate_limits.get("scope", RateLimitScope.TENANT.value)
+        return RateLimitConfig(
+            requests_per_minute=requests_per_minute,
+            requests_per_hour=rate_limits.get("requests_per_hour"),
+            burst_size=burst_size,
+            scope=RateLimitScope(scope),
+        )
+
     async def _check_rate_limit(
         self, request: Request, ctx: RequestContext
     ) -> Optional[RateLimitResult]:
@@ -659,30 +722,16 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         if self._rate_limiter is None:
             return None
 
-        # Check tenant settings async if resolver is available
-        if self._tenant_settings_resolver is not None:
-            try:
-                settings = await self._tenant_settings_resolver(ctx.tenant_id)
-                if settings and isinstance(settings, dict) and "rate_limits" in settings:
-                    rate_limits = settings["rate_limits"]
-                    if isinstance(rate_limits, dict):
-                        tenant_config = RateLimitConfig(
-                            requests_per_minute=rate_limits.get("requests_per_minute", 60),
-                            requests_per_hour=rate_limits.get("requests_per_hour"),
-                            burst_size=rate_limits.get("burst_size", 10),
-                            scope=RateLimitScope(rate_limits.get("scope", "tenant")),
-                        )
-                        rate_key = self._build_rate_limit_key(request, ctx, tenant_config)
-                        return await self._rate_limiter.check(rate_key, tenant_config)
-            except Exception as exc:
-                logger.warning("Tenant settings resolver failed: %s", exc)
-
-        config = self._resolve_rate_limit_config(request, ctx)
+        config = await self._resolve_effective_rate_limit_config(request, ctx)
         if config is None:
             return None
 
         rate_key = self._build_rate_limit_key(request, ctx, config)
-        return await self._rate_limiter.check(rate_key, config)
+        result = await self._rate_limiter.check(rate_key, config)
+        request.state.rate_limit_config = config
+        request.state.rate_limit_result = result
+        request.state.rate_limit_key = rate_key
+        return result
 
     def _build_rate_limit_key(
         self, request: Request, ctx: RequestContext, config: RateLimitConfig

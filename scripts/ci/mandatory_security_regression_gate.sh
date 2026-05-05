@@ -13,6 +13,7 @@ cd "${ROOT_DIR}"
 
 export TESTING="${TESTING:-true}"
 export ENVIRONMENT="${ENVIRONMENT:-testing}"
+export DEBUG="false"
 export PYTHONPATH="${ROOT_DIR}/packages/shared/src:${ROOT_DIR}:${PYTHONPATH:-}"
 
 # Repo-relative audit/evidence directory for cross-platform support. Override via
@@ -47,6 +48,11 @@ ROOT_SECURITY_TESTS=(
   tests/security/test_tenant_mismatch.py
   tests/security/test_privileged_audit.py
   tests/security/test_rate_limit_safety.py::TestMultiWorkerRateLimitSafety
+)
+
+LAYER4_C06_SECURITY_TESTS=(
+  services/layer4-agents/tests/test_tenant_rate_limits.py
+  services/layer4-agents/tests/test_security_fixes.py
 )
 
 CONTRACT_TESTS=(
@@ -89,6 +95,7 @@ required_suite_paths() {
   for path in \
     "${STANDALONE_API_TESTS[@]}" \
     "${ROOT_SECURITY_TESTS[@]}" \
+    "${LAYER4_C06_SECURITY_TESTS[@]}" \
     "${CONTRACT_TESTS[@]}" \
     "${K8S_TESTS[@]}" \
     "${LAYER2_FAIL_CLOSED_TESTS[@]}" \
@@ -259,6 +266,10 @@ log_suite_result "I-02/I-03 API Production Safety" "pytest app/tests/test_auth_e
 run_step "Tenant-boundary and auth/security regression checks" \
   run_root_pytest "${ARTIFACT_DIR}/tenant_security.xml" "${ROOT_SECURITY_TESTS[@]}"
 log_suite_result "Tenant/Auth Security Regression" "pytest tests/security/*" "Yes" "PASS" "${ARTIFACT_DIR}/tenant_security.xml"
+
+run_step "Layer 4 C-06 tenant rate-limit and security regression checks" \
+  run_root_pytest "${ARTIFACT_DIR}/layer4_c06_security.xml" "${LAYER4_C06_SECURITY_TESTS[@]}"
+log_suite_result "Layer 4 C-06 Security Regression" "pytest services/layer4-agents/tests/test_tenant_rate_limits.py services/layer4-agents/tests/test_security_fixes.py" "Yes" "PASS" "${ARTIFACT_DIR}/layer4_c06_security.xml"
 
 run_step "Shared tenant context contract and import-boundary checks" \
   run_root_pytest "${ARTIFACT_DIR}/shared_contracts.xml" "${CONTRACT_TESTS[@]}"

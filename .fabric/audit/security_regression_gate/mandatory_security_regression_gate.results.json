@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-05-05T04:11:14Z",
+  "git_sha": "f63bc964",
+  "branch": "main",
+  "os": "Linux",
+  "gate_version": "1.2.0",
+  "test_mode": 1,
+  "suites": [],
+  "status": "FAIL",
+  "exit_code": 2
+}

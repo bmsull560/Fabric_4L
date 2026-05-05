@@ -71,6 +71,8 @@ class TestGateFailClosedBehavior:
         assert any("test_production_safety.py" in s for s in suites)
         assert any("test_i03_durable_persistence_and_llm.py" in s for s in suites)
         assert any("test_production_fail_closed_i02.py" in s for s in suites)
+        assert "services/layer4-agents/tests/test_tenant_rate_limits.py" in suites
+        assert "services/layer4-agents/tests/test_security_fixes.py" in suites
 
 
 class TestGateEvidenceLogging:
@@ -225,6 +227,14 @@ class TestGateIntegration:
         assert "layer5-ground-truth" in content
         assert "test_production_fail_closed_i02.py" in content
 
+    def test_gate_script_includes_c06_checks(self, gate_script_path: Path) -> None:
+        """Verify the gate script includes C-06 tenant rate-limit checks."""
+        content = gate_script_path.read_text()
+        assert "LAYER4_C06_SECURITY_TESTS" in content
+        assert "services/layer4-agents/tests/test_tenant_rate_limits.py" in content
+        assert "services/layer4-agents/tests/test_security_fixes.py" in content
+        assert "layer4_c06_security.xml" in content
+
     def test_gate_script_includes_test_mode_guard(
         self, gate_script_path: Path
     ) -> None:
@@ -238,9 +248,11 @@ class TestGateRequiredSuites:
     """Test required suites configuration."""
 
     def test_required_suites_array_exists(self, gate_script_path: Path) -> None:
-        """Verify the gate script has a REQUIRED_SUITES array."""
+        """Verify the gate script has required suite arrays."""
         content = gate_script_path.read_text()
-        assert "REQUIRED_SUITES=(" in content
+        assert "STANDALONE_API_TESTS=(" in content
+        assert "ROOT_SECURITY_TESTS=(" in content
+        assert "LAYER4_C06_SECURITY_TESTS=(" in content
         assert ")" in content
 
     def test_required_suites_includes_critical_security_tests(
@@ -258,3 +270,9 @@ class TestGateRequiredSuites:
         content = gate_script_path.read_text()
         assert "layer2-extraction/tests/test_production_fail_closed_i02.py" in content
         assert "layer5-ground-truth/tests/test_production_fail_closed_i02.py" in content
+
+    def test_required_suites_includes_c06_tests(self, gate_script_path: Path) -> None:
+        """Verify required suites include C-06 mandatory Layer 4 tests."""
+        content = gate_script_path.read_text()
+        assert "services/layer4-agents/tests/test_tenant_rate_limits.py" in content
+        assert "services/layer4-agents/tests/test_security_fixes.py" in content

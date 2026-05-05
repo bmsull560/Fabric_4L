@@ -41,9 +41,13 @@ def test_gate_list_required_mode():
     # Check that I-02 layer2 and layer5 suites are in the list
     layer2_i02 = "services/layer2-extraction/tests/test_production_fail_closed_i02.py"
     layer5_i02 = "services/layer5-ground-truth/tests/test_production_fail_closed_i02.py"
+    layer4_rate_limits = "services/layer4-agents/tests/test_tenant_rate_limits.py"
+    layer4_security_fixes = "services/layer4-agents/tests/test_security_fixes.py"
 
     assert layer2_i02 in required_suites, f"I-02 Layer 2 suite missing from required list"
     assert layer5_i02 in required_suites, f"I-02 Layer 5 suite missing from required list"
+    assert layer4_rate_limits in required_suites, "C-06 tenant rate-limit suite missing from required list"
+    assert layer4_security_fixes in required_suites, "C-06 security fixes suite missing from required list"
 
 
 def test_gate_references_required_i02_layer_suites():
@@ -70,7 +74,7 @@ def test_gate_verify_required_only_mode():
 
 
 def test_gate_uses_repo_relative_audit_dir():
-    """Gate should use repo-relative fabric_audit/ path, not Linux-specific /home/ubuntu."""
+    """Gate should use repo-relative .fabric/audit, not Linux-specific /home/ubuntu."""
     script_content = GATE_SCRIPT.read_text()
 
     # Should NOT use Linux-specific path
@@ -78,15 +82,17 @@ def test_gate_uses_repo_relative_audit_dir():
 
     # Should use repo-relative pattern
     assert "AUDIT_DIR" in script_content, "Gate missing AUDIT_DIR variable"
-    assert "fabric_audit" in script_content, "Gate missing fabric_audit reference"
+    assert ".fabric/audit" in script_content, "Gate missing .fabric/audit reference"
     assert "ROOT_DIR" in script_content, "Gate missing ROOT_DIR variable"
 
 
-def test_gate_includes_required_suite_array():
-    """Gate script must define REQUIRED_SUITES array with all critical checks."""
+def test_gate_includes_required_suite_arrays():
+    """Gate script must define required suite arrays with all critical checks."""
     script_content = GATE_SCRIPT.read_text()
 
-    assert "REQUIRED_SUITES=(" in script_content, "Gate missing REQUIRED_SUITES array"
+    assert "STANDALONE_API_TESTS=(" in script_content, "Gate missing API required suite array"
+    assert "ROOT_SECURITY_TESTS=(" in script_content, "Gate missing root security suite array"
+    assert "LAYER4_C06_SECURITY_TESTS=(" in script_content, "Gate missing Layer 4 C-06 suite array"
 
     # Check for critical security suites
     required_patterns = [
@@ -96,6 +102,8 @@ def test_gate_includes_required_suite_array():
         "test_cross_tenant_api",
         "test_security_policies",
         "test_workload_validation",
+        "test_tenant_rate_limits",
+        "test_security_fixes",
     ]
 
     for pattern in required_patterns:
@@ -129,20 +137,33 @@ def test_gate_includes_kubernetes_hardening_checks():
     assert "test_workload_validation" in script_content, "Gate missing workload validation test"
 
 
-def test_gate_has_check_required_suites_function():
+def test_gate_has_required_suite_validation_function():
     """Gate must have fail-closed validation function."""
     script_content = GATE_SCRIPT.read_text()
 
-    assert "check_required_suites" in script_content, "Gate missing check_required_suites function"
+    assert "assert_required_paths_present" in script_content, "Gate missing required path validation"
     assert "exit 1" in script_content, "Gate missing exit on failure"
 
 
-def test_gate_calls_check_required_suites():
+def test_gate_calls_required_suite_validation():
     """Gate must call check_required_suites before execution."""
     script_content = GATE_SCRIPT.read_text()
 
     # The function should be called in main execution flow (after dry-run modes)
-    assert "check_required_suites" in script_content, "Gate missing check_required_suites call"
+    assert "run_step \"Required suite manifest check\" assert_required_paths_present" in script_content, (
+        "Gate missing required suite manifest check"
+    )
+    assert "assert_no_skip_or_xfail_markers" in script_content, "Gate missing source-level skip guard"
+
+
+def test_gate_runs_layer4_c06_suites_with_skip_assertion():
+    """Gate must execute C-06 suites through the no-skips JUnit assertion."""
+    script_content = GATE_SCRIPT.read_text()
+
+    assert "Layer 4 C-06 tenant rate-limit and security regression checks" in script_content
+    assert "layer4_c06_security.xml" in script_content
+    assert "LAYER4_C06_SECURITY_TESTS" in script_content
+    assert "assert_no_pytest_skips.py" in script_content
 
 
 def test_gate_has_no_skip_or_best_effort_mode():
@@ -164,16 +185,21 @@ def test_gate_has_no_skip_or_best_effort_mode():
             lines_with_pattern = [line for line in script_content.split("\n") if pattern in line.lower()]
             for line in lines_with_pattern:
                 # Allow in comments or specific safe contexts
-                if not line.strip().startswith("#") and "dry-run" not in line.lower() and "test mode" not in line.lower():
+                if (
+                    not line.strip().startswith("#")
+                    and "dry-run" not in line.lower()
+                    and "test mode" not in line.lower()
+                    and "grep" not in line.lower()
+                    and "git" not in line.lower()
+                ):
                     pytest.fail(f"Gate has unsafe pattern '{pattern}' in: {line}")
 
 
-def test_gate_has_sprint4_reference():
-    """Gate script should reference Sprint 4 in its header comment."""
+def test_gate_has_launch_readiness_reference():
+    """Gate script should describe the mandatory launch-readiness purpose."""
     script_content = GATE_SCRIPT.read_text()
 
-    assert "Sprint 4" in script_content or "Sprint 2" in script_content, \
-        "Gate header missing Sprint reference"
+    assert "Mandatory launch-readiness security regression gate" in script_content
 
 
 def test_gate_creates_audit_directory():

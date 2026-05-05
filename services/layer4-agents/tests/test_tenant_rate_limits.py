@@ -17,14 +17,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from starlette.datastructures import Headers
+from starlette.responses import JSONResponse
 
 from value_fabric.shared.identity.middleware import (
     GovernanceMiddleware,
+    RateLimiterConfigurationError,
     _check_tenant_rate_limit,
     _tenant_rate_limit_buckets,
 )
-from value_fabric.shared.identity.rate_limiter import RateLimitResult
-from value_fabric.shared.identity.rate_limiting import RateLimitScope
+from value_fabric.shared.identity.rate_limiter import RateLimitResult, RedisRateLimiter
+from value_fabric.shared.identity.rate_limiting import RateLimitConfig, RateLimitScope
 from value_fabric.layer4.tenants.settings_schema import (
     RateLimitSettings,
     TenantSettings,
@@ -163,6 +165,34 @@ class FakeRateLimiter:
         )
 
 
+def _request(path="/private"):
+    return SimpleNamespace(
+        headers=Headers({}),
+        state=SimpleNamespace(),
+        url=SimpleNamespace(path=path),
+    )
+
+
+def _context(tenant_id=None):
+    return SimpleNamespace(
+        tenant_id=tenant_id or uuid4(),
+        user_id="user-1",
+        api_key_id=None,
+        roles=["read_only"],
+        source="jwt",
+        raw={},
+        has_any_role=lambda *roles: False,
+    )
+
+
+def limiter_config():
+    return RateLimitConfig(
+        requests_per_minute=10,
+        burst_size=10,
+        scope=RateLimitScope.TENANT,
+    )
+
+
 class TestRateLimitMiddlewareIntegration(unittest.TestCase):
     """Test rate limiting integration with the current GovernanceMiddleware API."""
 
@@ -185,14 +215,8 @@ class TestRateLimitMiddlewareIntegration(unittest.TestCase):
                 rate_limiter=limiter,
                 tenant_settings_resolver=resolver,
             )
-            request = SimpleNamespace(headers=Headers({}), state=SimpleNamespace())
-            context = SimpleNamespace(
-                tenant_id=tenant_id,
-                user_id="user-1",
-                api_key_id=None,
-                roles=["read_only"],
-                has_any_role=lambda *roles: False,
-            )
+            request = _request()
+            context = _context(tenant_id)
 
             result = await middleware._check_rate_limit(request, context)
 
@@ -201,6 +225,116 @@ class TestRateLimitMiddlewareIntegration(unittest.TestCase):
             self.assertEqual(limiter.calls[0][0], f"ratelimit:tenant:{tenant_id}")
             self.assertEqual(limiter.calls[0][1].requests_per_minute, 1)
             self.assertEqual(limiter.calls[0][1].scope, RateLimitScope.TENANT)
+            self.assertIs(request.state.rate_limit_result, result)
+            self.assertEqual(request.state.rate_limit_config.requests_per_minute, 1)
+
+        asyncio.run(scenario())
+
+    def test_middleware_honors_layer4_burst_schema_key(self):
+        """Middleware should map tenant settings rate_limits.burst to burst_size."""
+        async def scenario():
+            tenant_id = uuid4()
+            limiter = FakeRateLimiter(allowed=True)
+            resolver = AsyncMock(
+                return_value={
+                    "rate_limits": {
+                        "requests_per_minute": 25,
+                        "burst": 50,
+                        "scope": "tenant",
+                    }
+                }
+            )
+            middleware = GovernanceMiddleware(
+                app=MagicMock(),
+                rate_limiter=limiter,
+                tenant_settings_resolver=resolver,
+            )
+
+            result = await middleware._check_rate_limit(_request(), _context(tenant_id))
+
+            self.assertTrue(result.allowed)
+            self.assertEqual(limiter.calls[0][1].requests_per_minute, 25)
+            self.assertEqual(limiter.calls[0][1].burst_size, 50)
+
+        asyncio.run(scenario())
+
+    def test_middleware_uses_tenant_config_for_429_headers(self):
+        """Blocked responses should report the tenant-specific checked limit."""
+        async def scenario():
+            tenant_id = uuid4()
+            limiter = FakeRateLimiter(allowed=False)
+            resolver = AsyncMock(
+                return_value={
+                    "rate_limits": {
+                        "requests_per_minute": 7,
+                        "burst": 7,
+                        "scope": "tenant",
+                    }
+                }
+            )
+            middleware = GovernanceMiddleware(
+                app=MagicMock(),
+                rate_limiter=limiter,
+                tenant_settings_resolver=resolver,
+            )
+            request = _request()
+            context = _context(tenant_id)
+            middleware._resolve_identity = AsyncMock(return_value=context)
+
+            async def call_next(_request):
+                raise AssertionError("handler should not run after rate-limit denial")
+
+            response = await middleware.dispatch(request, call_next)
+
+            self.assertEqual(response.status_code, 429)
+            self.assertEqual(response.headers["X-RateLimit-Limit"], "7")
+            self.assertEqual(response.headers["X-RateLimit-Remaining"], "0")
+            self.assertEqual(response.headers["Retry-After"], "60")
+            self.assertEqual(len(limiter.calls), 1)
+
+        asyncio.run(scenario())
+
+    def test_middleware_does_not_double_consume_allowed_requests(self):
+        """Allowed requests should call the shared limiter exactly once."""
+        async def scenario():
+            tenant_id = uuid4()
+            limiter = FakeRateLimiter(allowed=True)
+            middleware = GovernanceMiddleware(app=MagicMock(), rate_limiter=limiter)
+            request = _request()
+            context = _context(tenant_id)
+            middleware._resolve_identity = AsyncMock(return_value=context)
+
+            async def call_next(_request):
+                return JSONResponse({"ok": True})
+
+            response = await middleware.dispatch(request, call_next)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(limiter.calls), 1)
+            self.assertEqual(response.headers["X-RateLimit-Limit"], "30")
+            self.assertEqual(response.headers["X-RateLimit-Remaining"], "29")
+            self.assertEqual(response.headers["X-Tenant-ID-Resolved"], str(tenant_id))
+
+        asyncio.run(scenario())
+
+    def test_resolver_failure_falls_back_to_role_defaults(self):
+        """Tenant settings outages should keep enforcing role defaults."""
+        async def scenario():
+            tenant_id = uuid4()
+            limiter = FakeRateLimiter(allowed=True)
+            resolver = AsyncMock(side_effect=RuntimeError("settings unavailable"))
+            middleware = GovernanceMiddleware(
+                app=MagicMock(),
+                rate_limiter=limiter,
+                tenant_settings_resolver=resolver,
+            )
+
+            result = await middleware._check_rate_limit(_request(), _context(tenant_id))
+
+            self.assertTrue(result.allowed)
+            resolver.assert_awaited_once_with(tenant_id)
+            self.assertEqual(limiter.calls[0][1].requests_per_minute, 30)
+            self.assertEqual(limiter.calls[0][1].scope, RateLimitScope.TENANT)
 
         asyncio.run(scenario())
 
@@ -208,12 +342,42 @@ class TestRateLimitMiddlewareIntegration(unittest.TestCase):
         """Middleware should skip rate-limit checks when no limiter is configured."""
         async def scenario():
             middleware = GovernanceMiddleware(app=MagicMock(), rate_limiter=None)
-            request = SimpleNamespace(headers=Headers({}), state=SimpleNamespace())
-            context = SimpleNamespace(tenant_id=uuid4(), roles=["read_only"])
+            request = _request()
+            context = _context()
 
             result = await middleware._check_rate_limit(request, context)
 
             self.assertIsNone(result)
+
+        asyncio.run(scenario())
+
+    def test_prod_like_environment_requires_shared_limiter(self):
+        """Prod/staging startup should fail closed without a shared limiter."""
+        with patch.dict("os.environ", {"ENVIRONMENT": "production", "UVICORN_WORKERS": "1"}, clear=False):
+            with self.assertRaises(RateLimiterConfigurationError):
+                GovernanceMiddleware(app=MagicMock(), rate_limiter=None)
+
+    def test_redis_failure_degrades_open_locally(self):
+        """Local/test Redis failures are explicit fail-open fallback behavior."""
+        async def scenario():
+            limiter = RedisRateLimiter(redis_client=None, fail_open=True)
+            result = await limiter.check("ratelimit:tenant:test", limiter_config())
+
+            self.assertTrue(result.allowed)
+            self.assertEqual(result.remaining, -1)
+            self.assertIsNone(result.retry_after)
+
+        asyncio.run(scenario())
+
+    def test_redis_failure_fails_closed_in_prod_policy(self):
+        """Production Redis failures return a denied result with retry guidance."""
+        async def scenario():
+            limiter = RedisRateLimiter(redis_client=None, fail_open=False)
+            result = await limiter.check("ratelimit:tenant:test", limiter_config())
+
+            self.assertFalse(result.allowed)
+            self.assertEqual(result.remaining, 0)
+            self.assertEqual(result.retry_after, 60)
 
         asyncio.run(scenario())
 

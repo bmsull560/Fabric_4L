@@ -45,15 +45,16 @@ class RateLimitResult:
 class RedisRateLimiter:
     """Sliding-window rate limiter backed by Redis sorted sets."""
 
-    def __init__(self, redis_client: Any | None = None) -> None:
+    def __init__(self, redis_client: Any | None = None, *, fail_open: bool | None = None) -> None:
         self._redis = redis_client
         self._lua_sha: str | None = None
+        self._fail_open = _default_fail_open() if fail_open is None else fail_open
 
     async def check(self, key: str, config: RateLimitConfig) -> RateLimitResult:
         """Check whether a request is allowed under the given config.
 
-        If Redis is unavailable, the request is allowed and a warning is
-        logged (graceful degradation).
+        If Redis is unavailable, local/test environments may allow the request
+        while production-like environments deny it.
         """
         now = time.time()
         
@@ -66,12 +67,8 @@ class RedisRateLimiter:
             limit = config.requests_per_minute
 
         if self._redis is None:
-            return RateLimitResult(
-                allowed=True,
-                remaining=-1,
-                reset_at=now + window,
-                retry_after=None,
-            )
+            logger.warning("Rate limiter Redis client unavailable")
+            return self._fallback_result(now=now, window=window)
 
         try:
             if self._lua_sha is None:
@@ -96,10 +93,34 @@ class RedisRateLimiter:
                 retry_after=retry_after,
             )
         except Exception as exc:
-            logger.warning("Rate limiter Redis call failed, allowing request: %s", exc)
+            logger.warning("Rate limiter Redis call failed: %s", exc)
+            return self._fallback_result(now=now, window=window)
+
+    def _fallback_result(self, *, now: float, window: int) -> RateLimitResult:
+        """Return environment-appropriate fallback behavior for Redis failures."""
+        if self._fail_open:
             return RateLimitResult(
                 allowed=True,
                 remaining=-1,
                 reset_at=now + window,
                 retry_after=None,
             )
+        return RateLimitResult(
+            allowed=False,
+            remaining=0,
+            reset_at=now + window,
+            retry_after=window,
+        )
+
+
+def _default_fail_open() -> bool:
+    """Default Redis fallback policy: fail closed outside local/test."""
+    import os
+
+    environment = (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("ENV")
+        or os.getenv("APP_ENV")
+        or "development"
+    ).strip().lower()
+    return environment not in {"prod", "production", "staging", "stage"}
