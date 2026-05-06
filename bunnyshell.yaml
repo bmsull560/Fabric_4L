@@ -183,7 +183,7 @@ components:
                     - CMD
                     - curl
                     - '-f'
-                    - 'http://localhost:8000/health'
+                    - 'http://localhost:8001/health'
                 timeout: 5s
                 interval: 15s
                 retries: 5
