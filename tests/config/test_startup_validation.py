@@ -389,8 +389,8 @@ class TestProductionDatabaseConfiguration:
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
     
-    def test_prod_boot_warns_with_unencrypted_database_connection(self):
-        """Production boot should warn if database connection is not encrypted.
+    def test_prod_boot_fails_with_unencrypted_database_connection(self):
+        """Production boot must fail if database connection is not encrypted.
         
         Rationale: Unencrypted connections expose tenant data in transit.
         """
@@ -398,16 +398,47 @@ class TestProductionDatabaseConfiguration:
             "ENVIRONMENT": "production",
             "DATABASE_URL": "postgresql://user:pass@localhost:5432/db",  # No sslmode
             "JWT_SECRET": "a" * 32,
-            "REDIS_URL": "redis://localhost:6379",
+            "REDIS_URL": "rediss://localhost:6379",
+            "NEO4J_URI": "neo4j+s://graph.example.com",
         }, clear=True):
-            with patch("logging.Logger.warning") as mock_warning:
+            with pytest.raises(ValueError, match="DATABASE_URL.*must require TLS"):
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
-                
-                # Verify warning was logged
-                assert mock_warning.called
-                warning_msg = str(mock_warning.call_args)
-                assert "SSL" in warning_msg or "encrypt" in warning_msg.lower()
+
+
+class TestProductionDatastoreTransportSecurity:
+    """Validate secure transport across core production datastores."""
+
+    def test_prod_requires_secure_redis_and_neo4j_transports(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "postgresql://user:pass@db.example.com:5432/db?sslmode=require",
+            "REDIS_URL": "redis://redis.example.com:6379",
+            "NEO4J_URI": "bolt://graph.example.com:7687",
+        }, clear=True):
+            with pytest.raises(ValueError, match="REDIS_URL.*rediss"):
+                from value_fabric.shared.security.config import validate_datastore_transport_security
+                validate_datastore_transport_security()
+
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "postgresql://user:pass@db.example.com:5432/db?sslmode=require",
+            "REDIS_URL": "rediss://redis.example.com:6379",
+            "NEO4J_URI": "bolt://graph.example.com:7687",
+        }, clear=True):
+            with pytest.raises(ValueError, match="NEO4J_URI.*TLS"):
+                from value_fabric.shared.security.config import validate_datastore_transport_security
+                validate_datastore_transport_security()
+
+    def test_non_prod_local_environment_allows_exceptions(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "development",
+            "DATABASE_URL": "postgresql://user:pass@localhost:5432/db",
+            "REDIS_URL": "redis://localhost:6379",
+            "NEO4J_URI": "bolt://localhost:7687",
+        }, clear=True):
+            from value_fabric.shared.security.config import validate_datastore_transport_security
+            validate_datastore_transport_security()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

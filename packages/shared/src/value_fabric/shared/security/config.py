@@ -507,13 +507,39 @@ def validate_database_config() -> None:
                 "Use PostgreSQL with RLS for multi-tenant isolation."
             )
         
-        # Warn if connection is not encrypted
-        if "sslmode" not in database_url.lower():
-            logger.warning(
-                "DATABASE_URL does not specify sslmode. "
-                "Unencrypted database connections expose tenant data in transit. "
-                "Add ?sslmode=require to the connection string."
+        # Fail closed unless strong TLS transport is explicitly required.
+        lowered = database_url.lower()
+        if not any(flag in lowered for flag in ("sslmode=require", "sslmode=verify-ca", "sslmode=verify-full")):
+            raise ValueError(
+                "Production DATABASE_URL must require TLS transport. "
+                "Use sslmode=require (or verify-ca/verify-full)."
             )
+
+
+def validate_datastore_transport_security() -> None:
+    """Enforce secure transport for core backend datastores in production-like envs."""
+    env = detect_environment()
+    if env in _DEV_ENVIRONMENTS:
+        return
+
+    database_url = os.getenv("DATABASE_URL", "")
+    redis_url = os.getenv("REDIS_URL", "")
+    neo4j_uri = os.getenv("NEO4J_URI", "")
+
+    if not database_url:
+        raise ValueError("DATABASE_URL is required in production")
+    if not redis_url:
+        raise ValueError("REDIS_URL is required in production")
+    if not neo4j_uri:
+        raise ValueError("NEO4J_URI is required in production")
+
+    lowered_db = database_url.lower()
+    if not any(flag in lowered_db for flag in ("sslmode=require", "sslmode=verify-ca", "sslmode=verify-full")):
+        raise ValueError("Production DATABASE_URL must require TLS transport via sslmode")
+    if not redis_url.lower().startswith("rediss://"):
+        raise ValueError("Production REDIS_URL must use rediss:// to enforce TLS")
+    if not neo4j_uri.lower().startswith(("neo4j+s://", "neo4j+ssc://", "bolt+s://", "bolt+ssc://")):
+        raise ValueError("Production NEO4J_URI must use a TLS scheme (neo4j+s:// or bolt+s://)")
 
 
 def validate_jwt_secret_strength() -> None:

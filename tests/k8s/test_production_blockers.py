@@ -96,3 +96,17 @@ def test_pgbouncer_auth_material_is_not_committed_or_configmapped(repo_root: Pat
     auth_volume = next(v for v in volumes if v["name"] == "pgbouncer-auth")
     assert auth_volume["secret"]["secretName"] == "pgbouncer-auth"
     assert "postgres-secret" not in yaml.safe_dump(deployment)
+
+
+def test_prod_external_secrets_require_secure_datastore_transports(repo_root: Path) -> None:
+    layer4 = (repo_root / "k8s/external-secrets/layer4-secrets.yaml").read_text()
+    redis = (repo_root / "k8s/external-secrets/redis-secrets.yaml").read_text()
+    postgres = (repo_root / "k8s/external-secrets/layer4-secrets.yaml").read_text()
+    neo4j = (repo_root / "k8s/external-secrets/neo4j-secrets.yaml").read_text()
+
+    assert "DATABASE_URL: \"postgresql://" in postgres
+    assert "sslmode=require" in postgres
+    assert "rediss://redis:6379" in layer4
+    assert "REDIS_URL: \"rediss://" in redis
+    assert 'NEO4J_URI: "{{ .neo4j_uri }}"' in neo4j
+    assert "bolt://neo4j:7687" not in layer4

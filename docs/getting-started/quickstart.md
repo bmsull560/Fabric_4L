@@ -69,14 +69,24 @@ graph TB
 git clone https://github.com/bmsull560/Fabric_4L.git
 cd Fabric_4L
 
-# Copy environment template
+# Copy the local-only environment contract
 cp value-fabric/.env.example value-fabric/.env
 ```
 
-Edit `value-fabric/.env` and add your credentials:
+For team development, prefer secret injection so credentials never live in a
+checked-in manifest or shared `.env`:
 
 ```bash
-# Required: OpenAI API Key
+infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- \
+  docker compose up -d
+```
+
+For solo local work, edit `value-fabric/.env` and add your credentials. Do not
+copy these values into Kubernetes `Secret` manifests; use `ExternalSecret` or
+Infisical mappings for cluster deployments.
+
+```bash
+# Required: OpenAI API Key, injected by Infisical when possible
 OPENAI_API_KEY=sk-your-key-here
 
 # Required: JWT Secret (generate with: openssl rand -hex 32)

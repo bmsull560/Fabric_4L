@@ -289,27 +289,36 @@ curl -X POST http://localhost:9093/api/v2/alerts \
 
 **WARNING**: Default secrets are provided for development only.
 
-CI enforces a **secret default guardrail** in `.github/workflows/k8s-readiness.yml`:
-- Scans `k8s/secrets.yml` and secret-related manifests for weak defaults (`changeme`, `postgres`, `valuefabric`, empty `api-key`).
-- Fails pull requests when weak defaults are present in non-template manifests.
-- Allows placeholder values (for example `REPLACE_WITH_*`) **only** in `k8s/secrets.yml.template`.
+CI and admission enforce a **secret placeholder guardrail**:
+
+- `.github/workflows/k8s-readiness.yml` runs `scripts/security/placeholder_secret_scan.py`.
+- `k8s/policy/kyverno-secret-placeholder-guardrails.yaml` rejects unguarded Secret placeholder values at admission time.
+- `k8s/monitoring/placeholder-secret-scanner-cronjob.yaml` provides a six-hour runtime cluster scan for Secrets and ConfigMaps.
+- Dev-only placeholder Secret manifests must carry `value-fabric.io/environment: dev`, `value-fabric.io/non-prod-only: "true"`, `value-fabric.io/secret-scope: dev-placeholder`, and `value-fabric.io/allowed-namespaces`.
 
 ### Secret Guardrail Remediation
 
 If CI fails with a secret guardrail error:
 1. Open the file and line reported by the workflow log.
 2. Replace weak defaults with strong local-development values or wire the value from your secrets manager.
-3. Do **not** keep placeholder values in non-template manifests (`k8s/secrets.yml`, env overlays, routing stacks, or base manifests).
-4. Keep placeholder tokens only in `k8s/secrets.yml.template`.
+3. For staging and production, replace direct `Secret` resources with `ExternalSecret` or Infisical `InfisicalSecret` mappings.
+4. Keep placeholder tokens only in explicitly guarded dev manifests or templates.
 5. Re-run checks locally before pushing:
    ```bash
-   make verify
+   python scripts/security/placeholder_secret_scan.py k8s --allow-guarded-dev
    ```
 
 For production:
-1. Use external secrets management (Vault, AWS Secrets Manager, etc.)
-2. Or use Sealed Secrets / External Secrets Operator
-3. Never commit real secrets to git
+1. Use External Secrets Operator or Infisical for secret injection.
+2. Apply Kyverno guardrails before app manifests:
+   ```bash
+   kubectl apply -f k8s/policy/kyverno-secret-placeholder-guardrails.yaml
+   ```
+3. Enable periodic runtime scanning:
+   ```bash
+   kubectl apply -f k8s/monitoring/placeholder-secret-scanner-cronjob.yaml
+   ```
+4. Never commit real secrets to git.
 
 ## Resource Requirements
 

@@ -642,24 +642,17 @@ kubectl rollout undo deployment/layer3 --to-revision=2
 # View secrets (names only)
 kubectl get secrets
 
-# View decoded secret
-kubectl get secret fabric-secrets -o json | \
-  jq -r '.data | map_values(@base64d)'
+# Verify placeholder guardrail status without printing secret values
+python scripts/security/placeholder_secret_scan.py --runtime
 
-# Create secret from literal
-kubectl create secret generic fabric-secrets \
-  --from-literal=OPENAI_API_KEY=sk-... \
-  --from-literal=DATABASE_PASSWORD=... \
-  --dry-run=client -o yaml | kubectl apply -f -
+# Production/staging: source secrets through ExternalSecret or Infisical
+kubectl apply -f k8s/external-secrets/layer4-secrets.yaml
+kubectl apply -f k8s/infisical/infisical-secret.yml
 
-# Create secret from env file
+# Dev-only fallback: create local Secret imperatively; do not commit the output
 kubectl create secret generic fabric-secrets \
   --from-env-file=.env \
   --dry-run=client -o yaml | kubectl apply -f -
-
-# Create secret from file
-kubectl create secret tls fabric-tls \
-  --cert=tls.crt --key=tls.key
 ```
 
 ---

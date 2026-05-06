@@ -220,9 +220,10 @@ infisical run --env=dev --path=/fabric-4l/apps/web/dev -- \
   npm run dev
 ```
 
-### Option 2: Manual .env (Quick Start)
+### Option 2: Manual .env (Local-Only Quick Start)
 
-For solo development or quick testing.
+For solo development or quick testing. Manual `.env` files are local-only and
+must not become Kubernetes `Secret` manifests.
 
 ```bash
 # 1. Copy example file
@@ -237,6 +238,19 @@ cp .env.example .env
 # 3. Start services
 docker compose up -d
 ```
+
+### Kubernetes Secret Injection
+
+Cluster deployments must use injected secret paths wherever possible:
+
+- Use `ExternalSecret` resources under `k8s/external-secrets/` for Vault-backed secrets.
+- Use Infisical `InfisicalSecret` resources under `k8s/infisical/` for Infisical-backed secrets.
+- Do not commit direct Kubernetes `Secret` manifests with real values.
+- Direct dev-only `Secret` manifests are allowed only when they carry
+  `value-fabric.io/non-prod-only: "true"`,
+  `value-fabric.io/secret-scope: dev-placeholder`, and an explicit
+  `value-fabric.io/allowed-namespaces` annotation. Kyverno admission policy
+  rejects these if they are applied to staging or production namespaces.
 
 **Validation Checklist:**
 
@@ -498,6 +512,9 @@ echo -e "\n=== End Diagnostics ==="
 ### Production Deployment
 
 - [ ] All secrets in Infisical (not in Git)
+- [ ] Kubernetes secrets sourced through `ExternalSecret` or Infisical, not direct `Secret` manifests
+- [ ] Placeholder scan passes for manifests and runtime cluster:
+  `python scripts/security/placeholder_secret_scan.py k8s --allow-guarded-dev`
 - [ ] JWT_SECRET > 32 characters, not default
 - [ ] DEBUG_MODE=false
 - [ ] ENABLE_SWAGGER=false

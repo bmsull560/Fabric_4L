@@ -26,6 +26,7 @@ DEFAULT_JWT_SECRETS = {
 }
 
 SUPERUSER_NAMES = {"postgres", "root", "admin", "superuser"}
+_PROD_LOCAL_ENV_ALLOWLIST = {"development", "dev", "local", "test", "ci"}
 
 
 def _env(name: str, default: str = "") -> str:
@@ -93,6 +94,39 @@ def _database_role(parsed) -> str:
     return (parsed.username or "").lower()
 
 
+def _is_controlled_local_exception() -> bool:
+    return current_environment() in _PROD_LOCAL_ENV_ALLOWLIST
+
+
+def _query_has_secure_postgres_ssl(url: str) -> bool:
+    lowered = url.lower()
+    return any(mode in lowered for mode in ("sslmode=require", "sslmode=verify-ca", "sslmode=verify-full"))
+
+
+def _validate_secure_transport_url(name: str, value: str) -> None:
+    parsed = urlparse(value)
+    scheme = parsed.scheme.lower()
+
+    if name == "DATABASE_URL":
+        if not scheme.startswith(("postgresql", "postgres")):
+            raise ValueError("Production DATABASE_URL must use PostgreSQL for RLS")
+        if not _query_has_secure_postgres_ssl(value):
+            raise ValueError(
+                "Production DATABASE_URL must require TLS with sslmode=require, sslmode=verify-ca, or sslmode=verify-full"
+            )
+        return
+
+    if name == "REDIS_URL":
+        if scheme != "rediss":
+            raise ValueError("Production REDIS_URL must use rediss:// to enforce TLS")
+        return
+
+    if name == "NEO4J_URI":
+        if scheme not in {"neo4j+s", "neo4j+ssc", "bolt+s", "bolt+ssc"}:
+            raise ValueError("Production NEO4J_URI must use a TLS scheme (neo4j+s://, neo4j+ssc://, bolt+s://, or bolt+ssc://)")
+        return
+
+
 def validate_database_config() -> None:
     database_url = _env("DATABASE_URL")
     if not database_url:
@@ -106,15 +140,23 @@ def validate_database_config() -> None:
     if is_production():
         if scheme.startswith("sqlite"):
             raise ValueError("SQLite is not supported in production")
-        if not scheme.startswith(("postgresql", "postgres")):
-            raise ValueError("Production DATABASE_URL must use PostgreSQL for RLS")
+        _validate_secure_transport_url("DATABASE_URL", database_url)
         # Row-level security prerequisites: PostgreSQL and a non-superuser role.
         # A superuser bypasses RLS policies entirely; production deployments must
         # use an application role validated against pg_roles.rolsuper=false.
         if _database_role(parsed) in SUPERUSER_NAMES:
             raise ValueError("PostgreSQL superuser connections bypass RLS")
-        if "sslmode=require" not in database_url and "sslmode=verify" not in database_url:
-            logger.warning("Production DATABASE_URL should require SSL/TLS encryption with sslmode=require")
+
+
+def validate_datastore_transport_security() -> None:
+    if not is_production() or _is_controlled_local_exception():
+        return
+
+    for env_name in ("DATABASE_URL", "REDIS_URL", "NEO4J_URI"):
+        value = _env(env_name)
+        if not value:
+            raise ValueError(f"{env_name} is required in production")
+        _validate_secure_transport_url(env_name, value)
 
 
 def validate_rls_prerequisites() -> None:
@@ -145,6 +187,7 @@ def validate_all_controls() -> None:
     validate_jwt_config()
     validate_cors_config()
     validate_database_config()
+    validate_datastore_transport_security()
     validate_rls_prerequisites()
 
 

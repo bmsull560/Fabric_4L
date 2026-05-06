@@ -10,6 +10,7 @@ resources:
   - ../../external-secrets/neo4j-secrets.yaml
   - ../../external-secrets/pgbouncer-secrets.yaml
   - ../../operators
+  - ../../monitoring/placeholder-secret-scanner-cronjob.yaml
   - ../../monitoring/thanos.yml
   - ../../monitoring/loki-fluent-bit.yml
 

@@ -17,10 +17,10 @@ metadata:
     component: auth
 type: Opaque
 stringData:
-  # These are placeholders - replace with actual credentials from Infisical
-  # DO NOT commit real credentials to git
-  clientId: "<INFISICAL_CLIENT_ID>"
-  clientSecret: "<INFISICAL_CLIENT_SECRET>"
+  # Populate out-of-band with kubectl create secret generic infisical-universal-auth.
+  # DO NOT commit real credentials to git.
+  clientId: ""
+  clientSecret: ""
 
 ---
 # Infisical Operator ServiceAccount

@@ -7,6 +7,7 @@ resources:
   - ../../base
   - ../../external-secrets/vault-integration.yml
   - ../../external-secrets/vault-database-dynamic.yml
+  - ../../monitoring/placeholder-secret-scanner-cronjob.yaml
 
 labels:
   - pairs:

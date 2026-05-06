@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "k8s/**"
+      - "scripts/security/placeholder_secret_scan.py"
       - ".github/workflows/k8s-readiness.yml"
   push:
     branches: [main]
     paths:
       - "k8s/**"
+      - "scripts/security/placeholder_secret_scan.py"
       - ".github/workflows/k8s-readiness.yml"
   workflow_dispatch:
 
@@ -95,6 +97,16 @@ jobs:
             echo "Validating $manifest"
             conftest test "$manifest" -p k8s/policy
           done
+
+      - name: Security checks - placeholder secret values
+        run: |
+          pip install pyyaml
+          python3 scripts/security/placeholder_secret_scan.py k8s --allow-guarded-dev
+          python3 scripts/security/placeholder_secret_scan.py \
+            /tmp/k8s-renders/staging-nginx.yaml \
+            /tmp/k8s-renders/prod-nginx.yaml \
+            /tmp/k8s-renders/prod-gateway-api.yaml \
+            /tmp/k8s-renders/prod-istio.yaml
 
       - name: Policy validate prod/staging secret sourcing
         run: |
