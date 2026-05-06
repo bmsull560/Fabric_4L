@@ -32,25 +32,33 @@ const rule: Rule.RuleModule = {
   },
 
   create(context: Rule.RuleContext): Rule.RuleListener {
-    return {
-      // Detect string concatenation with "/"
-      BinaryExpression(node: any): void {
-        if (node.operator === "+") {
-          const left = context.getSourceCode().getText(node.left);
-          const right = context.getSourceCode().getText(node.right);
+    const sourceCode = context.getSourceCode();
 
-          // Check if either side looks like a URL/path
-          if (
-            left.includes("/") ||
-            right.includes("/") ||
-            /['"]\//.test(left) ||
-            /['"]\//.test(right)
-          ) {
-            context.report({
-              node,
-              messageId: "noUrlConcatenation",
-            });
-          }
+    function containsUrlLikePath(node: any): boolean {
+      const text = sourceCode.getText(node);
+      return text.includes("/") || /['"]\//.test(text);
+    }
+
+    function isPlusBinaryExpression(node: any): boolean {
+      return node?.type === "BinaryExpression" && node.operator === "+";
+    }
+
+    function isNestedInPlusChain(node: any): boolean {
+      return isPlusBinaryExpression(node.parent);
+    }
+
+    return {
+      // Detect string concatenation with "/" and report once per chain.
+      BinaryExpression(node: any): void {
+        if (node.operator !== "+" || isNestedInPlusChain(node)) {
+          return;
+        }
+
+        if (containsUrlLikePath(node.left) || containsUrlLikePath(node.right)) {
+          context.report({
+            node,
+            messageId: "noUrlConcatenation",
+          });
         }
       },
     };

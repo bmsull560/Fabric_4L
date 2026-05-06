@@ -37,6 +37,15 @@ const rule: Rule.RuleModule = {
       CallExpression(node: any): void {
         const callee = node.callee;
 
+        if (callee.type === "Identifier" && callee.name === "navigate") {
+          context.report({
+            node,
+            messageId: "noImperativeNavigation",
+            data: { method: "navigate()" },
+          });
+          return;
+        }
+
         if (callee.type === "MemberExpression") {
           const objName = callee.object?.name || "";
           const propName = callee.property?.name || "";
@@ -51,6 +60,7 @@ const rule: Rule.RuleModule = {
               messageId: "noImperativeNavigation",
               data: { method: `${objName}.${propName}()` },
             });
+            return;
           }
 
           if (objName === "navigate" || propName === "navigate") {
