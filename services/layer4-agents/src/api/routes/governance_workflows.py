@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+<<<<<<< ours
+<<<<<<< ours
 from datetime import datetime, timezone
+=======
+from datetime import UTC, datetime
+>>>>>>> theirs
+=======
+from datetime import UTC, datetime
+>>>>>>> theirs
 from typing import Literal
 from uuid import uuid4
 
@@ -126,7 +134,15 @@ async def create_audit_export(request: AuditExportCreateRequest) -> AuditExportJ
         review_id=request.review_id,
         status="pending" if approved else "blocked",
         reason=None if approved else "approval_required",
+<<<<<<< ours
+<<<<<<< ours
         created_at=datetime.now(timezone.utc),
+=======
+        created_at=datetime.now(UTC),
+>>>>>>> theirs
+=======
+        created_at=datetime.now(UTC),
+>>>>>>> theirs
         lineage=LineageRef(
             business_case_id=review.lineage.business_case_id,
             value_model_id=review.lineage.value_model_id,

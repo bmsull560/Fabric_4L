@@ -14,9 +14,10 @@ async def test_layer3_tenant_rate_limiter_headers_and_reset_semantics() -> None:
 
     assert allowed_1 is True
     assert allowed_2 is True
-    assert {"limit", "remaining", "reset"} <= set(headers_1.keys())
+    assert {"limit", "remaining", "reset", "retry_after"} <= set(headers_1.keys())
     assert headers_2["remaining"] <= headers_1["remaining"]
     assert headers_2["reset"] >= headers_1["reset"]
+    assert headers_1["retry_after"] >= 0
 
 
 class _Req:

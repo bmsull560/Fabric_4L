@@ -437,6 +437,8 @@ class TestProductionDatastoreTransportSecurity:
             "REDIS_URL": "redis://localhost:6379",
             "NEO4J_URI": "bolt://localhost:7687",
         }, clear=True):
+<<<<<<< ours
+<<<<<<< ours
             from value_fabric.shared.security.config import validate_datastore_transport_security
             validate_datastore_transport_security()
 
@@ -463,6 +465,44 @@ class TestProductionDatastoreTransportSecurity:
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
 
+=======
+            with pytest.raises(ValueError, match="sslmode=require or stronger"):
+                from value_fabric.shared.security.config import validate_database_config
+                validate_database_config()
+
+=======
+            with pytest.raises(ValueError, match="sslmode=require or stronger"):
+                from value_fabric.shared.security.config import validate_database_config
+                validate_database_config()
+
+>>>>>>> theirs
+    @pytest.mark.parametrize("sslmode", ["require", "verify-ca", "verify-full"])
+    def test_prod_boot_accepts_approved_sslmodes(self, sslmode: str):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": f"postgresql://user:pass@db.internal:5432/db?sslmode={sslmode}",
+            "JWT_SECRET": "a" * 32,
+            "REDIS_URL": "redis://localhost:6379",
+        }, clear=True):
+            from value_fabric.shared.security.config import validate_database_config
+            validate_database_config()
+
+    def test_prod_boot_fails_if_database_url_sync_missing_sslmode(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "postgresql://user:pass@db.internal:5432/db?sslmode=require",
+            "DATABASE_URL_SYNC": "postgresql://user:pass@db.internal:5432/db_sync",
+            "JWT_SECRET": "a" * 32,
+            "REDIS_URL": "redis://localhost:6379",
+        }, clear=True):
+            with pytest.raises(ValueError, match="DATABASE_URL_SYNC.*sslmode=require or stronger"):
+                from value_fabric.shared.security.config import validate_database_config
+                validate_database_config()
+
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
     def test_prod_boot_accepts_sslmode_query_key_case_insensitive(self):
         with patch.dict(os.environ, {
             "ENVIRONMENT": "production",

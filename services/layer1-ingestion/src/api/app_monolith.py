@@ -31,10 +31,13 @@ from value_fabric.shared.error_handling.handlers import (
     validation_exception_handler as shared_validation_exception_handler,
 )
 from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
+<<<<<<< ours
 from value_fabric.shared.identity.fallback_telemetry import (
     enforce_fallback_enabled,
     record_fallback_usage,
 )
+=======
+>>>>>>> theirs
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session

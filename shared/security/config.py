@@ -94,11 +94,19 @@ def _database_role(parsed) -> str:
     return (parsed.username or "").lower()
 
 
+<<<<<<< ours
+<<<<<<< ours
 def _is_controlled_local_exception() -> bool:
     return current_environment() in _PROD_LOCAL_ENV_ALLOWLIST
 
 
 def _validate_database_tls_mode(database_url: str, *, source_variable: str, environment_label: str) -> None:
+=======
+def _validate_database_tls_mode(database_url: str, *, source_variable: str) -> None:
+>>>>>>> theirs
+=======
+def _validate_database_tls_mode(database_url: str, *, source_variable: str) -> None:
+>>>>>>> theirs
     parsed = urlparse(database_url)
     query_params = {key.lower(): value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
     sslmode = (query_params.get("sslmode", "") or "").strip().lower()
@@ -107,6 +115,8 @@ def _validate_database_tls_mode(database_url: str, *, source_variable: str, envi
 
     if sslmode not in approved_modes:
         raise ValueError(
+<<<<<<< ours
+<<<<<<< ours
             f"{environment_label.title()} {source_variable} must enforce TLS with "
             "sslmode=require or stronger (verify-ca/verify-full); verify-full is preferred"
         )
@@ -140,6 +150,19 @@ def _validate_secure_transport_url(name: str, value: str) -> None:
         if scheme not in {"neo4j+s", "neo4j+ssc", "bolt+s", "bolt+ssc"}:
             raise ValueError("Production NEO4J_URI must use a TLS scheme (neo4j+s://, neo4j+ssc://, bolt+s://, or bolt+ssc://)")
         return
+=======
+=======
+>>>>>>> theirs
+            f"Production {source_variable} must include sslmode=require or stronger "
+            "(verify-ca/verify-full); verify-full is preferred"
+        )
+
+    if sslmode != preferred_mode:
+        logger.info("Production %s uses sslmode=%s; sslmode=%s is preferred", source_variable, sslmode, preferred_mode)
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 
 
 def validate_database_config() -> None:
@@ -163,6 +186,8 @@ def validate_database_config() -> None:
         # use an application role validated against pg_roles.rolsuper=false.
         if _database_role(parsed) in SUPERUSER_NAMES:
             raise ValueError("PostgreSQL superuser connections bypass RLS")
+<<<<<<< ours
+<<<<<<< ours
         _validate_database_tls_mode(
             database_url,
             source_variable="DATABASE_URL",
@@ -187,6 +212,18 @@ def validate_datastore_transport_security() -> None:
         if not value:
             raise ValueError(f"{env_name} is required in production")
         _validate_secure_transport_url(env_name, value)
+=======
+=======
+>>>>>>> theirs
+        _validate_database_tls_mode(database_url, source_variable="DATABASE_URL")
+
+    sync_database_url = _env("DATABASE_URL_SYNC")
+    if is_production() and sync_database_url:
+        _validate_database_tls_mode(sync_database_url, source_variable="DATABASE_URL_SYNC")
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 
 
 def validate_rls_prerequisites() -> None:

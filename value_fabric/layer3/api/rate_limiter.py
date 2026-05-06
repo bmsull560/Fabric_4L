@@ -232,6 +232,7 @@ class TenantRateLimiter:
                 "limit": key_decision.limit,
                 "remaining": key_decision.remaining,
                 "reset": key_decision.reset_epoch,
+                "retry_after": key_decision.retry_after or 0,
             }
 
         allowed = tenant_decision.allowed and key_allowed
@@ -239,12 +240,14 @@ class TenantRateLimiter:
             "limit": tenant_decision.limit,
             "remaining": tenant_decision.remaining,
             "reset": tenant_decision.reset_epoch,
+            "retry_after": tenant_decision.retry_after or 0,
         }
         if key_headers:
             headers = {
                 "limit": min(tenant_headers["limit"], key_headers["limit"]),
                 "remaining": min(tenant_headers["remaining"], key_headers["remaining"]),
                 "reset": max(tenant_headers["reset"], key_headers["reset"]),
+                "retry_after": max(tenant_headers["retry_after"], key_headers["retry_after"]),
             }
         else:
             headers = tenant_headers
