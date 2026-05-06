@@ -148,7 +148,7 @@ export function useApproveFormula() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.list({}) });
     },
     onError: (error) => {
       log.error('Formula approval failed', { error: error.message });
@@ -170,7 +170,7 @@ export function useSubmitFormula() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.list({}) });
     },
     onError: (error) => {
       log.error('Formula submission failed', { error: error.message });
@@ -244,7 +244,7 @@ export function useCreateFormula() {
     },
     onSuccess: (data) => {
       // Invalidate to get fresh data from server
-      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.list({}) });
     },
   });
 }
@@ -330,7 +330,7 @@ export function useDeleteFormula() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.list({}) });
     },
     onError: (error) => {
       log.error('Formula deletion failed', { error: error.message });

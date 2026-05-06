@@ -1,0 +1,190 @@
+# Production Readiness Gate: L3 Knowledge Graph Tenant Isolation
+# =============================================================================
+# Status: OPEN — Do NOT deploy to production with multi-tenant data until CLOSED.
+#
+# This gate tracks the completion of tenant isolation for Layer 3 (Knowledge Graph)
+# Neo4j routes. L3 uses application-level tenant scoping (Cypher query filtering)
+# rather than database-level RLS (which Neo4j does not support).
+#
+# Related documents:
+#   - docs/audit/l3-neo4j-label-tenant-classification.md
+#   - .kimi/plans/sunspot-longshot-crimson-avenger.md (Migration plan)
+#   - services/layer3-knowledge/src/api/dependencies_tenant.py (Tenant session wrapper)
+
+metadata:
+  gate_id: l3-tenant-isolation
+  layer: layer3-knowledge
+  database: neo4j
+  isolation_mechanism: application-level-cypher-filtering
+  opened_date: "2026-05-05"
+  target_closure_phase: 6
+  owner: "platform-security"
+
+status:
+  overall: "OPEN"
+  # P0 = blocks production; P1 = high risk; P2 = tracked
+  priority: "P0"
+  reason: |
+    Four L3 route modules operate on the full Neo4j graph without tenant_id
+    filtering. In a multi-tenant deployment, tenant A could read/write
+    tenant B's :Formula, :ValueModel, :Variable, and :Benchmark nodes.
+
+modules:
+  # ── COMPLETE ── Migrated to Neo4jTenantSession with tenant_id filtering ──────
+  - name: entities
+    file: services/layer3-knowledge/src/api/routes/entities.py
+    status: COMPLETE
+    tenant_scoped: true
+    note: |
+      All Cypher queries use `Neo4jTenantSession` via `Depends(get_neo4j_with_tenant)`.
+      Queries filter on `tenant_id = $tenant_id`. Canonical property name is
+      `tenant_id` (snake_case). Migrated in Phase 0 of plan sunspot-longshot-crimson-avenger.
+
+  # ── INCOMPLETE ── Raw AsyncDriver, no tenant scoping ──────────────────────────
+  - name: benchmarks
+    file: services/layer3-knowledge/src/api/routes/benchmarks.py
+    status: INCOMPLETE
+    tenant_scoped: false
+    security_todo_count: 4
+    labels_affected:
+      - :Benchmark
+      - :BenchmarkPolicy
+    blocking_issue: |
+      No tenant_id property exists on :Benchmark or :BenchmarkPolicy nodes.
+      Queries use raw `AsyncDriver = Depends(get_driver)`.
+      Cannot scope without schema migration (Phase 2).
+
+  - name: variables
+    file: services/layer3-knowledge/src/api/routes/variables.py
+    status: INCOMPLETE
+    tenant_scoped: false
+    security_todo_count: 8
+    labels_affected:
+      - :Variable
+      - :SourceBinding
+    blocking_issue: |
+      No tenant_id property exists on :Variable or :SourceBinding nodes.
+      Queries use raw `AsyncDriver = Depends(get_driver)`.
+      Cannot scope without schema migration (Phase 2).
+
+  - name: models
+    file: services/layer3-knowledge/src/api/routes/models.py
+    status: INCOMPLETE
+    tenant_scoped: false
+    security_todo_count: 5
+    labels_affected:
+      - :ValueModel
+    blocking_issue: |
+      No tenant_id property exists on :ValueModel nodes.
+      Queries use raw `AsyncDriver = Depends(get_driver)`.
+      Cannot scope without schema migration (Phase 2).
+    note: |
+      This module has user-level ownership checks (`m.owner = $user_id`) but
+      these are NOT tenant isolation. A user with the same user_id in tenant A
+      and tenant B would see both tenants' data.
+
+  - name: formula_governance
+    file: services/layer3-knowledge/src/api/routes/formula_governance.py
+    status: INCOMPLETE
+    tenant_scoped: false
+    security_todo_count: 10
+    labels_affected:
+      - :Formula
+      - :FormulaVersion
+    blocking_issue: |
+      :Formula nodes have `tenantId` (camelCase) instead of canonical `tenant_id`
+      (snake_case). Property name mismatch means existing constraints and the
+      Neo4jTenantSession wrapper cannot enforce scoping. Schema migration needed
+      to standardize on snake_case (Phase 2).
+    note: |
+      Additionally, FormulaVersion nodes and relationships lack tenant_id entirely.
+
+schema_migration_plan:
+  plan_id: sunspot-longshot-crimson-avenger
+  approach: Schema-First
+  phases:
+    - phase: 0
+      name: "Safety Markers"
+      status: COMPLETE
+      deliverables:
+        - SECURITY-TODO comments in all 4 unmodified route modules
+        - This production-readiness gate file
+    - phase: 1
+      name: "Schema Audit & Constraint Inventory"
+      status: NOT_STARTED
+      deliverables:
+        - Comprehensive audit of all :Formula, :ValueModel, :Variable, :Benchmark nodes
+        - Property presence/absence report for tenant_id / tenantId
+        - Constraint compatibility analysis
+    - phase: 2
+      name: "Canonical Property Migration"
+      status: NOT_STARTED
+      deliverables:
+        - Cypher migration script: rename `tenantId` → `tenant_id` on :Formula
+        - Cypher migration script: add `tenant_id` to :ValueModel, :Variable, :Benchmark
+        - Add composite uniqueness constraints (id, tenant_id) where missing
+        - Backfill `tenant_id = 'default'` for existing unowned nodes
+    - phase: 3
+      name: "Service Layer Update"
+      status: NOT_STARTED
+      deliverables:
+        - Update create/update Cypher to write `tenant_id` on new nodes
+        - Update Neo4jTenantSession wrapper if needed
+    - phase: 4
+      name: "Dependency Injection Migration"
+      status: NOT_STARTED
+      deliverables:
+        - benchmarks.py: `AsyncDriver` → `Neo4jTenantSession`
+        - variables.py: `AsyncDriver` → `Neo4jTenantSession`
+        - models.py: `AsyncDriver` → `Neo4jTenantSession`
+        - formula_governance.py: `AsyncDriver` → `Neo4jTenantSession`
+        - Add `tenant_id` filtering to all MATCH/CREATE/SET/DELETE queries
+    - phase: 5
+      name: "Cross-Tenant Security Tests"
+      status: NOT_STARTED
+      deliverables:
+        - Cross-tenant read isolation tests for all 4 modules
+        - Cross-tenant write isolation tests
+        - Cross-tenant traversal/relationship tests
+        - Negative tests: unauthenticated access, invalid tenant_id
+    - phase: 6
+      name: "Cleanup & Gate Closure"
+      status: NOT_STARTED
+      deliverables:
+        - Remove SECURITY-TODO comments from all 4 modules
+        - Update this gate file status to CLOSED
+        - Archive migration scripts
+        - Update docs/audit/l3-neo4j-label-tenant-classification.md
+
+exit_criteria:
+  - All 4 incomplete modules use Neo4jTenantSession with tenant_id filtering
+  - All Cypher queries in L3 routes include `tenant_id = $tenant_id` predicates
+  - No raw `AsyncDriver = Depends(get_driver)` usage remains in L3 routes
+  - Cross-tenant security tests pass (pytest -m mandatory)
+  - Schema constraints enforce (id, tenant_id) uniqueness for all affected labels
+  - Backfill migration completes for all existing nodes without tenant_id
+  - This gate file status updated to CLOSED with closure_date
+
+risks_if_deployed_before_closure:
+  - severity: CRITICAL
+    description: |
+      Any tenant with valid credentials can read or modify other tenants'
+      formulas, value models, variables, and benchmarks. This includes
+      proprietary business logic, financial calculations, and competitive
+      intelligence stored in the knowledge graph.
+  - severity: HIGH
+    description: |
+      Formula governance endpoints (approve, activate, deprecate) lack
+      tenant scoping. A tenant admin could approve/activate formulas
+      belonging to another tenant, affecting downstream calculations.
+
+audit_trail:
+  - date: "2026-05-05"
+    action: "Gate opened"
+    note: "Identified 4 unscoped L3 route modules during security hardening sprint."
+  - date: "2026-05-05"
+    action: "entities.py migrated"
+    note: "Migrated to Neo4jTenantSession. All queries now tenant-scoped."
+  - date: "2026-05-05"
+    action: "Phase 0 complete"
+    note: "Added SECURITY-TODO markers and created this gate file."

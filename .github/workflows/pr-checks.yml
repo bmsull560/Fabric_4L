@@ -586,7 +586,7 @@ jobs:
         if: always()
         with:
           name: bundle-report
-          path: apps/web/dist/public/stats.html
+          path: apps/web/dist/stats.html
           retention-days: 14
 
       - name: Test

@@ -259,6 +259,8 @@ async def _ensure_constraints(driver: AsyncDriver) -> None:
     },
 )
 async def list_models(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     search: str | None = Query(None, description="Search in name, description, tags"),
     folder: str = Query(FOLDER_ALL, description="Filter by folder"),
@@ -379,6 +381,8 @@ async def list_models(
     description="Returns folder counts for the sidebar navigation.",
 )
 async def get_model_folders(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     driver: AsyncDriver = Depends(get_driver),
 ) -> FoldersResponse:
@@ -434,6 +438,8 @@ async def get_model_folders(
     },
 )
 async def get_model_detail(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     model_id: str,
     driver: AsyncDriver = Depends(get_driver),
 ) -> ModelDetail:
@@ -485,6 +491,8 @@ async def get_model_detail(
     },
 )
 async def create_model(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     data: ModelCreateRequest,
     driver: AsyncDriver = Depends(get_driver),
@@ -555,6 +563,8 @@ async def create_model(
     },
 )
 async def delete_model(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     model_id: str,
     driver: AsyncDriver = Depends(get_driver),

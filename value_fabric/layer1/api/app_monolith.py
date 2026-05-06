@@ -349,6 +349,44 @@ class legacy_health_checkResult(TypedDictModel):
     note: str
     status: Any
 
+
+# =============================================================================
+# BATCH OPERATION MODELS
+# =============================================================================
+
+
+class BatchOperationType(str, PyEnum):
+    """Types of batch operations supported."""
+    EXECUTE = "execute"
+    CANCEL = "cancel"
+    RETRY = "retry"
+
+
+class BatchOperationRequest(BaseModel):
+    """Request for batch operations on jobs and targets."""
+    operation: BatchOperationType = Field(..., description="Operation to perform")
+    target_ids: list[UUID] = Field(default_factory=list, description="Target IDs for execute operation")
+    job_ids: list[UUID] = Field(default_factory=list, description="Job IDs for cancel/retry operations")
+    options: dict[str, Any] = Field(default_factory=dict, description="Additional operation options")
+
+
+class BatchOperationItemResult(BaseModel):
+    """Result of a single item in a batch operation."""
+    id: UUID = Field(..., description="Target or job ID")
+    status: str = Field(..., description="Operation status: succeeded, failed, or skipped")
+    job_id: UUID | None = Field(None, description="Resulting job ID (if applicable)")
+    error: str | None = Field(None, description="Error message if failed")
+
+
+class BatchOperationResponse(BaseModel):
+    """Response for batch operation."""
+    operation: BatchOperationType = Field(..., description="Operation performed")
+    requested: int = Field(..., description="Total number of items requested")
+    succeeded: int = Field(..., description="Number of successful operations")
+    failed: int = Field(..., description="Number of failed operations")
+    results: list[BatchOperationItemResult] = Field(..., description="Per-item results")
+
+
 add_governance_middleware(app, rate_limiter=redis_rate_limiter)
 
 # Add metrics middleware if available — INNERMOST
@@ -2111,6 +2149,235 @@ async def retry_job(
         "new_job_id": str(new_job.id),
         "status": JobStatus.QUEUED.value,
     })
+
+
+# =============================================================================
+# API ENDPOINTS - Batch Operations
+# =============================================================================
+
+
+@router.post("/jobs/batch", response_model=BatchOperationResponse, status_code=202)
+async def batch_operation(
+    request: BatchOperationRequest,
+    org_id: UUID = Depends(get_tenant_id),
+    user_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Execute batch operations on ingestion jobs and targets.
+    
+    Supports three operations:
+    - execute: Trigger crawl jobs for multiple targets
+    - cancel: Cancel multiple running/queued jobs
+    - retry: Retry multiple failed jobs
+    
+    Returns per-item results with success/failure status.
+    """
+    # Validate request based on operation type
+    if request.operation == BatchOperationType.EXECUTE:
+        if not request.target_ids:
+            raise HTTPException(status_code=400, detail="target_ids required for execute operation")
+        if request.job_ids:
+            raise HTTPException(status_code=400, detail="job_ids not allowed for execute operation")
+    elif request.operation in (BatchOperationType.CANCEL, BatchOperationType.RETRY):
+        if not request.job_ids:
+            raise HTTPException(status_code=400, detail="job_ids required for cancel/retry operations")
+        if request.target_ids:
+            raise HTTPException(status_code=400, detail="target_ids not allowed for cancel/retry operations")
+    
+    # Enforce batch size limit
+    MAX_BATCH_SIZE = 100
+    requested_count = len(request.target_ids) if request.target_ids else len(request.job_ids)
+    if requested_count == 0:
+        raise HTTPException(status_code=400, detail="At least one target_id or job_id is required")
+    if requested_count > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Batch size exceeds maximum of {MAX_BATCH_SIZE}"
+        )
+    
+    results = []
+    succeeded = 0
+    failed = 0
+    
+    if request.operation == BatchOperationType.EXECUTE:
+        for target_id in request.target_ids:
+            try:
+                # Verify target belongs to tenant
+                target = db.query(ScrapingTarget).filter(
+                    ScrapingTarget.id == target_id,
+                    ScrapingTarget.tenant_id == org_id
+                ).first()
+                if not target:
+                    results.append(BatchOperationItemResult(
+                        id=target_id, status="skipped", job_id=None,
+                        error="Target not found or access denied"
+                    ))
+                    failed += 1
+                    continue
+                
+                if target.status != TargetStatus.ACTIVE.value:
+                    results.append(BatchOperationItemResult(
+                        id=target_id, status="skipped", job_id=None,
+                        error=f"Target is not active (status: {target.status})"
+                    ))
+                    failed += 1
+                    continue
+                
+                # Execute target - reuse existing execute logic
+                job = create_scraping_job(
+                    tenant_id=org_id,
+                    target_id=target.id,
+                    created_by=user_id,
+                    configuration=target.extraction_config,
+                    priority=request.options.get("priority", 5),
+                    triggered_by=TriggeredBy.MANUAL,
+                    correlation_id=f"batch:{target_id}:{uuid4()}",
+                )
+                
+                db.add(job)
+                db.flush()
+                db.refresh(job)
+                
+                # Initialize stages
+                for stage in PipelineStage:
+                    stage_detail = JobStageDetail(
+                        job_id=job.id, tenant_id=org_id, stage=stage.value, status="PENDING"
+                    )
+                    db.add(stage_detail)
+                
+                # Queue job
+                job.status = JobStatus.QUEUED.value
+                process_scraping_job.delay(str(job.id))
+                
+                results.append(BatchOperationItemResult(
+                    id=target_id, status="succeeded", job_id=job.id, error=None
+                ))
+                succeeded += 1
+                
+            except Exception as e:
+                logger.error("batch_execute_failed", target_id=str(target_id), error=str(e))
+                results.append(BatchOperationItemResult(
+                    id=target_id, status="failed", job_id=None, error=str(e)
+                ))
+                failed += 1
+    
+    elif request.operation == BatchOperationType.CANCEL:
+        for job_id in request.job_ids:
+            try:
+                # Verify job belongs to tenant
+                job = db.query(ScrapingJob).filter(
+                    ScrapingJob.id == job_id,
+                    ScrapingJob.tenant_id == org_id
+                ).first()
+                if not job:
+                    results.append(BatchOperationItemResult(
+                        id=job_id, status="skipped", job_id=job_id,
+                        error="Job not found or access denied"
+                    ))
+                    failed += 1
+                    continue
+                
+                # Check if job can be cancelled
+                terminal_states = [
+                    JobStatus.COMPLETED.value,
+                    JobStatus.FAILED.value,
+                    JobStatus.CANCELLED.value,
+                    JobStatus.PARTIAL_SUCCESS.value,
+                ]
+                if job.status in terminal_states:
+                    results.append(BatchOperationItemResult(
+                        id=job_id, status="skipped", job_id=job_id,
+                        error=f"Job is in terminal state (status: {job.status})"
+                    ))
+                    failed += 1
+                    continue
+                
+                # Cancel job
+                job.status = JobStatus.CANCELLED.value
+                db.flush()
+                
+                results.append(BatchOperationItemResult(
+                    id=job_id, status="succeeded", job_id=job_id, error=None
+                ))
+                succeeded += 1
+                
+            except Exception as e:
+                logger.error("batch_cancel_failed", job_id=str(job_id), error=str(e))
+                results.append(BatchOperationItemResult(
+                    id=job_id, status="failed", job_id=job_id, error=str(e)
+                ))
+                failed += 1
+    
+    elif request.operation == BatchOperationType.RETRY:
+        for job_id in request.job_ids:
+            try:
+                # Verify job belongs to tenant
+                job = db.query(ScrapingJob).filter(
+                    ScrapingJob.id == job_id,
+                    ScrapingJob.tenant_id == org_id
+                ).first()
+                if not job:
+                    results.append(BatchOperationItemResult(
+                        id=job_id, status="skipped", job_id=job_id,
+                        error="Job not found or access denied"
+                    ))
+                    failed += 1
+                    continue
+                
+                if job.status not in [JobStatus.FAILED.value, JobStatus.PARTIAL_SUCCESS.value]:
+                    results.append(BatchOperationItemResult(
+                        id=job_id, status="skipped", job_id=job_id,
+                        error=f"Only failed or partially successful jobs can be retried (status: {job.status})"
+                    ))
+                    failed += 1
+                    continue
+                
+                # Retry job - reuse existing retry logic
+                correlation_id = f"retry:{job_id}:{uuid4()}"
+                new_job = create_scraping_job(
+                    tenant_id=org_id,
+                    target_id=job.target_id,
+                    created_by=user_id,
+                    configuration=job.configuration,
+                    priority=job.priority,
+                    triggered_by=TriggeredBy.MANUAL,
+                    correlation_id=correlation_id,
+                )
+                
+                db.add(new_job)
+                db.flush()
+                db.refresh(new_job)
+                
+                # Initialize stages
+                for stage in PipelineStage:
+                    stage_detail = JobStageDetail(
+                        job_id=new_job.id, tenant_id=org_id, stage=stage.value, status="PENDING"
+                    )
+                    db.add(stage_detail)
+                
+                # Queue new job
+                new_job.status = JobStatus.QUEUED.value
+                process_scraping_job.delay(str(new_job.id))
+                
+                results.append(BatchOperationItemResult(
+                    id=job_id, status="succeeded", job_id=new_job.id, error=None
+                ))
+                succeeded += 1
+                
+            except Exception as e:
+                logger.error("batch_retry_failed", job_id=str(job_id), error=str(e))
+                results.append(BatchOperationItemResult(
+                    id=job_id, status="failed", job_id=job_id, error=str(e)
+                ))
+                failed += 1
+    
+    return BatchOperationResponse(
+        operation=request.operation,
+        requested=requested_count,
+        succeeded=succeeded,
+        failed=failed,
+        results=results
+    )
 
 
 # =============================================================================

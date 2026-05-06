@@ -282,7 +282,7 @@ export function useCreateAccount() {
       return response.data as CreateAccountResponse;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.accounts.all });
+      queryClient.invalidateQueries({ queryKey: QK.accounts.list({}) });
     },
     onError: (error) => {
       log.error('CreateAccount failed', { error: error.message });

@@ -80,11 +80,12 @@ export default function IngestionJobs() {
     return p ? Math.max(1, parseInt(p, 10)) : 1;
   });
 
-  // Initialize selected job from URL on mount
+  // Initialize selected job from URL on mount (only once)
   useEffect(() => {
     const jobId = searchParams.get('job');
     if (jobId) setSelectedJobId(jobId);
-  }, [searchParams, setSelectedJobId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount
 
   // Sync page and selected job to URL
   useEffect(() => {

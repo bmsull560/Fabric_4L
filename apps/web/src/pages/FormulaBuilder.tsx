@@ -16,6 +16,7 @@
  */
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
+import { z } from "zod";
 import { useNavigation } from "@/hooks/useNavigation";
 import {
   Save, CheckCircle2, AlertCircle, ChevronRight, Loader2,
@@ -185,6 +186,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   const [valueDriver, setValueDriver] = useState("");
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const isDirtyRef = useRef(false);
 
   // Load draft from localStorage on mount
   useEffect(() => {
@@ -202,17 +204,25 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   // Auto-save draft to localStorage every 5 seconds when dirty
   useEffect(() => {
     const timer = setInterval(() => {
-      saveDraft(formulaId, {
-        name: formulaName,
-        description: formulaDescription,
-        expression: formulaExpression,
-        testInputs,
-        valueDriver,
-      });
-      setDraftSavedAt(new Date().toISOString());
+      if (isDirtyRef.current) {
+        saveDraft(formulaId, {
+          name: formulaName,
+          description: formulaDescription,
+          expression: formulaExpression,
+          testInputs,
+          valueDriver,
+        });
+        setDraftSavedAt(new Date().toISOString());
+        isDirtyRef.current = false;
+      }
     }, 5000);
     return () => clearInterval(timer);
   }, [formulaId, formulaName, formulaDescription, formulaExpression, testInputs, valueDriver]);
+
+  // Mark as dirty when form state changes
+  useEffect(() => {
+    isDirtyRef.current = true;
+  }, [formulaName, formulaDescription, formulaExpression, testInputs, valueDriver]);
 
   // Fetch existing formula if editing
   const { data: existingFormula, isLoading: isLoadingFormula } = useFormula(

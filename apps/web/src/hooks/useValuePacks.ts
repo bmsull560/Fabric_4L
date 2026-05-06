@@ -181,7 +181,7 @@ export function useApplyValuePack() {
     },
     onSuccess: () => {
       // Invalidate to get fresh data from server
-      queryClient.invalidateQueries({ queryKey: QK.valuePacks.all });
+      queryClient.invalidateQueries({ queryKey: QK.valuePacks.list({}) });
     },
   });
 }

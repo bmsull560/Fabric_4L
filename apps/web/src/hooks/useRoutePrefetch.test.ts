@@ -20,16 +20,9 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-// Mock window.setTimeout and clearTimeout
-const mockSetTimeout = vi.fn();
-const mockClearTimeout = vi.fn();
-
-Object.defineProperty(global, "setTimeout", {
-  value: mockSetTimeout,
-});
-Object.defineProperty(global, "clearTimeout", {
-  value: mockClearTimeout,
-});
+// Mock window.setTimeout and clearTimeout using vi.spyOn for proper cleanup
+const setTimeoutSpy = vi.spyOn(global, "setTimeout");
+const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
 
 describe("useRoutePrefetch", () => {
   beforeEach(() => {
@@ -41,9 +34,9 @@ describe("useRoutePrefetch", () => {
   });
 
   it("should prefetch route after debounce delay", () => {
-    mockSetTimeout.mockImplementation((callback) => {
+    setTimeoutSpy.mockImplementation((callback: () => void) => {
       callback();
-      return 1;
+      return 1 as unknown as NodeJS.Timeout;
     });
 
     const { result } = renderHook(() =>
@@ -52,7 +45,7 @@ describe("useRoutePrefetch", () => {
 
     result.current.prefetch();
 
-    expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 150);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
   });
 
   it("should cancel prefetch on mouse leave", () => {
@@ -63,7 +56,7 @@ describe("useRoutePrefetch", () => {
     result.current.prefetch();
     result.current.cancelPrefetch();
 
-    expect(mockClearTimeout).toHaveBeenCalled();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
   });
 
   it("should skip prefetch on mobile devices", () => {
@@ -75,14 +68,14 @@ describe("useRoutePrefetch", () => {
 
     result.current.prefetch();
 
-    expect(mockSetTimeout).not.toHaveBeenCalled();
+    expect(setTimeoutSpy).not.toHaveBeenCalled();
     expect(result.current.isMobile).toBe(true);
   });
 
   it("should not prefetch the same route twice", () => {
-    mockSetTimeout.mockImplementation((callback) => {
+    setTimeoutSpy.mockImplementation((callback: () => void) => {
       callback();
-      return 1;
+      return 1 as unknown as NodeJS.Timeout;
     });
 
     const { result } = renderHook(() =>
@@ -92,7 +85,7 @@ describe("useRoutePrefetch", () => {
     result.current.prefetch();
     result.current.prefetch();
 
-    expect(mockSetTimeout).toHaveBeenCalledTimes(1);
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
   });
 
   it("should cleanup timeout on unmount", () => {
@@ -102,7 +95,7 @@ describe("useRoutePrefetch", () => {
 
     unmount();
 
-    expect(mockClearTimeout).toHaveBeenCalled();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
   });
 });
 

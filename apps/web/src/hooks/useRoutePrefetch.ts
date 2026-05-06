@@ -39,22 +39,23 @@ export function useRoutePrefetch({
 
   const prefetch = useCallback(() => {
     if (hasPrefetched.current || isMobile()) return;
-    
+
     if (timeoutRef.current) {
       window.clearTimeout(timeoutRef.current);
     }
 
     timeoutRef.current = window.setTimeout(() => {
-      // Use React Router's prefetch if available (v7+)
-      // Otherwise, this is a no-op but future-proof
-      try {
-        navigate(path, { replace: false });
-        hasPrefetched.current = true;
-      } catch {
-        // Ignore prefetch errors
-      }
+      // NOTE: React Router does not have built-in prefetching.
+      // This hook is a placeholder for future prefetch implementation.
+      // Options for proper prefetching:
+      // 1. Use React.lazy with prefetch() if using code splitting
+      // 2. Use @tanstack/react-router which has prefetching support
+      // 3. Implement a custom prefetch mechanism that loads route data
+      //
+      // For now, this is a no-op to prevent unintended navigation.
+      hasPrefetched.current = true;
     }, debounceMs);
-  }, [path, debounceMs, navigate, isMobile]);
+  }, [path, debounceMs, isMobile]);
 
   const cancelPrefetch = useCallback(() => {
     if (timeoutRef.current) {

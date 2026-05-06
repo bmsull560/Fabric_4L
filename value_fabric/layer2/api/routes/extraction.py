@@ -3,8 +3,9 @@
 import logging
 import time
 from typing import Any
+from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request, HTTPException
 from pydantic import BaseModel, Field
 from value_fabric.shared.identity import require_authenticated
 
@@ -16,8 +17,45 @@ router = APIRouter(prefix="/v1", tags=["extraction"], dependencies=[Depends(requ
 
 
 # ============================================================================
-# Operational Signal Extraction Models
+# Extraction Entities Models
+# =============================================================================
+
+
+class EntitySourceSpan(BaseModel):
+    """Source span information for an extracted entity."""
+    document_id: str = Field(..., description="Document identifier")
+    start: int = Field(..., description="Start position in document")
+    end: int = Field(..., description="End position in document")
+
+
+class EntityProvenance(BaseModel):
+    """Provenance information for an extracted entity."""
+    extraction_job_id: str = Field(..., description="Extraction job identifier")
+    source_url: str | None = Field(None, description="Source URL if applicable")
+    trace_id: str | None = Field(None, description="Trace identifier for observability")
+
+
+class ExtractedEntity(BaseModel):
+    """Single extracted entity from an extraction job."""
+    entity_id: str = Field(..., description="Entity identifier")
+    type: str = Field(..., description="Entity type (e.g., Capability, UseCase, Persona)")
+    name: str = Field(..., description="Entity name")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score 0.0-1.0")
+    source_span: EntitySourceSpan | None = Field(None, description="Source span in document")
+    provenance: EntityProvenance | None = Field(None, description="Provenance information")
+    attributes: dict[str, Any] = Field(default_factory=dict, description="Additional entity attributes")
+
+
+class ExtractionEntitiesResponse(BaseModel):
+    """Response for extraction entities endpoint."""
+    job_id: str = Field(..., description="Extraction job identifier")
+    entities: list[ExtractedEntity] = Field(..., description="List of extracted entities")
+    total: int = Field(..., description="Total number of entities")
+
+
 # ============================================================================
+# Operational Signal Extraction Models
+# =============================================================================
 
 
 class ProspectDataInput(BaseModel):
@@ -193,3 +231,85 @@ async def extract_batch(requests: list[handlers.ExtractRequest], background_task
 @router.get("/extract/jobs/{job_id}/events")
 async def stream_job_events(job_id: str):
     return await handlers.stream_job_events(job_id)
+
+
+@router.get("/extract/{job_id}/entities", response_model=ExtractionEntitiesResponse)
+async def get_extraction_entities(job_id: str, request: Request):
+    """Get extracted entities for a specific extraction job.
+    
+    Args:
+        job_id: Extraction job identifier
+        request: HTTP request for tenant context
+        
+    Returns:
+        ExtractionEntitiesResponse with extracted entities
+        
+    Raises:
+        HTTPException 404: Job not found for tenant
+        HTTPException 409: Extraction not complete
+    """
+    from layer2_extraction.integration.job_store import build_job_store
+    
+    # Get tenant context from governance middleware
+    ctx = getattr(request.state, "governance_context", None)
+    if not ctx:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
+    tenant_id = ctx.tenant_id
+    
+    # Get job store
+    job_store = build_job_store()
+    
+    # Retrieve job
+    try:
+        job = await job_store.get_job(job_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    
+    # Verify tenant access (if job has tenant_id attribute)
+    if hasattr(job, 'tenant_id') and job.tenant_id != tenant_id:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    
+    # Check if extraction is complete
+    if job.extraction_status not in ("completed", "partial_success"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Extraction not complete (status: {job.extraction_status})"
+        )
+    
+    # Retrieve extraction artifacts
+    artifacts = await job_store.get_artifacts(job_id)
+    if not artifacts or not artifacts.result:
+        raise HTTPException(status_code=404, detail=f"No extraction artifacts found for job {job_id}")
+    
+    # Extract entities from result
+    result = artifacts.result
+    entities = []
+    
+    # Convert to response format
+    if hasattr(result, 'get_all_entities'):
+        for entity in result.get_all_entities():
+            entities.append(ExtractedEntity(
+                entity_id=entity.id,
+                type=entity.type,
+                name=entity.name,
+                confidence=entity.confidence if hasattr(entity, 'confidence') else 0.0,
+                source_span=EntitySourceSpan(
+                    document_id=getattr(entity, 'document_id', ''),
+                    start=getattr(entity, 'start', 0),
+                    end=getattr(entity, 'end', 0)
+                ) if hasattr(entity, 'document_id') else None,
+                provenance=EntityProvenance(
+                    extraction_job_id=job_id,
+                    source_url=getattr(job, 'source_url', None),
+                    trace_id=getattr(job, 'trace_id', None)
+                ),
+                attributes=getattr(entity, 'attributes', {})
+            ))
+    
+    return ExtractionEntitiesResponse(
+        job_id=job_id,
+        entities=entities,
+        total=len(entities)
+    )
+

@@ -10,15 +10,44 @@ interface ScenarioPanelProps {
   formulaId: string;
 }
 
+// UI-specific type with stable id for React keys
+export type UIVariableAdjustment = VariableAdjustment & {
+  id: string;
+};
+
+// Generate stable ID with fallback for older browsers
+const generateId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+// Convert UI state to API DTO (strips id)
+export const toVariableAdjustmentDto = (adj: UIVariableAdjustment): VariableAdjustment => ({
+  name: adj.name,
+  value: adj.value,
+  original_value: adj.original_value,
+});
+
+// Create new UI adjustment with stable id
+export const createUiAdjustment = (base: Partial<VariableAdjustment> = {}): UIVariableAdjustment => ({
+  ...base,
+  id: generateId(),
+  name: base.name || "",
+  value: base.value ?? 0,
+  original_value: base.original_value ?? 0,
+});
+
 export function ScenarioPanel({ formulaId }: ScenarioPanelProps) {
   const [baseCaseId, setBaseCaseId] = useState("");
-  const [adjustments, setAdjustments] = useState<VariableAdjustment[]>([
-    { name: "", value: 0, original_value: 0 },
+  const [adjustments, setAdjustments] = useState<UIVariableAdjustment[]>([
+    createUiAdjustment({ name: "", value: 0, original_value: 0 }),
   ]);
   const { mutate: runScenario, data: result, isPending, error } = useFormulaScenario();
 
   const addAdjustment = () => {
-    setAdjustments([...adjustments, { name: "", value: 0, original_value: 0 }]);
+    setAdjustments([...adjustments, createUiAdjustment({ name: "", value: 0, original_value: 0 })]);
   };
 
   const updateAdjustment = (idx: number, field: keyof VariableAdjustment, val: string | number) => {
@@ -41,7 +70,9 @@ export function ScenarioPanel({ formulaId }: ScenarioPanelProps) {
     if (!baseCaseId.trim()) return;
     runScenario({
       base_case_id: baseCaseId,
-      adjustments: adjustments.filter((a) => a.name.trim()),
+      adjustments: adjustments
+        .filter((a) => a.name.trim())
+        .map(toVariableAdjustmentDto),
     });
   };
 
@@ -65,7 +96,7 @@ export function ScenarioPanel({ formulaId }: ScenarioPanelProps) {
         </label>
         <div className="space-y-2">
           {adjustments.map((adj, idx) => (
-            <div key={idx} className="flex gap-1.5 items-center">
+            <div key={adj.id} className="flex gap-1.5 items-center">
               <input
                 value={adj.name}
                 onChange={(e) => updateAdjustment(idx, "name", e.target.value)}
@@ -88,8 +119,10 @@ export function ScenarioPanel({ formulaId }: ScenarioPanelProps) {
               />
               {adjustments.length > 1 && (
                 <button
+                  type="button"
                   onClick={() => removeAdjustment(idx)}
-                  className="text-red-400 hover:text-red-600 text-[14px]"
+                  className="text-red-400 hover:text-red-600 text-[14px] w-6 h-6 flex items-center justify-center rounded hover:bg-red-50"
+                  aria-label="Remove adjustment"
                 >
                   &times;
                 </button>
@@ -98,8 +131,10 @@ export function ScenarioPanel({ formulaId }: ScenarioPanelProps) {
           ))}
         </div>
         <button
+          type="button"
           onClick={addAdjustment}
-          className="mt-2 text-[11px] text-primary hover:text-primary/80"
+          className="mt-2 text-[11px] text-primary hover:text-primary/80 border border-dashed border-primary/30 rounded-md px-2 py-1"
+          aria-label="Add variable adjustment"
         >
           + Add adjustment
         </button>
@@ -153,7 +188,7 @@ export function ScenarioPanel({ formulaId }: ScenarioPanelProps) {
           </div>
           {result.warnings && result.warnings.length > 0 && (
             <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 p-2 rounded">
-              {result.warnings.map((w, i) => <div key={i}>{w}</div>)}
+              {result.warnings.map((w, i) => <div key={`warning-${i}`}>{w}</div>)}
             </div>
           )}
         </div>
