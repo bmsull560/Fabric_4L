@@ -95,6 +95,14 @@ class Settings(BaseSettings):
     # ==========================================================================
     # Layer Integration
     # ==========================================================================
+    service_mesh_mtls_enabled: bool = Field(
+        default=False,
+        description="Allow in-mesh HTTP service URLs when mTLS enforcement is enabled."
+    )
+    allow_insecure_service_http_in_development: bool = Field(
+        default=False,
+        description="Allow HTTP service URLs only for local development/testing."
+    )
     layer1_api_url: str = Field(
         default="",
         description="Layer 1 Ingestion API URL"
@@ -110,14 +118,6 @@ class Settings(BaseSettings):
     layer5_api_url: str = Field(
         default="",
         description="Layer 5 Ground Truth API URL"
-    )
-    service_mesh_mtls_enabled: bool = Field(
-        default=False,
-        description="Allow in-mesh HTTP service URLs when mTLS enforcement is enabled."
-    )
-    allow_insecure_service_http_in_development: bool = Field(
-        default=False,
-        description="Allow HTTP service URLs only for local development/testing."
     )
     neo4j_uri: str = Field(
         default="bolt://localhost:7687",

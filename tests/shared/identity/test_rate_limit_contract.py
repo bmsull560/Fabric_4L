@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.rate_limiting import RateLimitConfig
@@ -22,7 +23,7 @@ async def test_identity_rate_limiter_contract_fields_and_reset_semantics() -> No
     assert isinstance(third.retry_after, int)
     assert third.retry_after >= 0
     assert third.reset_at >= first.reset_at
-<<<<<<< ours
+    assert {"allowed", "remaining", "reset_at", "retry_after"} <= set(third.__dict__.keys())
 
 
 @pytest.mark.asyncio
@@ -63,6 +64,3 @@ async def test_identity_rate_limiter_redis_failure_local_fallback_enforces_low_c
     assert all(o.allowed for o in outcomes[:5])
     assert outcomes[5].allowed is False
     assert outcomes[5].retry_after is not None
-=======
-    assert {"allowed", "remaining", "reset_at", "retry_after"} <= set(third.__dict__.keys())
->>>>>>> theirs

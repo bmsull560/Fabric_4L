@@ -22,27 +22,19 @@ from zoneinfo import available_timezones
 
 import structlog
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
+from value_fabric.shared.error_handling.handlers import (
+    get_request_trace_id,
+    global_exception_handler as shared_global_exception_handler,
+    validation_exception_handler as shared_validation_exception_handler,
+)
+from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
 from value_fabric.shared.identity.fallback_telemetry import (
     enforce_fallback_enabled,
     record_fallback_usage,
 )
-=======
-from value_fabric.shared.error_handling.handlers import get_request_trace_id
-from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
->>>>>>> theirs
-=======
-from value_fabric.shared.error_handling.handlers import get_request_trace_id
-from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
->>>>>>> theirs
-=======
-from value_fabric.shared.error_handling.handlers import get_request_trace_id
-from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
->>>>>>> theirs
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -311,6 +303,20 @@ async def layer1_http_exception_handler(request: Request, exc: HTTPException) ->
         content=content,
         headers=headers,
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def layer1_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Route request validation failures through canonical shared envelope."""
+    return await shared_validation_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)
+async def layer1_global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Route unhandled errors through canonical shared envelope."""
+    return await shared_global_exception_handler(request, exc)
 
 
 # CORS middleware with production validation (P0-20) — OUTERMOST.

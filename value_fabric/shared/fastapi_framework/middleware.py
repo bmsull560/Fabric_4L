@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from value_fabric.shared.error_handling import RequestIDMiddleware
 from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
-from value_fabric.shared.identity.middleware import GovernanceMiddleware
+from value_fabric.shared.identity.middleware import GovernanceMiddleware, audit_protected_routes
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
 from value_fabric.shared.security.config import is_production_like_environment
 
@@ -110,6 +110,10 @@ def add_governance_middleware(app: FastAPI, *, rate_limiter: Any | None = None) 
         api_key_resolver=reject_api_key_unsupported,
         rate_limiter=rate_limiter,
     )
+
+    @app.on_event("startup")
+    async def _audit_auth_routes() -> None:
+        audit_protected_routes(app)
 
 
 def add_cors_middleware(app: FastAPI, policy: CorsPolicy) -> None:

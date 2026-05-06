@@ -91,6 +91,7 @@ from .main_fix import (
     trace,
 )
 from .metrics_state import get_system_metrics, set_app_metrics
+from .routes import entity_compat, query_search
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
@@ -1723,65 +1724,8 @@ async def get_entity_context(
     and cursor-based pagination (?cursor=xyz&limit=50) for large neighborhoods.
     """
     try:
-        context = await graph_rag.get_entity_context(
-            entity_id=entity_id,
-            hops=hops,
-            relationship_types=relationship_types,
-        )
-
-        if not context["center"]:
-            raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
-
-        # Apply field selection if requested
-        if fields:
-            field_list = [f.strip() for f in fields.split(",")]
-            center = {
-                k: v
-                for k, v in context["center"].items()
-                if k in field_list or k == "id"
-            }
-            neighbors = [
-                {k: v for k, v in n.items() if k in field_list or k == "id"}
-                for n in context["neighbors"]
-            ]
-            relationships = [
-                {
-                    k: v
-                    for k, v in r.items()
-                    if k in field_list or k in ["source", "target", "type"]
-                }
-                for r in context["relationships"]
-            ]
-        else:
-            center = context["center"]
-            neighbors = context["neighbors"]
-            relationships = context["relationships"]
-
-        # Apply pagination to neighbors
-        pagination_info = None
-        if cursor or len(neighbors) > limit:
-            # Simple offset-based pagination (can be enhanced to cursor-based)
-            offset = int(cursor) if cursor and cursor.isdigit() else 0
-            total_neighbors = len(neighbors)
-            paginated_neighbors = neighbors[offset : offset + limit]
-            has_more = (offset + limit) < total_neighbors
-
-            pagination_info = {
-                "returned_count": len(paginated_neighbors),
-                "total_neighbors": total_neighbors,
-                "has_more": has_more,
-                "next_cursor": str(offset + limit) if has_more else None,
-            }
-            neighbors = paginated_neighbors
-
-        return EntityContextResponse(
-            entity_id=entity_id,
-            center=center,
-            neighbors=neighbors,
-            relationships=relationships,
-            entity_count=context["entity_count"],
-            relationship_count=context["relationship_count"],
-            pagination=pagination_info,
+        return await entity_compat.get_entity_context_impl(
+            entity_id, hops, relationship_types, fields, cursor, limit, graph_rag
         )
     except HTTPException:
         raise
@@ -1797,17 +1741,7 @@ async def traverse_value_tree(
 ):
     """Traverse the 4-layer value tree from an entity."""
     try:
-        result = await graph_rag.traverse_value_tree(
-            start_entity_id=request.entity_id,
-            direction=request.direction,
-        )
-
-        return ValueTreeResponse(
-            start_entity_id=result["start_entity_id"],
-            direction=result["direction"],
-            paths=result["paths"],
-            path_count=result["path_count"],
-        )
+        return await entity_compat.traverse_value_tree_impl(request, graph_rag)
     except Exception as e:
         logger.error(f"Value tree traversal failed: {e}")
         raise HTTPException(status_code=500, detail="Value tree traversal failed. Please try again later.")
@@ -1852,160 +1786,11 @@ async def list_entities(
     **Response:** Returns EntityListResponse with canonical EntitySummary objects.
     """
     try:
-        # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _extract_tenant_id(request)
-
-        # Require tenant_id for multi-tenant security
-        if not tenant_id:
-            raise HTTPException(
-                status_code=400,
-                detail="tenant_id is required for entity listing"
-            )
-
-        # Build dynamic Cypher query based on filters
-        where_clauses = ["e.tenant_id = $tenant_id"]  # Mandatory tenant filter
-        params: dict[str, Any] = {"tenant_id": tenant_id}
-
-        if search_text:
-            where_clauses.append("(toLower(e.name) CONTAINS toLower($search_text) OR toLower(e.description) CONTAINS toLower($search_text))")
-            params["search_text"] = search_text
-
-        if entity_types:
-            where_clauses.append("e.entity_type IN $entity_types")
-            params["entity_types"] = entity_types
-
-        if domains:
-            where_clauses.append("e.domain IN $domains")
-            params["domains"] = domains
-
-        if statuses:
-            where_clauses.append("e.status IN $statuses")
-            params["statuses"] = statuses
-
-        if min_confidence is not None:
-            where_clauses.append("e.confidence >= $min_confidence")
-            params["min_confidence"] = min_confidence
-
-        if max_confidence is not None:
-            where_clauses.append("e.confidence <= $max_confidence")
-            params["max_confidence"] = max_confidence
-
-        where_clause = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
-
-        # Validate sort_by to prevent injection
-        valid_sort_fields = {"name", "updated_at", "confidence", "entity_type", "status", "created_at"}
-        if sort_by not in valid_sort_fields:
-            sort_by = "updated_at"
-        sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
-
-        # Build and execute count query
-        count_query = f"""
-            MATCH (e:Entity)
-            {where_clause}
-            RETURN count(e) as total
-        """
-
-        async with neo4j_driver.session() as session:
-            # Get total count
-            count_result = await session.run(count_query, params)
-            total_count_record = await count_result.single()
-            total_count = total_count_record["total"] if total_count_record else 0
-
-            # Build entity query with sorting and pagination
-            entity_query = f"""
-                MATCH (e:Entity)
-                {where_clause}
-                RETURN e {{
-                    .id, .name, .entity_type, .domain, .status,
-                    .confidence, .confidence_label, .description,
-                    .updated_at, .source_name, .extraction_job_id,
-                    .created_at, .created_by
-                }}
-                ORDER BY e.{sort_by} {sort_direction}
-                SKIP $offset
-                LIMIT $limit
-            """
-            params["offset"] = offset
-            params["limit"] = limit
-
-            # Execute entity query
-            result = await session.run(entity_query, params)
-            records = await result.fetch()
-
-            # Build summary objects
-            summaries = []
-            for record in records:
-                node = record["e"]
-                # Derive status and confidence_label if not stored
-                confidence = node.get("confidence", 0.0)
-                status = node.get("status")
-                if status is None:
-                    if confidence >= 0.9:
-                        status = "validated"
-                    elif confidence >= 0.7:
-                        status = "pending"
-                    else:
-                        status = "draft"
-
-                confidence_label = node.get("confidence_label")
-                if confidence_label is None:
-                    if confidence >= 0.9:
-                        confidence_label = "high"
-                    elif confidence >= 0.7:
-                        confidence_label = "medium"
-                    else:
-                        confidence_label = "low"
-
-                summary = EntitySummary(
-                    id=node.get("id", "unknown"),
-                    name=node.get("name", "Unknown"),
-                    entity_type=node.get("entity_type", "Capability"),
-                    domain=node.get("domain"),
-                    status=status,
-                    confidence=confidence,
-                    confidence_label=confidence_label,
-                    description=node.get("description"),
-                    updated_at=node.get("updated_at") or datetime.utcnow(),
-                    source_name=node.get("source_name"),
-                    extraction_job_id=node.get("extraction_job_id"),
-                )
-                summaries.append(summary)
-
-            # Get available filter values for UI dropdowns
-            available_domains = []
-            available_sources = []
-            if summaries:
-                domains_query = """
-                    MATCH (e:Entity {tenant_id: $tenant_id})
-                    WHERE e.domain IS NOT NULL
-                    RETURN collect(DISTINCT e.domain) as domains
-                """
-                domains_result = await session.run(domains_query, {"tenant_id": tenant_id})
-                domains_record = await domains_result.single()
-                if domains_record:
-                    available_domains = domains_record["domains"]
-
-                sources_query = """
-                    MATCH (e:Entity {tenant_id: $tenant_id})
-                    WHERE e.source_name IS NOT NULL
-                    RETURN collect(DISTINCT e.source_name) as sources
-                """
-                sources_result = await session.run(sources_query, {"tenant_id": tenant_id})
-                sources_record = await sources_result.single()
-                if sources_record:
-                    available_sources = sources_record["sources"]
-
-        has_more = (offset + len(summaries)) < total_count
-
-        return EntityListResponse(
-            results=summaries,
-            total_count=total_count,
-            filtered_count=total_count,  # Total matching filters
-            limit=limit,
-            offset=offset,
-            has_more=has_more,
-            available_domains=available_domains,
-            available_sources=available_sources,
+        return await entity_compat.list_entities_impl(
+            request=request, search_text=search_text, entity_types=entity_types,
+            domains=domains, statuses=statuses, min_confidence=min_confidence,
+            max_confidence=max_confidence, limit=limit, offset=offset, sort_by=sort_by,
+            sort_order=sort_order, neo4j_driver=neo4j_driver, extract_tenant_id=_extract_tenant_id
         )
 
     except HTTPException:
@@ -2212,22 +1997,7 @@ async def query_entities(
     **Response:** Returns EntityListResponse with canonical EntitySummary objects.
     """
     try:
-        # Delegate to the same implementation as GET endpoint
-        # Convert request body to the same parameters
-        return await list_entities(
-            request=fastapi_request,
-            search_text=request.search_text,
-            entity_types=[str(entity_type) for entity_type in request.entity_types] if request.entity_types else None,
-            domains=request.domains,
-            statuses=[str(status) for status in request.statuses] if request.statuses else None,
-            min_confidence=request.min_confidence,
-            max_confidence=request.max_confidence,
-            limit=request.limit,
-            offset=request.offset,
-            sort_by=request.sort_by,
-            sort_order=request.sort_order,
-            neo4j_driver=neo4j_driver,
-        )
+        return await entity_compat.query_entities_impl(request, fastapi_request, neo4j_driver, list_entities)
     except HTTPException:
         raise
     except Exception as e:

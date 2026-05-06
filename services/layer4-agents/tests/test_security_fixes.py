@@ -30,7 +30,7 @@ from src.api.routes.health_badges import dismiss_badge, get_detailed_health, req
 from src.config.settings import Settings  # noqa: E402
 from src.metrics.prometheus_metrics import _derive_tenant_tier, _normalize_path  # noqa: E402
 
-MAIN_SOURCE = LAYER4_SRC / "api" / "main.py"
+CORE_ROUTES_SOURCE = LAYER4_SRC / "api" / "core_routes.py"
 HEALTH_BADGES_SOURCE = LAYER4_SRC / "api" / "routes" / "health_badges.py"
 TOOLS_SOURCE = LAYER4_SRC / "api" / "routes" / "tools.py"
 
@@ -246,7 +246,7 @@ class MetricsEndpointSecurityWiringTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.source = MAIN_SOURCE.read_text(encoding="utf-8")
+        cls.source = CORE_ROUTES_SOURCE.read_text(encoding="utf-8")
 
     def test_metrics_access_control_import_is_present(self) -> None:
         self.assertIn("from value_fabric.shared.observability.metrics_access import verify_metrics_access", self.source)

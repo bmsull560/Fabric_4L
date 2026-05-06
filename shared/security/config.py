@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qsl, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,8 @@ def _is_controlled_local_exception() -> bool:
 
 def _validate_database_tls_mode(database_url: str, *, source_variable: str, environment_label: str) -> None:
     parsed = urlparse(database_url)
-    sslmode = (parse_qs(parsed.query).get("sslmode", [""])[0] or "").strip().lower()
+    query_params = {key.lower(): value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
+    sslmode = (query_params.get("sslmode", "") or "").strip().lower()
     approved_modes = {"require", "verify-ca", "verify-full"}
     preferred_mode = "verify-full"
 
@@ -169,11 +170,11 @@ def validate_database_config() -> None:
         )
 
     sync_database_url = _env("DATABASE_URL_SYNC")
-    if is_production() and sync_database_url:
+    if (is_production() or is_staging()) and sync_database_url:
         _validate_database_tls_mode(
             sync_database_url,
             source_variable="DATABASE_URL_SYNC",
-            environment_label="production",
+            environment_label="production" if is_production() else "staging",
         )
 
 

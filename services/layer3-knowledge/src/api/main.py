@@ -3,6 +3,11 @@
 Migration ledger:
 - moved router groups: system, entity/browser, value tree, formulas, benchmarks, query/search helpers.
 - remaining in app_monolith: app wiring, legacy alias decorators, deprecation compatibility headers.
+
+Canonical route ownership:
+- Business logic must live in modules under `api/routes/`.
+- `app_monolith` handlers are compatibility shims only and should delegate to
+  route module implementations for backward compatibility endpoints.
 """
 
 from __future__ import annotations

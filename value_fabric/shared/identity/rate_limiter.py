@@ -77,9 +77,10 @@ class _InMemoryFallbackLimiter:
 class RedisRateLimiter:
     """Sliding-window rate limiter backed by Redis sorted sets."""
 
-    def __init__(self, redis_client: Any | None = None) -> None:
+    def __init__(self, redis_client: Any | None = None, *, fail_open: bool | None = None) -> None:
         self._adapter = SlidingWindowAdapter(redis_client)
         self._fallback_limiter = _InMemoryFallbackLimiter()
+        self._legacy_fail_open = fail_open
 
     async def check(self, key: str, config: RateLimitConfig) -> RateLimitResult:
         """Check whether a request is allowed under the given config."""
@@ -99,6 +100,23 @@ class RedisRateLimiter:
                 retry_after=decision.retry_after,
             )
         except Exception as exc:
+            if self._legacy_fail_open is True:
+                now = time.time()
+                return RateLimitResult(
+                    allowed=True,
+                    remaining=-1,
+                    reset_at=now + window,
+                    retry_after=None,
+                )
+            if self._legacy_fail_open is False:
+                now = time.time()
+                return RateLimitResult(
+                    allowed=False,
+                    remaining=0,
+                    reset_at=now + window,
+                    retry_after=window,
+                )
+
             fail_mode = get_rate_limit_fail_mode()
             self._record_fallback_activation(key=key, mode=fail_mode, error=exc)
             if fail_mode is RateLimitFailMode.LOCAL_FALLBACK:

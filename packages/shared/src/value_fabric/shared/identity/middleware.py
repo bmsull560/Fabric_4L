@@ -24,10 +24,8 @@ authentication where required (some endpoints, e.g. ``/health``, are public).
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import hmac
-import importlib
 import inspect
 import logging
 import os
@@ -38,7 +36,8 @@ import types
 from typing import Any, Callable, Optional
 from uuid import UUID
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 try:
@@ -47,7 +46,6 @@ except ImportError:
     jwt = None  # type: ignore
 
 from .context import (
-    AUTH_SOURCE_SERVICE_ACCOUNT,
     RequestContext,
     clear_current_context,
     get_current_context,
@@ -81,10 +79,7 @@ def decode_jwt(token: str):
         raise JWTError("expired signature validation failed")
     return _decode_jwt(token)
 
-try:
-    _shared_compat_module = importlib.import_module("shared")
-except Exception:  # pragma: no cover - fallback for non-checkout package installs
-    _shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
+_shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
 _identity_compat_module = sys.modules.setdefault("shared.identity", types.ModuleType("shared.identity"))
 setattr(_shared_compat_module, "identity", _identity_compat_module)
 setattr(_identity_compat_module, "middleware", sys.modules[__name__])
@@ -93,21 +88,8 @@ sys.modules.setdefault("shared.identity.middleware", sys.modules[__name__])
 # Process-local fallback used only by lightweight regression tests and single-worker
 # development paths. Production middleware should use RedisRateLimiter so quotas are
 # shared across workers and pods.
-_tenant_rate_limit_buckets: dict[str, dict[str, Any]] = {}
+_tenant_rate_limit_buckets: dict[str, tuple[float, int]] = {}
 _RATE_LIMIT_WINDOW_SECONDS = 60
-
-
-def _runtime_environment() -> str:
-    return (
-        os.getenv("ENVIRONMENT")
-        or os.getenv("ENV")
-        or os.getenv("APP_ENV")
-        or "development"
-    ).strip().lower()
-
-
-def _is_production_like_environment() -> bool:
-    return _runtime_environment() in {"prod", "production", "staging", "stage"}
 
 
 def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[bool, int]:
@@ -123,13 +105,7 @@ def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[
 
     now = time.time()
     bucket_key = str(tenant_id)
-    bucket = _tenant_rate_limit_buckets.get(bucket_key)
-    if bucket is None:
-        window_start = now
-        count = 0
-    else:
-        window_start = float(bucket.get("reset_at", now))
-        count = int(bucket.get("count", 0))
+    window_start, count = _tenant_rate_limit_buckets.get(bucket_key, (now, 0))
 
     if now - window_start >= _RATE_LIMIT_WINDOW_SECONDS:
         window_start = now
@@ -139,7 +115,7 @@ def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[
         retry_after = max(1, int(_RATE_LIMIT_WINDOW_SECONDS - (now - window_start)))
         return False, retry_after
 
-    _tenant_rate_limit_buckets[bucket_key] = {"reset_at": window_start, "count": count + 1}
+    _tenant_rate_limit_buckets[bucket_key] = (window_start, count + 1)
     return True, 0
 
 
@@ -149,11 +125,10 @@ SERVICE_AUTH_HEADER = "X-Service-Auth"
 MIN_SERVICE_SECRET_LENGTH = 32  # Minimum entropy for shared secrets
 
 # Paths that bypass all authentication checks
-_PUBLIC_PATHS: frozenset[str] = frozenset(
+PUBLIC_PATH_ALLOWLIST: frozenset[str] = frozenset(
     {
         "/health",
         "/health/detailed",
-        "/api/v1/health",
         "/metrics",
         "/docs",
         "/openapi.json",
@@ -165,7 +140,34 @@ _PUBLIC_PATHS: frozenset[str] = frozenset(
 
 def _is_public_path(path: str) -> bool:
     """Return True if the path should bypass authentication."""
-    return path in _PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc")
+    return path in PUBLIC_PATH_ALLOWLIST or path.startswith("/docs") or path.startswith("/redoc")
+
+
+def _is_authenticated_dependency(dep: Any) -> bool:
+    call = getattr(dep, "call", None)
+    return callable(call) and getattr(call, "__name__", "") == "require_authenticated"
+
+
+def audit_protected_routes(app: FastAPI) -> None:
+    """Fail closed if any non-public route is missing auth dependency wiring."""
+    missing_auth: list[str] = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        path = route.path
+        if _is_public_path(path):
+            continue
+        if any(_is_authenticated_dependency(dep) for dep in route.dependant.dependencies):
+            continue
+        methods = ",".join(sorted(route.methods or []))
+        missing_auth.append(f"{methods} {path}")
+
+    if missing_auth:
+        missing = "\n - ".join(sorted(missing_auth))
+        raise RuntimeError(
+            "Auth route audit failed. Non-public routes must include Depends(require_authenticated)."
+            f"\n - {missing}"
+        )
 
 
 def _allow_legacy_test_tenant_ids() -> bool:
@@ -336,21 +338,18 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         app: Any,
         api_key_resolver: Optional[Callable] = None,
         rate_limiter: Optional[RedisRateLimiter] = None,
-        redis_client: Any | None = None,
         tenant_settings_resolver: Optional[Callable] = None,
         on_rate_limit_hit: Optional[Callable[[str, str], None]] = None,
+        enforce_authentication: bool = True,
     ) -> None:
         super().__init__(app)
-        if rate_limiter is None and redis_client is not None:
-            rate_limiter = RedisRateLimiter(redis_client)
         self._api_key_resolver = api_key_resolver
         self._rate_limiter = rate_limiter
         self._redis_client = rate_limiter
-        self._rate_limiter_backend = "redis" if rate_limiter is not None else "memory"
         self._tenant_settings_resolver = tenant_settings_resolver
         self._on_rate_limit_hit = on_rate_limit_hit
+        self._enforce_authentication = enforce_authentication
         self._validate_multi_worker_rate_limit_configuration(rate_limiter)
-        logger.info("rate_limiter_backend_selected=%s", self._rate_limiter_backend)
         # P0 FIX: Query param tenant authentication removed entirely
         self._allow_query_param = False
 
@@ -367,15 +366,13 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         if worker_count > 1 and rate_limiter is None:
             raise MultiWorkerRateLimitError()
-        if _is_production_like_environment() and rate_limiter is None:
-            raise RateLimiterConfigurationError(_runtime_environment())
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         token: Any = _current_context.set(None)  # always reset at start
         ctx: Optional[RequestContext] = None
 
         try:
-            if not _is_public_path(request.url.path):
+            if self._enforce_authentication and not _is_public_path(request.url.path):
                 try:
                     ctx = await self._resolve_identity(request)
                 except HTTPException as exc:
@@ -390,57 +387,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 token = set_request_context(ctx)
                 request.state.governance_context = ctx
                 request.state.context = ctx
-
-                # Tenant lifecycle enforcement — block non-active tenants before
-                # any route handler can execute.  Status is read from the raw JWT
-                # payload so the check is authoritative and cannot be bypassed by
-                # application-layer code.
-                tenant_status = (ctx.raw or {}).get("tenant_status")
-                if tenant_status == "suspended":
-                    logger.warning(
-                        "Blocked suspended tenant: tenant_id=%s path=%s",
-                        ctx.tenant_id,
-                        request.url.path,
-                    )
-                    return JSONResponse(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        content={
-                            "error": "tenant_suspended",
-                            "detail": (
-                                "Your account has been suspended. "
-                                "Please contact support to resolve this issue."
-                            ),
-                        },
-                    )
-                elif tenant_status == "pending":
-                    logger.info(
-                        "Blocked pending tenant: tenant_id=%s path=%s",
-                        ctx.tenant_id,
-                        request.url.path,
-                    )
-                    return JSONResponse(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        content={
-                            "error": "tenant_pending",
-                            "detail": (
-                                "Your account setup is not yet complete. "
-                                "Please complete your onboarding to access this resource."
-                            ),
-                        },
-                    )
-                elif tenant_status == "deleted":
-                    logger.info(
-                        "Blocked deleted tenant: tenant_id=%s path=%s",
-                        ctx.tenant_id,
-                        request.url.path,
-                    )
-                    return JSONResponse(
-                        status_code=status.HTTP_404_NOT_FOUND,
-                        content={
-                            "error": "tenant_not_found",
-                            "detail": "The requested tenant was not found.",
-                        },
-                    )
             else:
                 request.state.governance_context = None
                 request.state.context = None
@@ -448,13 +394,16 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             # Rate limiting check (after identity, before request handling)
             if ctx is not None and self._rate_limiter is not None:
                 rate_limit_result = await self._check_rate_limit(request, ctx)
+                request.state.rate_limit_result = rate_limit_result
+                config = getattr(request.state, "rate_limit_config", None)
                 if rate_limit_result is not None and not rate_limit_result.allowed:
-                    config = getattr(request.state, "rate_limit_config", None)
                     rate_limit_rpm = config.requests_per_minute if config else ""
                     headers = {
                         "X-RateLimit-Limit": str(rate_limit_rpm),
-                        "X-RateLimit-Remaining": str(max(0, rate_limit_result.remaining)),
+                        "X-RateLimit-Remaining": "0",
                         "X-RateLimit-Reset": str(int(rate_limit_result.reset_at)),
+                        "X-RateLimit-Scope": config.scope.value if config else "tenant",
+                        "X-RateLimit-Policy": getattr(request.state, "rate_limit_policy", "default"),
                         "Retry-After": str(rate_limit_result.retry_after) if rate_limit_result.retry_after is not None else "60",
                     }
                     if self._on_rate_limit_hit is not None and config is not None:
@@ -462,6 +411,18 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             self._on_rate_limit_hit(str(ctx.tenant_id), config.scope.value)
                         except Exception:
                             pass
+                    logger.warning(
+                        "rate_limit_throttled",
+                        extra={
+                            "event": "rate_limit_throttled",
+                            "tenant_id": str(ctx.tenant_id),
+                            "user_id": str(ctx.user_id) if ctx.user_id else None,
+                            "api_key_id": str(ctx.api_key_id) if ctx.api_key_id else None,
+                            "path": request.url.path,
+                            "method": request.method,
+                            "scope": config.scope.value if config else "tenant",
+                        },
+                    )
                     return JSONResponse(
                         status_code=429,
                         headers=headers,
@@ -479,11 +440,16 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         # Add rate limit headers if we performed a rate limit check
         if ctx is not None and self._rate_limiter is not None:
             config = getattr(request.state, "rate_limit_config", None)
-            result = getattr(request.state, "rate_limit_result", None)
-            if config is not None and result is not None:
+            if config is not None:
+                result = getattr(request.state, "rate_limit_result", None)
+                if result is None:
+                    rate_key = self._build_rate_limit_key(request, ctx, config)
+                    result = await self._rate_limiter.check(rate_key, config)
                 response.headers["X-RateLimit-Limit"] = str(config.requests_per_minute)
                 response.headers["X-RateLimit-Remaining"] = str(max(0, result.remaining))
                 response.headers["X-RateLimit-Reset"] = str(int(result.reset_at))
+                response.headers["X-RateLimit-Scope"] = config.scope.value
+                response.headers["X-RateLimit-Policy"] = getattr(request.state, "rate_limit_policy", "default")
 
         return response
 
@@ -618,16 +584,12 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             except ValueError:
                 logger.debug("Invalid X-Tenant-ID header: %r", x_tenant)
                 return None
-            return RequestContext(
-                tenant_id=tenant_id,
+            return _build_context_from_role(
+                tenant_id,
                 user_id="service",
                 roles=[Role.SYSTEM.value],
-                permissions=frozenset(ROLE_PERMISSIONS[Role.SYSTEM].permissions),
-                auth_source=AUTH_SOURCE_SERVICE_ACCOUNT,
-                source=AUTH_SOURCE_SERVICE_ACCOUNT,
-                service_account_id="service-auth-header",
-                service_account_scopes=["internal:service-to-service"],
-                raw={"service_auth_header": True},
+                source="header",
+                raw={},
             )
 
         # P0 FIX: Query param tenant authentication removed entirely — never trust client-supplied identity
@@ -640,7 +602,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
     def _resolve_rate_limit_config(
         self, request: Request, ctx: RequestContext
     ) -> Optional[RateLimitConfig]:
-        """Determine the non-tenant-resolver rate limit config for the request."""
+        """Determine the effective rate limit config for the request."""
         # super_admin and system are unlimited
         if ctx.has_any_role(Role.SUPER_ADMIN, Role.SYSTEM):
             return None
@@ -656,7 +618,14 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     scope=RateLimitScope.API_KEY,
                 )
 
-        # 2. Role defaults
+        # 2. Tenant settings override
+        if self._tenant_settings_resolver is not None:
+            # Fire-and-forget async call — we need to handle this in dispatch
+            # Since this is sync, we'll skip the async tenant resolver here
+            # and handle it in _check_rate_limit instead.
+            pass
+
+        # 3. Role defaults
         for role_str in ctx.roles:
             try:
                 role = Role(role_str)
@@ -668,59 +637,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         return ROLE_DEFAULT_RATE_LIMITS.get(Role.READ_ONLY)
 
-    async def _resolve_effective_rate_limit_config(
-        self, request: Request, ctx: RequestContext
-    ) -> Optional[RateLimitConfig]:
-        """Resolve API-key, tenant, then role-default rate limit settings."""
-        base_config = self._resolve_rate_limit_config(request, ctx)
-        if base_config is None:
-            return None
-
-        if (
-            ctx.source == "api_key"
-            and hasattr(request.state, "api_key_record")
-            and getattr(request.state, "api_key_record").get("rate_limit_per_minute") is not None
-        ):
-            return base_config
-
-        if self._tenant_settings_resolver is None:
-            return base_config
-
-        try:
-            settings = await self._tenant_settings_resolver(ctx.tenant_id)
-        except Exception as exc:
-            logger.warning("Tenant settings resolver failed: %s", exc)
-            return base_config
-
-        try:
-            tenant_config = self._rate_limit_config_from_tenant_settings(settings)
-        except Exception as exc:
-            logger.warning("Tenant rate limit settings invalid: %s", exc)
-            return base_config
-        return tenant_config or base_config
-
-    @staticmethod
-    def _rate_limit_config_from_tenant_settings(settings: Any) -> Optional[RateLimitConfig]:
-        """Build shared rate-limit config from tenant settings dictionaries."""
-        if not isinstance(settings, dict):
-            return None
-        rate_limits = settings.get("rate_limits")
-        if not isinstance(rate_limits, dict):
-            return None
-
-        requests_per_minute = rate_limits.get("requests_per_minute")
-        if requests_per_minute is None:
-            return None
-
-        burst_size = rate_limits.get("burst_size", rate_limits.get("burst", 10))
-        scope = rate_limits.get("scope", RateLimitScope.TENANT.value)
-        return RateLimitConfig(
-            requests_per_minute=requests_per_minute,
-            requests_per_hour=rate_limits.get("requests_per_hour"),
-            burst_size=burst_size,
-            scope=RateLimitScope(scope),
-        )
-
     async def _check_rate_limit(
         self, request: Request, ctx: RequestContext
     ) -> Optional[RateLimitResult]:
@@ -728,26 +644,58 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         if self._rate_limiter is None:
             return None
 
-        config = await self._resolve_effective_rate_limit_config(request, ctx)
+        # Check tenant settings async if resolver is available
+        if self._tenant_settings_resolver is not None:
+            try:
+                settings = await self._tenant_settings_resolver(ctx.tenant_id)
+                if settings and isinstance(settings, dict) and "rate_limits" in settings:
+                    rate_limits = settings["rate_limits"]
+                    if isinstance(rate_limits, dict):
+                        tenant_config = RateLimitConfig(
+                            requests_per_minute=rate_limits.get("requests_per_minute", 60),
+                            requests_per_hour=rate_limits.get("requests_per_hour"),
+                            burst_size=rate_limits.get("burst_size", 10),
+                            scope=RateLimitScope(rate_limits.get("scope", "tenant")),
+                        )
+                        request.state.rate_limit_config = tenant_config
+                        request.state.rate_limit_policy = "tenant_settings"
+                        rate_key = self._build_rate_limit_key(request, ctx, tenant_config)
+                        return await self._rate_limiter.check(rate_key, tenant_config)
+            except Exception as exc:
+                logger.warning("Tenant settings resolver failed: %s", exc)
+
+        config = self._resolve_rate_limit_config(request, ctx)
         if config is None:
             return None
+        request.state.rate_limit_config = config
+        request.state.rate_limit_policy = "role_default"
 
         rate_key = self._build_rate_limit_key(request, ctx, config)
-        result = await self._rate_limiter.check(rate_key, config)
-        request.state.rate_limit_config = config
-        request.state.rate_limit_result = result
-        request.state.rate_limit_key = rate_key
-        return result
+        return await self._rate_limiter.check(rate_key, config)
 
     def _build_rate_limit_key(
         self, request: Request, ctx: RequestContext, config: RateLimitConfig
     ) -> str:
         """Build a Redis key for the rate limit window."""
+        endpoint_class = self._classify_endpoint(request)
         if config.scope == RateLimitScope.API_KEY and ctx.api_key_id:
-            return f"ratelimit:api_key:{ctx.api_key_id}"
+            return f"ratelimit:api_key:{ctx.api_key_id}:{endpoint_class}"
         if config.scope == RateLimitScope.USER and ctx.user_id:
-            return f"ratelimit:user:{ctx.tenant_id}:{ctx.user_id}"
-        return f"ratelimit:tenant:{ctx.tenant_id}"
+            return f"ratelimit:user:{ctx.tenant_id}:{ctx.user_id}:{endpoint_class}"
+        return f"ratelimit:tenant:{ctx.tenant_id}:{endpoint_class}"
+
+    def _classify_endpoint(self, request: Request) -> str:
+        path = request.url.path
+        method = request.method.upper()
+        if path.startswith("/auth/") or path.startswith("/v1/api-keys"):
+            return "auth"
+        if path.startswith("/v1/tenants") or path.startswith("/v1/users") or path.startswith("/v1/admin"):
+            return "admin"
+        if path.startswith(("/v1/analysis", "/v1/workflows", "/v1/intelligence", "/v1/narratives", "/v1/hypotheses")):
+            return "expensive_compute"
+        if method in {"POST", "PUT", "PATCH", "DELETE"}:
+            return "write"
+        return "read"
 
 # Merged from root shared/identity/middleware.py
 TenantContextMiddleware = GovernanceMiddleware
@@ -789,18 +737,10 @@ class SuspendedTenantError(Exception):
 
 
 # Compatibility exports used by mandatory security regression tests.
-# WARNING: These expose process-local rate limiting which is NOT suitable for
-# multi-worker or production deployments. Use RedisRateLimiter in production.
 DEFAULT_REQUESTS_PER_MINUTE = int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "120"))
 RATE_LIMIT_WINDOW_SECONDS = _RATE_LIMIT_WINDOW_SECONDS
-
-
 def _evict_stale_rate_limit_entries(now: float | None = None) -> int:
-    """Evict stale process-local rate-limit buckets and return the count removed.
-    
-    WARNING: Process-local rate limiting is only for single-worker development
-    and lightweight regression tests. Production deployments MUST use RedisRateLimiter.
-    """
+    """Evict stale process-local rate-limit buckets and return the count removed."""
     current = time.time() if now is None else now
     removed = 0
     for key, bucket in list(_tenant_rate_limit_buckets.items()):

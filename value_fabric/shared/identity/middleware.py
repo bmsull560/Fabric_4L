@@ -36,7 +36,8 @@ import types
 from typing import Any, Callable, Optional
 from uuid import UUID
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.routing import APIRoute
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 try:
@@ -124,7 +125,7 @@ SERVICE_AUTH_HEADER = "X-Service-Auth"
 MIN_SERVICE_SECRET_LENGTH = 32  # Minimum entropy for shared secrets
 
 # Paths that bypass all authentication checks
-_PUBLIC_PATHS: frozenset[str] = frozenset(
+PUBLIC_PATH_ALLOWLIST: frozenset[str] = frozenset(
     {
         "/health",
         "/health/detailed",
@@ -139,7 +140,34 @@ _PUBLIC_PATHS: frozenset[str] = frozenset(
 
 def _is_public_path(path: str) -> bool:
     """Return True if the path should bypass authentication."""
-    return path in _PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc")
+    return path in PUBLIC_PATH_ALLOWLIST or path.startswith("/docs") or path.startswith("/redoc")
+
+
+def _is_authenticated_dependency(dep: Any) -> bool:
+    call = getattr(dep, "call", None)
+    return callable(call) and getattr(call, "__name__", "") == "require_authenticated"
+
+
+def audit_protected_routes(app: FastAPI) -> None:
+    """Fail closed if any non-public route is missing auth dependency wiring."""
+    missing_auth: list[str] = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        path = route.path
+        if _is_public_path(path):
+            continue
+        if any(_is_authenticated_dependency(dep) for dep in route.dependant.dependencies):
+            continue
+        methods = ",".join(sorted(route.methods or []))
+        missing_auth.append(f"{methods} {path}")
+
+    if missing_auth:
+        missing = "\n - ".join(sorted(missing_auth))
+        raise RuntimeError(
+            "Auth route audit failed. Non-public routes must include Depends(require_authenticated)."
+            f"\n - {missing}"
+        )
 
 
 def _allow_legacy_test_tenant_ids() -> bool:
@@ -312,6 +340,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         rate_limiter: Optional[RedisRateLimiter] = None,
         tenant_settings_resolver: Optional[Callable] = None,
         on_rate_limit_hit: Optional[Callable[[str, str], None]] = None,
+        enforce_authentication: bool = True,
     ) -> None:
         super().__init__(app)
         self._api_key_resolver = api_key_resolver
@@ -319,6 +348,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self._redis_client = rate_limiter
         self._tenant_settings_resolver = tenant_settings_resolver
         self._on_rate_limit_hit = on_rate_limit_hit
+        self._enforce_authentication = enforce_authentication
         self._validate_multi_worker_rate_limit_configuration(rate_limiter)
         # P0 FIX: Query param tenant authentication removed entirely
         self._allow_query_param = False
@@ -342,7 +372,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         ctx: Optional[RequestContext] = None
 
         try:
-            if not _is_public_path(request.url.path):
+            if self._enforce_authentication and not _is_public_path(request.url.path):
                 try:
                     ctx = await self._resolve_identity(request)
                 except HTTPException as exc:
