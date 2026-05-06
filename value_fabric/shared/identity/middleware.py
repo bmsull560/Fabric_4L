@@ -381,6 +381,15 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                         headers=exc.headers or {"WWW-Authenticate": "Bearer"},
                         content={"detail": exc.detail, "error": "authentication_required"},
                     )
+                if ctx is None:
+                    return JSONResponse(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        headers={"WWW-Authenticate": "Bearer"},
+                        content={
+                            "detail": "Authentication credentials were not provided.",
+                            "error": "authentication_required",
+                        },
+                    )
 
             if ctx is not None:
                 _current_context.reset(token)
@@ -463,6 +472,10 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
     async def _resolve_identity(self, request: Request) -> Optional[RequestContext]:
         """Try each resolution strategy in priority order."""
+
+        prepopulated_context = getattr(request.state, "governance_context", None)
+        if isinstance(prepopulated_context, RequestContext):
+            return prepopulated_context
 
         # 1. Bearer JWT
         auth_header = request.headers.get("Authorization", "")
