@@ -1,8 +1,8 @@
 """Thin FastAPI composition root for Layer 1.
 
-The historical API implementation is kept in ``app_monolith`` while we extract
-domain routers and shared framework setup. This file remains the stable ASGI
-entrypoint for ``uvicorn src.api.main:app``.
+Migration ledger:
+- moved router groups: compatibility and security boundary endpoints under api/routes/.
+- remaining in app_monolith: core ingestion endpoints and framework bootstrap.
 """
 
 from __future__ import annotations

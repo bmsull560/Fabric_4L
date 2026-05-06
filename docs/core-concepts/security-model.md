@@ -500,7 +500,7 @@ This section describes security threats using STRIDE and LINDDUN methodologies.
 | Threat | Description | Mitigation | Status |
 |--------|-------------|------------|--------|
 | **T2.1** | Request/response tampering in transit | TLS 1.3 everywhere, certificate pinning | ✅ Implemented |
-| **T2.2** | Data tampering at rest | AES-256 encryption, database-level encryption | ✅ Implemented |
+| **T2.2** | Data tampering at rest | Fernet (AES-128-CBC + HMAC-SHA256) for Layer 4 credentials, plus database-level encryption at rest | ✅ Implemented |
 | **T2.3** | Audit log tampering | Append-only logs, DB trigger enforcement, WORM storage | ✅ Implemented |
 | **T2.4** | Build artifact tampering | Signed containers (Cosign), SBOM verification | 🔄 In Progress |
 | **T2.5** | Configuration tampering | GitOps, drift detection, signed configs | 🔄 In Progress |

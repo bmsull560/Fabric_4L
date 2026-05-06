@@ -10,6 +10,7 @@ GATE Framework §1.3 — Hash-Chained Audit Emitter
 from __future__ import annotations
 
 import logging
+from contextvars import ContextVar
 from typing import Any
 
 from value_fabric.shared.crypto.canonical import canonical_hash
@@ -30,6 +31,10 @@ class LedgerCommitHandler:
     def __init__(self, redis_client: Any | None = None) -> None:
         self._redis = redis_client
         self._local_heads: dict[str, tuple[int, str]] = {}  # chain_id -> (seq, hash)
+        self._redis_expected_head: ContextVar[dict[str, tuple[int, str | None]]] = ContextVar(
+            "ledger_expected_head",
+            default={},
+        )
 
     async def handle(self, event: AuditEvent) -> None:
         """Process an audit event through the ledger chain.
@@ -80,23 +85,51 @@ class LedgerCommitHandler:
     async def _get_chain_head(self, chain_id: str) -> tuple[int, str | None]:
         """Retrieve the current head (sequence, hash) for a chain."""
         if self._redis:
-            # Redis-backed chain lookup not yet implemented; falling back to local.
-            # In production multi-instance deployments, this MUST be implemented
-            # to prevent hash chain forks.
-            raise NotImplementedError(
-                "Redis-backed audit ledger chain lookup is not implemented. "
-                "Use local_heads only for single-instance deployments."
-            )
+            key = f"audit:ledger:head:{chain_id}"
+            raw = await self._redis.get(key)
+            if not raw:
+                seq, previous_hash = (0, None)
+            else:
+                seq_raw, hash_raw = raw.split("|", 1)
+                seq = int(seq_raw)
+                previous_hash = hash_raw or None
+            expected = dict(self._redis_expected_head.get())
+            expected[chain_id] = (seq, previous_hash)
+            self._redis_expected_head.set(expected)
+            return seq, previous_hash
         return self._local_heads.get(chain_id, (0, None))
 
     async def _set_chain_head(self, chain_id: str, seq: int, hash_: str) -> None:
         """Update the chain head after a successful commit."""
         if self._redis:
-            # See _get_chain_head for Redis implementation requirements.
-            raise NotImplementedError(
-                "Redis-backed audit ledger chain update is not implemented. "
-                "Use local_heads only for single-instance deployments."
+            expected = self._redis_expected_head.get().get(chain_id, (0, None))
+            expected_seq, expected_hash = expected
+            key = f"audit:ledger:head:{chain_id}"
+            expected_raw = f"{expected_seq}|{expected_hash or ''}"
+            new_raw = f"{seq}|{hash_}"
+            updated = await self._redis.eval(
+                """
+                local key = KEYS[1]
+                local expected = ARGV[1]
+                local new_value = ARGV[2]
+                local current = redis.call('GET', key)
+                if (not current and expected == "0|") or current == expected then
+                    redis.call('SET', key, new_value)
+                    return 1
+                end
+                return 0
+                """,
+                1,
+                key,
+                expected_raw,
+                new_raw,
             )
+            if int(updated) != 1:
+                raise RuntimeError(
+                    f"Ledger chain head update conflict for chain_id={chain_id}; "
+                    "detected concurrent writer and prevented fork."
+                )
+            return
         self._local_heads[chain_id] = (seq, hash_)
 
     def get_chain_state(self, chain_id: str) -> tuple[int, str | None]:

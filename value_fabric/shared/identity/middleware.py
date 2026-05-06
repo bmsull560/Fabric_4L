@@ -364,13 +364,16 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             # Rate limiting check (after identity, before request handling)
             if ctx is not None and self._rate_limiter is not None:
                 rate_limit_result = await self._check_rate_limit(request, ctx)
+                request.state.rate_limit_result = rate_limit_result
+                config = getattr(request.state, "rate_limit_config", None)
                 if rate_limit_result is not None and not rate_limit_result.allowed:
-                    config = self._resolve_rate_limit_config(request, ctx)
                     rate_limit_rpm = config.requests_per_minute if config else ""
                     headers = {
                         "X-RateLimit-Limit": str(rate_limit_rpm),
                         "X-RateLimit-Remaining": "0",
                         "X-RateLimit-Reset": str(int(rate_limit_result.reset_at)),
+                        "X-RateLimit-Scope": config.scope.value if config else "tenant",
+                        "X-RateLimit-Policy": getattr(request.state, "rate_limit_policy", "default"),
                         "Retry-After": str(rate_limit_result.retry_after) if rate_limit_result.retry_after is not None else "60",
                     }
                     if self._on_rate_limit_hit is not None and config is not None:
@@ -378,6 +381,18 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             self._on_rate_limit_hit(str(ctx.tenant_id), config.scope.value)
                         except Exception:
                             pass
+                    logger.warning(
+                        "rate_limit_throttled",
+                        extra={
+                            "event": "rate_limit_throttled",
+                            "tenant_id": str(ctx.tenant_id),
+                            "user_id": str(ctx.user_id) if ctx.user_id else None,
+                            "api_key_id": str(ctx.api_key_id) if ctx.api_key_id else None,
+                            "path": request.url.path,
+                            "method": request.method,
+                            "scope": config.scope.value if config else "tenant",
+                        },
+                    )
                     return JSONResponse(
                         status_code=429,
                         headers=headers,
@@ -394,15 +409,17 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         # Add rate limit headers if we performed a rate limit check
         if ctx is not None and self._rate_limiter is not None:
-            config = self._resolve_rate_limit_config(request, ctx)
+            config = getattr(request.state, "rate_limit_config", None)
             if config is not None:
-                # We need the actual result to set remaining accurately.
-                # Re-run check (Redis script is idempotent for allowed requests)
-                rate_key = self._build_rate_limit_key(request, ctx, config)
-                result = await self._rate_limiter.check(rate_key, config)
+                result = getattr(request.state, "rate_limit_result", None)
+                if result is None:
+                    rate_key = self._build_rate_limit_key(request, ctx, config)
+                    result = await self._rate_limiter.check(rate_key, config)
                 response.headers["X-RateLimit-Limit"] = str(config.requests_per_minute)
                 response.headers["X-RateLimit-Remaining"] = str(max(0, result.remaining))
                 response.headers["X-RateLimit-Reset"] = str(int(result.reset_at))
+                response.headers["X-RateLimit-Scope"] = config.scope.value
+                response.headers["X-RateLimit-Policy"] = getattr(request.state, "rate_limit_policy", "default")
 
         return response
 
@@ -610,6 +627,8 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             burst_size=rate_limits.get("burst_size", 10),
                             scope=RateLimitScope(rate_limits.get("scope", "tenant")),
                         )
+                        request.state.rate_limit_config = tenant_config
+                        request.state.rate_limit_policy = "tenant_settings"
                         rate_key = self._build_rate_limit_key(request, ctx, tenant_config)
                         return await self._rate_limiter.check(rate_key, tenant_config)
             except Exception as exc:
@@ -618,6 +637,8 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         config = self._resolve_rate_limit_config(request, ctx)
         if config is None:
             return None
+        request.state.rate_limit_config = config
+        request.state.rate_limit_policy = "role_default"
 
         rate_key = self._build_rate_limit_key(request, ctx, config)
         return await self._rate_limiter.check(rate_key, config)
@@ -626,11 +647,25 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self, request: Request, ctx: RequestContext, config: RateLimitConfig
     ) -> str:
         """Build a Redis key for the rate limit window."""
+        endpoint_class = self._classify_endpoint(request)
         if config.scope == RateLimitScope.API_KEY and ctx.api_key_id:
-            return f"ratelimit:api_key:{ctx.api_key_id}"
+            return f"ratelimit:api_key:{ctx.api_key_id}:{endpoint_class}"
         if config.scope == RateLimitScope.USER and ctx.user_id:
-            return f"ratelimit:user:{ctx.tenant_id}:{ctx.user_id}"
-        return f"ratelimit:tenant:{ctx.tenant_id}"
+            return f"ratelimit:user:{ctx.tenant_id}:{ctx.user_id}:{endpoint_class}"
+        return f"ratelimit:tenant:{ctx.tenant_id}:{endpoint_class}"
+
+    def _classify_endpoint(self, request: Request) -> str:
+        path = request.url.path
+        method = request.method.upper()
+        if path.startswith("/auth/") or path.startswith("/v1/api-keys"):
+            return "auth"
+        if path.startswith("/v1/tenants") or path.startswith("/v1/users") or path.startswith("/v1/admin"):
+            return "admin"
+        if path.startswith(("/v1/analysis", "/v1/workflows", "/v1/intelligence", "/v1/narratives", "/v1/hypotheses")):
+            return "expensive_compute"
+        if method in {"POST", "PUT", "PATCH", "DELETE"}:
+            return "write"
+        return "read"
 
 # Merged from root shared/identity/middleware.py
 TenantContextMiddleware = GovernanceMiddleware

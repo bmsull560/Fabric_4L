@@ -4,9 +4,11 @@ When ``DEV_AUTH_BYPASS=true`` is set in the environment, this middleware
 replaces the production ``GovernanceMiddleware`` and injects a synthetic
 tenant/user context on every request — no JWT or API key required.
 
-**NEVER enable in production.** The env var is checked at import time;
-if it is not explicitly ``"true"`` (case-insensitive), this module
-exports a no-op passthrough so the production middleware runs normally.
+**NEVER enable in production.** Activation is validated at app startup.
+Bypass now requires all of the following:
+1) ``DEV_AUTH_BYPASS=true``
+2) ``ENVIRONMENT=development``
+3) ``ALLOW_DEV_AUTH_BYPASS=I_UNDERSTAND_RISK``
 
 Usage in Layer 4 ``main.py``::
 
@@ -17,7 +19,6 @@ Usage in Layer 4 ``main.py``::
 from __future__ import annotations
 
 import logging
-import os
 from uuid import UUID, uuid4
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -34,17 +35,10 @@ DEV_TENANT_ID = UUID("00000000-0000-4000-a000-000000000001")
 DEV_USER_ID = UUID("00000000-0000-4000-a000-000000000002")
 DEV_ORG_ID = UUID("00000000-0000-4000-a000-000000000003")
 
-_DEV_BYPASS_ENABLED = os.getenv("DEV_AUTH_BYPASS", "").strip().lower() == "true"
-
-# SECURITY: Hard-block dev bypass in production environments
-# This prevents accidental exposure if DEV_AUTH_BYPASS is set in production
-_ENVIRONMENT = os.getenv("ENVIRONMENT", "production").strip().lower()
-if _DEV_BYPASS_ENABLED and _ENVIRONMENT == "production":
-    raise RuntimeError(
-        "CRITICAL SECURITY ERROR: DEV_AUTH_BYPASS cannot be enabled in production.\n"
-        "This is a development-only feature that bypasses all authentication.\n"
-        "Unset DEV_AUTH_BYPASS or change ENVIRONMENT to 'development' to proceed."
-    )
+from value_fabric.shared.identity.auth_mode import (
+    validate_dev_bypass_configuration,
+    is_dev_bypass_enabled,
+)
 
 
 class DevAuthBypassMiddleware(BaseHTTPMiddleware):
@@ -118,8 +112,9 @@ def maybe_install_dev_bypass(app: ASGIApp) -> bool:
     Returns:
         True if dev bypass was installed, False otherwise.
     """
-    if not _DEV_BYPASS_ENABLED:
+    if not is_dev_bypass_enabled():
         return False
+    validate_dev_bypass_configuration()
 
     # CRITICAL: Log at error level to ensure visibility in all logging configs
     logger.error(

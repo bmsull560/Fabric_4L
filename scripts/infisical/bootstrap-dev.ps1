@@ -38,7 +38,7 @@ Write-Host "✓ Authenticated with Infisical" -ForegroundColor Green
 Write-Host "`nVerifying secret paths exist..."
 $paths = @(
     "/fabric-4l/value-fabric/dev",
-    "/fabric-4l/frontend/dev"
+    "/fabric-4l/apps/web/dev"
 )
 
 foreach ($p in $paths) {
@@ -59,7 +59,7 @@ Write-Host "  # Backend"
 Write-Host "  infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- pnpm --dir value-fabric dev"
 Write-Host ""
 Write-Host "  # Frontend"
-Write-Host "  infisical run --env=dev --path=/fabric-4l/frontend/dev -- pnpm --dir frontend dev"
+Write-Host "  infisical run --env=dev --path=/fabric-4l/apps/web/dev -- pnpm --dir apps/web dev"
 Write-Host ""
 Write-Host "  # Or use package scripts:"
 Write-Host "  pnpm dev:backend"

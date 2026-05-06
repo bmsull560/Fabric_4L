@@ -140,6 +140,7 @@ class ProductionSettingsValidationTests(unittest.TestCase):
     VALID_CORS = "https://app.valuefabric.io"
     VALID_NEO4J_URI = "neo4j+s://example.databases.neo4j.io"
     VALID_NEO4J_PASSWORD = "strong-neo4j-password"
+    VALID_LAYER_ENDPOINT = "https://layer.internal.valuefabric.local"
 
     def _settings(self, **overrides: object) -> Settings:
         values: dict[str, object] = {
@@ -150,6 +151,10 @@ class ProductionSettingsValidationTests(unittest.TestCase):
             "cors_origins": self.VALID_CORS,
             "neo4j_uri": self.VALID_NEO4J_URI,
             "neo4j_password": self.VALID_NEO4J_PASSWORD,
+            "layer1_api_url": self.VALID_LAYER_ENDPOINT,
+            "layer2_api_url": self.VALID_LAYER_ENDPOINT,
+            "layer3_api_url": self.VALID_LAYER_ENDPOINT,
+            "layer5_api_url": self.VALID_LAYER_ENDPOINT,
         }
         values.update(overrides)
         return Settings(**values)
@@ -195,6 +200,45 @@ class ProductionSettingsValidationTests(unittest.TestCase):
         settings = Settings(environment="development", jwt_secret="", api_key_hmac_secret="")
         self.assertGreaterEqual(len(settings.jwt_secret), 32)
         self.assertGreaterEqual(len(settings.api_key_hmac_secret), 32)
+
+    def test_production_rejects_http_layer_endpoint_without_mesh_mtls(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "must use HTTPS in production"):
+            self._settings(layer1_api_url="http://layer1-ingestion.value-fabric.svc.cluster.local:8000")
+
+    def test_production_allows_http_layer_endpoint_with_mesh_mtls(self) -> None:
+        settings = self._settings(
+            layer2_api_url="http://layer2-extraction.value-fabric.svc.cluster.local:8000",
+            service_mesh_mtls_enabled=True,
+        )
+        self.assertEqual(
+            settings.layer2_api_url,
+            "http://layer2-extraction.value-fabric.svc.cluster.local:8000",
+        )
+
+    def test_development_requires_explicit_insecure_http_override(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true"):
+            Settings(
+                environment="development",
+                jwt_secret="j" * 40,
+                api_key_hmac_secret="h" * 40,
+                layer1_api_url="http://localhost:8000",
+                layer2_api_url="https://layer2.local",
+                layer3_api_url="https://layer3.local",
+                layer5_api_url="https://layer5.local",
+            )
+
+    def test_development_allows_http_with_explicit_override(self) -> None:
+        settings = Settings(
+            environment="development",
+            jwt_secret="j" * 40,
+            api_key_hmac_secret="h" * 40,
+            allow_insecure_service_http_in_development=True,
+            layer1_api_url="http://localhost:8000",
+            layer2_api_url="https://layer2.local",
+            layer3_api_url="https://layer3.local",
+            layer5_api_url="https://layer5.local",
+        )
+        self.assertEqual(settings.layer1_api_url, "http://localhost:8000")
 
 
 class MetricsEndpointSecurityWiringTests(unittest.TestCase):

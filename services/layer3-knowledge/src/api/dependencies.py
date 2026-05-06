@@ -3,6 +3,7 @@
 import logging
 
 from fastapi import FastAPI, HTTPException, Request
+from neo4j.exceptions import ConfigurationError, Neo4jError, ServiceUnavailable, TransientError
 from neo4j import AsyncDriver
 from value_fabric.layer3.agents import (
     NarrativeSynthesisAgent,
@@ -78,10 +79,17 @@ async def init_app_state(app: FastAPI) -> AppState:
     try:
         state.neo4j_driver = await get_driver(state.settings)
         logger.info("Neo4j driver connected successfully")
-    except Exception as exc:
+    except (ConfigurationError, ServiceUnavailable, TransientError, Neo4jError) as exc:
         logger.warning(
             "Neo4j unavailable at startup (%s). Service will retry on first request.",
             exc,
+            extra={
+                "component": "layer3.api.dependencies",
+                "dependency": "neo4j",
+                "action": "init_driver",
+                "fallback_used": "degraded_startup",
+                "error_type": type(exc).__name__,
+            },
         )
         state.neo4j_driver = None
 
@@ -102,8 +110,18 @@ async def init_app_state(app: FastAPI) -> AppState:
                 settings=state.settings,
             )
             logger.info("Neo4j-native vector store initialized")
-        except Exception as e:
-            logger.warning(f"Could not initialize vector store: {e}")
+        except (ConfigurationError, RuntimeError, ValueError, Neo4jError) as e:
+            logger.warning(
+                "Could not initialize vector store: %s",
+                e,
+                extra={
+                    "component": "layer3.api.dependencies",
+                    "dependency": "vector_store",
+                    "action": "initialize",
+                    "fallback_used": "vector_store_disabled",
+                    "error_type": type(e).__name__,
+                },
+            )
             state.vector_store = None
 
         # Initialize ingestion components
@@ -169,8 +187,18 @@ async def init_app_state(app: FastAPI) -> AppState:
 
         return state
 
-    except Exception as e:
-        logger.error(f"Failed to initialize application: {e}")
+    except (ConfigurationError, RuntimeError, ValueError, Neo4jError) as e:
+        logger.error(
+            "Failed to initialize application: %s",
+            e,
+            extra={
+                "component": "layer3.api.dependencies",
+                "dependency": "application_state",
+                "action": "initialize",
+                "fallback_used": "partial_state_cleanup",
+                "error_type": type(e).__name__,
+            },
+        )
         await _cleanup_partial_state(state)
         app.state.app_state = (
             state  # attach partial state so health check can report it
@@ -206,8 +234,18 @@ async def recover_neo4j_state(app: FastAPI) -> AppState:
         )
         await state.schema_initializer.initialize_schema()
         logger.info("Neo4j state recovered after degraded startup")
-    except Exception as exc:
-        logger.warning("Neo4j recovery attempt failed: %s", exc)
+    except (ConfigurationError, ServiceUnavailable, TransientError, Neo4jError) as exc:
+        logger.warning(
+            "Neo4j recovery attempt failed: %s",
+            exc,
+            extra={
+                "component": "layer3.api.dependencies",
+                "dependency": "neo4j",
+                "action": "recover_state",
+                "fallback_used": "remain_degraded",
+                "error_type": type(exc).__name__,
+            },
+        )
         state.neo4j_driver = None
         state.schema_initializer = SchemaInitializer(
             driver=None,
@@ -253,6 +291,21 @@ async def recover_neo4j_state(app: FastAPI) -> AppState:
     return state
 
 
+
+
+def _record_cleanup_error(cleanup_errors: list[str], resource: str, exc: Exception, *, action: str, fallback_used: str) -> None:
+    cleanup_errors.append(f"{resource}: {exc}")
+    logger.warning(
+        "Resource cleanup operation failed",
+        extra={
+            "component": "layer3.api.dependencies",
+            "dependency": resource,
+            "action": action,
+            "fallback_used": fallback_used,
+            "error_type": type(exc).__name__,
+        },
+    )
+
 async def _cleanup_partial_state(state: AppState) -> None:
     """Clean up partially initialized state to prevent resource leaks."""
     logger.info("Cleaning up partially initialized state...")
@@ -265,43 +318,50 @@ async def _cleanup_partial_state(state: AppState) -> None:
         try:
             await state.similarity_analyzer.close()
         except Exception as e:
-            cleanup_errors.append(f"similarity_analyzer: {e}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "similarity_analyzer", e, action="close_partial", fallback_used="continue_cleanup")
 
     if state.centrality_analyzer and hasattr(state.centrality_analyzer, "close"):
         try:
             await state.centrality_analyzer.close()
         except Exception as e:
-            cleanup_errors.append(f"centrality_analyzer: {e}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "centrality_analyzer", e, action="close_partial", fallback_used="continue_cleanup")
 
     if state.community_detector and hasattr(state.community_detector, "close"):
         try:
             await state.community_detector.close()
         except Exception as e:
-            cleanup_errors.append(f"community_detector: {e}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "community_detector", e, action="close_partial", fallback_used="continue_cleanup")
 
     if state.hybrid_search and hasattr(state.hybrid_search, "close"):
         try:
             await state.hybrid_search.close()
         except Exception as e:
-            cleanup_errors.append(f"hybrid_search: {e}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "hybrid_search", e, action="close_partial", fallback_used="continue_cleanup")
 
     if state.graph_rag and hasattr(state.graph_rag, "close"):
         try:
             await state.graph_rag.close()
         except Exception as e:
-            cleanup_errors.append(f"graph_rag: {e}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "graph_rag", e, action="close_partial", fallback_used="continue_cleanup")
 
     if state.sync_manager and hasattr(state.sync_manager, "close"):
         try:
             await state.sync_manager.close()
         except Exception as e:
-            cleanup_errors.append(f"sync_manager: {e}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "sync_manager", e, action="close_partial", fallback_used="continue_cleanup")
 
     if state.schema_initializer and hasattr(state.schema_initializer, "close"):
         try:
             await state.schema_initializer.close()
         except Exception as e:
-            cleanup_errors.append(f"schema_initializer: {e}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "schema_initializer", e, action="close_partial", fallback_used="continue_cleanup")
 
     # Note: Backend agents don't have close() methods - they don't hold resources
 
@@ -324,43 +384,51 @@ async def close_app_state(app: FastAPI) -> None:
             try:
                 await state.similarity_analyzer.close()
             except Exception as e:
-                cleanup_errors.append(f"similarity_analyzer: {e}")
+                # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+                _record_cleanup_error(cleanup_errors, "similarity_analyzer", e, action="close_app", fallback_used="continue_shutdown")
         if state.centrality_analyzer:
             try:
                 await state.centrality_analyzer.close()
             except Exception as e:
-                cleanup_errors.append(f"centrality_analyzer: {e}")
+                # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+                _record_cleanup_error(cleanup_errors, "centrality_analyzer", e, action="close_app", fallback_used="continue_shutdown")
         if state.community_detector:
             try:
                 await state.community_detector.close()
             except Exception as e:
-                cleanup_errors.append(f"community_detector: {e}")
+                # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+                _record_cleanup_error(cleanup_errors, "community_detector", e, action="close_app", fallback_used="continue_shutdown")
         if state.hybrid_search:
             try:
                 await state.hybrid_search.close()
             except Exception as e:
-                cleanup_errors.append(f"hybrid_search: {e}")
+                # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+                _record_cleanup_error(cleanup_errors, "hybrid_search", e, action="close_app", fallback_used="continue_shutdown")
         if state.graph_rag:
             try:
                 await state.graph_rag.close()
             except Exception as e:
-                cleanup_errors.append(f"graph_rag: {e}")
+                # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+                _record_cleanup_error(cleanup_errors, "graph_rag", e, action="close_app", fallback_used="continue_shutdown")
         if state.sync_manager:
             try:
                 await state.sync_manager.close()
             except Exception as e:
-                cleanup_errors.append(f"sync_manager: {e}")
+                # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+                _record_cleanup_error(cleanup_errors, "sync_manager", e, action="close_app", fallback_used="continue_shutdown")
         if state.schema_initializer:
             try:
                 await state.schema_initializer.close()
             except Exception as e:
-                cleanup_errors.append(f"schema_initializer: {e}")
+                # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+                _record_cleanup_error(cleanup_errors, "schema_initializer", e, action="close_app", fallback_used="continue_shutdown")
 
         # Close the shared driver singleton
         try:
             await reset_driver()
         except Exception as exc:
-            cleanup_errors.append(f"neo4j_driver_singleton: {exc}")
+            # Broad catch intentionally retained for shutdown resilience: cleanup must continue.
+            _record_cleanup_error(cleanup_errors, "neo4j_driver_singleton", exc, action="reset_driver", fallback_used="continue_shutdown")
 
         if cleanup_errors:
             logger.warning(f"Errors during resource cleanup: {cleanup_errors}")

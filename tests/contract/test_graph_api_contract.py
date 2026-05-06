@@ -339,6 +339,7 @@ class TestVersionCompatibility:
 
         assert api_version == schema_version
 
+    @pytest.mark.temporary_compat
     def test_deprecated_fields_still_supported(self):
         """
         Deprecated fields should still be accepted in responses.
@@ -555,6 +556,7 @@ class ConsumerContract:
         }
 
 
+@pytest.mark.temporary_compat
 def test_consumer_contract_generation():
     """Verify we can generate a consumer contract"""
     contract = ConsumerContract.generate_subgraph_consumer_contract()

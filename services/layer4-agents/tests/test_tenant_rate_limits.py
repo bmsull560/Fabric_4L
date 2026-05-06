@@ -222,7 +222,7 @@ class TestRateLimitMiddlewareIntegration(unittest.TestCase):
 
             self.assertTrue(result.allowed)
             resolver.assert_awaited_once_with(tenant_id)
-            self.assertEqual(limiter.calls[0][0], f"ratelimit:tenant:{tenant_id}")
+            self.assertTrue(limiter.calls[0][0].startswith(f"ratelimit:tenant:{tenant_id}:"))
             self.assertEqual(limiter.calls[0][1].requests_per_minute, 1)
             self.assertEqual(limiter.calls[0][1].scope, RateLimitScope.TENANT)
             self.assertIs(request.state.rate_limit_result, result)
@@ -290,6 +290,8 @@ class TestRateLimitMiddlewareIntegration(unittest.TestCase):
             self.assertEqual(response.headers["X-RateLimit-Limit"], "7")
             self.assertEqual(response.headers["X-RateLimit-Remaining"], "0")
             self.assertEqual(response.headers["Retry-After"], "60")
+            self.assertEqual(response.headers["X-RateLimit-Scope"], "tenant")
+            self.assertEqual(response.headers["X-RateLimit-Policy"], "tenant_settings")
             self.assertEqual(len(limiter.calls), 1)
 
         asyncio.run(scenario())
@@ -313,6 +315,8 @@ class TestRateLimitMiddlewareIntegration(unittest.TestCase):
             self.assertEqual(len(limiter.calls), 1)
             self.assertEqual(response.headers["X-RateLimit-Limit"], "30")
             self.assertEqual(response.headers["X-RateLimit-Remaining"], "29")
+            self.assertEqual(response.headers["X-RateLimit-Scope"], "tenant")
+            self.assertEqual(response.headers["X-RateLimit-Policy"], "role_default")
             self.assertEqual(response.headers["X-Tenant-ID-Resolved"], str(tenant_id))
 
         asyncio.run(scenario())

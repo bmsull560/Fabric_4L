@@ -13,6 +13,7 @@ except ImportError:
     pass  # shared package not available; env vars used directly
 
 import logging
+from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -95,20 +96,28 @@ class Settings(BaseSettings):
     # Layer Integration
     # ==========================================================================
     layer1_api_url: str = Field(
-        default="http://layer1-ingestion:8000",
+        default="",
         description="Layer 1 Ingestion API URL"
     )
     layer2_api_url: str = Field(
-        default="http://layer2-extraction:8000",
+        default="",
         description="Layer 2 Extraction API URL"
     )
     layer3_api_url: str = Field(
-        default="http://layer3-knowledge:8001",
+        default="",
         description="Layer 3 Knowledge Graph API URL"
     )
     layer5_api_url: str = Field(
-        default="http://layer5-ground-truth:8000",
+        default="",
         description="Layer 5 Ground Truth API URL"
+    )
+    service_mesh_mtls_enabled: bool = Field(
+        default=False,
+        description="Allow in-mesh HTTP service URLs when mTLS enforcement is enabled."
+    )
+    allow_insecure_service_http_in_development: bool = Field(
+        default=False,
+        description="Allow HTTP service URLs only for local development/testing."
     )
     neo4j_uri: str = Field(
         default="bolt://localhost:7687",
@@ -406,6 +415,49 @@ class Settings(BaseSettings):
                 "OPENAI_API_KEY appears invalid. Should start with 'sk-' or 'sk-proj-'."
             )
         return v
+
+    @field_validator("layer1_api_url", "layer2_api_url", "layer3_api_url", "layer5_api_url")
+    @classmethod
+    def validate_layer_endpoint_url(cls, v: str, info: ValidationInfo) -> str:
+        """Validate Layer 1/2/3/5 endpoint URLs with environment-aware transport rules."""
+        field_name = info.field_name.upper()
+        if not v or not v.strip():
+            raise ValueError(
+                f"FATAL: {field_name} is required. Configure an explicit service endpoint."
+            )
+
+        endpoint = v.strip()
+        parsed = urlparse(endpoint)
+        scheme = parsed.scheme.lower()
+        if scheme not in {"http", "https"}:
+            raise ValueError(
+                f"FATAL: {field_name} must use http:// or https://, got '{endpoint}'."
+            )
+
+        environment = info.data.get("environment", "development")
+        mesh_mtls_enabled = info.data.get("service_mesh_mtls_enabled", False)
+        allow_dev_http = info.data.get("allow_insecure_service_http_in_development", False)
+
+        if scheme == "https":
+            return endpoint
+
+        if mesh_mtls_enabled:
+            return endpoint
+
+        if environment in {"development", "test"} and allow_dev_http:
+            return endpoint
+
+        if environment in {"development", "test"}:
+            raise ValueError(
+                f"FATAL: {field_name} uses insecure HTTP. "
+                "Set ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true for local-only usage, "
+                "or configure HTTPS/service-mesh mTLS."
+            )
+
+        raise ValueError(
+            f"FATAL: {field_name} must use HTTPS in {environment}, "
+            "or enable validated service-mesh mTLS mode."
+        )
 
     @model_validator(mode="after")
     def validate_prod_neo4j_aura(self) -> "Settings":

@@ -180,7 +180,7 @@ uvicorn src.api.main:app --reload --port 8004 --log-level debug
 ### Frontend
 
 ```bash
-cd frontend/client
+cd apps/web
 npm install
 npm run dev
 ```

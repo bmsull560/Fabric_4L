@@ -377,6 +377,42 @@ def scan_monitoring_runbooks(repo_root: Path, manifest: dict[str, Any]) -> list[
     return violations
 
 
+def scan_production_frontend_client_references(repo_root: Path) -> list[Violation]:
+    """Fail on new production references to legacy frontend/client paths."""
+    violations: list[Violation] = []
+    files_to_scan = [
+        repo_root / "README.md",
+        repo_root / "docs" / "how-to-guides" / "setup-local-dev.md",
+        repo_root / "docs" / "getting-started" / "environment.md",
+        repo_root / "docs" / "operations" / "COMMAND_REFERENCE.md",
+        repo_root / "scripts" / "infisical" / "bootstrap-dev.sh",
+        repo_root / "scripts" / "infisical" / "bootstrap-dev.ps1",
+    ]
+    patterns = ("frontend/client", "frontend/")
+
+    for file_path in files_to_scan:
+        if not file_path.exists():
+            continue
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        for lineno, line in enumerate(content.splitlines(), start=1):
+            if "apps/web/" in line and "instead of frontend/" in line:
+                continue
+            if "OBSOLETE" in line.upper() or "legacy frontend" in line.lower():
+                continue
+            if any(pattern in line for pattern in patterns):
+                violations.append(
+                    Violation(
+                        rule_id="no_legacy_frontend_client_refs",
+                        severity="error",
+                        file=str(file_path.relative_to(repo_root)).replace("\\", "/"),
+                        line=lineno,
+                        message="Production docs/scripts reference legacy frontend path.",
+                        suggestion="Update reference to apps/web/ and point readers to apps/web/README.md.",
+                    )
+                )
+    return violations
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Repository hygiene validator")
     parser.add_argument("--repo-root", default=".", help="Repository root")
@@ -401,6 +437,7 @@ def main() -> int:
     all_violations.extend(scan_codeowners(repo_root, manifest))
     all_violations.extend(scan_shell_scripts(repo_root, manifest))
     all_violations.extend(scan_monitoring_runbooks(repo_root, manifest))
+    all_violations.extend(scan_production_frontend_client_references(repo_root))
 
     errors = [v for v in all_violations if v.severity == "error"]
     warnings = [v for v in all_violations if v.severity == "warn"]

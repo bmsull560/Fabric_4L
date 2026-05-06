@@ -3,7 +3,7 @@
 Copy-Pasteable Commands for Build, Deploy, Test, and Operations
 
 **Context:** Vite/React frontend, Python FastAPI/Flask backend, PostgreSQL, Redis, Neo4j, Docker, Kubernetes  
-**Assumptions:** Repository root at `Fabric_4L/`, frontend at `frontend/client/`, backend at `value-fabric/`
+**Assumptions:** Repository root at `Fabric_4L/`, frontend at `apps/web/`, backend at `value-fabric/`
 
 ---
 
@@ -250,7 +250,7 @@ ruff check . && black --check . && mypy .
 ### 3.1 Install & Build
 
 ```bash
-cd frontend/client
+cd apps/web
 
 # Install dependencies
 npm install
@@ -280,7 +280,7 @@ npm run preview
 ### 3.2 Shadcn/UI Operations
 
 ```bash
-cd frontend/client
+cd apps/web
 
 # Add component
 npx shadcn add button card dialog
@@ -301,7 +301,7 @@ npx shadcn diff
 ### 3.3 Frontend Testing
 
 ```bash
-cd frontend/client
+cd apps/web
 
 # Unit tests (watch mode)
 npx vitest
@@ -885,7 +885,7 @@ done
 ### 11.3 Frontend Full Pipeline
 
 ```bash
-cd frontend/client && \
+cd apps/web && \
 npm ci && \
 npx tsc --noEmit && \
 npm run lint && \
@@ -948,7 +948,7 @@ pip install -r requirements-dev.txt
 echo "✅ Installed dev dependencies"
 
 # Frontend dependencies
-cd frontend/client
+cd apps/web
 npm install
 echo "✅ Installed frontend dependencies"
 cd ../..
@@ -969,7 +969,7 @@ echo "=== Setup Complete ==="
 echo "Next steps:"
 echo "  1. Update value-fabric/.env with real secrets"
 echo "  2. cd value-fabric && docker-compose up -d (all services)"
-echo "  3. cd frontend/client && npm run dev"
+echo "  3. cd apps/web && npm run dev"
 echo "  4. Open http://localhost:5173"
 ```
 
@@ -993,12 +993,12 @@ build: ## Build all containers
 
 test: ## Run all tests
 	python -m pytest -xvs --timeout=60
-	cd frontend/client && npx vitest run
+	cd apps/web && npx vitest run
 
 lint: ## Run all linters
 	ruff check shared/ layer*/src/
 	black --check shared/ layer*/src/
-	cd frontend/client && npm run lint && npx tsc --noEmit
+	cd apps/web && npm run lint && npx tsc --noEmit
 
 health: ## Check all service health
 	@for p in 8001 8002 8003 8004 8005 8006; do \
@@ -1006,8 +1006,8 @@ health: ## Check all service health
 		[ "$$code" = "200" ] && echo "✅ Layer$$((p-8000)) (port $$p)" || echo "❌ Layer$$((p-8000)) (port $$p): $$code"; \
 	done
 
-frontend: ## Start frontend dev server
-	cd frontend/client && npm run dev
+frontend: ## Start apps/web dev server
+	cd apps/web && npm run dev
 
 backend: ## Start backend (layer 3 example)
 	cd layer3 && PYTHONPATH=/app:$$PYTHONPATH uvicorn src.main:app --reload --port 8003
@@ -1015,7 +1015,7 @@ backend: ## Start backend (layer 3 example)
 clean: ## Clean build artifacts and containers
 	cd value-fabric && docker-compose down -v
 	docker system prune -f
-	rm -rf frontend/client/node_modules/.cache
+	rm -rf apps/web/node_modules/.cache
 	rm -rf .pytest_cache htmlcov .coverage
 
 setup: ## Initial development setup

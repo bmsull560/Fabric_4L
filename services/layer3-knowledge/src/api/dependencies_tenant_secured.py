@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Depends, HTTPException, Request, status
 
 from src.security import QueryValidator, UnscopedQueryError
+from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -25,9 +26,21 @@ try:
 except ImportError:
     IDENTITY_AVAILABLE = False
     RequestContext = None  # type: ignore
+    get_request_context = None
 
 
 logger = logging.getLogger(__name__)
+_request_context_provider: RequestContextProvider | None = get_request_context
+
+
+def _require_request_context_provider() -> RequestContextProvider:
+    if _request_context_provider is None:
+        raise ProviderUnavailableError(
+            provider="value_fabric.shared.identity.dependencies.get_request_context",
+            code="IDENTITY_PROVIDER_UNAVAILABLE",
+            detail="shared.identity request context provider is required.",
+        )
+    return _request_context_provider
 
 # Query validator instance (singleton)
 _query_validator: QueryValidator | None = None
@@ -146,7 +159,7 @@ class Neo4jTenantSessionSecured:
 
 async def get_neo4j_secured(
     request: Request,
-    context: RequestContext = Depends(get_request_context),
+    context: RequestContext | None = Depends(_require_request_context_provider()),
 ) -> Neo4jTenantSessionSecured:
     """FastAPI dependency for secured, tenant-scoped Neo4j sessions.
     
@@ -177,10 +190,7 @@ async def get_neo4j_secured(
         HTTPException: 400 if tenant context missing, 503 if Neo4j unavailable
     """
     if not IDENTITY_AVAILABLE:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Identity service unavailable"
-        )
+        _require_request_context_provider()
     
     if not context or not context.tenant_id:
         raise HTTPException(
@@ -204,7 +214,7 @@ async def get_neo4j_secured(
 
 async def get_neo4j_with_validation(
     request: Request,
-    context: RequestContext = Depends(get_request_context),
+    context: RequestContext | None = Depends(_require_request_context_provider()),
 ) -> Neo4jTenantSessionSecured:
     """Alias for get_neo4j_secured - explicit validation naming.
     

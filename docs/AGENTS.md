@@ -29,28 +29,29 @@ When working in this repo:
 ## Repository structure at a glance
 
 ```
-value-fabric/
-  layer1-ingestion/    # Data ingestion — Playwright, Redis, PostgreSQL
-  layer2-extraction/   # Ontology-guided extraction — LLM + RDF/OWL
-  layer3-knowledge/    # Knowledge graph API — Neo4j + pgvector
-  layer4-agents/       # Agentic engine — LangGraph orchestration, REST API
-  layer5-ground-truth/ # Ground-truth store + evaluation API
-  layer6-benchmarks/   # Benchmark harness
-  shared/
-    identity/          # Cross-layer auth — JWT, API keys, RBAC, middleware
-    audit/             # Append-only audit log (DB trigger-enforced)
+value_fabric/                 # Canonical runtime package root
+  layer1/                     # Data ingestion runtime modules
+  layer2/                     # Ontology-guided extraction runtime modules
+  layer3/                     # Knowledge/retrieval runtime modules
+  layer4/                     # Agent orchestration runtime modules
+  layer5/                     # Ground-truth runtime modules
+  layer6/                     # Benchmark runtime modules
+  shared/                     # Shared runtime packages (identity, security, models)
 
-layer4-agents/         # Agent behavior artifacts (prompts, skills, workflows)
-  agents/              # Agent definitions (Markdown frontmatter + prose)
-  skills/              # Atomic skill definitions (tool schemas + behavior)
-  workflows/           # Multi-step workflow definitions
+services/                     # Maintained service deployment layer (apps, migrations, manifests)
+  layer1-ingestion/           # Layer 1 service entrypoint + infra wrapper
+  layer2-extraction/          # Layer 2 service entrypoint + infra wrapper
+  layer3-knowledge/           # Layer 3 service entrypoint + infra wrapper
+  layer4-agents/              # Layer 4 service entrypoint + agent artifacts
+  layer5-ground-truth/        # Layer 5 service entrypoint + infra wrapper
+  layer6-benchmarks/          # Layer 6 service entrypoint + infra wrapper
 
 contracts/             # Source of truth for all interfaces
   tool-manifests/      # JSON Schema for every agent tool/skill
   openapi/             # Generated OpenAPI specs per layer (do not hand-edit)
   jsonschema/          # Shared data model schemas
 
-frontend/              # React + TypeScript UI (Vite)
+apps/web/              # React + TypeScript UI (Vite)
 k8s/                   # Kubernetes manifests
 monitoring/            # Prometheus + Grafana
 packs/                 # Domain vertical extensions
@@ -68,9 +69,9 @@ emerges from interactions between agents, tools, and the knowledge graph.
 ### P0 — Never do these
 
 1. **Do not commit secrets.** No API keys, passwords, or tokens in any file. Use `.env` (gitignored).
-2. **Do not modify `value-fabric/shared/identity/` without a security review.** This is the
+2. **Do not modify `value_fabric/shared/identity/` without a security review.** This is the
    cross-layer authentication and authorization library. Bugs here affect every service.
-3. **Do not modify `value-fabric/layer4-agents/migrations/` by hand.** Use Alembic to generate
+3. **Do not modify `services/layer4-agents/migrations/` by hand.** Use Alembic to generate
    new migration files: `alembic revision --autogenerate -m "description"`.
 4. **Do not change a tool manifest in `contracts/tool-manifests/` without updating the
    corresponding skill definition in `layer4-agents/skills/`.** Contracts and skills must stay in sync.
@@ -79,7 +80,7 @@ emerges from interactions between agents, tools, and the knowledge graph.
 
 ### P1 — Be careful with these
 
-- **Provider changes** (`value-fabric/layer*/src/`) — These affect live data flows. Changing
+- **Provider changes** (`services/layer*/src/ (service code) and/or value_fabric/layer*/ (runtime package code)`) — These affect live data flows. Changing
   extraction logic can alter the shape of the knowledge graph, breaking downstream agents.
 - **Ontology changes** (`packs/*/ontology.json`) — Entity type and relationship changes are
   effectively schema migrations for the knowledge graph.
@@ -171,9 +172,9 @@ make test-frontend  # Frontend unit + type-check
    }
    ```
 
-3. Implement the tool function in `value-fabric/layer4-agents/src/tools/`.
+3. Implement the tool function in `services/layer4-agents/src/tools/`.
 
-4. Register the tool in `value-fabric/layer4-agents/src/tools/__init__.py`.
+4. Register the tool in `services/layer4-agents/src/tools/__init__.py`.
 
 5. Add a golden-trace eval in `tests/evals/skills/test_<name>.py`.
 
@@ -185,9 +186,9 @@ make test-frontend  # Frontend unit + type-check
 
 1. Create the agent definition in `layer4-agents/agents/<name>_agent.md` with frontmatter
    listing its allowed skills.
-2. Implement the agent in `value-fabric/layer4-agents/src/agents/<name>.py`.
+2. Implement the agent in `services/layer4-agents/src/agents/<name>.py`.
 3. Register it in the agent router.
-4. Add integration tests in `value-fabric/layer4-agents/tests/`.
+4. Add integration tests in `services/layer4-agents/tests/`.
 5. Document its purpose and constraints in the definition file.
 
 ---
@@ -196,7 +197,7 @@ make test-frontend  # Frontend unit + type-check
 
 1. Create the provider adapter in the relevant layer's `src/` directory.
 2. Accept configuration via environment variables only — never hardcode credentials.
-3. Add the new env vars to `value-fabric/.env.example` with placeholder values.
+3. Add the new env vars to `value-fabric/.env.example` if using the legacy template path, or to the relevant service-local env template where applicable.
 4. Document the provider in `Providers.md`.
 5. Write integration tests that can run without the real provider (use mocks/fixtures).
 
@@ -224,7 +225,16 @@ For production traces, see `monitoring/` for Grafana dashboards.
 ## Coding standards
 
 - **Python**: Follow `ruff` rules (configured in each layer's `pyproject.toml`). Type hints required.
-- **TypeScript**: Follow ESLint config in `frontend/`. No `any` unless unavoidable.
+- **TypeScript**: Follow ESLint config in `apps/web/`. No `any` unless unavoidable.
 - **Tests**: Deterministic unit tests only — no external calls. Use `pytest-mock` or `unittest.mock`.
 - **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `chore:`, `test:`.
-- **Secrets**: Use `value-fabric/.env.example` for templates. Never put real values anywhere tracked by git.
+- **Secrets**: Use `value-fabric/.env.example` as the legacy template path, or service-local env templates where applicable. Never put real values anywhere tracked by git.
+
+## Runtime request limiting canonical module
+
+- Canonical implementation: `value_fabric/shared/rate_limiting/tenant_rate_limiter.py`.
+- Non-canonical adapters (for compatibility only):
+  - `value_fabric/shared/identity/rate_limiter.py`
+  - `value_fabric/layer3/api/rate_limiter.py`
+- Rule: adapter modules must delegate through a narrow interface and must not duplicate
+  sliding-window state math or Redis counter semantics.

@@ -46,6 +46,18 @@ jobs:
           python scripts/ci/check_layer3_source_mirror.py | tee artifacts/layer3-source-mirror.txt
           exit ${PIPESTATUS[0]}
 
+      - name: Run duplicate source-tree strict gate
+        run: |
+          mkdir -p artifacts
+          python scripts/ci/check_duplicate_source_trees.py --strict --json | tee artifacts/duplicate-source-trees.json
+          exit ${PIPESTATUS[0]}
+
+      - name: Run shared import runtime strict gate
+        run: |
+          mkdir -p artifacts
+          python scripts/ci/check_shared_imports.py --strict --scope runtime --json | tee artifacts/shared-imports-runtime.json
+          exit ${PIPESTATUS[0]}
+
       - name: Run navigation pattern guardrail
         run: |
           python scripts/ci/check_navigation_patterns.py --strict
@@ -53,6 +65,12 @@ jobs:
       - name: Run workflow matrix guards
         run: |
           make check-workflow-matrix
+
+      - name: Build PR diff violation summary artifact
+        if: always()
+        run: |
+          mkdir -p artifacts
+          python scripts/ci/ci_violation_diff_summary.py             --base-ref "${{ github.base_ref || 'main' }}"             --duplicate-report artifacts/duplicate-source-trees.json             --shared-report artifacts/shared-imports-runtime.json             --json-out artifacts/violation-diff-summary.json             --md-out artifacts/violation-diff-summary.md
 
       - name: Upload structural reports
         if: always()
@@ -63,6 +81,10 @@ jobs:
             artifacts/structural-preflight.json
             artifacts/python-contract-lint.json
             artifacts/layer3-source-mirror.txt
+            artifacts/duplicate-source-trees.json
+            artifacts/shared-imports-runtime.json
+            artifacts/violation-diff-summary.json
+            artifacts/violation-diff-summary.md
           retention-days: 14
 
   governance-docs-check:
@@ -627,6 +649,13 @@ jobs:
           done
           pnpm run test:a11y:launch-smoke
 
+      - name: Accessibility keyboard-flow E2E (deep a11y assertions)
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+        run: |
+          # Preview server is still running from previous step in the same job
+          pnpm run test:a11y:keyboard-flow
+
       - name: Security audit (GATING)
         run: pnpm audit --audit-level high
 
@@ -710,6 +739,10 @@ jobs:
           python scripts/ci/check_endpoint_coverage.py \
             --registry apps/web/contracts/endpoint-hook-registry.json \
             --openapi-dir contracts/openapi
+
+      - name: Compatibility debt summary
+        run: |
+          python scripts/ci/compatibility_debt_summary.py
 
       - name: Upload test results
         if: always()

@@ -1,8 +1,8 @@
 """Thin FastAPI composition root for Layer 3.
 
-The large historical implementation lives in ``app_monolith`` while endpoint
-groups continue to be extracted into focused route modules. This module is the
-stable ASGI import target used by uvicorn and tests.
+Migration ledger:
+- moved router groups: system, entity/browser, value tree, formulas, benchmarks, query/search helpers.
+- remaining in app_monolith: app wiring, legacy alias decorators, deprecation compatibility headers.
 """
 
 from __future__ import annotations

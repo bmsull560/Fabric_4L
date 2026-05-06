@@ -128,7 +128,7 @@ jobs:
       - name: Run contract linting (all contract rules as errors)
         working-directory: apps/web
         run: |
-          # Uses .eslintrc.js which now enforces all contract rules as "error"
+          # Uses .eslintrc.cjs which now enforces all contract rules as "error"
           # CONTRACT.md §3.3 - All 6 canonical contracts enforced
           npx eslint src/ server/ --ext .ts,.tsx --max-warnings 0
 
@@ -234,7 +234,11 @@ jobs:
         run: python scripts/ci/platform_contract_lint.py
 
       - name: Run Strict Shared-Import Enforcement
-        run: python scripts/ci/check_shared_imports.py --strict --scope executable
+        run: python scripts/ci/check_shared_imports.py --strict --scope runtime
+        # NO continue-on-error: This is a BLOCKING contract gate
+
+      - name: Run Duplicate Source Tree Strict Gate
+        run: python scripts/ci/check_duplicate_source_trees.py --strict
         # NO continue-on-error: This is a BLOCKING contract gate
 
       - name: Contract scan - Tenant context violations
@@ -242,16 +246,16 @@ jobs:
           echo "Scanning for tenantId parameter violations (CONTRACT.md §2.1)..."
           # Count but don't fail yet - we're tracking toward zero
           VIOLATIONS=$(grep -rn "def.*tenant_id\|def.*tenantId" services/*/src/ --include="*.py" | wc -l || true)
-          VIOLATIONS=$(grep -rn "def.*tenant_id\|def.*tenantId" services/*/src/ --include="*.py" | wc -l || true)
           echo "tenant_id parameter violations found: $VIOLATIONS"
+          test "$VIOLATIONS" -eq 0
           echo "tenant_violations=$VIOLATIONS" >> $GITHUB_ENV
 
       - name: Contract scan - Raw SQL tenant filtering
         run: |
           echo "Scanning for raw SQL tenant_id filtering (CONTRACT.md §2.2)..."
           VIOLATIONS=$(grep -rn "WHERE.*tenant_id\|tenant_id.*=" services/*/src/ --include="*.py" | grep -v "migrations/" | wc -l || true)
-          VIOLATIONS=$(grep -rn "WHERE.*tenant_id\|tenant_id.*=" services/*/src/ --include="*.py" | grep -v "migrations/" | wc -l || true)
           echo "raw SQL tenant violations found: $VIOLATIONS"
+          test "$VIOLATIONS" -eq 0
           echo "sql_violations=$VIOLATIONS" >> $GITHUB_ENV
 
       # ==========================================================================
