@@ -66,3 +66,8 @@ Triggers: "draw", "diagram", "sketch", "wireframe", "flowchart",
 Constraints: get_canvas before edits; max 200 shapes per create_shape call.
 Requires: tldraw MCP server wired in the harness's MCP config; user has
 http://localhost:3030 open. Opt-in via `.features.json` (`tldraw: true`).
+
+## saas-product-design
+Core competencies for building scalable, high-retention multi-tenant SaaS products, focusing on architecture, onboarding, navigation, and modern UI design.
+Triggers: "SaaS", "multi-tenant", "onboarding", "navigation", "dashboard", "UI design", "accessibility", "AI integration", "tenant isolation", "Time-to-Value", "TTV", "command palette", "dark mode", "WCAG"
+Constraints: prioritize tenant data isolation, enforce tenant-aware authorization, target sub-5-minute TTV, use interactive walkthroughs over static tours, implement command palette for power users, apply calm design principles, prepare for WCAG 3.0 compliance, integrate AI as invisible infrastructure

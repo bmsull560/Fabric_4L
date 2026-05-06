@@ -36,6 +36,7 @@ tmp/
 
 # Test artifacts
 .pytest_cache/
+pytest-cache-files-*/
 .coverage
 htmlcov/
 .tox/

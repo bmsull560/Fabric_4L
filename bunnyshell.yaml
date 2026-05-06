@@ -58,6 +58,7 @@ components:
                 dockerfile: ./services/layer1-ingestion/Dockerfile
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
+                    CACHEBUST: ${CACHEBUST}
             environment:
                 JWT_SECRET: dev-secret-key-change-in-production
                 LAYER1_API_PORT: '8000'
@@ -97,6 +98,7 @@ components:
                 dockerfile: ./services/layer1-ingestion/Dockerfile
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
+                    CACHEBUST: ${CACHEBUST}
             command:
                 - celery
                 - '-A'
@@ -127,6 +129,8 @@ components:
             build:
                 context: .
                 dockerfile: ./services/layer2-extraction/Dockerfile
+                args:
+                    CACHEBUST: ${CACHEBUST}
             environment:
                 ENVIRONMENT: development
                 LAYER2_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/layer2_extraction'
@@ -203,6 +207,8 @@ components:
             build:
                 context: .
                 dockerfile: ./services/layer4-agents/Dockerfile
+                args:
+                    CACHEBUST: ${CACHEBUST}
             environment:
                 ANTHROPIC_API_KEY: sk-ant-placeholder-change-in-production
                 CHECKPOINT_DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
