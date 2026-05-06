@@ -228,7 +228,7 @@ For production traces, see `monitoring/` for Grafana dashboards.
 - **TypeScript**: Follow ESLint config in `apps/web/`. No `any` unless unavoidable.
 - **Tests**: Deterministic unit tests only — no external calls. Use `pytest-mock` or `unittest.mock`.
 - **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `chore:`, `test:`.
-- **Secrets**: Use `value-fabric/.env.example` as the legacy template path, or service-local env templates where applicable. Never put real values anywhere tracked by git.
+- **Secrets**: Use `value-fabric/.env.example` for templates. Never put real values anywhere tracked by git.
 
 ## Runtime request limiting canonical module
 
