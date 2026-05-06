@@ -44,7 +44,7 @@ import { useFormulaVersions, useFormulaGovernance, type FormulaVersion } from "@
 import { useFormulaDependents, useFormulaDependencies, type DependentAsset } from "@/hooks/useFormulaDependents";
 import { useFormulaScenario, type VariableAdjustment, type ScenarioResponse } from "@/hooks/useFormulaScenario";
 import { formatRelativeTime } from "@/lib/formatters";
-import { VersionHistoryPanel, DependencyPanel, ScenarioPanel } from "./components";
+import { VersionHistoryPanel, DependencyPanel, ScenarioPanel } from "./FormulaBuilder/components";
 import { createFeatureLogger } from "@/lib/telemetry";
 
 const log = createFeatureLogger('FormulaBuilder');

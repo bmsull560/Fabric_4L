@@ -307,7 +307,7 @@ describe('useAccounts', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['accounts'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['accounts', 'list', {}] });
     });
   });
 

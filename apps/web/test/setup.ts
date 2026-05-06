@@ -51,14 +51,31 @@ mockIntersectionObserver.mockReturnValue({
 });
 window.IntersectionObserver = mockIntersectionObserver;
 
-// Mock ResizeObserver
-const mockResizeObserver = vi.fn();
-mockResizeObserver.mockReturnValue({
-  observe: () => null,
-  unobserve: () => null,
-  disconnect: () => null,
+// Mock ResizeObserver with realistic callback behavior for virtual list tests
+const mockResizeObserver = vi.fn((callback: ResizeObserverCallback) => {
+  return {
+    observe: (target: Element) => {
+      // Report a realistic size so virtualizers can calculate visible items
+      queueMicrotask(() => {
+        callback(
+          [
+            {
+              target,
+              contentRect: { width: 800, height: 600 } as DOMRectReadOnly,
+              borderBoxSize: [{ inlineSize: 800, blockSize: 600 }] as unknown as ResizeObserverSize[],
+              contentBoxSize: [{ inlineSize: 800, blockSize: 600 }] as unknown as ResizeObserverSize[],
+              devicePixelContentBoxSize: [] as ResizeObserverSize[],
+            },
+          ],
+          new ResizeObserver(callback)
+        );
+      });
+    },
+    unobserve: () => null,
+    disconnect: () => null,
+  };
 });
-window.ResizeObserver = mockResizeObserver;
+window.ResizeObserver = mockResizeObserver as unknown as typeof ResizeObserver;
 
 // Suppress console errors/warnings in tests (optional - remove if you want to see them)
 // vi.spyOn(console, 'error').mockImplementation(() => {});
