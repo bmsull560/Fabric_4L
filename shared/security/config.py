@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +98,26 @@ def _is_controlled_local_exception() -> bool:
     return current_environment() in _PROD_LOCAL_ENV_ALLOWLIST
 
 
-def _query_has_secure_postgres_ssl(url: str) -> bool:
-    lowered = url.lower()
-    return any(mode in lowered for mode in ("sslmode=require", "sslmode=verify-ca", "sslmode=verify-full"))
+def _validate_database_tls_mode(database_url: str, *, source_variable: str, environment_label: str) -> None:
+    parsed = urlparse(database_url)
+    sslmode = (parse_qs(parsed.query).get("sslmode", [""])[0] or "").strip().lower()
+    approved_modes = {"require", "verify-ca", "verify-full"}
+    preferred_mode = "verify-full"
+
+    if sslmode not in approved_modes:
+        raise ValueError(
+            f"{environment_label.title()} {source_variable} must enforce TLS with "
+            "sslmode=require or stronger (verify-ca/verify-full); verify-full is preferred"
+        )
+
+    if sslmode != preferred_mode:
+        logger.info(
+            "%s %s uses sslmode=%s; sslmode=%s is preferred",
+            environment_label.title(),
+            source_variable,
+            sslmode,
+            preferred_mode,
+        )
 
 
 def _validate_secure_transport_url(name: str, value: str) -> None:
@@ -110,10 +127,7 @@ def _validate_secure_transport_url(name: str, value: str) -> None:
     if name == "DATABASE_URL":
         if not scheme.startswith(("postgresql", "postgres")):
             raise ValueError("Production DATABASE_URL must use PostgreSQL for RLS")
-        if not _query_has_secure_postgres_ssl(value):
-            raise ValueError(
-                "Production DATABASE_URL must require TLS with sslmode=require, sslmode=verify-ca, or sslmode=verify-full"
-            )
+        _validate_database_tls_mode(value, source_variable=name, environment_label="production")
         return
 
     if name == "REDIS_URL":
@@ -137,15 +151,30 @@ def validate_database_config() -> None:
 
     parsed = urlparse(database_url)
     scheme = parsed.scheme.lower()
-    if is_production():
+    if is_production() or is_staging():
+        environment_label = "production" if is_production() else "staging"
         if scheme.startswith("sqlite"):
-            raise ValueError("SQLite is not supported in production")
-        _validate_secure_transport_url("DATABASE_URL", database_url)
+            raise ValueError(f"SQLite is not supported in {environment_label}")
+        if not scheme.startswith(("postgresql", "postgres")):
+            raise ValueError(f"{environment_label.title()} DATABASE_URL must use PostgreSQL for RLS")
         # Row-level security prerequisites: PostgreSQL and a non-superuser role.
         # A superuser bypasses RLS policies entirely; production deployments must
         # use an application role validated against pg_roles.rolsuper=false.
         if _database_role(parsed) in SUPERUSER_NAMES:
             raise ValueError("PostgreSQL superuser connections bypass RLS")
+        _validate_database_tls_mode(
+            database_url,
+            source_variable="DATABASE_URL",
+            environment_label=environment_label,
+        )
+
+    sync_database_url = _env("DATABASE_URL_SYNC")
+    if is_production() and sync_database_url:
+        _validate_database_tls_mode(
+            sync_database_url,
+            source_variable="DATABASE_URL_SYNC",
+            environment_label="production",
+        )
 
 
 def validate_datastore_transport_security() -> None:

@@ -77,6 +77,47 @@ export interface EntityListResponse {
 }
 
 // ============================================================================
+// Layer 6: Benchmarks Types (canonical routes)
+// ============================================================================
+
+export interface BenchmarkDataset {
+  id: string;
+  name: string;
+  industry: string;
+  metric_count: number;
+  last_updated: string;
+  source?: string;
+}
+
+export interface BenchmarkComparisonMetric {
+  metric_name: string;
+  prospect_value: number;
+  benchmark_value: number;
+  percentile: number;
+  delta_percent: number;
+}
+
+export interface BenchmarkCompareRequest {
+  dataset_id: string;
+  prospect_id: string;
+  metrics: Array<{
+    metric_name: string;
+    value: number;
+  }>;
+}
+
+export interface BenchmarkCompareResponse {
+  prospect_id: string;
+  metrics: BenchmarkComparisonMetric[];
+  overall_percentile: number;
+  dataset_id: string;
+}
+
+export interface BenchmarkIndustriesResponse {
+  industries: string[];
+}
+
+// ============================================================================
 // Value Trees & Formulas
 // ============================================================================
 

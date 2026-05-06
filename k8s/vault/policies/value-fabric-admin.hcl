@@ -1,5 +1,6 @@
 # Vault Policy for Value Fabric Admin Operations
-# Full access for emergency operations and secret management
+# Least-privilege admin access for routine platform operations.
+# Destructive operations are isolated in value-fabric-break-glass.hcl.
 
 # Admin database role access
 path "database/creds/admin-role" {
@@ -16,9 +17,13 @@ path "database/rotate-root/postgres" {
     capabilities = ["update"]
 }
 
-# Full access to all secrets
-path "secret/*" {
-    capabilities = ["create", "read", "update", "delete", "list"]
+# Scoped KV access for platform-managed secrets
+path "secret/data/value-fabric/*" {
+    capabilities = ["create", "read", "update", "list"]
+}
+
+path "secret/metadata/value-fabric/*" {
+    capabilities = ["read", "list"]
 }
 
 # System health and status

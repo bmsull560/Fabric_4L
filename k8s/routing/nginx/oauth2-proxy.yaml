@@ -17,6 +17,32 @@ spec:
       port: 4180
       targetPort: 4180
       protocol: TCP
+    - name: https
+      port: 4443
+      targetPort: 4443
+      protocol: TCP
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: oauth2-proxy-selfsigned
+  namespace: value-fabric
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: oauth2-proxy-service-tls
+  namespace: value-fabric
+spec:
+  secretName: oauth2-proxy-service-tls
+  issuerRef:
+    kind: Issuer
+    name: oauth2-proxy-selfsigned
+  dnsNames:
+    - oauth2-proxy.value-fabric.svc
+    - oauth2-proxy.value-fabric.svc.cluster.local
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -55,9 +81,18 @@ spec:
             - containerPort: 4180
               name: http
               protocol: TCP
+            - containerPort: 4443
+              name: https
+              protocol: TCP
           env:
             - name: OAUTH2_PROXY_HTTP_ADDRESS
               value: "0.0.0.0:4180"
+            - name: OAUTH2_PROXY_HTTPS_ADDRESS
+              value: "0.0.0.0:4443"
+            - name: OAUTH2_PROXY_TLS_CERT_FILE
+              value: "/etc/oauth2-proxy/tls/tls.crt"
+            - name: OAUTH2_PROXY_TLS_KEY_FILE
+              value: "/etc/oauth2-proxy/tls/tls.key"
             - name: OAUTH2_PROXY_COOKIE_SECURE
               value: "true"
             - name: OAUTH2_PROXY_COOKIE_HTTPONLY
@@ -128,9 +163,15 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: oauth2-proxy-tls
+              mountPath: /etc/oauth2-proxy/tls
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: oauth2-proxy-tls
+          secret:
+            secretName: oauth2-proxy-service-tls
 ---
 # Health check endpoint bypass - allows /ping for liveness/readiness
 # No other paths bypass authentication
@@ -154,6 +195,8 @@ spec:
       ports:
         - protocol: TCP
           port: 4180
+        - protocol: TCP
+          port: 4443
   egress:
     - to:
         - namespaceSelector: {}

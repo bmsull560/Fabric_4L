@@ -9,7 +9,7 @@
  *  Trace 3 — Role Normalization: handled by AuthContext → userTierStore
  *
  * Flow:
- * 1a. Email/password — dev bypass in dev, pending production auth implementation (AUTH-XXX)
+ * 1a. Email/password — available for local dev/test bypass only
  * 1b. SSO button → initiateLogin(tenantSlug) → IdP redirect (Trace 1)
  * 2.  /login/callback → handleCallback(code, state) → JWT exchange (Trace 2)
  * 3.  Role sync → userTierStore.setUserRole() (Trace 3)
@@ -110,7 +110,7 @@ export default function Login() {
         return;
       }
 
-      setError('Email/password login is not yet configured. Use SSO or contact your admin.');
+      setError('Email/password sign-in is disabled in production. Continue with SSO.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

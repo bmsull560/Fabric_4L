@@ -1,6 +1,7 @@
 """Configuration for Layer 5 Ground Truth service."""
 
 from functools import lru_cache
+import logging
 from typing import ClassVar
 from urllib.parse import urlparse
 
@@ -58,6 +59,9 @@ def _has_default_database_credentials(raw_url: str) -> bool:
     username = (parsed.username or "").strip().lower()
     password = parsed.password or ""
     return username in {"postgres", "valuefabric", "value_fabric"} or password in {"", "postgres", "password"}
+
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -152,7 +156,7 @@ class Settings(BaseSettings):
 
     # JWT / Auth Configuration
     jwt_secret: str = Field(
-        default="changeme-in-production",
+        default="",
         alias="JWT_SECRET",
         description="HMAC secret for signing/verifying JWTs",
     )
@@ -225,6 +229,22 @@ class Settings(BaseSettings):
         if "postgresql://" in v and "asyncpg" not in v:
             v = v.replace("postgresql://", "postgresql+asyncpg://")
         return v
+
+
+    @model_validator(mode="after")
+    def warn_on_non_production_auth_risk(self) -> "Settings":
+        """Emit explicit warning when non-production starts without strong JWT auth."""
+        if self.is_production_like:
+            return self
+
+        if len(self.jwt_secret) < 32 or self.jwt_secret.strip().lower() in WEAK_JWT_SECRETS:
+            logger.warning(
+                "Layer 5 running in %s with weak or missing JWT_SECRET; set JWT_SECRET to at least 32 random "
+                "characters to enable JWT auth verification.",
+                self.effective_environment,
+            )
+
+        return self
 
     @model_validator(mode="after")
     def validate_production_fail_closed(self) -> "Settings":

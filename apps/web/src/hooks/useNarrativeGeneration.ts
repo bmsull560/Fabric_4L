@@ -52,7 +52,7 @@ const OUTPUT_TYPE_TO_WORKFLOW: Record<OutputType, string> = {
  */
 export function useIndustries() {
   return useQuery<string[]>({
-    queryKey: QK.narrative.industries(),
+    queryKey: QK.benchmarks.industries(),
     queryFn: async () => {
       const response = await apiClient.get('l6', '/industries');
       const data = response.data;

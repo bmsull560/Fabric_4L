@@ -19,6 +19,7 @@ from typing import Any, Literal
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 
 # psutil with fallback for minimal environments
 try:
@@ -886,6 +887,21 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return response
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation exceptions with shared canonical envelope."""
+    from value_fabric.shared.error_handling.handlers import (
+        validation_exception_handler as shared_handler,
+    )
+
+    response = await shared_handler(request, exc)
+    logger.warning(
+        f"Validation exception at {request.method} {request.url.path}",
+        extra={"trace_id": getattr(request.state, "trace_id", None)},
+    )
+    return response
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions with shared error handling."""
@@ -898,9 +914,10 @@ async def global_exception_handler(request: Request, exc: Exception):
     else:
         # Legacy fallback
         error_response = {
-            "error": "INTERNAL_SERVER_ERROR",
-            "message": "An unexpected error occurred",
-            "type": type(exc).__name__,
+            "code": "INTERNAL_ERROR",
+            "message": "Unexpected server fault",
+            "details": None,
+            "context": {"endpoint": request.url.path, "method": request.method},
             "request_id": getattr(request.state, "request_id", None),
         }
         settings = _get_settings_with_fallback()

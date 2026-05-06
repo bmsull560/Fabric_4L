@@ -1,0 +1,52 @@
+import os
+from unittest.mock import patch
+
+import pytest
+
+from value_fabric.shared.security.config import validate_database_config
+
+
+@pytest.mark.parametrize(
+    "database_url",
+    [
+        "postgresql://app:pass@db.example.com:5432/fabric?sslmode=require",
+        "postgresql://app:pass@db.example.com:5432/fabric?sslmode=verify-ca",
+        "postgresql://app:pass@db.example.com:5432/fabric?sslmode=verify-full",
+    ],
+)
+def test_production_accepts_supported_tls_sslmodes(database_url: str) -> None:
+    with patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": database_url,
+        },
+        clear=True,
+    ):
+        validate_database_config()
+
+
+@pytest.mark.parametrize("environment", ["production", "staging"])
+def test_prod_like_rejects_missing_tls_requirement(environment: str) -> None:
+    with patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": environment,
+            "DATABASE_URL": "postgresql://app:pass@db.example.com:5432/fabric",
+        },
+        clear=True,
+    ):
+        with pytest.raises(ValueError, match="must enforce TLS"):
+            validate_database_config()
+
+
+def test_staging_accepts_verify_full_tls() -> None:
+    with patch.dict(
+        os.environ,
+        {
+            "ENVIRONMENT": "staging",
+            "DATABASE_URL": "postgresql://app:pass@db.example.com:5432/fabric?sslmode=verify-full",
+        },
+        clear=True,
+    ):
+        validate_database_config()

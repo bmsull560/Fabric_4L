@@ -232,3 +232,9 @@ layer5-ground-truth/
 ├── pytest.ini
 └── README.md
 ```
+
+## Source ownership
+
+Canonical runtime package: `value_fabric/layer5`.
+
+`services/layer5-ground-truth/` owns deployment and operational wrapper concerns. Prefer canonical imports (`value_fabric.layer5.*`) for runtime modules.

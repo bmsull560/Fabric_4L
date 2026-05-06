@@ -19,6 +19,8 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..cache import get_request_deduplicator
+from ..exception_mapping import map_exception_to_http_error
+from ..exceptions import SearchError, VectorStoreError
 from ..models import GraphRAGQuery, GraphRAGResponse, SearchRequest, SearchResponse, SearchResult, SearchType
 
 logger = logging.getLogger(__name__)
@@ -91,9 +93,14 @@ async def graph_rag_query_impl(query: GraphRAGQuery, graph_rag: Any) -> GraphRAG
         return await _execute_graph_rag_query(
             graph_rag, query.query, query.entity_type, query.max_hops, query.max_results
         )
+    except (SearchError, VectorStoreError) as exc:
+        context = {"tenant": "unknown", "endpoint": "/v1/query", "operation": "graph_rag_query"}
+        logger.warning("GraphRAG query mapped exception", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
     except Exception as exc:
-        logger.error("GraphRAG query failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Query processing failed. Please try again later.")
+        context = {"tenant": "unknown", "endpoint": "/v1/query", "operation": "graph_rag_query"}
+        logger.error("GraphRAG query failed", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
 
 
 async def graph_rag_query_stream_impl(query: GraphRAGQuery, graph_rag: Any) -> StreamingResponse:
@@ -186,6 +193,11 @@ async def hybrid_search_impl(request: SearchRequest, hybrid_search: Any) -> Sear
             request.top_k,
             request.weights,
         )
+    except (SearchError, VectorStoreError) as exc:
+        context = {"tenant": "unknown", "endpoint": "/v1/search", "operation": "hybrid_search"}
+        logger.warning("Search mapped exception", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
     except Exception as exc:
-        logger.error("Search failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Search failed. Please try again later.")
+        context = {"tenant": "unknown", "endpoint": "/v1/search", "operation": "hybrid_search"}
+        logger.error("Search failed", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)

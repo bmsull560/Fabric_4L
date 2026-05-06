@@ -32,6 +32,32 @@ if not TESTCLIENT_AVAILABLE:
     raise ImportError("FastAPI TestClient is required for mandatory rate-limit security tests")
 
 
+
+
+@pytest.mark.asyncio
+async def test_redis_failure_fail_closed_default_and_fallback_mode_contract() -> None:
+    from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
+    from value_fabric.shared.identity.rate_limiting import RateLimitConfig
+
+    limiter = RedisRateLimiter(redis_client=None)
+    config = RateLimitConfig(requests_per_minute=60, burst_size=5)
+
+    async def boom(*, key: str, limit: int, window_seconds: int):
+        raise RuntimeError("redis unavailable")
+
+    limiter._adapter.check = boom  # type: ignore[method-assign]
+
+    with patch.dict(os.environ, {"RATE_LIMIT_FAIL_MODE": "closed"}, clear=False):
+        closed_result = await limiter.check("tenant:a:key:1", config)
+
+    with patch.dict(os.environ, {"RATE_LIMIT_FAIL_MODE": "local_fallback"}, clear=False):
+        fallback_results = [await limiter.check("tenant:a:key:1", config) for _ in range(6)]
+
+    assert closed_result.allowed is False
+    assert closed_result.retry_after is not None
+    assert all(item.allowed for item in fallback_results[:5])
+    assert fallback_results[5].allowed is False
+
 class TestMultiWorkerRateLimitSafety:
     """P0: Multi-worker deployments require Redis for rate limiting."""
 

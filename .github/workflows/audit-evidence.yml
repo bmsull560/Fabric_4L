@@ -408,3 +408,51 @@ jobs:
           echo "- Policy docs: Permanent" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Download:** \\"complete-audit-evidence-bundle\\" artifact" >> $GITHUB_STEP_SUMMARY
+
+
+  automated-control-evidence:
+    name: Collect Automated Control Evidence Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate sanitized CI/CD control artifacts
+        run: |
+          mkdir -p audit-evidence/automated-controls
+
+          # Sanitized git activity log (remove email addresses)
+          git log --since="90 days ago" --pretty=format:'%H|%an|%ae|%ad|%s' --date=iso-strict             | sed -E 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+/[REDACTED_EMAIL]/g'             > audit-evidence/automated-controls/sanitized-change-log.txt
+
+          # Compliance integrity control output
+          python scripts/ci/check_compliance_evidence_integrity.py             > audit-evidence/automated-controls/control-check-output.txt
+
+          # Access review record scaffold for quarterly attestation
+          cat > audit-evidence/automated-controls/access-review-records.json << EOF
+          {
+            "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "control_id": "C-AC-01",
+            "owner": "Security Engineering",
+            "source_workflow": "audit-evidence.yml",
+            "sanitized": true,
+            "frequency": "quarterly",
+            "records": [
+              {
+                "system": "github",
+                "review_period": "$(date -u +"%Y-Q%q" 2>/dev/null || echo current-quarter)",
+                "reviewer": "TBD",
+                "status": "pending_signoff"
+              }
+            ]
+          }
+          EOF
+
+      - name: Upload automated evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: automated-control-evidence
+          path: audit-evidence/automated-controls/
+          retention-days: 2555

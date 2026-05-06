@@ -3,6 +3,7 @@ import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { withApiError, BenchmarkApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 import { createFeatureLogger } from '@/lib/telemetry';
+import type { BenchmarkDataset } from '@/api/types';
 
 const log = createFeatureLogger('useBenchmarks');
 
@@ -27,6 +28,12 @@ export interface Benchmark {
   usage_count: number;
   description?: string;
 }
+
+/**
+ * L6 dataset shape mapped into legacy benchmark UI fields.
+ * Keep this hook L6-only; L3 ROI assumptions live in useROICalculator.
+ */
+export type L6BenchmarkDataset = BenchmarkDataset;
 
 // Re-export for backward compatibility
 export { BenchmarkApiError } from './useApiShared';

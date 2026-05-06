@@ -29,6 +29,7 @@ from .context import (
     VALID_ISOLATION_TIERS,
     RequestContext,
 )
+from .fallback_telemetry import enforce_fallback_enabled, record_fallback_usage
 from .permissions import Permission, Role, ROLE_PERMISSIONS
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
@@ -215,9 +216,18 @@ def get_request_context_sync(
         return _from_request_context(governance_context)
 
     if x_tenant_id:
+        enforce_fallback_enabled("sync.service_auth_header", default=True)
+        record_fallback_usage(
+            "sync.service_auth_header",
+            tenant_id=x_tenant_id,
+            client_id=request.headers.get("X-Client-ID"),
+            service="shared.identity.middleware_sync",
+            path=str(request.url.path),
+        )
         return _service_auth_context(x_tenant_id, x_service_auth)
 
     if x_organization_id:
+        enforce_fallback_enabled("sync.organization_header", default=True)
         try:
             tenant_id = UUID(x_organization_id)
         except ValueError as exc:
@@ -225,6 +235,13 @@ def get_request_context_sync(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid X-Organization-ID header",
             ) from exc
+        record_fallback_usage(
+            "sync.organization_header",
+            tenant_id=tenant_id,
+            client_id=request.headers.get("X-Client-ID"),
+            service="shared.identity.middleware_sync",
+            path=str(request.url.path),
+        )
         return SyncRequestContext(
             tenant_id=tenant_id,
             roles=[Role.SYSTEM.value],

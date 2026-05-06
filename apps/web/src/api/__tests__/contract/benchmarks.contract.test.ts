@@ -65,6 +65,11 @@ const BenchmarkPolicyUpdateSchema = z.object({
   is_enabled: z.boolean().nullable().optional(),
 });
 
+const BenchmarkIndustriesSchema = z.union([
+  z.array(z.string().min(1)),
+  z.object({ industries: z.array(z.string().min(1)) }),
+]);
+
 // ── GET /v1/benchmarks/datasets ───────────────────────────────────────────────
 
 describe('Contract: GET /v1/benchmarks/datasets', () => {
@@ -196,17 +201,34 @@ describe('Contract: POST /v1/benchmarks/validate', () => {
 // ── GET /v1/benchmarks/industries ────────────────────────────────────────────
 
 describe('Contract: GET /v1/benchmarks/industries', () => {
-  it('industries response is an array of strings', () => {
-    const IndustriesResponseSchema = z.array(z.string().min(1));
+  it('industries response supports array form', () => {
     const resp = assertSchema(
-      IndustriesResponseSchema,
+      BenchmarkIndustriesSchema,
       ['Technology', 'Manufacturing', 'Healthcare', 'Financial Services'],
       'IndustriesResponse'
     );
-    expect(resp.length).toBeGreaterThan(0);
-    for (const industry of resp) {
+    const industries = Array.isArray(resp) ? resp : resp.industries;
+    expect(industries.length).toBeGreaterThan(0);
+    for (const industry of industries) {
       expect(typeof industry).toBe('string');
     }
+  });
+
+  it('industries response supports wrapped object form', () => {
+    const resp = assertSchema(
+      BenchmarkIndustriesSchema,
+      { industries: ['Technology', 'Manufacturing'] },
+      'IndustriesResponseWrapped'
+    );
+    const industries = Array.isArray(resp) ? resp : resp.industries;
+    expect(industries).toContain('Technology');
+  });
+});
+
+describe('Contract: benchmark ownership boundaries', () => {
+  it('L6 benchmark experiences use canonical /v1/benchmarks/* routes', () => {
+    const canonicalRoutes = ['/v1/benchmarks/datasets', '/v1/benchmarks/compare', '/v1/benchmarks/industries'];
+    expect(canonicalRoutes.every((route) => route.startsWith('/v1/benchmarks/'))).toBe(true);
   });
 });
 

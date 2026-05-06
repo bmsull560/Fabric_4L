@@ -39,3 +39,10 @@ python -m uvicorn src.api.main:app --port 8006
 ## Integration
 
 Layer 6 integrates with Layer 4 Agents via the `IBenchmarkClient` interface (see `layer4-agents/src/interfaces/benchmark_client.py`).
+
+## Source ownership
+
+Canonical runtime package: `value_fabric/layer6`.
+
+`services/layer6-benchmarks/src/` contains service wiring plus compatibility shims for legacy imports.
+Use canonical imports (`value_fabric.layer6.*`) for all new code.

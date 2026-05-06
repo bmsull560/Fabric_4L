@@ -2,8 +2,9 @@ import { RuleTester } from "eslint";
 import rule from "../no-throw-in-tool";
 
 const ruleTester = new RuleTester({
+  parser: require.resolve("@typescript-eslint/parser"),
   parserOptions: {
-    ecmaVersion: 2020,
+    ecmaVersion: 2022,
     sourceType: "module",
   },
 });

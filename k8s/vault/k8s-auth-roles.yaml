@@ -74,6 +74,19 @@ data:
       ttl: 1h
       max_ttl: 4h
 
+    break-glass-admin:
+      # Intentionally NOT bound to routine workloads.
+      # Populate only during approved incidents with a dedicated,
+      # manually created ServiceAccount in a restricted namespace.
+      bound_service_account_names:
+        - break-glass-admin
+      bound_service_account_namespaces:
+        - vault-ops
+      policies:
+        - value-fabric-break-glass
+      ttl: 15m
+      max_ttl: 1h
+
 ---
 # ServiceAccount for External Secrets Operator (if not already created by ESO helm chart)
 apiVersion: v1

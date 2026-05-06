@@ -30,6 +30,10 @@ from uuid import UUID
 
 import jwt
 from fastapi import Depends, Header, HTTPException, Query, Request, status
+from value_fabric.shared.identity.fallback_telemetry import (
+    enforce_fallback_enabled,
+    record_fallback_usage,
+)
 
 from ..config import Settings, get_settings
 
@@ -176,6 +180,7 @@ def get_current_user(
 
     # ── 2. Dev/test fallback — direct Bearer JWT verification ─────────────
     if authorization and authorization.startswith("Bearer "):
+        enforce_fallback_enabled("layer5.direct_jwt", default=True)
         token = authorization[7:]
         payload = _decode_jwt(token, settings)
 
@@ -195,6 +200,13 @@ def get_current_user(
             roles = payload.get(settings.jwt_roles_claim, [])
             if isinstance(roles, str):
                 roles = [roles]
+            record_fallback_usage(
+                "layer5.direct_jwt",
+                tenant_id=org_id,
+                client_id=request.headers.get("X-Client-ID"),
+                service="layer5-ground-truth",
+                path=str(request.url.path),
+            )
 
             return TokenClaims(
                 tenant_id=org_id,
@@ -209,8 +221,16 @@ def get_current_user(
     # unverified X-Tenant-ID in production by refusing to build a context, and
     # the fail-closed branch above short-circuits before we get here.
     if x_tenant_id:
+        enforce_fallback_enabled("layer5.x_tenant_id_header", default=True)
         try:
             org_id = UUID(x_tenant_id)
+            record_fallback_usage(
+                "layer5.x_tenant_id_header",
+                tenant_id=org_id,
+                client_id=request.headers.get("X-Client-ID"),
+                service="layer5-ground-truth",
+                path=str(request.url.path),
+            )
             return TokenClaims(
                 tenant_id=org_id,
                 user_id="service",
@@ -224,12 +244,20 @@ def get_current_user(
 
     # ── 4. Dev/test fallback — tenant_id query param ──────────────────────
     if settings.jwt_fallback_to_query_param and tenant_id:
+        enforce_fallback_enabled("layer5.tenant_query_param", default=True)
         try:
             org_id = UUID(tenant_id)
             logger.debug(
                 "Using tenant_id query param fallback for tenant %s — "
                 "set JWT_FALLBACK_TO_QUERY_PARAM=false in production",
                 org_id,
+            )
+            record_fallback_usage(
+                "layer5.tenant_query_param",
+                tenant_id=org_id,
+                client_id=request.headers.get("X-Client-ID"),
+                service="layer5-ground-truth",
+                path=str(request.url.path),
             )
             return TokenClaims(
                 tenant_id=org_id,

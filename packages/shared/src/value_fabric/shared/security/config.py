@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from pydantic import BaseModel, Field
 
@@ -499,21 +499,61 @@ def validate_database_config() -> None:
     if not database_url:
         raise ValueError("DATABASE_URL is required")
     
-    if is_production():
+    if is_production() or is_staging():
+        environment_label = "production" if is_production() else "staging"
         # SQLite is not allowed in production
         if database_url.startswith("sqlite"):
             raise ValueError(
-                "SQLite is not supported in production. "
+                f"SQLite is not supported in {environment_label}. "
                 "Use PostgreSQL with RLS for multi-tenant isolation."
             )
-        
-        # Fail closed unless strong TLS transport is explicitly required.
-        lowered = database_url.lower()
-        if not any(flag in lowered for flag in ("sslmode=require", "sslmode=verify-ca", "sslmode=verify-full")):
+        approved_sslmodes = {"require", "verify-ca", "verify-full"}
+        preferred_sslmode = "verify-full"
+
+        def _sslmode_from(url: str) -> str:
+            parsed = urlparse(url)
+            query = parse_qs(parsed.query)
+            return (query.get("sslmode", [""])[0] or "").strip().lower()
+
+        db_sslmode = _sslmode_from(database_url)
+        if db_sslmode not in approved_sslmodes:
             raise ValueError(
-                "Production DATABASE_URL must require TLS transport. "
-                "Use sslmode=require (or verify-ca/verify-full)."
+<<<<<<< ours
+                f"{environment_label.title()} DATABASE_URL must enforce TLS with "
+                "sslmode=require or stronger (verify-ca/verify-full); verify-full is preferred."
             )
+        if db_sslmode != preferred_sslmode:
+            logger.info(
+                "%s DATABASE_URL uses sslmode=%s; sslmode=%s is preferred.",
+                environment_label.title(),
+=======
+                "Production DATABASE_URL must include sslmode=require or stronger "
+                "(verify-ca/verify-full); verify-full is preferred."
+            )
+        if db_sslmode != preferred_sslmode:
+            logger.info(
+                "DATABASE_URL uses sslmode=%s; sslmode=%s is preferred.",
+>>>>>>> theirs
+                db_sslmode,
+                preferred_sslmode,
+            )
+
+        sync_database_url = os.getenv("DATABASE_URL_SYNC", "")
+        if sync_database_url:
+            sync_sslmode = _sslmode_from(sync_database_url)
+            if sync_sslmode not in approved_sslmodes:
+                raise ValueError(
+<<<<<<< ours
+                    f"{environment_label.title()} DATABASE_URL_SYNC must enforce TLS with "
+                    "sslmode=require or stronger (verify-ca/verify-full); verify-full is preferred."
+                )
+            if sync_sslmode != preferred_sslmode:
+                logger.info(
+                    "%s DATABASE_URL_SYNC uses sslmode=%s; sslmode=%s is preferred.",
+                    environment_label.title(),
+                    sync_sslmode,
+                    preferred_sslmode,
+                )
 
 
 def validate_datastore_transport_security() -> None:
@@ -540,6 +580,17 @@ def validate_datastore_transport_security() -> None:
         raise ValueError("Production REDIS_URL must use rediss:// to enforce TLS")
     if not neo4j_uri.lower().startswith(("neo4j+s://", "neo4j+ssc://", "bolt+s://", "bolt+ssc://")):
         raise ValueError("Production NEO4J_URI must use a TLS scheme (neo4j+s:// or bolt+s://)")
+=======
+                    "Production DATABASE_URL_SYNC must include sslmode=require or stronger "
+                    "(verify-ca/verify-full); verify-full is preferred."
+                )
+            if sync_sslmode != preferred_sslmode:
+                logger.info(
+                    "DATABASE_URL_SYNC uses sslmode=%s; sslmode=%s is preferred.",
+                    sync_sslmode,
+                    preferred_sslmode,
+                )
+>>>>>>> theirs
 
 
 def validate_jwt_secret_strength() -> None:

@@ -1,4 +1,4 @@
-"""Tests for extraction entities endpoint."""
+"""Tests for extraction results endpoint."""
 
 import pytest
 from unittest.mock import Mock, AsyncMock
@@ -9,7 +9,8 @@ from layer2_extraction.api.routes.extraction import (
     ExtractedEntity,
     EntityProvenance,
     EntitySourceSpan,
-    ExtractionEntitiesResponse,
+    ExtractionResultSummary,
+    ExtractionResultsResponse,
 )
 
 
@@ -57,9 +58,9 @@ def mock_artifacts():
 
 
 @pytest.mark.asyncio
-async def test_get_extraction_entities_success(mock_job, mock_artifacts):
+async def test_get_extraction_results_success(mock_job, mock_artifacts):
     """Test successful retrieval of extraction entities."""
-    from layer2_extraction.api.routes.extraction import get_extraction_entities
+    from layer2_extraction.api.routes.extraction import get_extraction_results
     from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
@@ -76,10 +77,10 @@ async def test_get_extraction_entities_success(mock_job, mock_artifacts):
     with pytest.MonkeyPatch().context() as m:
         m.setattr("layer2_extraction.api.routes.extraction.build_job_store", Mock(return_value=job_store))
         
-        response = await get_extraction_entities(mock_job.job_id, request)
+        response = await get_extraction_results(mock_job.job_id, request)
         
         assert response.job_id == mock_job.job_id
-        assert response.total == 2
+        assert response.summary.total_entities == 2
         assert len(response.entities) == 2
         assert response.entities[0].entity_id == "entity-1"
         assert response.entities[0].type == "Capability"
@@ -91,9 +92,9 @@ async def test_get_extraction_entities_success(mock_job, mock_artifacts):
 
 
 @pytest.mark.asyncio
-async def test_get_extraction_entities_empty_result(mock_job):
+async def test_get_extraction_results_empty_result(mock_job):
     """Test retrieval when no entities are extracted."""
-    from layer2_extraction.api.routes.extraction import get_extraction_entities
+    from layer2_extraction.api.routes.extraction import get_extraction_results
     from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
@@ -115,17 +116,17 @@ async def test_get_extraction_entities_empty_result(mock_job):
     with pytest.MonkeyPatch().context() as m:
         m.setattr("layer2_extraction.api.routes.extraction.build_job_store", Mock(return_value=job_store))
         
-        response = await get_extraction_entities(mock_job.job_id, request)
+        response = await get_extraction_results(mock_job.job_id, request)
         
         assert response.job_id == mock_job.job_id
-        assert response.total == 0
+        assert response.summary.total_entities == 0
         assert len(response.entities) == 0
 
 
 @pytest.mark.asyncio
-async def test_get_extraction_entities_incomplete_job(mock_job):
+async def test_get_extraction_results_incomplete_job(mock_job):
     """Test retrieval when extraction is not complete."""
-    from layer2_extraction.api.routes.extraction import get_extraction_entities
+    from layer2_extraction.api.routes.extraction import get_extraction_results
     from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
@@ -145,16 +146,16 @@ async def test_get_extraction_entities_incomplete_job(mock_job):
         m.setattr("layer2_extraction.api.routes.extraction.build_job_store", Mock(return_value=job_store))
         
         with pytest.raises(HTTPException) as exc_info:
-            await get_extraction_entities(mock_job.job_id, request)
+            await get_extraction_results(mock_job.job_id, request)
         
         assert exc_info.value.status_code == 409
         assert "not complete" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
-async def test_get_extraction_entities_missing_job():
+async def test_get_extraction_results_missing_job():
     """Test retrieval when job does not exist."""
-    from layer2_extraction.api.routes.extraction import get_extraction_entities
+    from layer2_extraction.api.routes.extraction import get_extraction_results
     from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
@@ -173,16 +174,16 @@ async def test_get_extraction_entities_missing_job():
         m.setattr("layer2_extraction.api.routes.extraction.build_job_store", Mock(return_value=job_store))
         
         with pytest.raises(HTTPException) as exc_info:
-            await get_extraction_entities(job_id, request)
+            await get_extraction_results(job_id, request)
         
         assert exc_info.value.status_code == 404
         assert "not found" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
-async def test_get_extraction_entities_cross_tenant_access_denied(mock_job):
+async def test_get_extraction_results_cross_tenant_access_denied(mock_job):
     """Test that cross-tenant access is denied."""
-    from layer2_extraction.api.routes.extraction import get_extraction_entities
+    from layer2_extraction.api.routes.extraction import get_extraction_results
     from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
@@ -203,16 +204,16 @@ async def test_get_extraction_entities_cross_tenant_access_denied(mock_job):
         m.setattr("layer2_extraction.api.routes.extraction.build_job_store", Mock(return_value=job_store))
         
         with pytest.raises(HTTPException) as exc_info:
-            await get_extraction_entities(mock_job.job_id, request)
+            await get_extraction_results(mock_job.job_id, request)
         
         assert exc_info.value.status_code == 404
         assert "not found" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
-async def test_get_extraction_entities_no_artifacts(mock_job):
+async def test_get_extraction_results_no_artifacts(mock_job):
     """Test retrieval when no artifacts exist."""
-    from layer2_extraction.api.routes.extraction import get_extraction_entities
+    from layer2_extraction.api.routes.extraction import get_extraction_results
     from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
@@ -230,7 +231,7 @@ async def test_get_extraction_entities_no_artifacts(mock_job):
         m.setattr("layer2_extraction.api.routes.extraction.build_job_store", Mock(return_value=job_store))
         
         with pytest.raises(HTTPException) as exc_info:
-            await get_extraction_entities(mock_job.job_id, request)
+            await get_extraction_results(mock_job.job_id, request)
         
         assert exc_info.value.status_code == 404
         assert "No extraction artifacts found" in exc_info.value.detail
@@ -253,7 +254,7 @@ def test_extracted_entity_validation():
     )
     
     assert entity.entity_id == "entity-1"
-    assert entity.type == "entity-1"
+    assert entity.type == "Capability"
     assert entity.name == "Data Integration"
     assert entity.confidence == 0.92
     assert entity.source_span.document_id == "doc-1"
@@ -277,3 +278,23 @@ def test_extracted_entity_confidence_validation():
             name="Data Integration",
             confidence=-0.1,  # Invalid: < 0.0
         )
+
+
+@pytest.mark.asyncio
+async def test_get_extraction_results_summary_mode(mock_job, mock_artifacts):
+    from layer2_extraction.api.routes.extraction import get_extraction_results
+
+    request = Mock()
+    request.state = Mock()
+    request.state.governance_context = Mock()
+    request.state.governance_context.tenant_id = uuid4()
+
+    job_store = AsyncMock()
+    job_store.get_job = AsyncMock(return_value=mock_job)
+    job_store.get_artifacts = AsyncMock(return_value=mock_artifacts)
+
+    with pytest.MonkeyPatch().context() as m:
+        m.setattr("layer2_extraction.api.routes.extraction.build_job_store", Mock(return_value=job_store))
+        response = await get_extraction_results(mock_job.job_id, request, mode='summary')
+        assert response.summary.mode == 'summary'
+        assert response.entities == []

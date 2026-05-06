@@ -14,6 +14,7 @@ These tests run against live services in integration environment.
 
 import asyncio
 import pytest
+import websockets
 from datetime import datetime
 from uuid import uuid4
 
@@ -40,15 +41,15 @@ NEO4J_URL = "bolt://localhost:7687"
 # ═══════════════════════════════════════════════════════════════════════════
 
 @pytest.fixture
-async def tenant_a_token():
-    """JWT token for tenant A."""
-    return "eyJ...tenant_a_token"  # TODO: Generate real JWT
+def tenant_a_token(jwt_encode):
+    """JWT token for tenant A signed with test auth config."""
+    return jwt_encode(tenant_id="00000000-0000-0000-0000-0000000000a1", user_id="integration-user-a")
 
 
 @pytest.fixture
-async def tenant_b_token():
-    """JWT token for tenant B."""
-    return "eyJ...tenant_b_token"  # TODO: Generate real JWT
+def tenant_b_token(jwt_encode):
+    """JWT token for tenant B signed with test auth config."""
+    return jwt_encode(tenant_id="00000000-0000-0000-0000-0000000000b2", user_id="integration-user-b")
 
 
 @pytest.fixture
@@ -407,17 +408,37 @@ class TestWebSocketTenantPropagation:
     
     @pytest.mark.asyncio
     @pytest.mark.integration
-    @pytest.mark.skip(reason="WebSocket client setup required")
-    async def test_websocket_tenant_isolation(self, tenant_a_token: str):
-        """Verify WebSocket messages are tenant-scoped."""
-        # TODO: Implement WebSocket client test
-        # 1. Connect with tenant A token
-        # 2. Subscribe to entity updates
-        # 3. Create entity for tenant A
-        # 4. Verify update received
-        # 5. Create entity for tenant B (different connection)
-        # 6. Verify tenant A connection does NOT receive tenant B update
-        pass
+    async def test_websocket_tenant_isolation(
+        self,
+        http_client: httpx.AsyncClient,
+        tenant_a_token: str,
+        tenant_b_token: str,
+    ):
+        """Verify dual-tenant WebSocket connections do not leak cross-tenant events."""
+        websocket_url = "ws://localhost:8004/v1/agents/stream"
+        headers_a = {"Authorization": f"Bearer {tenant_a_token}"}
+        headers_b = {"Authorization": f"Bearer {tenant_b_token}"}
+
+        async with (
+            websockets.connect(websocket_url, additional_headers=headers_a) as tenant_a_ws,
+            websockets.connect(websocket_url, additional_headers=headers_b) as tenant_b_ws,
+        ):
+            await tenant_a_ws.send('{"type":"subscribe","topic":"entity_updates"}')
+            await tenant_b_ws.send('{"type":"subscribe","topic":"entity_updates"}')
+
+            unique_entity_name = f"TenantAOnly_{uuid4().hex[:8]}"
+            create_resp = await http_client.post(
+                f"{L3_BASE_URL}/v1/entities",
+                headers={"Authorization": f"Bearer {tenant_a_token}"},
+                json={"name": unique_entity_name, "entity_type": "Organization"},
+            )
+            assert create_resp.status_code == 201
+
+            tenant_a_event = await asyncio.wait_for(tenant_a_ws.recv(), timeout=5)
+            assert unique_entity_name in tenant_a_event
+
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(tenant_b_ws.recv(), timeout=2)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

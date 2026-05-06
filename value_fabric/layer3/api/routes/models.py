@@ -15,6 +15,8 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 
 from ..dependencies_tenant import create_neo4j_tenant_session
+from ..exception_mapping import map_exception_to_http_error
+from ..exceptions import DatabaseError, ValidationError
 from ...logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -187,12 +189,9 @@ def _get_current_user(request: Request) -> str:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return user_id
-    except ValueError as e:
-        raise HTTPException(
-            status_code=401,
-            detail=f"Invalid token: {e}",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    except ValueError as exc:
+        context = {"tenant": "unknown", "endpoint": "/models", "operation": "get_current_user"}
+        raise map_exception_to_http_error(ValidationError("Invalid token", details={"reason": str(exc)}), context=context)
 
 
 def _get_current_tenant(request: Request) -> str:
@@ -254,9 +253,12 @@ async def _ensure_constraints(neo4j: Any) -> None:
                 "FOR (m:ValueModel) REQUIRE m.model_id IS UNIQUE"
             )
             logger.info("Created ValueModel constraint: model_id_unique")
-    except Exception as e:
-        # Constraint may already exist or be unsupported syntax
-        logger.warning(f"Constraint check/creation skipped: {e}")
+    except (ValidationError, DatabaseError) as exc:
+        context = {"tenant": "unknown", "endpoint": "/models", "operation": "ensure_constraints"}
+        logger.warning("Constraint check mapped exception", extra={"context": context}, exc_info=True)
+    except Exception as exc:
+        context = {"tenant": "unknown", "endpoint": "/models", "operation": "ensure_constraints"}
+        logger.warning("Constraint check/creation skipped", extra={"context": context}, exc_info=True)
 
 
 # ───────────────────────────────────────────────────────────────────────────────

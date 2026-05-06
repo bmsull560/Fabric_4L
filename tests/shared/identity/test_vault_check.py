@@ -1,37 +1,38 @@
 """Tests for vault_check module - regression tests for code review fixes."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
-from value_fabric.shared.identity.vault_check import get_vault_health, get_vault_healthResult
+from value_fabric.shared.identity.vault_check import (
+    VaultConfigurationError,
+    get_vault_health,
+    get_vault_healthResult,
+    resolve_vault_secret,
+)
 
 
 class TestGetVaultHealth:
-    """Test get_vault_health returns complete result with all required fields."""
-
     @pytest.mark.asyncio
     async def test_success_response_includes_all_required_fields(self):
-        """Regression test: Issue #1 - missing 'reachable' field in success response."""
-        mock_response = AsyncMock()
+        mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "initialized": True,
             "sealed": False,
             "standby": False,
             "version": "1.15.0",
+            "error": None,
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__ = AsyncMock(
-                return_value=AsyncMock(
-                    get=AsyncMock(return_value=mock_response)
+        with patch.dict("os.environ", {"ENVIRONMENT": "development"}, clear=False):
+            with patch("httpx.AsyncClient") as mock_client:
+                mock_client.return_value.__aenter__ = AsyncMock(
+                    return_value=AsyncMock(get=AsyncMock(return_value=mock_response))
                 )
-            )
-            mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
+                mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await get_vault_health()
+                result = await get_vault_health()
 
-        # Verify all TypedDictModel required fields are present
         assert "reachable" in result
         assert result["reachable"] is True
         assert "status" in result
@@ -43,7 +44,6 @@ class TestGetVaultHealth:
 
     @pytest.mark.asyncio
     async def test_error_response_has_reachable_false(self):
-        """Test error response correctly sets reachable=False."""
         with patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__ = AsyncMock(
                 side_effect=Exception("Connection refused")
@@ -58,11 +58,7 @@ class TestGetVaultHealth:
 
 
 class TestGetVaultHealthResultModel:
-    """Test TypedDictModel validation."""
-
     def test_model_requires_reachable_field(self):
-        """Verify reachable is required by model validation."""
-        # This should work with all required fields
         data = {
             "status": "healthy",
             "reachable": True,
@@ -70,12 +66,12 @@ class TestGetVaultHealthResultModel:
             "sealed": False,
             "standby": False,
             "version": "1.15.0",
+            "error": None,
         }
         result = get_vault_healthResult.model_validate(data)
         assert result["reachable"] is True
 
     def test_model_allows_optional_fields(self):
-        """Verify model works with minimal required fields."""
         data = {
             "status": "unreachable",
             "reachable": False,
@@ -83,3 +79,35 @@ class TestGetVaultHealthResultModel:
         }
         result = get_vault_healthResult.model_validate(data)
         assert result["status"] == "unreachable"
+
+
+class TestVaultTransportHardening:
+    @pytest.mark.asyncio
+    async def test_rejects_http_vault_addr_in_production(self):
+        with patch.dict(
+            "os.environ",
+            {"ENVIRONMENT": "production", "VAULT_ADDR": "http://vault.internal:8200", "VAULT_TOKEN": "token"},
+            clear=False,
+        ):
+            with pytest.raises(VaultConfigurationError):
+                await resolve_vault_secret("vault:secret/data/my-secret#api_key")
+
+    @pytest.mark.asyncio
+    async def test_allows_http_vault_addr_in_development(self):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": {"data": {"api_key": "x"}}}
+
+        with patch.dict(
+            "os.environ",
+            {"ENVIRONMENT": "development", "VAULT_ADDR": "http://vault.internal:8200", "VAULT_TOKEN": "token"},
+            clear=False,
+        ):
+            with patch("httpx.AsyncClient") as mock_client:
+                mock_client.return_value.__aenter__ = AsyncMock(
+                    return_value=AsyncMock(get=AsyncMock(return_value=mock_response))
+                )
+                mock_client.return_value.__aexit__ = AsyncMock(return_value=False)
+                value = await resolve_vault_secret("vault:secret/data/my-secret#api_key")
+
+        assert value == "x"

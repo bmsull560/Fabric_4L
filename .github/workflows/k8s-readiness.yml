@@ -6,12 +6,14 @@ on:
     paths:
       - "k8s/**"
       - "scripts/security/placeholder_secret_scan.py"
+      - ".github/scripts/check-vault-policy-least-privilege.sh"
       - ".github/workflows/k8s-readiness.yml"
   push:
     branches: [main]
     paths:
       - "k8s/**"
       - "scripts/security/placeholder_secret_scan.py"
+      - ".github/scripts/check-vault-policy-least-privilege.sh"
       - ".github/workflows/k8s-readiness.yml"
   workflow_dispatch:
 
@@ -108,6 +110,10 @@ jobs:
             /tmp/k8s-renders/prod-gateway-api.yaml \
             /tmp/k8s-renders/prod-istio.yaml
 
+      - name: Validate Vault policies are least-privilege
+        run: |
+          bash .github/scripts/check-vault-policy-least-privilege.sh
+
       - name: Policy validate prod/staging secret sourcing
         run: |
           for d in staging-nginx prod-nginx; do
@@ -161,6 +167,15 @@ jobs:
             exit 1
           fi
           echo "OK: No placeholder emails found"
+
+      - name: Security checks - forbid insecure auth-url in production overlays
+        run: |
+          echo "Checking prod rendered ingress auth-url uses HTTPS..."
+          if rg -n 'nginx\.ingress\.kubernetes\.io/auth-url: http://' /tmp/k8s-renders/prod-nginx.yaml; then
+            echo "FAIL: Insecure oauth2 auth-url (http://) detected in prod-nginx render"
+            exit 1
+          fi
+          echo "OK: Production auth-url values use HTTPS"
 
       - name: Security checks - oauth2-proxy placeholders
         run: |

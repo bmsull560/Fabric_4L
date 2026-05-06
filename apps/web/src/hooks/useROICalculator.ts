@@ -226,7 +226,7 @@ export function useROICalculation(calcId: string | null) {
 
 export function useIndustryBenchmarks(industry: string | null) {
   return useQuery<IndustryBenchmark, ROIApiError>({
-    queryKey: QK.roi.benchmarks(industry || ''),
+    queryKey: QK.roi.assumptionsByIndustry(industry || ''),
     queryFn: async () => {
       if (!industry) throw new ROIApiError('No industry provided');
       return withApiError(fetchBenchmarks(industry), ROIApiError);
@@ -240,7 +240,7 @@ export function useIndustryBenchmarks(industry: string | null) {
 
 export function useBenchmarksList() {
   return useQuery<BenchmarkListResponse, ROIApiError>({
-    queryKey: QK.roi.benchmarksList(),
+    queryKey: QK.roi.assumptionsList(),
     queryFn: () => withApiError(fetchBenchmarksList(), ROIApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
@@ -250,7 +250,7 @@ export function useBenchmarksList() {
 
 export function useBenchmarkDetail(benchmarkId: string | null) {
   return useQuery<Benchmark, ROIApiError>({
-    queryKey: QK.roi.benchmarkDetail(benchmarkId || ''),
+    queryKey: QK.roi.assumptionDetail(benchmarkId || ''),
     queryFn: async () => {
       if (!benchmarkId) throw new ROIApiError('No benchmark ID provided');
       return withApiError(fetchBenchmarkDetail(benchmarkId), ROIApiError);

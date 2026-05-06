@@ -292,12 +292,30 @@
     "targetScore": 85,
     "targetDate": "2026-05-23",
     "byContract": {
-      "2.1-tenant-context": { "score": 60, "violations": 248 },
-      "2.2-db-session": { "score": 40, "violations": 46 },
-      "2.3-middleware-flow": { "score": 50, "violations": 42 },
-      "2.4-tool-boundary": { "score": 65, "violations": 38 },
-      "2.5-agent-output": { "score": 50, "violations": 13 },
-      "2.6-ui-state": { "score": 65, "violations": 170 }
+      "2.1-tenant-context": {
+        "score": 60,
+        "violations": 248
+      },
+      "2.2-db-session": {
+        "score": 40,
+        "violations": 46
+      },
+      "2.3-middleware-flow": {
+        "score": 50,
+        "violations": 42
+      },
+      "2.4-tool-boundary": {
+        "score": 65,
+        "violations": 38
+      },
+      "2.5-agent-output": {
+        "score": 50,
+        "violations": 13
+      },
+      "2.6-ui-state": {
+        "score": 65,
+        "violations": 170
+      }
     }
   },
   "metadata": {
@@ -308,6 +326,8 @@
       "schedule": "weekly",
       "day": "monday",
       "time": "00:00"
-    }
+    },
+    "debtRegistry": "docs/governance/deprecation-debt-registry.json",
+    "debtScanWorkflow": ".github/workflows/contract-compliance.yml#validate-deprecations"
   }
 }

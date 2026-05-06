@@ -42,6 +42,27 @@ make verify
 
 ---
 
+
+## Workspace scope: canonical vs experimental
+
+The monorepo defaults are scoped to **canonical production roots only**:
+
+- `apps/web`
+- `packages/*`
+- `services/*`
+
+Directories such as `archive/` and `prototypes/` are treated as **experimental/non-canonical** and are intentionally excluded from default workspace commands. If you need to work there, invoke those paths explicitly instead of relying on root scripts.
+
+Before opening a PR, run:
+
+```bash
+pnpm run check:default-scope
+```
+
+This sanity check fails if CI would pick up excluded directories through default workspace tooling.
+
+---
+
 ## Coding standards
 
 ### Python

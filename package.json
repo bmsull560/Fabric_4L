@@ -5,7 +5,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "generate:api": "pnpm --filter ./apps/web run generate:types"
+    "generate:api": "pnpm --filter ./apps/web run generate:types",
+    "lint": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run lint",
+    "test": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run test",
+    "typecheck": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run typecheck",
+    "check:default-scope": "node scripts/ci/check_default_scope.mjs"
   },
   "packageManager": "pnpm@10.18.1"
 }

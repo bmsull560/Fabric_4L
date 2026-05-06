@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -15,6 +16,25 @@ class RateLimitScope(str, Enum):
     TENANT = "tenant"
     USER = "user"
     API_KEY = "api_key"
+
+
+
+
+class RateLimitFailMode(str, Enum):
+    """Failure behavior when the distributed limiter backend is unavailable."""
+
+    CLOSED = "closed"
+    LOCAL_FALLBACK = "local_fallback"
+
+
+def get_rate_limit_fail_mode() -> RateLimitFailMode:
+    """Resolve backend failure policy from environment with fail-closed default."""
+
+    raw = os.getenv("RATE_LIMIT_FAIL_MODE", RateLimitFailMode.CLOSED.value).strip().lower()
+    try:
+        return RateLimitFailMode(raw)
+    except ValueError:
+        return RateLimitFailMode.CLOSED
 
 
 class RateLimitConfig(BaseModel):

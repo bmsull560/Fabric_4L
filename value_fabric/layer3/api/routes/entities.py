@@ -22,6 +22,8 @@ from ..dependencies import (
     get_graph_rag,
 )
 from ..dependencies_tenant import Neo4jTenantSession, get_neo4j_with_tenant
+from ..exception_mapping import map_exception_to_http_error
+from ..exceptions import DatabaseError, ValidationError
 from ..models import (
     EntityDetail,
     EntityFilterRequest,
@@ -130,9 +132,14 @@ async def list_entities(
             available_sources=[],
         )
 
-    except Exception as e:
-        logger.error("Entity listing failed: %s", e)
-        raise HTTPException(status_code=500, detail="Entity listing failed. Please try again later.")
+    except (ValidationError, DatabaseError) as exc:
+        context = {"tenant": getattr(neo4j, "tenant_id", "unknown"), "endpoint": "/v1/entities", "operation": "list_entities"}
+        logger.warning("Entity listing mapped exception", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
+    except Exception as exc:
+        context = {"tenant": getattr(neo4j, "tenant_id", "unknown"), "endpoint": "/v1/entities", "operation": "list_entities"}
+        logger.error("Entity listing failed", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
 
 
 @router.get("/entities/{entity_id}", response_model=EntityDetail)
@@ -222,9 +229,14 @@ async def get_entity_detail(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error("Entity detail retrieval failed for %s: %s", entity_id, e)
-        raise HTTPException(status_code=500, detail="Entity detail retrieval failed. Please try again later.")
+    except (ValidationError, DatabaseError) as exc:
+        context = {"tenant": getattr(neo4j, "tenant_id", "unknown"), "endpoint": f"/v1/entities/{entity_id}", "operation": "get_entity_detail"}
+        logger.warning("Entity detail mapped exception", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
+    except Exception as exc:
+        context = {"tenant": getattr(neo4j, "tenant_id", "unknown"), "endpoint": f"/v1/entities/{entity_id}", "operation": "get_entity_detail"}
+        logger.error("Entity detail retrieval failed", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
 
 
 @router.post("/entities/query", response_model=EntityListResponse)

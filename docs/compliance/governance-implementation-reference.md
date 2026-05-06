@@ -1,10 +1,10 @@
-# Governance & Compliance Implementation Reference (GDPR / CCPA / SOC 2)
+# Governance & Compliance Implementation Reference (SOC 2 / GDPR / HIPAA / CCPA)
 
 ## Purpose
 
 This document is the audit-facing implementation reference that maps privacy/security controls to **implementation artifacts**, **tests**, and **CI evidence generation**.
 
-- **Frameworks covered:** GDPR, CCPA/CPRA, SOC 2 (Common Criteria).
+- **Frameworks covered:** SOC 2 (Common Criteria), GDPR, HIPAA Security/Privacy/Breach Notification Rule obligations (when PHI is in scope), CCPA/CPRA.
 - **Audience:** Security Engineering, Privacy Operations, Internal Audit, and service owners.
 - **Companion document:** `docs/compliance/control-matrix.md`.
 - **Last updated:** 2026-04-29.
@@ -13,6 +13,17 @@ This document is the audit-facing implementation reference that maps privacy/sec
 
 ## 1) Control-to-Implementation Mapping
 
+## 0) Framework Applicability and Audit Boundary
+
+| Framework | Applicable | Scope Boundary | Evidence Trigger |
+| --- | --- | --- | --- |
+| SOC 2 | Yes | All production services and shared platform controls. | Every release/PR through standard CI and operational review cadence. |
+| GDPR | Yes | Any tenant/user personal data processing, including DSAR operations and retention workflows. | Every DSAR request + quarterly privacy control sampling. |
+| HIPAA | Conditional Yes | Required for any tenant/environment where PHI is processed in covered-entity or business-associate contexts. | Tenant onboarding PHI classification + HIPAA-mode periodic audit checks. |
+| CCPA/CPRA | Yes | California consumer personal information lifecycle and rights handling. | Consumer request handling + privacy control sampling. |
+
+When HIPAA is not in scope for a tenant, HIPAA rows below remain implementation-ready and are activated by onboarding classification.
+
 | Control Theme | GDPR / CCPA / SOC 2 | Implementation Artifacts (Code Paths) | Validation Tests | CI / Evidence Generation |
 | --- | --- | --- | --- | --- |
 | Identity, authn/authz, tenant boundary enforcement | GDPR Art. 5(1)(f), Art. 25, Art. 32; CCPA §1798.150; SOC 2 CC6.1/CC6.6/CC6.7 | `shared/identity/middleware.py`, `shared/identity/isolation.py`, `shared/identity/permissions.py` | `tests/integration/test_tenant_isolation_end_to_end.py`, `tests/integration/test_cross_layer_tenant_isolation.py` | `.github/workflows/pr-checks.yml`, `.github/workflows/security-gates.yml`, `make verify` |
@@ -20,6 +31,9 @@ This document is the audit-facing implementation reference that maps privacy/sec
 | Retention/deletion policy enforcement | GDPR Art. 5(1)(e), Art. 17; CCPA §1798.105; SOC 2 CC3.2/CC8.1 | `value-fabric/layer1-ingestion/src/shared/config.py`, `value-fabric/layer1-ingestion/src/shared/tasks.py` (`cleanup_old_content`) | `tests/contracts/test_retention_deletion_contract.py` | `make verify` (contract test stage), CI test artifacts |
 | DSAR access/export/delete process control | GDPR Art. 15/17/20; CCPA §1798.100/105/110; SOC 2 CC2.3/CC8.1 | `value-fabric/layer4-agents/src/tenants/api/routes/tenants.py`, `value-fabric/layer4-agents/src/tenants/api/routes/users.py`, `value-fabric/layer4-agents/src/tenants/api/routes/api_keys.py`, `value-fabric/layer4-agents/src/api/routes/analysis.py` | Layer/service integration tests under `tests/integration/` (tenant provisioning/isolation paths) + operational DSAR workflow below | PR checks + release checklist runbooks in `docs/troubleshooting/runbooks/infrastructure/release-checklist.md` |
 | Change governance and contract integrity | GDPR Art. 24; SOC 2 CC1.2/CC5.2 | `packages/platform-contract/CONTRACT.md`, `docs/platform-contract/DEPRECATION_MAP.md`, `contracts/` | `tests/contracts/` suite | `make verify`, contract gate tests in `tests/contracts/gate/` |
+| HIPAA PHI data flow + encryption controls | HIPAA 45 CFR §164.306(a), §164.312(a)(1), §164.312(e)(1); SOC 2 CC6.1/CC6.6 | `shared/identity/middleware.py`, `shared/identity/isolation.py`, `docs/ENVIRONMENT.md`, `k8s/envs/*`, `docs/secrets-management.md` | Integration tests for tenant isolation; deployment/promotion checklist verification for PHI environments | `.github/workflows/security-gates.yml`, `.github/workflows/pr-checks.yml`, deployment review records |
+| HIPAA access auditing and minimum necessary access | HIPAA 45 CFR §164.312(b), §164.502(b), §164.514(d); SOC 2 CC6.7/CC7.2 | `shared/audit/models.py`, `shared/audit/emitter.py`, `value-fabric/layer4-agents/migrations/versions/003_add_audit_events.py`, `value-fabric/layer4-agents/migrations/versions/007_add_rls_policies.py` | Audit immutability + tenant access integration tests/procedures | `make test-layer4`, CI test logs, periodic access-review records |
+| HIPAA incident response and breach assessment evidence | HIPAA 45 CFR §164.308(a)(6), §164.404-414; GDPR Art. 33-34; SOC 2 CC7.4 | `docs/runbooks/README.md`, `docs/runbooks/*`, shared audit artifacts for forensics | Incident tabletop drills and post-incident review artifacts | Incident tickets, postmortems, and governance review packets |
 
 ---
 
@@ -44,6 +58,21 @@ This document is the audit-facing implementation reference that maps privacy/sec
 ---
 
 ## 3) DSAR Workflow and Ownership
+
+## 2.1 GDPR lawful basis, transfer, and SLA controls
+
+- **Lawful basis:** captured at onboarding/contract intake and associated with tenant processing profile before activation.
+- **DSAR workflow:** intake, identity verification, lawful-basis and legal-hold checks, execution, evidence capture, and closure.
+- **Deletion/export SLAs:** acknowledge within 72 hours; deletion target within 30 days; export/access initial delivery or status within 7 days.
+- **Cross-border transfer controls:** deployment-region and environment overlays in `k8s/envs/*` and service/environment configuration in `docs/ENVIRONMENT.md`; exceptions require Legal + Security approval and auditable record.
+
+## 2.2 HIPAA PHI data flow and obligations (activated when PHI is in scope)
+
+1. **PHI data flow controls:** PHI remains tenant-scoped across ingestion, storage, retrieval, and agent workflows via authenticated APIs and isolation utilities.
+2. **Encryption controls:** TLS for transport and encrypted storage/backups are required for PHI-capable environments; secret/key lifecycle follows secrets-management policy.
+3. **Access auditing:** all PHI-relevant administrative/data operations must map to immutable audit events and periodic audit review.
+4. **Minimum necessary access:** role and tenancy constraints must limit access to least privilege needed for fulfillment/operations.
+5. **Incident response:** PHI incidents require documented triage, breach assessment, and notification-decision timelines/evidence.
 
 ## 3.1 DSAR API Surfaces
 

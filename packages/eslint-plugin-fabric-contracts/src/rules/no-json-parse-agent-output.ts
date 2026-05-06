@@ -1,24 +1,5 @@
-/**
- * @fileoverview Rule to prevent JSON.parse() on LLM agent outputs
- *
- * CONTRACT.md §2.5 - LLM Output Handling
- * Anti-Pattern: JSON.parse() on LLM responses
- *
- * Agent outputs must use structured generation (Zod schemas), not ad-hoc parsing.
- * This ensures:
- * - Schema-validated responses at generation time
- * - No runtime parsing failures
- * - Type safety from LLM to application code
- *
- * @example
- * // Incorrect - JSON.parse on LLM output
- * const output = JSON.parse(llmResponse);
- *
- * // Correct - structured generation with Zod
- * const output = await agent.execute(input); // Already typed
- */
-
 import { Rule } from "eslint";
+import { asTSNode, RuleContext, TSESTree } from "../astTypes";
 
 const rule: Rule.RuleModule = {
   meta: {
@@ -38,50 +19,25 @@ const rule: Rule.RuleModule = {
     },
   },
 
-  create(context: Rule.RuleContext): Rule.RuleListener {
-    /**
-     * Check if the argument to JSON.parse looks like it comes from an LLM/agent
-     * Heuristics: variable name contains "llm", "agent", "response", "output", "completion"
-     */
-    function isLLMOutput(node: any): boolean {
-      const suspiciousPatterns = /llm|agent|response|output|completion|gpt|claude/i;
-
-      // Check if argument is an identifier with suspicious name
-      if (node.type === "Identifier" && suspiciousPatterns.test(node.name)) {
-        return true;
-      }
-
-      // Check if argument is a member expression like agent.output, llm.response
+  create(context: RuleContext): Rule.RuleListener {
+    function isLLMOutput(node: TSESTree.Node): boolean {
+      const p = /llm|agent|response|output|completion|gpt|claude/i;
+      if (node.type === "Identifier") return p.test(node.name);
       if (node.type === "MemberExpression") {
-        const objName = node.object?.name || "";
-        const propName = node.property?.name || "";
-        if (suspiciousPatterns.test(objName) || suspiciousPatterns.test(propName)) {
-          return true;
-        }
+        const obj = node.object.type === "Identifier" ? node.object.name : "";
+        const prop = node.property.type === "Identifier" ? node.property.name : "";
+        return p.test(obj) || p.test(prop);
       }
-
       return false;
     }
 
     return {
-      // Detect JSON.parse() calls
-      CallExpression(node: any): void {
-        const callee = node.callee;
-
-        // Check if it's JSON.parse
-        if (
-          callee.type === "MemberExpression" &&
-          callee.object?.name === "JSON" &&
-          callee.property?.name === "parse"
-        ) {
-          // Check if the argument looks like LLM output
-          const arg = node.arguments[0];
-          if (arg && isLLMOutput(arg)) {
-            context.report({
-              node,
-              messageId: "noJsonParseAgentOutput",
-            });
-          }
+      CallExpression(node): void {
+        const call = asTSNode<TSESTree.CallExpression>(node);
+        const callee = call.callee;
+        if (callee.type === "MemberExpression" && callee.object.type === "Identifier" && callee.property.type === "Identifier" && callee.object.name === "JSON" && callee.property.name === "parse") {
+          const arg = call.arguments[0];
+          if (arg && arg.type !== "SpreadElement" && isLLMOutput(arg)) context.report({ node, messageId: "noJsonParseAgentOutput" });
         }
       },
     };

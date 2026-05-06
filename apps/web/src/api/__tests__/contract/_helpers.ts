@@ -18,8 +18,8 @@ import {
 
 export const ApiErrorSchema = z.object({
   message: z.string(),
-  code: z.string().optional(),
-  trace_id: z.string().optional(),
+  code: z.string().min(1),
+  trace_id: z.string().min(1),
 });
 
 export const PaginatedSchema = <T extends z.ZodTypeAny>(item: T) =>

@@ -106,6 +106,24 @@ class RateLimitConfig:
 
 
 @dataclass
+class RouteTierPolicy:
+    """Optional override policy for high-cost route groups."""
+
+    requests_per_minute: int
+    requests_per_hour: int | None = None
+    requests_per_day: int | None = None
+    burst_allowance: int = 0
+
+    def as_config(self, *, fallback: RateLimitConfig) -> RateLimitConfig:
+        return RateLimitConfig(
+            requests_per_minute=self.requests_per_minute,
+            requests_per_hour=self.requests_per_hour or fallback.requests_per_hour,
+            requests_per_day=self.requests_per_day or fallback.requests_per_day,
+            burst_allowance=self.burst_allowance,
+        )
+
+
+@dataclass
 class RateLimitResult:
     """Result of rate limit check."""
     
@@ -138,6 +156,12 @@ DEFAULT_TENANT_LIMITS: dict[TenantTier, RateLimitConfig] = {
     ),
 }
 
+DEFAULT_ROUTE_TIER_POLICIES: dict[str, RouteTierPolicy] = {
+    "agent_execution": RouteTierPolicy(requests_per_minute=40, requests_per_hour=1200, burst_allowance=10),
+    "extraction": RouteTierPolicy(requests_per_minute=60, requests_per_hour=2000, burst_allowance=15),
+    "model_registry_write": RouteTierPolicy(requests_per_minute=20, requests_per_hour=600, burst_allowance=5),
+}
+
 
 class TenantRateLimiter:
     """Tenant-scoped rate limiter with Redis backend.
@@ -154,6 +178,7 @@ class TenantRateLimiter:
         self,
         redis_client: redis.Redis,
         custom_limits: dict[UUID, RateLimitConfig] | None = None,
+        route_tier_policies: dict[str, RouteTierPolicy] | None = None,
     ):
         """Initialize tenant rate limiter.
         
@@ -163,6 +188,7 @@ class TenantRateLimiter:
         """
         self.redis = redis_client
         self.custom_limits = custom_limits or {}
+        self.route_tier_policies = route_tier_policies or DEFAULT_ROUTE_TIER_POLICIES
     
     async def check_rate_limit(
         self,
@@ -170,6 +196,8 @@ class TenantRateLimiter:
         tenant_tier: TenantTier | None = None,
         endpoint: str = "*",
         user_id: UUID | None = None,
+        api_key_id: str | None = None,
+        route_group: str = "default",
         *,
         tier: TenantTier | None = None,
     ) -> RateLimitResult:
@@ -192,8 +220,13 @@ class TenantRateLimiter:
         if effective_tier is None:
             raise ValueError("tenant_tier is required for tenant-scoped rate limiting")
 
-        # Get rate limit config
-        config = self._get_limit_config(tenant_id, effective_tier)
+        # Get effective limit config (tenant tier + route policy)
+        base_config = self._get_limit_config(tenant_id, effective_tier)
+        route_policy = self.route_tier_policies.get(route_group)
+        config = route_policy.as_config(fallback=base_config) if route_policy else base_config
+
+        principal_id = str(api_key_id or user_id or "anonymous")
+        principal_scope = "api_key" if api_key_id else "user"
         
         # Check minute limit (most restrictive)
         minute_result = await self._check_window(
@@ -201,6 +234,9 @@ class TenantRateLimiter:
             endpoint=endpoint,
             window_seconds=60,
             limit=config.requests_per_minute + config.burst_allowance,
+            principal_scope=principal_scope,
+            principal_id=principal_id,
+            route_group=route_group,
         )
         
         if not minute_result.allowed:
@@ -212,6 +248,9 @@ class TenantRateLimiter:
             endpoint=endpoint,
             window_seconds=3600,
             limit=config.requests_per_hour,
+            principal_scope=principal_scope,
+            principal_id=principal_id,
+            route_group=route_group,
         )
         
         if not hour_result.allowed:
@@ -223,6 +262,9 @@ class TenantRateLimiter:
             endpoint=endpoint,
             window_seconds=86400,
             limit=config.requests_per_day,
+            principal_scope=principal_scope,
+            principal_id=principal_id,
+            route_group=route_group,
         )
         
         return day_result
@@ -233,6 +275,9 @@ class TenantRateLimiter:
         endpoint: str,
         window_seconds: int,
         limit: int,
+        principal_scope: str = "user",
+        principal_id: str = "anonymous",
+        route_group: str = "default",
     ) -> RateLimitResult:
         """Check rate limit for a specific time window using sliding window.
         
@@ -251,8 +296,14 @@ class TenantRateLimiter:
         now = datetime.utcnow()
         window_start = now - timedelta(seconds=window_seconds)
         
-        # Redis key: tenant:{tenant_id}:endpoint:{endpoint}:window:{window_seconds}
-        key = f"ratelimit:tenant:{tenant_id}:endpoint:{endpoint}:window:{window_seconds}"
+        # Redis key design: tenant + principal + route group + endpoint + window
+        key = (
+            "ratelimit:"
+            f"tenant:{tenant_id}:"
+            f"{principal_scope}:{principal_id}:"
+            f"route_group:{route_group}:"
+            f"endpoint:{endpoint}:window:{window_seconds}"
+        )
         
         try:
             # Use Redis sorted set with timestamps as scores
@@ -503,5 +554,4 @@ class SlidingWindowAdapter:
             reset_epoch=reset_epoch,
             retry_after=None if allowed else window_seconds,
         )
-
 

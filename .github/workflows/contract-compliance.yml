@@ -533,12 +533,33 @@ jobs:
           fi
           echo "✅ No expired deprecations"
 
+
+      - name: Baseline deprecation debt scan (warning mode)
+        continue-on-error: true
+        run: |
+          python3 scripts/report_deprecation_debt.py             --mode warn             --output deprecation-debt-report.json
+
+      - name: Enforce agreed deprecation thresholds
+        if: ${{ vars.ENFORCE_DEPRECATION_DEBT == 'true' }}
+        run: |
+          python3 scripts/report_deprecation_debt.py             --mode enforce             --thresholds docs/governance/deprecation-debt-registry.json             --output deprecation-debt-report-enforced.json
+
       - name: Upload deprecation report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: deprecation-register
           path: docs/governance/deprecations.json
+
+      - name: Upload deprecation debt reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deprecation-debt-reports
+          path: |
+            deprecation-debt-report.json
+            deprecation-debt-report-enforced.json
+            docs/governance/deprecation-debt-registry.json
 
   # ==========================================================================
   # Summary Report

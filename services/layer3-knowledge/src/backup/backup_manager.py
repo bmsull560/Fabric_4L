@@ -21,6 +21,7 @@ except ImportError:
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from .interfaces import BackupStoragePort
 from ..logging_config import get_logger
 
 
@@ -247,8 +248,8 @@ class RestoreResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list, description="Restore warnings")
 
 
-class BackupStorage:
-    """Abstract base class for backup storage."""
+class BackupStorage(BackupStoragePort):
+    """Backward-compatible alias for backup storage port."""
 
     def __init__(self, config: BackupConfig):
         """Initialize storage backend.
@@ -268,7 +269,7 @@ class BackupStorage:
         Returns:
             Storage path or identifier
         """
-        raise NotImplementedError
+        ...
 
     async def retrieve_backup(self, backup_id: str) -> bytes:
         """Retrieve backup data.
@@ -279,7 +280,7 @@ class BackupStorage:
         Returns:
             Backup data
         """
-        raise NotImplementedError
+        ...
 
     async def delete_backup(self, backup_id: str) -> bool:
         """Delete backup data.
@@ -290,7 +291,7 @@ class BackupStorage:
         Returns:
             True if deleted
         """
-        raise NotImplementedError
+        ...
 
     async def list_backups(self) -> list[str]:
         """List available backups.
@@ -298,7 +299,7 @@ class BackupStorage:
         Returns:
             List of backup IDs
         """
-        raise NotImplementedError
+        ...
 
     async def get_backup_info(self, backup_id: str) -> dict[str, Any]:
         """Get backup information.
@@ -309,7 +310,7 @@ class BackupStorage:
         Returns:
             Backup information
         """
-        raise NotImplementedError
+        ...
 
 
 class LocalStorage(BackupStorage):

@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from value_fabric.layer2.integration.interfaces import PendingIngestionStorePort
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
@@ -37,39 +38,8 @@ class PendingIngestionRecord:
     next_retry_at: datetime
 
 
-class PendingIngestionStore:
-    """Storage abstraction for pending Layer 3 ingestion retries."""
-
-    async def enqueue(
-        self,
-        job_id: str,
-        source_url: str,
-        extraction_result_json: str,
-        relationships_json: str,
-        retry_count: int,
-        next_retry_at: datetime,
-        max_retries: int,
-        last_error: str | None,
-    ) -> None:
-        raise NotImplementedError
-
-    async def get_due(self, now: datetime, limit: int = 25) -> list[PendingIngestionRecord]:
-        raise NotImplementedError
-
-    async def complete(self, job_id: str) -> None:
-        raise NotImplementedError
-
-    async def reschedule(
-        self,
-        job_id: str,
-        retry_count: int,
-        last_error: str,
-        next_retry_at: datetime,
-    ) -> None:
-        raise NotImplementedError
-
-    async def get_retry_metadata(self, job_id: str) -> dict | None:
-        raise NotImplementedError
+class PendingIngestionStore(PendingIngestionStorePort):
+    """Backward-compatible alias for the pending ingestion store port."""
 
 
 class SqlitePendingIngestionStore(PendingIngestionStore):

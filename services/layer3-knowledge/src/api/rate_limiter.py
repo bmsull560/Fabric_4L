@@ -1,8 +1,12 @@
-"""Rate limiting middleware to prevent DoS attacks and API abuse."""
+"""Layer 3 request-limiting adapters and middleware.
 
-import asyncio
+Canonical sliding-window state math is implemented in
+``value_fabric.shared.rate_limiting.tenant_rate_limiter``. This module must
+only compose endpoint/client keys and map canonical decisions into HTTP
+headers and response payload fields.
+"""
+
 import time
-from collections import defaultdict, deque
 from typing import Any
 
 from fastapi import Request, Response
@@ -11,6 +15,73 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..logging_config import get_logger
+from value_fabric.shared.rate_limiting.tenant_rate_limiter import SlidingWindowAdapter
+
+
+class RateLimitMiddleware_get_statsResult(TypedDictModel):
+    active_clients: Any
+    endpoint_limits: Any
+    total_requests: Any
+
+logger = get_logger(__name__)
+
+
+class RateLimiter:
+    """Rate limiter adapter that delegates counting to canonical state math."""
+
+    def __init__(
+        self,
+        requests_per_window: int = 100,
+        window_seconds: int = 60,
+        redis_client: Any | None = None,
+    ):
+        self.requests_per_window = requests_per_window
+        self.window_seconds = window_seconds
+        self.endpoint_limits: dict[str, tuple[int, int]] = {}
+        self._adapter = SlidingWindowAdapter(redis_client)
+        self._clients_seen: set[str] = set()
+        self._total_allowed_requests = 0
+
+    def set_endpoint_limit(self, endpoint: str, requests: int, seconds: int) -> None:
+        self.endpoint_limits[endpoint] = (requests, seconds)
+        logger.info(f"Set rate limit for {endpoint}: {requests}/{seconds}s")
+
+    def _get_client_key(self, request: Request) -> str:
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip.strip()
+        return request.client.host if request.client else "unknown"
+
+    def _get_endpoint_limit(self, path: str) -> tuple[int, int]:
+        for endpoint_pattern, (requests, seconds) in self.endpoint_limits.items():
+            if endpoint_pattern in path:
+                return requests, seconds
+        return self.requests_per_window, self.window_seconds
+
+    async def is_allowed(self, request: Request) -> tuple[bool, dict[str, int]]:
+        current_time = time.time()
+        client_key = self._get_client_key(request)
+        path = request.url.path
+        requests_limit, window_seconds = self._get_endpoint_limit(path)
+        decision = await self._adapter.check(
+            key=f"ratelimit:layer3:{client_key}:{path}:{window_seconds}",
+            limit=requests_limit,
+            window_seconds=window_seconds,
+        )
+
+        self._clients_seen.add(client_key)
+        if decision.allowed:
+            self._total_allowed_requests += 1
+
+        return decision.allowed, {
+            "limit": decision.limit,
+            "remaining": decision.remaining,
+            "reset": decision.reset_epoch,
+            "retry_after": decision.retry_after or window_seconds,
+        }
 
 
 class RateLimitMiddleware_get_statsResult(TypedDictModel):
@@ -28,14 +99,12 @@ class RateLimiter:
         self,
         requests_per_window: int = 100,
         window_seconds: int = 60,
-        cleanup_interval: int = 300,
     ):
         """Initialize rate limiter.
 
         Args:
             requests_per_window: Maximum requests per window
             window_seconds: Time window in seconds
-            cleanup_interval: Cleanup interval in seconds
         """
         self.requests_per_window = requests_per_window
         self.window_seconds = window_seconds
@@ -197,10 +266,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.enabled = enabled
 
         # Initialize rate limiter with 1-minute window
-        self.rate_limiter = RateLimiter(
-            requests_per_window=burst_size,
-            window_seconds=60,
-        )
+        self.rate_limiter = RateLimiter(requests_per_window=burst_size, window_seconds=60)
 
         # Set base rate limit (per minute)
         self.rate_limiter.set_endpoint_limit("*", requests_per_minute, 60)
@@ -290,10 +356,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             Dictionary with rate limiting stats
         """
         return RateLimitMiddleware_get_statsResult.model_validate({
-            "active_clients": len(self.rate_limiter.client_requests),
-            "total_requests": sum(
-                len(requests) for requests in self.rate_limiter.client_requests.values()
-            ),
+            "active_clients": len(self.rate_limiter._clients_seen),
+            "total_requests": self.rate_limiter._total_allowed_requests,
             "endpoint_limits": len(self.rate_limiter.endpoint_limits),
         })
 

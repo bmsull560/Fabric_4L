@@ -12,6 +12,7 @@ import os
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from value_fabric.layer2.integration.interfaces import JobStorePort
 logger = logging.getLogger(__name__)
 
 PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
@@ -57,30 +58,8 @@ class PipelineJob:
         return cls(**data)
 
 
-class JobStore:
-    """Storage abstraction for pipeline job state."""
-
-    async def get(self, job_id: str) -> PipelineJob | None:
-        """Get job by ID."""
-        raise NotImplementedError
-
-    async def set(self, job: PipelineJob) -> None:
-        """Save or update job."""
-        raise NotImplementedError
-
-    async def delete(self, job_id: str) -> None:
-        """Delete job."""
-        raise NotImplementedError
-
-    async def exists(self, job_id: str) -> bool:
-        """Check if job exists."""
-        raise NotImplementedError
-
-    async def list_jobs(
-        self, status: str | None = None, limit: int = 100
-    ) -> list[PipelineJob]:
-        """List jobs, optionally filtered by status."""
-        raise NotImplementedError
+class JobStore(JobStorePort):
+    """Backward-compatible alias for the JobStore port."""
 
 
 class InMemoryJobStore(JobStore):

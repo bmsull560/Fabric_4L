@@ -1,6 +1,13 @@
 """Models package for Value Fabric ontology."""
 
 from .extraction_cost import ExtractionCost, JobCostSummary
+from .extraction_api import (
+    ExtractedEntity,
+    EntityProvenance,
+    EntitySourceSpan,
+    ExtractionResultSummary,
+    ExtractionResultsResponse,
+)
 from .extraction_response import (
     CapabilityExtractionResponse,
     FeatureExtractionResponse,
@@ -63,4 +70,5 @@ __all__ = [
     "OperationalSignalExtractionResponse",
     "OperationalSignal",
     "ExtractionMetadata",
+    "ExtractedEntity",
 ]

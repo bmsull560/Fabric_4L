@@ -81,6 +81,7 @@ class TenantRateLimitMiddleware(BaseHTTPMiddleware):
         
         # Extract endpoint pattern (remove IDs for grouping)
         endpoint = self._normalize_endpoint(request.url.path)
+        route_group = self._resolve_route_group(endpoint, request.method)
         
         # Validate and normalize tenant tier
         try:
@@ -98,13 +99,24 @@ class TenantRateLimitMiddleware(BaseHTTPMiddleware):
             tenant_tier=tier,
             endpoint=endpoint,
             user_id=tenant_context.user_id,
+            api_key_id=getattr(tenant_context, "api_key_id", None),
+            route_group=route_group,
         )
         
         # If rate limit exceeded, return 429
         if not result.allowed:
             logger.warning(
-                f"Rate limit exceeded for tenant {tenant_context.tenant_id} "
-                f"on endpoint {endpoint}"
+                "rate_limit_exceeded",
+                extra={
+                    "event_type": "rate_limit_exceeded",
+                    "tenant_id": str(tenant_context.tenant_id),
+                    "principal_id": str(getattr(tenant_context, "api_key_id", None) or tenant_context.user_id),
+                    "route_group": route_group,
+                    "endpoint": endpoint,
+                    "method": request.method,
+                    "limit": result.limit,
+                    "retry_after_seconds": result.retry_after_seconds,
+                },
             )
             
             return JSONResponse(
@@ -131,6 +143,22 @@ class TenantRateLimitMiddleware(BaseHTTPMiddleware):
         response.headers["X-RateLimit-Limit"] = str(result.limit)
         response.headers["X-RateLimit-Remaining"] = str(result.remaining)
         response.headers["X-RateLimit-Reset"] = str(int(result.reset_at.timestamp()))
+        response.headers["X-RateLimit-Route-Group"] = route_group
+
+        logger.info(
+            "rate_limit_checked",
+            extra={
+                "event_type": "rate_limit_checked",
+                "tenant_id": str(tenant_context.tenant_id),
+                "principal_id": str(getattr(tenant_context, "api_key_id", None) or tenant_context.user_id),
+                "route_group": route_group,
+                "endpoint": endpoint,
+                "method": request.method,
+                "allowed": result.allowed,
+                "remaining": result.remaining,
+                "limit": result.limit,
+            },
+        )
         
         return response
     
@@ -159,3 +187,13 @@ class TenantRateLimitMiddleware(BaseHTTPMiddleware):
                 normalized.append(part)
         
         return "/".join(normalized)
+
+    def _resolve_route_group(self, endpoint: str, method: str) -> str:
+        endpoint_lower = endpoint.lower()
+        if "/agents" in endpoint_lower and method.upper() in {"POST", "PUT"}:
+            return "agent_execution"
+        if "/extract" in endpoint_lower:
+            return "extraction"
+        if "/model-registry" in endpoint_lower and method.upper() in {"POST", "PUT", "PATCH", "DELETE"}:
+            return "model_registry_write"
+        return "default"

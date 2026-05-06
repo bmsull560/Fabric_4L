@@ -492,7 +492,15 @@ curl -X GET https://api.valuefabric.com/api/v1/roi/templates \
 
 ---
 
-## Industry Benchmarks API (DIL)
+## Benchmark APIs: Ownership Boundaries (L3 vs L6)
+
+- **L3 ROI-derived assumptions**: `GET /api/v1/roi/benchmarks/:industry` (used by ROI calculator UX).
+- **L6 dataset/comparison-native benchmarks**: `/api/v1/benchmarks/datasets`, `/api/v1/benchmarks/compare`, `/api/v1/benchmarks/industries`.
+- Frontend hooks should keep these experiences separate:
+  - `useROICalculator*` hooks for L3 ROI assumptions.
+  - `useBenchmarks` / L6 benchmark hooks for dataset and peer-comparison workflows.
+
+## Industry Benchmarks API (L3 ROI-derived assumptions)
 
 ### Get Industry Benchmarks
 
@@ -557,6 +565,28 @@ curl -X GET "https://api.valuefabric.com/api/v1/roi/benchmarks/Medical%20Devices
 
 - `404 Not Found`: Industry benchmarks not available
 - `400 Bad Request`: Invalid industry name
+
+---
+
+## Layer 6 Benchmark Dataset & Comparison API (L6 native)
+
+### List datasets
+
+**Endpoint**: `GET /api/v1/benchmarks/datasets`
+
+Returns catalog entries for benchmark datasets available for peer comparison.
+
+### Compare prospect to dataset
+
+**Endpoint**: `POST /api/v1/benchmarks/compare`
+
+Returns per-metric and overall percentile comparisons for a prospect against a selected dataset.
+
+### List industries
+
+**Endpoint**: `GET /api/v1/benchmarks/industries`
+
+Returns industries supported by L6 benchmark datasets.
 
 ---
 

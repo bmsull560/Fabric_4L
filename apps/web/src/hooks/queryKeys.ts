@@ -104,8 +104,10 @@ export const QK = {
   benchmarks: {
     all: ["benchmarks"] as const,
     list: (filters: BenchmarkFilters) =>
-      ["benchmarks", "list", filters] as const,
+      ["benchmarks", "datasets", stableKey(filters)] as const,
     detail: (id: string) => ["benchmarks", "detail", id] as const,
+    compare: () => ["benchmarks", "compare"] as const,
+    industries: () => ["benchmarks", "industries"] as const,
     policies: ["benchmarks", "policies"] as const,
   },
 
@@ -258,9 +260,12 @@ export const QK = {
       ["roi", "list", stableKey(filters)] as const,
     detail: (id: string) => ["roi", "detail", id] as const,
     templates: () => ["roi", "templates"] as const,
-    benchmarks: (industry: string) => ["roi", "benchmarks", industry] as const,
-    benchmarksList: () => ["roi", "benchmarks-list"] as const,
-    benchmarkDetail: (id: string) => ["roi", "benchmark", id] as const,
+    /**
+     * L3 ROI benchmark assumptions (separate from L6 benchmark datasets).
+     */
+    assumptionsByIndustry: (industry: string) => ["roi", "assumptions", industry] as const,
+    assumptionsList: () => ["roi", "assumptions-list"] as const,
+    assumptionDetail: (id: string) => ["roi", "assumption", id] as const,
     agentCalculation: () => ["roi", "agent-calculation"] as const,
   },
 

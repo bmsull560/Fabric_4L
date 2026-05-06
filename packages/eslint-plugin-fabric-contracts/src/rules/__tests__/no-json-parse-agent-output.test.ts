@@ -2,8 +2,9 @@ import { RuleTester } from "eslint";
 import rule from "../no-json-parse-agent-output";
 
 const ruleTester = new RuleTester({
+  parser: require.resolve("@typescript-eslint/parser"),
   parserOptions: {
-    ecmaVersion: 2020,
+    ecmaVersion: 2022,
     sourceType: "module",
   },
 });
@@ -51,6 +52,11 @@ ruleTester.run("no-json-parse-agent-output", rule, {
     // Invalid: JSON.parse on Claude response
     {
       code: `const parsed = JSON.parse(claudeOutput);`,
+      errors: [{ messageId: "noJsonParseAgentOutput" }],
+    },
+    // Invalid: JSON.parse on member expression from agent
+    {
+      code: `const parsed = JSON.parse(agent.response);`,
       errors: [{ messageId: "noJsonParseAgentOutput" }],
     },
   ],

@@ -606,7 +606,7 @@ function Accounts() {
                   action={
                     !filters.search && !hasActiveFilter(filters) ? (
                       <button
-                        onClick={() => {/* TODO: Trigger account creation modal */}}
+                        onClick={handleAddAccount}
                         className="text-sm font-medium text-primary hover:underline"
                       >
                         Add account

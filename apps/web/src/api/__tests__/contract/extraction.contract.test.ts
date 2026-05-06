@@ -34,6 +34,26 @@ const BatchExtractRequestSchema = z.object({
   jobs: z.array(ExtractRequestSchema).min(1),
 });
 
+
+
+const ExtractionResultsResponseSchema = z.object({
+  summary: z.object({
+    job_id: z.string(),
+    total_entities: z.number(),
+    returned_entities: z.number(),
+    page: z.number(),
+    page_size: z.number(),
+    total_pages: z.number(),
+    mode: z.enum(['summary', 'full']),
+  }),
+  entities: z.array(z.object({
+    entity_id: z.string(),
+    type: z.string(),
+    name: z.string(),
+    confidence: z.number().min(0).max(1),
+  })),
+});
+
 // ── POST /v1/extract ──────────────────────────────────────────────────────────
 
 describe('Contract: POST /v1/extract', () => {
@@ -265,5 +285,51 @@ describe('Contract: extraction auth failures', () => {
       'ApiError (404)'
     );
     expect(err.code).toBe('NOT_FOUND');
+  });
+});
+
+
+describe('Contract: GET /v1/extract/results/{job_id}', () => {
+  it('supports full response mode with entities page', () => {
+    const resp = assertSchema(
+      ExtractionResultsResponseSchema,
+      {
+        summary: {
+          job_id: 'job-001',
+          total_entities: 2,
+          returned_entities: 2,
+          page: 1,
+          page_size: 100,
+          total_pages: 1,
+          mode: 'full',
+        },
+        entities: [
+          { entity_id: 'e1', type: 'Capability', name: 'Data Integration', confidence: 0.91 },
+          { entity_id: 'e2', type: 'UseCase', name: 'Forecasting', confidence: 0.88 },
+        ],
+      },
+      'ExtractionResultsResponse (full)'
+    );
+    expect(resp.summary.mode).toBe('full');
+  });
+
+  it('supports summary mode without entity payload', () => {
+    const resp = assertSchema(
+      ExtractionResultsResponseSchema,
+      {
+        summary: {
+          job_id: 'job-001',
+          total_entities: 2450,
+          returned_entities: 0,
+          page: 1,
+          page_size: 100,
+          total_pages: 25,
+          mode: 'summary',
+        },
+        entities: [],
+      },
+      'ExtractionResultsResponse (summary)'
+    );
+    expect(resp.entities.length).toBe(0);
   });
 });

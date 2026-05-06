@@ -40,10 +40,17 @@ const ExtractedEntitySchema = z.object({
   attributes: z.record(z.string(), z.any()).optional(),
 });
 
-const ExtractionEntitiesResponseSchema = z.object({
-  job_id: z.string(),
+const ExtractionResultsResponseSchema = z.object({
+  summary: z.object({
+    job_id: z.string(),
+    total_entities: z.number(),
+    returned_entities: z.number(),
+    page: z.number(),
+    page_size: z.number(),
+    total_pages: z.number(),
+    mode: z.enum(['summary', 'full']),
+  }),
   entities: z.array(ExtractedEntitySchema),
-  total: z.number(),
 });
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -76,8 +83,8 @@ export async function fetchExtractionStatus(jobId: string): Promise<ExtractionSt
  * Calls GET /v1/extract/{job_id}/entities.
  */
 export async function fetchExtractedEntities(jobId: string): Promise<ExtractedEntity[]> {
-  const response = await apiClient.get(LAYER, `/v1/extract/${jobId}/entities`);
-  const parsed = ExtractionEntitiesResponseSchema.safeParse(response.data);
+  const response = await apiClient.get(LAYER, `/v1/extract/results/${jobId}`);
+  const parsed = ExtractionResultsResponseSchema.safeParse(response.data);
   if (!parsed.success) {
     throw new Error(`Invalid extracted entities response: ${parsed.error.message}`);
   }

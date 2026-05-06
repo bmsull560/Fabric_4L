@@ -16,46 +16,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1", tags=["extraction"], dependencies=[Depends(require_authenticated)])
 
 
-# ============================================================================
-# Extraction Entities Models
-# =============================================================================
-
-
-class EntitySourceSpan(BaseModel):
-    """Source span information for an extracted entity."""
-    document_id: str = Field(..., description="Document identifier")
-    start: int = Field(..., description="Start position in document")
-    end: int = Field(..., description="End position in document")
-
-
-class EntityProvenance(BaseModel):
-    """Provenance information for an extracted entity."""
-    extraction_job_id: str = Field(..., description="Extraction job identifier")
-    source_url: str | None = Field(None, description="Source URL if applicable")
-    trace_id: str | None = Field(None, description="Trace identifier for observability")
-
-
-class ExtractedEntity(BaseModel):
-    """Single extracted entity from an extraction job."""
-    entity_id: str = Field(..., description="Entity identifier")
-    type: str = Field(..., description="Entity type (e.g., Capability, UseCase, Persona)")
-    name: str = Field(..., description="Entity name")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score 0.0-1.0")
-    source_span: EntitySourceSpan | None = Field(None, description="Source span in document")
-    provenance: EntityProvenance | None = Field(None, description="Provenance information")
-    attributes: dict[str, Any] = Field(default_factory=dict, description="Additional entity attributes")
-
-
-class ExtractionEntitiesResponse(BaseModel):
-    """Response for extraction entities endpoint."""
-    job_id: str = Field(..., description="Extraction job identifier")
-    entities: list[ExtractedEntity] = Field(..., description="List of extracted entities")
-    total: int = Field(..., description="Total number of entities")
-
+from layer2_extraction.models.extraction_api import (
+    ExtractedEntity,
+    EntityProvenance,
+    EntitySourceSpan,
+    ExtractionResultsResponse,
+    ExtractionResultSummary,
+)
 
 # ============================================================================
 # Operational Signal Extraction Models
-# =============================================================================
+# ============================================================================
 
 
 class ProspectDataInput(BaseModel):
@@ -233,8 +204,14 @@ async def stream_job_events(job_id: str):
     return await handlers.stream_job_events(job_id)
 
 
-@router.get("/extract/{job_id}/entities", response_model=ExtractionEntitiesResponse)
-async def get_extraction_entities(job_id: str, request: Request):
+@router.get("/extract/results/{job_id}", response_model=ExtractionResultsResponse)
+async def get_extraction_results(
+    job_id: str,
+    request: Request,
+    page: int = 1,
+    page_size: int = 100,
+    mode: str = "full",
+):
     """Get extracted entities for a specific extraction job.
     
     Args:
@@ -307,10 +284,33 @@ async def get_extraction_entities(job_id: str, request: Request):
                 attributes=getattr(entity, 'attributes', {})
             ))
     
-    return ExtractionEntitiesResponse(
-        job_id=job_id,
-        entities=entities,
-        total=len(entities)
+    if page < 1:
+        raise HTTPException(status_code=400, detail="page must be >= 1")
+    if page_size < 1 or page_size > 1000:
+        raise HTTPException(status_code=400, detail="page_size must be between 1 and 1000")
+
+    total = len(entities)
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    offset = (page - 1) * page_size
+    paged_entities = entities[offset : offset + page_size] if mode == "full" else []
+
+    return ExtractionResultsResponse(
+        summary=ExtractionResultSummary(
+            job_id=job_id,
+            total_entities=total,
+            returned_entities=len(paged_entities),
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            mode="summary" if mode == "summary" else "full",
+        ),
+        entities=paged_entities,
     )
 
 
+
+
+@router.get("/extract/{job_id}/entities", response_model=ExtractionResultsResponse)
+async def get_extraction_entities(job_id: str, request: Request, page: int = 1, page_size: int = 100, mode: str = "full"):
+    """Backward-compatible alias for extraction results route."""
+    return await get_extraction_results(job_id, request, page=page, page_size=page_size, mode=mode)

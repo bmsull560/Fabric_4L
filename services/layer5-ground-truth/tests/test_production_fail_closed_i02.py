@@ -96,6 +96,17 @@ class TestLayer5ProductionSettingsFailClosed:
 
         assert "CORS_ORIGINS must list exact trusted origins" in _validation_message(exc_info)
 
+    def test_production_requires_explicit_jwt_secret(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _set_valid_production_env(monkeypatch)
+        monkeypatch.delenv("JWT_SECRET", raising=False)
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        message = _validation_message(exc_info)
+        assert "JWT_SECRET must be a non-placeholder value of at least 32 characters" in message
+        assert "Layer 5 production configuration is not fail-closed for production" in message
+
     def test_production_rejects_query_param_jwt_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _set_valid_production_env(monkeypatch)
         monkeypatch.setenv("JWT_FALLBACK_TO_QUERY_PARAM", "true")
@@ -128,6 +139,20 @@ class TestLayer5ProductionSettingsFailClosed:
         message = _validation_message(exc_info)
         assert "DATABASE_URL must point to non-local PostgreSQL with non-default credentials" in message
         assert "DATABASE_URL_SYNC must point to non-local PostgreSQL with non-default credentials" in message
+
+    def test_non_production_logs_warning_when_jwt_secret_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        _clear_layer5_env(monkeypatch)
+        monkeypatch.setenv("ENVIRONMENT", "development")
+
+        with caplog.at_level("WARNING"):
+            Settings()
+
+        assert "weak or missing JWT_SECRET" in caplog.text
+        assert "set JWT_SECRET to at least 32 random characters" in caplog.text
 
     def test_development_still_allows_test_friendly_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _clear_layer5_env(monkeypatch)

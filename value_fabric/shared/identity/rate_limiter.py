@@ -1,5 +1,8 @@
 """Shared Identity adapter over canonical runtime request limiting.
 
+Canonical module decision: ``value_fabric.shared.rate_limiting.tenant_rate_limiter``
+is the only location that owns sliding-window counter semantics.
+
 Canonical state math lives in ``value_fabric.shared.rate_limiting.tenant_rate_limiter``.
 This module keeps identity-facing config/result shapes while delegating checks
 through a narrow adapter interface.
@@ -9,13 +12,18 @@ from __future__ import annotations
 
 import logging
 import time
+from collections import deque
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any
 
-from .rate_limiting import RateLimitConfig
+from .rate_limiting import RateLimitConfig, RateLimitFailMode, get_rate_limit_fail_mode
 from ..rate_limiting.tenant_rate_limiter import SlidingWindowAdapter
 
 logger = logging.getLogger(__name__)
+
+_LOCAL_FALLBACK_LIMIT = 5
+_FALLBACK_EVENTS_COUNTER = 0
 
 
 @dataclass
@@ -28,24 +36,58 @@ class RateLimitResult:
     retry_after: int | None
 
 
+class _InMemoryFallbackLimiter:
+    """Strict bounded fallback limiter for Redis outage conditions."""
+
+    def __init__(self) -> None:
+        self._lock = Lock()
+        self._events: dict[str, deque[float]] = {}
+
+    def check(self, key: str, window_seconds: int) -> RateLimitResult:
+        now = time.time()
+        cutoff = now - window_seconds
+        with self._lock:
+            entries = self._events.get(key)
+            if entries is None:
+                entries = deque()
+                self._events[key] = entries
+
+            while entries and entries[0] <= cutoff:
+                entries.popleft()
+
+            if len(entries) >= _LOCAL_FALLBACK_LIMIT:
+                reset_at = entries[0] + window_seconds if entries else now + window_seconds
+                retry_after = max(1, int(reset_at - now))
+                return RateLimitResult(
+                    allowed=False,
+                    remaining=0,
+                    reset_at=reset_at,
+                    retry_after=retry_after,
+                )
+
+            entries.append(now)
+            return RateLimitResult(
+                allowed=True,
+                remaining=max(0, _LOCAL_FALLBACK_LIMIT - len(entries)),
+                reset_at=now + window_seconds,
+                retry_after=None,
+            )
+
+
 class RedisRateLimiter:
     """Sliding-window rate limiter backed by Redis sorted sets."""
 
     def __init__(self, redis_client: Any | None = None) -> None:
         self._adapter = SlidingWindowAdapter(redis_client)
+        self._fallback_limiter = _InMemoryFallbackLimiter()
 
     async def check(self, key: str, config: RateLimitConfig) -> RateLimitResult:
-        """Check whether a request is allowed under the given config.
-
-        If Redis is unavailable, the request is allowed and a warning is
-        logged (graceful degradation).
-        """
-        # Support both per-minute and per-hour limits
+        """Check whether a request is allowed under the given config."""
         if config.requests_per_hour is not None:
-            window = 3600  # per-hour window
+            window = 3600
             limit = config.requests_per_hour
         else:
-            window = 60  # per-minute window
+            window = 60
             limit = config.requests_per_minute
 
         try:
@@ -57,11 +99,32 @@ class RedisRateLimiter:
                 retry_after=decision.retry_after,
             )
         except Exception as exc:
-            logger.warning("Rate limiter Redis call failed, allowing request: %s", exc)
+            fail_mode = get_rate_limit_fail_mode()
+            self._record_fallback_activation(key=key, mode=fail_mode, error=exc)
+            if fail_mode is RateLimitFailMode.LOCAL_FALLBACK:
+                return self._fallback_limiter.check(key=key, window_seconds=window)
+
             now = time.time()
+            retry_after = max(1, min(window, 60))
             return RateLimitResult(
-                allowed=True,
-                remaining=-1,
-                reset_at=now + window,
-                retry_after=None,
+                allowed=False,
+                remaining=0,
+                reset_at=now + retry_after,
+                retry_after=retry_after,
             )
+
+    def _record_fallback_activation(self, *, key: str, mode: RateLimitFailMode, error: Exception) -> None:
+        global _FALLBACK_EVENTS_COUNTER
+        _FALLBACK_EVENTS_COUNTER += 1
+        logger.error(
+            "rate_limit_backend_failure",
+            extra={
+                "event": "rate_limit_backend_failure",
+                "severity": "critical",
+                "counter": _FALLBACK_EVENTS_COUNTER,
+                "fallback_mode": mode.value,
+                "rate_limit_key": key,
+                "alert": "RATE_LIMIT_FALLBACK_ACTIVATED",
+                "error_type": type(error).__name__,
+            },
+        )

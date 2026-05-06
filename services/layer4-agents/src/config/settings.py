@@ -207,6 +207,15 @@ class Settings(BaseSettings):
         description="Feature flag backend: redis, config, or unleash"
     )
 
+    enable_oidc_cleanup: bool = Field(
+        default=True,
+        description="Enable OIDC session cleanup startup integration"
+    )
+    enable_crm_scheduler: bool = Field(
+        default=True,
+        description="Enable CRM sync scheduler startup integration"
+    )
+
     # ==========================================================================
     # Billing (Stripe Integration)
     # ==========================================================================

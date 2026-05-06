@@ -1,0 +1,33 @@
+{
+  "version": "2026-05-06",
+  "generatedBy": "scripts/report_deprecation_debt.py",
+  "workflow": ".github/workflows/contract-compliance.yml#validate-deprecations",
+  "thresholds": {
+    "legacy_prefix": 71,
+    "deprecated_tag": 25,
+    "alias_router_registration": 8
+  },
+  "acceptedDriftItems": [
+    {
+      "id": "DRIFT-LEGACY-PREFIX-001",
+      "rule": "legacy_prefix",
+      "owner": "platform-engineering",
+      "targetRemovalRelease": "2026.07",
+      "notes": "Baseline capture phase; warning-only until threshold agreement."
+    },
+    {
+      "id": "DRIFT-DEPRECATED-TAG-001",
+      "rule": "deprecated_tag",
+      "owner": "architecture",
+      "targetRemovalRelease": "2026.08",
+      "notes": "Convert selected docs tags to canonical deprecation register entries."
+    },
+    {
+      "id": "DRIFT-ALIAS-ROUTER-001",
+      "rule": "alias_router_registration",
+      "owner": "layer4-agents",
+      "targetRemovalRelease": "2026.09",
+      "notes": "Migrate alias router registrations to canonical routing abstractions."
+    }
+  ]
+}

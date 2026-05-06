@@ -1,10 +1,16 @@
 # Fabric 4L Monorepo Workspace Configuration
 #
-# Defines packages that are part of the pnpm workspace.
-# All workspace packages can reference each other using the "workspace:" protocol.
+# Canonical production workspace roots are intentionally constrained to:
+#   - apps/web
+#   - packages/*
+#   - services/*
+# Experimental content under archive/ and prototypes/ is intentionally excluded
+# from default workspace tooling and must be targeted explicitly when needed.
 
 packages:
-  # Application packages
-  - 'apps/*'
-  # Shared library packages
+  # Canonical application root (production)
+  - 'apps/web'
+  # Canonical shared libraries (production)
   - 'packages/*'
+  # Canonical backend/service layers (production)
+  - 'services/*'

@@ -411,3 +411,45 @@ class TestRateLimitingIntegration:
         
         assert result_a.allowed is False
         assert result_b.allowed is True
+
+    @pytest.mark.asyncio
+    async def test_burst_abuse_does_not_starve_other_tenants(self, rate_limiter, mock_redis):
+        """A noisy tenant should not consume another tenant's budget."""
+        tenant_a = uuid4()
+        tenant_b = uuid4()
+
+        mock_redis.zcard.side_effect = [120, 120, 120, 0, 0, 0]
+        blocked = await rate_limiter.check_rate_limit(
+            tenant_id=tenant_a,
+            tenant_tier=TenantTier.SHARED,
+            endpoint="/v1/agents/execute",
+            route_group="agent_execution",
+        )
+        allowed = await rate_limiter.check_rate_limit(
+            tenant_id=tenant_b,
+            tenant_tier=TenantTier.SHARED,
+            endpoint="/v1/agents/execute",
+            route_group="agent_execution",
+        )
+
+        assert blocked.allowed is False
+        assert allowed.allowed is True
+
+    @pytest.mark.asyncio
+    async def test_redis_key_includes_tenant_principal_and_route_group(self, rate_limiter, mock_redis):
+        tenant_id = uuid4()
+        user_id = uuid4()
+        mock_redis.zcard.return_value = 0
+
+        await rate_limiter.check_rate_limit(
+            tenant_id=tenant_id,
+            tenant_tier=TenantTier.SHARED,
+            endpoint="/v1/extract",
+            user_id=user_id,
+            route_group="extraction",
+        )
+
+        key = mock_redis.zremrangebyscore.await_args.args[0]
+        assert f"tenant:{tenant_id}" in key
+        assert f"user:{user_id}" in key
+        assert "route_group:extraction" in key

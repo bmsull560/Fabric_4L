@@ -2,8 +2,9 @@ import { RuleTester } from "eslint";
 import rule from "../no-tenant-id-parameter";
 
 const ruleTester = new RuleTester({
+  parser: require.resolve("@typescript-eslint/parser"),
   parserOptions: {
-    ecmaVersion: 2020,
+    ecmaVersion: 2022,
     sourceType: "module",
   },
 });
@@ -60,6 +61,11 @@ ruleTester.run("no-tenant-id-parameter", rule, {
     // Invalid: class method with tenantId
     {
       code: `class UserService { getUser(tenantId: string, userId: string) { return userId; } }`,
+      errors: [{ messageId: "noTenantIdParameter" }],
+    },
+    // Invalid: nested object destructuring tenantId
+    {
+      code: `function getUser({ user: { tenantId } }: { user: { tenantId: string } }) { return tenantId; }`,
       errors: [{ messageId: "noTenantIdParameter" }],
     },
   ],
