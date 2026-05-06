@@ -1,0 +1,190 @@
+From 5a26aa45cd9fc4801b22ae3f9da3e988b6a83d40 Mon Sep 17 00:00:00 2001
+From: bmsull560 <143443537+bmsull560@users.noreply.github.com>
+Date: Wed, 6 May 2026 17:03:48 -0400
+Subject: [PATCH] chore: finish legacy path cleanup
+
+---
+ .github/workflows/pr-checks.yml       | 2 --
+ k8s/base/frontend.yml                 | 2 +-
+ k8s/envs/prod/kustomization.yaml      | 2 +-
+ k8s/envs/staging/kustomization.yaml   | 2 +-
+ k8s/frontend.yml                      | 2 +-
+ scripts/dev/check-backend-health.ps1  | 2 +-
+ scripts/dev/e2e-recovery-sequence.ps1 | 4 ++--
+ scripts/infisical/bootstrap-dev.ps1   | 2 +-
+ scripts/infisical/bootstrap-dev.sh    | 2 +-
+ tests/k8s/test_kustomize_overlays.py  | 4 ++--
+ tests/k8s/test_workload_validation.py | 2 +-
+ 11 files changed, 12 insertions(+), 14 deletions(-)
+
+diff --git a/.github/workflows/pr-checks.yml b/.github/workflows/pr-checks.yml
+index 7c794e2..0e76abd 100644
+--- a/.github/workflows/pr-checks.yml
++++ b/.github/workflows/pr-checks.yml
+@@ -779,7 +779,6 @@ jobs:
+ 
+       - name: Start runtime contract services
+         run: |
+-          cd value-fabric
+           export OPENAI_API_KEY=test-key
+           export REDIS_PASSWORD=test-redis
+           export NEO4J_PASSWORD=test-neo4j
+@@ -919,7 +918,6 @@ jobs:
+ 
+       - name: Start core services
+         run: |
+-          cd value-fabric
+           export NEO4J_PASSWORD=valuefabric
+           # P1-22 FIX: Removed secret fallback - secrets must be configured
+           export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+diff --git a/k8s/base/frontend.yml b/k8s/base/frontend.yml
+index 62c1a01..d3659a2 100644
+--- a/k8s/base/frontend.yml
++++ b/k8s/base/frontend.yml
+@@ -31,7 +31,7 @@ spec:
+           type: RuntimeDefault
+       containers:
+         - name: web
+-          image: value-fabric/frontend:main
++          image: apps/web:main
+           imagePullPolicy: Always
+           securityContext:
+             allowPrivilegeEscalation: false
+diff --git a/k8s/envs/prod/kustomization.yaml b/k8s/envs/prod/kustomization.yaml
+index 75a51b3..c54b2bf 100644
+--- a/k8s/envs/prod/kustomization.yaml
++++ b/k8s/envs/prod/kustomization.yaml
+@@ -46,7 +46,7 @@ images:
+   - name: services/layer6-benchmarks
+     newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
+     digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
+-  - name: value-fabric/frontend
++  - name: apps/web
+     newName: ghcr.io/bmsull560/fabric_4l/frontend
+     digest: sha256:7777777777777777777777777777777777777777777777777777777777777777
+   # Infrastructure images use explicit versions.
+diff --git a/k8s/envs/staging/kustomization.yaml b/k8s/envs/staging/kustomization.yaml
+index 4490fa7..69c8f4f 100644
+--- a/k8s/envs/staging/kustomization.yaml
++++ b/k8s/envs/staging/kustomization.yaml
+@@ -39,7 +39,7 @@ images:
+   - name: services/layer6-benchmarks
+     newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
+     digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
+-  - name: value-fabric/frontend
++  - name: apps/web
+     newName: ghcr.io/bmsull560/fabric_4l/frontend
+     digest: sha256:7777777777777777777777777777777777777777777777777777777777777777
+   # Infrastructure images (use specific versions, not :latest)
+diff --git a/k8s/frontend.yml b/k8s/frontend.yml
+index 2e29c3a..a54272d 100644
+--- a/k8s/frontend.yml
++++ b/k8s/frontend.yml
+@@ -26,7 +26,7 @@ spec:
+           type: RuntimeDefault
+       containers:
+         - name: web
+-          image: value-fabric/frontend:latest
++          image: apps/web:latest
+           securityContext:
+             allowPrivilegeEscalation: false
+             readOnlyRootFilesystem: true
+diff --git a/scripts/dev/check-backend-health.ps1 b/scripts/dev/check-backend-health.ps1
+index 91bc167..d8300ac 100644
+--- a/scripts/dev/check-backend-health.ps1
++++ b/scripts/dev/check-backend-health.ps1
+@@ -219,7 +219,7 @@ if (-not $allHealthy) {
+     
+     Write-Host "`nRemediation:" -ForegroundColor Yellow
+     Write-Host "  1. Start backend services:" -ForegroundColor White
+-    Write-Host "     cd value-fabric" -ForegroundColor Gray
++    Write-Host "     cd services" -ForegroundColor Gray
+     Write-Host "     docker-compose up -d" -ForegroundColor Gray
+     Write-Host "  2. Wait for services to initialize (30-60s)" -ForegroundColor Gray
+     Write-Host "  3. Re-run health check" -ForegroundColor Gray
+diff --git a/scripts/dev/e2e-recovery-sequence.ps1 b/scripts/dev/e2e-recovery-sequence.ps1
+index 10397e9..591363d 100644
+--- a/scripts/dev/e2e-recovery-sequence.ps1
++++ b/scripts/dev/e2e-recovery-sequence.ps1
+@@ -117,7 +117,7 @@ if (-not $SkipBackendStart) {
+             } catch {
+                 Write-Result "Docker compose failed. Manual backend startup required." -Failure
+                 Write-Host "`nPlease start backend services manually:" -ForegroundColor $colors.Warning
+-                Write-Host "  cd value-fabric" -ForegroundColor $colors.Info
++                Write-Host "  cd services" -ForegroundColor $colors.Info
+                 Write-Host "  docker-compose up -d" -ForegroundColor $colors.Info
+                 exit 1
+             }
+@@ -188,7 +188,7 @@ if (-not $allHealthy) {
+         Write-Host "Required backend services on ports 8001-8006 are not all healthy." -ForegroundColor $colors.Error
+         Write-Host "This prevents valid E2E test execution." -ForegroundColor $colors.Error
+         Write-Host "`nOptions:" -ForegroundColor $colors.Info
+-        Write-Host "  1. Start backend services: cd value-fabric && docker-compose up -d" -ForegroundColor $colors.Info
++        Write-Host "  1. Start backend services: docker compose up -d" -ForegroundColor $colors.Info
+         Write-Host "  2. Check health only: ./scripts/check-backend-health.ps1" -ForegroundColor $colors.Info
+         Write-Host "  3. Investigate mode: ./scripts/e2e-recovery-sequence.ps1 -InvestigateOnly" -ForegroundColor $colors.Info
+         Write-Host "  4. Force continue: ./scripts/e2e-recovery-sequence.ps1 -AllowDegradedHealth" -ForegroundColor $colors.Info
+diff --git a/scripts/infisical/bootstrap-dev.ps1 b/scripts/infisical/bootstrap-dev.ps1
+index 5e15f10..8012879 100644
+--- a/scripts/infisical/bootstrap-dev.ps1
++++ b/scripts/infisical/bootstrap-dev.ps1
+@@ -56,7 +56,7 @@ Write-Host "`n============================================="
+ Write-Host "Ready! Run services with Infisical-injected secrets:" -ForegroundColor Green
+ Write-Host ""
+ Write-Host "  # Backend"
+-Write-Host "  infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- pnpm --dir value-fabric dev"
++Write-Host "  infisical run --env=dev --path=/fabric-4l/services/dev -- pnpm dev:backend"
+ Write-Host ""
+ Write-Host "  # Frontend"
+ Write-Host "  infisical run --env=dev --path=/fabric-4l/apps/web/dev -- pnpm --dir apps/web dev"
+diff --git a/scripts/infisical/bootstrap-dev.sh b/scripts/infisical/bootstrap-dev.sh
+index e699a15..67f8ab5 100755
+--- a/scripts/infisical/bootstrap-dev.sh
++++ b/scripts/infisical/bootstrap-dev.sh
+@@ -63,7 +63,7 @@ echo "============================================="
+ echo -e "${GREEN}Ready!${NC} Run services with Infisical-injected secrets:"
+ echo ""
+ echo "  # Backend"
+-echo "  infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- pnpm --dir value-fabric dev"
++echo "  infisical run --env=dev --path=/fabric-4l/services/dev -- pnpm dev:backend"
+ echo ""
+ echo "  # Frontend"
+ echo "  infisical run --env=dev --path=/fabric-4l/apps/web/dev -- pnpm --dir apps/web dev"
+diff --git a/tests/k8s/test_kustomize_overlays.py b/tests/k8s/test_kustomize_overlays.py
+index efe392c..374c538 100644
+--- a/tests/k8s/test_kustomize_overlays.py
++++ b/tests/k8s/test_kustomize_overlays.py
+@@ -203,7 +203,7 @@ class TestKustomizeProdOverlay:
+             "services/layer4-agents",
+             "services/layer5-ground-truth",
+             "services/layer6-benchmarks",
+-            "value-fabric/frontend",
++            "apps/web",
+         ]
+         
+         for layer in layer_names:
+@@ -329,7 +329,7 @@ class TestKustomizeStagingOverlay:
+             "services/layer4-agents",
+             "services/layer5-ground-truth",
+             "services/layer6-benchmarks",
+-            "value-fabric/frontend",
++            "apps/web",
+         ]
+ 
+         for layer in layer_names:
+diff --git a/tests/k8s/test_workload_validation.py b/tests/k8s/test_workload_validation.py
+index 314bde8..86f28a7 100644
+--- a/tests/k8s/test_workload_validation.py
++++ b/tests/k8s/test_workload_validation.py
+@@ -26,7 +26,7 @@ APP_IMAGE_NAMES = [
+     "services/layer4-agents",
+     "services/layer5-ground-truth",
+     "services/layer6-benchmarks",
+-    "value-fabric/frontend",
++    "apps/web",
+ ]
+ 
+ ZERO_SHA256_DIGEST = "sha256:" + ("0" * 64)
+-- 
+2.34.1
+
