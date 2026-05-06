@@ -22,6 +22,7 @@ import {
   Target, GitBranch, Network, Beaker, Shield, Clock,
 } from "lucide-react";
 import { Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -46,6 +47,55 @@ import { VersionHistoryPanel, DependencyPanel, ScenarioPanel } from "./component
 import { createFeatureLogger } from "@/lib/telemetry";
 
 const log = createFeatureLogger('FormulaBuilder');
+
+// ── Zod Validation Schema ────────────────────────────────────────────────────
+
+const FormulaSchema = z.object({
+  name: z.string().min(1, 'Formula name is required').max(120, 'Name must be under 120 characters'),
+  description: z.string().max(500, 'Description must be under 500 characters').optional(),
+  expression: z.string().min(1, 'Formula expression is required'),
+  valueDriver: z.string().optional(),
+});
+
+type FormulaDraft = {
+  name: string;
+  description: string;
+  expression: string;
+  testInputs: TestInput[];
+  valueDriver: string;
+  savedAt: string;
+};
+
+function getDraftKey(formulaId: string | undefined) {
+  return formulaId ? `formula-draft-${formulaId}` : 'formula-draft-new';
+}
+
+function loadDraft(formulaId: string | undefined): FormulaDraft | null {
+  try {
+    const raw = localStorage.getItem(getDraftKey(formulaId));
+    if (!raw) return null;
+    return JSON.parse(raw) as FormulaDraft;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(formulaId: string | undefined, draft: Omit<FormulaDraft, 'savedAt'>) {
+  try {
+    const payload: FormulaDraft = { ...draft, savedAt: new Date().toISOString() };
+    localStorage.setItem(getDraftKey(formulaId), JSON.stringify(payload));
+  } catch (err) {
+    log.warn('Failed to save formula draft to localStorage', { error: err });
+  }
+}
+
+function clearDraft(formulaId: string | undefined) {
+  try {
+    localStorage.removeItem(getDraftKey(formulaId));
+  } catch {
+    // ignore
+  }
+}
 
 // ============================================================================
 // Type Definitions
@@ -133,6 +183,36 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   } | null>(null);
   const [rightTab, setRightTab] = useState("Variables");
   const [valueDriver, setValueDriver] = useState("");
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const draft = loadDraft(formulaId);
+    if (draft) {
+      setFormulaName(draft.name);
+      setFormulaDescription(draft.description);
+      setFormulaExpression(draft.expression);
+      setTestInputs(draft.testInputs);
+      setValueDriver(draft.valueDriver);
+      setDraftSavedAt(draft.savedAt);
+    }
+  }, [formulaId]);
+
+  // Auto-save draft to localStorage every 5 seconds when dirty
+  useEffect(() => {
+    const timer = setInterval(() => {
+      saveDraft(formulaId, {
+        name: formulaName,
+        description: formulaDescription,
+        expression: formulaExpression,
+        testInputs,
+        valueDriver,
+      });
+      setDraftSavedAt(new Date().toISOString());
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [formulaId, formulaName, formulaDescription, formulaExpression, testInputs, valueDriver]);
 
   // Fetch existing formula if editing
   const { data: existingFormula, isLoading: isLoadingFormula } = useFormula(
@@ -170,6 +250,25 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   const saveError = isNew ? createError : updateError;
 
   const handleSave = () => {
+    const result = FormulaSchema.safeParse({
+      name: formulaName,
+      description: formulaDescription,
+      expression: formulaExpression,
+      valueDriver,
+    });
+
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const path = issue.path[0] as string;
+        errors[path] = issue.message;
+      });
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
+
     if (isNew) {
       createFormula(
         {
@@ -180,7 +279,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         },
         {
           onSuccess: (data) => {
-            // Navigate to edit mode with the new formula ID
+            clearDraft(formulaId);
             navigateTo('formula-builder', { formulaId: data.formula_id });
           },
         }
@@ -196,7 +295,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         },
         {
           onSuccess: () => {
-            // Show brief success feedback via mutation state
+            clearDraft(formulaId);
           },
         }
       );
@@ -319,8 +418,16 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                   value={formulaName}
                   onChange={(e) => setFormulaName(e.target.value)}
                   placeholder="Enter formula name..."
-                  className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground bg-white outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className={cn(
+                    "w-full border rounded-md px-3 py-2 text-[13px] text-foreground bg-white outline-none focus:ring-2 focus:ring-primary/20",
+                    validationErrors.name ? "border-red-300 focus:border-red-400" : "border-border focus:border-primary"
+                  )}
+                  aria-invalid={!!validationErrors.name}
+                  aria-describedby={validationErrors.name ? "name-error" : undefined}
                 />
+                {validationErrors.name && (
+                  <p id="name-error" className="text-[11px] text-red-600 mt-1">{validationErrors.name}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="formula-description" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
@@ -332,8 +439,16 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                   onChange={(e) => setFormulaDescription(e.target.value)}
                   placeholder="Describe what this formula calculates..."
                   rows={2}
-                  className="w-full border border-border rounded-md px-3 py-2 text-[12px] text-foreground bg-white outline-none resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className={cn(
+                    "w-full border rounded-md px-3 py-2 text-[12px] text-foreground bg-white outline-none resize-none focus:ring-2 focus:ring-primary/20",
+                    validationErrors.description ? "border-red-300 focus:border-red-400" : "border-border focus:border-primary"
+                  )}
+                  aria-invalid={!!validationErrors.description}
+                  aria-describedby={validationErrors.description ? "description-error" : undefined}
                 />
+                {validationErrors.description && (
+                  <p id="description-error" className="text-[11px] text-red-600 mt-1">{validationErrors.description}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="value-driver" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
@@ -362,10 +477,20 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                 value={formulaExpression}
                 onChange={(e) => setFormulaExpression(e.target.value)}
                 placeholder="Enter formula expression using {variable_name} syntax..."
-                className="w-full h-40 bg-slate-900 rounded-lg p-4 font-mono text-[13px] text-slate-100 leading-relaxed outline-none resize-none focus:ring-2 focus:ring-primary/20"
+                className={cn(
+                  "w-full h-40 rounded-lg p-4 font-mono text-[13px] leading-relaxed outline-none resize-none focus:ring-2 focus:ring-primary/20",
+                  validationErrors.expression
+                    ? "bg-red-950 text-red-100 border border-red-700"
+                    : "bg-slate-900 text-slate-100"
+                )}
                 spellCheck={false}
                 aria-label="Formula expression"
+                aria-invalid={!!validationErrors.expression}
+                aria-describedby={validationErrors.expression ? "expression-error" : undefined}
               />
+              {validationErrors.expression && (
+                <p id="expression-error" className="text-[11px] text-red-400 mt-1">{validationErrors.expression}</p>
+              )}
               <div className="absolute bottom-3 left-4 flex gap-2">
                 <Btn
                   variant="primary"
@@ -477,28 +602,29 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           {/* Versions tab */}
           {rightTab === "Versions" && formulaId && (
             <SectionCard title="Version History">
-              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-                <VersionHistoryPanel formulaId={formulaId} />
-              </Suspense>
+              <VersionHistoryPanel formulaId={formulaId} />
             </SectionCard>
           )}
 
           {/* Dependencies tab */}
           {rightTab === "Dependencies" && formulaId && (
             <SectionCard title="Dependencies">
-              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-                <DependencyPanel formulaId={formulaId} />
-              </Suspense>
+              <DependencyPanel formulaId={formulaId} />
             </SectionCard>
           )}
 
           {/* Scenario tab */}
           {rightTab === "Scenario" && formulaId && (
             <SectionCard title="What-If Scenario">
-              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-                <ScenarioPanel formulaId={formulaId} />
-              </Suspense>
+              <ScenarioPanel formulaId={formulaId} />
             </SectionCard>
+          )}
+
+          {/* Draft Indicator */}
+          {draftSavedAt && (
+            <p className="text-[10px] text-muted-foreground/70 text-center">
+              Draft saved {formatRelativeTime(new Date(draftSavedAt))}
+            </p>
           )}
 
           {/* Save Button */}

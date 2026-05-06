@@ -41,6 +41,53 @@ describe("component accessibility smoke tests", () => {
     expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
   });
 
+  it("select dropdown exposes accessible roles", () => {
+    render(
+      <main>
+        <label htmlFor="value-driver">Value Driver</label>
+        <Select>
+          <SelectTrigger id="value-driver">
+            <SelectValue placeholder="Select a value driver" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="revenue_retention">Revenue Retention</SelectItem>
+            <SelectItem value="cost_reduction">Cost Reduction</SelectItem>
+          </SelectContent>
+        </Select>
+      </main>,
+    );
+
+    expect(screen.getByRole("combobox", { name: /value driver/i })).toBeInTheDocument();
+  });
+
+  it("buttons have accessible names", () => {
+    render(
+      <main>
+        <Button variant="primary">Submit Form</Button>
+        <Button variant="secondary" aria-label="Cancel action">Cancel</Button>
+      </main>,
+    );
+
+    expect(screen.getByRole("button", { name: /submit form/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel action/i })).toBeInTheDocument();
+  });
+
+  it("form controls have associated labels", () => {
+    render(
+      <main>
+        <form>
+          <label htmlFor="email">Email address</label>
+          <Input id="email" type="email" placeholder="user@example.com" />
+          <label htmlFor="password">Password</label>
+          <Input id="password" type="password" />
+        </form>
+      </main>,
+    );
+
+    expect(screen.getByRole("textbox", { name: /email address/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+  });
+
   it("icon-only button has aria-label and passes axe", async () => {
     const { container } = render(
       <Button size="icon" aria-label="Close dialog">

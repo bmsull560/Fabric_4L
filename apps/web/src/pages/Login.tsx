@@ -9,7 +9,7 @@
  *  Trace 3 — Role Normalization: handled by AuthContext → userTierStore
  *
  * Flow:
- * 1a. Email/password — dev bypass in dev, placeholder for production auth
+ * 1a. Email/password — dev bypass in dev, pending production auth implementation (AUTH-XXX)
  * 1b. SSO button → initiateLogin(tenantSlug) → IdP redirect (Trace 1)
  * 2.  /login/callback → handleCallback(code, state) → JWT exchange (Trace 2)
  * 3.  Role sync → userTierStore.setUserRole() (Trace 3)

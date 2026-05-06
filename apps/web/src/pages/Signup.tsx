@@ -5,7 +5,7 @@
  *
  * Codemap coverage:
  *  Trace 1 — SSO buttons reuse the same OIDC initiateLogin flow as Login page
- *  Email/password signup: placeholder until backend supports registration endpoint
+ *  Email/password signup: pending backend registration endpoint (AUTH-XXX)
  *
  * After successful signup the user is auto-logged-in (Skill §2: "Auto-login after signup").
  */

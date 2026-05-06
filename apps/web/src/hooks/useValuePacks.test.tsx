@@ -166,5 +166,136 @@ describe("useValuePacks", () => {
         {}
       );
     });
+
+    it("cancels queries with correct cache keys during optimistic update", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const cancelSpy = vi.spyOn(queryClient, "cancelQueries");
+
+      function Wrapper({ children }: { children: React.ReactNode }) {
+        return (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        );
+      }
+
+      vi.mocked(apiClient.post).mockResolvedValueOnce(
+        createMockResponse({ success: true, message: "Applied" })
+      );
+
+      const { result } = renderHook(() => useApplyValuePack(), {
+        wrapper: Wrapper,
+      });
+
+      result.current.mutate({ packId: "pack-1" });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+      // Verify cancelQueries was called with both detail and list cache keys
+      expect(cancelSpy).toHaveBeenCalledWith({ queryKey: QK.valuePacks.detail("pack-1") });
+      expect(cancelSpy).toHaveBeenCalledWith({ queryKey: QK.valuePacks.list({}) });
+    });
+
+    it("rolls back optimistic update on error", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+
+      // Pre-populate cache with existing pack
+      const initialPack = {
+        id: "pack-1",
+        pack_id: "pack-1",
+        name: "Test Pack",
+        industry: "SaaS / B2B",
+        status: "draft" as const,
+        scope: "global" as const,
+        driver_count: 5,
+        formula_count: 10,
+        benchmark_count: 5,
+        workflow_count: 2,
+        updated_at: "2024-01-01T00:00:00Z",
+      };
+      queryClient.setQueryData(QK.valuePacks.detail("pack-1"), initialPack);
+      queryClient.setQueryData(QK.valuePacks.list({}), [initialPack]);
+
+      function Wrapper({ children }: { children: React.ReactNode }) {
+        return (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        );
+      }
+
+      vi.mocked(apiClient.post).mockRejectedValueOnce(
+        new ValuePackApiError("Pack not found", 404)
+      );
+
+      const { result } = renderHook(() => useApplyValuePack(), {
+        wrapper: Wrapper,
+      });
+
+      await expect(result.current.mutateAsync({ packId: "pack-1" })).rejects.toThrow();
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+
+      // Verify cache was rolled back to initial state
+      const finalDetail = queryClient.getQueryData(QK.valuePacks.detail("pack-1"));
+      const finalList = queryClient.getQueryData(QK.valuePacks.list({}));
+      expect(finalDetail).toEqual(initialPack);
+      expect(finalList).toEqual([initialPack]);
+    });
+
+    it("optimistically updates pack status to active", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+
+      // Pre-populate cache with draft pack
+      const draftPack = {
+        id: "pack-1",
+        pack_id: "pack-1",
+        name: "Test Pack",
+        industry: "SaaS / B2B",
+        status: "draft" as const,
+        scope: "global" as const,
+        driver_count: 5,
+        formula_count: 10,
+        benchmark_count: 5,
+        workflow_count: 2,
+        updated_at: "2024-01-01T00:00:00Z",
+      };
+      queryClient.setQueryData(QK.valuePacks.detail("pack-1"), draftPack);
+      queryClient.setQueryData(QK.valuePacks.list({}), [draftPack]);
+
+      function Wrapper({ children }: { children: React.ReactNode }) {
+        return (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        );
+      }
+
+      vi.mocked(apiClient.post).mockImplementation(() =>
+        new Promise((resolve) => setTimeout(() => resolve(createMockResponse({ success: true })), 100))
+      );
+
+      const { result } = renderHook(() => useApplyValuePack(), {
+        wrapper: Wrapper,
+      });
+
+      result.current.mutate({ packId: "pack-1" });
+
+      // Check optimistic update immediately after mutation starts
+      await waitFor(() => {
+        const optimisticDetail = queryClient.getQueryData(QK.valuePacks.detail("pack-1"));
+        const optimisticList = queryClient.getQueryData(QK.valuePacks.list({}));
+        expect(optimisticDetail?.status).toBe("active");
+        expect(optimisticList?.[0]?.status).toBe("active");
+      });
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    });
   });
 });

@@ -578,6 +578,17 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Bundle Analysis
+        run: pnpm run build:analyze
+
+      - name: Upload bundle report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bundle-report
+          path: apps/web/dist/public/stats.html
+          retention-days: 14
+
       - name: Test
         run: pnpm test -- --reporter=junit --outputFile=frontend-junit.xml --reporter=default --coverage
 

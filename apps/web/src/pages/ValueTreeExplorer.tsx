@@ -364,7 +364,7 @@ export default function ValueTreeExplorer() {
               variant="primary"
               disabled
               onClick={() => {
-                // Placeholder for future New Tree flow
+                // New Tree flow pending backend API support (L3-XXX)
                 // Keep tree + path caches coherent after edits/imports.
                 invalidateTree(entityId ?? undefined);
               }}
@@ -375,7 +375,7 @@ export default function ValueTreeExplorer() {
               variant="ghost"
               disabled
               onClick={() => {
-                // Placeholder for future Import flow
+                // Import flow pending backend API support (L3-XXX)
                 // Keep tree + path caches coherent after edits/imports.
                 invalidateTree(entityId ?? undefined);
               }}

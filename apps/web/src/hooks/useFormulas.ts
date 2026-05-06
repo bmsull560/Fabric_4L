@@ -205,14 +205,14 @@ export function useCreateFormula() {
     },
     onMutate: async (newFormula) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: QK.formulas.all });
+      await queryClient.cancelQueries({ queryKey: QK.formulas.list({}) });
       
       // Snapshot previous value
       const previousFormulas = queryClient.getQueryData<Formula[]>(QK.formulas.list({}));
       
       // Optimistically add new formula to list with required fields
       // Note: Using a temporary ID that will be replaced by server response
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
       const optimisticFormula: Formula = {
         id: tempId,
         formula_id: tempId,
@@ -274,7 +274,7 @@ export function useUpdateFormula() {
     onMutate: async ({ formulaId, ...updates }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: QK.formulas.detail(formulaId) });
-      await queryClient.cancelQueries({ queryKey: QK.formulas.all });
+      await queryClient.cancelQueries({ queryKey: QK.formulas.list({}) });
       
       // Snapshot previous values
       const previousFormula = queryClient.getQueryData<Formula>(QK.formulas.detail(formulaId));

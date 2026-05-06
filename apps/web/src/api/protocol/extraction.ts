@@ -63,7 +63,8 @@ export async function fetchExtractionStatus(jobId: string): Promise<ExtractionSt
  * Until then, it returns an empty array to prevent mock data in production.
  */
 export async function fetchExtractedEntities(jobId: string): Promise<ExtractedEntity[]> {
-  // TODO: Enable real endpoint once backend ticket L2-42 is resolved.
+  // NOTE: Real endpoint is pending backend implementation (ticket L2-42).
+  // To enable: Uncomment the commented code below and remove the console.warn.
   // const response = await apiClient.get(LAYER, `/v1/extract/${jobId}/entities`);
   // const parsed = ExtractedEntityListSchema.safeParse(response.data);
   // if (!parsed.success) {

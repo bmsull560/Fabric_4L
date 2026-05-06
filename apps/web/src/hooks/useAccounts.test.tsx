@@ -366,6 +366,74 @@ describe('useAccounts', () => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: QK.accounts.detail('acc-001') });
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: QK.accounts.list({}) });
     });
+
+    it('does not perform optimistic updates (removed for correctness)', async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const cancelSpy = vi.spyOn(queryClient, 'cancelQueries');
+      const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData');
+
+      function Wrapper({ children }: { children: React.ReactNode }) {
+        return (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        );
+      }
+
+      // Pre-populate cache with existing account
+      const initialAccount = { ...sampleAccount, sync_status: 'synced' as const };
+      queryClient.setQueryData(QK.accounts.detail('acc-001'), initialAccount);
+
+      (apiClient.post as Mock).mockImplementation(() =>
+        new Promise((resolve) => setTimeout(() => resolve(createMockResponse(sampleAccount)), 100))
+      );
+
+      const { result } = renderHook(() => useRefreshAccount(), {
+        wrapper: Wrapper,
+      });
+
+      result.current.mutate('acc-001');
+
+      // Verify no optimistic update was performed (no cancelQueries or setQueryData calls)
+      expect(cancelSpy).not.toHaveBeenCalled();
+      expect(setQueryDataSpy).not.toHaveBeenCalled();
+
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    });
+
+    it('handles refresh error without rollback (no optimistic update to rollback)', async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+
+      // Pre-populate cache with existing account
+      const initialAccount = { ...sampleAccount, sync_status: 'synced' as const };
+      queryClient.setQueryData(QK.accounts.detail('acc-001'), initialAccount);
+
+      function Wrapper({ children }: { children: React.ReactNode }) {
+        return (
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        );
+      }
+
+      (apiClient.post as Mock).mockRejectedValueOnce(new Error('Network error'));
+
+      const { result } = renderHook(() => useRefreshAccount(), {
+        wrapper: Wrapper,
+      });
+
+      await expect(result.current.mutateAsync('acc-001')).rejects.toThrow();
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+
+      // Verify cache remains unchanged (since no optimistic update was made)
+      const finalAccount = queryClient.getQueryData(QK.accounts.detail('acc-001'));
+      expect(finalAccount).toEqual(initialAccount);
+    });
   });
 
   describe('useAccountFilterOptions hook', () => {

@@ -8,7 +8,7 @@
  * - useApproveFormula: Approval action mutation
  * - useSubmitFormula: Formula submission mutation
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
@@ -268,6 +268,99 @@ describe('useUpdateFormula', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
+
+  it('cancels queries with correct cache keys during optimistic update', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const cancelSpy = vi.spyOn(queryClient, 'cancelQueries');
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+
+    server.use(
+      http.patch('/api/v1/graph/formulas/:id', () => {
+        return HttpResponse.json({
+          id: 'formula-1',
+          formula_id: 'formula-1',
+          name: 'Updated Formula Name',
+          version: '1.0.1',
+          status: 'active',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+        });
+      })
+    );
+
+    const { result } = renderHook(() => useUpdateFormula(), { wrapper: Wrapper });
+
+    result.current.mutate({
+      formulaId: 'formula-1',
+      name: 'Updated Formula Name',
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // Verify cancelQueries was called with both detail and list cache keys
+    expect(cancelSpy).toHaveBeenCalledWith({ queryKey: QK.formulas.detail('formula-1') });
+    expect(cancelSpy).toHaveBeenCalledWith({ queryKey: QK.formulas.list({}) });
+  });
+
+  it('rolls back optimistic update on error', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    // Pre-populate cache with existing formula
+    const initialFormula = {
+      id: 'formula-1',
+      formula_id: 'formula-1',
+      name: 'Original Name',
+      version: '1.0.0',
+      status: 'active',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+      used_in_count: 0,
+      formula_type: 'simple',
+      domain: 'general',
+    };
+    queryClient.setQueryData(QK.formulas.detail('formula-1'), initialFormula);
+    queryClient.setQueryData(QK.formulas.list({}), [initialFormula]);
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+
+    server.use(
+      http.patch('/api/v1/graph/formulas/:id', () => {
+        return HttpResponse.json({ error: 'Formula not found' }, { status: 404 });
+      })
+    );
+
+    const { result } = renderHook(() => useUpdateFormula(), { wrapper: Wrapper });
+
+    await expect(result.current.mutateAsync({
+      formulaId: 'formula-1',
+      name: 'Will Fail',
+    })).rejects.toThrow();
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    // Verify cache was rolled back to initial state
+    const finalDetail = queryClient.getQueryData(QK.formulas.detail('formula-1'));
+    const finalList = queryClient.getQueryData(QK.formulas.list({}));
+    expect(finalDetail).toEqual(initialFormula);
+    expect(finalList).toEqual([initialFormula]);
+  });
 });
 
 describe('useCreateFormula', () => {
@@ -322,5 +415,100 @@ describe('useCreateFormula', () => {
     })).rejects.toThrow();
 
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  it('cancels queries with correct cache key during optimistic update', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const cancelSpy = vi.spyOn(queryClient, 'cancelQueries');
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+
+    server.use(
+      http.post('/api/v1/graph/formulas', () => {
+        return HttpResponse.json({
+          id: 'formula-new',
+          formula_id: 'formula-new',
+          name: 'New Formula',
+          version: '1.0.0',
+          status: 'draft',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+        });
+      })
+    );
+
+    const { result } = renderHook(() => useCreateFormula(), { wrapper: Wrapper });
+
+    result.current.mutate({
+      name: 'New Formula',
+      description: 'Test formula',
+      expression: 'x + y',
+      variables: ['x', 'y'],
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // Verify cancelQueries was called with the correct cache key
+    expect(cancelSpy).toHaveBeenCalledWith({ queryKey: QK.formulas.list({}) });
+  });
+
+  it('rolls back optimistic update on error', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    // Pre-populate cache with existing formulas
+    queryClient.setQueryData(QK.formulas.list({}), [
+      {
+        id: 'formula-1',
+        formula_id: 'formula-1',
+        name: 'Existing Formula',
+        version: '1.0.0',
+        status: 'active',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        used_in_count: 0,
+        formula_type: 'simple',
+        domain: 'general',
+      },
+    ]);
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+
+    server.use(
+      http.post('/api/v1/graph/formulas', () => {
+        return HttpResponse.json({ error: 'Invalid formula' }, { status: 400 });
+      })
+    );
+
+    const { result } = renderHook(() => useCreateFormula(), { wrapper: Wrapper });
+
+    const initialData = queryClient.getQueryData(QK.formulas.list({}));
+
+    await expect(result.current.mutateAsync({
+      name: 'Invalid',
+      expression: 'bad',
+      variables: [],
+    })).rejects.toThrow();
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    // Verify cache was rolled back to initial state
+    const finalData = queryClient.getQueryData(QK.formulas.list({}));
+    expect(finalData).toEqual(initialData);
   });
 });

@@ -1,6 +1,12 @@
 """Models API routes for Layer 3.
 
 Provides endpoints for Value Model CRUD and management.
+
+SECURITY WARNING: This module is NOT tenant-scoped. Cypher queries operate
+on the full graph without tenant_id filtering. This is a known gap tracked
+in config/production-readiness/l3-tenant-isolation-gate.yaml.
+Do NOT mark L3 tenant isolation complete until this module is migrated.
+See: docs/audit/l3-neo4j-label-tenant-classification.md (T1)
 """
 
 import base64

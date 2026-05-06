@@ -10,7 +10,8 @@
  *   - Job detail panel (right mid)
  *   - Logs/Output panel (right bottom)
  */
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Plus, Play, Pause, ChevronLeft, ChevronRight, AlertCircle, Info } from 'lucide-react';
 import { PageHeader, Btn } from '@/components/WfPrimitives';
 import { useNavigation } from '@/hooks';
@@ -67,12 +68,31 @@ const JOB_STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'outline' | 
 };
 
 export default function IngestionJobs() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // UI state from Zustand store
   const { selectedJobId, setSelectedJobId, filters, setStatusFilter, setDateFrom, setDateTo, resetFilters } =
     useIngestionJobsStore();
 
-  // Local pagination state
-  const [page, setPage] = useState(1);
+  // Local pagination state initialized from URL
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get('page');
+    return p ? Math.max(1, parseInt(p, 10)) : 1;
+  });
+
+  // Initialize selected job from URL on mount
+  useEffect(() => {
+    const jobId = searchParams.get('job');
+    if (jobId) setSelectedJobId(jobId);
+  }, [searchParams, setSelectedJobId]);
+
+  // Sync page and selected job to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (page > 1) params.set('page', String(page));
+    if (selectedJobId) params.set('job', selectedJobId);
+    setSearchParams(params, { replace: true });
+  }, [page, selectedJobId, setSearchParams]);
 
   // Build API filters
   const apiFilters: JobListFilters = useMemo(
@@ -324,7 +344,7 @@ export default function IngestionJobs() {
               Actions
             </span>
             <div className="flex items-center gap-2">
-              {/* Batch operations coming soon - disabled pending backend support */}
+              {/* Batch operations disabled pending backend API support (L1-XXX) */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Btn variant="outline" className="flex-1" disabled>
@@ -333,7 +353,7 @@ export default function IngestionJobs() {
                   </Btn>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p className="text-[11px]">Batch Run All — coming in future release</p>
+                  <p className="text-[11px]">Batch Run All — pending backend API support</p>
                 </TooltipContent>
               </Tooltip>
               <Tooltip>

@@ -3,6 +3,12 @@
 Provides endpoints for benchmark CRUD and policy management.
 Benchmarks are stored as Neo4j Benchmark nodes and may be linked to
 ValuePacks via hasBenchmark relationships.
+
+SECURITY WARNING: This module is NOT tenant-scoped. Cypher queries operate
+on the full graph without tenant_id filtering. This is a known gap tracked
+in config/production-readiness/l3-tenant-isolation-gate.yaml.
+Do NOT mark L3 tenant isolation complete until this module is migrated.
+See: docs/audit/l3-neo4j-label-tenant-classification.md (T1)
 """
 
 from datetime import UTC, datetime
@@ -76,6 +82,8 @@ class BenchmarkPolicyUpdate(BaseModel):
 
 @router.get("/benchmarks", response_model=list[BenchmarkSummary])
 async def list_benchmarks(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     industry: str | None = Query(None, description="Filter by industry"),
     status: str | None = Query(None, description="Filter by status"),
     confidence: str | None = Query(None, description="Filter by confidence level"),
@@ -146,6 +154,8 @@ async def list_benchmarks(
 
 @router.get("/benchmarks/policies", response_model=list[BenchmarkPolicy])
 async def list_benchmark_policies(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
@@ -176,6 +186,8 @@ async def list_benchmark_policies(
 
 @router.get("/benchmarks/{benchmark_id}", response_model=BenchmarkSummary)
 async def get_benchmark(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     benchmark_id: str,
     driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
@@ -217,6 +229,8 @@ async def get_benchmark(
 
 @router.put("/benchmarks/policies/{policy_id}", response_model=BenchmarkPolicy)
 async def update_benchmark_policy(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     policy_id: str,
     update: BenchmarkPolicyUpdate,
     driver: AsyncDriver = Depends(get_driver),

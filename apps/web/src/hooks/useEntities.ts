@@ -248,16 +248,19 @@ export function useEntity(id: string | null) {
 
 /**
  * Create entity - uses Neo4j directly
- * Note: This is a placeholder as Layer 3 doesn't expose entity creation
+ * Note: Entity creation is not supported in Layer 3 API.
+ * Backend coordination required: L3-XXX (to be created)
+ * This feature requires a new endpoint to create entities in the knowledge graph.
  */
 export function useCreateEntity() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (entity: Omit<Entity, 'id' | 'createdAt'>) => {
-      // Placeholder - would need to call extraction layer or Neo4j directly
+      // Entity creation not implemented in Layer 3 API
+      // Would need to call extraction layer or Neo4j directly
       log.warn('Entity creation not implemented in Layer 3 API');
-      throw new Error('Entity creation not supported');
+      throw new Error('Entity creation not supported - backend API required');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.entities.list() });

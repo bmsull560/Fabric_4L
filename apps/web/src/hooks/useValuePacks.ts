@@ -144,24 +144,24 @@ export function useApplyValuePack() {
     onMutate: async ({ packId }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: QK.valuePacks.detail(packId) });
-      await queryClient.cancelQueries({ queryKey: QK.valuePacks.all });
+      await queryClient.cancelQueries({ queryKey: QK.valuePacks.list({}) });
       
       // Snapshot previous values
       const previousPack = queryClient.getQueryData<ValuePack>(QK.valuePacks.detail(packId));
       const previousPacks = queryClient.getQueryData<ValuePack[]>(QK.valuePacks.list({}));
       
-      // Optimistically update pack detail to show deploying status
-      // Note: Using 'active' as the final state since deployment is quick
+      // Optimistically update pack detail to show applying status
+      // Note: Only updating status, not scope, since scope is determined by server-side logic
       queryClient.setQueryData<ValuePack>(QK.valuePacks.detail(packId), (old) => {
         if (!old) return old;
-        return { ...old, status: 'active' as PackStatus, scope: 'tenant' };
+        return { ...old, status: 'active' as PackStatus };
       });
-      
+
       // Optimistically update pack in list
       queryClient.setQueryData<ValuePack[]>(QK.valuePacks.list({}), (old) => {
-        return (old || []).map(p => 
-          p.pack_id === packId 
-            ? { ...p, status: 'active' as PackStatus, scope: 'tenant' }
+        return (old || []).map(p =>
+          p.pack_id === packId
+            ? { ...p, status: 'active' as PackStatus }
             : p
         );
       });

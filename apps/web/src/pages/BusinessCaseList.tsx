@@ -191,23 +191,23 @@ function BusinessCaseListContent() {
   const { navigateTo } = useNavigation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Validation helpers for URL params
-  const validateStatus = (val: string | null): BusinessCaseFilters['status'] => {
+  // Validation helpers for URL params (memoized to avoid recreating on every render)
+  const validateStatus = useCallback((val: string | null): BusinessCaseFilters['status'] => {
     if (!val) return 'all';
     const validStatuses: BusinessCaseFilters['status'][] = ['all', 'active', 'draft', 'archived'];
     return validStatuses.includes(val as BusinessCaseFilters['status']) ? val as BusinessCaseFilters['status'] : 'all';
-  };
+  }, []);
 
-  const validateSortField = (val: string | null): SortField => {
+  const validateSortField = useCallback((val: string | null): SortField => {
     if (!val) return 'updatedAt';
     const validFields: SortField[] = ['name', 'company', 'totalValue', 'confidence', 'updatedAt'];
     return validFields.includes(val as SortField) ? val as SortField : 'updatedAt';
-  };
+  }, []);
 
-  const validateSortDirection = (val: string | null): SortDirection => {
+  const validateSortDirection = useCallback((val: string | null): SortDirection => {
     if (!val) return 'desc';
     return val === 'asc' || val === 'desc' ? val : 'desc';
-  };
+  }, []);
 
   // Initialize state from URL search params with validation
   const [search, setSearch] = useState(searchParams.get('search') || "");

@@ -315,7 +315,7 @@ export function useSyncAccounts() {
 export function useRefreshAccount() {
   const queryClient = useQueryClient();
 
-  return useMutation<Account, AccountApiError, string, { previousAccount?: Account }>({
+  return useMutation<Account, AccountApiError, string>({
     mutationFn: async (accountId: string) => {
       if (!accountId || accountId.trim() === '') {
         throw new AccountApiError('Account ID is required');
@@ -323,33 +323,13 @@ export function useRefreshAccount() {
       const response = await apiClient.post('l4', `/accounts/${accountId}/refresh`, {});
       return response.data as Account;
     },
-    onMutate: async (accountId) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: QK.accounts.detail(accountId) });
-      
-      // Snapshot previous value
-      const previousAccount = queryClient.getQueryData<Account>(QK.accounts.detail(accountId));
-      
-      // Optimistically update account to show sync in progress
-      queryClient.setQueryData<Account>(QK.accounts.detail(accountId), (old) => {
-        if (!old) return old;
-        // Preserve existing sync_status if it's already set, otherwise default to 'pending'
-        return { ...old, sync_status: old.sync_status || 'pending' as SyncStatus };
-      });
-      
-      return { previousAccount };
-    },
-    onError: (error, accountId, context) => {
-      // Rollback to previous value
-      if (context?.previousAccount) {
-        queryClient.setQueryData(QK.accounts.detail(accountId), context.previousAccount);
-      }
-      log.error('RefreshAccount failed', { accountId, error: error.message });
-    },
     onSuccess: (data) => {
       // Invalidate to get fresh data from server
       queryClient.invalidateQueries({ queryKey: QK.accounts.detail(data.id) });
       queryClient.invalidateQueries({ queryKey: QK.accounts.list({}) });
+    },
+    onError: (error, accountId) => {
+      log.error('RefreshAccount failed', { accountId, error: error.message });
     },
   });
 }

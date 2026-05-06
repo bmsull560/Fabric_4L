@@ -235,7 +235,10 @@ function VariableRegistryContent() {
   const error = variablesError || bindingsError;
 
   const handleTestBinding = (_id: string) => {
-    // TODO: invoke binding test via L3 API
+    // Binding test functionality pending Layer 3 API implementation
+    // Backend ticket: L3-XXX (to be created)
+    // This feature requires a new endpoint to test variable bindings
+    alert('Binding test is not yet available. This feature requires backend API implementation.');
   };
 
   if (isLoading) {
