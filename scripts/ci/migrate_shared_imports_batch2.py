@@ -2,7 +2,7 @@
 """
 Migrate legacy shared imports to value_fabric.shared imports - Batch 2: Test Files
 
-Scope: tests/, services/*/tests/, packages/*/tests/, value-fabric/tests/
+Scope: tests/, services/*/tests/, packages/*/tests/, value-fabric/tests/ (legacy, being deleted)
 Rules:
 - Replace: from shared.X import Y → from value_fabric.shared.X import Y
 - Replace: import shared.X as X → import value_fabric.shared.X as X

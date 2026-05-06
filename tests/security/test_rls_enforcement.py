@@ -37,15 +37,15 @@ import pytest
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _L4_DATABASE_MODULE = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "database.py"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "database.py"
 )
 
 _L4_MIGRATIONS_DIR = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "migrations" / "versions"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "migrations" / "versions"
 )
 
 _L4_MODELS_DIR = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "models"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "models"
 )
 
 
@@ -74,7 +74,7 @@ def _extract_model_tables_with_tenant_id() -> Set[str]:
 
     model_files = list(_L4_MODELS_DIR.glob("*.py"))
     # Also check tenant models
-    tenant_models_dir = _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tenants" / "models"
+    tenant_models_dir = _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "tenants" / "models"
     if tenant_models_dir.exists():
         model_files.extend(tenant_models_dir.glob("*.py"))
 

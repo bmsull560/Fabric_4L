@@ -161,7 +161,7 @@ def load_config(path: Path | str | None = None) -> CrawlerConfig:
     search_paths = [
         Path("crawler.config.yml"),
         Path("config/crawler.yml"),
-        Path.home() / ".config/value-fabric/crawler.yml",
+        Path.home() / ".config/services/crawler.yml",
     ]
 
     for config_path in search_paths:

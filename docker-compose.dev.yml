@@ -123,6 +123,7 @@ services:
     environment:
       # Auth bypass for local dev — injects a dev tenant context on every request
       - DEV_AUTH_BYPASS=true
+      - ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true
       # JWT secret (required by jwt.py at import time, but bypassed at runtime)
       - JWT_SECRET=dev-local-secret-do-not-use-in-production-minimum-32-chars
       # Database
@@ -139,11 +140,13 @@ services:
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
       - THESYS_API_KEY=${THESYS_API_KEY:-}
       # Inter-layer URLs (point to self for now — stubs return 503)
-      - LAYER1_API_URL=http://layer4:8000
-      - LAYER2_API_URL=http://layer4:8000
-      - LAYER3_API_URL=http://layer4:8000
-      - LAYER5_API_URL=http://layer4:8000
-      - LAYER6_API_URL=http://layer4:8000
+      - LAYER4_LAYER1_API_URL=http://layer4:8000
+      - LAYER4_LAYER2_API_URL=http://layer4:8000
+      - LAYER4_LAYER3_API_URL=http://layer4:8000
+      - LAYER4_LAYER5_API_URL=http://layer4:8000
+      - LAYER5_GROUND_TRUTH_URL=http://layer4:8000
+      - LAYER4_LAYER6_API_URL=http://layer4:8000
+      - LAYER6_BENCHMARKS_URL=http://layer4:8000
       # Logging
       - LOG_LEVEL=debug
       - PYTHONPATH=/app

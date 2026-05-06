@@ -107,7 +107,7 @@ def scan_file(path: str) -> list[tuple]:
 
 def main():
     targets = [
-        PROJECT_ROOT / "value-fabric",
+        PROJECT_ROOT / "services",
         PROJECT_ROOT / "shared",
     ]
 

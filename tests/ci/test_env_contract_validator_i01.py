@@ -15,7 +15,7 @@ def test_env_contract_validator_targets_active_env_examples_and_fails_closed():
 
     assert "../../.env.example" in source
     assert "../../apps/web/.env.example" in source
-    assert "../../value-fabric/.env.example" not in source
+    assert "../../services/.env.example" not in source
     assert "../../frontend/.env.example" not in source
     assert "existsSync(filePath)" in source
     assert "Contract file does not exist" in source

@@ -22,11 +22,11 @@ if src_path in sys.path:
 if layer1_root not in sys.path:
     sys.path.insert(0, layer1_root)
 
-# Add value-fabric root so 'shared' resolves correctly
+# Add services root so 'shared' resolves correctly
 if value_fabric_root not in sys.path:
     sys.path.insert(0, value_fabric_root)
 
-# Import models (use src.* to avoid shadowing value-fabric/shared)
+# Import models (use src.* to avoid shadowing services/shared)
 from src.shared.config import settings
 from src.shared.models import Base
 

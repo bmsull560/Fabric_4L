@@ -103,7 +103,7 @@ class SecretAuditLogger:
         
         # Validate and sanitize log file path to prevent path traversal
         self.log_file_path = self._validate_and_sanitize_path(
-            log_file_path or os.getenv("SECRET_AUDIT_LOG_PATH", "/var/log/value-fabric/secret-audit.log")
+            log_file_path or os.getenv("SECRET_AUDIT_LOG_PATH", "/var/log/services/secret-audit.log")
         )
         
         # Setup logger
@@ -145,9 +145,9 @@ class SecretAuditLogger:
         
         # Define allowed base directories
         allowed_bases = [
-            "/var/log/value-fabric",
+            "/var/log/services",
             "/tmp",
-            os.path.expanduser("~/.value-fabric/logs"),
+            os.path.expanduser("~/.services/logs"),
         ]
         
         # Check if normalized path starts with any allowed base
@@ -157,7 +157,7 @@ class SecretAuditLogger:
         
         # If path is relative, make it absolute under default base
         if not path.startswith("/"):
-            default_base = "/var/log/value-fabric"
+            default_base = "/var/log/services"
             return os.path.abspath(os.path.join(default_base, path))
         
         # Path is outside allowed directories - reject it

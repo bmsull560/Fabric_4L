@@ -54,7 +54,6 @@ SCAN_ROOTS = (
     Path("packages"),
     Path("shared"),
     Path("value_fabric"),
-    Path("value-fabric"),
 )
 
 

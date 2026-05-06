@@ -59,7 +59,7 @@ def test_validate_coverage_reports_stale_entries_separately(tmp_path, monkeypatc
         "docker": set(),
         "github-actions": set(),
     }
-    codeowners = "/apps/web/ @value-fabric/frontend\n"
+    codeowners = "/apps/web/ @services/frontend\n"
 
     missing_dependabot, missing_ownership, stale_dependabot = validator.validate_coverage(
         packages, entries, codeowners

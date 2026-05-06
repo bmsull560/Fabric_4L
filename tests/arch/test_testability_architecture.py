@@ -14,9 +14,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Ensure shared module is importable
-_vf_path = str(REPO_ROOT / "value-fabric")
-if _vf_path not in sys.path:
-    sys.path.insert(0, _vf_path)
+_services_path = str(REPO_ROOT / "services")
+if _services_path not in sys.path:
+    sys.path.insert(0, _services_path)
 
 
 class TestClockProtocolCompliance:
