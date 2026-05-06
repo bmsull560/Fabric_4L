@@ -2,11 +2,7 @@
 
 Provides endpoints for variable definitions, search, and resolution.
 
-SECURITY WARNING: This module is NOT tenant-scoped. Cypher queries operate
-on the full graph without tenant_id filtering. This is a known gap tracked
-in config/production-readiness/l3-tenant-isolation-gate.yaml.
-Do NOT mark L3 tenant isolation complete until this module is migrated.
-See: docs/audit/l3-neo4j-label-tenant-classification.md (T1)
+All Cypher queries are tenant-scoped via `create_neo4j_tenant_session`.
 """
 
 import os
@@ -200,8 +196,6 @@ class ValidateResponse(BaseModel):
 
 @router.get("/variables", response_model=list[VariableSummary])
 async def search_variables(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     industry: str | None = Query(None, description="Filter by industry"),
     pack_id: str | None = Query(None, description="Filter by pack ID"),
     formula_id: str | None = Query(None, description="Filter by formula ID"),
@@ -272,8 +266,6 @@ async def search_variables(
 
 @router.get("/variables/{variable_id}", response_model=VariableDetail)
 async def get_variable(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     variable_id: str,
     api_key: APIKey = Depends(get_current_api_key),
 ):
@@ -336,8 +328,6 @@ async def get_variable(
 
 @router.post("/variables", response_model=VariableDetail, status_code=201)
 async def create_variable(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: VariableCreateRequest,
     api_key: APIKey = Depends(get_current_api_key),
 ):
@@ -440,8 +430,6 @@ async def create_variable(
 
 @router.put("/variables/{variable_id}", response_model=VariableDetail)
 async def update_variable(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     variable_id: str,
     request: VariableUpdateRequest,
     api_key: APIKey = Depends(get_current_api_key),
@@ -527,8 +515,6 @@ async def update_variable(
 
 @router.post("/variables/{variable_id}/resolve", response_model=ResolveResponse)
 async def resolve_variable(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     variable_id: str,
     request: ResolveRequest,
     api_key: APIKey = Depends(get_current_api_key),
@@ -606,8 +592,6 @@ async def resolve_variable(
 
 @router.post("/variables/{variable_id}/validate", response_model=ValidateResponse)
 async def validate_value(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     variable_id: str,
     request: ValidateRequest,
     api_key: APIKey = Depends(get_current_api_key),
@@ -727,8 +711,6 @@ class SourceBindingResponse(BaseModel):
 
 @router.get("/variables/stats", response_model=VariableStatsResponse)
 async def get_variable_stats(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Return aggregate statistics for the variable registry."""
@@ -764,8 +746,6 @@ async def get_variable_stats(
 
 @router.get("/variables/bindings", response_model=list[SourceBindingResponse])
 async def list_source_bindings(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """List data source binding configurations and their health status."""

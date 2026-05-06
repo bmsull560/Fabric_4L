@@ -2,11 +2,7 @@
 
 Provides endpoints for formula versioning, lifecycle, and governance.
 
-SECURITY WARNING: This module is NOT tenant-scoped. Cypher queries operate
-on the full graph without tenant_id filtering. This is a known gap tracked
-in config/production-readiness/l3-tenant-isolation-gate.yaml.
-Do NOT mark L3 tenant isolation complete until this module is migrated.
-See: docs/audit/l3-neo4j-label-tenant-classification.md (T1)
+All Cypher queries are tenant-scoped via `create_neo4j_tenant_session`.
 """
 
 import uuid
@@ -177,8 +173,6 @@ class ApprovalQueueItem(BaseModel):
 
 @router.get("/formulas/approvals/pending", response_model=list[ApprovalQueueItem])
 async def list_pending_approvals(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """List all formulas currently pending review/approval."""
@@ -186,6 +180,7 @@ async def list_pending_approvals(
     query = """
     MATCH (f:Formula)
     WHERE f.status = 'under_review'
+      AND f.tenant_id = $tenant_id
     OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion)
     WITH f, fv
     ORDER BY fv.createdAt DESC
@@ -195,7 +190,7 @@ async def list_pending_approvals(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query)
+        result = await neo4j.run(query, tenant_id=tenant_id)
         records = await result.data()
 
         return [
@@ -221,8 +216,6 @@ async def list_pending_approvals(
     "/formulas/{formula_id}/versions", response_model=list[FormulaVersionResponse]
 )
 async def list_formula_versions(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     include_retired: bool = Query(False, description="Include retired versions"),
     api_key: APIKey = Depends(get_current_api_key),
@@ -231,7 +224,8 @@ async def list_formula_versions(
     tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (f:Formula {id: $formula_id})-[:HAS_VERSION]->(fv:FormulaVersion)
-    WHERE $include_retired OR fv.status <> 'retired'
+    WHERE ($include_retired OR fv.status <> 'retired')
+      AND f.tenant_id = $tenant_id
     RETURN fv
     ORDER BY fv.createdAt DESC
     """
@@ -241,6 +235,7 @@ async def list_formula_versions(
             query,
             formula_id=formula_id,
             include_retired=include_retired,
+            tenant_id=tenant_id,
         )
         records = await result.data()
 
@@ -262,8 +257,6 @@ async def list_formula_versions(
     "/formulas/{formula_id}/governance", response_model=FormulaGovernanceResponse
 )
 async def get_formula_governance(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     api_key: APIKey = Depends(get_current_api_key),
 ):
@@ -271,13 +264,14 @@ async def get_formula_governance(
     tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion)
     RETURN f,
            collect(DISTINCT fv) as versions
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query, formula_id=formula_id)
+        result = await neo4j.run(query, formula_id=formula_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record or not record["f"]:
@@ -324,8 +318,6 @@ async def get_formula_governance(
     status_code=201,
 )
 async def create_formula_version(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: CreateVersionRequest,
     api_key: APIKey = Depends(get_current_api_key),
@@ -334,9 +326,9 @@ async def create_formula_version(
     tenant_id = getattr(api_key, "tenant_id", None)
 
     # Check formula exists
-    check_query = "MATCH (f:Formula {id: $formula_id}) RETURN f"
+    check_query = "MATCH (f:Formula {id: $formula_id}) WHERE f.tenant_id = $tenant_id RETURN f"
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(check_query, formula_id=formula_id)
+        result = await neo4j.run(check_query, formula_id=formula_id, tenant_id=tenant_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Formula not found")
 
@@ -346,16 +338,18 @@ async def create_formula_version(
     # Get current version as previous
     prev_query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     RETURN f.version as current_version
     """
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(prev_query, formula_id=formula_id)
+        result = await neo4j.run(prev_query, formula_id=formula_id, tenant_id=tenant_id)
         record = await result.single()
         previous_version = record["current_version"] if record else None
 
     # Create version
     query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     CREATE (fv:FormulaVersion {
         id: $version_id,
         version: $version,
@@ -406,8 +400,6 @@ async def create_formula_version(
 
 @router.post("/formulas/{formula_id}/submit", response_model=TransitionResponse)
 async def submit_for_review(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: SubmitForReviewRequest,
     api_key: APIKey = Depends(get_current_api_key),
@@ -417,11 +409,12 @@ async def submit_for_review(
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     RETURN f.status as status
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(check_query, formula_id=formula_id)
+        result = await neo4j.run(check_query, formula_id=formula_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -444,6 +437,7 @@ async def submit_for_review(
     query = """
     MATCH (f:Formula {id: $formula_id})
     WHERE f.status = 'draft'
+      AND f.tenant_id = $tenant_id
     MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
     SET f.status = 'under_review',
         f.submittedAt = $submitted_at,
@@ -459,6 +453,7 @@ async def submit_for_review(
             version=request.version,
             submitted_at=now,
             submitted_by=request.submitted_by,
+            tenant_id=tenant_id,
         )
         record = await result.single()
 
@@ -493,8 +488,6 @@ async def submit_for_review(
 
 @router.post("/formulas/{formula_id}/approve", response_model=TransitionResponse)
 async def approve_formula(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: ApproveRequest,
     api_key: APIKey = Depends(require_admin_role),
@@ -505,6 +498,7 @@ async def approve_formula(
 
     query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
     SET f.status = 'approved',
         f.approvedAt = $approved_at,
@@ -522,6 +516,7 @@ async def approve_formula(
             approved_at=now,
             approved_by=request.approved_by,
             comments=request.comments,
+            tenant_id=tenant_id,
         )
         record = await result.single()
 
@@ -549,8 +544,6 @@ async def approve_formula(
 
 @router.post("/formulas/{formula_id}/activate", response_model=TransitionResponse)
 async def activate_formula(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: ActivateRequest,
     api_key: APIKey = Depends(get_current_api_key),
@@ -563,11 +556,12 @@ async def activate_formula(
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     RETURN f.status as status
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(check_query, formula_id=formula_id)
+        result = await neo4j.run(check_query, formula_id=formula_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -587,6 +581,7 @@ async def activate_formula(
     # Perform activation
     query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
     SET f.status = 'active',
         f.activatedAt = $activated_at,
@@ -606,6 +601,7 @@ async def activate_formula(
             activated_by=request.requested_by,
             effective_date=effective_date,
             justification=request.justification,
+            tenant_id=tenant_id,
         )
         record = await result.single()
 
@@ -633,8 +629,6 @@ async def activate_formula(
 
 @router.post("/formulas/{formula_id}/deprecate", response_model=TransitionResponse)
 async def deprecate_formula(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: DeprecateRequest,
     api_key: APIKey = Depends(get_current_api_key),
@@ -644,11 +638,12 @@ async def deprecate_formula(
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     RETURN f.status as status
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(check_query, formula_id=formula_id)
+        result = await neo4j.run(check_query, formula_id=formula_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -667,6 +662,7 @@ async def deprecate_formula(
 
     query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     SET f.status = 'deprecated',
         f.deprecatedAt = $deprecated_at,
         f.deprecatedBy = $deprecated_by,
@@ -683,6 +679,7 @@ async def deprecate_formula(
             deprecated_by=request.requested_by,
             reason=request.reason,
             replacement_id=request.replacement_formula_id,
+            tenant_id=tenant_id,
         )
         record = await result.single()
 
@@ -712,8 +709,6 @@ async def deprecate_formula(
     "/formulas/{formula_id}/dependencies", response_model=list[DependencyResponse]
 )
 async def get_formula_dependencies(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     direction: str = Query(
         "both", description="Dependency direction: outgoing, incoming, or both"
@@ -727,10 +722,11 @@ async def get_formula_dependencies(
     if direction in ["outgoing", "both"]:
         outgoing_query = """
         MATCH (f:Formula {id: $formula_id})-[:DEPENDS_ON]->(dep:Formula)
+        WHERE f.tenant_id = $tenant_id
         RETURN dep.id as dep_id
         """
         async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-            result = await neo4j.run(outgoing_query, formula_id=formula_id)
+            result = await neo4j.run(outgoing_query, formula_id=formula_id, tenant_id=tenant_id)
             records = await result.data()
             for r in records:
                 deps.append(
@@ -744,10 +740,11 @@ async def get_formula_dependencies(
     if direction in ["incoming", "both"]:
         incoming_query = """
         MATCH (other:Formula)-[:DEPENDS_ON]->(f:Formula {id: $formula_id})
+        WHERE other.tenant_id = $tenant_id
         RETURN other.id as other_id
         """
         async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-            result = await neo4j.run(incoming_query, formula_id=formula_id)
+            result = await neo4j.run(incoming_query, formula_id=formula_id, tenant_id=tenant_id)
             records = await result.data()
             for r in records:
                 deps.append(
@@ -763,8 +760,6 @@ async def get_formula_dependencies(
 
 @router.post("/formulas/{formula_id}/validate", response_model=ValidationResponse)
 async def validate_activation(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     version: str = Query(..., description="Version to validate"),
     api_key: APIKey = Depends(get_current_api_key),
@@ -773,6 +768,7 @@ async def validate_activation(
     tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.tenant_id = $tenant_id
     OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
     OPTIONAL MATCH (f)-[:DEPENDS_ON]->(dep:Formula)
     WHERE dep.status <> 'active'
@@ -782,7 +778,7 @@ async def validate_activation(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query, formula_id=formula_id, version=version)
+        result = await neo4j.run(query, formula_id=formula_id, version=version, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:

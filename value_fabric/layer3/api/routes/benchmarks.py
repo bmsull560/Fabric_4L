@@ -4,11 +4,7 @@ Provides endpoints for benchmark CRUD and policy management.
 Benchmarks are stored as Neo4j Benchmark nodes and may be linked to
 ValuePacks via hasBenchmark relationships.
 
-SECURITY WARNING: This module is NOT tenant-scoped. Cypher queries operate
-on the full graph without tenant_id filtering. This is a known gap tracked
-in config/production-readiness/l3-tenant-isolation-gate.yaml.
-Do NOT mark L3 tenant isolation complete until this module is migrated.
-See: docs/audit/l3-neo4j-label-tenant-classification.md (T1)
+All Cypher queries are tenant-scoped via `create_neo4j_tenant_session`.
 """
 
 from datetime import UTC, datetime
@@ -81,8 +77,6 @@ class BenchmarkPolicyUpdate(BaseModel):
 
 @router.get("/benchmarks", response_model=list[BenchmarkSummary])
 async def list_benchmarks(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     industry: str | None = Query(None, description="Filter by industry"),
     status: str | None = Query(None, description="Filter by status"),
     confidence: str | None = Query(None, description="Filter by confidence level"),
@@ -94,7 +88,7 @@ async def list_benchmarks(
     tenant_id = getattr(api_key, "tenant_id", None)
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Invalid tenant context")
-    where_conditions: list[str] = ["b.tenant_id = $tenant_id"]
+    where_conditions: list[str] = []
     params: dict[str, Any] = {"limit": limit, "tenant_id": tenant_id}
 
     if industry:
@@ -113,11 +107,14 @@ async def list_benchmarks(
         where_conditions.append("toLower(b.name) CONTAINS toLower($search)")
         params["search"] = search
 
-    where_clause = "WHERE " + " AND ".join(where_conditions)
+    extra_where = ""
+    if where_conditions:
+        extra_where = "AND " + " AND ".join(where_conditions)
 
     query = f"""
     MATCH (b:Benchmark)
-    {where_clause}
+    WHERE b.tenant_id = $tenant_id
+    {extra_where}
     OPTIONAL MATCH (vp:ValuePack)-[:hasBenchmark]->(b)
     RETURN b, count(DISTINCT vp) as usage_count
     ORDER BY b.name
@@ -155,8 +152,6 @@ async def list_benchmarks(
 
 @router.get("/benchmarks/policies", response_model=list[BenchmarkPolicy])
 async def list_benchmark_policies(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """List benchmark policy configurations."""
@@ -190,8 +185,6 @@ async def list_benchmark_policies(
 
 @router.get("/benchmarks/{benchmark_id}", response_model=BenchmarkSummary)
 async def get_benchmark(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     benchmark_id: str,
     api_key: APIKey = Depends(get_current_api_key),
 ):
@@ -236,8 +229,6 @@ async def get_benchmark(
 
 @router.put("/benchmarks/policies/{policy_id}", response_model=BenchmarkPolicy)
 async def update_benchmark_policy(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     policy_id: str,
     update: BenchmarkPolicyUpdate,
     api_key: APIKey = Depends(get_current_api_key),

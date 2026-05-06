@@ -2,14 +2,7 @@
 
 Provides endpoints for Value Model CRUD and management.
 
-TENANT ISOLATION STATUS: Phase 4 complete (DI migration), Phase 6 pending (query scoping).
-- list_models: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
-- get_folder_counts: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
-- get_model_detail: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
-- create_model: DI migrated to create_neo4j_tenant_session; writes tenant_id via params
-- delete_model: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
-
-See: config/production-readiness/l3-tenant-isolation-gate.yaml
+All Cypher queries are tenant-scoped via `create_neo4j_tenant_session`.
 """
 
 import base64
@@ -310,8 +303,8 @@ async def list_models(
             raise HTTPException(status_code=400, detail=f"Invalid sort_dir: {sort_dir}")
         
         # Build query dynamically
-        where_clauses = []
-        params: dict[str, Any] = {"user_id": current_user, "limit": limit, "offset": offset}
+        where_clauses = ["m.tenant_id = $tenant_id"]
+        params: dict[str, Any] = {"user_id": current_user, "limit": limit, "offset": offset, "tenant_id": current_tenant}
         
         # Folder filtering (affects ownership/visibility logic)
         if folder == FOLDER_MY_MODELS:
@@ -343,10 +336,11 @@ async def list_models(
             )
             params["search"] = search.lower()
         
-        # Construct WHERE clause
-        where_clause = " AND ".join(where_clauses) if where_clauses else ""
-        if where_clause:
-            where_clause = "WHERE " + where_clause
+        # Build extra WHERE predicates (tenant_id is always first)
+        extra_clauses = where_clauses[1:]
+        extra_where = ""
+        if extra_clauses:
+            extra_where = "AND " + " AND ".join(extra_clauses)
         
         # Sorting
         sort_field = sort_by
@@ -355,14 +349,16 @@ async def list_models(
         # Count query
         count_query = f"""
         MATCH (m:ValueModel)
-        {where_clause}
+        WHERE m.tenant_id = $tenant_id
+        {extra_where}
         RETURN count(m) as total
         """
         
         # Data query
         data_query = f"""
         MATCH (m:ValueModel)
-        {where_clause}
+        WHERE m.tenant_id = $tenant_id
+        {extra_where}
         RETURN m
         ORDER BY m.{sort_field} {sort_direction}
         SKIP $offset
@@ -372,11 +368,11 @@ async def list_models(
         try:
             # Execute count
             count_records = await neo4j.execute_query(count_query, params)
-            total = count_records[0][0].get("total", 0) if count_records and count_records[0] else 0
+            total = count_records[0].get("total", 0) if count_records else 0
             
             # Execute data query
             data_records = await neo4j.execute_query(data_query, params)
-            models = [_model_node_to_summary(record[0]) for record in data_records] if data_records else []
+            models = [_model_node_to_summary(record) for record in data_records] if data_records else []
             
             return ModelListResponse(
                 models=models,
@@ -405,8 +401,6 @@ async def list_models(
     description="Returns folder counts for the sidebar navigation.",
 )
 async def get_folder_counts(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
 ) -> FoldersResponse:
     """Get folder counts for sidebar navigation."""
@@ -418,6 +412,7 @@ async def get_folder_counts(
         
         query = """
         MATCH (m:ValueModel)
+        WHERE m.tenant_id = $tenant_id
         WITH 
             count(m) as all_count,
             count(CASE WHEN m.owner = $user_id AND m.folder = 'my-models' THEN 1 END) as my_models_count,
@@ -426,7 +421,7 @@ async def get_folder_counts(
         RETURN all_count, my_models_count, shared_count, favorites_count
         """
         try:
-            records = await neo4j.execute_query(query, {"user_id": current_user})
+            records = await neo4j.execute_query(query, {"user_id": current_user, "tenant_id": current_tenant})
             if records:
                 record = records[0]
                 folders = [
@@ -462,8 +457,6 @@ async def get_folder_counts(
     },
 )
 async def get_model_detail(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     model_id: str,
     request: Request,
 ) -> ModelDetail:
@@ -472,6 +465,7 @@ async def get_model_detail(
     
     query = """
     MATCH (m:ValueModel {model_id: $model_id})
+    WHERE m.tenant_id = $tenant_id
     OPTIONAL MATCH (m)-[:HAS_FORMULA]->(f)
     OPTIONAL MATCH (m)-[:HAS_ENTITY]->(e)
     OPTIONAL MATCH (m)-[:USES_PACK]->(p)
@@ -484,7 +478,7 @@ async def get_model_detail(
     
     async with await create_neo4j_tenant_session(current_tenant) as neo4j:
         try:
-            records = await neo4j.execute_query(query, {"model_id": model_id})
+            records = await neo4j.execute_query(query, {"model_id": model_id, "tenant_id": current_tenant})
             if not records:
                 raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
             
@@ -516,8 +510,6 @@ async def get_model_detail(
     },
 )
 async def create_model(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     data: ModelCreateRequest,
 ) -> CreateResponse:
@@ -601,11 +593,12 @@ async def delete_model(
         # Check ownership
         check_query = """
         MATCH (m:ValueModel {model_id: $model_id})
+        WHERE m.tenant_id = $tenant_id
         RETURN m.owner as owner
         """
         
         try:
-            check_records = await neo4j.execute_query(check_query, {"model_id": model_id})
+            check_records = await neo4j.execute_query(check_query, {"model_id": model_id, "tenant_id": current_tenant})
             if not check_records:
                 raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
             
@@ -617,11 +610,12 @@ async def delete_model(
             # Delete with relationships
             delete_query = """
             MATCH (m:ValueModel {model_id: $model_id})
+            WHERE m.tenant_id = $tenant_id
             OPTIONAL MATCH (m)-[r]-()
             DELETE r, m
             """
             
-            await neo4j.execute_query(delete_query, {"model_id": model_id})
+            await neo4j.execute_query(delete_query, {"model_id": model_id, "tenant_id": current_tenant})
             return DeleteResponse(model_id=model_id)
         except HTTPException:
             raise

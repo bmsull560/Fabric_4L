@@ -1012,10 +1012,12 @@ async def create_formula(
         result = await neo4j.run(
             """
             MATCH (f:Formula {id: $formula_id})
+            WHERE f.tenant_id = $tenant_id
             OPTIONAL MATCH (f)-[:REQUIRES]->(v:Variable)
             RETURN f, collect(v) as variables
             """,
             formula_id=formula_id,
+            tenant_id=tenant_id,
         )
         record = await result.single()
         if not record:
@@ -1134,6 +1136,7 @@ async def update_formula(
             await neo4j.run(
                 """
                 MATCH (f:Formula {id: $formula_id})
+                WHERE f.tenant_id = $tenant_id
                 CREATE (fv:FormulaVersion {
                     id: $version_id,
                     version: $new_version,
@@ -1153,6 +1156,7 @@ async def update_formula(
                 status=STATUS_DRAFT,
                 created_at=datetime.now(UTC).isoformat(),
                 owner=getattr(api_key, "owner_email", None),
+                tenant_id=tenant_id,
             )
 
         # Update variables if provided
@@ -1161,14 +1165,17 @@ async def update_formula(
             await neo4j.run(
                 """
                 MATCH (f:Formula {id: $formula_id})-[r:REQUIRES]->(v:Variable)
+                WHERE f.tenant_id = $tenant_id
                 DELETE r
                 """,
                 formula_id=formula_id,
+                tenant_id=tenant_id,
             )
             # Create new variables
             await neo4j.run(
                 """
                 MATCH (f:Formula {id: $formula_id})
+                WHERE f.tenant_id = $tenant_id
                 UNWIND $variables as var
                 MERGE (v:Variable {name: var.name, tenant_id: $tenant_id})
                 ON CREATE SET
@@ -1191,10 +1198,12 @@ async def update_formula(
         result = await neo4j.run(
             """
             MATCH (f:Formula {id: $formula_id})
+            WHERE f.tenant_id = $tenant_id
             OPTIONAL MATCH (f)-[:REQUIRES]->(v:Variable)
             RETURN f, collect(v) as variables
             """,
             formula_id=formula_id,
+            tenant_id=tenant_id,
         )
         record = await result.single()
         if not record:
