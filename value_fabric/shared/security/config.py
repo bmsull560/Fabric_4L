@@ -117,18 +117,23 @@ def validate_database_config() -> None:
 
     parsed = urlparse(database_url)
     scheme = parsed.scheme.lower()
-    if is_production():
+    if is_production() or is_staging():
+        environment_label = "production" if is_production() else "staging"
         if scheme.startswith("sqlite"):
-            raise ValueError("SQLite is not supported in production")
+            raise ValueError(f"SQLite is not supported in {environment_label}")
         if not scheme.startswith(("postgresql", "postgres")):
-            raise ValueError("Production DATABASE_URL must use PostgreSQL for RLS")
+            raise ValueError(f"{environment_label.title()} DATABASE_URL must use PostgreSQL for RLS")
         # Row-level security prerequisites: PostgreSQL and a non-superuser role.
         # A superuser bypasses RLS policies entirely; production deployments must
         # use an application role validated against pg_roles.rolsuper=false.
         if _database_role(parsed) in SUPERUSER_NAMES:
             raise ValueError("PostgreSQL superuser connections bypass RLS")
-        if "sslmode=require" not in database_url and "sslmode=verify" not in database_url:
-            logger.warning("Production DATABASE_URL should require SSL/TLS encryption with sslmode=require")
+        allowed_sslmodes = ("sslmode=require", "sslmode=verify-ca", "sslmode=verify-full")
+        if not any(mode in database_url.lower() for mode in allowed_sslmodes):
+            raise ValueError(
+                f"{environment_label.title()} DATABASE_URL must enforce TLS with "
+                "sslmode=require, sslmode=verify-ca, or sslmode=verify-full"
+            )
 
 
 def validate_rls_prerequisites() -> None:

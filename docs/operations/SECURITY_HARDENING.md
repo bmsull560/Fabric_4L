@@ -38,7 +38,9 @@ Required secrets for production:
 
 ```bash
 # Database
-DATABASE_URL=postgresql://user:password@host:5432/dbname
+# Production/Staging: TLS is mandatory.
+# Allowed sslmode values: require, verify-ca, verify-full
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=verify-full
 NEO4J_URI=bolt://neo4j-host:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=<strong-password>
@@ -55,6 +57,8 @@ ANTHROPIC_API_KEY=<api-key>
 S3_ACCESS_KEY=<access-key>
 S3_SECRET_KEY=<secret-key>
 ```
+
+> **Operational requirement:** In `production` and `staging`, startup validation fails fast when `DATABASE_URL` omits `sslmode` or uses a mode other than `require`, `verify-ca`, or `verify-full`.
 
 ### Kubernetes Secrets
 

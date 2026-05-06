@@ -389,8 +389,8 @@ class TestProductionDatabaseConfiguration:
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
     
-    def test_prod_boot_warns_with_unencrypted_database_connection(self):
-        """Production boot should warn if database connection is not encrypted.
+    def test_prod_boot_fails_with_unencrypted_database_connection(self):
+        """Production boot must fail if database connection is not encrypted.
         
         Rationale: Unencrypted connections expose tenant data in transit.
         """
@@ -400,14 +400,9 @@ class TestProductionDatabaseConfiguration:
             "JWT_SECRET": "a" * 32,
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
-            with patch("logging.Logger.warning") as mock_warning:
+            with pytest.raises(ValueError, match="must enforce TLS"):
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
-                
-                # Verify warning was logged
-                assert mock_warning.called
-                warning_msg = str(mock_warning.call_args)
-                assert "SSL" in warning_msg or "encrypt" in warning_msg.lower()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
