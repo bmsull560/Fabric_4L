@@ -40,9 +40,10 @@ jobs:
           pip install pytest
           pytest tests/contract/test_import_topology.py -v --tb=short
 
-      - name: Run duplicate source-tree drift gate
+      - name: Run Layer 3 source mirror drift gate
         run: |
-          python scripts/ci/check_duplicate_source_trees.py --strict --json | tee artifacts/duplicate-source-tree.json
+          mkdir -p artifacts
+          python scripts/ci/check_layer3_source_mirror.py | tee artifacts/layer3-source-mirror.txt
           exit ${PIPESTATUS[0]}
 
       - name: Run navigation pattern guardrail
@@ -61,7 +62,7 @@ jobs:
           path: |
             artifacts/structural-preflight.json
             artifacts/python-contract-lint.json
-            artifacts/duplicate-source-tree.json
+            artifacts/layer3-source-mirror.txt
           retention-days: 14
 
   governance-docs-check:
@@ -624,8 +625,7 @@ jobs:
             fi
             sleep 1
           done
-          pnpm run test:a11y:pages
-          pnpm run test:a11y:gate
+          pnpm run test:a11y:launch-smoke
 
       - name: Security audit (GATING)
         run: pnpm audit --audit-level high
@@ -1096,5 +1096,4 @@ jobs:
 
       - name: Enforce route auth dependency policy
         run: python scripts/ci/check_route_auth_dependencies.py
-
 
