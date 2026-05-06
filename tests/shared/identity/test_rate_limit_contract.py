@@ -25,7 +25,6 @@ async def test_identity_rate_limiter_contract_fields_and_reset_semantics() -> No
     assert third.reset_at >= first.reset_at
     assert {"allowed", "remaining", "reset_at", "retry_after"} <= set(third.__dict__.keys())
 
-
 @pytest.mark.asyncio
 async def test_identity_rate_limiter_redis_failure_closed_mode_blocks() -> None:
     limiter = RedisRateLimiter(redis_client=None)

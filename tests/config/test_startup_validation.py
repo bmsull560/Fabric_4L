@@ -463,6 +463,16 @@ class TestProductionDatastoreTransportSecurity:
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
 
+    def test_prod_boot_accepts_sslmode_query_key_case_insensitive(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "postgresql://user:pass@db.internal:5432/db?SSLMODE=verify-full",
+            "JWT_SECRET": "a" * 32,
+            "REDIS_URL": "redis://localhost:6379",
+        }, clear=True):
+            from value_fabric.shared.security.config import validate_database_config
+            validate_database_config()
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Negative Path Scenarios

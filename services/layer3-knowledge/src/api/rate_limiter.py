@@ -25,7 +25,6 @@ class RateLimitMiddleware_get_statsResult(TypedDictModel):
     endpoint_limits: Any
     total_requests: Any
 
-
 class RateLimiter:
     """Rate limiter adapter that delegates counting to canonical state math."""
 

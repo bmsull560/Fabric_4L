@@ -44,6 +44,7 @@ jobs:
         run: |
           mkdir -p artifacts
           python scripts/ci/check_layer3_source_mirror.py | tee artifacts/layer3-source-mirror.txt
+<<<<<<< ours
           exit ${PIPESTATUS[0]}
 
       - name: Run duplicate source-tree strict gate
@@ -56,6 +57,8 @@ jobs:
         run: |
           mkdir -p artifacts
           python scripts/ci/check_shared_imports.py --strict --scope runtime --json | tee artifacts/shared-imports-runtime.json
+=======
+>>>>>>> theirs
           exit ${PIPESTATUS[0]}
 
       - name: Run navigation pattern guardrail
@@ -81,10 +84,13 @@ jobs:
             artifacts/structural-preflight.json
             artifacts/python-contract-lint.json
             artifacts/layer3-source-mirror.txt
+<<<<<<< ours
             artifacts/duplicate-source-trees.json
             artifacts/shared-imports-runtime.json
             artifacts/violation-diff-summary.json
             artifacts/violation-diff-summary.md
+=======
+>>>>>>> theirs
           retention-days: 14
 
   governance-docs-check:
@@ -648,6 +654,7 @@ jobs:
             sleep 1
           done
           pnpm run test:a11y:launch-smoke
+<<<<<<< ours
 
       - name: Accessibility keyboard-flow E2E (deep a11y assertions)
         env:
@@ -655,6 +662,8 @@ jobs:
         run: |
           # Preview server is still running from previous step in the same job
           pnpm run test:a11y:keyboard-flow
+=======
+>>>>>>> theirs
 
       - name: Security audit (GATING)
         run: pnpm audit --audit-level high
