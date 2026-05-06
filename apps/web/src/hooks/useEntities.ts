@@ -256,11 +256,8 @@ export function useCreateEntity() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (entity: Omit<Entity, 'id' | 'createdAt'>) => {
-      // Entity creation not implemented in Layer 3 API
-      // Would need to call extraction layer or Neo4j directly
-      log.warn('Entity creation not implemented in Layer 3 API');
-      throw new Error('Entity creation not supported - backend API required');
+    mutationFn: async (_entity: Omit<Entity, 'id' | 'createdAt'>) => {
+      throw new Error('Entity creation not supported - requires backend API endpoint (L3-XXX)');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.entities.list() });

@@ -20,6 +20,7 @@ import { useNavigation, usePaginatedList } from '@/hooks';
 import { DataTable, type DataTableColumn } from '@/components/ui/fabric/DataTable';
 import { StatusBadge } from '@/components/ui/fabric/StatusBadge';
 import { useIngestionJobsStore, type JobStatusFilter } from '@/stores/ingestionJobsStore';
+import { createFeatureLogger } from '@/lib/telemetry';
 import {
   useIngestionJobList,
   useIngestionJobDetail,
@@ -39,6 +40,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const log = createFeatureLogger('IngestionJobs');
 const PAGE_SIZE = 15;
 
 // UUID validation regex pattern (RFC 4122 format)
@@ -186,7 +188,7 @@ export default function IngestionJobs() {
       await batchOperation.mutateAsync(request);
       toast.success(`Retrying ${validJobIds.length} failed job(s)`);
     } catch (error) {
-      console.error('Batch retry failed:', error);
+      log.error('Batch retry failed', { error: error instanceof Error ? error.message : String(error) });
       toast.error('Failed to retry jobs. Please try again.');
     }
   }, [batchOperation, jobs]);

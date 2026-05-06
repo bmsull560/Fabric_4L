@@ -11,6 +11,7 @@
  * into the graph feature domain layer.
  */
 
+import { createFeatureLogger } from '@/lib/telemetry';
 import type { components } from '@/api/generated/l3';
 import {
   validateGraphTopology,
@@ -28,6 +29,8 @@ import type {
   GraphQueryResult,
   EntityContext,
 } from './graph.model';
+
+const log = createFeatureLogger('graph.mapper');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,8 +127,9 @@ export function mapSubgraphResponseDtoToDomain(
   // Warn about topology issues but do not crash
   const topology = validateGraphTopology(nodes, edges);
   if (!topology.valid) {
-    console.warn(
-      `[graph.mapper] Subgraph topology has ${topology.orphanedEdges.length} orphaned edge(s)`
+    log.warn(
+      `Subgraph topology has ${topology.orphanedEdges.length} orphaned edge(s)`,
+      { orphanedEdges: topology.orphanedEdges.length }
     );
   }
 
@@ -157,8 +161,9 @@ export function mapGraphQueryResponseDtoToDomain(
 
   const topology = validateGraphTopology(entities, relationships);
   if (!topology.valid) {
-    console.warn(
-      `[graph.mapper] Query result topology has ${topology.orphanedEdges.length} orphaned edge(s)`
+    log.warn(
+      `Query result topology has ${topology.orphanedEdges.length} orphaned edge(s)`,
+      { orphanedEdges: topology.orphanedEdges.length }
     );
   }
 
@@ -192,8 +197,9 @@ export function mapEntityContextResponseDtoToDomain(
   const allNodes = [center, ...neighbors];
   const topology = validateGraphTopology(allNodes, relationships);
   if (!topology.valid) {
-    console.warn(
-      `[graph.mapper] Entity context topology has ${topology.orphanedEdges.length} orphaned edge(s)`
+    log.warn(
+      `Entity context topology has ${topology.orphanedEdges.length} orphaned edge(s)`,
+      { orphanedEdges: topology.orphanedEdges.length }
     );
   }
 

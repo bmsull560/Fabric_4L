@@ -12,6 +12,9 @@ import { SectionCard } from "@/components/blocks/SectionCard";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";
+import { createFeatureLogger } from "@/lib/telemetry";
+
+const log = createFeatureLogger('Calculator');
 
 export default function Calculator() {
   const { navigateTo } = useNavigation();
@@ -81,7 +84,7 @@ export default function Calculator() {
       setCurrentStep(STEPS.VALUE_CASE);
       navigateTo('workflow-value-case');
     } catch (err) {
-      console.error('Failed to save value case:', err);
+      log.error('Failed to save value case', { error: err instanceof Error ? err.message : String(err) });
       alert('Failed to save value case. Please try again.');
     }
   };

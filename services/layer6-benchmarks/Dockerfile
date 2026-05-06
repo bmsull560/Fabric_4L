@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 # Copy dependency files
-COPY pyproject.toml .
-COPY uv.lock .
+COPY services/layer6-benchmarks/pyproject.toml .
+COPY services/layer6-benchmarks/uv.lock .
 
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project
@@ -23,7 +23,7 @@ RUN uv sync --frozen --no-install-project
 RUN uv pip install "sqlalchemy>=2.0" "pyjwt>=2.8.0"
 
 # Copy source code
-COPY src/ ./src/
+COPY services/layer6-benchmarks/src/ ./src/
 COPY value_fabric/ ./value_fabric/
 
 # Set PATH to use uv virtual environment and PYTHONPATH for imports

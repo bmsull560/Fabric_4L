@@ -22,6 +22,9 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { createFeatureLogger } from '@/lib/telemetry';
+
+const log = createFeatureLogger('useWizard');
 
 export interface UseWizardOptions {
   totalSteps: number;
@@ -187,7 +190,7 @@ function saveDraftToStorage(key: string, data: Record<string, unknown>): void {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (error) {
-    console.warn(`Failed to save draft to localStorage (key: ${key}):`, error);
+    log.warn(`Failed to save draft to localStorage`, { key, error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -197,7 +200,7 @@ function loadDraftFromStorage(key: string): Record<string, unknown> | null {
     if (!item) return null;
     return JSON.parse(item);
   } catch (error) {
-    console.warn(`Failed to load draft from localStorage (key: ${key}):`, error);
+    log.warn(`Failed to load draft from localStorage`, { key, error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -206,6 +209,6 @@ function clearDraftFromStorage(key: string): void {
   try {
     localStorage.removeItem(key);
   } catch (error) {
-    console.warn(`Failed to clear draft from localStorage (key: ${key}):`, error);
+    log.warn(`Failed to clear draft from localStorage`, { key, error: error instanceof Error ? error.message : String(error) });
   }
 }
