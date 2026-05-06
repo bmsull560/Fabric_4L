@@ -39,7 +39,7 @@ images:
   - name: services/layer6-benchmarks
     newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
     digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
-  - name: value-fabric/frontend
+  - name: apps/web
     newName: ghcr.io/bmsull560/fabric_4l/frontend
     digest: sha256:7777777777777777777777777777777777777777777777777777777777777777
   # Infrastructure images (use specific versions, not :latest)

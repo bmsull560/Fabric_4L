@@ -219,7 +219,7 @@ if (-not $allHealthy) {
     
     Write-Host "`nRemediation:" -ForegroundColor Yellow
     Write-Host "  1. Start backend services:" -ForegroundColor White
-    Write-Host "     cd value-fabric" -ForegroundColor Gray
+    Write-Host "     cd services" -ForegroundColor Gray
     Write-Host "     docker-compose up -d" -ForegroundColor Gray
     Write-Host "  2. Wait for services to initialize (30-60s)" -ForegroundColor Gray
     Write-Host "  3. Re-run health check" -ForegroundColor Gray

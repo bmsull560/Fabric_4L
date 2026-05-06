@@ -117,7 +117,7 @@ if (-not $SkipBackendStart) {
             } catch {
                 Write-Result "Docker compose failed. Manual backend startup required." -Failure
                 Write-Host "`nPlease start backend services manually:" -ForegroundColor $colors.Warning
-                Write-Host "  cd value-fabric" -ForegroundColor $colors.Info
+                Write-Host "  cd services" -ForegroundColor $colors.Info
                 Write-Host "  docker-compose up -d" -ForegroundColor $colors.Info
                 exit 1
             }
@@ -188,7 +188,7 @@ if (-not $allHealthy) {
         Write-Host "Required backend services on ports 8001-8006 are not all healthy." -ForegroundColor $colors.Error
         Write-Host "This prevents valid E2E test execution." -ForegroundColor $colors.Error
         Write-Host "`nOptions:" -ForegroundColor $colors.Info
-        Write-Host "  1. Start backend services: cd value-fabric && docker-compose up -d" -ForegroundColor $colors.Info
+        Write-Host "  1. Start backend services: docker compose up -d" -ForegroundColor $colors.Info
         Write-Host "  2. Check health only: ./scripts/check-backend-health.ps1" -ForegroundColor $colors.Info
         Write-Host "  3. Investigate mode: ./scripts/e2e-recovery-sequence.ps1 -InvestigateOnly" -ForegroundColor $colors.Info
         Write-Host "  4. Force continue: ./scripts/e2e-recovery-sequence.ps1 -AllowDegradedHealth" -ForegroundColor $colors.Info

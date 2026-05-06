@@ -26,7 +26,7 @@ APP_IMAGE_NAMES = [
     "services/layer4-agents",
     "services/layer5-ground-truth",
     "services/layer6-benchmarks",
-    "value-fabric/frontend",
+    "apps/web",
 ]
 
 ZERO_SHA256_DIGEST = "sha256:" + ("0" * 64)

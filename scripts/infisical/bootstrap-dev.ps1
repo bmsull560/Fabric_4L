@@ -56,7 +56,7 @@ Write-Host "`n============================================="
 Write-Host "Ready! Run services with Infisical-injected secrets:" -ForegroundColor Green
 Write-Host ""
 Write-Host "  # Backend"
-Write-Host "  infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- pnpm --dir value-fabric dev"
+Write-Host "  infisical run --env=dev --path=/fabric-4l/services/dev -- pnpm dev:backend"
 Write-Host ""
 Write-Host "  # Frontend"
 Write-Host "  infisical run --env=dev --path=/fabric-4l/apps/web/dev -- pnpm --dir apps/web dev"
