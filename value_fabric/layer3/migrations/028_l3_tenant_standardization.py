@@ -48,107 +48,118 @@ DEFAULT_TENANT_ID = os.getenv("DEFAULT_TENANT", "default")
 # Migration steps
 # ──────────────────────────────────────────────────────────────────────────────
 
-RENAME_QUERIES: list[dict[str, Any]] = [
+RENAME_STEPS: list[dict[str, Any]] = [
     {
         "name": "rename_formula_tenantId",
         "description": "Rename tenantId → tenant_id on :Formula nodes",
-        "cypher": """
+        "label": "Formula",
+        "count_cypher": "MATCH (f:Formula) WHERE f.tenantId IS NOT NULL RETURN count(f) as cnt",
+        "migrate_cypher": """
             MATCH (f:Formula)
             WHERE f.tenantId IS NOT NULL
             SET f.tenant_id = f.tenantId
             REMOVE f.tenantId
-            RETURN count(f) as renamed
+            RETURN count(f) as cnt
         """,
     },
     {
         "name": "rename_variable_tenantId",
         "description": "Rename tenantId → tenant_id on :Variable nodes",
-        "cypher": """
+        "label": "Variable",
+        "count_cypher": "MATCH (v:Variable) WHERE v.tenantId IS NOT NULL RETURN count(v) as cnt",
+        "migrate_cypher": """
             MATCH (v:Variable)
             WHERE v.tenantId IS NOT NULL
             SET v.tenant_id = v.tenantId
             REMOVE v.tenantId
-            RETURN count(v) as renamed
+            RETURN count(v) as cnt
         """,
     },
 ]
 
-BACKFILL_QUERIES: list[dict[str, Any]] = [
+BACKFILL_STEPS: list[dict[str, Any]] = [
     {
         "name": "backfill_formula",
         "label": "Formula",
         "description": "Backfill tenant_id on :Formula nodes missing it",
-        "cypher": """
-            MATCH (f:Formula)
-            WHERE f.tenant_id IS NULL
-            SET f.tenant_id = $tenant_id
-            RETURN count(f) as backfilled
+        "count_cypher": "MATCH (n:Formula) WHERE n.tenant_id IS NULL RETURN count(n) as cnt",
+        "migrate_cypher": """
+            MATCH (n:Formula)
+            WHERE n.tenant_id IS NULL
+            SET n.tenant_id = $tenant_id
+            RETURN count(n) as cnt
         """,
     },
     {
         "name": "backfill_variable",
         "label": "Variable",
         "description": "Backfill tenant_id on :Variable nodes missing it",
-        "cypher": """
-            MATCH (v:Variable)
-            WHERE v.tenant_id IS NULL
-            SET v.tenant_id = $tenant_id
-            RETURN count(v) as backfilled
+        "count_cypher": "MATCH (n:Variable) WHERE n.tenant_id IS NULL RETURN count(n) as cnt",
+        "migrate_cypher": """
+            MATCH (n:Variable)
+            WHERE n.tenant_id IS NULL
+            SET n.tenant_id = $tenant_id
+            RETURN count(n) as cnt
         """,
     },
     {
         "name": "backfill_valuemodel",
         "label": "ValueModel",
         "description": "Backfill tenant_id on :ValueModel nodes",
-        "cypher": """
-            MATCH (m:ValueModel)
-            WHERE m.tenant_id IS NULL
-            SET m.tenant_id = $tenant_id
-            RETURN count(m) as backfilled
+        "count_cypher": "MATCH (n:ValueModel) WHERE n.tenant_id IS NULL RETURN count(n) as cnt",
+        "migrate_cypher": """
+            MATCH (n:ValueModel)
+            WHERE n.tenant_id IS NULL
+            SET n.tenant_id = $tenant_id
+            RETURN count(n) as cnt
         """,
     },
     {
         "name": "backfill_benchmark",
         "label": "Benchmark",
         "description": "Backfill tenant_id on :Benchmark nodes",
-        "cypher": """
-            MATCH (b:Benchmark)
-            WHERE b.tenant_id IS NULL
-            SET b.tenant_id = $tenant_id
-            RETURN count(b) as backfilled
+        "count_cypher": "MATCH (n:Benchmark) WHERE n.tenant_id IS NULL RETURN count(n) as cnt",
+        "migrate_cypher": """
+            MATCH (n:Benchmark)
+            WHERE n.tenant_id IS NULL
+            SET n.tenant_id = $tenant_id
+            RETURN count(n) as cnt
         """,
     },
     {
         "name": "backfill_benchmarkpolicy",
         "label": "BenchmarkPolicy",
         "description": "Backfill tenant_id on :BenchmarkPolicy nodes",
-        "cypher": """
-            MATCH (bp:BenchmarkPolicy)
-            WHERE bp.tenant_id IS NULL
-            SET bp.tenant_id = $tenant_id
-            RETURN count(bp) as backfilled
+        "count_cypher": "MATCH (n:BenchmarkPolicy) WHERE n.tenant_id IS NULL RETURN count(n) as cnt",
+        "migrate_cypher": """
+            MATCH (n:BenchmarkPolicy)
+            WHERE n.tenant_id IS NULL
+            SET n.tenant_id = $tenant_id
+            RETURN count(n) as cnt
         """,
     },
     {
         "name": "backfill_formulaversion",
         "label": "FormulaVersion",
         "description": "Backfill tenant_id on :FormulaVersion nodes",
-        "cypher": """
-            MATCH (fv:FormulaVersion)
-            WHERE fv.tenant_id IS NULL
-            SET fv.tenant_id = $tenant_id
-            RETURN count(fv) as backfilled
+        "count_cypher": "MATCH (n:FormulaVersion) WHERE n.tenant_id IS NULL RETURN count(n) as cnt",
+        "migrate_cypher": """
+            MATCH (n:FormulaVersion)
+            WHERE n.tenant_id IS NULL
+            SET n.tenant_id = $tenant_id
+            RETURN count(n) as cnt
         """,
     },
     {
         "name": "backfill_sourcebinding",
         "label": "SourceBinding",
         "description": "Backfill tenant_id on :SourceBinding nodes",
-        "cypher": """
-            MATCH (sb:SourceBinding)
-            WHERE sb.tenant_id IS NULL
-            SET sb.tenant_id = $tenant_id
-            RETURN count(sb) as backfilled
+        "count_cypher": "MATCH (n:SourceBinding) WHERE n.tenant_id IS NULL RETURN count(n) as cnt",
+        "migrate_cypher": """
+            MATCH (n:SourceBinding)
+            WHERE n.tenant_id IS NULL
+            SET n.tenant_id = $tenant_id
+            RETURN count(n) as cnt
         """,
     },
 ]
@@ -243,20 +254,12 @@ class L3TenantStandardizationMigration:
         driver = await self._get_driver()
         results: dict[str, Any] = {"dry_run": dry_run, "steps": []}
 
-        for step in RENAME_QUERIES:
+        for step in RENAME_STEPS:
             if dry_run:
-                # For dry run, just count what WOULD be renamed
-                count_cypher = step["cypher"].replace(
-                    "SET f.tenant_id = f.tenantId\n            REMOVE f.tenantId",
-                    "WITH f RETURN count(f) as renamed",
-                ).replace(
-                    "SET v.tenant_id = v.tenantId\n            REMOVE v.tenantId",
-                    "WITH v RETURN count(v) as renamed",
-                )
                 async with driver.session() as session:
-                    result = await session.run(count_cypher)
+                    result = await session.run(step["count_cypher"])
                     record = await result.single()
-                    count = record["renamed"] if record else 0
+                    count = record["cnt"] if record else 0
 
                 results["steps"].append(
                     {
@@ -269,9 +272,9 @@ class L3TenantStandardizationMigration:
                 logger.info(f"[DRY RUN] {step['description']}: would rename {count} nodes")
             else:
                 async with driver.session() as session:
-                    result = await session.run(step["cypher"])
+                    result = await session.run(step["migrate_cypher"])
                     record = await result.single()
-                    count = record["renamed"] if record else 0
+                    count = record["cnt"] if record else 0
 
                 results["steps"].append(
                     {
@@ -292,42 +295,12 @@ class L3TenantStandardizationMigration:
         driver = await self._get_driver()
         results: dict[str, Any] = {"dry_run": dry_run, "steps": []}
 
-        for step in BACKFILL_QUERIES:
+        for step in BACKFILL_STEPS:
             if dry_run:
-                # For dry run, count what WOULD be backfilled
-                count_cypher = step["cypher"].replace(
-                    "SET", "WITH"
-                ).replace(
-                    f"n.tenant_id = $tenant_id\n            RETURN",
-                    "n RETURN",
-                ).replace(
-                    "b.tenant_id = $tenant_id\n            RETURN",
-                    "b RETURN",
-                ).replace(
-                    "bp.tenant_id = $tenant_id\n            RETURN",
-                    "bp RETURN",
-                ).replace(
-                    "fv.tenant_id = $tenant_id\n            RETURN",
-                    "fv RETURN",
-                ).replace(
-                    "sb.tenant_id = $tenant_id\n            RETURN",
-                    "sb RETURN",
-                ).replace(
-                    "m.tenant_id = $tenant_id\n            RETURN",
-                    "m RETURN",
-                ).replace(
-                    "v.tenant_id = $tenant_id\n            RETURN",
-                    "v RETURN",
-                ).replace(
-                    "f.tenant_id = $tenant_id\n            RETURN",
-                    "f RETURN",
-                )
                 async with driver.session() as session:
-                    result = await session.run(
-                        count_cypher, {"tenant_id": self.default_tenant_id}
-                    )
+                    result = await session.run(step["count_cypher"])
                     record = await result.single()
-                    count = record["backfilled"] if record else 0
+                    count = record["cnt"] if record else 0
 
                 results["steps"].append(
                     {
@@ -342,10 +315,10 @@ class L3TenantStandardizationMigration:
             else:
                 async with driver.session() as session:
                     result = await session.run(
-                        step["cypher"], {"tenant_id": self.default_tenant_id}
+                        step["migrate_cypher"], {"tenant_id": self.default_tenant_id}
                     )
                     record = await result.single()
-                    count = record["backfilled"] if record else 0
+                    count = record["cnt"] if record else 0
 
                 results["steps"].append(
                     {
@@ -369,7 +342,6 @@ class L3TenantStandardizationMigration:
 
         async with driver.session() as session:
             for label in VERIFICATION_LABELS:
-                # Count nodes missing tenant_id or still having old tenantId
                 result = await session.run(
                     f"""
                     MATCH (n:{label})

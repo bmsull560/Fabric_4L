@@ -119,12 +119,16 @@ schema_migration_plan:
       artifact: docs/audit/l3-neo4j-label-tenant-classification.md
     - phase: 2
       name: "Canonical Property Migration"
-      status: NOT_STARTED
+      status: COMPLETE
       deliverables:
-        - Cypher migration script: rename `tenantId` → `tenant_id` on :Formula
-        - Cypher migration script: add `tenant_id` to :ValueModel, :Variable, :Benchmark
-        - Add composite uniqueness constraints (id, tenant_id) where missing
-        - Backfill `tenant_id = 'default'` for existing unowned nodes
+        - constraints.py: Added 6 composite unique constraints (Formula, Benchmark, ValueModel, BenchmarkPolicy, FormulaVersion, SourceBinding)
+        - constraints.py: Added 6 Enterprise existence constraints for same labels
+        - constraints.py: Added 8 tenant_id btree indexes (single + composite)
+        - Migration script: services/layer3-knowledge/src/migrations/028_l3_tenant_standardization.py
+          * Renames tenantId → tenant_id on :Formula and :Variable
+          * Backfills tenant_id='default' on all 7 target labels
+          * Pre/post inventory + verification with pass/fail reporting
+          * Supports --dry-run, --skip-rename, --skip-backfill
     - phase: 3
       name: "Service Layer Update"
       status: NOT_STARTED
@@ -199,3 +203,10 @@ audit_trail:
       - 6 labels missing tenant_id indexes
       - Cross-module data flow risks identified (Variable created via formulas.py vs variables.py)
       - Full audit artifact: docs/audit/l3-neo4j-label-tenant-classification.md
+  - date: "2026-05-05"
+    action: "Phase 2 complete"
+    note: |
+      Schema definitions and migration script created.
+      - constraints.py: +6 composite constraints, +6 existence constraints, +8 indexes
+      - Migration script 028: rename + backfill for 7 labels, dry-run support, verification
+      - All mandatory tests pass (222 passed, 0 failed)

@@ -403,3 +403,44 @@ export function useRetryJob() {
     },
   });
 }
+
+// =============================================================================
+// Batch Operations
+// =============================================================================
+
+export interface BatchOperationRequest {
+  operation: 'execute' | 'cancel' | 'retry';
+  target_ids?: string[];
+  job_ids?: string[];
+  options?: Record<string, unknown>;
+}
+
+export interface BatchOperationItemResult {
+  id: string;
+  status: 'succeeded' | 'failed' | 'skipped';
+  job_id?: string;
+  error?: string;
+}
+
+export interface BatchOperationResponse {
+  operation: string;
+  requested: number;
+  succeeded: number;
+  failed: number;
+  results: BatchOperationItemResult[];
+}
+
+/** Execute batch operations on ingestion jobs and targets */
+export function useBatchOperation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BatchOperationResponse, Error, BatchOperationRequest>({
+    mutationFn: async (request: BatchOperationRequest) => {
+      const response = await apiClient.post('l1', '/jobs/batch', request);
+      return response.data as BatchOperationResponse;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.ingestion.all });
+    },
+  });
+}

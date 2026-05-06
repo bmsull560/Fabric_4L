@@ -313,3 +313,4 @@ async def get_extraction_entities(job_id: str, request: Request):
         total=len(entities)
     )
 
+

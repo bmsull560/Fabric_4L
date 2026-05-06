@@ -24,8 +24,10 @@ import {
   useJobComplianceLogs,
   useCancelJob,
   useRetryJob,
+  useBatchOperation,
   type JobListFilters,
   type IngestionJob,
+  type BatchOperationRequest,
 } from '@/hooks/useIngestion';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -117,6 +119,7 @@ export default function IngestionJobs() {
   // Mutations
   const cancelJob = useCancelJob();
   const retryJob = useRetryJob();
+  const batchOperation = useBatchOperation();
 
   const jobs = listData?.jobs ?? [];
   const pagination = listData?.pagination ?? { page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 };
@@ -153,6 +156,21 @@ export default function IngestionJobs() {
       // Error is handled by mutation state and displayed in UI
     }
   }, [selectedJobId, retryJob]);
+
+  const handleBatchExecute = useCallback(async () => {
+    if (batchOperation.isPending || jobs.length === 0) return;
+    try {
+      // For now, batch execute on all jobs in the current page
+      // In the future, this could be extended to support target-based execution
+      const request: BatchOperationRequest = {
+        operation: 'retry',
+        job_ids: jobs.filter(j => j.status === 'failed').map(j => j.id),
+      };
+      await batchOperation.mutateAsync(request);
+    } catch {
+      // Error is handled by mutation state and displayed in UI
+    }
+  }, [batchOperation, jobs]);
 
   // Table columns definition using fabric DataTable format
   const columns: DataTableColumn<IngestionJob>[] = [
@@ -345,18 +363,15 @@ export default function IngestionJobs() {
               Actions
             </span>
             <div className="flex items-center gap-2">
-              {/* Batch operations disabled pending backend API support (L1-XXX) */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Btn variant="outline" className="flex-1" disabled>
-                    <Play size={13} />
-                    Run All
-                  </Btn>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p className="text-[11px]">Batch Run All — pending backend API support</p>
-                </TooltipContent>
-              </Tooltip>
+              <Btn
+                variant="outline"
+                className="flex-1"
+                onClick={handleBatchExecute}
+                disabled={batchOperation.isPending || jobs.filter(j => j.status === 'failed').length === 0}
+              >
+                <Play size={13} />
+                {batchOperation.isPending ? 'Retrying...' : 'Retry Failed'}
+              </Btn>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Btn variant="outline" className="flex-1" disabled>

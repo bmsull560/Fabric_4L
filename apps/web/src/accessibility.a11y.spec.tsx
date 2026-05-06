@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select";
 import { SkipLink } from "@/components/ui/skip-link";
 import { EmptyState } from "@/components/states/EmptyState";
+import { VirtualList } from "@/components/ui/virtual-list";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 expect.extend(toHaveNoViolations);
 
@@ -176,6 +178,109 @@ describe("component accessibility smoke tests", () => {
     );
 
     expect(screen.getByRole("heading", { name: /no items/i })).toBeInTheDocument();
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  // ── P2/P3 Fix Accessibility Tests ─────────────────────────────────────────
+
+  it("virtual list single-column passes axe", async () => {
+    const { container } = render(
+      <div style={{ height: "200px" }}>
+        <VirtualList
+          items={[
+            { id: "1", label: "First" },
+            { id: "2", label: "Second" },
+            { id: "3", label: "Third" },
+          ]}
+          estimateSize={50}
+          renderItem={(item) => <div>{item.label}</div>}
+        />
+      </div>
+    );
+
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("virtual list multi-column grid passes axe", async () => {
+    const { container } = render(
+      <div style={{ height: "200px" }}>
+        <VirtualList
+          items={[
+            { id: "1", label: "A" },
+            { id: "2", label: "B" },
+            { id: "3", label: "C" },
+          ]}
+          estimateSize={80}
+          columns={3}
+          renderItem={(item) => <div>{item.label}</div>}
+        />
+      </div>
+    );
+
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("optimized image has alt text and passes axe", async () => {
+    const { container } = render(
+      <OptimizedImage
+        src="/test-image.png"
+        alt="Test description"
+        className="w-10 h-10"
+      />
+    );
+
+    const img = screen.getByRole("img", { name: /test description/i });
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("loading", "lazy");
+    expect(img).toHaveAttribute("decoding", "async");
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("variable insert chip passes axe", async () => {
+    const { container } = render(
+      <div>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Insert variable revenue"
+          title="Insert revenue into formula"
+          onClick={() => {}}
+          onKeyDown={() => {}}
+        >
+          <span>revenue</span>
+          <span>api</span>
+        </div>
+      </div>
+    );
+
+    const chip = screen.getByRole("button", { name: /insert variable revenue/i });
+    expect(chip).toBeInTheDocument();
+    expect(chip).toHaveAttribute("tabIndex", "0");
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+
+  it("shadcn select in filter bar passes axe", async () => {
+    const { container } = render(
+      <div>
+        <span id="status-label">Status</span>
+        <Select>
+          <SelectTrigger aria-labelledby="status-label">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    );
+
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
