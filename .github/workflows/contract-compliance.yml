@@ -562,12 +562,60 @@ jobs:
             docs/governance/deprecation-debt-registry.json
 
   # ==========================================================================
+  # Contract Scorecard & Trendline
+  # ==========================================================================
+  contract-scorecard:
+    name: Contract Scorecard
+    runs-on: ubuntu-latest
+    needs: [python-lint, lint-frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Run contract scorecard
+        id: scorecard
+        run: |
+          python scripts/ci/contract_scorecard.py --output contract-scorecard.json --gha-comment
+          echo "score=$(python -c 'import json; print(json.load(open("contract-scorecard.json"))["overall_score"])')" >> $GITHUB_OUTPUT
+
+      - name: Upload scorecard
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-scorecard
+          path: contract-scorecard.json
+
+      - name: Comment PR with scorecard
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const scorecard = JSON.parse(fs.readFileSync('contract-scorecard.json', 'utf8'));
+            const body = `## 📊 Contract Compliance Scorecard\n\n**Overall Score: ${scorecard.overall_score}%** (target: ${scorecard.target_score}%)\n\n| Contract | Violations |\n|----------|-----------:|\n` +
+              scorecard.contracts.map(c => `| ${c.contract} ${c.name} | ${c.total_violations} |`).join('\n') +
+              `\n\n${scorecard.overall_score >= scorecard.target_score ? '✅ **Target attained**' : `⚠️ **${(scorecard.target_score - scorecard.overall_score).toFixed(1)} points below target**`}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # ==========================================================================
   # Summary Report
   # ==========================================================================
   summary:
     name: Contract Compliance Summary
     runs-on: ubuntu-latest
-    needs: [plugin-tests, validate-dependabot-coverage, lint-frontend, validate-canonical, platform-contract-tests, python-lint, generate-openapi, detect-drift, openapi-contract-tests, validate-deprecations]
+    needs: [plugin-tests, validate-dependabot-coverage, lint-frontend, validate-canonical, platform-contract-tests, python-lint, generate-openapi, detect-drift, openapi-contract-tests, validate-deprecations, contract-scorecard]
     if: always()
 
     steps:

@@ -1,0 +1,194 @@
+name: Release Evidence Bundle
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach evidence bundle to'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-scan:
+    name: Build images & security scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - layer1-ingestion
+          - layer2-extraction
+          - layer3-knowledge
+          - layer4-agents
+          - layer5-ground-truth
+          - layer6-benchmarks
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          docker build -t ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }} ./services/${{ matrix.service }}
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }}
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+
+      - name: Trivy HTML report
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }}
+          format: html
+          output: trivy-${{ matrix.service }}.html
+
+      - name: Generate SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: sbom-${{ matrix.service }}.cdx.json
+
+      - name: Sign SBOM with Cosign
+        uses: sigstore/cosign-installer@v3
+      - run: |
+          cosign sign-blob --yes sbom-${{ matrix.service }}.cdx.json \
+            --output-signature sbom-${{ matrix.service }}.cdx.json.sig \
+            --output-certificate sbom-${{ matrix.service }}.cdx.json.crt
+
+      - name: Upload scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-${{ matrix.service }}
+          path: |
+            trivy-${{ matrix.service }}.*
+            sbom-${{ matrix.service }}.*
+
+  sast-and-tests:
+    name: SAST & Security E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Bandit SAST
+        run: |
+          uv pip install bandit[toml]
+          bandit -r services/ -f json -o bandit-report.json || true
+          bandit -r services/ -f txt -o bandit-report.txt || true
+
+      - name: Run security regression tests
+        run: |
+          uv pip install pytest pytest-asyncio
+          pytest tests/security/ -v --tb=short \
+            --junitxml=security-tests.xml || true
+
+      - name: Run prompt-injection/refusal E2E
+        run: |
+          pytest tests/security/test_prompt_injection.py tests/security/test_refusal_behavior.py -v \
+            --junitxml=prompt-injection-tests.xml || true
+
+      - name: Upload SAST & test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-and-tests
+          path: |
+            bandit-report.*
+            security-tests.xml
+            prompt-injection-tests.xml
+
+  live-stack-evidence:
+    name: Live stack health evidence
+    runs-on: ubuntu-latest
+    needs: []
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start backend stack
+        run: |
+          docker compose -f docker-compose.backend-integrated.yml up -d --build
+
+      - name: Wait for healthy services
+        run: |
+          python scripts/ci/stack_health_check.py --timeout 300 --output stack-health.json
+
+      - name: OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:8001'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: Upload live evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-evidence
+          path: |
+            stack-health.json
+            report_*.html
+            report_*.json
+
+  consolidate-bundle:
+    name: Consolidate & Publish Evidence Bundle
+    runs-on: ubuntu-latest
+    needs: [build-and-scan, sast-and-tests, live-stack-evidence]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Generate SHA-256 manifest
+        run: |
+          mkdir -p release-bundle
+          find artifacts -type f -exec sha256sum {} \; > release-bundle/SHA256SUMS
+          cp -r artifacts/* release-bundle/
+          tar czf evidence-bundle.tar.gz -C release-bundle .
+
+      - name: Attest bundle
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: evidence-bundle.tar.gz
+
+      - name: Upload to GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: evidence-bundle.tar.gz
+          body: |
+            ## Release Evidence Bundle
+            - Container vulnerability scans (Trivy SARIF + HTML)
+            - SBOMs per service (CycloneDX, signed with Cosign)
+            - Bandit SAST report
+            - Security regression test results
+            - Prompt-injection/refusal E2E results
+            - Live stack health evidence
+            - OWASP ZAP baseline report
+
+      - name: Upload artifact (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-bundle-${{ inputs.tag }}
+          path: evidence-bundle.tar.gz

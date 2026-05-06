@@ -146,6 +146,7 @@ services:
       minio:
         condition: service_healthy
     volumes:
+      - ./services/layer1-ingestion/src:/app/src:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -175,6 +176,7 @@ services:
       LAYER1_S3_SECRET_KEY: minioadmin
       PYTHONPATH: /app
     volumes:
+      - ./services/layer1-ingestion/src:/app/src:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     depends_on:
       postgres:
@@ -216,6 +218,8 @@ services:
       LLM_MODEL: gpt-4o
       LOG_LEVEL: info
     volumes:
+      - ./services/layer2-extraction/src:/app/src:ro
+      - ./value_fabric/layer2:/app/value_fabric/layer2:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     depends_on:
       postgres:
@@ -252,6 +256,8 @@ services:
       REDIS_URL: redis://host.docker.internal:6379/0
       LOG_LEVEL: info
     volumes:
+      - ./services/layer3-knowledge/src:/app/src:ro
+      - ./value_fabric/layer3:/app/value_fabric/layer3:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     depends_on:
       neo4j:
@@ -322,6 +328,7 @@ services:
       layer6:
         condition: service_healthy
     volumes:
+      - ./services/layer4-agents/src:/app/src:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -368,6 +375,7 @@ services:
       layer3:
         condition: service_healthy
     volumes:
+      - ./services/layer5-ground-truth/src:/app/src:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -394,6 +402,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
+      - ./services/layer5-ground-truth/src:/app/src:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -425,6 +434,8 @@ services:
       redis:
         condition: service_healthy
     volumes:
+      - ./services/layer6-benchmarks/src:/app/src:ro
+      - ./value_fabric/layer6:/app/value_fabric/layer6:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"

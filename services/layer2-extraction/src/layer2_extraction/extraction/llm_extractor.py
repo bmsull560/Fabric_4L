@@ -5,7 +5,6 @@ using native structured LLM outputs with Pydantic model validation for
 compile-time type safety and automatic schema enforcement.
 """
 
-import json
 import math
 from typing import Any, TypeVar
 
@@ -71,16 +70,6 @@ def _effective_confidence(item_confidence: float, logprob_confidence: float | No
 
     token_conf = max(0.0, min(1.0, logprob_confidence))
     return max(0.0, min(1.0, (0.7 * item) + (0.3 * token_conf)))
-
-
-def _parse_tool_arguments(response: Any, method_name: str) -> dict[str, Any]:
-    try:
-        tool_calls = response.choices[0].message.tool_calls
-        if not tool_calls:
-            raise ValueError("No tool calls returned")
-        return json.loads(tool_calls[0].function.arguments)
-    except Exception as exc:
-        raise LLMExtractionError(f"{method_name}: invalid function-call payload: {exc}") from exc
 
 
 def _strict_array_tool(

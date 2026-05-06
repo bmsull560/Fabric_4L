@@ -24,6 +24,7 @@ RUN uv sync --frozen --no-install-project
 
 # Copy source (selective to avoid tests/cache bloat)
 COPY src/ ./src/
+COPY ../../value_fabric/ ./value_fabric/
 COPY alembic.ini .
 
 # Set PATH to use uv virtual environment and PYTHONPATH for imports

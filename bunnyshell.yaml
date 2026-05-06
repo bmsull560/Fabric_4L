@@ -125,8 +125,8 @@ components:
         gitApplicationPath: services/layer2-extraction
         dockerCompose:
             build:
-                context: ./services/layer2-extraction
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer2-extraction/Dockerfile
             environment:
                 ENVIRONMENT: development
                 LAYER2_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/layer2_extraction'
@@ -201,8 +201,8 @@ components:
         gitApplicationPath: services/layer4-agents
         dockerCompose:
             build:
-                context: ./services/layer4-agents
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer4-agents/Dockerfile
             environment:
                 ANTHROPIC_API_KEY: sk-ant-placeholder-change-in-production
                 CHECKPOINT_DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
@@ -326,8 +326,8 @@ components:
         gitApplicationPath: services/layer6-benchmarks
         dockerCompose:
             build:
-                context: ./services/layer6-benchmarks
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer6-benchmarks/Dockerfile
             environment:
                 ENVIRONMENT: development
                 LOG_LEVEL: info
