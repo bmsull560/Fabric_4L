@@ -22,10 +22,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import models here if using autogenerate
-# from layer2_extraction.db.models import Base
-# target_metadata = Base.metadata
-target_metadata = None
+# Import the declarative Base so Alembic can detect model changes
+from layer2_extraction.db.models import Base
+
+# Metadata for autogenerate support
+target_metadata = Base.metadata
 
 # Get database URL from environment
 DB_URL = os.getenv(

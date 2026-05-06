@@ -26,9 +26,13 @@ export LAYER1_API_URL=https://layer1-ingestion.value-fabric.svc.cluster.local:80
 export LAYER2_API_URL=https://layer2-extraction.value-fabric.svc.cluster.local:8000
 export LAYER3_API_URL=https://layer3-knowledge.value-fabric.svc.cluster.local:8001
 export LAYER5_API_URL=https://layer5-ground-truth.value-fabric.svc.cluster.local:8005
+export LAYER4_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents
 
 # Optional: enable only when HTTPS is terminated by an enforced service mesh mTLS path
 export SERVICE_MESH_MTLS_ENABLED=true
+
+# Run database migrations
+alembic upgrade head
 
 # Run tests
 pytest tests/ -v
@@ -73,6 +77,39 @@ src/
 - **Generation** (4): `generate_section`, `create_chart`, etc.
 - **Integration** (4): `send_notification`, `create_task`, etc.
 - **Utility** (2): `validate_input`, `format_currency`
+
+## Database Migrations
+
+Layer 4 uses Alembic for database schema management.
+
+```bash
+# Apply all pending migrations
+alembic upgrade head
+
+# Generate a new migration after model changes
+alembic revision --autogenerate -m "describe your change"
+
+# Downgrade one step
+alembic downgrade -1
+
+# Show current revision
+alembic current
+```
+
+### Environment Variables
+
+- `LAYER4_DATABASE_URL`: Database connection string (PostgreSQL with asyncpg for runtime, psycopg2 for migrations)
+- `CHECKPOINT_DATABASE_URL`: Fallback database URL for checkpoint database
+
+### Schema Tables
+
+The initial migration creates tables for:
+- **Tenant Governance**: tenants, users, api_keys, tenant_isolation_tier_history
+- **CRM Accounts**: accounts, account_sync_status
+- **Billing**: billing_customers, billing_subscriptions, billing_webhook_events, billing_usage_events, billing_invoices, billing_invoice_items, billing_charges
+- **Integrations**: integrations
+
+All tables include `tenant_id` for multi-tenant isolation via Row-Level Security (RLS).
 
 ## License
 

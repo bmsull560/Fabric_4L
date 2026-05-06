@@ -213,37 +213,10 @@ class PostgresPendingIngestionStore(PendingIngestionStore):
 
         self._psycopg = psycopg
         self.database_url = database_url
-        self._init_db()
+        # Table is now managed by Alembic migrations - no runtime creation
 
     def _connect(self):
         return self._psycopg.connect(self.database_url)
-
-    def _init_db(self) -> None:
-        with self._connect() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS pending_ingestions (
-                        job_id TEXT PRIMARY KEY,
-                        source_url TEXT NOT NULL,
-                        extraction_result_json TEXT NOT NULL,
-                        relationships_json TEXT NOT NULL,
-                        retry_count INTEGER NOT NULL DEFAULT 0,
-                        max_retries INTEGER NOT NULL,
-                        last_error TEXT,
-                        next_retry_at TIMESTAMPTZ NOT NULL,
-                        created_at TIMESTAMPTZ NOT NULL,
-                        updated_at TIMESTAMPTZ NOT NULL
-                    )
-                    """
-                )
-                cur.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_pending_ingestions_next_retry
-                    ON pending_ingestions(next_retry_at)
-                    """
-                )
-            conn.commit()
 
     async def enqueue(
         self,
