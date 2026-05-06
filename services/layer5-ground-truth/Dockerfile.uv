@@ -1,5 +1,6 @@
+# syntax=docker/dockerfile:1
 # Multi-stage build for Layer 5: Ground Truth Service (uv edition)
-FROM python:3.11.11-slim-bookworm AS builder
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,7 +19,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv pip sync uv.lock --target /app/venv
 
 # Stage 2: Runtime
-FROM python:3.11.11-slim-bookworm AS runtime
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,7 +32,7 @@ WORKDIR /app
 # Copy Python packages from builder
 COPY --from=builder /app/venv /app/venv
 ENV PATH=/app/venv/bin:$PATH
-ENV PYTHONPATH=/app/venv/lib/python3.11/site-packages:/app:/app/src
+ENV PYTHONPATH=/app:/app/src
 
 # Copy source
 COPY src/ ./src/
@@ -45,6 +46,6 @@ EXPOSE 8005
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8005/api/v1/health || exit 1
+    CMD curl -f http://localhost:8005/health || exit 1
 
 CMD ["uvicorn", "src.layer5_ground_truth.api.main:app", "--host", "0.0.0.0", "--port", "8005"]

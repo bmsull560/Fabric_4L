@@ -117,6 +117,17 @@ This documentation follows the **Diátaxis Framework**, organizing content by us
 
 ---
 
+### `/how-to-guides/` — Drift Detection
+**Purpose:** Detect and prevent drift between code, contracts, and documentation
+
+| Document | Description | When to Use |
+|----------|-------------|-------------|
+| `drift-detection.md` | API contract, schema, and documentation drift detection | After code changes, before releases |
+
+**Principle:** Automated detection with clear remediation paths
+
+---
+
 ### `/explanations/` — Deep Dives
 **Purpose:** Understanding and context
 

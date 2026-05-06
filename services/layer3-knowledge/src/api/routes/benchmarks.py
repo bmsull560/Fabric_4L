@@ -92,8 +92,10 @@ async def list_benchmarks(
 ):
     """List benchmarks with optional filters."""
     tenant_id = getattr(api_key, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Invalid tenant context")
     where_conditions: list[str] = ["b.tenant_id = $tenant_id"]
-    params: dict[str, Any] = {"limit": limit}
+    params: dict[str, Any] = {"limit": limit, "tenant_id": tenant_id}
 
     if industry:
         where_conditions.append("b.industry = $industry")
@@ -159,6 +161,8 @@ async def list_benchmark_policies(
 ):
     """List benchmark policy configurations."""
     tenant_id = getattr(api_key, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Invalid tenant context")
     query = """
     MATCH (bp:BenchmarkPolicy)
     WHERE bp.tenant_id = $tenant_id
@@ -193,6 +197,8 @@ async def get_benchmark(
 ):
     """Get a single benchmark by ID."""
     tenant_id = getattr(api_key, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Invalid tenant context")
     query = """
     MATCH (b:Benchmark {id: $benchmark_id})
     WHERE b.tenant_id = $tenant_id
@@ -201,7 +207,7 @@ async def get_benchmark(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query, benchmark_id=benchmark_id)
+        result = await neo4j.run(query, benchmark_id=benchmark_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -238,9 +244,11 @@ async def update_benchmark_policy(
 ):
     """Update a benchmark policy."""
     tenant_id = getattr(api_key, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Invalid tenant context")
     # Build SET clauses dynamically from provided fields
     set_parts: list[str] = []
-    params: dict[str, Any] = {"policy_id": policy_id}
+    params: dict[str, Any] = {"policy_id": policy_id, "tenant_id": tenant_id}
 
     update_data = update.model_dump(exclude_none=True)
     field_map = {

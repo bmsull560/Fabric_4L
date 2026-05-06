@@ -82,7 +82,7 @@ export function useAccountsPage(): UseAccountsPageReturn {
 
   // Pagination state with URL sync
   const pagination = usePaginatedList({
-    initialPage: searchParams.get('page') ? Math.max(1, parseInt(searchParams.get('page')!, 10)) : 1,
+    initialPage: searchParams.get('page') ? Math.max(1, parseInt(searchParams.get('page')!, 10) || 1) : 1,
     initialPageSize: 20,
     mode: 'server',
   });
@@ -127,8 +127,8 @@ export function useAccountsPage(): UseAccountsPageReturn {
   // Derived state
   const handleFilterChange = useCallback((newFilters: Partial<PageAccountFilters>) => {
     setFilters((prev: PageAccountFilters) => ({ ...prev, ...newFilters }));
-    pagination.setPage(1); // Reset to page 1 when filters change
-  }, [pagination]);
+    paginationWithUrlSync.setPage(1); // Reset to page 1 when filters change
+  }, [paginationWithUrlSync]);
 
   const handleSelectAccount = useCallback((accountId: string) => {
     setSelectedAccountId(accountId === selectedAccountId ? null : accountId);

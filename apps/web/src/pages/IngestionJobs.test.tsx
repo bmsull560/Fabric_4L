@@ -595,4 +595,170 @@ describe("IngestionJobs", () => {
 
     expect(screen.getByText("Cannot cancel completed job")).toBeInTheDocument();
   });
+
+  describe("Batch Retry", () => {
+    it("disables batch retry button when no failed jobs", async () => {
+      vi.mocked(apiClient.get).mockResolvedValueOnce(createMockResponse({
+        data: [
+          {
+            id: "550e8400-e29b-41d4-a716-446655440000",
+            status: "COMPLETED",
+            created_at: "2024-04-01T10:00:00Z",
+            progress_percent_complete: 100,
+            progress_processed_pages: 50,
+            configuration: { url: "https://example.com" },
+          },
+        ],
+        pagination: { page: 1, limit: 15, total: 1, totalPages: 1 },
+        aggregation: {
+          by_status: { COMPLETED: 1 },
+          total_execution_time_ms: 10000,
+          total_records_extracted: 50,
+        },
+      }));
+
+      render(<IngestionJobs />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText("Retry Failed")).toBeInTheDocument();
+      });
+
+      const retryButton = screen.getByText("Retry Failed").closest("button");
+      expect(retryButton).toBeDisabled();
+    });
+
+    it("enables batch retry button when failed jobs exist", async () => {
+      vi.mocked(apiClient.get).mockResolvedValueOnce(createMockResponse({
+        data: [
+          {
+            id: "550e8400-e29b-41d4-a716-446655440000",
+            status: "FAILED",
+            created_at: "2024-04-01T10:00:00Z",
+            progress_percent_complete: 50,
+            progress_processed_pages: 25,
+            configuration: { url: "https://failed.com" },
+          },
+        ],
+        pagination: { page: 1, limit: 15, total: 1, totalPages: 1 },
+        aggregation: {
+          by_status: { FAILED: 1 },
+          total_execution_time_ms: 5000,
+          total_records_extracted: 25,
+        },
+      }));
+
+      render(<IngestionJobs />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText("Retry Failed")).toBeInTheDocument();
+      });
+
+      const retryButton = screen.getByText("Retry Failed").closest("button");
+      expect(retryButton).not.toBeDisabled();
+    });
+
+    it("filters out invalid UUIDs when retrying batch", async () => {
+      const mockBatchResponse = {
+        operation: "retry",
+        requested: 1,
+        succeeded: 1,
+        failed: 0,
+        results: [{ id: "550e8400-e29b-41d4-a716-446655440000", status: "succeeded" }],
+      };
+
+      vi.mocked(apiClient.get).mockResolvedValueOnce(createMockResponse({
+        data: [
+          {
+            id: "550e8400-e29b-41d4-a716-446655440000", // Valid UUID
+            status: "FAILED",
+            created_at: "2024-04-01T10:00:00Z",
+            progress_percent_complete: 50,
+            progress_processed_pages: 25,
+            configuration: { url: "https://failed.com" },
+          },
+          {
+            id: "invalid-uuid-string", // Invalid UUID
+            status: "FAILED",
+            created_at: "2024-04-01T11:00:00Z",
+            progress_percent_complete: 30,
+            progress_processed_pages: 15,
+            configuration: { url: "https://failed2.com" },
+          },
+        ],
+        pagination: { page: 1, limit: 15, total: 2, totalPages: 1 },
+        aggregation: {
+          by_status: { FAILED: 2 },
+          total_execution_time_ms: 8000,
+          total_records_extracted: 40,
+        },
+      }));
+
+      vi.mocked(apiClient.post).mockResolvedValueOnce(createMockResponse(mockBatchResponse));
+
+      render(<IngestionJobs />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText("Retry Failed")).toBeInTheDocument();
+      });
+
+      const retryButton = screen.getByText("Retry Failed").closest("button");
+      if (retryButton) {
+        await userEvent.click(retryButton);
+      }
+
+      await waitFor(() => {
+        expect(apiClient.post).toHaveBeenCalledWith(
+          "l1",
+          "/jobs/batch",
+          expect.objectContaining({
+            operation: "retry",
+            job_ids: expect.arrayContaining(["550e8400-e29b-41d4-a716-446655440000"]),
+          })
+        );
+      });
+
+      // Should not include the invalid UUID
+      const postCall = vi.mocked(apiClient.post).mock.calls[0];
+      const request = postCall[2] as { job_ids: string[] };
+      expect(request.job_ids).not.toContain("invalid-uuid-string");
+    });
+
+    it("shows error toast when all job IDs are invalid", async () => {
+      vi.mocked(apiClient.get).mockResolvedValueOnce(createMockResponse({
+        data: [
+          {
+            id: "not-a-uuid",
+            status: "FAILED",
+            created_at: "2024-04-01T10:00:00Z",
+            progress_percent_complete: 50,
+            progress_processed_pages: 25,
+            configuration: { url: "https://failed.com" },
+          },
+        ],
+        pagination: { page: 1, limit: 15, total: 1, totalPages: 1 },
+        aggregation: {
+          by_status: { FAILED: 1 },
+          total_execution_time_ms: 5000,
+          total_records_extracted: 25,
+        },
+      }));
+
+      render(<IngestionJobs />, { wrapper: createWrapper() });
+
+      await waitFor(() => {
+        expect(screen.getByText("Retry Failed")).toBeInTheDocument();
+      });
+
+      const retryButton = screen.getByText("Retry Failed").closest("button");
+      if (retryButton) {
+        await userEvent.click(retryButton);
+      }
+
+      // Should show error toast (toast from sonner would need to be mocked or checked via DOM)
+      // For now, verify that post was not called since no valid UUIDs
+      await waitFor(() => {
+        expect(apiClient.post).not.toHaveBeenCalled();
+      });
+    });
+  });
 });

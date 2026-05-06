@@ -84,6 +84,7 @@ open http://localhost:5173
 - **Agents** — Behavior defined as versioned artifacts in `layer4-agents/agents/` and `layer4-agents/skills/`.
 - **Providers** — Vendor-specific adapters (OpenAI, Anthropic, Neo4j, pgvector) isolated from core logic.
 - **Packs** — Domain vertical extensions that add ontology, formulas, and variables without touching core.
+- **Drift Detection** — Automated checks for API contract drift, schema drift, and documentation staleness via CI/CD workflows and the Drift Assessor agent.
 
 ## Documentation
 
@@ -125,6 +126,7 @@ Our documentation follows the [Diátaxis Framework](https://diataxis.fr/) with t
 |----------|-------------|
 | [Troubleshooting Guide](docs/troubleshooting/index.md) | Decision trees and common issues |
 | [Runbooks](docs/troubleshooting/runbooks/) | 38 operational procedures |
+| [Drift Detection](docs/how-to-guides/drift-detection.md) | API contract, schema, and documentation drift detection |
 
 ### Architecture Decisions
 

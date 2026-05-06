@@ -53,33 +53,41 @@ export function useRoutePrefetch(options: UseRoutePrefetchOptions = {}) {
   const { debounceMs = 150, skipMobile = true } = options;
   const queryClient = useQueryClient();
   const timeoutRef = useRef<number | null>(null);
-  
+
+  // Cache mobile detection result to avoid repeated matchMedia calls
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsMobileDevice(skipMobile && window.matchMedia("(pointer: coarse)").matches);
+  }, [skipMobile]);
+
   // Component-level deduplication state (ref to avoid dependency issues with Set)
   const prefetchedIdsRef = useRef<Set<string>>(new Set());
+  // Track failure counts to prevent infinite retry loops
+  const failureCountRef = useRef<Map<string, number>>(new Map());
+  const MAX_FAILURES = 2;
 
-  // Prefetch deduplication helper
+  // Prefetch deduplication helper with failure limit
   const prefetchOnce = useCallback((key: string, fn: () => Promise<unknown>): void => {
     if (prefetchedIdsRef.current.has(key)) return;
     prefetchedIdsRef.current.add(key);
     void fn().catch(() => {
-      // On failure, remove from set to allow retry
+      // On failure, increment failure count and remove from set to allow retry
+      const currentFailures = (failureCountRef.current.get(key) ?? 0) + 1;
+      failureCountRef.current.set(key, currentFailures);
       prefetchedIdsRef.current.delete(key);
+
+      // If we've exceeded max failures, don't allow further retries
+      if (currentFailures >= MAX_FAILURES) {
+        failureCountRef.current.delete(key); // Clean up after reaching limit
+      }
     });
   }, []);
-
-  // Check if device is mobile/touch
-  const isMobile = useCallback(() => {
-    if (typeof window === "undefined") return false;
-    if (skipMobile && window.matchMedia("(pointer: coarse)").matches) {
-      return true;
-    }
-    return false;
-  }, [skipMobile]);
 
   // Prefetch account detail (component + data)
   const prefetchAccountDetail = useCallback(
     (accountId: string) => {
-      if (isMobile() || !accountId) return;
+      if (isMobileDevice || !accountId) return;
 
       if (timeoutRef.current) {
         window.clearTimeout(timeoutRef.current);
@@ -87,8 +95,6 @@ export function useRoutePrefetch(options: UseRoutePrefetchOptions = {}) {
 
       timeoutRef.current = window.setTimeout(() => {
         const target = PREFETCH_REGISTRY.account;
-        if (!target) return;
-
         const componentKey = `account-component-${accountId}`;
         const dataKey = `account-data-${accountId}`;
 
@@ -104,13 +110,13 @@ export function useRoutePrefetch(options: UseRoutePrefetchOptions = {}) {
         );
       }, debounceMs);
     },
-    [debounceMs, isMobile, queryClient, prefetchOnce]
+    [debounceMs, isMobileDevice, queryClient, prefetchOnce]
   );
 
   // Prefetch business case detail (component + data)
   const prefetchBusinessCaseDetail = useCallback(
     (caseId: string) => {
-      if (isMobile() || !caseId) return;
+      if (isMobileDevice || !caseId) return;
 
       if (timeoutRef.current) {
         window.clearTimeout(timeoutRef.current);
@@ -118,8 +124,6 @@ export function useRoutePrefetch(options: UseRoutePrefetchOptions = {}) {
 
       timeoutRef.current = window.setTimeout(() => {
         const target = PREFETCH_REGISTRY.businessCase;
-        if (!target) return;
-
         const componentKey = `businessCase-component-${caseId}`;
         const dataKey = `businessCase-data-${caseId}`;
 
@@ -135,7 +139,7 @@ export function useRoutePrefetch(options: UseRoutePrefetchOptions = {}) {
         );
       }, debounceMs);
     },
-    [debounceMs, isMobile, queryClient, prefetchOnce]
+    [debounceMs, isMobileDevice, queryClient, prefetchOnce]
   );
 
   // Cancel pending prefetch
@@ -155,6 +159,6 @@ export function useRoutePrefetch(options: UseRoutePrefetchOptions = {}) {
     prefetchAccountDetail,
     prefetchBusinessCaseDetail,
     cancelPrefetch,
-    isMobile,
+    isMobile: isMobileDevice,
   };
 }

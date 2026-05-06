@@ -17,6 +17,13 @@ import {
 const MAX_VISIBLE_PAGES = 5;
 const DEFAULT_PAGE_SIZE = 20;
 
+// Common button styling for Previous/Next buttons (defined outside component to avoid recreation)
+const NAV_BUTTON_CLASS_NAME = cn(
+  "inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-sm font-medium transition-colors",
+  "hover:bg-accent hover:text-accent-foreground",
+  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+);
+
 export interface PaginationBarProps {
   /** Current page number (1-based) */
   page: number;
@@ -128,13 +135,6 @@ export function PaginationBar({
     return pages;
   };
 
-  // Common button styling for Previous/Next buttons
-  const navButtonClassName = cn(
-    "inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-sm font-medium transition-colors",
-    "hover:bg-accent hover:text-accent-foreground",
-    "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-  );
-
   const pageNumbers = generatePageNumbers();
 
   return (
@@ -150,7 +150,7 @@ export function PaginationBar({
               onClick={onPrevious}
               disabled={!canPrevious}
               className={cn(
-                navButtonClassName,
+                NAV_BUTTON_CLASS_NAME,
                 !canPrevious && "opacity-50 cursor-not-allowed pointer-events-none"
               )}
               aria-label="Go to previous page"
@@ -187,7 +187,7 @@ export function PaginationBar({
               onClick={onNext}
               disabled={!canNext}
               className={cn(
-                navButtonClassName,
+                NAV_BUTTON_CLASS_NAME,
                 !canNext && "opacity-50 cursor-not-allowed pointer-events-none"
               )}
               aria-label="Go to next page"

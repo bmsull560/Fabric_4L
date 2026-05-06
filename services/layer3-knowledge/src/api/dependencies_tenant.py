@@ -163,6 +163,8 @@ async def create_neo4j_tenant_session(tenant_id: str | None) -> Neo4jTenantSessi
         The caller is responsible for closing the session. Use ``async with``
         or call ``await neo4j.close()`` explicitly.
     """
+    if not tenant_id:
+        raise ValueError("tenant_id is required for tenant-scoped sessions")
     from ..db.driver import get_driver
 
     driver = await get_driver()

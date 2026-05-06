@@ -39,6 +39,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const PAGE_SIZE = 15;
+
+// UUID validation regex pattern (RFC 4122 format)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const STATUS_OPTIONS: { value: JobStatusFilter; label: string }[] = [
   { value: 'all', label: 'All Status' },
   { value: 'pending', label: 'Pending' },
@@ -161,19 +166,15 @@ export default function IngestionJobs() {
   const handleBatchRetry = useCallback(async () => {
     if (batchOperation.isPending || jobs.length === 0) return;
     
-    // Filter failed jobs and validate UUID format
+    // Filter failed jobs and validate UUID format (lowercase only)
     const failedJobs = jobs.filter(j => j.status === 'failed');
     const validJobIds = failedJobs
       .map(j => j.id)
-      .filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+      .filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id));
     
-    // Validate that we have failed jobs with valid UUIDs
+    // Validate that we have valid UUIDs to retry
     if (validJobIds.length === 0) {
-      if (failedJobs.length === 0) {
-        toast.info('No failed jobs to retry');
-      } else {
-        toast.error('Failed job IDs are not valid UUIDs');
-      }
+      toast.error('Failed job IDs are not valid UUIDs');
       return;
     }
     

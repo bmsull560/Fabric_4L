@@ -1,6 +1,7 @@
+# syntax=docker/dockerfile:1
 # Multi-stage build for Layer 1: Data Ingestion Service (uv edition)
 # Stage 1: Builder - installs dependencies using uv.lock
-FROM python:3.11.11-slim-bookworm AS builder
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS builder
 
 WORKDIR /app
 
@@ -25,7 +26,7 @@ RUN python -m playwright install chromium
 RUN python -m playwright install-deps chromium
 
 # Stage 2: Runtime - minimal image with only runtime dependencies
-FROM python:3.11.11-slim-bookworm AS runtime
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
 
 # Install runtime dependencies with retry logic
 # Notes on Playwright dependencies:
@@ -75,7 +76,7 @@ WORKDIR /app
 # Copy Python packages from builder
 COPY --from=builder /app/venv /app/venv
 ENV PATH=/app/venv/bin:$PATH
-ENV PYTHONPATH=/app/venv/lib/python3.11/site-packages:/app
+ENV PYTHONPATH=/app:/app/src
 
 # Copy Playwright browsers from builder
 COPY --from=builder /root/.cache/ms-playwright /home/appuser/.cache/ms-playwright
@@ -93,7 +94,7 @@ RUN chown -R appuser:appgroup /app /home/appuser
 USER appuser
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose port

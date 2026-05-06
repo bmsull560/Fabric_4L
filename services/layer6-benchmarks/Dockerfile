@@ -1,7 +1,8 @@
+# syntax=docker/dockerfile:1
 FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
 
 # Security: Create non-root user early
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 
 WORKDIR /app
 
@@ -26,7 +27,7 @@ COPY src/ ./src/
 
 # Set PATH to use uv virtual environment and PYTHONPATH for imports
 ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app:/app/src
 
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app

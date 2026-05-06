@@ -16,10 +16,9 @@ from enum import Enum
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from neo4j import AsyncDriver
 from pydantic import BaseModel, Field, field_validator
 
-from ...db.driver import get_driver
+from ..dependencies_tenant import create_neo4j_tenant_session
 from ...logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -238,20 +237,20 @@ def _model_node_to_summary(record: dict[str, Any]) -> ModelSummary:
     )
 
 
-async def _ensure_constraints(driver: AsyncDriver) -> None:
+async def _ensure_constraints(neo4j) -> None:
     """Ensure required Neo4j constraints exist.
     
     Idempotent - safe to call multiple times.
     """
     try:
         # Check if constraint exists (Neo4j Community compatible)
-        result = await driver.execute_query(
+        records = await neo4j.execute_query(
             "SHOW CONSTRAINTS YIELD name WHERE name = 'model_id_unique' RETURN count(*) as cnt"
         )
-        count = result[0][0].get("cnt", 0) if result and result[0] else 0
+        count = records[0].get("cnt", 0) if records else 0
         
         if count == 0:
-            await driver.execute_query(
+            await neo4j.execute_query(
                 "CREATE CONSTRAINT model_id_unique IF NOT EXISTS "
                 "FOR (m:ValueModel) REQUIRE m.model_id IS UNIQUE"
             )
@@ -542,8 +541,8 @@ async def create_model(
         tenant_id: $tenant_id
     })
     RETURN m.model_id as model_id
-"""
-    
+    """
+
     params = {
         "model_id": model_id,
         "name": data.name,
