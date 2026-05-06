@@ -11,6 +11,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
+import { EmptyState } from "@/components/states";
 import {
   Skeleton,
   ErrorBoundary,
@@ -724,9 +725,12 @@ function ValuePacksContent() {
                     />
                   </div>
                 ) : (
-                  <div className="col-span-3 text-center py-12 text-muted-foreground/60 text-[13px]">
-                    <Package size={36} className="mx-auto mb-3 text-muted-foreground/40" />
-                    <p>No value packs match your filters.</p>
+                  <div className="col-span-3">
+                    <EmptyState
+                      icon={Package}
+                      title="No value packs match your filters"
+                      description="Try adjusting your search or filter criteria"
+                    />
                   </div>
                 )}
               </div>

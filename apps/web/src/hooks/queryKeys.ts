@@ -242,6 +242,8 @@ export const QK = {
     detail: (id: string) => ["competitive", "detail", id] as const,
     battlecards: (competitorId: string) =>
       ["competitive", "battlecards", competitorId] as const,
+    battlecard: (competitorId: string, productId: string) =>
+      ["competitive", "battlecard", competitorId, productId] as const,
     winLoss: (competitorId?: string) =>
       ["competitive", "win-loss", competitorId ?? ""] as const,
     landscape: (productId?: string) =>
@@ -256,6 +258,9 @@ export const QK = {
     detail: (id: string) => ["roi", "detail", id] as const,
     templates: () => ["roi", "templates"] as const,
     benchmarks: (industry: string) => ["roi", "benchmarks", industry] as const,
+    benchmarksList: () => ["roi", "benchmarks-list"] as const,
+    benchmarkDetail: (id: string) => ["roi", "benchmark", id] as const,
+    agentCalculation: () => ["roi", "agent-calculation"] as const,
   },
 
   // L4 — Account Enrichment

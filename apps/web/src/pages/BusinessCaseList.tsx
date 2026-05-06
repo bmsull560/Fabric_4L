@@ -32,6 +32,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
@@ -403,31 +410,39 @@ function BusinessCaseListContent() {
 
         <div className="flex items-center gap-2">
           <Filter size={14} className="text-muted-foreground/60" />
-          <select
+          <Select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as BusinessCaseFilters['status'])}
-            className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
+            onValueChange={(value) => setStatusFilter(value as BusinessCaseFilters['status'])}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="draft">Draft</option>
-            <option value="archived">Archived</option>
-          </select>
+            <SelectTrigger className="text-[12px] h-9 w-[130px] bg-card border-border">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-[12px] text-muted-foreground">Sort by:</span>
-          <select
+          <Select
             value={sortField}
-            onChange={(e) => handleSort(e.target.value as SortField)}
-            className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
+            onValueChange={(value) => handleSort(value as SortField)}
           >
-            <option value="updatedAt">Last Updated</option>
-            <option value="name">Name</option>
-            <option value="company">Company</option>
-            <option value="totalValue">Value</option>
-            <option value="confidence">Confidence</option>
-          </select>
+            <SelectTrigger className="text-[12px] h-9 w-[140px] bg-card border-border">
+              <SelectValue placeholder="Last Updated" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updatedAt">Last Updated</SelectItem>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="company">Company</SelectItem>
+              <SelectItem value="totalValue">Value</SelectItem>
+              <SelectItem value="confidence">Confidence</SelectItem>
+            </SelectContent>
+          </Select>
           <button
             onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
             className="text-[12px] px-2 py-2 border border-border rounded-lg hover:bg-muted/20"

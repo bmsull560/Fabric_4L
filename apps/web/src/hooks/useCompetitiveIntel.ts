@@ -155,6 +155,17 @@ async function fetchBattlecards(competitorId: string): Promise<Battlecard[]> {
   return parseBattlecardList(response.data);
 }
 
+async function fetchBattlecard(
+  competitorId: string,
+  productId: string
+): Promise<Battlecard> {
+  const response = await apiClient.get(
+    "l3",
+    `/v1/competitive/competitors/${encodeURIComponent(competitorId)}/battlecard?product_id=${encodeURIComponent(productId)}`
+  );
+  return parseBattlecard(response.data);
+}
+
 async function fetchWinLossSummary(): Promise<WinLossSummaryResponse> {
   const response = await apiClient.get(
     "l3",
@@ -212,6 +223,27 @@ export function useBattlecards(competitorId: string | null) {
       );
     },
     enabled: !!competitorId,
+    staleTime: STALE_TIME.detail,
+    retry: RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
+  });
+}
+
+export function useBattlecard(
+  competitorId: string | null,
+  productId: string | null
+) {
+  return useQuery<Battlecard, CompetitiveIntelApiError>({
+    queryKey: QK.competitive.battlecard(competitorId || "", productId || ""),
+    queryFn: async () => {
+      if (!competitorId || !productId)
+        throw new CompetitiveIntelApiError("Competitor ID and Product ID are required");
+      return withApiError(
+        fetchBattlecard(competitorId, productId),
+        CompetitiveIntelApiError
+      );
+    },
+    enabled: !!competitorId && !!productId,
     staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,

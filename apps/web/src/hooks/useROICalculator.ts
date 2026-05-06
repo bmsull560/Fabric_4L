@@ -102,6 +102,41 @@ export interface IndustryBenchmark {
   sample_size: number;
 }
 
+export interface Benchmark {
+  id: string;
+  name: string;
+  industry: string;
+  metric: string;
+  value: number;
+  unit: string;
+  source?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BenchmarkListResponse {
+  benchmarks: Benchmark[];
+  total: number;
+}
+
+export interface ROICalculationAgentRequest {
+  deal_size: number;
+  implementation_cost: number;
+  annual_benefit: number;
+  time_horizon_years?: number;
+  discount_rate?: number;
+  ramp_months?: number;
+  product_id?: string;
+  account_id?: string;
+  scenario_count?: number;
+}
+
+export interface ROICalculationAgentResult extends ROICalculationResult {
+  scenarios: Record<string, ScenarioResult>;
+  confidence_score?: number;
+  recommended_actions?: string[];
+}
+
 // ── Domain Error ───────────────────────────────────────────────────────────
 
 export class ROIApiError extends BaseApiError {
@@ -141,6 +176,16 @@ async function fetchCalculation(calcId: string): Promise<ROICalculationResult> {
 async function fetchBenchmarks(industry: string): Promise<IndustryBenchmark> {
   const response = await apiClient.get('l3', `/v1/roi/benchmarks/${encodeURIComponent(industry)}`);
   return response.data as IndustryBenchmark;
+}
+
+async function fetchBenchmarksList(): Promise<BenchmarkListResponse> {
+  const response = await apiClient.get('l3', '/v1/roi/benchmarks');
+  return response.data as BenchmarkListResponse;
+}
+
+async function fetchBenchmarkDetail(benchmarkId: string): Promise<Benchmark> {
+  const response = await apiClient.get('l3', `/v1/roi/benchmarks/${encodeURIComponent(benchmarkId)}`);
+  return response.data as Benchmark;
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
@@ -193,6 +238,30 @@ export function useIndustryBenchmarks(industry: string | null) {
   });
 }
 
+export function useBenchmarksList() {
+  return useQuery<BenchmarkListResponse, ROIApiError>({
+    queryKey: QK.roi.benchmarksList(),
+    queryFn: () => withApiError(fetchBenchmarksList(), ROIApiError),
+    staleTime: STALE_TIME.list,
+    retry: RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
+  });
+}
+
+export function useBenchmarkDetail(benchmarkId: string | null) {
+  return useQuery<Benchmark, ROIApiError>({
+    queryKey: QK.roi.benchmarkDetail(benchmarkId || ''),
+    queryFn: async () => {
+      if (!benchmarkId) throw new ROIApiError('No benchmark ID provided');
+      return withApiError(fetchBenchmarkDetail(benchmarkId), ROIApiError);
+    },
+    enabled: !!benchmarkId,
+    staleTime: STALE_TIME.detail,
+    retry: RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
+  });
+}
+
 // ── Mutation Hooks ─────────────────────────────────────────────────────────
 
 export function useCalculateROI() {
@@ -226,6 +295,20 @@ export function useCreateROITemplate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.roi.templates() });
+    },
+  });
+}
+
+export function useROICalculationAgent() {
+  const queryClient = useQueryClient();
+  return useMutation<ROICalculationAgentResult, ROIApiError, ROICalculationAgentRequest>({
+    mutationFn: async (params) => {
+      const response = await apiClient.post('l3', '/v1/agents/roi-calculation', params);
+      return response.data as ROICalculationAgentResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.roi.agentCalculation() });
+      queryClient.invalidateQueries({ queryKey: QK.roi.all });
     },
   });
 }

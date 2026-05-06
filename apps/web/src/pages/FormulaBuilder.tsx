@@ -232,7 +232,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   // Mutations
   const { mutate: createFormula, isPending: isCreating, error: createError } = useCreateFormula();
   const { mutate: updateFormula, isPending: isUpdating, error: updateError } = useUpdateFormula();
-  const { mutate: evaluateFormula, isPending: isEvaluating } = useEvaluateFormula();
+  const { mutate: evaluateFormula, isPending: isEvaluatingPending } = useEvaluateFormula();
 
   // Load existing formula data
   useEffect(() => {
@@ -505,14 +505,14 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                 <Btn
                   variant="primary"
                   onClick={handleTest}
-                  disabled={isEvaluating || !formulaExpression.trim()}
+                  disabled={isEvaluatingPending || !formulaExpression.trim()}
                 >
-                  {isEvaluating ? (
+                  {isEvaluatingPending ? (
                     <Loader2 size={11} className="animate-spin" />
                   ) : (
                     <Target size={11} />
                   )}
-                  {isEvaluating ? " Testing..." : " Test with Sample Data"}
+                  {isEvaluatingPending ? " Testing..." : " Test with Sample Data"}
                 </Btn>
               </div>
             </div>
@@ -593,7 +593,16 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                     onClick={() => {
                       setFormulaExpression(formulaExpression + `{${variable.name}}`);
                     }}
-                    title="Click to insert into formula"
+                    title={`Insert ${variable.name} into formula`}
+                    aria-label={`Insert variable ${variable.name}`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setFormulaExpression(formulaExpression + `{${variable.name}}`);
+                      }
+                    }}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0 group-hover:bg-primary" />
                     <span className="truncate">{variable.name}</span>
