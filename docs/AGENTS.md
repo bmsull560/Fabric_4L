@@ -228,3 +228,12 @@ For production traces, see `monitoring/` for Grafana dashboards.
 - **Tests**: Deterministic unit tests only — no external calls. Use `pytest-mock` or `unittest.mock`.
 - **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `chore:`, `test:`.
 - **Secrets**: Use `value-fabric/.env.example` for templates. Never put real values anywhere tracked by git.
+
+## Runtime request limiting canonical module
+
+- Canonical implementation: `value_fabric/shared/rate_limiting/tenant_rate_limiter.py`.
+- Non-canonical adapters (for compatibility only):
+  - `value_fabric/shared/identity/rate_limiter.py`
+  - `value_fabric/layer3/api/rate_limiter.py`
+- Rule: adapter modules must delegate through a narrow interface and must not duplicate
+  sliding-window state math or Redis counter semantics.
