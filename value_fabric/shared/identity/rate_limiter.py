@@ -1,5 +1,8 @@
 """Shared Identity adapter over canonical runtime request limiting.
 
+Canonical module decision: ``value_fabric.shared.rate_limiting.tenant_rate_limiter``
+is the only location that owns sliding-window counter semantics.
+
 Canonical state math lives in ``value_fabric.shared.rate_limiting.tenant_rate_limiter``.
 This module keeps identity-facing config/result shapes while delegating checks
 through a narrow adapter interface.
