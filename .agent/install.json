@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "agentic_stack_version": "0.15.0",
+  "abs_target": "C:\\Users\\BBB\\Fabric_4L\\UsersBBBagentic-stack\\UsersBBBFabric_4L",
+  "installed_at": "2026-05-06T19:17:42Z",
+  "adapters": {
+    "claude-code": {
+      "installed_at": "2026-05-06T19:17:42Z",
+      "files_written": [
+        "CLAUDE.md",
+        ".claude/settings.json"
+      ],
+      "files_overwritten": [],
+      "files_alerted": [],
+      "file_results": [
+        {
+          "dst": "CLAUDE.md",
+          "result": "written_new"
+        },
+        {
+          "dst": ".claude/settings.json",
+          "result": "written_new"
+        }
+      ],
+      "post_install_results": [],
+      "brain_root_primitive": "$CLAUDE_PROJECT_DIR"
+    }
+  }
+}
