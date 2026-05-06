@@ -168,7 +168,7 @@ class TestValueFabricExceptionHandler:
 
     def test_response_includes_details_in_dev(self, client):
         """Non-production responses include error details."""
-        with patch("shared.error_handling.handlers.is_production", return_value=False):
+        with patch("value_fabric.shared.error_handling.handlers.is_production", return_value=False):
             resp = client.get("/raise-vf")
         body = resp.json()
         assert body.get("details") is not None
@@ -229,7 +229,7 @@ class TestGlobalExceptionHandler:
     def test_production_hides_exception_details(self, client):
         """Production mode must not expose internal error details."""
         with patch(
-            "shared.error_handling.handlers.is_production", return_value=True
+            "value_fabric.shared.error_handling.handlers.is_production", return_value=True
         ):
             resp = client.get("/raise-unexpected")
         body = resp.json()

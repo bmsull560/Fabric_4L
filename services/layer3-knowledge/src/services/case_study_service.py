@@ -288,9 +288,13 @@ class CaseStudyService:
         })
 
 
-    async def get(self, case_study_id: str) -> dict[str, Any] | None:
+    async def get(self, tenant_or_case_study_id: str, case_study_id: str | None = None) -> dict[str, Any] | None:
         """Get a case study by ID."""
-        tenant_id = _get_tenant_id()
+        if case_study_id is None:
+            case_study_id = tenant_or_case_study_id
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_case_study_id)
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -315,10 +319,19 @@ class CaseStudyService:
             return cs
 
     async def update(
-        self, case_study_id: str, updates: dict[str, Any]
+        self,
+        tenant_or_case_study_id: str,
+        case_study_id_or_updates: str | dict[str, Any],
+        updates: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Update a case study's properties."""
-        tenant_id = _get_tenant_id()
+        if updates is None:
+            case_study_id = tenant_or_case_study_id
+            updates = case_study_id_or_updates  # type: ignore[assignment]
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_case_study_id)
+            case_study_id = str(case_study_id_or_updates)
         # Prevent overwriting system fields
         protected = {"id", "tenant_id", "evidence_type", "created_at"}
         safe_updates = {k: v for k, v in updates.items() if k not in protected}
@@ -342,9 +355,13 @@ class CaseStudyService:
 
             return CaseStudyService_updateResult.model_validate({"id": record["id"], "title": record["title"], "status": "updated"})
 
-    async def delete(self, case_study_id: str) -> bool:
+    async def delete(self, tenant_or_case_study_id: str, case_study_id: str | None = None) -> bool:
         """Delete a case study and its relationships."""
-        tenant_id = _get_tenant_id()
+        if case_study_id is None:
+            case_study_id = tenant_or_case_study_id
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_case_study_id)
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -373,6 +390,7 @@ class CaseStudyService:
 
     async def search(
         self,
+        tenant_id: str | None = None,
         industry: str | None = None,
         company_size: str | None = None,
         products: list[str] | None = None,
@@ -382,7 +400,7 @@ class CaseStudyService:
         offset: int = 0,
     ) -> dict[str, Any]:
         """Search case studies with filters."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         where_clauses = ["e.tenant_id = $tenant_id", "e.evidence_type = 'case_study'"]
         params: dict[str, Any] = {"tenant_id": tenant_id, "limit": limit, "offset": offset}
 
@@ -449,9 +467,9 @@ class CaseStudyService:
             })
 
 
-    async def get_by_industry(self) -> dict[str, int]:
+    async def get_by_industry(self, tenant_id: str | None = None) -> dict[str, int]:
         """Get case study counts grouped by industry."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -464,9 +482,9 @@ class CaseStudyService:
             records = [record async for record in result]
             return CaseStudyService_get_by_industryResult.model_validate({r["industry"]: r["count"] for r in records})
 
-    async def get_by_product(self) -> dict[str, int]:
+    async def get_by_product(self, tenant_id: str | None = None) -> dict[str, int]:
         """Get case study counts grouped by product."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -484,14 +502,18 @@ class CaseStudyService:
     # -------------------------------------------------------------------
 
     async def bulk_import(
-        self, case_studies: list[dict[str, Any]]
+        self, tenant_or_case_studies: str | list[dict[str, Any]], case_studies: list[dict[str, Any]] | None = None
     ) -> dict[str, Any]:
         """Import multiple case studies in a single transaction.
 
         Expects a list of dicts matching the CaseStudy constructor kwargs.
         Returns import statistics.
         """
-        tenant_id = _get_tenant_id()
+        if case_studies is None:
+            case_studies = tenant_or_case_studies  # type: ignore[assignment]
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_case_studies)
         created = 0
         errors = []
 

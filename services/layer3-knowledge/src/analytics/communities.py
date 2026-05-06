@@ -4,6 +4,8 @@ import logging
 from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from value_fabric.shared.identity.context import require_context
+from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
@@ -81,12 +83,28 @@ class CommunityDetector:
             await self._driver.close()
             self._driver = None
 
+    def _resolve_tenant_id(self, tenant_id: str | None = None) -> str:
+        """Resolve the tenant id for tenant-owned community analytics."""
+        resolved = tenant_id or require_context().tenant_id
+        if not resolved:
+            raise RuntimeError("tenant_id is required for Layer 3 community analytics")
+        return str(resolved)
+
+    def _tenant_builder(self, tenant_id: str | None = None) -> TenantScopedCypher:
+        """Return the canonical strict Cypher builder for the active tenant."""
+        return TenantScopedCypher(self._resolve_tenant_id(tenant_id))
+
+    async def _run_scoped(self, session: Any, query: ScopedQuery):
+        """Execute a strict scoped query through the Neo4j session seam."""
+        return await session.run(query.cypher, query.params)
+
     async def detect_louvain(
         self,
         node_labels: list[str] | None = None,
         relationship_types: list[str] | None = None,
         min_community_size: int = 3,
         max_levels: int = 10,
+        tenant_id: str | None = None,
     ) -> dict:
         """Detect communities using Louvain algorithm.
 
@@ -112,27 +130,16 @@ class CommunityDetector:
             except Exception as e:
                 logger.warning(f"GDS not available: {e}")
                 return await self._fallback_community_detection(
-                    session, node_labels, relationship_types, min_community_size
+                    session, node_labels, relationship_types, min_community_size, tenant_id=tenant_id
                 )
 
             # Create in-memory graph projection
             graph_name = f"communities_{self._random_id()}"
 
             try:
-                # Project graph
-                await session.run(
-                    """
-                    CALL gds.graph.project(
-                        $graph_name,
-                        $node_filter,
-                        $rel_filter
-                    )
-                    """,
-                    {
-                        "graph_name": graph_name,
-                        "node_filter": node_filter,
-                        "rel_filter": rel_filter,
-                    },
+                # Project graph with tenant-filtered Cypher projection.
+                await self._project_graph(
+                    session, graph_name, node_filter, relationship_types, tenant_id=tenant_id
                 )
 
                 # Run Louvain
@@ -207,6 +214,7 @@ class CommunityDetector:
         node_labels: list[str] | None = None,
         relationship_types: list[str] | None = None,
         min_community_size: int = 3,
+        tenant_id: str | None = None,
     ) -> dict:
         """Detect communities using Leiden algorithm (higher quality than Louvain).
 
@@ -229,25 +237,14 @@ class CommunityDetector:
             except Exception as e:
                 logger.warning(f"GDS not available: {e}")
                 return await self._fallback_community_detection(
-                    session, node_labels, relationship_types, min_community_size
+                    session, node_labels, relationship_types, min_community_size, tenant_id=tenant_id
                 )
 
             graph_name = f"communities_{self._random_id()}"
 
             try:
-                await session.run(
-                    """
-                    CALL gds.graph.project(
-                        $graph_name,
-                        $node_filter,
-                        $rel_filter
-                    )
-                    """,
-                    {
-                        "graph_name": graph_name,
-                        "node_filter": node_filter,
-                        "rel_filter": rel_filter,
-                    },
+                await self._project_graph(
+                    session, graph_name, node_filter, relationship_types, tenant_id=tenant_id
                 )
 
                 # Run Leiden
@@ -309,7 +306,7 @@ class CommunityDetector:
                 except Exception as e:
                     logger.debug(f"Could not drop graph projection: {e}")
 
-    async def detect_by_value_tree(self) -> dict:
+    async def detect_by_value_tree(self, tenant_id: str | None = None) -> dict:
         """Detect communities based on the 4-layer value tree structure.
 
         Groups entities that contribute to common value drivers.
@@ -320,11 +317,16 @@ class CommunityDetector:
         driver = await self._get_driver()
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            # Find all value drivers and their connected subgraphs
-            result = await session.run(
+            # Find tenant-scoped value drivers and their connected subgraphs.
+            builder = self._tenant_builder(tenant_id)
+            query = builder.custom_tenant_query(
                 """
                 MATCH (vd:ValueDriver)
-                OPTIONAL MATCH path = (vd)<-[:DRIVES]-(:Persona)<-[:BENEFITS]-(:UseCase)<-[:ENABLES]-(:Capability)
+                WHERE vd.tenant_id = $_tenant_id
+                OPTIONAL MATCH path = (vd)<-[:DRIVES]-(p:Persona)<-[:BENEFITS]-(uc:UseCase)<-[:ENABLES]-(c:Capability)
+                WHERE p.tenant_id = $_tenant_id
+                  AND uc.tenant_id = $_tenant_id
+                  AND c.tenant_id = $_tenant_id
                 WITH vd, collect(path) as paths
                 RETURN vd.id as value_driver_id,
                        vd.name as value_driver_name,
@@ -334,8 +336,11 @@ class CommunityDetector:
                            name: node.name,
                            type: labels(node)[0]
                        }]] as connected_paths
-                """
+                """,
+                operation="communities.value_tree",
+                labels=("ValueDriver", "Persona", "UseCase", "Capability"),
             )
+            result = await self._run_scoped(session, query)
 
             communities = []
             async for record in result:
@@ -375,31 +380,33 @@ class CommunityDetector:
         node_labels: list[str] | None,
         relationship_types: list[str] | None,
         min_size: int,
+        tenant_id: str | None = None,
     ) -> dict:
         """Fallback using connected components when GDS unavailable."""
-        label_filter = ""
-        if node_labels:
-            labels = "|".join(node_labels)
-            label_filter = f"WHERE n:{labels}"
-
-        rel_filter = ""
-        if relationship_types:
-            rels = "|".join(f"`{r}`" for r in relationship_types)
-            rel_filter = f"-[r:{rels}]-"
-        else:
-            rel_filter = "--"
-
-        result = await session.run(
+        label_filter = "AND any(label IN labels(n) WHERE label IN $node_labels)" if node_labels else ""
+        rel_filter = "AND type(r) IN $relationship_types" if relationship_types else ""
+        builder = self._tenant_builder(tenant_id)
+        query = builder.custom_tenant_query(
             f"""
-            MATCH (n){rel_filter}(m)
-            {label_filter}
+            MATCH (n)-[r]-(m)
+            WHERE n.tenant_id = $_tenant_id
+              AND m.tenant_id = $_tenant_id
+              {label_filter}
+              {rel_filter}
             WITH n, collect(m) as neighbors
             WHERE size(neighbors) >= $min_size - 1
             RETURN n.id as id, n.name as name, labels(n)[0] as type,
                    [x IN neighbors | x.id] as neighbor_ids
             """,
-            {"min_size": min_size},
+            params={
+                "min_size": min_size,
+                "node_labels": node_labels or [],
+                "relationship_types": relationship_types or [],
+            },
+            operation="communities.fallback",
+            labels=tuple(node_labels or ["*"]),
         )
+        result = await self._run_scoped(session, query)
 
         communities = []
         async for record in result:
@@ -420,6 +427,49 @@ class CommunityDetector:
             "note": "Using fallback method - GDS not available",
         })
 
+
+    async def _project_graph(
+        self,
+        session,
+        graph_name: str,
+        node_filter: list[str],
+        relationship_types: list[str] | None,
+        tenant_id: str | None = None,
+    ) -> None:
+        """Project a tenant-scoped graph for community algorithms."""
+        rel_filter = relationship_types or ["ENABLES", "BENEFITS", "DRIVES"]
+        builder = self._tenant_builder(tenant_id)
+        query = builder.custom_tenant_query(
+            """
+            CALL gds.graph.project.cypher(
+                $graph_name,
+                $node_query,
+                $relationship_query,
+                {parameters: {_tenant_id: $_tenant_id, node_labels: $node_filter, relationship_types: $rel_filter}}
+            )
+            """,
+            params={
+                "graph_name": graph_name,
+                "node_filter": node_filter,
+                "rel_filter": rel_filter,
+                "node_query": """
+                    MATCH (n)
+                    WHERE n.tenant_id = $_tenant_id
+                      AND any(label IN labels(n) WHERE label IN $node_labels)
+                    RETURN id(n) AS id
+                """,
+                "relationship_query": """
+                    MATCH (source)-[r]-(target)
+                    WHERE source.tenant_id = $_tenant_id
+                      AND target.tenant_id = $_tenant_id
+                      AND type(r) IN $relationship_types
+                    RETURN id(source) AS source, id(target) AS target, type(r) AS type
+                """,
+            },
+            operation="communities.gds_project",
+            labels=tuple(node_filter),
+        )
+        await self._run_scoped(session, query)
 
     async def _calculate_modularity(
         self,

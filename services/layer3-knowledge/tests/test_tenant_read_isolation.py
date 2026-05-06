@@ -154,9 +154,9 @@ class TestGetRelationshipsForEntity:
     async def test_outgoing_relationships_filtered_by_tenant(self, mock_session):
         """Verify outgoing relationships include tenant_id filter."""
         mock_result = AsyncMock()
-        mock_result.__aiter__ = AsyncMock(return_value=iter([
+        mock_result.__aiter__.return_value = iter([
             {"rel_type": "ENABLES", "target_id": "target-1", "target_name": "Target 1"}
-        ]))
+        ])
         mock_session.run = AsyncMock(return_value=mock_result)
         
         rels = await get_relationships_for_entity(
@@ -181,9 +181,9 @@ class TestGetRelationshipsForEntity:
     async def test_incoming_relationships_filtered_by_tenant(self, mock_session):
         """Verify incoming relationships include tenant_id filter."""
         mock_result = AsyncMock()
-        mock_result.__aiter__ = AsyncMock(return_value=iter([
+        mock_result.__aiter__.return_value = iter([
             {"rel_type": "DRIVES", "source_id": "source-1", "source_name": "Source 1"}
-        ]))
+        ])
         mock_session.run = AsyncMock(return_value=mock_result)
         
         rels = await get_relationships_for_entity(
@@ -206,7 +206,7 @@ class TestGetRelationshipsForEntity:
     async def test_both_directions(self, mock_session):
         """Verify both directions queries both outgoing and incoming."""
         mock_result = AsyncMock()
-        mock_result.__aiter__ = AsyncMock(return_value=iter([]))
+        mock_result.__aiter__.return_value = iter([])
         mock_session.run = AsyncMock(return_value=mock_result)
         
         rels = await get_relationships_for_entity(
@@ -233,7 +233,7 @@ class TestSearchEntities:
     async def test_filters_by_tenant_id(self, mock_session):
         """Verify search includes tenant_id filter."""
         mock_result = AsyncMock()
-        mock_result.__aiter__ = AsyncMock(return_value=iter([]))
+        mock_result.__aiter__.return_value = iter([])
         mock_session.run = AsyncMock(return_value=mock_result)
         
         await search_entities(mock_session, tenant_id="tenant-a")
@@ -249,7 +249,7 @@ class TestSearchEntities:
     async def test_entity_type_filter(self, mock_session):
         """Verify entity_type filter is applied."""
         mock_result = AsyncMock()
-        mock_result.__aiter__ = AsyncMock(return_value=iter([]))
+        mock_result.__aiter__.return_value = iter([])
         mock_session.run = AsyncMock(return_value=mock_result)
         
         await search_entities(
@@ -269,7 +269,7 @@ class TestSearchEntities:
     async def test_pagination(self, mock_session):
         """Verify pagination parameters are applied."""
         mock_result = AsyncMock()
-        mock_result.__aiter__ = AsyncMock(return_value=iter([]))
+        mock_result.__aiter__.return_value = iter([])
         mock_session.run = AsyncMock(return_value=mock_result)
         
         await search_entities(

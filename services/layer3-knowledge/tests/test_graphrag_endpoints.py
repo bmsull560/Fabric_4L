@@ -140,7 +140,7 @@ class TestGraphRAGEndpoints:
         # Verify mock was called with correct parameters
         mock_app_state.graph_rag.query.assert_called_once()
         call_args = mock_app_state.graph_rag.query.call_args
-        assert call_args[1]["query"] == sample_graphrag_query["query"]
+        assert call_args[1]["query_text"] == sample_graphrag_query["query"]
         assert call_args[1]["max_hops"] == sample_graphrag_query["max_hops"]
         assert call_args[1]["max_results"] == sample_graphrag_query["max_results"]
     
@@ -218,7 +218,9 @@ class TestGraphRAGEndpoints:
         
         assert response.status_code == 500
         data = response.json()
-        assert "error" in data
+        assert data["code"] == "INTERNAL_ERROR"
+        assert "Query processing failed" in data["message"]
+        assert "trace_id" in data
     
     def test_graphrag_legacy_alias_endpoint(self, test_client: TestClient, sample_graphrag_query, test_utils: TestUtils):
         """Test backward-compatible /v1/graphrag alias still functions correctly.

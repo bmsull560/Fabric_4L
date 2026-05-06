@@ -45,8 +45,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Import shared metrics from app_monolith to avoid duplication
-from ..app_monolith import _app_metrics as app_metrics, _app_start_time, set_app_metrics
+# Import shared metrics helpers from a non-route module to avoid circular imports.
+from ..metrics_state import get_system_metrics, set_app_metrics
 
 
 async def check_dependencies(schema_initializer: Any | None = None) -> list[DependencyStatus]:
@@ -128,50 +128,6 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
 
     return dependencies
 
-
-def get_system_metrics() -> ServiceMetrics:
-    """Collect system and application metrics from Prometheus."""
-    uptime = time.time() - _app_start_time
-    memory_info = psutil.virtual_memory()
-    memory_usage_mb = memory_info.used / (1024 * 1024)
-    cpu_percent = psutil.cpu_percent(interval=None)
-
-    total_requests = 0
-    total_errors = 0
-    active_connections = 0
-    error_rate_percent = 0.0
-
-    if app_metrics is not None:
-        try:
-            registry = app_metrics.config.registry
-            prefix = app_metrics.config.prefix
-
-            for metric in registry.collect():
-                if metric.name == f"{prefix}active_connections":
-                    for sample in metric.samples:
-                        if sample.labels.get("connection_type") == "total":
-                            active_connections = int(sample.value)
-                            break
-                elif metric.name == f"{prefix}http_requests_total":
-                    for sample in metric.samples:
-                        total_requests += int(sample.value)
-                elif metric.name == f"{prefix}errors_total":
-                    for sample in metric.samples:
-                        total_errors += int(sample.value)
-
-            if total_requests > 0:
-                error_rate_percent = round((total_errors / total_requests) * 100, 2)
-        except Exception as exc:
-            logger.warning("Failed to extract Prometheus metrics: %s", exc)
-
-    return ServiceMetrics(
-        uptime_seconds=uptime,
-        memory_usage_mb=round(memory_usage_mb, 2),
-        cpu_percent=round(cpu_percent, 2),
-        active_connections=active_connections,
-        total_requests=total_requests,
-        error_rate_percent=error_rate_percent,
-    )
 
 
 def _derive_overall_status(

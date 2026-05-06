@@ -8,6 +8,8 @@ from typing import Any
 from neo4j import AsyncDriver
 from neo4j.time import Date as Neo4jDate
 from neo4j.time import DateTime as Neo4jDateTime
+from value_fabric.shared.identity.context import get_request_context
+from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
@@ -181,6 +183,23 @@ class GraphRAGEngine:
             await self._driver.close()
             self._driver = None
 
+    def _resolve_tenant_id(self, tenant_id: str | None = None) -> str:
+        """Return the explicit or request-context tenant, failing closed if absent."""
+        if tenant_id:
+            return str(tenant_id)
+        ctx = get_request_context()
+        if ctx and ctx.tenant_id:
+            return str(ctx.tenant_id)
+        raise ValueError("tenant_id is required for tenant-scoped GraphRAG operations")
+
+    def _tenant_builder(self, tenant_id: str | None = None) -> TenantScopedCypher:
+        """Return the canonical strict Cypher builder for GraphRAG tenant reads."""
+        return TenantScopedCypher(self._resolve_tenant_id(tenant_id))
+
+    async def _run_scoped(self, session: Any, query: ScopedQuery):
+        """Execute a strict scoped query object through the Neo4j session seam."""
+        return await session.run(query.cypher, query.params)
+
     async def query(
         self,
         query_text: str,
@@ -188,6 +207,7 @@ class GraphRAGEngine:
         max_hops: int | None = None,
         min_confidence: float | None = None,
         max_results: int = 10,
+        tenant_id: str | None = None,
     ) -> GraphRAGResult:
         """Execute a GraphRAG query.
 
@@ -201,12 +221,13 @@ class GraphRAGEngine:
         Returns:
             GraphRAGResult with entities, relationships, and context
         """
+        tenant = self._resolve_tenant_id(tenant_id)
         max_hops = max_hops or self.settings.graphrag_max_hops
         min_confidence = min_confidence or self.settings.graphrag_min_confidence
 
         # Step 1: Find seed entities via vector search
         seed_entities = await self._find_seed_entities(
-            query_text, entity_type, max_results
+            query_text, entity_type, max_results, tenant_id=tenant
         )
 
         if not seed_entities:
@@ -223,7 +244,7 @@ class GraphRAGEngine:
 
         # Step 2: Expand context via graph traversal
         expanded_context = await self._expand_context(
-            seed_entities, max_hops, min_confidence
+            seed_entities, max_hops, min_confidence, tenant_id=tenant
         )
 
         # Step 3: Build result
@@ -252,8 +273,7 @@ class GraphRAGEngine:
         Raises:
             ValueError: If tenant_id is None or empty
         """
-        if not tenant_id:
-            raise ValueError("tenant_id is required for get_entity_context")
+        tenant = self._resolve_tenant_id(tenant_id)
 
         driver = await self._get_driver()
 
@@ -264,25 +284,26 @@ class GraphRAGEngine:
             rel_types_str = ", ".join(f"'{r}'" for r in relationship_types)
             rel_filter = f"AND type(r) IN [{rel_types_str}]"
 
-        query = f"""
-        MATCH path = (center {{id: $entity_id, tenant_id: $tenant_id}})-[r*1..{hops}]-(connected {{tenant_id: $tenant_id}})
-        WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
-        {rel_filter}
-        WITH center, 
-             collect(DISTINCT connected) as neighbors,
-             collect(DISTINCT {{rel: r, nodes: nodes(path)}}) as paths
-        RETURN center, neighbors, paths
-        """
+        scoped = self._tenant_builder(tenant).custom_tenant_query(
+            f"""
+            MATCH path = (center {{id: $entity_id, tenant_id: $_tenant_id}})-[r*1..{hops}]-(connected {{tenant_id: $_tenant_id}})
+            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $_tenant_id)
+            {rel_filter}
+            WITH center,
+                 collect(DISTINCT connected) as neighbors,
+                 collect(DISTINCT {{rel: r, nodes: nodes(path)}}) as paths
+            RETURN center, neighbors, paths
+            """,
+            params={
+                "entity_id": entity_id,
+                "min_confidence": self.settings.graphrag_min_confidence,
+            },
+            operation="graphrag_get_entity_context",
+            labels=("*",),
+        )
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            result = await session.run(
-                query,
-                {
-                    "entity_id": entity_id,
-                    "tenant_id": tenant_id,
-                    "min_confidence": self.settings.graphrag_min_confidence,
-                },
-            )
+            result = await self._run_scoped(session, scoped)
             record = await result.single()
 
             if not record:
@@ -332,8 +353,7 @@ class GraphRAGEngine:
         Raises:
             ValueError: If tenant_id is None or empty
         """
-        if not tenant_id:
-            raise ValueError("tenant_id is required for traverse_value_tree")
+        tenant = self._resolve_tenant_id(tenant_id)
         
         driver = await self._get_driver()
 
@@ -343,35 +363,38 @@ class GraphRAGEngine:
         if direction == "up":
             # Towards ValueDriver (outgoing relationships)
             query = """
-            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]->(end {tenant_id: $tenant_id})
-            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $tenant_id)
+            MATCH path = (start {id: $entity_id, tenant_id: $_tenant_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]->(end {tenant_id: $_tenant_id})
+            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $_tenant_id)
             RETURN nodes(path) as nodes, relationships(path) as rels
             """
         elif direction == "down":
             # Towards Capability (incoming relationships)
             query = """
-            MATCH path = (end {tenant_id: $tenant_id})<-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]-(start {id: $entity_id, tenant_id: $tenant_id})
-            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $tenant_id)
+            MATCH path = (end {tenant_id: $_tenant_id})<-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]-(start {id: $entity_id, tenant_id: $_tenant_id})
+            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $_tenant_id)
             RETURN nodes(path) as nodes, relationships(path) as rels
             """
         else:
             # Both directions
             query = """
-            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO|REQUIRES|DEPENDS_ON*1..5]-(end {tenant_id: $tenant_id})
+            MATCH path = (start {id: $entity_id, tenant_id: $_tenant_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO|REQUIRES|DEPENDS_ON*1..5]-(end {tenant_id: $_tenant_id})
             WHERE start <> end
-              AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $tenant_id)
+              AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $_tenant_id)
             RETURN nodes(path) as nodes, relationships(path) as rels, start as start_node
             """
 
+        scoped = self._tenant_builder(tenant).custom_tenant_query(
+            query,
+            params={
+                "entity_id": start_entity_id,
+                "min_confidence": self.settings.graphrag_min_confidence,
+            },
+            operation="graphrag_traverse_value_tree",
+            labels=("*",),
+        )
+
         async with driver.session(database=self.settings.neo4j_database) as session:
-            result = await session.run(
-                query,
-                {
-                    "entity_id": start_entity_id,
-                    "tenant_id": tenant_id,
-                    "min_confidence": self.settings.graphrag_min_confidence,
-                },
-            )
+            result = await self._run_scoped(session, scoped)
 
             paths = []
             async for record in result:
@@ -398,11 +421,12 @@ class GraphRAGEngine:
         query_text: str,
         entity_type: str | None,
         max_results: int,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Find seed entities using vector search."""
         if not self.vector_store:
             # Fallback to Neo4j full-text search
-            return await self._fulltext_search(query_text, entity_type, max_results)
+            return await self._fulltext_search(query_text, entity_type, max_results, tenant_id=tenant_id)
 
         # Use vector store for semantic search
         # New VectorStore.search() uses query_text= kwarg and returns tuples
@@ -410,6 +434,7 @@ class GraphRAGEngine:
             query_text=query_text,
             entity_type=entity_type,
             top_k=max_results,
+            tenant_id=tenant_id,
         )
         # Normalise: new VectorStore returns (entity_id, score, meta) tuples
         results = []
@@ -435,14 +460,18 @@ class GraphRAGEngine:
             entity_ids = [r["id"] for r in results]
             id_to_score = {r["id"]: r.get("score", 0.0) for r in results}
 
-            batch_result = await session.run(
+            scoped = self._tenant_builder(tenant_id).custom_tenant_query(
                 """
                 UNWIND $entity_ids as entity_id
                 MATCH (n {id: entity_id})
+                WHERE n.tenant_id = $_tenant_id
                 RETURN n.id as id, n
                 """,
-                {"entity_ids": entity_ids},
+                params={"entity_ids": entity_ids},
+                operation="graphrag_seed_enrichment",
+                labels=("*",),
             )
+            batch_result = await self._run_scoped(session, scoped)
 
             async for record in batch_result:
                 entity_id = record["id"]
@@ -458,6 +487,7 @@ class GraphRAGEngine:
         query_text: str,
         entity_type: str | None,
         max_results: int,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Fallback full-text search using Neo4j indexes."""
         driver = await self._get_driver()
@@ -492,10 +522,13 @@ class GraphRAGEngine:
             """
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            result = await session.run(
+            scoped = self._tenant_builder(tenant_id).custom_tenant_query(
                 query,
-                {"query": query_text, "limit": max_results},
+                params={"query": query_text, "limit": max_results},
+                operation="graphrag_fulltext_search",
+                labels=("*",),
             )
+            result = await self._run_scoped(session, scoped)
 
             entities = []
             async for record in result:
@@ -510,6 +543,7 @@ class GraphRAGEngine:
         seed_entities: list[dict[str, Any]],
         max_hops: int,
         min_confidence: float,
+        tenant_id: str | None = None,
     ) -> dict[str, Any]:
         """Expand context via graph traversal from seed entities."""
         driver = await self._get_driver()
@@ -534,14 +568,17 @@ class GraphRAGEngine:
             LIMIT $max_nodes
             """
 
-            result = await session.run(
+            scoped = self._tenant_builder(tenant_id).custom_tenant_query(
                 query,
-                {
+                params={
                     "seed_ids": seed_ids,
                     "min_confidence": min_confidence,
                     "max_nodes": self.settings.graphrag_max_nodes,
                 },
+                operation="graphrag_expand_context",
+                labels=("*",),
             )
+            result = await self._run_scoped(session, scoped)
 
             async for record in result:
                 # Add entities (already using dict for O(1) lookup)
@@ -635,6 +672,7 @@ class GraphRAGEngine:
         max_hops: int | None = None,
         min_confidence: float | None = None,
         max_results: int = 10,
+        tenant_id: str | None = None,
     ):
         """Execute a streaming GraphRAG query.
 
@@ -656,6 +694,7 @@ class GraphRAGEngine:
         Yields:
             Dict representing streaming event with event_type and data
         """
+        tenant = self._resolve_tenant_id(tenant_id)
         max_hops = max(max_hops or self.settings.graphrag_max_hops, 1)  # Ensure >= 1
         min_confidence = min_confidence or self.settings.graphrag_min_confidence
 
@@ -672,7 +711,7 @@ class GraphRAGEngine:
 
         # Step 1: Find seed entities via vector search (25% of progress)
         seed_entities = await self._find_seed_entities(
-            query_text, entity_type, max_results
+            query_text, entity_type, max_results, tenant_id=tenant
         )
 
         if not seed_entities:
@@ -726,15 +765,18 @@ class GraphRAGEngine:
                 # Avoid division by zero - distribute max_nodes across hops evenly
                 nodes_per_hop = max(self.settings.graphrag_max_nodes // max_hops, 1)
 
-                result = await session.run(
+                scoped = self._tenant_builder(tenant).custom_tenant_query(
                     hop_query,
-                    {
+                    params={
                         "seed_ids": seed_ids,
                         "existing_ids": list(all_entities.keys()),
                         "min_confidence": min_confidence,
                         "max_nodes": nodes_per_hop,
                     },
+                    operation="graphrag_stream_hop",
+                    labels=("*",),
                 )
+                result = await self._run_scoped(session, scoped)
 
                 hop_entities = []
                 hop_relationships = []

@@ -307,7 +307,7 @@ class TestExecutePackErrorHandling:
         pack_id = str(uuid.uuid4())
 
         with patch(
-            "src.api.routes.value_packs._get_pack_formulas",
+            "value_fabric.layer3_knowledge.src.api.routes.value_packs._get_pack_formulas",
             return_value=[],
         ):
             # Create a minimal mock driver

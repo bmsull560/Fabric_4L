@@ -15,7 +15,7 @@ class incompatible_handlerResult(TypedDictModel):
 
 class async_handlerResult(TypedDictModel):
     migrated: bool | None = None
-    migrated_sync: bool
+    migrated_sync: bool | None = None
 
 
 def test_register_migration_handler_accepts_valid_callable() -> None:

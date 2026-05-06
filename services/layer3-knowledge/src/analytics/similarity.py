@@ -4,6 +4,8 @@ import logging
 from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from value_fabric.shared.identity.context import require_context
+from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
@@ -51,6 +53,24 @@ class SimilarityAnalyzer:
         self._owned_driver = driver is None
         self.vector_store = vector_store
 
+    def _resolve_tenant_id(self, tenant_id: str | None = None) -> str:
+        """Return the explicit or request-context tenant id, failing closed if absent."""
+        if tenant_id:
+            return str(tenant_id)
+        context = require_context()
+        if not context.tenant_id:
+            raise RuntimeError("Tenant-scoped similarity analytics require tenant_id")
+        return str(context.tenant_id)
+
+    @staticmethod
+    def _query_tuple(scoped_query: ScopedQuery) -> tuple[str, dict[str, Any]]:
+        """Expose strict scoped-query execution metadata while preserving session.run compatibility."""
+        # strict-scoped-query-execution: callers pass only builder-created tenant-scoped query objects.
+        return scoped_query.as_tuple()
+
+    def _builder(self, tenant_id: str | None = None) -> TenantScopedCypher:
+        return TenantScopedCypher(self._resolve_tenant_id(tenant_id))
+
     async def _get_driver(self) -> AsyncDriver:
         """Get or create Neo4j driver."""
         if self._driver is None:
@@ -72,6 +92,7 @@ class SimilarityAnalyzer:
         entity_id: str,
         method: str = "combined",
         top_k: int = 10,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Find similar entities using specified method.
 
@@ -84,15 +105,15 @@ class SimilarityAnalyzer:
             List of similar entities with scores
         """
         if method == "jaccard":
-            return await self._jaccard_similarity(entity_id, top_k)
+            return await self._jaccard_similarity(entity_id, top_k, tenant_id)
         elif method == "adamic_adar":
-            return await self._adamic_adar_similarity(entity_id, top_k)
+            return await self._adamic_adar_similarity(entity_id, top_k, tenant_id)
         elif method == "vector":
-            return await self._vector_similarity(entity_id, top_k)
+            return await self._vector_similarity(entity_id, top_k, tenant_id)
         elif method == "path":
-            return await self._path_similarity(entity_id, top_k)
+            return await self._path_similarity(entity_id, top_k, tenant_id)
         elif method == "combined":
-            return await self._combined_similarity(entity_id, top_k)
+            return await self._combined_similarity(entity_id, top_k, tenant_id)
         else:
             raise ValueError(f"Unknown similarity method: {method}")
 
@@ -101,19 +122,21 @@ class SimilarityAnalyzer:
         entity_id: str,
         target_type: str,
         top_k: int = 10,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Find similar entities of a specific type.
 
         Useful for finding similar capabilities, personas, etc.
         """
         driver = await self._get_driver()
+        builder = self._builder(tenant_id)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Get vector embedding for the source entity
             vector_results = []
             if self.vector_store:
                 vector_results = await self.vector_store.search_by_entity_id(
-                    entity_id, top_k=top_k * 2
+                    entity_id, top_k=top_k * 2, tenant_id=builder.tenant_id
                 )
                 # Filter by target type
                 vector_results = [
@@ -121,11 +144,17 @@ class SimilarityAnalyzer:
                 ][:top_k]
 
             # Get graph-based similar entities
-            graph_result = await session.run(
+            graph_query = builder.custom_tenant_query(
                 """
-                // Find entities that share common neighbors
-                MATCH (source {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES]-(common)-[:ENABLES|BENEFITS|DRIVES]-(similar:{target_type})
-                WHERE similar.id <> $entity_id
+                // strict-scoped-query-execution
+                // Find entities that share common neighbors within one tenant
+                MATCH (source)-[:ENABLES|BENEFITS|DRIVES]-(common)-[:ENABLES|BENEFITS|DRIVES]-(similar)
+                WHERE source.id = $entity_id
+                  AND source.tenant_id = $_tenant_id
+                  AND common.tenant_id = $_tenant_id
+                  AND similar.tenant_id = $_tenant_id
+                  AND similar.id <> $entity_id
+                  AND $target_type IN labels(similar)
                 WITH similar, count(common) as common_neighbors,
                      collect(DISTINCT common.name) as shared
                 RETURN similar.id as id,
@@ -136,12 +165,11 @@ class SimilarityAnalyzer:
                 ORDER BY common_neighbors DESC
                 LIMIT $limit
                 """,
-                {
-                    "entity_id": entity_id,
-                    "target_type": target_type,
-                    "limit": top_k,
-                },
+                params={"entity_id": entity_id, "target_type": target_type, "limit": top_k},
+                operation="similarity.find_similar_by_type",
+                labels=("Entity", target_type),
             )
+            graph_result = await session.run(*self._query_tuple(graph_query))
 
             graph_results = []
             async for record in graph_result:
@@ -186,6 +214,7 @@ class SimilarityAnalyzer:
         self,
         entity_id1: str,
         entity_id2: str,
+        tenant_id: str | None = None,
     ) -> dict:
         """Compare two entities and return similarity metrics.
 
@@ -197,18 +226,25 @@ class SimilarityAnalyzer:
             Comparison metrics
         """
         driver = await self._get_driver()
+        builder = self._builder(tenant_id)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Get both entities
-            result = await session.run(
+            entity_query = builder.custom_tenant_query(
                 """
-                MATCH (e1 {id: $id1}), (e2 {id: $id2})
+                // strict-scoped-query-execution
+                MATCH (e1), (e2)
+                WHERE e1.id = $id1 AND e1.tenant_id = $_tenant_id
+                  AND e2.id = $id2 AND e2.tenant_id = $_tenant_id
                 RETURN e1, e2,
                        labels(e1)[0] as type1,
                        labels(e2)[0] as type2
                 """,
-                {"id1": entity_id1, "id2": entity_id2},
+                params={"id1": entity_id1, "id2": entity_id2},
+                operation="similarity.compare_entities.lookup",
+                labels=("Entity",),
             )
+            result = await session.run(*self._query_tuple(entity_query))
             record = await result.single()
 
             if not record:
@@ -217,20 +253,31 @@ class SimilarityAnalyzer:
             e1, e2 = record["e1"], record["e2"]
 
             # Calculate common neighbors (Jaccard)
-            common_result = await session.run(
+            common_query = builder.custom_tenant_query(
                 """
-                MATCH (e1 {id: $id1})-[:ENABLES|BENEFITS|DRIVES]-(common),
-                      (e2 {id: $id2})-[:ENABLES|BENEFITS|DRIVES]-(common)
+                // strict-scoped-query-execution
+                MATCH (e1)-[:ENABLES|BENEFITS|DRIVES]-(common),
+                      (e2)-[:ENABLES|BENEFITS|DRIVES]-(common)
+                WHERE e1.id = $id1 AND e1.tenant_id = $_tenant_id
+                  AND e2.id = $id2 AND e2.tenant_id = $_tenant_id
+                  AND common.tenant_id = $_tenant_id
                 WITH count(DISTINCT common) as common_count
-                MATCH (e1 {id: $id1})-[:ENABLES|BENEFITS|DRIVES]-(all1)
+                MATCH (e1)-[:ENABLES|BENEFITS|DRIVES]-(all1)
+                WHERE e1.id = $id1 AND e1.tenant_id = $_tenant_id
+                  AND all1.tenant_id = $_tenant_id
                 WITH common_count, count(DISTINCT all1) as e1_neighbors
-                MATCH (e2 {id: $id2})-[:ENABLES|BENEFITS|DRIVES]-(all2)
+                MATCH (e2)-[:ENABLES|BENEFITS|DRIVES]-(all2)
+                WHERE e2.id = $id2 AND e2.tenant_id = $_tenant_id
+                  AND all2.tenant_id = $_tenant_id
                 RETURN common_count,
                        e1_neighbors,
                        count(DISTINCT all2) as e2_neighbors
                 """,
-                {"id1": entity_id1, "id2": entity_id2},
+                params={"id1": entity_id1, "id2": entity_id2},
+                operation="similarity.compare_entities.common_neighbors",
+                labels=("Entity",),
             )
+            common_result = await session.run(*self._query_tuple(common_query))
             common_record = await common_result.single()
 
             if common_record:
@@ -246,16 +293,23 @@ class SimilarityAnalyzer:
                 common = 0
 
             # Check if connected in value tree
-            path_result = await session.run(
+            path_query = builder.custom_tenant_query(
                 """
+                // strict-scoped-query-execution
                 MATCH path = shortestPath(
-                    (e1 {id: $id1})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..10]-(e2 {id: $id2})
+                    (e1)-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..10]-(e2)
                 )
+                WHERE e1.id = $id1 AND e1.tenant_id = $_tenant_id
+                  AND e2.id = $id2 AND e2.tenant_id = $_tenant_id
+                  AND all(node IN nodes(path) WHERE node.tenant_id = $_tenant_id)
                 RETURN length(path) as path_length,
                        [node IN nodes(path) | node.name] as path_names
                 """,
-                {"id1": entity_id1, "id2": entity_id2},
+                params={"id1": entity_id1, "id2": entity_id2},
+                operation="similarity.compare_entities.path",
+                labels=("Entity",),
             )
+            path_result = await session.run(*self._query_tuple(path_query))
             path_record = await path_result.single()
 
             path_info = {
@@ -282,24 +336,33 @@ class SimilarityAnalyzer:
             })
 
 
-    async def _jaccard_similarity(self, entity_id: str, top_k: int) -> list[dict]:
+    async def _jaccard_similarity(self, entity_id: str, top_k: int, tenant_id: str | None = None) -> list[dict]:
         """Calculate Jaccard similarity based on common neighbors."""
         driver = await self._get_driver()
+        builder = self._builder(tenant_id)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            result = await session.run(
+            query = builder.custom_tenant_query(
                 """
+                // strict-scoped-query-execution
                 // Get source entity's neighbors
-                MATCH (source {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES]-(neighbor)
+                MATCH (source)-[:ENABLES|BENEFITS|DRIVES]-(neighbor)
+                WHERE source.id = $entity_id
+                  AND source.tenant_id = $_tenant_id
+                  AND neighbor.tenant_id = $_tenant_id
                 WITH source, collect(DISTINCT neighbor) as source_neighbors, count(neighbor) as source_count
                 // Find other entities with shared neighbors
                 MATCH (other)-[:ENABLES|BENEFITS|DRIVES]-(shared)
-                WHERE other.id <> $entity_id AND shared IN source_neighbors
+                WHERE other.id <> $entity_id
+                  AND other.tenant_id = $_tenant_id
+                  AND shared.tenant_id = $_tenant_id
+                  AND shared IN source_neighbors
                 WITH other, source_neighbors, source_count,
                      collect(DISTINCT shared) as shared_neighbors,
                      count(DISTINCT shared) as shared_count
                 // Calculate Jaccard
                 MATCH (other)-[:ENABLES|BENEFITS|DRIVES]-(other_neighbor)
+                WHERE other_neighbor.tenant_id = $_tenant_id
                 WITH other, shared_neighbors, shared_count,
                      collect(DISTINCT other_neighbor) as other_neighbors
                 WITH other, shared_count,
@@ -314,8 +377,11 @@ class SimilarityAnalyzer:
                 ORDER BY score DESC
                 LIMIT $limit
                 """,
-                {"entity_id": entity_id, "limit": top_k},
+                params={"entity_id": entity_id, "limit": top_k},
+                operation="similarity.jaccard",
+                labels=("Entity",),
             )
+            result = await session.run(*self._query_tuple(query))
 
             return [
                 {
@@ -329,15 +395,21 @@ class SimilarityAnalyzer:
                 async for r in result
             ]
 
-    async def _adamic_adar_similarity(self, entity_id: str, top_k: int) -> list[dict]:
+    async def _adamic_adar_similarity(self, entity_id: str, top_k: int, tenant_id: str | None = None) -> list[dict]:
         """Calculate Adamic-Adar similarity (weighted common neighbors)."""
         driver = await self._get_driver()
+        builder = self._builder(tenant_id)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            result = await session.run(
+            query = builder.custom_tenant_query(
                 """
-                MATCH (source {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES]-(common)-[:ENABLES|BENEFITS|DRIVES]-(other)
-                WHERE other.id <> $entity_id
+                // strict-scoped-query-execution
+                MATCH (source)-[:ENABLES|BENEFITS|DRIVES]-(common)-[:ENABLES|BENEFITS|DRIVES]-(other)
+                WHERE source.id = $entity_id
+                  AND source.tenant_id = $_tenant_id
+                  AND common.tenant_id = $_tenant_id
+                  AND other.tenant_id = $_tenant_id
+                  AND other.id <> $entity_id
                 WITH other, common,
                      count {{(common)--()}} as common_degree
                 WHERE common_degree > 1
@@ -351,8 +423,11 @@ class SimilarityAnalyzer:
                 ORDER BY score DESC
                 LIMIT $limit
                 """,
-                {"entity_id": entity_id, "limit": top_k},
+                params={"entity_id": entity_id, "limit": top_k},
+                operation="similarity.adamic_adar",
+                labels=("Entity",),
             )
+            result = await session.run(*self._query_tuple(query))
 
             return [
                 {
@@ -366,12 +441,15 @@ class SimilarityAnalyzer:
                 async for r in result
             ]
 
-    async def _vector_similarity(self, entity_id: str, top_k: int) -> list[dict]:
+    async def _vector_similarity(self, entity_id: str, top_k: int, tenant_id: str | None = None) -> list[dict]:
         """Calculate vector-based similarity."""
         if not self.vector_store:
             return []
 
-        results = await self.vector_store.search_by_entity_id(entity_id, top_k=top_k)
+        resolved_tenant_id = self._resolve_tenant_id(tenant_id)
+        results = await self.vector_store.search_by_entity_id(
+            entity_id, top_k=top_k, tenant_id=resolved_tenant_id
+        )
 
         return [
             {
@@ -384,20 +462,28 @@ class SimilarityAnalyzer:
             for r in results
         ]
 
-    async def _path_similarity(self, entity_id: str, top_k: int) -> list[dict]:
+    async def _path_similarity(self, entity_id: str, top_k: int, tenant_id: str | None = None) -> list[dict]:
         """Calculate similarity based on common paths in value tree."""
         driver = await self._get_driver()
+        builder = self._builder(tenant_id)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Find entities that share paths to common value drivers
-            result = await session.run(
+            query = builder.custom_tenant_query(
                 """
+                // strict-scoped-query-execution
                 // Find all paths from source to value drivers
-                MATCH path1 = (source {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES*1..4]->(vd:ValueDriver)
+                MATCH path1 = (source)-[:ENABLES|BENEFITS|DRIVES*1..4]->(vd:ValueDriver)
+                WHERE source.id = $entity_id
+                  AND source.tenant_id = $_tenant_id
+                  AND vd.tenant_id = $_tenant_id
+                  AND all(node IN nodes(path1) WHERE node.tenant_id = $_tenant_id)
                 WITH source, vd, collect(path1) as source_paths
                 // Find other entities that also connect to these value drivers
                 MATCH path2 = (other)-[:ENABLES|BENEFITS|DRIVES*1..4]->(vd)
                 WHERE other.id <> $entity_id
+                  AND other.tenant_id = $_tenant_id
+                  AND all(node IN nodes(path2) WHERE node.tenant_id = $_tenant_id)
                 WITH other, count(DISTINCT vd) as shared_value_drivers,
                      collect(DISTINCT vd.name) as value_driver_names
                 WHERE shared_value_drivers > 0
@@ -409,8 +495,11 @@ class SimilarityAnalyzer:
                 ORDER BY shared_value_drivers DESC
                 LIMIT $limit
                 """,
-                {"entity_id": entity_id, "limit": top_k},
+                params={"entity_id": entity_id, "limit": top_k},
+                operation="similarity.path",
+                labels=("ValueDriver",),
             )
+            result = await session.run(*self._query_tuple(query))
 
             return [
                 {
@@ -424,20 +513,20 @@ class SimilarityAnalyzer:
                 async for r in result
             ]
 
-    async def _combined_similarity(self, entity_id: str, top_k: int) -> list[dict]:
+    async def _combined_similarity(self, entity_id: str, top_k: int, tenant_id: str | None = None) -> list[dict]:
         """Combine multiple similarity methods."""
         # Get scores from different methods
         jaccard_scores = {
             r["id"]: r["score"]
-            for r in await self._jaccard_similarity(entity_id, top_k * 2)
+            for r in await self._jaccard_similarity(entity_id, top_k * 2, tenant_id)
         }
         vector_scores = {
             r["id"]: r["score"]
-            for r in await self._vector_similarity(entity_id, top_k * 2)
+            for r in await self._vector_similarity(entity_id, top_k * 2, tenant_id)
         }
         path_scores = {
             r["id"]: r["score"]
-            for r in await self._path_similarity(entity_id, top_k * 2)
+            for r in await self._path_similarity(entity_id, top_k * 2, tenant_id)
         }
 
         # Combine all unique entity IDs
@@ -477,12 +566,21 @@ class SimilarityAnalyzer:
 
         # Enrich with entity details
         driver = await self._get_driver()
+        builder = self._builder(tenant_id)
         async with driver.session(database=self.settings.neo4j_database) as session:
             for entity in top_entities:
-                result = await session.run(
-                    "MATCH (n {id: $id}) RETURN n.name as name, labels(n)[0] as type",
-                    {"id": entity["id"]},
+                enrich_query = builder.custom_tenant_query(
+                    """
+                    // strict-scoped-query-execution
+                    MATCH (n)
+                    WHERE n.id = $id AND n.tenant_id = $_tenant_id
+                    RETURN n.name as name, labels(n)[0] as type
+                    """,
+                    params={"id": entity["id"]},
+                    operation="similarity.combined.enrich",
+                    labels=("Entity",),
                 )
+                result = await session.run(*self._query_tuple(enrich_query))
                 record = await result.single()
                 if record:
                     entity["name"] = record["name"]

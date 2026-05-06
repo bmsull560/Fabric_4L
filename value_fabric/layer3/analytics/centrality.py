@@ -4,6 +4,8 @@ import logging
 from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from value_fabric.shared.identity.context import require_context
+from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
@@ -79,11 +81,32 @@ class CentralityAnalyzer:
             await self._driver.close()
             self._driver = None
 
+    def _resolve_tenant_id(self, tenant_id: str | None = None) -> str:
+        """Resolve the tenant id for tenant-owned graph analytics.
+
+        Layer 3 graph analytics must fail closed outside an authenticated tenant
+        context because Neo4j Community Edition cannot enforce row-level
+        security at the database layer.
+        """
+        resolved = tenant_id or require_context().tenant_id
+        if not resolved:
+            raise RuntimeError("tenant_id is required for Layer 3 centrality analytics")
+        return str(resolved)
+
+    def _tenant_builder(self, tenant_id: str | None = None) -> TenantScopedCypher:
+        """Return the canonical strict Cypher builder for the active tenant."""
+        return TenantScopedCypher(self._resolve_tenant_id(tenant_id))
+
+    async def _run_scoped(self, session: Any, query: ScopedQuery):
+        """Execute a strict scoped query through the Neo4j session seam."""
+        return await session.run(query.cypher, query.params)
+
     async def calculate_pagerank(
         self,
         node_labels: list[str] | None = None,
         relationship_types: list[str] | None = None,
         top_k: int = 20,
+        tenant_id: str | None = None,
     ) -> dict:
         """Calculate PageRank for all nodes.
 
@@ -104,7 +127,7 @@ class CentralityAnalyzer:
             except Exception:
                 logger.warning("GDS not available, using fallback")
                 return await self._fallback_centrality(
-                    session, node_labels, "degree", top_k
+                    session, node_labels, "degree", top_k, tenant_id=tenant_id
                 )
 
             graph_name = f"centrality_{self._random_id()}"
@@ -112,7 +135,7 @@ class CentralityAnalyzer:
             try:
                 # Project graph
                 await self._project_graph(
-                    session, graph_name, node_labels, relationship_types
+                    session, graph_name, node_labels, relationship_types, tenant_id=tenant_id
                 )
 
                 # Calculate PageRank
@@ -160,6 +183,7 @@ class CentralityAnalyzer:
         node_labels: list[str] | None = None,
         relationship_types: list[str] | None = None,
         top_k: int = 20,
+        tenant_id: str | None = None,
     ) -> dict:
         """Calculate betweenness centrality.
 
@@ -173,14 +197,14 @@ class CentralityAnalyzer:
                 await session.run("RETURN gds.version() as version")
             except Exception:
                 return await self._fallback_centrality(
-                    session, node_labels, "betweenness", top_k
+                    session, node_labels, "betweenness", top_k, tenant_id=tenant_id
                 )
 
             graph_name = f"centrality_{self._random_id()}"
 
             try:
                 await self._project_graph(
-                    session, graph_name, node_labels, relationship_types
+                    session, graph_name, node_labels, relationship_types, tenant_id=tenant_id
                 )
 
                 result = await session.run(
@@ -224,34 +248,38 @@ class CentralityAnalyzer:
         self,
         node_labels: list[str] | None = None,
         top_k: int = 20,
+        tenant_id: str | None = None,
     ) -> dict:
-        """Calculate degree centrality (simple connectivity count).
+        """Calculate degree centrality within the active tenant only.
 
         Useful for finding hubs and highly connected entities.
         """
         driver = await self._get_driver()
-
-        label_filter = ""
-        if node_labels:
-            labels = "|".join(node_labels)
-            label_filter = f"WHERE n:{labels}"
+        builder = self._tenant_builder(tenant_id)
+        label_filter = "AND any(label IN labels(n) WHERE label IN $node_labels)" if node_labels else ""
+        query = builder.custom_tenant_query(
+            f"""
+            MATCH (n)
+            WHERE n.tenant_id = $_tenant_id
+            {label_filter}
+            OPTIONAL MATCH (n)-[r]-(m)
+            WITH n, r, m
+            WHERE r IS NULL OR m.tenant_id = $_tenant_id
+            WITH n, count(r) as degree
+            RETURN n.id as id,
+                   n.name as name,
+                   labels(n)[0] as type,
+                   degree
+            ORDER BY degree DESC
+            LIMIT $limit
+            """,
+            params={"limit": top_k, "node_labels": node_labels or []},
+            operation="centrality.degree",
+            labels=tuple(node_labels or ["*"]),
+        )
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            result = await session.run(
-                f"""
-                MATCH (n)
-                {label_filter}
-                OPTIONAL MATCH (n)-[r]-()
-                WITH n, count(r) as degree
-                RETURN n.id as id,
-                       n.name as name,
-                       labels(n)[0] as type,
-                       degree
-                ORDER BY degree DESC
-                LIMIT $limit
-                """,
-                {"limit": top_k},
-            )
+            result = await self._run_scoped(session, query)
 
             rankings = []
             async for record in result:
@@ -271,24 +299,29 @@ class CentralityAnalyzer:
             })
 
 
-    async def get_value_tree_centrality(self) -> dict:
-        """Analyze centrality within the 4-layer value tree.
+    async def get_value_tree_centrality(self, tenant_id: str | None = None) -> dict:
+        """Analyze centrality within the tenant-scoped 4-layer value tree.
 
         Returns key entities at each layer and cross-layer connectors.
         """
         driver = await self._get_driver()
+        builder = self._tenant_builder(tenant_id)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Get most connected capabilities
-            capabilities_result = await session.run(
+            capabilities_query = builder.custom_tenant_query(
                 """
-                MATCH (c:Capability)-[r:ENABLES]->(:UseCase)
+                MATCH (c:Capability)-[r:ENABLES]->(uc:UseCase)
+                WHERE c.tenant_id = $_tenant_id AND uc.tenant_id = $_tenant_id
                 WITH c, count(r) as use_case_count
                 RETURN c.id as id, c.name as name, use_case_count
                 ORDER BY use_case_count DESC
                 LIMIT 10
-                """
+                """,
+                operation="centrality.value_tree.capabilities",
+                labels=("Capability", "UseCase"),
             )
+            capabilities_result = await self._run_scoped(session, capabilities_query)
             top_capabilities = [
                 {
                     "id": r["id"],
@@ -299,15 +332,19 @@ class CentralityAnalyzer:
             ]
 
             # Get most beneficial use cases
-            usecases_result = await session.run(
+            usecases_query = builder.custom_tenant_query(
                 """
-                MATCH (uc:UseCase)-[r:BENEFITS]->(:Persona)
+                MATCH (uc:UseCase)-[r:BENEFITS]->(p:Persona)
+                WHERE uc.tenant_id = $_tenant_id AND p.tenant_id = $_tenant_id
                 WITH uc, count(r) as persona_count
                 RETURN uc.id as id, uc.name as name, persona_count
                 ORDER BY persona_count DESC
                 LIMIT 10
-                """
+                """,
+                operation="centrality.value_tree.use_cases",
+                labels=("UseCase", "Persona"),
             )
+            usecases_result = await self._run_scoped(session, usecases_query)
             top_use_cases = [
                 {
                     "id": r["id"],
@@ -318,15 +355,19 @@ class CentralityAnalyzer:
             ]
 
             # Get most influential personas
-            personas_result = await session.run(
+            personas_query = builder.custom_tenant_query(
                 """
-                MATCH (p:Persona)-[r:DRIVES]->(:ValueDriver)
+                MATCH (p:Persona)-[r:DRIVES]->(vd:ValueDriver)
+                WHERE p.tenant_id = $_tenant_id AND vd.tenant_id = $_tenant_id
                 WITH p, count(r) as value_driver_count
                 RETURN p.id as id, p.title as name, value_driver_count
                 ORDER BY value_driver_count DESC
                 LIMIT 10
-                """
+                """,
+                operation="centrality.value_tree.personas",
+                labels=("Persona", "ValueDriver"),
             )
+            personas_result = await self._run_scoped(session, personas_query)
             top_personas = [
                 {
                     "id": r["id"],
@@ -337,14 +378,24 @@ class CentralityAnalyzer:
             ]
 
             # Get key connectors (entities bridging multiple layers)
-            connectors_result = await session.run(
+            connectors_query = builder.custom_tenant_query(
                 """
                 MATCH (n)
-                WHERE (n)-[:ENABLES|:BENEFITS|:DRIVES]-()
-                WITH n, 
-                     count {(n)-[:ENABLES]->()} as enables_count,
-                     count {(n)-[:BENEFITS]->()} as benefits_count,
-                     count {(n)-[:DRIVES]->()} as drives_count
+                WHERE n.tenant_id = $_tenant_id
+                  AND any(label IN labels(n) WHERE label IN $value_tree_labels)
+                  AND EXISTS {
+                    MATCH (n)-[:ENABLES|:BENEFITS|:DRIVES]-(connected)
+                    WHERE connected.tenant_id = $_tenant_id
+                  }
+                OPTIONAL MATCH (n)-[:ENABLES]->(enabled)
+                WHERE enabled.tenant_id = $_tenant_id
+                WITH n, count(enabled) AS enables_count
+                OPTIONAL MATCH (n)-[:BENEFITS]->(benefited)
+                WHERE benefited.tenant_id = $_tenant_id
+                WITH n, enables_count, count(benefited) AS benefits_count
+                OPTIONAL MATCH (n)-[:DRIVES]->(driven)
+                WHERE driven.tenant_id = $_tenant_id
+                WITH n, enables_count, benefits_count, count(driven) AS drives_count
                 WHERE (enables_count + benefits_count + drives_count) > 2
                 RETURN n.id as id,
                        n.name as name,
@@ -353,8 +404,12 @@ class CentralityAnalyzer:
                        (enables_count + benefits_count + drives_count) as total
                 ORDER BY total DESC
                 LIMIT 10
-                """
+                """,
+                params={"value_tree_labels": ["Capability", "UseCase", "Persona", "ValueDriver"]},
+                operation="centrality.value_tree.connectors",
+                labels=("Capability", "UseCase", "Persona", "ValueDriver"),
             )
+            connectors_result = await self._run_scoped(session, connectors_query)
             key_connectors = [
                 {
                     "id": r["id"],
@@ -382,29 +437,43 @@ class CentralityAnalyzer:
         graph_name: str,
         node_labels: list[str] | None,
         relationship_types: list[str] | None,
+        tenant_id: str | None = None,
     ) -> None:
-        """Project graph for GDS algorithms."""
+        """Project a tenant-scoped graph for GDS algorithms."""
         node_filter = node_labels or ["Capability", "UseCase", "Persona", "ValueDriver"]
-
-        if not relationship_types:
-            relationship_types = ["ENABLES", "BENEFITS", "DRIVES", "CONTRIBUTES_TO"]
-
-        rel_filter = {rel: {"orientation": "UNDIRECTED"} for rel in relationship_types}
-
-        await session.run(
+        rel_filter = relationship_types or ["ENABLES", "BENEFITS", "DRIVES", "CONTRIBUTES_TO"]
+        builder = self._tenant_builder(tenant_id)
+        query = builder.custom_tenant_query(
             """
-            CALL gds.graph.project(
+            CALL gds.graph.project.cypher(
                 $graph_name,
-                $node_filter,
-                $rel_filter
+                $node_query,
+                $relationship_query,
+                {parameters: {_tenant_id: $_tenant_id, node_labels: $node_filter, relationship_types: $rel_filter}}
             )
             """,
-            {
+            params={
                 "graph_name": graph_name,
                 "node_filter": node_filter,
                 "rel_filter": rel_filter,
+                "node_query": """
+                    MATCH (n)
+                    WHERE n.tenant_id = $_tenant_id
+                      AND any(label IN labels(n) WHERE label IN $node_labels)
+                    RETURN id(n) AS id
+                """,
+                "relationship_query": """
+                    MATCH (source)-[r]-(target)
+                    WHERE source.tenant_id = $_tenant_id
+                      AND target.tenant_id = $_tenant_id
+                      AND type(r) IN $relationship_types
+                    RETURN id(source) AS source, id(target) AS target, type(r) AS type
+                """,
             },
+            operation="centrality.gds_project",
+            labels=tuple(node_filter),
         )
+        await self._run_scoped(session, query)
 
     async def _drop_graph(self, session, graph_name: str) -> None:
         """Drop GDS graph projection."""
@@ -422,18 +491,19 @@ class CentralityAnalyzer:
         node_labels: list[str] | None,
         metric: str,
         top_k: int,
+        tenant_id: str | None = None,
     ) -> dict:
-        """Fallback centrality using degree count."""
-        label_filter = ""
-        if node_labels:
-            labels = "|".join(node_labels)
-            label_filter = f"WHERE n:{labels}"
-
-        result = await session.run(
+        """Fallback centrality using tenant-scoped degree count."""
+        builder = self._tenant_builder(tenant_id)
+        label_filter = "AND any(label IN labels(n) WHERE label IN $node_labels)" if node_labels else ""
+        query = builder.custom_tenant_query(
             f"""
             MATCH (n)
+            WHERE n.tenant_id = $_tenant_id
             {label_filter}
-            OPTIONAL MATCH (n)-[r]-()
+            OPTIONAL MATCH (n)-[r]-(m)
+            WITH n, r, m
+            WHERE r IS NULL OR m.tenant_id = $_tenant_id
             WITH n, count(r) as degree
             RETURN n.id as id,
                    n.name as name,
@@ -442,8 +512,11 @@ class CentralityAnalyzer:
             ORDER BY degree DESC
             LIMIT $limit
             """,
-            {"limit": top_k},
+            params={"limit": top_k, "node_labels": node_labels or []},
+            operation=f"centrality.{metric}.fallback",
+            labels=tuple(node_labels or ["*"]),
         )
+        result = await self._run_scoped(session, query)
 
         rankings = []
         async for record in result:

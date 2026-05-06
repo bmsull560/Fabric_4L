@@ -26,6 +26,23 @@ if str(_LAYER3_SRC) not in sys.path:
     sys.path.insert(0, str(_LAYER3_SRC))
 os.environ["PYTHONPATH"] = str(_LAYER3_SRC) + os.pathsep + os.environ.get("PYTHONPATH", "")
 
+_TEST_ENV_DEFAULTS = {
+    "ENVIRONMENT": "test",
+    "APP_ENV": "test",
+    "TESTING": "true",
+    "ALLOW_LEGACY_TEST_TENANT_IDS": "true",
+    "ALLOW_INSECURE_DEV_AUTH_BYPASS": "true",
+    "DEV_AUTH_BYPASS": "true",
+    "WORKERS": "1",
+    "WEB_CONCURRENCY": "1",
+    "OTEL_SDK_DISABLED": "true",
+    "OTEL_TRACES_EXPORTER": "none",
+    "OTEL_METRICS_EXPORTER": "none",
+    "OTEL_LOGS_EXPORTER": "none",
+}
+for _key, _value in _TEST_ENV_DEFAULTS.items():
+    os.environ.setdefault(_key, _value)
+
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
@@ -140,6 +157,7 @@ def mock_app_state() -> AppState:
     
     # Mock analytics components
     state.graph_rag = AsyncMock()
+    state.graph_rag.query.return_value = create_mock_graphrag_response().query.return_value
     state.hybrid_search = AsyncMock()
     state.centrality_analyzer = AsyncMock()
     state.community_detector = AsyncMock()
@@ -246,23 +264,23 @@ def sample_rdf_data() -> str:
 @pytest.fixture
 def sample_search_request() -> dict[str, Any]:
     """Sample search request for testing."""
-    return sample_search_requestResult.model_validate({
+    return {
         "query": "automated invoice processing",
         "search_type": "hybrid",
         "top_k": 5,
         "entity_type": "Capability"
-    })
+    }
 
 
 @pytest.fixture
 def sample_graphrag_query() -> dict[str, Any]:
     """Sample GraphRAG query for testing."""
-    return sample_graphrag_queryResult.model_validate({
+    return {
         "query": "What capabilities enable automated invoice processing?",
         "max_hops": 3,
         "max_results": 10,
         "confidence_threshold": 0.7
-    })
+    }
 
 
 @pytest.fixture
@@ -324,7 +342,7 @@ def sample_graphrag_response() -> dict[str, Any]:
 @pytest.fixture
 def sample_ingestion_request() -> dict[str, Any]:
     """Sample ingestion request for testing."""
-    return sample_ingestion_requestResult.model_validate({
+    return {
         "rdf_data": """
             @prefix ex: <http://example.com/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -335,7 +353,7 @@ def sample_ingestion_request() -> dict[str, Any]:
         "source_id": "test_doc_123",
         "extraction_job_id": "test_job_456",
         "content_hash": "abc123def456789"
-    })
+    }
 
 
 @pytest.fixture

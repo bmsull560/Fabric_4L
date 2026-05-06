@@ -135,7 +135,7 @@ class TestTenantIsolation:
     async def test_get_full_graph_requires_tenant_id(self):
         """get_full_graph must reject requests without tenant_id."""
         mock_state = MagicMock()
-        mock_state.neo4j_manager = AsyncMock()
+        mock_state.neo4j_driver = AsyncMock()
 
         with patch("value_fabric.layer3.api.app_monolith.get_app_state", return_value=mock_state):
             with pytest.raises(HTTPException) as exc_info:
@@ -156,7 +156,7 @@ class TestTenantIsolation:
         mock_state = MagicMock()
         mock_neo4j = AsyncMock()
         mock_neo4j.execute_query.return_value = []
-        mock_state.neo4j_manager = mock_neo4j
+        mock_state.neo4j_driver = mock_neo4j
 
         with patch("value_fabric.layer3.api.app_monolith.get_app_state", return_value=mock_state):
             await get_full_graph(

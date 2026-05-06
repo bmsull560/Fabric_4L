@@ -22,6 +22,8 @@ from typing import Any
 
 from neo4j import AsyncDriver
 from neo4j.exceptions import ClientError, ServiceUnavailable
+from value_fabric.shared.identity.context import get_request_context
+from value_fabric.shared.identity.isolation import ScopedQuery, SystemCypher, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
@@ -107,6 +109,21 @@ class Neo4jVectorStore:
             for v in model.encode(texts, normalize_embeddings=True, batch_size=32)
         ]
 
+    def _resolve_tenant_id(self, tenant_id: str | None = None) -> str:
+        """Return the explicit or request-context tenant, failing closed if absent."""
+        if tenant_id:
+            return str(tenant_id)
+        ctx = get_request_context()
+        if ctx and ctx.tenant_id:
+            return str(ctx.tenant_id)
+        raise ValueError("tenant_id is required for tenant-scoped vector store operations")
+
+    async def _run_scoped(self, scoped: ScopedQuery):
+        """Execute a strict scoped query object through the Neo4j driver."""
+        driver = await self._get_driver()
+        async with driver.session(database=self.settings.neo4j_database) as session:
+            return await session.run(scoped.cypher, scoped.params)
+
     # ------------------------------------------------------------------
     # Write operations
     # ------------------------------------------------------------------
@@ -117,6 +134,7 @@ class Neo4jVectorStore:
         entity_type: str,
         text: str,
         metadata: dict[str, Any] | None = None,
+        tenant_id: str | None = None,
     ) -> dict[str, Any]:
         """Upsert a single entity embedding into Neo4j."""
         if entity_type not in VECTOR_ENTITY_TYPES:
@@ -124,43 +142,45 @@ class Neo4jVectorStore:
                 f"Unknown entity type '{entity_type}'. Supported: {VECTOR_ENTITY_TYPES}"
             )
 
+        tenant = self._resolve_tenant_id(tenant_id or (metadata or {}).get("tenant_id"))
         embedding = self._embed(text)
-        driver = await self._get_driver()
-
-        params: dict[str, Any] = {
-            "id": entity_id,
-            "embedding": embedding,
-            "text": text[:2000],
-            "metadata": {
-                k: v
-                for k, v in (metadata or {}).items()
-                if isinstance(v, (str, int, float, bool))
-            },
+        clean_metadata = {
+            k: v
+            for k, v in (metadata or {}).items()
+            if k not in {"tenant_id", "tenantId"} and isinstance(v, (str, int, float, bool))
         }
-
-        query = f"""
-        MERGE (n:{entity_type} {{id: $id}})
-        ON CREATE SET
-            n.embedding = $embedding,
-            n.embedding_text = $text,
-            n += $metadata,
-            n.embedding_updated_at = datetime()
-        ON MATCH SET
-            n.embedding = $embedding,
-            n.embedding_text = $text,
-            n.embedding_updated_at = datetime()
-        RETURN n.id AS entity_id, true AS upserted
-        """
+        builder = TenantScopedCypher(tenant)
+        scoped = builder.custom_tenant_query(
+            f"""
+            MERGE (n:{entity_type} {{id: $id, tenant_id: $_tenant_id}})
+            ON CREATE SET n.created_at = datetime()
+            SET
+                n.embedding = $embedding,
+                n.embedding_text = $text,
+                n.embedding_updated_at = datetime(),
+                n += $metadata
+            WITH n
+            WHERE n.tenant_id = $_tenant_id
+            RETURN n.id AS entity_id, true AS upserted
+            """,
+            params={
+                "id": entity_id,
+                "embedding": embedding,
+                "text": text[:2000],
+                "metadata": clean_metadata,
+            },
+            operation="vector_upsert_entity",
+            labels=(entity_type,),
+        )
 
         try:
-            async with driver.session(database=self.settings.neo4j_database) as session:
-                result = await session.run(query, params)
-                record = await result.single()
-                return Neo4jVectorStore_upsert_entityResult.model_validate({
-                    "entity_id": record["entity_id"] if record else entity_id,
-                    "entity_type": entity_type,
-                    "upserted": record["upserted"] if record else False,
-                })
+            result = await self._run_scoped(scoped)
+            record = await result.single()
+            return Neo4jVectorStore_upsert_entityResult.model_validate({
+                "entity_id": record["entity_id"] if record else entity_id,
+                "entity_type": entity_type,
+                "upserted": record["upserted"] if record else False,
+            })
 
 
         except (ClientError, ServiceUnavailable) as exc:
@@ -172,11 +192,13 @@ class Neo4jVectorStore:
         self,
         entities: list[dict[str, Any]],
         entity_type: str,
+        tenant_id: str | None = None,
     ) -> dict[str, Any]:
         """Batch upsert entity embeddings."""
         if not entities:
             return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": 0, "failed": []})
 
+        tenant = self._resolve_tenant_id(tenant_id or entities[0].get("tenant_id"))
         texts = [e.get("text", e.get("name", "")) for e in entities]
         embeddings = self._embed_batch(texts)
 
@@ -188,35 +210,37 @@ class Neo4jVectorStore:
                     "embedding": embedding,
                     "text": text[:2000],
                     "metadata": {
-                        k: v
-                        for k, v in entity.items()
-                        if k not in ("id", "text", "embedding")
-                        and isinstance(v, (str, int, float, bool))
+                            k: v
+                            for k, v in entity.items()
+                            if k not in ("id", "text", "embedding", "tenant_id", "tenantId")
+                            and isinstance(v, (str, int, float, bool))
                     },
                 }
             )
 
-        query = f"""
-        UNWIND $records AS rec
-        MERGE (n:{entity_type} {{id: rec.id}})
-        ON CREATE SET
-            n.embedding = rec.embedding,
-            n.embedding_text = rec.text,
-            n += rec.metadata,
-            n.embedding_updated_at = datetime()
-        ON MATCH SET
-            n.embedding = rec.embedding,
-            n.embedding_text = rec.text,
-            n.embedding_updated_at = datetime()
-        RETURN count(n) AS upserted
-        """
+        builder = TenantScopedCypher(tenant)
+        scoped = builder.custom_tenant_query(
+            f"""
+            UNWIND $records AS rec
+            MERGE (n:{entity_type} {{id: rec.id, tenant_id: $_tenant_id}})
+            WITH n, rec
+            WHERE n.tenant_id = $_tenant_id
+            SET
+                n.embedding = rec.embedding,
+                n.embedding_text = rec.text,
+                n += rec.metadata,
+                n.embedding_updated_at = datetime()
+            RETURN count(n) AS upserted
+            """,
+            params={"records": records},
+            operation="vector_upsert_batch",
+            labels=(entity_type,),
+        )
 
-        driver = await self._get_driver()
         try:
-            async with driver.session(database=self.settings.neo4j_database) as session:
-                result = await session.run(query, {"records": records})
-                record = await result.single()
-                return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": record["upserted"] if record else 0, "failed": []})
+            result = await self._run_scoped(scoped)
+            record = await result.single()
+            return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": record["upserted"] if record else 0, "failed": []})
         except (ClientError, ServiceUnavailable) as exc:
             logger.error("Batch upsert failed for %s: %s", entity_type, exc)
             return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": 0, "failed": [e["id"] for e in entities]})
@@ -231,42 +255,43 @@ class Neo4jVectorStore:
         entity_type: str | None = None,
         top_k: int = 10,
         min_score: float = 0.0,
+        tenant_id: str | None = None,
     ) -> list[tuple[str, float, dict[str, Any]]]:
         """ANN vector search using Neo4j native vector index."""
+        tenant = self._resolve_tenant_id(tenant_id)
         query_embedding = self._embed(query_text)
-        driver = await self._get_driver()
         types_to_search = [entity_type] if entity_type else VECTOR_ENTITY_TYPES
         all_results: list[tuple[str, float, dict[str, Any]]] = []
 
         for etype in types_to_search:
             index_name = f"{etype.lower()}_embedding_idx"
-            cypher = """
-            CALL db.index.vector.queryNodes($index_name, $top_k, $embedding)
-            YIELD node, score
-            WHERE score >= $min_score
-            RETURN
-                node.id AS entity_id,
-                labels(node)[0] AS entity_type,
-                score,
-                node.name AS name,
-                node.description AS description,
-                node.confidence AS confidence
-            ORDER BY score DESC
-            """
+            builder = TenantScopedCypher(tenant)
+            scoped = builder.custom_tenant_query(
+                """
+                CALL db.index.vector.queryNodes($index_name, $top_k, $embedding)
+                YIELD node, score
+                WHERE node.tenant_id = $_tenant_id AND score >= $min_score
+                RETURN
+                    node.id AS entity_id,
+                    labels(node)[0] AS entity_type,
+                    score,
+                    node.name AS name,
+                    node.description AS description,
+                    node.confidence AS confidence
+                ORDER BY score DESC
+                """,
+                params={
+                    "index_name": index_name,
+                    "top_k": top_k,
+                    "embedding": query_embedding,
+                    "min_score": min_score,
+                },
+                operation="vector_search",
+                labels=(etype,),
+            )
             try:
-                async with driver.session(
-                    database=self.settings.neo4j_database
-                ) as session:
-                    result = await session.run(
-                        cypher,
-                        {
-                            "index_name": index_name,
-                            "top_k": top_k,
-                            "embedding": query_embedding,
-                            "min_score": min_score,
-                        },
-                    )
-                    async for record in result:
+                result = await self._run_scoped(scoped)
+                async for record in result:
                         all_results.append(
                             (
                                 record["entity_id"],
@@ -311,17 +336,22 @@ class Neo4jVectorStore:
         if not tenant_id:
             raise ValueError("tenant_id is required for delete_entity")
         
-        driver = await self._get_driver()
-        query = """
-        MATCH (n {id: $id, tenant_id: $tenant_id})
-        REMOVE n.embedding, n.embedding_text, n.embedding_updated_at
-        RETURN count(n) AS updated
-        """
+        builder = TenantScopedCypher(tenant_id)
+        scoped = builder.custom_tenant_query(
+            """
+            MATCH (n {id: $id})
+            WHERE n.tenant_id = $_tenant_id
+            REMOVE n.embedding, n.embedding_text, n.embedding_updated_at
+            RETURN count(n) AS updated
+            """,
+            params={"id": entity_id},
+            operation="vector_delete_entity",
+            labels=("*",),
+        )
         try:
-            async with driver.session(database=self.settings.neo4j_database) as session:
-                result = await session.run(query, {"id": entity_id, "tenant_id": tenant_id})
-                record = await result.single()
-                return bool(record and record["updated"] > 0)
+            result = await self._run_scoped(scoped)
+            record = await result.single()
+            return bool(record and record["updated"] > 0)
         except (ClientError, ServiceUnavailable) as exc:
             logger.error("Failed to delete embedding for %s: %s", entity_id, exc)
             return False
@@ -331,12 +361,15 @@ class Neo4jVectorStore:
         driver = await self._get_driver()
         details: dict[str, Any] = {}
         all_online = True
+        scoped = SystemCypher.schema_operation(
+            "SHOW INDEXES YIELD name, type, state WHERE type = 'VECTOR'",
+            reason="Vector index health inspects global Neo4j index metadata",
+            allowlist_key="vector_store.index_health",
+        )
 
         try:
             async with driver.session(database=self.settings.neo4j_database) as session:
-                result = await session.run(
-                    "SHOW INDEXES YIELD name, type, state WHERE type = 'VECTOR'"
-                )
+                result = await session.run(scoped.cypher, scoped.params)
                 existing = {r["name"]: r["state"] async for r in result}
 
             for etype in VECTOR_ENTITY_TYPES:

@@ -11,6 +11,8 @@ Run with:
     pytest tests/test_neo4j_schema_integration.py -v -m integration
 """
 
+from __future__ import annotations
+
 import pytest
 import pytest_asyncio
 

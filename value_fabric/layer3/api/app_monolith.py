@@ -86,6 +86,7 @@ from .main_fix import (
     TracerProvider,
     trace,
 )
+from .metrics_state import get_system_metrics, set_app_metrics
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
@@ -293,10 +294,6 @@ def _add_deprecation_headers(response: Response, endpoint_path: str) -> None:
             # RFC 7234 Warning header
             response.headers["Warning"] = f'299 - "Deprecated since {deprecated_since}"'
             break
-
-
-# Track application startup time for uptime calculation
-_app_start_time = time.time()
 
 
 def _register_migration_handler_with_policy(
@@ -1015,76 +1012,6 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
     return dependencies
 
 
-_app_metrics: Any | None = None
-
-
-def set_app_metrics(metrics: Any | None) -> None:
-    """Set the global metrics instance for health check access."""
-    global _app_metrics
-    _app_metrics = metrics
-
-
-def get_system_metrics() -> ServiceMetrics:
-    """Collect system and application metrics from Prometheus.
-
-    Extracts real counter values from the Prometheus registry by iterating
-    through collected metrics and summing sample values for counters.
-    """
-    uptime = time.time() - _app_start_time
-
-    # System metrics from psutil
-    memory_info = psutil.virtual_memory()
-    memory_usage_mb = memory_info.used / (1024 * 1024)
-    cpu_percent = psutil.cpu_percent(interval=None)
-
-    # Application metrics from Prometheus registry
-    total_requests = 0
-    total_errors = 0
-    active_connections = 0
-    error_rate_percent = 0.0
-    metrics_instance = _app_metrics
-
-    if metrics_instance is not None:
-        try:
-            registry = metrics_instance.config.registry
-            prefix = metrics_instance.config.prefix
-
-            # Iterate through all metrics in registry and extract values
-            for metric in registry.collect():
-                if metric.name == f"{prefix}active_connections":
-                    # Gauge: take the value directly (connection_type="total")
-                    for sample in metric.samples:
-                        if sample.labels.get("connection_type") == "total":
-                            active_connections = int(sample.value)
-                            break
-
-                elif metric.name == f"{prefix}http_requests_total":
-                    # Counter: sum all sample values across all labels
-                    for sample in metric.samples:
-                        total_requests += int(sample.value)
-
-                elif metric.name == f"{prefix}errors_total":
-                    # Counter: sum all error samples across all labels
-                    for sample in metric.samples:
-                        total_errors += int(sample.value)
-
-            # Calculate error rate as percentage
-            if total_requests > 0:
-                error_rate_percent = round((total_errors / total_requests) * 100, 2)
-
-        except Exception as e:
-            logger.warning(f"Failed to extract Prometheus metrics: {e}")
-            # Keep default zero values on any extraction failure
-
-    return ServiceMetrics(
-        uptime_seconds=uptime,
-        memory_usage_mb=round(memory_usage_mb, 2),
-        cpu_percent=round(cpu_percent, 2),
-        active_connections=active_connections,
-        total_requests=total_requests,
-        error_rate_percent=error_rate_percent,
-    )
-
 
 # Health check endpoint
 @app.get(
@@ -1642,15 +1569,32 @@ async def _execute_graph_rag_query(
 
     processing_time = (time.time() - start_time) * 1000
 
+    if isinstance(result, dict):
+        query_value = result.get("query", query_text)
+        entities = result.get("entities", [])
+        relationships = result.get("relationships", [])
+        context_graph = result.get("context_graph", {})
+        confidence_score = result.get("confidence_score", 0.0)
+        sources = result.get("sources", [])
+        answer = result.get("answer")
+    else:
+        query_value = result.query
+        entities = result.entities
+        relationships = result.relationships
+        context_graph = result.context_graph
+        confidence_score = result.confidence_score
+        sources = result.sources
+        answer = getattr(result, "answer", None)
+
     return GraphRAGResponse.model_validate({
-        "query": result.query,
-        "entities": result.entities,
-        "relationships": result.relationships,
-        "context_graph": result.context_graph,
-        "confidence_score": result.confidence_score,
-        "sources": result.sources,
+        "query": query_value,
+        "entities": entities,
+        "relationships": relationships,
+        "context_graph": context_graph,
+        "confidence_score": confidence_score,
+        "sources": sources,
         "processing_time_ms": processing_time,
-        "answer": getattr(result, "answer", None),
+        "answer": answer,
     })
 
 

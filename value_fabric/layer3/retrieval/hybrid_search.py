@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from neo4j import AsyncDriver
+from value_fabric.shared.identity.context import get_request_context
+from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
@@ -36,8 +38,8 @@ class HybridSearchResult:
     vector_score: float
     graph_score: float
     combined_score: float
-    confidence: float
     metadata: dict[str, Any]
+    confidence: float = 1.0
 
 
 class HybridSearch:
@@ -81,6 +83,7 @@ class HybridSearch:
         top_k: int = 10,
         weights: dict[str, float] | None = None,
         limit: int | None = None,
+        tenant_id: str | None = None,
     ) -> list[HybridSearchResult]:
         """Execute hybrid search across all signals.
 
@@ -109,9 +112,10 @@ class HybridSearch:
         # PERF: Execute searches in parallel - independent operations
         # Before: Sequential (BM25 time + vector time + graph time)
         # After: Parallel (max(BM25 time, vector time, graph time))
-        bm25_task = self._bm25_search(query, entity_types, result_limit * 2)
+        effective_tenant_id = self._resolve_tenant_id(tenant_id)
+        bm25_task = self._bm25_search(query, entity_types, result_limit * 2, effective_tenant_id)
         vector_task = self._vector_search(query, entity_types, result_limit * 2)
-        graph_task = self._graph_search(query, entity_types, result_limit * 2)
+        graph_task = self._graph_search(query, entity_types, result_limit * 2, effective_tenant_id)
 
         bm25_results, vector_results, graph_results = await asyncio.gather(
             bm25_task, vector_task, graph_task, return_exceptions=True
@@ -149,10 +153,11 @@ class HybridSearch:
         query: str,
         entity_type: str | None = None,
         top_k: int = 10,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Pure BM25 keyword search."""
         return await self._bm25_search(
-            query, [entity_type] if entity_type else None, top_k
+            query, [entity_type] if entity_type else None, top_k, tenant_id
         )
 
     async def fulltext_search(
@@ -160,15 +165,33 @@ class HybridSearch:
         query: str,
         entity_type: str | None = None,
         top_k: int = 10,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Backward-compatible alias for keyword/BM25 search."""
-        return await self.keyword_search(query, entity_type, top_k)
+        return await self.keyword_search(query, entity_type, top_k, tenant_id)
+
+    def _resolve_tenant_id(self, tenant_id: str | None = None) -> str:
+        """Resolve the tenant for strict graph reads, failing closed if absent."""
+        if tenant_id:
+            return str(tenant_id)
+        context = get_request_context()
+        if context and context.tenant_id:
+            return str(context.tenant_id)
+        raise ValueError("tenant_id is required for tenant-scoped HybridSearch queries")
+
+    def _tenant_builder(self, tenant_id: str | None = None) -> TenantScopedCypher:
+        return TenantScopedCypher(self._resolve_tenant_id(tenant_id))
+
+    async def _run_scoped(self, session: Any, scoped: ScopedQuery):
+        """Execute a strict scoped query through the Neo4j session seam."""
+        return await session.run(scoped.cypher, scoped.params)
 
     async def _bm25_search(
         self,
         query: str,
         entity_types: list[str] | None,
         top_k: int,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Execute BM25 full-text search via Neo4j fulltext index."""
         driver = await self._get_driver()
@@ -205,15 +228,21 @@ class HybridSearch:
                 {fulltext_call}
             }}
             WITH node as n, score
+            WHERE n.tenant_id = $_tenant_id
             RETURN n.id as id, labels(n)[0] as entity_type, n.name as name,
                    n.description as description, score
             ORDER BY score DESC
             LIMIT $limit
             """
             try:
-                result = await session.run(
-                    cypher, {"query": escaped_query, "limit": top_k}
+                builder = self._tenant_builder(tenant_id)
+                scoped = builder.custom_tenant_query(
+                    cypher,
+                    params={"query": escaped_query, "limit": top_k},
+                    operation="hybrid_search.bm25",
+                    labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
                 )
+                result = await self._run_scoped(session, scoped)
                 async for record in result:
                     row = dict(record)
                     if entity_types and row.get("entity_type") not in entity_types:
@@ -280,6 +309,7 @@ class HybridSearch:
         query: str,
         entity_types: list[str] | None,
         top_k: int,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Execute graph-based search (centrality-aware)."""
         driver = await self._get_driver()
@@ -316,8 +346,9 @@ class HybridSearch:
                 {fulltext_call}
             }}
             WITH node as n, score as text_score
-            WITH n, text_score
-            OPTIONAL MATCH (n)-[r]-()
+            WHERE n.tenant_id = $_tenant_id
+            OPTIONAL MATCH (n)-[r]-(neighbor)
+            WHERE neighbor.tenant_id = $_tenant_id
             WITH n, text_score, count(r) as degree
             RETURN n.id as id, labels(n)[0] as entity_type, n.name as name,
                    text_score * log(degree + 1) as score
@@ -325,9 +356,14 @@ class HybridSearch:
             LIMIT $limit
             """
             try:
-                result = await session.run(
-                    cypher, {"query": escaped_query, "limit": top_k}
+                builder = self._tenant_builder(tenant_id)
+                scoped = builder.custom_tenant_query(
+                    cypher,
+                    params={"query": escaped_query, "limit": top_k},
+                    operation="hybrid_search.graph",
+                    labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
                 )
+                result = await self._run_scoped(session, scoped)
                 async for record in result:
                     results.append(dict(record))
             except Exception as exc:

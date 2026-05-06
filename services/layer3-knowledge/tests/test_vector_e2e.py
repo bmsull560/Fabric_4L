@@ -16,6 +16,8 @@ Requirements:
     - sentence-transformers package
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import AsyncGenerator
 

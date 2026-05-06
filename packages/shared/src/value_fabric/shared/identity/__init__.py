@@ -12,7 +12,16 @@ This package is imported by all layers (L1–L4) and provides:
 from .context import RequestContext, get_request_context, set_request_context, require_context
 from .hashing import generate_api_key, hash_api_key, verify_api_key, extract_key_prefix
 from .feature_flags import is_enabled, init_feature_flags, get_feature_flags_redis, register_feature_flag_lookup
-from .isolation import TenantScopedCypher, TenantScopedMixin, tenant_cache_key
+from .isolation import (
+    DEFAULT_TENANT_LABEL_POLICY,
+    QueryScope,
+    ScopedQuery,
+    SystemCypher,
+    TenantLabelPolicy,
+    TenantScopedCypher,
+    TenantScopedMixin,
+    tenant_cache_key,
+)
 from .jwt import TokenClaims, decode_jwt, encode_jwt, get_jwks
 from .oidc import OIDCClient, map_role_from_claims
 from .oidc_config import OIDCProviderConfig
@@ -69,9 +78,14 @@ __all__ = [
     "get_feature_flags_redis",
     "register_feature_flag_lookup",
     # Isolation
-    "TenantScopedCypher",
-    "TenantScopedMixin",
-    "tenant_cache_key",
+        "DEFAULT_TENANT_LABEL_POLICY",
+        "QueryScope",
+        "ScopedQuery",
+        "SystemCypher",
+        "TenantLabelPolicy",
+        "TenantScopedCypher",
+        "TenantScopedMixin",
+        "tenant_cache_key",
     # JWT
     "TokenClaims",
     "decode_jwt",

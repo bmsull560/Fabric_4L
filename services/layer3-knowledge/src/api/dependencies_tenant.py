@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 try:
     from value_fabric.shared.identity.context import RequestContext
-    from value_fabric.shared.identity.dependencies import get_request_context
+    from value_fabric.shared.identity.dependencies import get_current_context
     SHARED_IDENTITY_AVAILABLE = True
 except ImportError:
     SHARED_IDENTITY_AVAILABLE = False
     RequestContext = None  # type: ignore
-    get_request_context = None  # type: ignore
+    get_current_context = None  # type: ignore
 
 
 try:
@@ -174,7 +174,7 @@ async def create_neo4j_tenant_session(tenant_id: str | None) -> Neo4jTenantSessi
 
 async def get_neo4j_with_tenant(
     request: Request,
-    context: RequestContext = Depends(get_request_context),  # type: ignore
+    context: RequestContext = Depends(get_current_context),  # type: ignore
 ) -> Neo4jTenantSession:
     """FastAPI dependency for Neo4j session with tenant context (Sprint 5).
 
@@ -256,7 +256,7 @@ async def get_neo4j_with_tenant(
 
 async def get_neo4j_with_optional_tenant(
     request: Request,
-    context: RequestContext = Depends(get_request_context),  # type: ignore
+    context: RequestContext = Depends(get_current_context),  # type: ignore
 ) -> Neo4jTenantSession:
     """Neo4j session with optional tenant for super-admin operations (Sprint 5).
 
@@ -347,7 +347,7 @@ def require_tenant_header_for_internal():
                 detail="Identity system unavailable. Ensure shared.identity is configured.",
             )
 
-        ctx = await get_request_context(request)
+        ctx = get_current_context(request)
         if ctx and ctx.tenant_id:
             return str(ctx.tenant_id)
 

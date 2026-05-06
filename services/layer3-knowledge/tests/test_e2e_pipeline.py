@@ -17,6 +17,8 @@ Requirements:
     - Neo4j image available
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 from collections.abc import AsyncGenerator

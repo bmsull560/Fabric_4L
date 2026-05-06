@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Namespaces (aligned with value_fabric_ontology_schema.py spec)
 VF = Namespace("http://valuefabric.io/ontology/")
+VF_HTTPS = Namespace("https://valuefabric.io/ontology/")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 
 # Current retrieval entities that receive ingestion-time embeddings.
@@ -163,9 +164,9 @@ class Neo4jLoader:
         entities: dict[str, list[dict]] = {et: [] for et in ENTITY_TYPES}
 
         for entity_type in ENTITY_TYPES:
-            type_uri = VF[entity_type]
+            type_uris = (VF[entity_type], VF_HTTPS[entity_type])
 
-            for subject in graph.subjects(RDF.type, type_uri):
+            for subject in {s for type_uri in type_uris for s in graph.subjects(RDF.type, type_uri)}:
                 entity_data: dict[str, Any] = {"uri": str(subject)}
 
                 for predicate, obj in graph.predicate_objects(subject):
@@ -196,16 +197,27 @@ class Neo4jLoader:
     def _extract_relationships_from_rdf(
         self,
         graph: Graph,
-        source_id: str | None,
-        extraction_job_id: str | None,
-    ) -> dict[str, list[dict[str, Any]]]:
-        """Extract relationships from RDF graph by type with all properties."""
+        source_id: str | None = None,
+        extraction_job_id: str | None = None,
+    ) -> dict[str, list[dict[str, Any]]] | list[dict[str, Any]]:
+        """Extract relationships from RDF graph by type with all properties.
+
+        The loader's production path consumes relationships grouped by predicate.
+        Older unit tests call this helper directly without metadata arguments and
+        expect a flat list, so the no-metadata call shape is retained as a
+        backwards-compatible convenience.
+        """
+        legacy_flat_result = source_id is None and extraction_job_id is None
         relationships: dict[str, list[dict[str, Any]]] = {
             rel_type: [] for rel_type in RELATIONSHIP_TYPES
         }
 
-        # Build a lookup of known relationship predicates using VF namespace
-        known_predicates = {VF[rt]: rt for rt in RELATIONSHIP_TYPES}
+        # Build a lookup of known relationship predicates using both canonical
+        # and historical HTTPS namespaces.
+        known_predicates = {
+            **{VF[rt]: rt for rt in RELATIONSHIP_TYPES},
+            **{VF_HTTPS[rt]: rt for rt in RELATIONSHIP_TYPES},
+        }
 
         # Find all reified relationship statements for properties
         # Reified statements use RDF.Statement type
@@ -279,6 +291,27 @@ class Neo4jLoader:
                 rel_data["influence_weight"] = float(influence)
 
             relationships[predicate_name].append(rel_data)
+
+        # Support simple direct triples in legacy fixtures that do not use RDF
+        # reification for relationship properties.
+        for subject_uri, predicate_uri, object_uri in graph:
+            predicate_name = known_predicates.get(predicate_uri)
+            if not predicate_name or not isinstance(object_uri, URIRef):
+                continue
+            rel_data = {
+                "source_id": self._resolve_entity_id(graph, subject_uri),
+                "target_id": self._resolve_entity_id(graph, object_uri),
+                "predicate": predicate_name,
+                "confidence": 1.0,
+                "source": source_id,
+                "extraction_job_id": extraction_job_id,
+                "provenance": {},
+            }
+            if rel_data not in relationships[predicate_name]:
+                relationships[predicate_name].append(rel_data)
+
+        if legacy_flat_result:
+            return [rel for rels in relationships.values() for rel in rels]
 
         return relationships
 
