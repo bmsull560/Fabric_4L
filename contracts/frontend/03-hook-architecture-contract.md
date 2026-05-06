@@ -1,7 +1,7 @@
 # Contract C: Hook Architecture Contract
 
 **Status:** Ratified  
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Date:** 2026-04-26  
 **Scope:** All React hooks that interact with backend APIs  
 **Enforcement:** Code review checklist + ESLint rules (see Section 8)
@@ -240,4 +240,4 @@ Every PR that adds or modifies a hook MUST be reviewed against:
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-04-26 | Initial ratification |
-| 1.0.1 | 2026-05-06 | Directory structure clarification: Tier 1 (src/api/protocol/) exists; Tier 3 (src/hooks/pages/) not yet implemented - page hooks currently inline in feature directories |
+| 1.0.1 | 2026-05-06 | Directory structure: Tier 1 (src/api/protocol/) exists; Tier 3 (src/hooks/pages/) not yet implemented |

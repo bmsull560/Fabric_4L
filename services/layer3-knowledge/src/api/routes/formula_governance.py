@@ -178,6 +178,8 @@ class ApprovalQueueItem(BaseModel):
 
 @router.get("/formulas/approvals/pending", response_model=list[ApprovalQueueItem])
 async def list_pending_approvals(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
@@ -220,6 +222,8 @@ async def list_pending_approvals(
     "/formulas/{formula_id}/versions", response_model=list[FormulaVersionResponse]
 )
 async def list_formula_versions(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     include_retired: bool = Query(False, description="Include retired versions"),
     driver: AsyncDriver = Depends(get_driver),
@@ -259,6 +263,8 @@ async def list_formula_versions(
     "/formulas/{formula_id}/governance", response_model=FormulaGovernanceResponse
 )
 async def get_formula_governance(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
@@ -319,6 +325,8 @@ async def get_formula_governance(
     status_code=201,
 )
 async def create_formula_version(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: CreateVersionRequest,
     driver: AsyncDriver = Depends(get_driver),
@@ -400,6 +408,8 @@ async def create_formula_version(
 
 @router.post("/formulas/{formula_id}/submit", response_model=TransitionResponse)
 async def submit_for_review(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: SubmitForReviewRequest,
     driver: AsyncDriver = Depends(get_driver),
@@ -485,6 +495,8 @@ async def submit_for_review(
 
 @router.post("/formulas/{formula_id}/approve", response_model=TransitionResponse)
 async def approve_formula(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: ApproveRequest,
     driver: AsyncDriver = Depends(get_driver),
@@ -539,6 +551,8 @@ async def approve_formula(
 
 @router.post("/formulas/{formula_id}/activate", response_model=TransitionResponse)
 async def activate_formula(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: ActivateRequest,
     driver: AsyncDriver = Depends(get_driver),
@@ -621,6 +635,8 @@ async def activate_formula(
 
 @router.post("/formulas/{formula_id}/deprecate", response_model=TransitionResponse)
 async def deprecate_formula(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: DeprecateRequest,
     driver: AsyncDriver = Depends(get_driver),
@@ -698,6 +714,8 @@ async def deprecate_formula(
     "/formulas/{formula_id}/dependencies", response_model=list[DependencyResponse]
 )
 async def get_formula_dependencies(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     direction: str = Query(
         "both", description="Dependency direction: outgoing, incoming, or both"
@@ -747,6 +765,8 @@ async def get_formula_dependencies(
 
 @router.post("/formulas/{formula_id}/validate", response_model=ValidationResponse)
 async def validate_activation(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     version: str = Query(..., description="Version to validate"),
     driver: AsyncDriver = Depends(get_driver),

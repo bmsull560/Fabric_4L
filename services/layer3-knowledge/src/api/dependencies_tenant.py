@@ -144,6 +144,32 @@ class Neo4jTenantSession:
         await self.close()
 
 
+async def create_neo4j_tenant_session(tenant_id: str | None) -> Neo4jTenantSession:
+    """Create a Neo4jTenantSession from an explicit tenant_id string.
+
+    For route modules that extract tenant_id through their own auth
+    mechanisms (API keys, custom JWT) rather than GovernanceMiddleware.
+
+    Usage::
+
+        tenant_id = getattr(api_key, "tenant_id", None)
+        async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+            result = await neo4j.run(
+                "MATCH (n {id: $id, tenant_id: $tenant_id}) RETURN n",
+                id=entity_id,
+            )
+
+    Note:
+        The caller is responsible for closing the session. Use ``async with``
+        or call ``await neo4j.close()`` explicitly.
+    """
+    from ..db.driver import get_driver
+
+    driver = await get_driver()
+    session = driver.session()
+    return Neo4jTenantSession(session=session, tenant_id=tenant_id, is_bypass=False)
+
+
 async def get_neo4j_with_tenant(
     request: Request,
     context: RequestContext = Depends(get_request_context),  # type: ignore

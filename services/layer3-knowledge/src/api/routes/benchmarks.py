@@ -15,13 +15,12 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
-from ...db.driver import get_driver
 from ...logging_config import get_logger
+from ..dependencies_tenant import create_neo4j_tenant_session
 
 logger = get_logger(__name__)
 
@@ -89,11 +88,11 @@ async def list_benchmarks(
     confidence: str | None = Query(None, description="Filter by confidence level"),
     search: str | None = Query(None, description="Search benchmarks by name"),
     limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Maximum results to return"),
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """List benchmarks with optional filters."""
-    where_conditions: list[str] = []
+    tenant_id = getattr(api_key, "tenant_id", None)
+    where_conditions: list[str] = ["b.tenant_id = $tenant_id"]
     params: dict[str, Any] = {"limit": limit}
 
     if industry:
@@ -112,7 +111,7 @@ async def list_benchmarks(
         where_conditions.append("toLower(b.name) CONTAINS toLower($search)")
         params["search"] = search
 
-    where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+    where_clause = "WHERE " + " AND ".join(where_conditions)
 
     query = f"""
     MATCH (b:Benchmark)
@@ -123,8 +122,8 @@ async def list_benchmarks(
     LIMIT $limit
     """
 
-    async with driver.session() as session:
-        result = await session.run(query, **params)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(query, **params)
         records = await result.data()
 
         current_year = datetime.now(UTC).year
@@ -156,18 +155,19 @@ async def list_benchmarks(
 async def list_benchmark_policies(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """List benchmark policy configurations."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (bp:BenchmarkPolicy)
+    WHERE bp.tenant_id = $tenant_id
     RETURN bp
     ORDER BY bp.name
     """
 
-    async with driver.session() as session:
-        result = await session.run(query)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(query)
         records = await result.data()
 
         return [
@@ -189,18 +189,19 @@ async def get_benchmark(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
     benchmark_id: str,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Get a single benchmark by ID."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (b:Benchmark {id: $benchmark_id})
+    WHERE b.tenant_id = $tenant_id
     OPTIONAL MATCH (vp:ValuePack)-[:hasBenchmark]->(b)
     RETURN b, count(DISTINCT vp) as usage_count
     """
 
-    async with driver.session() as session:
-        result = await session.run(query, benchmark_id=benchmark_id)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(query, benchmark_id=benchmark_id)
         record = await result.single()
 
         if not record:
@@ -233,10 +234,10 @@ async def update_benchmark_policy(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     policy_id: str,
     update: BenchmarkPolicyUpdate,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Update a benchmark policy."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     # Build SET clauses dynamically from provided fields
     set_parts: list[str] = []
     params: dict[str, Any] = {"policy_id": policy_id}
@@ -266,12 +267,13 @@ async def update_benchmark_policy(
 
     query = f"""
     MATCH (bp:BenchmarkPolicy {{id: $policy_id}})
+    WHERE bp.tenant_id = $tenant_id
     SET {set_clause}
     RETURN bp
     """
 
-    async with driver.session() as session:
-        result = await session.run(query, **params)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(query, **params)
         record = await result.single()
 
         if not record:

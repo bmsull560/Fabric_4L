@@ -62,7 +62,7 @@ export function AgentChat({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite" aria-atomic="false">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" role="status" aria-live="polite" aria-atomic="false">
               <div className="rounded-lg bg-muted p-3 text-sm">
                 I can help configure settings, explain RBAC, or guide setup.
               </div>

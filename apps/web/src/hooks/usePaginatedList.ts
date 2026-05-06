@@ -57,6 +57,7 @@ export interface PaginatedListState {
 }
 
 const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 500;
 
 export function usePaginatedList(options: PaginatedListOptions): PaginatedListState {
   const {
@@ -86,9 +87,10 @@ export function usePaginatedList(options: PaginatedListOptions): PaginatedListSt
     if (mode === "client") {
       return page < totalPages;
     }
-    // For server-side, assume there's a next page unless we know otherwise
-    // Caller can override this if they have total count from API
-    return totalItems === 0 || page < totalPages;
+    // For server-side: if we know totalItems is 0, no next page
+    // Otherwise assume there might be more pages unless we know otherwise
+    if (totalItems === 0) return false;
+    return page < totalPages;
   }, [mode, page, totalPages, totalItems]);
 
   const canPrevious = useMemo(() => page > 1, [page]);
@@ -107,12 +109,12 @@ export function usePaginatedList(options: PaginatedListOptions): PaginatedListSt
   }, [canPrevious]);
 
   const handleSetPage = useCallback((newPage: number) => {
-    const clampedPage = Math.max(1, newPage);
+    const clampedPage = Math.max(1, Math.min(newPage, totalPages));
     setPage(clampedPage);
-  }, []);
+  }, [totalPages]);
 
   const handleSetPageSize = useCallback((newSize: number) => {
-    const clampedSize = Math.max(1, newSize);
+    const clampedSize = Math.max(1, Math.min(newSize, MAX_PAGE_SIZE));
     setPageSize(clampedSize);
     setPage(1); // Reset to page 1 when changing page size
   }, []);

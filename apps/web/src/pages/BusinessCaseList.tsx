@@ -19,7 +19,7 @@ import {
   Plus, Search, Filter, Archive, ArrowUpRight, Clock,
   CheckCircle2, TrendingUp, Users, Building2, Loader2, AlertCircle
 } from "lucide-react";
-import { useNavigation } from "@/hooks";
+import { useNavigation, useRoutePrefetch } from "@/hooks";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { EmptyState } from "@/components/states";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -102,10 +102,15 @@ function CaseCard({
   isArchiving: boolean;
 }) {
   const { navigateTo } = useNavigation();
+  const { prefetchBusinessCaseDetail } = useRoutePrefetch();
   const status = STATUS_CONFIG[caseItem.status];
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 hover:border-neutral-300 transition-colors group">
+    <div
+      className="bg-card border border-border rounded-xl p-4 hover:border-neutral-300 transition-colors group"
+      onMouseEnter={() => prefetchBusinessCaseDetail(caseItem.id)}
+      onFocus={() => prefetchBusinessCaseDetail(caseItem.id)}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -197,6 +202,7 @@ function CaseListSkeleton() {
 
 function BusinessCaseListContent() {
   const { navigateTo } = useNavigation();
+  const { prefetchBusinessCaseDetail } = useRoutePrefetch();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Validation helpers for URL params (used only during initialization)

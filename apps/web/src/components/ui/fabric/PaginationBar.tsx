@@ -11,9 +11,11 @@ import {
   PaginationEllipsis,
   PaginationItem,
   PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
 } from "@/components/ui/pagination";
+
+// Constants
+const MAX_VISIBLE_PAGES = 5;
+const DEFAULT_PAGE_SIZE = 20;
 
 export interface PaginationBarProps {
   /** Current page number (1-based) */
@@ -51,7 +53,7 @@ export interface PaginationBarProps {
  */
 export function PaginationBar({
   page,
-  pageSize = 20,
+  pageSize = DEFAULT_PAGE_SIZE,
   totalItems,
   totalPages,
   canPrevious = true,
@@ -63,26 +65,32 @@ export function PaginationBar({
   summaryVariant = "range",
   className,
 }: PaginationBarProps) {
+  // Validate props
+  const safePage = Math.max(1, page);
+  const safePageSize = Math.max(1, pageSize);
+  const safeTotalItems = Math.max(0, totalItems ?? 0);
+
   // Calculate derived values
-  const calculatedTotalPages = totalPages || (totalItems ? Math.ceil(totalItems / pageSize) : 1);
-  const startIndex = (page - 1) * pageSize + 1;
-  const endIndex = Math.min(page * pageSize, totalItems || 0);
+  const calculatedTotalPages = totalPages || (safeTotalItems > 0 ? Math.ceil(safeTotalItems / safePageSize) : 1);
+  const clampedPage = Math.min(safePage, calculatedTotalPages);
+  const startIndex = (clampedPage - 1) * safePageSize + 1;
+  const endIndex = Math.min(clampedPage * safePageSize, safeTotalItems);
 
   // Render summary text based on variant
   const renderSummary = () => {
     if (summaryVariant === "page") {
       return (
         <span className="text-[12px] text-muted-foreground">
-          Page {page} of {calculatedTotalPages}
+          Page {clampedPage} of {calculatedTotalPages}
         </span>
       );
     }
 
     // range variant
-    if (totalItems) {
+    if (safeTotalItems > 0) {
       return (
         <span className="text-[12px] text-muted-foreground">
-          Showing {startIndex}–{endIndex} of {totalItems} {itemLabel}
+          Showing {startIndex}–{endIndex} of {safeTotalItems} {itemLabel}
         </span>
       );
     }
@@ -93,26 +101,25 @@ export function PaginationBar({
   // Generate page numbers for display (show current, first, last, and neighbors)
   const generatePageNumbers = () => {
     const pages: (number | string)[] = [];
-    const maxVisible = 5;
 
-    if (calculatedTotalPages <= maxVisible) {
+    if (calculatedTotalPages <= MAX_VISIBLE_PAGES) {
       return Array.from({ length: calculatedTotalPages }, (_, i) => i + 1);
     }
 
     pages.push(1);
 
-    if (page > 3) {
+    if (clampedPage > 3) {
       pages.push("...");
     }
 
-    const start = Math.max(2, page - 1);
-    const end = Math.min(calculatedTotalPages - 1, page + 1);
+    const start = Math.max(2, clampedPage - 1);
+    const end = Math.min(calculatedTotalPages - 1, clampedPage + 1);
 
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
 
-    if (page < calculatedTotalPages - 2) {
+    if (clampedPage < calculatedTotalPages - 2) {
       pages.push("...");
     }
 
@@ -120,6 +127,13 @@ export function PaginationBar({
 
     return pages;
   };
+
+  // Common button styling for Previous/Next buttons
+  const navButtonClassName = cn(
+    "inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-sm font-medium transition-colors",
+    "hover:bg-accent hover:text-accent-foreground",
+    "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+  );
 
   const pageNumbers = generatePageNumbers();
 
@@ -136,9 +150,7 @@ export function PaginationBar({
               onClick={onPrevious}
               disabled={!canPrevious}
               className={cn(
-                "inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-sm font-medium transition-colors",
-                "hover:bg-accent hover:text-accent-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                navButtonClassName,
                 !canPrevious && "opacity-50 cursor-not-allowed pointer-events-none"
               )}
               aria-label="Go to previous page"
@@ -159,7 +171,7 @@ export function PaginationBar({
               ) : (
                 <PaginationItem>
                   <PaginationLink
-                    isActive={p === page}
+                    isActive={p === clampedPage}
                     onClick={() => onPageChange?.(p as number)}
                     className="h-8 w-8"
                   >
@@ -175,9 +187,7 @@ export function PaginationBar({
               onClick={onNext}
               disabled={!canNext}
               className={cn(
-                "inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-sm font-medium transition-colors",
-                "hover:bg-accent hover:text-accent-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                navButtonClassName,
                 !canNext && "opacity-50 cursor-not-allowed pointer-events-none"
               )}
               aria-label="Go to next page"

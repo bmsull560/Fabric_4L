@@ -279,6 +279,8 @@ async def _ensure_constraints(driver: AsyncDriver) -> None:
     },
 )
 async def list_models(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     search: str | None = Query(None, description="Search in name, description, tags"),
     folder: str = Query(FOLDER_ALL, description="Filter by folder"),
@@ -399,6 +401,8 @@ async def list_models(
     description="Returns folder counts for the sidebar navigation.",
 )
 async def get_folder_counts(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     driver: AsyncDriver = Depends(get_driver),
 ) -> FoldersResponse:
@@ -454,6 +458,8 @@ async def get_folder_counts(
     },
 )
 async def get_model_detail(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     model_id: str,
     driver: AsyncDriver = Depends(get_driver),
 ) -> ModelDetail:
@@ -500,11 +506,10 @@ async def get_model_detail(
     description="Creates a new value model with the specified properties.",
     responses={
         201: {"description": "Model created successfully"},
-        400: {"description": "Invalid request data"},
-        500: {"description": "Database error"},
-    },
 )
 async def create_model(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     data: ModelCreateRequest,
     driver: AsyncDriver = Depends(get_driver),
@@ -537,7 +542,7 @@ async def create_model(
         tenant_id: $tenant_id
     })
     RETURN m.model_id as model_id
-    """
+"""
     
     params = {
         "model_id": model_id,
@@ -565,19 +570,21 @@ async def create_model(
 
 
 @router.delete(
-    "/models/{model_id}",
-    response_model=DeleteResponse,
-    tags=["Models"],
-    summary="Delete Value Model",
-    description="Deletes a value model and its relationships.",
-    responses={
-        200: {"description": "Model deleted successfully"},
-        404: {"description": "Model not found"},
-        403: {"description": "Not authorized to delete this model"},
-        500: {"description": "Database error"},
-    },
+"/models/{model_id}",
+response_model=DeleteResponse,
+tags=["Models"],
+summary="Delete Value Model",
+description="Deletes a value model and its relationships.",
+responses={
+200: {"description": "Model deleted successfully"},
+404: {"description": "Model not found"},
+403: {"description": "Not authorized to delete this model"},
+500: {"description": "Database error"},
+},
 )
 async def delete_model(
+    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
+    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     model_id: str,
     driver: AsyncDriver = Depends(get_driver),

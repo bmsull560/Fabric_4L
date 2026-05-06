@@ -115,4 +115,5 @@ export {
 // ── Navigation Hooks ─────────────────────────────────────────────────────────
 
 export { useNavigation } from "./useNavigation";
+export { useRoutePrefetch } from "./useRoutePrefetch";
 export type { RouteState } from "@/navigation/navigationService";

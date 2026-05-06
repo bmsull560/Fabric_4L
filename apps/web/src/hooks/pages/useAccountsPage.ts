@@ -17,7 +17,7 @@
  * ```
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   useAccounts,
@@ -31,22 +31,16 @@ import {
   type SyncStatus,
   type AccountSyncStatusInfo,
 } from "@/hooks";
+import type { AccountFilters as ApiAccountFilters, FilterOptions as ApiFilterOptions } from "@/hooks/useAccounts";
 import { usePaginatedList } from "@/hooks";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 
-// Filter types
-interface AccountFilters {
+interface PageAccountFilters {
   search?: string;
   region?: string;
   segment?: string;
-  sync_status?: string;
+  sync_status?: SyncStatus | 'all';
   industry?: string;
-}
-
-interface FilterOptions {
-  regions?: { value: string; label: string }[];
-  segments?: { value: string; label: string }[];
-  industries?: { value: string; label: string }[];
 }
 
 // Page hook return type
@@ -54,22 +48,22 @@ export interface UseAccountsPageReturn {
   // Data
   accounts: Account[];
   selectedAccount: Account | null;
-  filterOptions: FilterOptions | undefined;
-  syncStatus: AccountSyncStatusInfo | undefined;
-  
+  filterOptions: ApiFilterOptions | undefined;
+  syncStatus: AccountSyncStatusInfo[] | undefined;
+
   // State
-  filters: AccountFilters;
+  filters: PageAccountFilters;
   pagination: ReturnType<typeof usePaginatedList>;
-  
+
   // Actions
   actions: {
-    handleFilterChange: (newFilters: Partial<AccountFilters>) => void;
+    handleFilterChange: (newFilters: Partial<PageAccountFilters>) => void;
     handleSelectAccount: (accountId: string) => void;
     handleSyncAccounts: () => void;
     handleRefreshAccount: (accountId: string) => void;
     handleSearch: (query: string) => void;
   };
-  
+
   // Status
   status: {
     isLoading: boolean;
@@ -80,23 +74,41 @@ export interface UseAccountsPageReturn {
 }
 
 export function useAccountsPage(): UseAccountsPageReturn {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { selectedAccountId, setSelectedAccountId } = useAccountContextStore();
 
   // Local filter state
-  const [filters, setFilters] = useState<AccountFilters>({});
+  const [filters, setFilters] = useState<PageAccountFilters>({});
 
-  // Pagination state
+  // Pagination state with URL sync
   const pagination = usePaginatedList({
     initialPage: searchParams.get('page') ? Math.max(1, parseInt(searchParams.get('page')!, 10)) : 1,
     initialPageSize: 20,
     mode: 'server',
   });
 
+  // Sync pagination state to URL
+  const handlePageChange = useCallback((page: number) => {
+    pagination.setPage(page);
+    const params = new URLSearchParams(searchParams);
+    if (page > 1) {
+      params.set('page', String(page));
+    } else {
+      params.delete('page');
+    }
+    setSearchParams(params, { replace: true });
+  }, [pagination, searchParams, setSearchParams]);
+
+  // Override pagination methods to sync URL
+  const paginationWithUrlSync = useMemo(() => ({
+    ...pagination,
+    setPage: handlePageChange,
+  }), [pagination, handlePageChange]);
+
   // Atomic data hooks
-  const { data: accounts, isLoading, error } = useAccounts({
-    limit: pagination.limit,
-    offset: pagination.offset,
+  const { data: accountsData, isLoading, error } = useAccounts({
+    page: pagination.page,
+    page_size: pagination.limit,
     search: filters.search,
     region: filters.region,
     segment: filters.segment,
@@ -113,8 +125,8 @@ export function useAccountsPage(): UseAccountsPageReturn {
   const refreshMutation = useRefreshAccount();
 
   // Derived state
-  const handleFilterChange = useCallback((newFilters: Partial<AccountFilters>) => {
-    setFilters((prev) => ({ ...prev, ...newFilters }));
+  const handleFilterChange = useCallback((newFilters: Partial<PageAccountFilters>) => {
+    setFilters((prev: PageAccountFilters) => ({ ...prev, ...newFilters }));
     pagination.setPage(1); // Reset to page 1 when filters change
   }, [pagination]);
 
@@ -123,7 +135,7 @@ export function useAccountsPage(): UseAccountsPageReturn {
   }, [selectedAccountId, setSelectedAccountId]);
 
   const handleSyncAccounts = useCallback(() => {
-    syncMutation.mutate();
+    syncMutation.mutate({});
   }, [syncMutation]);
 
   const handleRefreshAccount = useCallback((accountId: string) => {
@@ -135,12 +147,12 @@ export function useAccountsPage(): UseAccountsPageReturn {
   }, [handleFilterChange]);
 
   return {
-    accounts: accounts ?? [],
+    accounts: accountsData?.items ?? [],
     selectedAccount: selectedAccount ?? null,
     filterOptions,
     syncStatus,
     filters,
-    pagination,
+    pagination: paginationWithUrlSync,
     actions: {
       handleFilterChange,
       handleSelectAccount,

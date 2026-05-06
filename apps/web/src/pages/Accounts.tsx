@@ -453,6 +453,7 @@ interface FilterOptions {
 
 function Accounts() {
   const { navigateTo } = useNavigation();
+  const { prefetchAccountDetail } = useRoutePrefetch();
   const params = useParams<{ id: string }>();
   const urlAccountId = params.id ?? null;
   const setGlobalAccountId = useAccountContextStore((s) => s.setSelectedAccountId);
@@ -635,6 +636,8 @@ function Accounts() {
                             selectedAccountId === account.id && "bg-primary/5"
                           )}
                           onClick={() => handleSelectAccount(account.id)}
+                          onMouseEnter={() => prefetchAccountDetail(account.id)}
+                          onFocus={() => prefetchAccountDetail(account.id)}
                         >
                           <TableCell>
                             <div className="flex items-center gap-3">

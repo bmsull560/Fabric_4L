@@ -1,8 +1,8 @@
 # Frontend Clean-Up Summary
 
-**Date:** 2026-05-02  
+**Date:** 2026-05-06 (updated from 2026-05-02)  
 **Scope:** Frontend-only (TypeScript/React)  
-**Status:** Phase 1 Complete
+**Status:** Phase 1 Complete (corrected 2026-05-06)
 
 ---
 
@@ -83,18 +83,16 @@ The following deprecated patterns remain and can be addressed in future clean-up
 
 **Note:** Both are wrapper/helper files that encapsulate the imperative useNavigate pattern. Page components should use `useNavigation()` hook or `getStatePath()` from navigationService instead.
 
-### 2. Inline Tool Definitions (19 instances)
+### 2. Inline Tool Definitions (claim not verified)
 
 **Pattern:** Tools defined as lambdas in agent config  
 **Contract:** §2.4 - should use ToolRegistry with JSON Schema
 
-### 3. URL Concatenation in Components (7 instances)
+**Status:** Claim of 19 instances not verified on 2026-05-06. Requires targeted audit of agent configuration files.
 
-Remaining in:
-- `navigation/navHelpers.ts` - 3 instances (template string building)
-- `components/layout/Layout.tsx` - 2 instances (breadcrumb path building)
-- `stores/userTierStore.ts` - 1 instance
-- `workflow/components/WorkflowLayout.tsx` - 1 instance
+### 3. URL Concatenation in Components (0 instances)
+
+**Status:** Verified on 2026-05-06 - No URL concatenation patterns found in component files. All path building uses centralized navigation services (navigationService, navSchema, accountRouting).
 
 ---
 
@@ -116,7 +114,7 @@ pnpm tsc --noEmit
 
 | Contract Section | Before | After | Change |
 |-----------------|--------|-------|--------|
-| §2.6 UI State (URL concatenation) | ~34 instances | ~7 instances | -79% |
+| §2.6 UI State (URL concatenation) | ~34 instances | 0 instances | -100% |
 | §2.6 UI State (in navigation layer) | ~20 lines | 0 lines | -100% |
 | §2.6 UI State (imperative useNavigate) | 82 instances | 2 instances (wrappers) | -98% |
 

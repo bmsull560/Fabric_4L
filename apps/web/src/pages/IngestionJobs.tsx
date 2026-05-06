@@ -14,6 +14,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Plus, Play, Pause, AlertCircle, Info } from 'lucide-react';
 import { PageHeader, Btn } from '@/components/WfPrimitives';
+import { toast } from 'sonner';
 import { PaginationBar } from '@/components/ui/fabric/PaginationBar';
 import { useNavigation, usePaginatedList } from '@/hooks';
 import { DataTable, type DataTableColumn } from '@/components/ui/fabric/DataTable';
@@ -157,18 +158,35 @@ export default function IngestionJobs() {
     }
   }, [selectedJobId, retryJob]);
 
-  const handleBatchExecute = useCallback(async () => {
+  const handleBatchRetry = useCallback(async () => {
     if (batchOperation.isPending || jobs.length === 0) return;
+    
+    // Filter failed jobs and validate UUID format
+    const failedJobs = jobs.filter(j => j.status === 'failed');
+    const validJobIds = failedJobs
+      .map(j => j.id)
+      .filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+    
+    // Validate that we have failed jobs with valid UUIDs
+    if (validJobIds.length === 0) {
+      if (failedJobs.length === 0) {
+        toast.info('No failed jobs to retry');
+      } else {
+        toast.error('Failed job IDs are not valid UUIDs');
+      }
+      return;
+    }
+    
     try {
-      // For now, batch execute on all jobs in the current page
-      // In the future, this could be extended to support target-based execution
       const request: BatchOperationRequest = {
         operation: 'retry',
-        job_ids: jobs.filter(j => j.status === 'failed').map(j => j.id),
+        job_ids: validJobIds,
       };
       await batchOperation.mutateAsync(request);
-    } catch {
-      // Error is handled by mutation state and displayed in UI
+      toast.success(`Retrying ${validJobIds.length} failed job(s)`);
+    } catch (error) {
+      console.error('Batch retry failed:', error);
+      toast.error('Failed to retry jobs. Please try again.');
     }
   }, [batchOperation, jobs]);
 
@@ -333,7 +351,7 @@ export default function IngestionJobs() {
             {/* Pagination */}
             <PaginationBar
               page={paginationState.page}
-              pageSize={PAGE_SIZE}
+              pageSize={paginationState.pageSize}
               totalPages={apiPagination.totalPages}
               canPrevious={paginationState.page > 1}
               canNext={paginationState.page < apiPagination.totalPages}
@@ -356,7 +374,7 @@ export default function IngestionJobs() {
               <Btn
                 variant="outline"
                 className="flex-1"
-                onClick={handleBatchExecute}
+                onClick={handleBatchRetry}
                 disabled={batchOperation.isPending || jobs.filter(j => j.status === 'failed').length === 0}
               >
                 <Play size={13} />

@@ -14,13 +14,12 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
-from ...db.driver import get_driver
 from ...logging_config import get_logger
+from ..dependencies_tenant import create_neo4j_tenant_session
 
 logger = get_logger(__name__)
 
