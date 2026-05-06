@@ -1,4 +1,14 @@
+import os
+
 from fastapi.testclient import TestClient
+
+# The Layer 4 app is instantiated at import time, so contract tests that exercise
+# protected governance routes must enable the explicitly acknowledged local
+# development identity before importing the app. Production/default-deny behavior
+# remains covered by the dedicated security tests outside this module.
+os.environ.setdefault("DEV_AUTH_BYPASS", "true")
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("ALLOW_DEV_AUTH_BYPASS", "I_UNDERSTAND_RISK")
 
 from value_fabric.layer4.api.main import app
 
