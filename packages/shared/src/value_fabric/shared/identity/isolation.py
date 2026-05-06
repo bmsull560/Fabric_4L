@@ -109,11 +109,16 @@ class TenantLabelPolicy:
             "Battlecard",
             "Benchmark",
             "BenchmarkDataset",
+            "BusinessCase",
             "Capability",
             "CaseStudy",
+            "Chunk",
             "Community",
+            "Company",
             "Competitor",
+            "Contact",
             "Customer",
+            "Document",
             "Entity",
             "Evidence",
             "Formula",
@@ -121,20 +126,44 @@ class TenantLabelPolicy:
             "Industry",
             "Insight",
             "Model",
+            "Opportunity",
             "PainSignal",
             "Persona",
             "Product",
+            "Prospect",
             "ROICalculation",
             "ROITemplate",
             "Segment",
             "Signal",
             "Source",
+            "Stakeholder",
             "UseCase",
             "ValueDriver",
+            "ValueLever",
             "ValueModel",
             "ValuePack",
             "ValueTree",
             "Variable",
+        }
+    )
+    tenant_relationship_types: frozenset[str] = frozenset(
+        {
+            "ADDRESSES",
+            "BELONGS_TO",
+            "CONTAINS",
+            "DEPENDS_ON",
+            "EXHIBITS",
+            "HAS_CHUNK",
+            "HAS_EVIDENCE",
+            "HAS_FORMULA",
+            "HAS_SIGNAL",
+            "HAS_VALUE_DRIVER",
+            "IMPACTS",
+            "MAPS_TO",
+            "OWNS",
+            "RELATES_TO",
+            "SUPPORTED_BY",
+            "USES",
         }
     )
     global_labels: frozenset[str] = frozenset({"Migration", "SchemaVersion", "SystemMetadata"})
@@ -148,6 +177,10 @@ class TenantLabelPolicy:
     def requires_scope(self, labels: Iterable[str]) -> bool:
         """Return whether any label in ``labels`` is tenant-owned."""
         return any(self.is_tenant_owned(label) for label in labels)
+
+    def is_tenant_relationship(self, relationship_type: str | None) -> bool:
+        """Return whether a relationship type is treated as tenant-owned."""
+        return bool(relationship_type) and relationship_type in self.tenant_relationship_types
 
 
 DEFAULT_TENANT_LABEL_POLICY = TenantLabelPolicy()

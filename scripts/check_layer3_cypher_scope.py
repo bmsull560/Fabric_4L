@@ -16,7 +16,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-TENANT_LABELS = {
+FALLBACK_TENANT_LABELS = {
     "Account",
     "Battlecard",
     "Benchmark",
@@ -48,6 +48,23 @@ TENANT_LABELS = {
     "ValueTree",
     "Variable",
 }
+
+
+def _load_tenant_labels(root: Path | None = None) -> set[str]:
+    """Load tenant-owned Neo4j labels from the shared registry, with a CI-safe fallback."""
+    if root is not None:
+        shared_src = root / "packages" / "shared" / "src"
+        if shared_src.exists() and str(shared_src) not in sys.path:
+            sys.path.insert(0, str(shared_src))
+    try:
+        from value_fabric.shared.identity.isolation import DEFAULT_TENANT_LABEL_POLICY
+
+        return set(DEFAULT_TENANT_LABEL_POLICY.tenant_labels)
+    except Exception:
+        return set(FALLBACK_TENANT_LABELS)
+
+
+TENANT_LABELS = _load_tenant_labels()
 
 SCANNED_ROOTS = (
     "services/layer3-knowledge/src/analytics",
@@ -246,6 +263,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
+    global TENANT_LABELS
+    TENANT_LABELS = _load_tenant_labels(root)
     findings: list[Finding] = []
     for path in discover_files(root, args.paths):
         findings.extend(scan_file(path, root))

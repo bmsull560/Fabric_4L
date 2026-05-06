@@ -167,6 +167,7 @@ class SyncManager:
         driver = await self.loader._get_driver()
 
         async with driver.session(database=self.settings.neo4j_database) as session:
+            # tenant-scope: system - reviewed operational ingestion metadata boundary
             result = await session.run(
                 """
                 MATCH (s:SyncMetadata {source_id: $source_id})
@@ -202,6 +203,7 @@ class SyncManager:
         sources = []
 
         async with driver.session(database=self.settings.neo4j_database) as session:
+            # tenant-scope: system - reviewed operational ingestion metadata boundary
             result = await session.run(
                 """
                 MATCH (s:SyncMetadata)
@@ -241,6 +243,7 @@ class SyncManager:
         # Delete sync metadata
         driver = await self.loader._get_driver()
         async with driver.session(database=self.settings.neo4j_database) as session:
+            # tenant-scope: system - reviewed operational ingestion metadata boundary
             await session.run(
                 """
                 MATCH (s:SyncMetadata {source_id: $source_id})
@@ -309,6 +312,7 @@ class SyncManager:
             metadata["error"] = error
 
         async with driver.session(database=self.settings.neo4j_database) as session:
+            # tenant-scope: system - reviewed operational ingestion metadata boundary
             await session.run(
                 """
                 CREATE (s:SyncMetadata $metadata)

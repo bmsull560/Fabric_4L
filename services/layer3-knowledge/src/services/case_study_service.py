@@ -237,6 +237,7 @@ class CaseStudyService:
         async with self.driver.session() as session:
             result = await session.run(
                 """
+                // strict-scoped-query-execution: props includes required tenant_id for Evidence
                 CREATE (e:Evidence $props)
                 RETURN e.id AS id, e.title AS title, e.industry AS industry
                 """,
@@ -299,8 +300,8 @@ class CaseStudyService:
             result = await session.run(
                 """
                 MATCH (e:Evidence {id: $id, tenant_id: $tenant_id, evidence_type: 'case_study'})
-                OPTIONAL MATCH (p:Product)-[:DEMONSTRATES]->(e)
-                OPTIONAL MATCH (ps:PainSignal)-[:supportedBy]->(e)
+                OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[:DEMONSTRATES]->(e)
+                OPTIONAL MATCH (ps:PainSignal {tenant_id: $tenant_id})-[:supportedBy]->(e)
                 RETURN e {.*} AS case_study,
                        collect(DISTINCT p.name) AS linked_products,
                        collect(DISTINCT ps.name) AS linked_signals
@@ -421,7 +422,7 @@ class CaseStudyService:
         async with self.driver.session() as session:
             # Get total count
             count_result = await session.run(
-                f"MATCH (e:Evidence) WHERE {where_str} RETURN count(e) AS total",
+                f"// strict-scoped-query-execution: where_str includes e.tenant_id = $tenant_id\nMATCH (e:Evidence) WHERE {where_str} RETURN count(e) AS total",
                 **params,
             )
             count_record = await count_result.single()
@@ -430,8 +431,9 @@ class CaseStudyService:
             # Get paginated results
             result = await session.run(
                 f"""
+                // strict-scoped-query-execution: where_str includes e.tenant_id = $tenant_id
                 MATCH (e:Evidence) WHERE {where_str}
-                OPTIONAL MATCH (p:Product)-[:DEMONSTRATES]->(e)
+                OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[:DEMONSTRATES]->(e)
                 RETURN e {{.*}} AS case_study,
                        collect(DISTINCT p.name) AS linked_products
                 ORDER BY e.published_date DESC

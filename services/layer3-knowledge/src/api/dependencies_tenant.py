@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import inspect
+import re
 from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, HTTPException, Request, status
@@ -19,7 +20,39 @@ if TYPE_CHECKING:
 from .dependencies import get_neo4j_driver
 from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
+try:
+    from value_fabric.shared.identity.isolation import (
+        DEFAULT_TENANT_LABEL_POLICY,
+        QueryScope,
+        ScopedQuery,
+    )
+    TENANT_ISOLATION_AVAILABLE = True
+except ImportError:
+    DEFAULT_TENANT_LABEL_POLICY = None  # type: ignore[assignment]
+    QueryScope = None  # type: ignore[assignment]
+    ScopedQuery = None  # type: ignore[assignment]
+    TENANT_ISOLATION_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
+
+_LABEL_PATTERN = re.compile(
+    r"\b(?:MATCH|OPTIONAL\s+MATCH|MERGE|CREATE)\s*\([^)]*:\s*([A-Za-z_][A-Za-z0-9_]*)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _tenant_labels_in_query(query: str) -> set[str]:
+    if DEFAULT_TENANT_LABEL_POLICY is None:
+        return set()
+    return {
+        label
+        for label in _LABEL_PATTERN.findall(query)
+        if DEFAULT_TENANT_LABEL_POLICY.is_tenant_owned(label)
+    }
+
+
+def _query_has_tenant_predicate(query: str) -> bool:
+    return any(marker in query for marker in (".tenant_id", ".tenantId", "$tenant_id", "$_tenant_id", "$tenantId"))
 
 
 try:
@@ -81,22 +114,53 @@ class Neo4jTenantSession:
     def is_bypass(self) -> bool:
         return self._is_bypass
 
-    async def run(self, query: str, parameters: dict | None = None, **kwparameters) -> Any:
-        """Run a Cypher query with automatic tenant scoping.
+    async def run(self, query: Any, parameters: dict | None = None, **kwparameters) -> Any:
+        """Run Neo4j Cypher through the strict tenant-aware boundary.
 
-        For non-bypass sessions, automatically injects tenant_id into
-        queries that match nodes without explicit tenant filtering.
+        Tenant-facing code should pass a ``ScopedQuery`` created by
+        ``TenantScopedCypher``. Backward-compatible raw Cypher remains allowed
+        only when tenant-owned labels include explicit tenant predicates and a
+        tenant context is present. This is a fail-closed guardrail rather than a
+        text-rewriting mechanism.
         """
-        # Merge parameters with tenant_id if available
-        params = parameters or {}
+        params = dict(parameters or {})
         params.update(kwparameters)
 
-        if self._tenant_id and not self._is_bypass:
-            # Ensure tenant_id is in parameters for queries that need it
-            if "tenant_id" not in params:
-                params["tenant_id"] = self._tenant_id
+        if TENANT_ISOLATION_AVAILABLE and isinstance(query, ScopedQuery):
+            if query.scope == QueryScope.TENANT:
+                scoped_tenant = query.tenant_id or self._tenant_id
+                if not scoped_tenant or self._is_bypass:
+                    raise ValueError("Tenant-scoped Cypher requires a non-bypass tenant context")
+                params = {**query.params, **params}
+                params.setdefault("tenant_id", scoped_tenant)
+                params.setdefault("_tenant_id", scoped_tenant)
+            elif not self._is_bypass and query.scope != QueryScope.HEALTH:
+                logger.info(
+                    "Executing reviewed %s scoped Neo4j operation %s",
+                    query.scope,
+                    query.operation,
+                )
+                params = {**query.params, **params}
+            else:
+                params = {**query.params, **params}
+            return await self._session.run(query.cypher, params)
 
-        return await self._session.run(query, params)
+        query_text = str(query)
+        labels = _tenant_labels_in_query(query_text)
+        if labels and not self._is_bypass:
+            if not self._tenant_id:
+                raise ValueError(f"Tenant context is required for tenant-owned labels: {sorted(labels)}")
+            if not _query_has_tenant_predicate(query_text):
+                raise ValueError(
+                    "Raw Cypher touching tenant-owned labels must include explicit tenant predicates"
+                )
+            params.setdefault("tenant_id", self._tenant_id)
+            params.setdefault("_tenant_id", self._tenant_id)
+        elif self._tenant_id and not self._is_bypass:
+            params.setdefault("tenant_id", self._tenant_id)
+            params.setdefault("_tenant_id", self._tenant_id)
+
+        return await self._session.run(query_text, params)
 
     def _create_tenant_tx(self, tx) -> Any:
         """Create a tenant-aware transaction wrapper.
@@ -109,11 +173,33 @@ class Neo4jTenantSession:
                 self._tenant_id = tenant_id
 
             async def run(self, query, parameters=None, **kwargs):
-                params = parameters or {}
+                params = dict(parameters or {})
                 params.update(kwargs)
-                if self._tenant_id and "tenant_id" not in params:
-                    params["tenant_id"] = self._tenant_id
-                return await self._tx.run(query, params)
+                if TENANT_ISOLATION_AVAILABLE and isinstance(query, ScopedQuery):
+                    if query.scope == QueryScope.TENANT:
+                        scoped_tenant = query.tenant_id or self._tenant_id
+                        if not scoped_tenant:
+                            raise ValueError("Tenant-scoped Cypher requires tenant context")
+                        params = {**query.params, **params}
+                        params.setdefault("tenant_id", scoped_tenant)
+                        params.setdefault("_tenant_id", scoped_tenant)
+                    else:
+                        params = {**query.params, **params}
+                    return await self._tx.run(query.cypher, params)
+
+                query_text = str(query)
+                labels = _tenant_labels_in_query(query_text)
+                if labels:
+                    if not self._tenant_id:
+                        raise ValueError(f"Tenant context is required for tenant-owned labels: {sorted(labels)}")
+                    if not _query_has_tenant_predicate(query_text):
+                        raise ValueError(
+                            "Raw Cypher touching tenant-owned labels must include explicit tenant predicates"
+                        )
+                if self._tenant_id:
+                    params.setdefault("tenant_id", self._tenant_id)
+                    params.setdefault("_tenant_id", self._tenant_id)
+                return await self._tx.run(query_text, params)
 
         return TenantTx(tx, self._tenant_id)
 
@@ -140,7 +226,7 @@ class Neo4jTenantSession:
     async def __aenter__(self):
         return self
 
-    async def execute_query(self, query: str, parameters: dict | None = None, **kwparameters) -> list[dict]:
+    async def execute_query(self, query: Any, parameters: dict | None = None, **kwparameters) -> list[dict]:
         """Execute a Cypher query and return records as a list of dicts.
 
         This mirrors the driver-level ``execute_query`` API but scopes
