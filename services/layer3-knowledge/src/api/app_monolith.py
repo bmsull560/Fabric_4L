@@ -19,6 +19,7 @@ from typing import Any, Literal
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 
 # psutil with fallback for minimal environments
 try:
@@ -883,6 +884,21 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         extra={"trace_id": getattr(request.state, "trace_id", None)},
     )
 
+    return response
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation exceptions with shared canonical envelope."""
+    from value_fabric.shared.error_handling.handlers import (
+        validation_exception_handler as shared_handler,
+    )
+
+    response = await shared_handler(request, exc)
+    logger.warning(
+        f"Validation exception at {request.method} {request.url.path}",
+        extra={"trace_id": getattr(request.state, "trace_id", None)},
+    )
     return response
 
 

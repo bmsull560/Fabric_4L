@@ -22,8 +22,15 @@ from zoneinfo import available_timezones
 
 import structlog
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from value_fabric.shared.error_handling.handlers import (
+    get_request_trace_id,
+    global_exception_handler as shared_global_exception_handler,
+    validation_exception_handler as shared_validation_exception_handler,
+)
+from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -250,7 +257,28 @@ async def layer1_http_exception_handler(request: Request, exc: HTTPException) ->
     dependency keeps its structured detail object for newer callers, so this
     handler exposes both shapes only for the missing-authentication boundary.
     """
-    content: dict[str, Any] = {"detail": exc.detail}
+    code_map = {
+        400: ErrorCode.VALIDATION_ERROR,
+        401: ErrorCode.AUTHENTICATION_ERROR,
+        403: ErrorCode.AUTHORIZATION_ERROR,
+        404: ErrorCode.NOT_FOUND,
+        409: ErrorCode.CONFLICT,
+        422: ErrorCode.VALIDATION_ERROR,
+        429: ErrorCode.RATE_LIMIT_EXCEEDED,
+        500: ErrorCode.INTERNAL_ERROR,
+        503: ErrorCode.SERVICE_UNAVAILABLE,
+    }
+    trace_id = get_request_trace_id(request)
+    message = str(exc.detail)
+    if isinstance(exc.detail, dict):
+        message = str(exc.detail.get("message", exc.detail))
+
+    envelope = ErrorResponse(
+        code=code_map.get(exc.status_code, ErrorCode.INTERNAL_ERROR),
+        message=message,
+        trace_id=trace_id,
+    )
+    content: dict[str, Any] = envelope.model_dump()
     if exc.status_code == 401:
         missing_auth_detail = (
             isinstance(exc.detail, dict)
@@ -265,11 +293,26 @@ async def layer1_http_exception_handler(request: Request, exc: HTTPException) ->
         headers.setdefault("WWW-Authenticate", "Bearer")
     else:
         headers = dict(exc.headers or {})
+    headers["X-Request-ID"] = trace_id
     return JSONResponse(
         status_code=exc.status_code,
         content=content,
         headers=headers,
     )
+
+
+@app.exception_handler(RequestValidationError)
+async def layer1_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Route request validation failures through canonical shared envelope."""
+    return await shared_validation_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)
+async def layer1_global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Route unhandled errors through canonical shared envelope."""
+    return await shared_global_exception_handler(request, exc)
 
 
 # CORS middleware with production validation (P0-20) — OUTERMOST.

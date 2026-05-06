@@ -20,6 +20,7 @@
 | useWorkflowStore + usePilotStore | useValuePilotStore (merged) | 2026-05-30 | Consolidate to one 7-step store |
 | window.location.href | useLocation from wouter | 2026-05-15 | Immediate |
 | React Context for server state | TanStack Query hooks | 2026-06-15 | Billing/Auth contexts excepted |
+| `{"detail": ...}` error-only HTTP payloads | Canonical error envelope: `{"message","code","trace_id"}` | 2026-06-15 | Layer 1 keeps temporary `error=authentication_required` compatibility field for legacy clients |
 
 ## Recommendation Guardrail: Layer 3 + Layer 4 Agent Consolidation
 
