@@ -58,7 +58,7 @@ export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode
           </Suspense>
         </div>
       ) : (
-        <div className="mx-auto w-full max-w-screen-2xl p-4 md:p-6">
+        <div className="mx-auto w-full max-w-screen-2xl p-4 sm:p-6 lg:p-8">
           <Suspense
             fallback={
               <div className="flex h-full min-h-[200px] items-center justify-center">
@@ -110,7 +110,7 @@ export function GlobalLayout() {
       className={[
         "grid h-screen overflow-hidden bg-background text-foreground",
         agentPanelOpen
-          ? "grid-cols-[auto_minmax(0,1fr)_minmax(360px,420px)]"
+          ? "grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_minmax(360px,420px)]"
           : "grid-cols-[auto_minmax(0,1fr)]",
       ].join(" ")}
     >
@@ -149,6 +149,7 @@ export function GlobalLayout() {
         />
       )}
 
+      {/* On smaller screens, show agent as modal instead of panel */}
       {agentMode !== "panel" && (
         <AgentChat
           mode={agentMode}
