@@ -54,8 +54,8 @@ components:
         gitApplicationPath: services/layer1-ingestion
         dockerCompose:
             build:
-                context: ./services/layer1-ingestion
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer1-ingestion/Dockerfile
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
             environment:
@@ -93,8 +93,8 @@ components:
         gitApplicationPath: services/layer1-ingestion
         dockerCompose:
             build:
-                context: ./services/layer1-ingestion
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer1-ingestion/Dockerfile
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
             command:
@@ -256,8 +256,10 @@ components:
         gitApplicationPath: services/layer5-ground-truth
         dockerCompose:
             build:
-                context: ./services/layer5-ground-truth
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer5-ground-truth/Dockerfile
+                args:
+                    CACHEBUST: ${CACHEBUST}
             environment:
                 API_PORT: '8005'
                 DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
@@ -293,8 +295,8 @@ components:
         gitApplicationPath: services/layer5-ground-truth
         dockerCompose:
             build:
-                context: ./services/layer5-ground-truth
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer5-ground-truth/Dockerfile
             command:
                 - sh
                 - '-lc'
