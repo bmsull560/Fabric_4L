@@ -8,6 +8,7 @@ import { Globe, ChevronDown, ChevronUp, Settings2, Zap, Clock, CheckCircle2, Ale
 import { useRecentIngestionJobs, useIngestionStats, useSubmitDomain, type IngestionJob } from "@/hooks/useIngestion";
 import { useIngestionUIStore } from "@/stores";
 import { MetricCard, PageHeader, DataTable, StatusBadge, Btn } from "@/components/WfPrimitives";
+import { toast } from "sonner";
 
 const EXTRACTION_PROFILES = ["Default", "Deep Crawl", "Financial Focus", "Technical Focus"];
 const ONTOLOGY_TARGETS = ["General", "SaaS / B2B", "Financial Services", "Healthcare"];
@@ -48,9 +49,18 @@ export default function CommandCenter() {
           />
           <Btn
             variant="primary"
-            onClick={() => domainInput && submitDomain.mutate(domainInput, {
-              onSuccess: () => setDomainInput('')
-            })}
+            onClick={() => domainInput && submitDomain.mutate(
+              {
+                domain: domainInput,
+                profile: showAdvanced ? profile : undefined,
+                ontology: showAdvanced ? ontology : undefined,
+                depth: showAdvanced ? depth : undefined,
+              },
+              {
+                onSuccess: () => setDomainInput(''),
+                onError: (err) => toast.error(`Ingestion failed: ${err instanceof Error ? err.message : 'Unknown error'}`),
+              }
+            )}
             disabled={isLoading || !domainInput}
           >
             {submitDomain.isPending ? <Loader2 size={13} className="animate-spin" /> : <>

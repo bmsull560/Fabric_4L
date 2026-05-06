@@ -253,30 +253,6 @@ class TestRateLimitResult:
         assert result.retry_after_seconds == 30
 
 
-class TestRateLimitMiddleware:
-    """Tests for rate limit middleware."""
-    
-    @pytest.mark.asyncio
-    async def test_adds_rate_limit_headers(self):
-        """Verify rate limit headers are added to responses."""
-        # Would test with actual FastAPI TestClient
-        # Verify X-RateLimit-* headers present
-        pass
-    
-    @pytest.mark.asyncio
-    async def test_returns_429_when_limit_exceeded(self):
-        """Verify 429 response when limit exceeded."""
-        # Would test with actual FastAPI TestClient
-        # Mock rate limiter to return allowed=False
-        # Verify 429 status code and Retry-After header
-        pass
-    
-    @pytest.mark.asyncio
-    async def test_exempt_paths_not_rate_limited(self):
-        """Verify exempt paths bypass rate limiting."""
-        # Would test /health, /metrics, /docs
-        # Verify no rate limit checks performed
-        pass
     
     @pytest.mark.asyncio
     async def test_normalizes_endpoint_paths(self):
@@ -383,27 +359,6 @@ class TestRateLimitAdminAPI:
             tenant_id=tenant_id,
             tenant_tier=resolved_tier,
         )
-    
-    @pytest.mark.asyncio
-    async def test_set_custom_limits(self):
-        """Verify setting custom limits."""
-        # Would test with actual FastAPI TestClient
-        # Verify custom limits are applied
-        pass
-    
-    @pytest.mark.asyncio
-    async def test_reset_tenant_limits_requires_super_admin(self):
-        """Verify reset requires super-admin role."""
-        # Would test with actual FastAPI TestClient
-        # Verify 403 for non-super-admin
-        pass
-    
-    @pytest.mark.asyncio
-    async def test_list_rate_limit_tiers(self):
-        """Verify listing tiers."""
-        # Would test with actual FastAPI TestClient
-        # Verify all tiers returned with limits
-        pass
 
 
 class TestRateLimitingIntegration:

@@ -23,6 +23,10 @@ class BusinessCaseRecord(Base):
     )
     workflow_id: Mapped[str] = mapped_column(String(100), nullable=False)
     opportunity_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="default",
+        comment="Tenant identifier for RLS isolation",
+    )
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
     document_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

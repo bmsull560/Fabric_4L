@@ -84,7 +84,7 @@ export function resolveBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const crumbs: BreadcrumbItem[] = [];
 
   for (let i = 0; i < pathSegments.length; i++) {
-    const segmentPath = `/${pathSegments.slice(0, i + 1).join("/")}`;
+    const segmentPath = ['', ...pathSegments.slice(0, i + 1)].join('/');
     const matched = nodes.find((node) => routeMatches(node.path, segmentPath));
     if (matched) {
       crumbs.push({

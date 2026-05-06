@@ -53,7 +53,7 @@ export default function ValueNarrativeHero() {
     const trimmed = prompt.trim();
 
     if (looksLikeUrl(trimmed)) {
-      submitDomain.mutate(trimmed, {
+      submitDomain.mutate({ domain: trimmed }, {
         onSuccess: () => {
           // After ingestion starts, also kick off the narrative workflow
           generateNarrative.mutate({ prompt: trimmed, outputType, industry });

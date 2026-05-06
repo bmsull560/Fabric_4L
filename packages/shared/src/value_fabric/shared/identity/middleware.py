@@ -93,7 +93,7 @@ sys.modules.setdefault("shared.identity.middleware", sys.modules[__name__])
 # Process-local fallback used only by lightweight regression tests and single-worker
 # development paths. Production middleware should use RedisRateLimiter so quotas are
 # shared across workers and pods.
-_tenant_rate_limit_buckets: dict[str, tuple[float, int]] = {}
+_tenant_rate_limit_buckets: dict[str, dict[str, Any]] = {}
 _RATE_LIMIT_WINDOW_SECONDS = 60
 
 
@@ -123,7 +123,13 @@ def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[
 
     now = time.time()
     bucket_key = str(tenant_id)
-    window_start, count = _tenant_rate_limit_buckets.get(bucket_key, (now, 0))
+    bucket = _tenant_rate_limit_buckets.get(bucket_key)
+    if bucket is None:
+        window_start = now
+        count = 0
+    else:
+        window_start = float(bucket.get("reset_at", now))
+        count = int(bucket.get("count", 0))
 
     if now - window_start >= _RATE_LIMIT_WINDOW_SECONDS:
         window_start = now
@@ -133,7 +139,7 @@ def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[
         retry_after = max(1, int(_RATE_LIMIT_WINDOW_SECONDS - (now - window_start)))
         return False, retry_after
 
-    _tenant_rate_limit_buckets[bucket_key] = (window_start, count + 1)
+    _tenant_rate_limit_buckets[bucket_key] = {"reset_at": window_start, "count": count + 1}
     return True, 0
 
 
@@ -780,3 +786,26 @@ class SuspendedTenantError(Exception):
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
         super().__init__(f"Tenant {tenant_id} is suspended. Please contact support.")
+
+
+# Compatibility exports used by mandatory security regression tests.
+# WARNING: These expose process-local rate limiting which is NOT suitable for
+# multi-worker or production deployments. Use RedisRateLimiter in production.
+DEFAULT_REQUESTS_PER_MINUTE = int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "120"))
+RATE_LIMIT_WINDOW_SECONDS = _RATE_LIMIT_WINDOW_SECONDS
+
+
+def _evict_stale_rate_limit_entries(now: float | None = None) -> int:
+    """Evict stale process-local rate-limit buckets and return the count removed.
+    
+    WARNING: Process-local rate limiting is only for single-worker development
+    and lightweight regression tests. Production deployments MUST use RedisRateLimiter.
+    """
+    current = time.time() if now is None else now
+    removed = 0
+    for key, bucket in list(_tenant_rate_limit_buckets.items()):
+        reset_at = float(bucket.get("reset_at", 0))
+        if reset_at <= current:
+            _tenant_rate_limit_buckets.pop(key, None)
+            removed += 1
+    return removed

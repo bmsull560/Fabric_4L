@@ -20,8 +20,8 @@ from ..dependencies import (
     AppState,
     get_app_state,
     get_graph_rag,
-    get_neo4j_driver,
 )
+from ..dependencies_tenant import Neo4jTenantSession, get_neo4j_with_tenant
 from ..models import (
     EntityDetail,
     EntityFilterRequest,
@@ -45,7 +45,7 @@ async def list_entities(
     sort_by: str = Query("confidence", description="Sort field: confidence, name, created_at"),
     sort_order: str = Query("desc", description="Sort order: asc, desc"),
     _ctx: RequestContext = Depends(require_authenticated),
-    neo4j_driver=Depends(get_neo4j_driver),
+    neo4j: Neo4jTenantSession = Depends(get_neo4j_with_tenant),
 ) -> EntityListResponse:
     """List entities with optional filtering and pagination.
 
@@ -54,7 +54,7 @@ async def list_entities(
     """
     try:
         # Build the Cypher query with filters
-        where_clauses = []
+        where_clauses = ["e.tenant_id = $tenant_id"]
         params: dict[str, Any] = {}
 
         if search_text:
@@ -72,7 +72,7 @@ async def list_entities(
             where_clauses.append("e.confidence_score >= $confidence_min")
             params["confidence_min"] = confidence_min
 
-        where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
+        where_clause = " AND ".join(where_clauses)
 
         # Validate sort parameters
         valid_sort_fields = {"confidence": "e.confidence_score", "name": "e.name", "created_at": "e.created_at"}
@@ -104,7 +104,7 @@ async def list_entities(
             LIMIT $limit
         """
 
-        results = await neo4j_driver.execute_query(combined_query, params)
+        results = await neo4j.execute_query(combined_query, params)
         total = results[0]["total"] if results else 0
 
         entities = [
@@ -141,7 +141,7 @@ async def get_entity_detail(
     include_provenance: bool = Query(True, description="Include provenance chain"),
     include_relationships: bool = Query(True, description="Include related entities"),
     _ctx: RequestContext = Depends(require_authenticated),
-    neo4j_driver=Depends(get_neo4j_driver),
+    neo4j: Neo4jTenantSession = Depends(get_neo4j_with_tenant),
     app_state: AppState = Depends(get_app_state),
 ) -> EntityDetail:
     """Get detailed information about a specific entity.
@@ -152,10 +152,10 @@ async def get_entity_detail(
     try:
         # Get entity node
         entity_query = """
-            MATCH (e:Entity {id: $entity_id})
+            MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
             RETURN e
         """
-        entity_result = await neo4j_driver.execute_query(entity_query, {"entity_id": entity_id})
+        entity_result = await neo4j.execute_query(entity_query, {"entity_id": entity_id})
 
         if not entity_result:
             raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
@@ -169,10 +169,10 @@ async def get_entity_detail(
         provenance = None
         if include_provenance:
             prov_query = """
-                MATCH (e:Entity {id: $entity_id})-[:DERIVED_FROM]->(source:Source)
+                MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[:DERIVED_FROM]->(source:Source)
                 RETURN source
             """
-            prov_result = await neo4j_driver.execute_query(prov_query, {"entity_id": entity_id})
+            prov_result = await neo4j.execute_query(prov_query, {"entity_id": entity_id})
             if prov_result:
                 source_node = prov_result[0]["source"]
                 provenance = {
@@ -187,7 +187,7 @@ async def get_entity_detail(
         relationships = []
         if include_relationships:
             rel_query = """
-                MATCH (e:Entity {id: $entity_id})-[r]-(other:Entity)
+                MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[r]-(other:Entity {tenant_id: $tenant_id})
                 RETURN other.id as related_id,
                        other.name as related_name,
                        other.entity_type as related_type,
@@ -195,7 +195,7 @@ async def get_entity_detail(
                        r.confidence_score as rel_confidence
                 LIMIT 20
             """
-            rel_results = await neo4j_driver.execute_query(rel_query, {"entity_id": entity_id})
+            rel_results = await neo4j.execute_query(rel_query, {"entity_id": entity_id})
             relationships = [
                 {
                     "entity_id": row["related_id"],
@@ -231,7 +231,7 @@ async def get_entity_detail(
 async def query_entities(
     request: EntityFilterRequest,
     _ctx: RequestContext = Depends(require_authenticated),
-    neo4j_driver=Depends(get_neo4j_driver),
+    neo4j: Neo4jTenantSession = Depends(get_neo4j_with_tenant),
 ) -> EntityListResponse:
     """Query entities using Cypher-like filter conditions.
 
@@ -240,7 +240,7 @@ async def query_entities(
     """
     try:
         # Build WHERE clause from filters
-        where_clauses = []
+        where_clauses = ["e.tenant_id = $tenant_id"]
         params: dict[str, Any] = {"limit": request.limit or 20, "offset": request.offset or 0}
 
         if request.entity_types:
@@ -255,7 +255,7 @@ async def query_entities(
             where_clauses.append("e.confidence_score <= $confidence_max")
             params["confidence_max"] = request.confidence_max
 
-        where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
+        where_clause = " AND ".join(where_clauses)
 
         # Execute count query for accurate pagination metadata
         count_cypher = f"""
@@ -264,7 +264,7 @@ async def query_entities(
             RETURN count(e) as total
         """
         count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
-        count_results = await neo4j_driver.execute_query(count_cypher, count_params)
+        count_results = await neo4j.execute_query(count_cypher, count_params)
         total_count = count_results[0]["total"] if count_results else 0
 
         # Execute paginated data query
@@ -282,7 +282,7 @@ async def query_entities(
             LIMIT $limit
         """
 
-        results = await neo4j_driver.execute_query(query_cypher, params)
+        results = await neo4j.execute_query(query_cypher, params)
 
         entities = [
             EntitySummary(

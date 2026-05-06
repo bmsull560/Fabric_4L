@@ -69,7 +69,7 @@ export function SettingsLayout() {
   const { pathname } = useLocation();
 
   const handleSave = useCallback(() => {
-    toast.info("Settings saved successfully");
+    toast.warning("Save is not yet implemented for this settings page.");
   }, []);
   const activeCategory = useActiveCategory(pathname);
   const subnavItems = useActiveSubnav(activeCategory.basePath);

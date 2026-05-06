@@ -114,6 +114,7 @@ function CaseCard({
             onClick={() => navigateTo('business-case-detail', { caseId: caseItem.id })}
             className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/60 hover:text-muted-foreground"
             title="View details"
+            aria-label="View details"
           >
             <ArrowUpRight size={14} />
           </button>
@@ -123,6 +124,7 @@ function CaseCard({
               disabled={isArchiving}
               className="p-1.5 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-500 disabled:opacity-50"
               title="Archive"
+              aria-label="Archive"
             >
               <Archive size={14} />
             </button>

@@ -84,42 +84,38 @@ class Neo4jTenantSession:
 
         return await self._session.run(query, params)
 
+    def _create_tenant_tx(self, tx) -> Any:
+        """Create a tenant-aware transaction wrapper.
+        
+        Extracted to avoid duplication between read_transaction and write_transaction.
+        """
+        class TenantTx:
+            def __init__(self, inner_tx, tenant_id: str | None):
+                self._tx = inner_tx
+                self._tenant_id = tenant_id
+
+            async def run(self, query, parameters=None, **kwargs):
+                params = parameters or {}
+                params.update(kwargs)
+                if self._tenant_id and "tenant_id" not in params:
+                    params["tenant_id"] = self._tenant_id
+                return await self._tx.run(query, params)
+
+        return TenantTx(tx, self._tenant_id)
+
     async def read_transaction(self, callback) -> Any:
         """Execute a read transaction with tenant context."""
         async def wrapped_callback(tx):
-            # Wrap transaction to inject tenant context
-            class TenantTx:
-                def __init__(self, tx, tenant_id):
-                    self._tx = tx
-                    self._tenant_id = tenant_id
-
-                async def run(self, query, parameters=None, **kwargs):
-                    params = parameters or {}
-                    params.update(kwargs)
-                    if self._tenant_id and "tenant_id" not in params:
-                        params["tenant_id"] = self._tenant_id
-                    return await self._tx.run(query, params)
-
-            return await callback(TenantTx(tx, self._tenant_id))
+            tenant_tx = self._create_tenant_tx(tx)
+            return await callback(tenant_tx)
 
         return await self._session.read_transaction(wrapped_callback)
 
     async def write_transaction(self, callback) -> Any:
         """Execute a write transaction with tenant context."""
         async def wrapped_callback(tx):
-            class TenantTx:
-                def __init__(self, tx, tenant_id):
-                    self._tx = tx
-                    self._tenant_id = tenant_id
-
-                async def run(self, query, parameters=None, **kwargs):
-                    params = parameters or {}
-                    params.update(kwargs)
-                    if self._tenant_id and "tenant_id" not in params:
-                        params["tenant_id"] = self._tenant_id
-                    return await self._tx.run(query, params)
-
-            return await callback(TenantTx(tx, self._tenant_id))
+            tenant_tx = self._create_tenant_tx(tx)
+            return await callback(tenant_tx)
 
         return await self._session.write_transaction(wrapped_callback)
 
@@ -129,6 +125,20 @@ class Neo4jTenantSession:
 
     async def __aenter__(self):
         return self
+
+    async def execute_query(self, query: str, parameters: dict | None = None, **kwparameters) -> list[dict]:
+        """Execute a Cypher query and return records as a list of dicts.
+
+        This mirrors the driver-level ``execute_query`` API but scopes
+        parameters through the tenant session wrapper.
+        """
+        params = parameters or {}
+        params.update(kwparameters)
+        result = await self.run(query, params)
+        records = []
+        async for record in result:
+            records.append(record.data())
+        return records
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
@@ -157,6 +167,7 @@ async def get_neo4j_with_tenant(
 
     Raises:
         HTTPException: 400 if tenant context is missing
+        HTTPException: 503 if Neo4j is unavailable
     """
     if not SHARED_IDENTITY_AVAILABLE:
         raise RuntimeError(
@@ -169,33 +180,50 @@ async def get_neo4j_with_tenant(
             detail="Tenant context required. Ensure request passed through GovernanceMiddleware.",
         )
 
-    driver = get_neo4j_driver()
-    session = driver.session()
+    session = None
+    try:
+        driver = get_neo4j_driver()
+        session = driver.session()
+    except Exception as e:
+        logger.error("Failed to create Neo4j session: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Neo4j service unavailable. Please try again later.",
+        ) from e
 
-    # Emit audit event for tenant context access
-    if AUDIT_AVAILABLE and emit_audit_event:
-        try:
-            await emit_audit_event(
-                action=AuditAction.TENANT_CONTEXT_SET,
-                outcome=AuditOutcome.SUCCESS,
-                resource_type="neo4j_session",
-                resource_id=str(context.tenant_id),
-                actor_id=context.user_id or context.api_key_id or context.service_account_id,
-                tenant_id=context.tenant_id,
-                request_id=context.request_id,
-                details={
-                    "isolation_tier": context.isolation_tier,
-                    "auth_source": context.auth_source,
-                },
-            )
-        except Exception as e:
-            logger.debug("Audit emission failed (non-critical): %s", e)
+    try:
+        # Emit audit event for tenant context access
+        if AUDIT_AVAILABLE and emit_audit_event:
+            try:
+                await emit_audit_event(
+                    action=AuditAction.TENANT_CONTEXT_SET,
+                    outcome=AuditOutcome.SUCCESS,
+                    resource_type="neo4j_session",
+                    resource_id=str(context.tenant_id),
+                    actor_id=context.user_id or context.api_key_id or context.service_account_id,
+                    tenant_id=context.tenant_id,
+                    request_id=context.request_id,
+                    details={
+                        "isolation_tier": context.isolation_tier,
+                        "auth_source": context.auth_source,
+                    },
+                )
+            except Exception as e:
+                logger.debug("Audit emission failed (non-critical): %s", e)
 
-    return Neo4jTenantSession(
-        session=session,
-        tenant_id=str(context.tenant_id),
-        is_bypass=False,
-    )
+        return Neo4jTenantSession(
+            session=session,
+            tenant_id=str(context.tenant_id),
+            is_bypass=False,
+        )
+    except Exception:
+        # Ensure session is closed if audit event or other initialization fails
+        if session is not None:
+            try:
+                await session.close()
+            except Exception as close_error:
+                logger.warning("Failed to close Neo4j session after error: %s", close_error)
+        raise
 
 
 async def get_neo4j_with_optional_tenant(
@@ -218,33 +246,53 @@ async def get_neo4j_with_optional_tenant(
 
     Raises:
         HTTPException: 400 if non-super-admin without tenant context
+        HTTPException: 503 if Neo4j is unavailable
     """
     if not SHARED_IDENTITY_AVAILABLE:
         raise RuntimeError(
             "shared.identity required for get_neo4j_with_optional_tenant"
         )
 
-    driver = get_neo4j_driver()
-    session = driver.session()
-
-    if context.is_super_admin():
-        # Super-admin bypass - no tenant scoping
-        return Neo4jTenantSession(
-            session=session,
-            tenant_id=None,
-            is_bypass=True,
-        )
-    elif context.tenant_id:
-        return Neo4jTenantSession(
-            session=session,
-            tenant_id=str(context.tenant_id),
-            is_bypass=False,
-        )
-    else:
+    session = None
+    try:
+        driver = get_neo4j_driver()
+        session = driver.session()
+    except Exception as e:
+        logger.error("Failed to create Neo4j session: %s", e)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tenant context required or super_admin role.",
-        )
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Neo4j service unavailable. Please try again later.",
+        ) from e
+
+    try:
+        if context.is_super_admin():
+            # Super-admin bypass - no tenant scoping
+            return Neo4jTenantSession(
+                session=session,
+                tenant_id=None,
+                is_bypass=True,
+            )
+        elif context.tenant_id:
+            return Neo4jTenantSession(
+                session=session,
+                tenant_id=str(context.tenant_id),
+                is_bypass=False,
+            )
+        else:
+            # Clean up session before raising
+            await session.close()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tenant context required or super_admin role.",
+            )
+    except Exception:
+        # Ensure session is closed if any error occurs
+        if session is not None:
+            try:
+                await session.close()
+            except Exception as close_error:
+                logger.warning("Failed to close Neo4j session after error: %s", close_error)
+        raise
 
 
 def require_tenant_header_for_internal():

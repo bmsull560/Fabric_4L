@@ -1,13 +1,23 @@
 /**
- * useExtractionResults.ts - Query hook for extraction job results
- * 
+ * useExtractionResults.ts — Query hook for extraction job results
+ *
  * Fetches completed extraction results (entities, relationships) from
  * the Layer 2 API for display in the results table.
+ *
+ * Refactored to use Tier 1 protocol hooks (src/api/protocol/extraction.ts)
+ * and the useFabricQuery wrapper per Contract C.
  */
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
 import { QK } from '@/hooks/queryKeys';
-import { STALE_TIME } from '@/hooks/useApiShared';
+import { STALE_TIME, BaseApiError } from '@/hooks/useApiShared';
+import { useFabricQuery } from '@/hooks/useFabricQuery';
+import {
+  fetchExtractionStatus,
+  fetchExtractedEntities,
+  type ExtractionStatusResponse,
+  type ExtractedEntity,
+} from '@/api/protocol/extraction';
+
+// ── Domain Mappers ───────────────────────────────────────────────────────────
 
 export interface ExtractionResult {
   /** Job ID */
@@ -28,32 +38,7 @@ export interface ExtractionResult {
   completedAt: string | null;
 }
 
-export interface ExtractedEntity {
-  /** Entity name */
-  name: string;
-  /** Entity type (Capability, UseCase, Persona, ValueDriver) */
-  type: string;
-  /** Confidence score (0-1) */
-  confidence: number;
-  /** Source document URL */
-  source: string;
-  /** Extraction status */
-  status: 'extracted' | 'pending' | 'failed';
-}
-
-interface ApiExtractionStatusResponse {
-  job_id: string;
-  overall_status: string;
-  extraction_status: string;
-  ingestion_status?: string;
-  entities_extracted: number;
-  relationships_extracted: number;
-  last_error: string | null;
-  started_at: string;
-  completed_at: string | null;
-}
-
-function mapExtractionResult(apiData: ApiExtractionStatusResponse): ExtractionResult {
+function mapExtractionResult(apiData: ExtractionStatusResponse): ExtractionResult {
   const statusMap: Record<string, ExtractionResult['status']> = {
     'PENDING': 'pending',
     'QUEUED': 'pending',
@@ -78,21 +63,22 @@ function mapExtractionResult(apiData: ApiExtractionStatusResponse): ExtractionRe
   };
 }
 
+// ── Tier 2 Domain Hooks ──────────────────────────────────────────────────────
+
 /**
- * Get extraction job status and results
- * 
- * @param jobId - The extraction job ID
- * @returns Query result with job status and entity counts
+ * Get extraction job status and results.
+ *
+ * Uses useFabricQuery for standardized caching, retry, and error handling.
  */
 export function useExtractionResults(jobId: string | null) {
-  return useQuery<ExtractionResult, Error>({
+  return useFabricQuery<ExtractionResult, BaseApiError>({
     queryKey: QK.extraction.results(jobId || ''),
     queryFn: async () => {
       if (!jobId) throw new Error('No job ID provided');
-      
-      const response = await apiClient.get('l2', `/v1/extract/status/${jobId}`);
-      return mapExtractionResult(response.data);
+      const data = await fetchExtractionStatus(jobId);
+      return mapExtractionResult(data);
     },
+    errorClass: BaseApiError,
     enabled: !!jobId,
     staleTime: STALE_TIME.poll,
     refetchInterval: (query) => {
@@ -107,36 +93,21 @@ export function useExtractionResults(jobId: string | null) {
 }
 
 /**
- * Get list of extracted entities for a job
- * 
- * Note: This is a placeholder that returns mock entities based on the
- * extraction status. In a full implementation, this would query a
- * dedicated endpoint for extracted entities.
- * 
- * @param jobId - The extraction job ID
- * @param count - Number of entities to return (from status response)
- * @returns Array of extracted entities for the table
+ * Get list of extracted entities for a job.
+ *
+ * Uses useFabricQuery for standardized caching, retry, and error handling.
+ *
+ * NOTE: Backend endpoint GET /v1/extract/{job_id}/entities is pending (ticket L2-42).
+ * The protocol hook returns an empty array until the endpoint is available.
  */
 export function useExtractedEntities(jobId: string | null, count: number = 0) {
-  return useQuery<ExtractedEntity[], Error>({
+  return useFabricQuery<ExtractedEntity[], BaseApiError>({
     queryKey: [...QK.extraction.results(jobId || ''), 'entities'],
     queryFn: async () => {
       if (!jobId || count === 0) return [];
-      
-      // NOTE: Using placeholder data until backend endpoint is available.
-      // Backend ticket: L2-42 - Add GET /v1/extract/{job_id}/entities endpoint
-      // When implemented, replace with: apiClient.get('l2', `/v1/extract/${jobId}/entities`)
-      const entityTypes = ['Capability', 'UseCase', 'Persona', 'ValueDriver'];
-      const mockEntities: ExtractedEntity[] = Array.from({ length: Math.min(count, 20) }, (_, i) => ({
-        name: `Entity ${i + 1}`,
-        type: entityTypes[i % entityTypes.length],
-        confidence: 0.7 + Math.random() * 0.25,
-        source: 'source-document.md',
-        status: 'extracted',
-      }));
-      
-      return mockEntities;
+      return fetchExtractedEntities(jobId);
     },
+    errorClass: BaseApiError,
     enabled: !!jobId && count > 0,
     staleTime: STALE_TIME.stats,
   });

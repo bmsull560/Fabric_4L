@@ -201,11 +201,23 @@ export function useIngestionStats() {
   });
 }
 
+export interface SubmitDomainPayload {
+  /** Domain to synthesize */
+  domain: string;
+  /** Extraction profile (e.g., "Default", "Deep Crawl") */
+  profile?: string;
+  /** Ontology target (e.g., "SaaS / B2B") */
+  ontology?: string;
+  /** Crawl depth (1–5) */
+  depth?: string;
+}
+
 export function useSubmitDomain() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (domain: string) => {
+    mutationFn: async (payload: SubmitDomainPayload) => {
+      const { domain, profile, ontology, depth } = payload;
       const url = domain.startsWith('http') ? domain : `https://${domain}`;
 
       // Step 1: Create a scraping target with the domain URL
@@ -216,7 +228,13 @@ export function useSubmitDomain() {
       const targetId = targetResponse.data.id as string;
 
       // Step 2: Execute the target to start the ingestion job
-      const executeResponse = await apiClient.post('l1', `/targets/${targetId}/execute`, {});
+      // Pass advanced configuration through to the execution payload
+      const executePayload: Record<string, unknown> = {};
+      if (profile) executePayload.extraction_profile = profile;
+      if (ontology) executePayload.ontology_target = ontology;
+      if (depth) executePayload.crawl_depth = parseInt(depth, 10);
+
+      const executeResponse = await apiClient.post('l1', `/targets/${targetId}/execute`, executePayload);
       return executeResponse.data.job_id as string;
     },
     onSuccess: () => {

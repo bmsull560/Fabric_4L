@@ -7,6 +7,16 @@
  */
 import { Navigate } from "react-router-dom";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import { getStatePath, buildPath, type RouteState } from "@/navigation/navigationService";
+
+const BASE_PATH_STATE_MAP: Record<string, RouteState> = {
+  '/intelligence': 'intelligence',
+  '/hypothesis': 'hypothesis',
+  '/drivers': 'drivers',
+  '/calculator': 'calculator',
+  '/value-case': 'value-case',
+  '/realization': 'realization',
+};
 
 interface AccountScopedRedirectProps {
   basePath: string;
@@ -25,9 +35,24 @@ export function AccountScopedRedirect({
     return <Navigate to="/accounts" replace />;
   }
 
-  const suffix = defaultTab
-    ? `/${selectedAccountId}/${defaultTab}`
-    : `/${selectedAccountId}`;
+  const state = BASE_PATH_STATE_MAP[basePath];
+  if (!state) {
+    // Fallback for unknown base paths — construct safely without raw concatenation
+    const safeBase = basePath.replace(/\/$/, '');
+    if (!safeBase) {
+      // Edge case: basePath is empty or just slashes - redirect to accounts
+      return <Navigate to="/accounts" replace />;
+    }
+    const safeSuffix = defaultTab
+      ? `/${selectedAccountId}/${defaultTab}`
+      : `/${selectedAccountId}`;
+    return <Navigate to={`${safeBase}${safeSuffix}`} replace />;
+  }
 
-  return <Navigate to={`${basePath}${suffix}`} replace />;
+  const baseStatePath = getStatePath(state, { accountId: selectedAccountId });
+  const targetPath = defaultTab
+    ? buildPath(`${baseStatePath}/:tab`, { tab: defaultTab })
+    : baseStatePath;
+
+  return <Navigate to={targetPath} replace />;
 }

@@ -818,6 +818,7 @@ async def create_case(
         account_id=UUID(request.account_id) if request.account_id else None,
         workflow_id=case_id,
         status="created",
+        tenant_id=str(context.tenant_id) if context.tenant_id else "default",
     )
     db.add(record)
 

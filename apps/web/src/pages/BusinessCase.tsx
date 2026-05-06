@@ -14,8 +14,6 @@ export default function BusinessCase() {
   const [searchParams] = useSearchParams();
   const { navigateTo } = useNavigation();
   const businessCaseId = searchParams.get("id");
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
 
   const { data: businessCase, isLoading, error } = useBusinessCase(businessCaseId);
   const exportMutation = useBusinessCaseExport();
@@ -31,26 +29,12 @@ export default function BusinessCase() {
     );
   }
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!businessCase) return;
-    setIsExporting(true);
-    setExportError(null);
-    try {
-      const result = await exportMutation.mutateAsync({
-        caseId: businessCaseId,
-        format: "pdf",
-      });
-
-      if (result.document_url) {
-        downloadExport(result.document_url, `business_case_${businessCaseId}.pdf`);
-      } else if (!result.download_ready) {
-        setExportError("Document not ready for download yet.");
-      }
-    } catch (err) {
-      setExportError(err instanceof Error ? err.message : "Export failed");
-    } finally {
-      setIsExporting(false);
-    }
+    exportMutation.mutate({
+      caseId: businessCaseId,
+      format: "pdf",
+    });
   };
 
   const handleViewTrace = () => {
@@ -164,9 +148,9 @@ export default function BusinessCase() {
             <Btn
               variant="ghost"
               onClick={handleExportPDF}
-              disabled={isExporting || !businessCase.document_url}
+              disabled={exportMutation.isPending || !businessCase.document_url}
             >
-              {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {exportMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               Export PDF
             </Btn>
             <Btn variant="ghost" onClick={handleViewTrace}><Share2 size={12}/> View Trace</Btn>
@@ -175,10 +159,10 @@ export default function BusinessCase() {
       />
 
       {/* Export error */}
-      {exportError && (
+      {exportMutation.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-700 text-sm">
           <AlertCircle className="w-4 h-4" />
-          <span>{exportError}</span>
+          <span>{exportMutation.error.message}</span>
         </div>
       )}
 

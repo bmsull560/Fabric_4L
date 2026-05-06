@@ -186,7 +186,7 @@ function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
 
   const crumbs: { label: string; path?: string }[] = [];
   const domain = segments[0];
-  crumbs.push({ label: domainLabels[domain] || domain, path: `/${domain}` });
+  crumbs.push({ label: domainLabels[domain] || domain, path: ['', domain].join('/') });
 
   // Add sub-segments as breadcrumbs
   for (let i = 1; i < segments.length; i++) {
@@ -194,7 +194,7 @@ function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
     // Skip account IDs (UUIDs or numeric)
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seg) || /^\d+$/.test(seg)) continue;
     const label = seg.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    crumbs.push({ label, path: "/" + segments.slice(0, i + 1).join("/") });
+    crumbs.push({ label, path: ['', ...segments.slice(0, i + 1)].join('/') });
   }
 
   return crumbs;

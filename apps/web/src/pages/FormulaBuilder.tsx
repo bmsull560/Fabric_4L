@@ -388,8 +388,6 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
     roiPercent: number;
     confidence: number;
   } | null>(null);
-  const [isEvaluating, setIsEvaluating] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState("Variables");
 
   // Fetch existing formula if editing
@@ -398,9 +396,9 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   );
 
   // Mutations
-  const { mutate: createFormula, isPending: isCreating } = useCreateFormula();
-  const { mutate: updateFormula, isPending: isUpdating } = useUpdateFormula();
-  const { mutate: evaluateFormula } = useEvaluateFormula();
+  const { mutate: createFormula, isPending: isCreating, error: createError } = useCreateFormula();
+  const { mutate: updateFormula, isPending: isUpdating, error: updateError } = useUpdateFormula();
+  const { mutate: evaluateFormula, isPending: isEvaluating } = useEvaluateFormula();
 
   // Load existing formula data
   useEffect(() => {
@@ -424,20 +422,9 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   }, [apiVariables]);
 
   const isSaving = isCreating || isUpdating;
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const saveTimeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        window.clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
+  const saveError = createError || updateError;
 
   const handleSave = () => {
-    setSaveError(null);
-    setSaveSuccess(false);
     if (isNew) {
       createFormula(
         {
@@ -448,13 +435,8 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         },
         {
           onSuccess: (data) => {
-            setSaveSuccess(true);
-            saveTimeoutRef.current = window.setTimeout(
-              () => navigateTo('formula-builder', { formulaId: data.formula_id }),
-              500
-            );
+            navigateTo('formula-builder', { formulaId: data.formula_id });
           },
-          onError: (err) => setSaveError(err.message),
         }
       );
     } else if (formulaId) {
@@ -465,21 +447,12 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           description: formulaDescription,
           expression: formulaExpression,
           variables: availableVariables.map((v) => v.name),
-        },
-        {
-          onSuccess: () => {
-            setSaveSuccess(true);
-            saveTimeoutRef.current = window.setTimeout(() => setSaveSuccess(false), 3000);
-          },
-          onError: (err) => setSaveError(err.message),
         }
       );
     }
   };
 
-  const handleTest = async () => {
-    setIsEvaluating(true);
-    setSaveError(null);
+  const handleTest = () => {
     const inputs = testInputs.map((input) => {
       const parsed = parseFloat(input.value.replace(/[$,%]/g, ""));
       const value = isNaN(parsed) ? 0 : parsed;
@@ -506,12 +479,9 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
             confidence: result.confidence,
           });
           setTested(true);
-          setIsEvaluating(false);
         },
         onError: (err) => {
           log.error('Formula evaluation error', { errorCode: err.message });
-          setSaveError(err.message);
-          setIsEvaluating(false);
         },
       }
     );
@@ -553,12 +523,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
 
       {saveError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-700 flex items-center gap-2">
-          <AlertCircle size={14} /> {saveError}
-        </div>
-      )}
-      {saveSuccess && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-[13px] text-emerald-700 flex items-center gap-2">
-          <CheckCircle2 size={16} /> Formula saved successfully!
+          <AlertCircle size={14} /> {saveError.message}
         </div>
       )}
 

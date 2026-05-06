@@ -1,4 +1,4 @@
-import { getStatePath, type RouteState } from './navigationService';
+import { getStatePath, buildPath, type RouteState } from './navigationService';
 
 export type AccountWorkspace = "intelligence" | "studio";
 
@@ -60,7 +60,7 @@ export function resolveWorkspaceRoutePath(path: string, accountId: string | null
     }
     if (path.startsWith(`${prefix}/`)) {
       const suffix = path.slice(prefix.length + 1);
-      return getStatePath(state, { accountId }) + `/${suffix}`;
+      return buildPath(`${getStatePath(state, { accountId })}/:suffix`, { suffix });
     }
   }
 
@@ -79,5 +79,5 @@ export function resolveAccountScopedWorkspacePath(options: {
   const state: RouteState = workspace === 'intelligence' ? 'intelligence' : 'studio';
   const basePath = getStatePath(state, { accountId });
 
-  return `${basePath}/${resolvedTab}`;
+  return buildPath(`${basePath}/:tab`, { tab: resolvedTab });
 }
