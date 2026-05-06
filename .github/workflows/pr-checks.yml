@@ -779,7 +779,6 @@ jobs:
 
       - name: Start runtime contract services
         run: |
-          cd value-fabric
           export OPENAI_API_KEY=test-key
           export REDIS_PASSWORD=test-redis
           export NEO4J_PASSWORD=test-neo4j
@@ -919,7 +918,6 @@ jobs:
 
       - name: Start core services
         run: |
-          cd value-fabric
           export NEO4J_PASSWORD=valuefabric
           # P1-22 FIX: Removed secret fallback - secrets must be configured
           export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}

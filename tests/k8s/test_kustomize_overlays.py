@@ -203,7 +203,7 @@ class TestKustomizeProdOverlay:
             "services/layer4-agents",
             "services/layer5-ground-truth",
             "services/layer6-benchmarks",
-            "value-fabric/frontend",
+            "apps/web",
         ]
         
         for layer in layer_names:
@@ -329,7 +329,7 @@ class TestKustomizeStagingOverlay:
             "services/layer4-agents",
             "services/layer5-ground-truth",
             "services/layer6-benchmarks",
-            "value-fabric/frontend",
+            "apps/web",
         ]
 
         for layer in layer_names:

@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: value-fabric/frontend:latest
+          image: apps/web:latest
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
