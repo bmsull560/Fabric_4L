@@ -21,6 +21,7 @@ REQUIRED_DOCS = (
     "docs/launch/final-testing-launch-checklist.md",
     "docs/launch/launch-blocker-register.md",
     "docs/launch/environment-dependent-evidence-matrix.md",
+    "docs/launch/evidence-manifest.example.yaml",
 )
 
 REQUIRED_CLASSIFICATIONS = ("P0 Launch Blocker", "P1 Launch Blocker", "P2 Follow-Up")
@@ -157,6 +158,14 @@ def main() -> int:
         run_command("production_readiness_foundations", [sys.executable, "scripts/ci/validate_production_readiness_plan.py"]),
         run_command("platform_contract_lint", [sys.executable, "scripts/ci/platform_contract_lint.py"]),
         run_command("dependabot_coverage", [sys.executable, "scripts/ci/check_dependabot_coverage.py"]),
+        run_command(
+            "launch_evidence_manifest_schema",
+            [
+                sys.executable,
+                "scripts/ci/validate_launch_evidence_manifest.py",
+                "docs/launch/evidence-manifest.example.yaml",
+            ],
+        ),
     ]
 
     failed = [check for check in checks if not check.passed]

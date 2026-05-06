@@ -1,0 +1,38 @@
+release_candidate_sha: "REPLACE_WITH_COMMIT_SHA"
+generated_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+gates:
+  production_like_e2e:
+    status: REQUIRES_ENVIRONMENT
+    owner: test-owner
+    evidence_uri: null
+    acceptance: "Critical launch journey passes with real auth, backing services, persistence, logs, and screenshots/transcript."
+  enterprise_sso_oidc:
+    status: REQUIRES_ENVIRONMENT
+    owner: identity-owner
+    evidence_uri: null
+    acceptance: "Auth fails closed, role/group mapping is correct, and redacted audit events exist."
+  rollback_restore:
+    status: REQUIRES_ENVIRONMENT
+    owner: sre-owner
+    evidence_uri: null
+    acceptance: "Rollback and restore meet recovery target and pass data-integrity checks."
+  telemetry_alerting:
+    status: REQUIRES_ENVIRONMENT
+    owner: observability-owner
+    evidence_uri: null
+    acceptance: "Launch-critical metrics, logs, traces, and alerts are visible and tested."
+  billing_metering:
+    status: REQUIRES_ENVIRONMENT
+    owner: billing-owner
+    evidence_uri: null
+    acceptance: "Meter events are idempotent, reconciled, and recoverable after retry."
+  performance_smoke:
+    status: REQUIRES_ENVIRONMENT
+    owner: performance-owner
+    evidence_uri: null
+    acceptance: "Latency, error-rate, and saturation evidence meets approved thresholds."
+allowed_statuses:
+  - REQUIRES_ENVIRONMENT
+  - PASS_WITH_EVIDENCE
+  - FAIL
+  - WAIVED

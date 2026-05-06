@@ -7,7 +7,14 @@ const axeScriptUrl =
   process.env.AXE_SCRIPT_URL ||
   "https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js";
 const reportPath = process.env.A11Y_REPORT_PATH || "./a11y-report.json";
-const routes = ["/", "/home", "/login", "/discover/accounts"];
+const defaultRoutes = ["/", "/home", "/login", "/discover/accounts"];
+const routes = (process.env.A11Y_ROUTES || "")
+  .split(",")
+  .map((route) => route.trim())
+  .filter(Boolean);
+if (routes.length === 0) {
+  routes.push(...defaultRoutes);
+}
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
