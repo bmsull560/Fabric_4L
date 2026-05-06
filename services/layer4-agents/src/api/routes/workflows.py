@@ -219,6 +219,8 @@ class WorkflowEvent(BaseModel):
     timestamp: str
     message: str
     payload: dict[str, Any] | None = None
+    trace_id: str | None = Field(default=None, description="Canonical lineage key for cross-layer audit correlation")
+    correlation_id: str | None = Field(default=None, description="Deprecated alias of trace_id; when present must match trace_id")
 
 
 class WorkflowEventPayload(BaseModel):
@@ -227,6 +229,8 @@ class WorkflowEventPayload(BaseModel):
     progress: float = Field(default=0.0, ge=0.0, le=100.0)
     current_node: str | None = None
     normalized_progress: dict[str, Any] | None = None
+    trace_id: str | None = Field(default=None, description="Canonical lineage key for the workflow lifecycle")
+    correlation_id: str | None = Field(default=None, description="Deprecated alias of trace_id")
 
 
 class WorkflowResumeRequest(BaseModel):

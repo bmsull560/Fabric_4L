@@ -13,6 +13,22 @@
 
 ---
 
+## Canonical Cross-Layer Lineage Contract (`trace_id` / `correlation_id`)
+
+- **Canonical field**: `trace_id` (string, immutable for the end-to-end job lineage).
+- **Compatibility alias**: `correlation_id` (optional alias; if present it must be identical to `trace_id`).
+- **Propagation rule**: the `trace_id` created at ingestion initiation must be carried through L1→L6 records, events, and exports.
+- **Frontend contract**: query and state models must expose `lineageKey = trace_id ?? correlation_id` so users can navigate audit lineage without stitching IDs manually.
+
+| Layer | Required surfaces that must carry `trace_id` (and optional alias `correlation_id`) |
+|---|---|
+| L1 Ingestion | Job response envelopes, stage/status updates, compliance/audit log rows |
+| L2 Extraction | Extraction job DTOs, progress/status events, extracted-entity provenance references |
+| L3 Graph | Persistence receipts, graph provenance/edge metadata, retrieval lineage payloads |
+| L4 Workflows | Workflow create/detail/list envelopes, **workflow SSE events**, export jobs/artifacts, CRM sync events |
+| L5 Governance | Review requests, approval decisions, audit exports, version history snapshots |
+| L6 Realization | Realization plans, observations, variance analyses, realization report artifacts |
+
 ## Workflow 1: Configure Ingestion → Run Ingestion → Monitor Job
 
 | UI Step | Backend Layer | Backend Object | Status Field | Event Source | Required ID | Frontend Query Key |
@@ -92,7 +108,7 @@
 **SSE Event Shape (L4):**
 ```
 event: workflow_event
-data: {"event_id": "...", "event_type": "node_started|node_completed|workflow_completed|error", "timestamp": "...", "message": "...", "payload": {...}}
+data: {"event_id":"...","event_type":"node_started|node_completed|workflow_completed|error","timestamp":"...","message":"...","trace_id":"...","correlation_id":"...","payload":{"id":"...","status":"running","progress":42,"trace_id":"...","correlation_id":"..."}}
 ```
 
 ---

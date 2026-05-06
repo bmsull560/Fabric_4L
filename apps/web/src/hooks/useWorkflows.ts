@@ -30,6 +30,9 @@ export interface Workflow {
   progress: number;
   createdAt?: string;
   updatedAt?: string;
+  traceId?: string;
+  correlationId?: string;
+  lineageKey?: string;
 }
 
 function normalizeWorkflowStatus(status: unknown): Workflow["status"] {
@@ -99,6 +102,9 @@ interface RawWorkflow {
   updated_at?: string;
   started_at?: string;
   completed_at?: string;
+  trace_id?: string;
+  correlation_id?: string;
+  lineage_key?: string;
 }
 
 const WorkflowCheckpointSchema = z
@@ -145,6 +151,9 @@ function normalizeWorkflow(raw: RawWorkflow): Workflow | null {
     progress: normalizedProgress,
     createdAt: raw.createdAt || raw.created_at,
     updatedAt: raw.updatedAt || raw.updated_at,
+    traceId: raw.trace_id,
+    correlationId: raw.correlation_id,
+    lineageKey: raw.trace_id || raw.correlation_id || raw.lineage_key,
   };
 }
 
