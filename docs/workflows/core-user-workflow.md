@@ -7,7 +7,7 @@ This document maps the complete end-to-end user journey from prospect input thro
 ```mermaid
 flowchart TD
     Start([Start: User navigates to /workflow/prospect]) --> InputPhase
-    
+
     subgraph Phase1 [Phase 1: Prospect Input]
         InputPhase[ProspectPromptBuilder Component]
         InputPhase --> Company[Input company name, domain, industry]
@@ -18,36 +18,36 @@ flowchart TD
         Deliverable --> Settings[Set mode: Fast/Balanced/Deep, enrichment depth, flags]
         Settings --> Submit[Click Submit button]
     end
-    
+
     Submit --> AccountCreation{Account exists?}
     AccountCreation -->|No| CreateAccount[POST /api/v1/accounts - Create account]
     AccountCreation -->|Yes| UseExisting[Use existing accountId]
     CreateAccount --> AccountId[Get accountId from response]
     UseExisting --> AccountId
-    
+
     AccountId --> Navigate[Navigate to /intelligence/:accountId/signals]
-    
+
     subgraph Phase2 [Phase 2: Intelligence Workspace]
         Navigate --> Workspace[IntelligenceWorkspace Component]
         Workspace --> TabSelection[Select tab from 13 available tabs]
-        
+
         TabSelection --> InputTabs{Input Category?}
         InputTabs -->|Signals| SignalsTab[View market signals and triggers]
         InputTabs -->|Account Enrichment| EnrichmentTab[View firmographics and tech stack]
         InputTabs -->|Stakeholders| StakeholdersTab[View buyer personas and priorities]
-        
+
         TabSelection --> ReasoningTabs{Reasoning Category?}
         ReasoningTabs -->|Value Hypotheses| HypothesesPhase[Phase 3: Hypothesis Generation]
         ReasoningTabs -->|Value Drivers| DriversTab[Map signals to value drivers]
         ReasoningTabs -->|Evidence| EvidenceTab[View supporting evidence]
         ReasoningTabs -->|ROI Calculator| ROITab[Interactive ROI calculator]
         ReasoningTabs -->|Value Model| ValueModelPhase[Phase 4: Value Model Building]
-        
+
         TabSelection --> OutputTabs{Output Category?}
         OutputTabs -->|Executive Value Case| NarrativeTab[Generate written narrative]
         OutputTabs -->|Realization Plan| ActionPlanTab[Generate step-by-step plan]
     end
-    
+
     subgraph Phase3 [Phase 3: Hypothesis Generation]
         HypothesesPhase[HypothesesTab Component]
         HypothesesPhase --> GenerateBtn[Click 'Generate Hypotheses']
@@ -64,7 +64,7 @@ flowchart TD
         Rejected --> FilterTabs
         HypothesesList --> FilterTabs
     end
-    
+
     subgraph Phase4 [Phase 4: Value Model Building]
         ValueModelPhase[ValueModelTab Component]
         ValueModelPhase --> ScenarioSelect[Select scenario: conservative/expected/optimistic]
@@ -82,12 +82,12 @@ flowchart TD
         Benchmarks --> EditVariables[Click 'Variables' to edit inputs]
         EditVariables --> ValueLines
     end
-    
+
     FilterTabs --> ValueModelPhase
     HypothesesPhase --> ValueModelPhase
-    
+
     ValueModelPhase --> End([End: User has complete value model with ROI analysis])
-    
+
     style Start fill:#e1f5ff
     style End fill:#e1f5ff
     style InputPhase fill:#fff4e6
@@ -105,7 +105,7 @@ flowchart TD
 
 ### Phase 1: Prospect Input
 
-**Route**: `/workflow/prospect`  
+**Route**: `/workflow/prospect`
 **Component**: `ProspectSetup` → `ProspectPromptBuilder`
 
 **User Actions**:
@@ -141,7 +141,7 @@ ProspectSetupPromptPayload → useCreateAccount.mutateAsync() → Account { id, 
 
 ### Phase 2: Intelligence Workspace
 
-**Route**: `/intelligence/:accountId/:tabId`  
+**Route**: `/intelligence/:accountId/:tabId`
 **Component**: `IntelligenceWorkspace`
 
 **Available Tabs** (from `workspaceTabRegistry.ts`):
@@ -195,7 +195,7 @@ Route param :tabId → getTabOrDefault() → lazy load tab component → fetch d
 
 ### Phase 3: Hypothesis Generation
 
-**Route**: `/intelligence/:accountId/hypotheses`  
+**Route**: `/intelligence/:accountId/hypotheses`
 **Component**: `HypothesesTab`
 
 **User Actions**:
@@ -246,7 +246,7 @@ Response: { id: string, status: string, updated_at: string }
 
 ### Phase 4: Value Model Building
 
-**Route**: `/intelligence/:accountId/value-model` or `/studio/:accountId/value-model`  
+**Route**: `/intelligence/:accountId/value-model` or `/studio/:accountId/value-model`
 **Component**: `ValueModelTab`
 
 **User Actions**:
@@ -409,7 +409,7 @@ Neo4j (Layer 3)
 
 ## Related Documentation
 
-- [Data Intelligence Layer Architecture](../../value-fabric/docs/data-intelligence-layer.md)
+- [Data Intelligence Layer Architecture](../../docs/architecture/data-intelligence-layer.md)
 - [System Architecture Overview](../../docs/architecture/system-overview.md)
 - [Three-Tier UX Model](../../specs/three_tier_ux_model.md)
 - [API Reference](../../docs/API_REFERENCE.md)

@@ -75,40 +75,40 @@ python -m pytest tests/contract/ -v --tb=short --co -q 2>&1 | head -50
 
 #### 2d. Runtime Guard Scan
 
-**§2.1:** `grep -rn "getTenantContext\|get_tenant_context" value-fabric/layer*/src/ --include="*.py" | wc -l`
+**§2.1:** `grep -rn "getTenantContext\|get_tenant_context" services/layer*/src/ --include="*.py" | wc -l`
 
-**§2.2:** `grep -rn "getSession\|get_session\|TenantAwarePool" value-fabric/layer*/src/ --include="*.py" | wc -l`
+**§2.2:** `grep -rn "getSession\|get_session\|TenantAwarePool" services/layer*/src/ --include="*.py" | wc -l`
 
-**§2.4:** `grep -rn "ToolResult\|ToolGateway" value-fabric/layer4-agents/src/ --include="*.py" | wc -l`
+**§2.4:** `grep -rn "ToolResult\|ToolGateway" services/layer4-agents/src/ --include="*.py" | wc -l`
 
 ### Step 3: Scan for Violations
 
 **§2.1:**
 ```bash
-grep -rn "def.*tenant_id.*:" value-fabric/layer*/src/ --include="*.py"
-grep -rn "headers\[.*tenant" value-fabric/layer*/src/ --include="*.py"
+grep -rn "def.*tenant_id.*:" services/layer*/src/ --include="*.py"
+grep -rn "headers\[.*tenant" services/layer*/src/ --include="*.py"
 ```
 
 **§2.2:**
 ```bash
-grep -rn "db\.connect\|db\.withTenant" value-fabric/layer*/src/ --include="*.py"
-grep -rn "WHERE.*tenant_id" value-fabric/layer*/src/ --include="*.py"
+grep -rn "db\.connect\|db\.withTenant" services/layer*/src/ --include="*.py"
+grep -rn "WHERE.*tenant_id" services/layer*/src/ --include="*.py"
 ```
 
 **§2.3:**
 ```bash
-grep -rn "app\.use\|app\.add_middleware\|@app\.middleware" value-fabric/layer*/src/api/ --include="*.py"
+grep -rn "app\.use\|app\.add_middleware\|@app\.middleware" services/layer*/src/api/ --include="*.py"
 ```
 
 **§2.4:**
 ```bash
-grep -rn "lambda.*tool\|tools.*=.*\[" value-fabric/layer4-agents/src/agents/ --include="*.py"
-grep -rn "raise ToolError\|raise ValueError" value-fabric/layer4-agents/src/tools/ --include="*.py"
+grep -rn "lambda.*tool\|tools.*=.*\[" services/layer4-agents/src/agents/ --include="*.py"
+grep -rn "raise ToolError\|raise ValueError" services/layer4-agents/src/tools/ --include="*.py"
 ```
 
 **§2.5:**
 ```bash
-grep -rn "json\.loads\|json\.parse\|JSON\.parse" value-fabric/layer4-agents/src/ --include="*.py"
+grep -rn "json\.loads\|json\.parse\|JSON\.parse" services/layer4-agents/src/ --include="*.py"
 ```
 
 **§2.6:**

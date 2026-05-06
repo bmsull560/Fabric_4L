@@ -3,6 +3,6 @@
 #    pip-compile pyproject.toml --extra dev -o requirements-dev.lock
 #
 # Run the following to regenerate:
-#   cd value-fabric/layer3-knowledge
+#   cd services/layer3-knowledge
 #   pip install pip-tools
 #   pip-compile pyproject.toml --extra dev -o requirements-dev.lock --generate-hashes

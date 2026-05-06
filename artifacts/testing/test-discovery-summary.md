@@ -7,7 +7,7 @@ Generated: Apr 10, 2026
 **Monorepo Layout:**
 ```
 Fabric_4L/
-├── value-fabric/          # Backend layers (1-6)
+├── services/          # Backend layers (1-6)
 │   ├── layer1-ingestion/
 │   ├── layer2-extraction/
 │   ├── layer3-knowledge/    # Largest test suite

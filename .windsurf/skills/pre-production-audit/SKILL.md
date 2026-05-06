@@ -59,8 +59,8 @@ Execute audits in 5 sequential passes:
 ```bash
 # Run security-focused static analysis
 semgrep --config=auto --severity=ERROR .
-ruff check value-fabric/ --select=E,W,F,UP,B,C4,SIM
-mypy value-fabric/ --ignore-missing-imports
+ruff check services/ --select=E,W,F,UP,B,C4,SIM
+mypy services/ --ignore-missing-imports
 ```
 
 **Key Checks:**
@@ -168,7 +168,7 @@ checkov --file k8s/
 | Data Backup | Database backup procedures | Check |
 
 **GDPR Requirements:**
-- Data classification (PII handling in value-fabric/)
+- Data classification (PII handling in services/)
 - Consent mechanism implementation
 - Data deletion capabilities (right to erasure)
 - Cross-border data transfer safeguards
@@ -307,7 +307,7 @@ Every finding must include:
 **Category:** Security | Performance | Compliance | Architecture
 
 **Evidence:**
-- File: `value-fabric/layer4-agents/src/api/routes.py:42-58`
+- File: `services/layer4-agents/src/api/routes.py:42-58`
 - Code:
   ```python
   # Vulnerable code snippet

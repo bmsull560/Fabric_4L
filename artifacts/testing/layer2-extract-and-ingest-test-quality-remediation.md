@@ -3,10 +3,10 @@
 This remediation run audited and refined the new Layer 2 pipeline orchestration tests to improve determinism and maintainability while preserving API-contract coverage.
 
 ## Scope
-- Layer: `value-fabric/layer2-extraction`
+- Layer: `services/layer2-extraction`
 - Files reviewed:
-  - `value-fabric/layer2-extraction/tests/test_extract_and_ingest_pipeline.py`
-  - `value-fabric/layer2-extraction/tests/test_extraction.py` (context only)
+  - `services/layer2-extraction/tests/test_extract_and_ingest_pipeline.py`
+  - `services/layer2-extraction/tests/test_extraction.py` (context only)
 - Framework: `pytest` + `pytest-asyncio` + `httpx.AsyncClient`
 
 ## Discovery Snapshot
@@ -42,7 +42,7 @@ This remediation run audited and refined the new Layer 2 pipeline orchestration 
     - `naive_utc_from_timestamp(timestamp)` helper
 
 ## Changes Applied
-- Updated `value-fabric/layer2-extraction/tests/test_extract_and_ingest_pipeline.py`:
+- Updated `services/layer2-extraction/tests/test_extract_and_ingest_pipeline.py`:
   - Added `_UNIX_EPOCH` and `naive_utc_from_timestamp()`.
   - Replaced deprecated `real_datetime.utcfromtimestamp(...)` calls in:
     - `FrozenClock.datetime_class().utcfromtimestamp`

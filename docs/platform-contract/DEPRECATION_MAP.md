@@ -5,7 +5,7 @@
 | Deprecated Pattern | Canonical Replacement | Migration Deadline | Notes |
 |---|---|---|---|
 | request.state.context | request.state.governance_context | 2026-05-15 | Layer 3 still uses old name |
-| TenantContext (L4) | shared.identity.RequestContext | 2026-05-15 | value-fabric/layer4-agents/src/tenant/context.py |
+| TenantContext (L4) | shared.identity.RequestContext | 2026-05-15 | services/layer4-agents/src/tenant/context.py |
 | get_db() | get_db_from_context() | 2026-06-01 | Health checks excepted |
 | get_db_with_tenant() | get_db_from_context() | 2026-06-01 | Header-based session creation |
 | db_session() context manager | db_session_for_context() | 2026-06-01 | Background tasks |
@@ -40,7 +40,7 @@ Do **not** recommend direct consolidation of Layer 3 and Layer 4 agent implement
 Find all instances:
 
 ```bash
-grep -r "request.state.context" value-fabric/ shared/
+grep -r "request.state.context" services/ packages/shared/src/value_fabric/shared/
 ```
 
 Replace with `request.state.governance_context`.
@@ -50,11 +50,11 @@ Replace with `request.state.governance_context`.
 Find all instances:
 
 ```bash
-grep -r "Depends\s*(\s*get_db\b" value-fabric/ shared/
-grep -r "with\s+db_session\s*(" value-fabric/ shared/
-grep -r "get_db_with_tenant" value-fabric/ shared/
-grep -r "get_db_with_optional_tenant" value-fabric/ shared/
-grep -r "get_tiered_db_session" value-fabric/ shared/
+grep -r "Depends\s*(\s*get_db\b" services/ packages/shared/src/value_fabric/shared/
+grep -r "with\s+db_session\s*(" services/ packages/shared/src/value_fabric/shared/
+grep -r "get_db_with_tenant" services/ packages/shared/src/value_fabric/shared/
+grep -r "get_db_with_optional_tenant" services/ packages/shared/src/value_fabric/shared/
+grep -r "get_tiered_db_session" services/ packages/shared/src/value_fabric/shared/
 ```
 
 Replace endpoints to use `Depends(get_db_from_context)`.
@@ -70,7 +70,7 @@ Deprecate the old stores.
 Find all instances:
 
 ```bash
-grep -rn "registry.execute\|tool_registry.execute" value-fabric/layer4-agents/
+grep -rn "registry.execute\|tool_registry.execute" services/layer4-agents/
 ```
 
 Replace with `ctx['tool_gateway'].execute(tool_name, input_data)` inside agent `execute()` methods.
@@ -81,7 +81,7 @@ The `ToolGateway` is automatically injected by `BaseAgent.run()` when `tool_regi
 Find all instances:
 
 ```bash
-grep -rn "graph_rag.*query\|retrieval_engine.*query" value-fabric/layer4-agents/
+grep -rn "graph_rag.*query\|retrieval_engine.*query" services/layer4-agents/
 ```
 
 Replace with `ctx['memory_gateway'].query(query_text)` inside agent `execute()` methods.

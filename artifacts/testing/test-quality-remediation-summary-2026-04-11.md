@@ -1,7 +1,7 @@
 # Test Quality Remediation Summary
 
-**Date**: 2026-04-11  
-**Scope**: Phase 4/5 - Critical Test Fixes  
+**Date**: 2026-04-11
+**Scope**: Phase 4/5 - Critical Test Fixes
 **Status**: ✅ L1, L2, L3 Config Tests Operational
 
 ---
@@ -16,7 +16,7 @@
 
 **Fix**:
 ```bash
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 pip install -e .
 ```
 
@@ -49,7 +49,7 @@ def clear_settings_cache(self):
 #### b) Converted all `patch.dict()` to `monkeypatch`:
 - `test_settings_from_environment` - Added NEO4J_PASSWORD to env vars
 - `test_logging_configuration_from_env` - Added cache clear + monkeypatch
-- `test_cache_configuration_from_env` - Added cache clear + monkeypatch  
+- `test_cache_configuration_from_env` - Added cache clear + monkeypatch
 - `test_metrics_configuration_from_env` - Added cache clear + monkeypatch
 - `test_rate_limit_configuration_from_env` - Added cache clear + monkeypatch
 - `test_pinecone_configuration_from_env` - Added cache clear + monkeypatch
@@ -115,7 +115,7 @@ def clear_settings_cache(self):
 1. **L5 Ground Truth** - 19 failing datetime serialization tests
 2. **L3 E2E Pipeline** - Requires Docker/Neo4j for integration tests
 
-### P2 - Improvements  
+### P2 - Improvements
 1. **L4 Agents** - System library dependency for weasyprint
 2. **Frontend** - No unit tests (Vitest configured but unused)
 
@@ -125,19 +125,19 @@ def clear_settings_cache(self):
 
 ```bash
 # L1 - Should collect 24 tests
-cd value-fabric/layer1-ingestion
+cd services/layer1-ingestion
 pytest tests/unit --collect-only
 
 # L2 - Should pass all 5 pipeline tests
-cd value-fabric/layer2-extraction  
+cd services/layer2-extraction
 pytest tests/test_extract_and_ingest_pipeline.py -v
 
 # L3 Config - Should pass all 22 tests
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 pytest tests/test_config.py -v
 
 # L4 - Should collect (may fail on weasyprint in CI without system libs)
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 pytest tests/ --collect-only
 ```
 
@@ -145,7 +145,7 @@ pytest tests/ --collect-only
 
 ## Files Modified
 
-1. `value-fabric/layer3-knowledge/tests/test_config.py` - Environment isolation fixes
+1. `services/layer3-knowledge/tests/test_config.py` - Environment isolation fixes
 2. `artifacts/testing/test-quality-audit.md` - Updated status
 3. `artifacts/testing/test-discovery-map.md` - Created
 

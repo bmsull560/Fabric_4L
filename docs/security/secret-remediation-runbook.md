@@ -1,8 +1,8 @@
 # Secret Remediation Runbook
 
-**Status:** P0 Blocker - Must Complete Before Production Deployment  
-**Created:** 2026-05-02  
-**Updated:** 2026-05-02  
+**Status:** P0 Blocker - Must Complete Before Production Deployment
+**Created:** 2026-05-02
+**Updated:** 2026-05-02
 **Applies To:** All `.env*`, `k8s/secrets.yml`, and secret-bearing files in git history
 
 ---
@@ -11,7 +11,7 @@
 
 **This repository contains committed secrets.** Do not deploy to production until this runbook is executed.
 
-**Files at risk:** `frontend/.env.development`, `frontend/.env.production`, `frontend/.env.staging`, `frontend/.env.test`, `value-fabric/.env.staging`, `value-fabric/.env.test` (and any other non-example `.env` variants)
+**Files at risk:** `frontend/.env.development`, `frontend/.env.production`, `frontend/.env.staging`, `frontend/.env.test`, `.env.staging`, `.env.test` (and any other non-example `.env` variants)
 
 ---
 
@@ -246,7 +246,7 @@ k8s/**/secrets.yaml
   run: |
     # Scan with gitleaks or trufflehog
     gitleaks detect --source . --verbose --redact
-    
+
 - name: Verify no raw k8s secrets
   run: |
     if git ls-files | grep -E "k8s/.*/secrets\.(yml|yaml)$"; then

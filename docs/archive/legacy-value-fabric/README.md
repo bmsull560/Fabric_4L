@@ -1,3 +1,5 @@
+<!-- Migrated from docs/archive/legacy-services/README.md during legacy path cleanup. -->
+
 # Value Fabric - Enterprise AI Platform
 
 A production-grade semantic foundation for enterprise AI workflows that transforms unstructured data into structured, actionable knowledge through an ontology-guided pipeline.
@@ -239,7 +241,7 @@ See `.github/workflows/smoke-gate.yml` for workflow configuration.
 ## Project Structure
 
 ```
-value-fabric/
+services/
 ├── docker-compose.yml           # Local orchestration
 ├── README.md                    # This file
 │

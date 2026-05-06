@@ -290,7 +290,7 @@ tests/
 ├── security/                # Security tests (GOOD)
 └── tools/                   # Tool tests
 
-value-fabric/
+services/
 ├── layer1-ingestion/tests/
 ├── layer2-extraction/tests/
 ├── layer3-knowledge/tests/

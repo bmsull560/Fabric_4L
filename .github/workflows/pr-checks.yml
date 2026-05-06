@@ -943,7 +943,7 @@ jobs:
               break
             fi
           done
-          docker compose -f value-fabric/docker-compose.yml ps
+          docker compose -f docker-compose.full.yml ps
         timeout-minutes: 3
 
       - name: Run smoke tests

@@ -22,8 +22,8 @@ Systematically fix the ~280 tracked anti-pattern instances across 10 categories 
 
 ## Forbidden Paths
 
-- `value-fabric/shared/identity/`
-- `value-fabric/layer4-agents/migrations/`
+- `packages/shared/src/value_fabric/shared/identity/`
+- `services/layer4-agents/migrations/`
 
 ## Context Requirements
 

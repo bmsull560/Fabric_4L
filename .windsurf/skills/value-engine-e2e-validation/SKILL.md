@@ -102,28 +102,28 @@ Before starting, verify the environment is suitable:
    # Common patterns to try:
    make layer1-dev
    # OR
-   cd value-fabric/layer1-ingestion && uvicorn src.main:app --reload --port 8001
+   cd services/layer1-ingestion && uvicorn src.main:app --reload --port 8001
    ```
 
 3. **Layer 4 (Agents/Orchestration)**:
    ```bash
    make layer4-dev
    # OR
-   cd value-fabric/layer4-agents && uvicorn src.main:app --reload --port 8004
+   cd services/layer4-agents && uvicorn src.main:app --reload --port 8004
    ```
 
 4. **Layer 6 (Benchmarks)** - if referenced:
    ```bash
    make layer6-dev
    # OR
-   cd value-fabric/layer6-benchmarks && uvicorn src.main:app --reload --port 8006
+   cd services/layer6-benchmarks && uvicorn src.main:app --reload --port 8006
    ```
 
 5. **Celery Worker** (if async jobs required):
    ```bash
    make worker
    # OR
-   cd value-fabric/layer4-agents && celery -A tasks worker --loglevel=info
+   cd services/layer4-agents && celery -A tasks worker --loglevel=info
    ```
 
 6. **Frontend**:
@@ -205,12 +205,12 @@ fetch('/api/health').then(r => r.json()).then(console.log)
 tenant:
   slug: demo-acme
   name: Acme Corp
-  
+
 user:
   email: sarah.chen@acmerobotics.com
   password: Demo1234!  # hashed appropriately
   role: admin
-  
+
 prospect:
   company_name: Axiom Robotics
   domain: axiomrobotics.com
@@ -242,7 +242,7 @@ python scripts/seed.py --tenant demo-acme --user sarah.chen@acmerobotics.com
 
 ```bash
 # Discover auth route
-grep -rn "def login\|@router.post.*login\|/auth/login" value-fabric/layer*/src/api/routes/ --include="*.py"
+grep -rn "def login\|@router.post.*login\|/auth/login" services/layer*/src/api/routes/ --include="*.py"
 
 # Attempt login
 curl -X POST http://localhost:8004/auth/login \
@@ -257,7 +257,7 @@ curl -X POST http://localhost:8004/auth/login \
 - Token/session can be used in subsequent requests
 
 **Failure Debugging**:
-- Check auth route exists: `grep -rn "auth" value-fabric/layer4-agents/src/api/router.py`
+- Check auth route exists: `grep -rn "auth" services/layer4-agents/src/api/router.py`
 - Verify password hashing: Check bcrypt/argon2 configuration
 - Check user status: Verify user is active and belongs to tenant
 - Check role assignment: Verify user has required role

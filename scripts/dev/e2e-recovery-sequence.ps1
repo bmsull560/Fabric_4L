@@ -12,7 +12,7 @@ param(
     [switch]$QuickMode,              # Only run chromium + smoke for fast feedback
     [switch]$AllowDegradedHealth,  # Continue even if some backends are unhealthy (for investigation)
     [switch]$InvestigateOnly,        # Run health checks and smoke only, skip full suite
-    [string]$BackendComposeFile = "../value-fabric/docker-compose.yml",
+    [string]$BackendComposeFile = "../docker-compose.full.yml",
     [int[]]$BackendPorts = @(8001, 8002, 8003, 8004, 8005, 8006),
     [int]$FrontendPort = 3001,
     [int]$HealthCheckTimeout = 60,
@@ -37,7 +37,7 @@ if (-not $SkipBackendStart -and -not (Test-Path $envFilePath)) {
     Write-Host "  2. Use Infisical secrets manager (set INFISICAL_* vars)" -ForegroundColor White
     Write-Host "  3. Run against staging: -SkipBackendStart with PLAYWRIGHT_BASE_URL" -ForegroundColor White
     Write-Host "  4. Request secret from platform/security team" -ForegroundColor White
-    Write-Host "`nDocumentation: value-fabric/.env.example" -ForegroundColor Gray
+    Write-Host "`nDocumentation: .env.example" -ForegroundColor Gray
     exit 1
 }
 
@@ -126,7 +126,7 @@ if (-not $SkipBackendStart) {
         Write-Result "Compose file not found at $BackendComposeFile" -Warning
         Write-Host "Assuming backend services are already running or managed externally" -ForegroundColor $colors.Warning
     }
-    
+
     # Give services time to initialize
     Write-Host "`nWaiting 10s for services to initialize..." -ForegroundColor $colors.Info
     Start-Sleep -Seconds 10
@@ -141,7 +141,7 @@ $allHealthy = $true
 foreach ($port in $BackendPorts) {
     $healthy = $false
     $attempts = 0
-    
+
     while (-not $healthy -and $attempts -lt $MaxRetries) {
         $attempts++
         try {
@@ -151,13 +151,13 @@ foreach ($port in $BackendPorts) {
                 Write-Result "Port $port - HEALTHY ($($response.StatusCode))" -Success
             }
         } catch {
-            Write-Result "Port $port - Attempt $attempts/$MaxRetries..." 
+            Write-Result "Port $port - Attempt $attempts/$MaxRetries..."
             if ($attempts -lt $MaxRetries) {
                 Start-Sleep -Seconds 2
             }
         }
     }
-    
+
     if (-not $healthy) {
         $allHealthy = $false
         Write-Result "Port $port - UNREACHABLE" -Failure
@@ -201,7 +201,7 @@ Write-Step "Run one minimal smoke test" 3
 
 if (-not $SkipSmokeTest) {
     Push-Location frontend
-    
+
     # Smoke pack uses @smoke tag for gating
     # Tests tagged @smoke validate:
     # 1. App shell loads (navigation)
@@ -210,14 +210,14 @@ if (-not $SkipSmokeTest) {
     # NOTE: @smoke tests must be idempotent - use seeded test data or mock interactions
     $smokeTestPattern = "--grep=@smoke"
     $smokeTestProject = "chromium"
-    
+
     Write-Result "Running smoke test: $smokeTestPattern (project: $smokeTestProject)"
-    
+
     # Defensive: Validate @smoke tests exist before running
     try {
         $listOutput = npx playwright test $smokeTestPattern --project=$smokeTestProject --list 2>&1
         $smokeCount = ($listOutput | Select-String -Pattern "@smoke" | Measure-Object).Count
-        
+
         if ($smokeCount -eq 0) {
             Write-Host "`n✗ SMOKE CONTRACT VIOLATION" -ForegroundColor $colors.Error
             Write-Host "No @smoke tests found. Recovery gate invalid." -ForegroundColor $colors.Error
@@ -227,28 +227,28 @@ if (-not $SkipSmokeTest) {
             Write-Host "  - e2e/navigation.spec.ts (app shell validation)" -ForegroundColor $colors.Info
             Write-Host "  - e2e/business-case-list.spec.ts (API-backed data)" -ForegroundColor $colors.Info
             Write-Host "  - e2e/admin-system.spec.ts (mutation + state)" -ForegroundColor $colors.Info
-            
+
             $results.FailedServices = @("@smoke contract violation - zero tests found")
             Save-ResultsArtifact -Path $OutputJsonPath
             Pop-Location
             exit 1
         }
-        
+
         if ($smokeCount -lt 3) {
             Write-Host "`n⚠ SMOKE CONTRACT WARNING" -ForegroundColor $colors.Warning
             Write-Host "Only $smokeCount @smoke test(s) found (minimum: 3)" -ForegroundColor $colors.Warning
             Write-Host "Continuing, but coverage may be insufficient for cross-layer validation." -ForegroundColor $colors.Warning
         }
-        
+
         Write-Result "Found $smokeCount @smoke test(s) — proceeding" -Success
     } catch {
         Write-Result "Failed to enumerate @smoke tests: $_" -Failure
     }
-    
+
     try {
         $smokeOutput = npx playwright test $smokeTestPattern --project=$smokeTestProject --reporter=line 2>&1
         $smokeExitCode = $LASTEXITCODE
-        
+
         if ($smokeExitCode -eq 0) {
             $results.SmokeGatePassed = $true
             Write-Result "SMOKE TEST PASSED ✓ (UI + API path validated)" -Success
@@ -266,14 +266,14 @@ if (-not $SkipSmokeTest) {
             Write-Host "  3. Write/interaction flow succeeds (idempotent)" -ForegroundColor $colors.Warning
             Write-Host "`nSmoke test output:" -ForegroundColor $colors.Warning
             Write-Host $smokeOutput -ForegroundColor $colors.Warning
-            
+
             Write-Host "`n✗ Full E2E suite will not run (smoke test failed)" -ForegroundColor $colors.Error
             Write-Host "The @smoke pack validates integrated frontend-backend behavior." -ForegroundColor $colors.Error
             Write-Host "A failing smoke means the environment cannot support valid E2E testing." -ForegroundColor $colors.Error
             Write-Host "`nOptions:" -ForegroundColor $colors.Info
             Write-Host "  1. Fix infrastructure and retry" -ForegroundColor $colors.Info
             Write-Host "  2. Bypass smoke: ./scripts/e2e-recovery-sequence.ps1 -SkipSmokeTest (not recommended)" -ForegroundColor $colors.Warning
-            
+
             # Save artifact before exit
             $results.FailedServices = $results.BackendStatus | Where-Object { $_.Status -ne "UP" } | ForEach-Object { "Port $($_.Port)" }
             Save-ResultsArtifact -Path $OutputJsonPath
@@ -286,7 +286,7 @@ if (-not $SkipSmokeTest) {
         Pop-Location
         exit 1
     }
-    
+
     Pop-Location
 } else {
     Write-Result "Skipped smoke test (use -SkipSmokeTest)" -Warning
@@ -299,7 +299,7 @@ Write-Step "Run full E2E suite" 4
 if ($results.SmokeGatePassed) {
     $results.FullSuiteExecuted = $true
     Push-Location frontend
-    
+
     $testArgs = @()
     if ($QuickMode) {
         $testArgs += "--project=chromium"
@@ -309,26 +309,26 @@ if ($results.SmokeGatePassed) {
         $testArgs += "--workers=11"
         Write-Result "FULL MODE: All projects, 11 workers"
     }
-    
+
     $testArgs += "--reporter=list,dot,html"
     $testArgs += "--trace=on-first-retry"
     $testArgs += "--output=e2e-results/"
-    
+
     Write-Result "Starting full test run..."
     Write-Host "Command: npx playwright test $testArgs" -ForegroundColor $colors.Info
-    
+
     $suiteStartTime = Get-Date
     $suiteExitCode = 0
     try {
         $suiteOutput = npx playwright test @testArgs 2>&1
         $suiteExitCode = $LASTEXITCODE
         $results.FullSuiteResults = $suiteOutput
-        
+
         # Parse results for classification
         $passedTests = ($suiteOutput | Select-String -Pattern "(\d+) passed" | ForEach-Object { $_.Matches.Groups[1].Value } | Select-Object -First 1)
         $failedTests = ($suiteOutput | Select-String -Pattern "(\d+) failed" | ForEach-Object { $_.Matches.Groups[1].Value } | Select-Object -First 1)
         $flakyTests = ($suiteOutput | Select-String -Pattern "(\d+) flaky" | ForEach-Object { $_.Matches.Groups[1].Value } | Select-Object -First 1)
-        
+
         Write-Host "`nSuite execution complete" -ForegroundColor $colors.Success
         Write-Result "Passed: $passedTests" -Success
         if ($failedTests) {
@@ -337,18 +337,18 @@ if ($results.SmokeGatePassed) {
         if ($flakyTests) {
             Write-Result "Flaky: $flakyTests" -Warning
         }
-        
+
         # Calculate duration and final status
         $suiteEndTime = Get-Date
         $suiteDuration = $suiteEndTime - $suiteStartTime
         $suiteStatus = if ($suiteExitCode -eq 0) { "PASSED" } else { "FAILED (exit $suiteExitCode)" }
         Write-Host "Suite status: $suiteStatus" -ForegroundColor $(if ($suiteExitCode -eq 0) { $colors.Success } else { $colors.Error })
         Write-Host "Suite duration: $($suiteDuration.ToString('hh\:mm\:ss'))" -ForegroundColor $colors.Info
-        
+
     } catch {
         Write-Result "Suite execution error: $_" -Failure
     }
-    
+
     Pop-Location
 } else {
     Write-Result "SKIPPED - Smoke test must pass first" -Failure

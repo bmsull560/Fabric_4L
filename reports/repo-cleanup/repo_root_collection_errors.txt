@@ -17,12 +17,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir config>
       <Module test_startup_tenant_validation.py>
         S2-J: Startup Tenant Validation Tests ù Pillar 2 + Pillar 3.
-        
+
         Ship/No-Ship Gate: These tests verify that the application refuses to start
         (or visibly degrades) when tenant-critical infrastructure is missing or
         misconfigured.  They complement the existing test_startup_validation.py by
         focusing specifically on tenant isolation prerequisites.
-        
+
         Expected Initial State:
             - test_startup_rejects_missing_jwt_secret_in_prod:     PASS
             - test_startup_rejects_weak_jwt_secret_in_prod:        FAIL (no length check)
@@ -34,7 +34,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify JWT secret is validated at startup.
           <Function test_startup_rejects_weak_jwt_secret_in_prod>
             Production startup must fail if JWT_SECRET is too short.
-            
+
             A JWT secret shorter than 32 characters is brute-forceable.
             Expected initial state: FAIL ù no length validation exists.
           <Function test_startup_rejects_missing_jwt_secret_in_prod>
@@ -45,32 +45,32 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify startup validates RLS prerequisites.
           <Function test_startup_rejects_superuser_connection_in_prod>
             Production must warn/reject if connecting as PostgreSQL superuser.
-            
+
             Superuser roles bypass all RLS policies, making tenant isolation
             completely ineffective.
-            
+
             Expected initial state: FAIL ù no superuser detection exists.
           <Function test_startup_validates_rls_prerequisites>
             Production startup must validate that the database supports RLS.
-            
+
             Expected initial state: FAIL ù no RLS prerequisite check exists.
         <Class TestDegradedDependencyBehavior>
           Verify correct behavior when dependencies are degraded.
           <Function test_degraded_audit_still_allows_startup>
             Missing audit sink should warn but not prevent startup.
-            
+
             Audit is important but not a hard dependency ù the application
             should start with a warning, not crash.
           <Function test_degraded_redis_does_not_disable_auth>
             Missing Redis must NOT disable JWT authentication.
-            
+
             Rate limiting can degrade gracefully, but authentication must
             never be optional ù even if Redis is down.
         <Class TestStartupSummaryCompleteness>
           Verify the startup summary reports tenant isolation status.
           <Function test_startup_summary_reports_rls_status>
             Startup summary must include RLS enforcement status.
-            
+
             Expected initial state: FAIL ù get_startup_summary() doesn't report RLS.
           <Function test_startup_summary_reports_degraded_controls>
             Startup summary must list degraded controls when Redis is missing.
@@ -79,11 +79,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_dil_phase2.py>
           Data Intelligence Layer Phase 2 ù L3 Tests.
-          
+
           Tests for:
             - Task 2.2: Competitive Intelligence Service (competitive_intel_service.py)
             - Task 2.3: ROI Calculator Service (roi_calculator_service.py)
-          
+
           These tests use mock Neo4j drivers to isolate service logic from the database.
           Run with: pytest tests/test_dil_phase2.py --noconftest -v
           <Class TestBattlecardCreate>
@@ -167,17 +167,17 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             <Function test_custom_values>
         <Module test_vector_e2e.py>
           End-to-end vector index test for Layer 3 Knowledge Graph.
-          
+
           This test focuses specifically on vector index functionality:
           1. Start Neo4j in Docker
           2. Initialize vector indexes
           3. Generate real embeddings with sentence-transformers
           4. Ingest entities with embeddings
           5. Run hybrid search and verify ranking
-          
+
           Usage:
               pytest tests/test_vector_e2e.py -v
-          
+
           Requirements:
               - Docker running locally
               - Neo4j 5.x image (Community Edition works)
@@ -232,7 +232,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package gitops>
       <Module test_rollouts.py>
         GitOps and progressive delivery tests.
-        
+
         Validates:
         1. Canary deployment configuration
         2. Health gate logic
@@ -281,7 +281,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_health_tracker.py>
           Unit tests for HealthTracker service.
-          
+
           Tests health status tracking, badge generation, and callback mechanisms.
           <Class TestGetHealthTracker>
             Test suite for get_health_tracker singleton.
@@ -356,7 +356,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_tenant_isolation.py>
         Security tests for tenant isolation across all layers.
-        
+
         Validates that:
         1. Users can only access data within their tenant
         2. Cross-tenant access attempts are blocked
@@ -398,7 +398,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package release>
       <Module test_deprecation_budget.py>
         Release Policy: Deprecation budget enforcement.
-        
+
         Verifies that P0 deprecations are resolved and P1 deprecations are within budget
         before release-candidate can proceed. Parses the canonical deprecation tracking
         source to count violations by severity.
@@ -406,27 +406,27 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Enforce: P0 deprecations must be zero; P1 within budget.
           <Function test_no_expired_deprecation_exceptions>
             No deprecation waivers with expired target dates.
-            
+
             Rationale: Waivers must be time-bounded and actively maintained.
           <Function test_p0_deprecations_are_zero>
             P0 deprecations must be zero for release-candidate.
-            
+
             P0 = Critical: Blocks release, security or correctness risk.
             Rationale: P0 deprecations indicate production-blocking technical debt.
           <Function test_deprecation_file_exists>
             Deprecation tracking file must exist.
           <Function test_deprecations_have_required_fields>
             All deprecations must have required fields for traceability.
-            
+
             Required: id, pattern, severity, owner, targetRemoval, replacement
           <Function test_p1_deprecations_within_budget>
             P1 deprecations must be within configured budget.
-            
+
             P1 = High: Should be resolved soon, has workaround.
             Budget: Configurable threshold (default: 10).
           <Function test_deprecation_compliance_score_above_threshold>
             Overall deprecation compliance score must meet threshold.
-            
+
             If the deprecation file includes a compliance score, verify it meets target.
     <Package contract>
       <Module test_tool_manifests.py>
@@ -597,12 +597,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir state>
       <Module test_state_alignment.py>
         S1-A: State Enum Alignment Tests ù Production Approval Suite, Pillar 1.
-        
+
         Ship/No-Ship Gate: These tests verify that the backend WorkflowStatus and
         WorkflowType enums are exactly aligned with the frontend TypeScript type
         definitions.  A mismatch means the UI will silently mishandle workflows in
         an unknown state ù this is a release-blocking defect.
-        
+
         Expected Initial State:
             - test_backend_workflow_status_superset_of_frontend: FAIL
               (backend has ``INTERRUPTED`` which frontend lacks)
@@ -610,13 +610,13 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               (same root cause ù ``interrupted`` missing from frontend union)
             - test_workflow_type_enum_matches_frontend:          PASS or FAIL
             - test_no_duplicate_enum_aliases:                    Verify
-        
+
         These tests parse source files directly (no runtime import of frontend code)
         so they run without Node.js and catch drift even when the two stacks are
         developed independently.
         <Class TestNoDuplicateEnumAliases>
           Verify that WorkflowType has no duplicate values (aliases).
-          
+
           The backend currently has both ``WHITESPACE_ANALYSIS`` and
           ``WHITESPACE_ANALYSIS_WORKFLOW`` mapping to the same string value
           ``"whitespace_analysis"``.  While Python allows this, it creates
@@ -627,16 +627,16 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify backend WorkflowStatus enum matches frontend TypeScript type.
           <Function test_exact_bidirectional_match>
             Frontend and backend must define exactly the same set of statuses.
-            
+
             This is the combined gate ù if this passes, both directions are aligned.
           <Function test_frontend_workflow_status_subset_of_backend>
             Every frontend status must exist in the backend enum.
-            
+
             Catches orphan frontend values that the backend would never produce,
             which would create dead UI branches.
           <Function test_backend_workflow_status_superset_of_frontend>
             Every backend status must exist in the frontend type.
-            
+
             Expected initial state: FAIL ù backend has ``interrupted`` which the
             frontend ``WorkflowStatus`` union does not include.  The fix is to add
             ``'interrupted'`` to the frontend type.
@@ -644,7 +644,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify backend WorkflowType enum matches frontend workflow_type field.
           <Function test_backend_has_no_unreachable_workflow_types>
             Backend workflow types should be reachable from the frontend.
-            
+
             Note: some backend types may be internal-only (e.g. document_ingestion).
             This test flags them for review ù they should be explicitly documented
             as internal if they are intentionally excluded from the frontend.
@@ -653,7 +653,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_layer5_contract.py>
         Contract Tests for Layer 5 Ground Truth API
-        
+
         Validates that the implementation matches the OpenAPI specification.
         <Coroutine test_list_stale_endpoint_exists>
           Verify GET /api/v1/truths/stale is implemented.
@@ -862,7 +862,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package k8s>
       <Module test_integration.py>
         Integration tests for Kubernetes Readiness & Deployment.
-        
+
         Validates end-to-end flow from kustomize build through all validation stages.
         <Class TestEnvironmentDifferences>
           Tests for differences between dev and prod environments.
@@ -893,7 +893,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_injection.py>
         Security tests for injection attack prevention.
-        
+
         Validates that:
         1. SQL injection patterns are detected and blocked
         2. XSS payloads are sanitized
@@ -944,7 +944,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_salesforce_oauth.py>
           Tests for Salesforce OAuth token refresh and integration hardening.
-          
+
           Covers:
           - Token refresh success/failure
           - Credential encryption/decryption with refresh token
@@ -972,7 +972,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_layer3_contract.py>
         Contract Tests for Layer 3 Knowledge Graph API
-        
+
         Validates that the implementation matches the OpenAPI specification.
         These tests verify endpoints exist and return expected status codes AND schema.
         <Coroutine test_graph_subgraph_endpoint_exists>
@@ -1008,10 +1008,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_security_smoke.py>
         Security Smoke Test Suite - Fast PR Validation
-        
+
         Curated subset of highest-value security tests for CI gating.
         Runtime: < 2 minutes, no external dependencies (Docker/ZAP).
-        
+
         These are the most critical security checks that must pass on every PR.
         Full suite in other test files runs on scheduled workflows.
         <Class TestCriticalAccessControl>
@@ -1057,18 +1057,18 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir config>
       <Module test_startup_validation.py>
         Startup and Control Hardening Tests (Suite 10).
-        
+
         Verifies that production deployments fail fast when critical security
         controls are misconfigured, preventing silent degradation of tenant
         isolation, authentication, or audit capabilities.
-        
+
         These tests catch the class of failures that tests often miss:
         - Missing Redis URL when Redis is required
         - Wildcard CORS in production
         - Missing JWT issuer/audience or signing config
         - Missing audit sink or required dependency
         - Startup summary reports active control mode correctly
-        
+
         Test Strategy:
         - Mock environment variables to simulate misconfigurations
         - Attempt to initialize application components
@@ -1078,65 +1078,65 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify audit sink is configured in production.
           <Coroutine test_prod_boot_fails_with_missing_audit_sink>
             Production boot must fail if audit sink is not configured.
-            
+
             Rationale: Missing audit sink means privileged operations are not
             logged, violating compliance requirements.
           <Coroutine test_dev_mode_allows_missing_audit_sink_with_warning>
             Development mode should warn but allow missing audit sink.
           <Coroutine test_prod_boot_fails_if_audit_sink_unreachable>
             Production boot must fail if audit sink is unreachable.
-            
+
             Rationale: Unreachable audit sink means events will be lost,
             creating compliance gaps.
         <Class TestProductionJWTConfiguration>
           Verify JWT configuration is complete in production.
           <Function test_prod_boot_fails_with_missing_jwt_audience>
             Production boot must fail if JWT_AUDIENCE is missing.
-            
+
             Rationale: Missing audience allows tokens intended for other services
             to be accepted.
           <Function test_prod_accepts_valid_jwt_config>
             Production should accept properly configured JWT settings.
           <Function test_prod_boot_fails_with_missing_jwt_issuer>
             Production boot must fail if JWT_ISSUER is missing.
-            
+
             Rationale: Missing issuer allows tokens from any source to be accepted.
           <Function test_prod_boot_fails_with_weak_jwt_secret>
             Production boot must fail if JWT_SECRET is too short.
-            
+
             Rationale: Weak secrets are vulnerable to brute force attacks.
           <Function test_prod_boot_fails_with_missing_jwt_secret>
             Production boot must fail if JWT_SECRET is missing.
-            
+
             Rationale: Missing JWT secret means tokens cannot be verified,
             allowing unauthenticated access.
         <Class TestProductionDatabaseConfiguration>
           Verify database is properly configured in production.
           <Function test_prod_boot_warns_with_unencrypted_database_connection>
             Production boot should warn if database connection is not encrypted.
-            
+
             Rationale: Unencrypted connections expose tenant data in transit.
           <Function test_prod_boot_fails_with_sqlite_database>
             Production boot must fail if using SQLite.
-            
+
             Rationale: SQLite does not support RLS or multi-tenant isolation.
           <Function test_prod_boot_fails_with_missing_database_url>
             Production boot must fail if DATABASE_URL is missing.
-            
+
             Rationale: Missing database URL means application cannot start.
         <Class TestNegativePathStartupScenarios>
           Test startup behavior under adverse conditions.
           <Function test_startup_validation_runs_before_server_start>
             Validation must run during import/init, not on first request.
-            
+
             Rationale: Failing on first request means misconfigured app is running.
           <Function test_startup_with_all_controls_disabled>
             Startup must fail if all security controls are disabled in production.
-            
+
             Rationale: This indicates a catastrophic misconfiguration.
           <Function test_conflicting_environment_variables>
             Startup must fail if environment variables conflict.
-            
+
             Example: ENVIRONMENT=production but DEBUG=true
         <Class TestStartupControlModeReporting>
           Verify startup summary reports active control mode correctly.
@@ -1144,24 +1144,24 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Startup summary must clearly indicate development mode is active.
           <Function test_startup_summary_lists_degraded_controls>
             Startup summary must list any degraded or disabled controls.
-            
+
             Rationale: Operators need to know which controls are not active.
           <Function test_startup_summary_reports_production_mode>
             Startup summary must clearly indicate production mode is active.
-            
+
             Rationale: Operators need to verify production controls are enabled.
         <Class TestProductionCORSValidation>
           Verify CORS is properly restricted in production.
           <Function test_prod_boot_fails_with_wildcard_cors>
             Production boot must fail if CORS allows all origins.
-            
+
             Rationale: Wildcard CORS (*) in production allows any website to
             make authenticated requests, bypassing same-origin policy.
           <Function test_prod_accepts_valid_https_cors_origins>
             Production should accept properly configured HTTPS CORS origins.
           <Function test_prod_boot_fails_with_http_cors_origin>
             Production boot must fail if CORS allows HTTP origins.
-            
+
             Rationale: HTTP origins in production expose tokens to MITM attacks.
           <Function test_dev_mode_allows_wildcard_cors_with_warning>
             Development mode should warn but allow wildcard CORS.
@@ -1169,23 +1169,23 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify Redis is required in production mode.
           <Coroutine test_dev_mode_allows_missing_redis_with_warning>
             Development mode should warn but not fail if Redis is missing.
-            
+
             Rationale: Developers should be able to run locally without Redis,
             but must be warned about degraded behavior.
           <Coroutine test_prod_boot_fails_with_invalid_redis_url>
             Production boot must fail if REDIS_URL is malformed.
-            
+
             Rationale: Malformed URL could cause silent fallback to in-memory cache,
             breaking tenant isolation in multi-worker deployments.
           <Coroutine test_prod_boot_fails_with_missing_redis_url>
             Production boot must fail if REDIS_URL is missing.
-            
+
             Rationale: Rate limiting and cache isolation depend on Redis.
             Missing Redis in prod could silently disable tenant-scoped rate limits.
     <Package k8s>
       <Module test_ci_validation.py>
         Tests for CI validation pipeline (kubeconform, conftest, kubectl dry-run).
-        
+
         Validates:
         - K8s schema validation with kubeconform
         - Policy validation with conftest/OPA
@@ -1226,14 +1226,14 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_checkpoint_resume.py>
           Integration tests for LangGraph checkpointing and workflow resume.
-          
+
           Tests the pause/resume lifecycle for human-in-the-loop workflows.
           Verifies state persistence across interruptions and container restarts.
           <Class TestCheckpointConfiguration>
             Test checkpoint configuration and database connection.
             <Coroutine test_factory_get_checkpoint_saver_returns_none_on_db_failure>
               Factory function get_checkpoint_saver() returns None on DB failure for graceful degradation.
-              
+
               Unlike CheckpointConfig.get_saver() which raises exceptions, the factory function
               is designed to silently fail and return None, allowing workflows to continue
               without checkpointing when the database is unavailable.
@@ -1243,7 +1243,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               CheckpointConfig creates saver when database available.
             <Coroutine test_get_checkpoint_saver_raises_connection_error_on_failure>
               CheckpointConfig.get_saver() raises CheckpointConnectionError when DB unavailable.
-              
+
               This test verifies that database connection failures are properly caught
               and converted to CheckpointConnectionError, allowing callers to handle
               persistence failures gracefully.
@@ -1273,7 +1273,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_security_misconfiguration.py>
         OWASP Security Misconfiguration Tests
-        
+
         Tests for A05: Security Misconfiguration - default credentials,
         debug endpoints, security headers, and verbose error messages.
         <Class TestErrorVerbosity>
@@ -1325,7 +1325,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_pack_loader.py>
           Tests for pack_loader module.
-          
+
           Validates correct behavior for pack loading, version extraction,
           and path traversal protection.
           <Class TestCacheBehavior>
@@ -1380,11 +1380,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_tenant_lifecycle.py>
         Tenant Lifecycle Security Tests ù P0 Critical Gap Remediation
-        
+
         Validates that suspended, pending, and deleted tenants cannot access resources.
-        
+
         Production Invariant: Tenant lifecycle status must be enforced before request processing.
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-28
         <Class TestPendingTenantRejection>
@@ -1430,12 +1430,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_tenant_boundary_fails_closed.py>
         Security tests: Tenant boundary must fail closed (never return None).
-        
+
         These tests verify that:
         1. require_tenant_context() raises TenantBoundaryError when no context is set
         2. Direct header access patterns are detected
         3. Tools using require_tenant_context() fail securely
-        
+
         This addresses the P0 fix: "require_context() returns None" \u2192 now raises.
         <Class TestTenantBoundaryFailsClosed>
           Verify boundary functions raise on missing context (fail closed).
@@ -1449,7 +1449,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             get_tenant_context() is allowed to return None (optional access).
         <Class TestWebSocketTenantBoundaryFailsClosed>
           P2: WebSocket auth negative test coverage (addresses audit gap).
-          
+
           These tests verify that WebSocket connections fail securely when:
           - Missing Sec-WebSocket-Protocol header
           - Invalid JWT in protocol header
@@ -1457,27 +1457,27 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           - Cross-tenant WebSocket subscription attempts
           <Function test_websocket_cross_tenant_subscription_blocked>
             NEGATIVE: Cross-tenant WebSocket subscription attempts are blocked.
-            
+
             Tenant A should not be able to subscribe to Tenant B's workflow events.
             This addresses the P2 gap: 'Cross-tenant WebSocket subscription attempts'.
           <Function test_websocket_expired_jwt_rejects_connection>
             NEGATIVE: Expired JWT in protocol header rejects connection.
-            
+
             Expired tokens should be rejected during JWT validation.
             This addresses the P2 gap: 'Expired JWT handling'.
           <Function test_websocket_invalid_jwt_in_protocol_header_rejected>
             NEGATIVE: Invalid JWT in Sec-WebSocket-Protocol header rejects connection.
-            
+
             Malformed or invalid tokens in the protocol header should be rejected.
             This addresses the P2 gap: 'Invalid JWT in protocol header'.
           <Function test_websocket_missing_protocol_header_rejects_connection>
             NEGATIVE: Missing Sec-WebSocket-Protocol header rejects connection.
-            
+
             WebSocket connections without the protocol header should be rejected.
             This addresses the P2 gap: 'Missing Sec-WebSocket-Protocol header'.
           <Function test_websocket_protocol_header_without_token_prefix>
             NEGATIVE: Protocol header without 'token,' prefix handling.
-            
+
             Tests routes.py logic when header is just the JWT without prefix.
         <Class TestTenantBoundaryWithContext>
           Verify boundary functions work correctly when context is set.
@@ -1489,7 +1489,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify tools using require_tenant_context() fail securely.
           <Function test_query_graph_tool_fails_without_tenant_context>
             Simulate QueryGraphTool with require_tenant_context().
-            
+
             This is the key test for the P0 fix:
             "QueryGraphTool \u2192 passes test_query_graph_without_tenant_context_fails_closed"
           <Function test_tool_with_context_succeeds>
@@ -1503,7 +1503,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_required_field_validator.py>
           Unit tests for RequiredFieldValidator - Community Edition compatibility.
-          
+
           These tests verify that application-level validation enforces the same rules
           that Neo4j Enterprise Edition would enforce via property existence constraints.
           <Class TestRequiredFieldValidator>
@@ -1538,7 +1538,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               ValidationResult should store error messages.
         <Module test_e2e_pipeline.py>
           End-to-end pipeline test for Layer 3 Knowledge Graph.
-          
+
           This test verifies the complete flow from extraction to query:
           1. Start Neo4j in Docker
           2. Initialize schema (constraints, indexes, vector)
@@ -1547,10 +1547,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           5. Verify data in Neo4j
           6. Run GraphRAG queries
           7. Run hybrid search
-          
+
           Usage:
               pytest tests/test_e2e_pipeline.py -v
-          
+
           Requirements:
               - Docker running locally
               - Neo4j image available
@@ -1572,7 +1572,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               Test health check returns healthy status.
             <Coroutine test_schema_initialization_detects_community_edition>
               Test that schema initialization correctly detects and handles Community Edition.
-              
+
               This test verifies that:
               1. Edition is detected correctly
               2. Community edition skips enterprise-only constraints
@@ -1624,7 +1624,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package chaos>
       <Module test_redis_failure.py>
         Chaos tests for Redis cache failure scenarios.
-        
+
         Verifies system behavior when Redis becomes unavailable, including:
         - Cache operations do not return fake success
         - Errors are structured with appropriate codes
@@ -1635,51 +1635,51 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify system behavior when Redis cache fails.
           <Coroutine test_redis_unavailable_fails_closed_for_integrity_sensitive_ops>
             When Redis is unavailable, integrity-sensitive operations fail closed.
-            
+
             Operations that require cache consistency must fail rather than proceed
             with potentially stale data.
           <Coroutine test_redis_failure_does_not_bypass_tenant_isolation>
             Redis failure must not allow cross-tenant cache access.
-            
+
             Security: When Redis fails, tenant A must not see tenant B's cached data.
             This is verified by ensuring no fallback to shared in-memory cache.
           <Coroutine test_redis_timeout_error_raises_or_degrades_explicitly>
             When Redis times out, the system must not fabricate a success response.
-            
+
             Security: Timeout must not result in cached data being shared across tenants.
             Safety: The caller must know the operation failed or degraded.
           <Coroutine test_cache_get_failure_does_not_return_fabricated_data>
             When cache get fails, the system must not return fabricated cached data.
-            
+
             A cache miss due to Redis failure must not be converted to a cache hit
             with fake/default data.
           <Coroutine test_redis_connection_error_raises_structured_error>
             When Redis connection fails, a structured error is returned.
-            
+
             Security: The error must not expose internal Redis details.
             Safety: The error must indicate service unavailable, not fake success.
         <Class TestRedisDegradedMode>
           Verify explicit degraded mode when Redis fallback is allowed.
           <Coroutine test_degraded_read_through_does_not_expose_other_tenant_data>
             In degraded mode, cache fallback must not expose cross-tenant data.
-            
+
             If cache is bypassed, the fallback must not use shared in-memory
             storage that could contain other tenants' data.
           <Coroutine test_redis_degraded_mode_is_explicit>
             When Redis degrades, the degradation must be explicit.
-            
+
             If a service allows degraded operation without Redis, the response
             must indicate degraded status so callers can adjust behavior.
         <Class TestRedisPartialFailure>
           Verify behavior when Redis partially degrades (timeouts, slow responses).
           <Coroutine test_redis_slow_response_does_not_cause_cascade>
             Slow Redis responses must not cause cascading timeouts.
-            
+
             The system must have circuit breaker or timeout patterns to prevent
             Redis slowness from affecting overall API availability.
           <Coroutine test_redis_connection_flapping_handled_gracefully>
             Flapping Redis connections must be handled without data corruption.
-            
+
             If Redis connects/disconnects rapidly, operations must not result
             in partial writes or inconsistent state.
     <Package contract>
@@ -1731,12 +1731,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package integration>
       <Module test_gate_integration.py>
         GATE Integration Tests.
-        
+
         Tests the end-to-end integration of GATE components:
           1. Agent + ABOM: Agent initializes with manifest, tool blocked by policy/invariant
           2. Agent + Replay: Full agent run produces replay snapshot
           3. Graph RAG + Provenance: Retrieval through MemoryGateway produces access records
-        
+
         These tests use mocks for external services (OPA, Neo4j, LLM) but exercise
         the real GATE pipeline code.
         <Class TestAgentABOMIntegration>
@@ -1785,7 +1785,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Package governance>
         <Module test_gate_phase2.py>
           Tests for GATE Phase 2: ABOM, PolicyEngine, Invariants, ToolGateway.
-          
+
           Covers:
           - ABOM model loading and validation
           - ABOM manifest hash determinism
@@ -1857,7 +1857,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package release>
       <Module test_no_placeholder_gates.py>
         Release Policy: No placeholder gates in release-candidate profile.
-        
+
         Verifies that the release-candidate profile in .fabric/prod-gates.policy.yaml
         does not contain any gates with class 'placeholder'. Placeholder gates indicate
         incomplete production readiness and must be resolved before release.
@@ -1867,11 +1867,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             All gates in release-candidate must have definitions in gate-definitions.
           <Function test_placeholder_gates_have_caveats>
             Any placeholder gates in policy must have a caveat explaining why.
-            
+
             Rationale: Placeholder status must be intentional and documented.
           <Function test_no_placeholder_gates_in_release_candidate>
             release-candidate profile must not include any placeholder gates.
-            
+
             Rationale: Placeholder gates indicate known gaps in production readiness.
             A release-candidate with placeholder gates is not production-ready.
           <Function test_release_candidate_profile_exists>
@@ -1886,7 +1886,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
         <Dir unit>
           <Module test_celery_tasks.py>
             Unit tests for Layer 1 Celery task dispatch.
-            
+
             Tests verify:
             1. process_scraping_job chains all 9 pipeline stages in order.
             2. compliance_check_stage updates job status to VALIDATING.
@@ -1999,10 +1999,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_crm_webhook_auth_unit.py>
           CI-runnable unit tests for CRM webhook authentication logic.
-          
+
           These tests verify the core authentication behavior without importing the
           full FastAPI route module (which requires langgraph, psycopg, etc.).
-          
+
           Covers:
           - Per-tenant webhook token validation (constant-time comparison)
           - Missing token rejection (fail-closed)
@@ -2039,7 +2039,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package chaos>
       <Module test_database_failure.py>
         Chaos tests for database failure scenarios.
-        
+
         Verifies system behavior when PostgreSQL becomes unavailable, including:
         - Session acquisition failures raise structured errors
         - Tenant context is not bypassed during failures
@@ -2049,65 +2049,65 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify behavior during database transaction failures.
           <Coroutine test_concurrent_transaction_isolation>
             Concurrent transactions must maintain isolation even under load.
-            
+
             If one transaction fails, it must not affect other concurrent transactions
             or cause data leakage.
           <Coroutine test_transaction_rollback_on_failure>
             When transaction fails, partial changes must be rolled back.
-            
+
             Integrity: Partial writes must not be visible to other transactions.
         <Class TestDatabaseConnectionFailure>
           Verify system behavior when database connection fails.
           <Coroutine test_database_unavailable_raises_structured_error>
             When database connection fails, a structured unavailable error is returned.
-            
+
             Security: The error must not expose database credentials or internal details.
             Safety: The error must clearly indicate database unavailability.
           <Coroutine test_no_fallback_to_raw_db_connect>
             When async session fails, system must not fall back to raw sync connection.
-            
+
             Security: Raw connections bypass tenant context setup and RLS policies.
             Safety: Must not create emergency workarounds that break isolation.
           <Coroutine test_session_acquisition_failure_fails_closed>
             When session cannot be acquired, the operation must fail closed.
-            
+
             The operation must not proceed without a valid session, even if that
             would result in a denial of service.
           <Coroutine test_tenant_context_not_bypassed_during_db_failure>
             Database failure must not bypass tenant context validation.
-            
+
             Security: If tenant context cannot be set due to DB failure,
             the operation must fail rather than proceed without tenant isolation.
         <Class TestTenantIsolationUnderFailure>
           Verify tenant isolation is maintained during database failures.
           <Coroutine test_tenant_context_cleared_on_session_return_to_pool>
             When session returns to pool, tenant context must be cleared.
-            
+
             Security: Pool reuse must not retain previous tenant's context.
           <Coroutine test_rls_policy_enforced_even_when_query_fails>
             RLS policies must be enforced even if the underlying query fails.
-            
+
             A query failure must not result in data being returned without RLS filtering.
         <Class TestDatabaseErrorContracts>
           Verify database errors follow structured error contracts.
           <Coroutine test_database_error_includes_error_code>
             Database errors must include standardized error codes.
-            
+
             API consumers rely on error codes for retry logic and handling.
         <Class TestDatabaseDegradedModes>
           Verify behavior during partial database degradation.
           <Coroutine test_read_replica_failure_fails_over_explicitly>
             When read replica fails, failover must be explicit.
-            
+
             The system must not silently switch to primary for reads without
             indicating the failover occurred.
           <Coroutine test_slow_query_timeout_does_not_leave_session_hanging>
             When query times out, the session must be properly closed.
-            
+
             Resource leak prevention: Failed sessions must not accumulate in pools.
           <Coroutine test_connection_pool_exhaustion_fails_explicitly>
             When connection pool is exhausted, failure must be explicit.
-            
+
             The system must not queue indefinitely or create unbounded connections.
   <Dir services>
     <Dir layer3-knowledge>
@@ -2122,7 +2122,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_tenant_provisioning.py>
           Tests for tenant provisioning service (Task 3).
-          
+
           Verifies automated tenant lifecycle management with:
           - Idempotent tenant creation
           - Admin user provisioning
@@ -2179,7 +2179,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package k8s>
       <Module test_prometheus_monitoring.py>
         Tests for Prometheus monitoring configuration.
-        
+
         Validates:
         - Prometheus ConfigMap structure and scrape configs
         - Alertmanager integration
@@ -2262,7 +2262,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_owasp_top10_complete.py>
         OWASP Top 10 (2021) Security Test Suite
-        
+
         Comprehensive security tests covering all OWASP Top 10 categories:
         A01: Broken Access Control
         A02: Cryptographic Failures
@@ -2389,7 +2389,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_crm_tools_pagination.py>
           Tests for CRM tools pagination and rate limit handling.
-          
+
           Covers:
           - SOQL query pagination via nextRecordsUrl
           - Rate limit detection and graceful handling
@@ -2417,7 +2417,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package k8s>
       <Module test_workload_validation.py>
         Tests for Kubernetes workload validation.
-        
+
         Validates:
         - Rollout strategies (RollingUpdate)
         - Health probes (liveness, readiness)
@@ -2472,7 +2472,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package integration>
       <Module test_cross_layer_tenant_isolation.py>
         Cross-Layer Tenant Boundary Smoke Tests (Task 4).
-        
+
         End-to-end tests verifying tenant isolation across all layers:
         - L1 (Ingestion) \u2192 L2 (Extraction) \u2192 L3 (Knowledge) \u2192 L4 (Agents)
         - PostgreSQL RLS enforcement
@@ -2480,7 +2480,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
         - WebSocket tenant propagation
         - Background job tenant context
         - Cross-tenant access prevention
-        
+
         These tests run against live services in integration environment.
         <Class TestCrossTenantAccessPrevention>
           Verify all cross-tenant access attempts are blocked.
@@ -2500,20 +2500,20 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           End-to-end tenant isolation tests across all layers.
           <Coroutine test_cross_tenant_data_leakage_prevention>
             Verify tenant B cannot access tenant A's data.
-            
+
             Scenario:
             1. Tenant A creates entity
             2. Tenant B attempts to read entity by ID
             3. Assertion: 404 or 403, not 200 with data
           <Coroutine test_l1_to_l4_tenant_data_flow>
             Verify tenant data flows correctly from L1 through L4.
-            
+
             Flow:
             1. L1: Ingest document for tenant A
             2. L2: Extract entities from document
             3. L3: Store entities in knowledge graph
             4. L4: Query entities via agent
-            
+
             Assertion: All layers maintain tenant_id correctly
         <Class TestNeo4jTenantFiltering>
           Verify Neo4j queries enforce tenant filtering.
@@ -2532,7 +2532,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_adversarial_auth.py>
         Adversarial Authentication Tests - Negative Test Suite
-        
+
         Validates that authentication boundary blocks various attack vectors.
         These tests prove that invalid/malformed auth is rejected, complementing
         the positive tests that prove valid auth works.
@@ -2589,7 +2589,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_sse_streaming_behavior.py>
           SSE streaming behavior tests.
-          
+
           Tests verify:
           1. Event sequence ordering (start \u2192 progress \u2192 complete).
           2. Client disconnection handling.
@@ -2629,11 +2629,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_workflow_archive_and_list.py>
           Integration tests for workflow archive and list endpoints.
-          
+
           Tests the following routes added for frontend-backend contract alignment:
           - GET /v1/workflows (with type filter)
           - POST /v1/workflows/{id}/archive (with tenant isolation)
-          
+
           Uses inline FastAPI app (same pattern as test_workflow_controls.py) to avoid
           heavy app-level imports.
           <Coroutine test_list_workflows_with_type_filter>
@@ -2656,16 +2656,16 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             GET /v1/workflows returns paginated list with defaults.
         <Module test_code_quality.py>
           Tests for code quality issues identified in autonomous code review.
-          
+
           TDD approach: tests define expected behavior for fixes.
           <Class TestImportPathConvention>
             Verify import paths use project conventions.
             <Function test_imports_document_pytest_configuration_requirement>
               Import paths rely on pytest pythonpath configuration.
-              
+
               The project uses: pythonpath = [".", "src"] in pyproject.toml
               This allows 'from src.interfaces' to work when running from layer4-agents/.
-              
+
               The import convention is documented in test_interfaces_exports.py header.
           <Class TestValidationRuleReconstruction>
             Verify validation rules handle malformed Neo4j data gracefully.
@@ -2685,12 +2685,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_auth_boundaries.py>
         Authentication Boundary Security Tests ù P0 Critical Gap Remediation
-        
+
         Validates all authentication boundaries: missing auth, invalid/expired/malformed tokens,
         role-based access control, and cross-user resource access.
-        
+
         Production Invariant: No unauthenticated or improperly authenticated access to protected resources.
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-29
         <Class TestMissingAuthentication>
@@ -2755,7 +2755,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Package governance>
         <Module test_gate_phase3.py>
           Tests for GATE Phase 3: MemoryGateway, ReplayRecorder, and contracts.
-          
+
           Covers:
           - MemoryGateway provenance tracking and access log
           - ReplayRecorder snapshot building and commit
@@ -2784,7 +2784,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_privileged_audit.py>
         Tests for super-admin privileged access audit functionality (Task 2).
-        
+
         Verifies that all super-admin bypass operations emit CROSS_TENANT_ACCESS
         audit events with comprehensive details for compliance monitoring.
         <Class TestRequirePrivilegedAccess>
@@ -2830,21 +2830,21 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package release>
       <Module test_secret_policy.py>
         Release Policy: Secret remediation policy enforcement.
-        
+
         Verifies that non-example .env files are not tracked in git for release-candidate.
         Uses git ls-files and path patterns only - does not read secret values.
         <Class TestSecretPolicy>
           Enforce: No non-example .env files in git for release-candidate.
           <Function test_no_tracked_env_files>
             No .env files (except .env.example) should be tracked in git.
-            
+
             Security: Real environment files contain secrets and must not be committed.
           <Function test_gitignore_includes_env_files>
             .gitignore must include patterns for common env files.
     <Package chaos>
       <Module test_llm_failure.py>
         Chaos tests for LLM provider failure scenarios.
-        
+
         Verifies system behavior when OpenAI, Anthropic, or other LLM providers become unavailable:
         - Agent workflows return structured failure or degraded result
         - No fabricated output is returned
@@ -2854,22 +2854,22 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify LLM safety mechanisms work even when LLM fails.
           <Coroutine test_prompt_guard_still_validates_on_llm_failure>
             When LLM is unavailable, prompt guard validation must still occur.
-            
+
             Security: Dangerous prompts must be rejected even if LLM is down.
           <Coroutine test_output_guard_does_not_cache_failed_outputs>
             When LLM fails, partial outputs must not be cached for output guard bypass.
-            
+
             Security: Failed/corrupted LLM outputs must not contaminate safety systems.
         <Class TestMultiProviderFallback>
           Verify behavior with multiple LLM providers when primary fails.
           <Coroutine test_fallback_provider_used_explicitly>
             When using fallback provider, the fallback usage must be explicit.
-            
+
             If OpenAI fails and Anthropic is used as fallback, response should
             indicate which provider was used.
           <Coroutine test_all_providers_unavailable_fails_closed>
             When all LLM providers are unavailable, system fails closed.
-            
+
             No cached responses or default content should be returned.
         <Class TestLLMProviderUnavailable>
           Verify behavior when LLM providers are unavailable.
@@ -2877,60 +2877,60 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             When Anthropic API returns error, system returns structured failure.
           <Coroutine test_llm_timeout_returns_explicit_timeout_error>
             When LLM call times out, explicit timeout error is returned.
-            
+
             Caller must be able to distinguish timeout from other failures for retry logic.
           <Coroutine test_no_fabricated_output_on_llm_failure>
             When LLM fails, system must not return fabricated/generated output.
-            
+
             Critical: The system must not attempt to "helpfully" generate a response
             when the LLM is unavailable.
           <Coroutine test_openai_api_error_returns_structured_failure>
             When OpenAI API returns error, system returns structured failure.
-            
+
             Security: Error must not expose API keys or internal retry logic.
             Safety: Caller must know the LLM call failed.
         <Class TestLLMRateLimiting>
           Verify behavior when LLM rate limits are hit.
           <Coroutine test_rate_limit_does_not_cause_duplicate_requests>
             Rate limit errors must not cause automatic retries without backoff.
-            
+
             Retry storms can worsen rate limit situations.
           <Coroutine test_rate_limit_error_includes_retry_after>
             When LLM rate limit is hit, error includes retry guidance.
-            
+
             API design: Rate limit errors should include retry-after when available.
         <Class TestAgentWorkflowLLMFailure>
           Verify agent workflows handle LLM failures correctly.
           <Coroutine test_agent_workflow_returns_degraded_result_on_llm_failure>
             When LLM fails during agent execution, workflow returns degraded result.
-            
+
             The result must explicitly indicate LLM was unavailable, not return
             partial or cached results as if they were fresh.
           <Coroutine test_tool_execution_fails_closed_when_llm_unavailable>
             Tool execution that requires LLM must fail closed when LLM unavailable.
-            
+
             Tools that depend on LLM (generation, extraction) must not proceed
             with cached or default responses.
           <Coroutine test_correlation_id_preserved_on_llm_failure>
             When LLM fails, correlation/trace ID must be preserved.
-            
+
             Observability: Failed requests must still be traceable through the system.
         <Class TestLLMCostTrackingFailure>
           Verify cost tracking handles LLM failures correctly.
           <Coroutine test_partial_response_cost_handling>
             When LLM returns partial response before failing, cost handling is explicit.
-            
+
             If 500 tokens were generated before timeout, cost policy must be explicit.
           <Coroutine test_cost_not_recorded_on_llm_failure>
             When LLM call fails, no cost should be recorded.
-            
+
             Financial integrity: Only successful calls should incur recorded costs.
   <Dir services>
     <Dir layer4-agents>
       <Dir tests>
         <Module test_websocket_manager.py>
           Tests for WebSocket manager workflow streaming.
-          
+
           Tests the pub/sub-style event broadcasting system with connection resilience,
           event replay, and workflow-scoped channels.
           <Class TestIntegrationScenarios>
@@ -3028,7 +3028,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir skills>
         <Module test_evaluate_formula.py>
           Eval tests for the evaluate_formula skill.
-          
+
           These tests validate fixture correctness and scenario ordering invariants
           without requiring a real database or formula engine.
           <Class TestEvaluateFormulaContract>
@@ -3048,7 +3048,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_error_handling_integration.py>
           Tests for shared error handling middleware integration in Layer 3.
-          
+
           Validates:
           - RequestIDMiddleware: request ID propagation, header validation, generation
           - Exception handlers: standardized ErrorResponse format with trace_id
@@ -3109,14 +3109,14 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package integration>
       <Module test_tenant_provisioning.py>
         Integration tests for tenant provisioning system.
-        
+
         Tests the complete provisioning workflow including:
         - Infisical secret path creation
         - Provisioning state tracking
         - Retry and rollback mechanisms
         - Webhook triggers with HMAC-SHA256 signature verification
         - Webhook idempotency via X-Webhook-ID
-        
+
         These tests use mock DB sessions and HTTP clients to run without
         infrastructure dependencies. Mark with @pytest.mark.integration.
         <Class TestConvenienceFunction>
@@ -3151,7 +3151,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Test that the idempotency cache returns cached results for duplicate IDs.
           <Function test_expired_timestamp_rejected>
             Test that a request with an old timestamp is rejected.
-            
+
             The webhook endpoint enforces a 5-minute tolerance window.
             A timestamp older than 5 minutes should be rejected.
           <Function test_invalid_signature_rejected>
@@ -3163,7 +3163,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir arch>
       <Module test_no_merge_markers.py>
         Regression test: Ensure no git merge conflict markers in source files.
-        
+
         This test scans the repository for conflict markers (<<<<<<<, =======, >>>>>>>)
         to prevent unresolved merge conflicts from being committed.
         <Function test_no_merge_conflict_markers[>>>>>>>]>
@@ -3195,7 +3195,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package k8s>
       <Module test_security_policies.py>
         Tests for Kubernetes security policies and hardening.
-        
+
         Validates:
         - OPA/Rego security policies
         - Pod security contexts (runAsNonRoot, seccomp)
@@ -3256,10 +3256,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_p1_14_security_middleware.py>
         Regression tests for P1-14: SecurityMiddleware skip lists.
-        
+
         These tests verify that critical ingestion/extraction endpoints are not
         in the SecurityMiddleware skip lists.
-        
+
         NOTE: These tests import layer main.py modules directly. Due to conflicting
         `api` package names across layers on pythonpath, they may fail in CI.
         If they fail with import errors, the skip-list configuration should be
@@ -3281,7 +3281,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_neo4j_integration.py>
           Integration tests for Layer 3 Neo4j connectivity.
-          
+
           These tests use ``testcontainers`` to spin up a real Neo4j 5.x instance and
           validate that:
           - The driver factory connects and verifies connectivity.
@@ -3290,17 +3290,17 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           - ``VectorStore`` can create a vector index and run a similarity query.
           - ``HybridSearch`` returns results without raising ``AttributeError``.
           - ``GraphRAGEngine`` returns a non-empty result dict when the driver is live.
-          
+
           Run with::
-          
+
               pytest tests/test_neo4j_integration.py -v -m integration
-          
+
           Requirements (in addition to the project's dev extras)::
-          
+
               pip install testcontainers[neo4j]
-          
+
           The ``NEO4J_PASSWORD`` used inside the container is ``testpassword``.
-          
+
           Docker Requirements:
               - Docker must be running for these tests to execute
               - Tests will be skipped if Docker is unavailable
@@ -3347,13 +3347,13 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_export_tenant_access.py>
         S2-H: Export Tenant Access & Provenance Tests ù Pillar 2 + Pillar 5.
-        
+
         Ship/No-Ship Gate: These tests verify that:
             1. Export endpoints require authentication (not optional context).
             2. Export storage paths are tenant-namespaced (no cross-tenant overwrites).
             3. Provenance manifests include tenant_id and are structurally complete.
             4. Export audit events are emitted with correct tenant context.
-        
+
         Expected Initial State:
             - test_export_endpoint_requires_auth:       FAIL (uses get_optional_context)
             - test_export_storage_key_is_tenant_scoped: FAIL (no tenant prefix in key)
@@ -3363,39 +3363,39 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify export endpoints require mandatory authentication.
           <Function test_export_endpoint_uses_tenant_scoped_db>
             Export endpoint must use get_db_from_context if it queries the DB.
-            
+
             Even if the export reads from the workflow executor (Redis), the
             endpoint should use tenant-scoped DB for any audit writes.
           <Function test_export_endpoint_requires_auth_not_optional>
             GET /cases/{case_id}/export must use ``require_authenticated``,
             not ``get_optional_context``.
-            
+
             Business case exports contain confidential financial projections,
             competitive analysis, and customer data.  Optional auth means an
             unauthenticated request could potentially access exports if the
             executor doesn't independently verify tenant ownership.
-            
+
             Expected initial state: FAIL ù uses get_optional_context.
         <Class TestExportStorageNamespacing>
           Verify export artifacts are stored in tenant-namespaced paths.
           <Function test_export_storage_key_includes_tenant_id>
             The S3 object key for exports must include the tenant_id.
-            
+
             Without tenant namespacing, Tenant A could overwrite Tenant B's
             export if they share a case_id pattern, or a signed URL for
             Tenant A's export could be guessed by Tenant B.
-            
+
             Expected initial state: FAIL ù current code uses flat key structure.
           <Function test_export_storage_upload_requires_tenant_metadata>
             The upload_bytes function should accept tenant metadata.
-            
+
             S3 object metadata should include tenant_id for audit trail
             and access control at the storage layer.
         <Class TestExportAuditTrail>
           Verify export operations emit audit events.
           <Function test_export_endpoint_emits_audit_event>
             The export endpoint must emit an audit event for compliance.
-            
+
             Every export of confidential data must be logged with:
             - tenant_id
             - user_id
@@ -3404,7 +3404,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             - timestamp
           <Function test_export_blocked_case_still_audited>
             Even blocked exports must be audited (attempted access logging).
-            
+
             If a business case fails truth-gating, the export attempt must still
             be logged ù this is a compliance requirement.
         <Class TestProvenanceManifestStructure>
@@ -3432,7 +3432,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contracts>
       <Module test_layer5_contract.py>
         Contract Tests for Layer 5 Ground Truth API
-        
+
         Validates that the implementation matches the OpenAPI specification.
         <Coroutine test_validate_truth_endpoint_exists>
           Verify POST /api/v1/truths/{id}/validate is implemented.
@@ -3463,13 +3463,13 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package integration>
       <Module test_tenant_isolation_end_to_end.py>
         End-to-end tenant isolation integration test.
-        
+
         Validates that tenant_id scoping is enforced throughout the L2->L3 pipeline:
         1. Ingestion with tenant_id persists to Neo4j
         2. Read queries filter by tenant_id
         3. Cross-tenant access is blocked
         4. Composite constraints enforce tenant uniqueness
-        
+
         This test requires a running Neo4j instance. Use docker-compose to start services.
         <Class TestTenantIsolationEndToEnd>
           End-to-end tenant isolation verification.
@@ -3486,7 +3486,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_oidc.py>
         Tests for OIDC authentication flow.
-        
+
         Validates:
         - PKCE code generation
         - OIDC discovery
@@ -3567,12 +3567,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_l4_frontend_contract.py>
         Contract tests for Layer 3/Layer 4 responses consumed by frontend.
-        
+
         Validates that:
         - Frontend API samples match backend OpenAPI contracts
         - API routes in implementation are documented in OpenAPI
         - Frontend environment config matches backend route structure
-        
+
         NOTE: If tests fail due to missing schemas, regenerate OpenAPI contracts:
             python scripts/export_openapi.py
         <Class TestL3GraphContractsConsumedByFrontend>
@@ -3581,7 +3581,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           <Function test_graph_query_response_sample_matches_l3_openapi>
         <Class TestPathAlignment>
           Contract tests for frontend/backend path alignment.
-          
+
           These tests verify that the frontend API client configuration produces
           URLs that match the backend OpenAPI route definitions.
           <Function test_env_example_has_correct_api_base>
@@ -3602,7 +3602,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_rls_enforcement.py>
         S2-C: RLS Enforcement & Connection Pool Reset Tests ù Pillar 2.
-        
+
         Ship/No-Ship Gate: These tests verify that:
             1. RLS migration scripts cover ALL tables with tenant_id columns.
             2. The ``get_db`` dependency does NOT set ``app.tenant_id`` (proving it
@@ -3610,14 +3610,14 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             3. The ``get_db_from_context`` dependency DOES set ``app.tenant_id``.
             4. Connection pool sessions are reset between requests (no tenant leakage).
             5. The ``db_session`` context manager validates tenant_id.
-        
+
         Tests in this file are split into two categories:
             - **Static analysis** (no database required): Parse migration scripts and
               source code to verify structural invariants.
             - **Live database** (requires PostgreSQL): Execute actual SQL to verify RLS
               policies are enforced.  These are skipped locally if no DB is available,
               but hard-fail in CI.
-        
+
         Expected Initial State:
             - test_all_tenant_tables_have_rls_policies: FAIL or PASS (depends on model scan)
             - test_get_db_does_not_set_tenant_context: PASS (confirms the vulnerability)
@@ -3628,20 +3628,20 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify RLS policies cover all tables with tenant_id columns.
           <Function test_all_tenant_tables_have_rls_policies>
             Every model with tenant_id must have a corresponding RLS policy.
-            
+
             This test compares the set of tables declared in RLS migration scripts
             against the set of SQLAlchemy models that have a tenant_id column.
           <Function test_rls_tables_list_is_not_empty>
             Sanity check: we should find at least 8 tables with RLS policies.
         <Class TestConnectionPoolReset>
           Verify that database sessions are properly reset between requests.
-          
+
           If ``app.tenant_id`` persists across connection pool reuse, Tenant A's
           context could leak into Tenant B's request.
           <Function test_session_uses_set_local_not_set>
             Database module must use ``SET LOCAL`` (transaction-scoped), not
             ``SET`` (session-scoped).
-            
+
             ``SET LOCAL`` automatically resets when the transaction ends.
             ``SET`` persists across the connection's lifetime, which means
             connection pool reuse would leak tenant context.
@@ -3649,7 +3649,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             No ``SET app.tenant_id`` (without LOCAL) should appear anywhere.
           <Function test_session_commits_or_rollbacks>
             Every session context manager must have both commit and rollback paths.
-            
+
             If a session is returned to the pool without commit/rollback, the
             ``SET LOCAL`` may persist in some database drivers.
         <Class TestRLSPolicyStructure>
@@ -3657,15 +3657,15 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           <Function test_rls_null_tenant_id_policy_is_safe>
             RLS policies must NOT allow rows with NULL tenant_id to be visible
             to all tenants.
-            
+
             The current policy has ``tenant_id IS NULL OR ...`` which means rows
             without a tenant_id are visible to everyone.  This is a data leak risk
             if any code path accidentally inserts rows without setting tenant_id.
-            
+
             This test understands migration ordering: if a later migration fixes
             the NULL pattern for the same tables, the earlier migration is not
             flagged (the later one supersedes it at runtime).
-            
+
             Expected initial state: FAIL ù current policy allows NULL.
           <Function test_rls_policy_uses_current_setting>
             RLS policies must use ``current_setting('app.tenant_id', true)``.
@@ -3677,7 +3677,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Verify ``get_db_from_context`` sets ``app.tenant_id`` via SET LOCAL.
           <Function test_get_db_sets_empty_tenant_context>
             Confirm that ``get_db`` sets ``app.tenant_id`` to empty string.
-            
+
             get_db sets app.tenant_id = '' which is the admin bypass pattern.
             This means it relies on PostgreSQL admin_role to access data,
             bypassing RLS entirely.  This is acceptable for health checks but
@@ -3690,25 +3690,25 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_journey_contracts.py>
         Journey-Paired Backend Contract Tests
-        
+
         Each test in this module corresponds to a canonical user journey defined in
         frontend/e2e/journeys/. While the Playwright journey tests verify UI behavior,
         these tests verify that the backend APIs return correct data shapes, enforce
         tenant isolation, and maintain provenance integrity.
-        
+
         Together, they prevent the failure mode: "UI passes but platform behavior is wrong."
-        
+
         Environment Variables:
             LAYER1_API_URL: Layer 1 Ingestion API (default: http://localhost:8001)
             LAYER3_API_URL: Layer 3 Knowledge API (default: http://localhost:8003)
             LAYER4_API_URL: Layer 4 Agents API (default: http://localhost:8004)
             LAYER5_API_URL: Layer 5 Ground Truth API (default: http://localhost:8005)
             CONTRACT_TEST_MODE: Set to 'mock' for CI without running services
-        
+
         Usage:
             # Against live services:
             pytest tests/contract/test_journey_contracts.py -v
-        
+
             # In mock mode (CI):
             CONTRACT_TEST_MODE=mock pytest tests/contract/test_journey_contracts.py -v
         <Class TestJourney2IntelligenceContract>
@@ -3739,7 +3739,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             GET /api/v1/ingestion/jobs must return an array of jobs.
         <Class TestOpenApiSchemaDrift>
           Detect when mock data in frontend E2E tests drifts from the OpenAPI spec.
-          
+
           These tests load the mock data shapes used in journey tests and validate
           them against the OpenAPI schemas. If a mock is out of date, these tests
           will fail ù alerting developers before the UI tests give false confidence.
@@ -3749,7 +3749,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Verify the ingestion jobs mock shape matches the OpenAPI schema.
         <Class TestJourney5SecurityContract>
           Backend contract assertions for Journey 5: Tier-Gated Security.
-          
+
           These tests verify that the backend enforces authorization independently
           of the frontend route guards. Even if the UI is bypassed, the API must
           reject unauthorized requests.
@@ -3772,11 +3772,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_dil_phase3.py>
           Data Intelligence Layer ù Phase 3 Tests.
-          
+
           Tests for:
             Task 3.1 ù Narrative Builder Service
             Task 3.2 ù Intelligence Orchestrator (Cross-Layer)
-          
+
           Uses mock Neo4j driver to avoid external dependencies.
           <Class TestNarrativeBuilderSectionRendering>
             Test the section rendering logic.
@@ -3851,7 +3851,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_security_fixes.py>
         Regression tests for Fabric 4L security fixes.
-        
+
         Tests verify that vulnerabilities identified in the adversarial security audit
         are patched and cannot be exploited.
         <Function test_l6_fails_closed_without_middleware>
@@ -3887,7 +3887,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contracts>
       <Module test_retention_deletion_contract.py>
         Contract checks for retention/deletion implementation artifacts.
-        
+
         These tests avoid runtime service dependencies and validate source-level
         retention guarantees referenced by compliance documentation.
         <Function test_retention_defaults_declared_in_settings>
@@ -3897,10 +3897,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_value_hypothesis.py>
           Data Intelligence Layer Phase 2 ù L4 Tests.
-          
+
           Tests for:
             - Task 2.1: Value Hypothesis Engine (value_hypothesis_engine.py)
-          
+
           These tests use mock Neo4j drivers to isolate service logic from the database.
           Run with: pytest tests/test_value_hypothesis.py --noconftest -v
           <Class TestRanking>
@@ -3948,7 +3948,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package agents>
       <Module test_taxonomy_refactor.py>
         Tests for the refactored 9-agent taxonomy and GATE wiring.
-        
+
         Validates:
         1. All 7 canonical agent classes instantiate correctly
         2. AgentType enum covers all 9 types + 7 deprecated aliases
@@ -4024,7 +4024,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           <Function test_migrate_request_data_supports_async_handler_from_sync_context>
         <Module test_query_validator.py>
           Tests for Cypher query validator - tenant isolation enforcement.
-          
+
           Validates that the query validator correctly identifies:
           1. Unscoped Entity MATCH clauses (missing tenant_id)
           2. Unsafe DELETE patterns
@@ -4037,7 +4037,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               Query missing tenant_id in Entity MATCH raises UnscopedQueryError.
             <Function test_valid_where_clause_with_tenant>
               WHERE clause with explicit tenant_id check passes.
-              
+
               NOTE: Current validator requires tenant_id in MATCH property map.
               WHERE clause tenant filtering is a future enhancement.
             <Function test_valid_query_with_relationship_and_tenant>
@@ -4097,7 +4097,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package release>
       <Module test_contract_gate_policy.py>
         Release Policy: Contract gate compliance.
-        
+
         Verifies that required contract gates exist and blocking gates do not use
         continue-on-error that would allow violations to pass silently.
         <Class TestContractGatePolicy>
@@ -4106,7 +4106,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Python contract lint script must exist.
           <Function test_ci_workflow_blocking_gates_no_continue_on_error>
             Blocking gates in CI workflows must not use continue-on-error.
-            
+
             continue-on-error: true allows failures to pass silently.
             Blocking gates must fail the build on violation.
           <Function test_structural_preflight_exists>
@@ -4116,7 +4116,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contracts>
       <Module test_layer3_contract.py>
         Contract Tests for Layer 3 Knowledge Graph API
-        
+
         Validates that the implementation matches the OpenAPI specification.
         These tests verify endpoints exist and return expected status codes AND schema.
         <Coroutine test_entity_context_endpoint_exists>
@@ -4146,7 +4146,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_collection_verification.py>
         Test Collection Verification - CI Production Gate
-        
+
         Ensures all tests can be collected (no import errors that silently skip coverage).
         This is a metatest that validates the test suite itself.
         <Class TestCollectionVerification>
@@ -4231,10 +4231,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_input_validation.py>
         P1: Input Validation Security Tests ù Production Assurance Suite.
-        
+
         Validates that the system properly validates and sanitizes all input
         to prevent injection attacks, DoS via oversized payloads, and data pollution.
-        
+
         Boundaries Tested:
         - Payload size limits (DoS prevention)
         - Unknown field rejection
@@ -4242,12 +4242,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
         - Invalid enum/state transition rejection
         <Class TestPayloadSizeLimits>
           Verify oversized payload rejection (DoS prevention).
-          
+
           NOTE: These tests document production gaps. Actual implementation must:
           1. Configure FastAPI request size limits (P1)
           2. Add JSON depth validation middleware (P2)
           3. Add array size limits in Pydantic schemas (P2)
-          
+
           See: SECURITY.md for production hardening checklist.
           <Function test_payload_size_limit_returns_413>
             Oversized request bodies are rejected at the edge with HTTP 413.
@@ -4257,36 +4257,36 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify content type validation.
           <Function test_invalid_content_type_rejected>
             Negative: Requests with unexpected content types should be rejected.
-            
+
             Prevents confusion attacks with wrong content types.
         <Class TestUnknownFieldHandling>
           Verify unknown field rejection or stripping policy.
           <Function test_unknown_fields_rejected_with_strict_schema>
             Negative: Unknown fields should be rejected when strict validation enabled.
-            
+
             Prevents data pollution and schema evolution attacks.
           <Function test_unknown_fields_stripped_with_permissive_schema>
             Positive: When configured, unknown fields are silently stripped.
-            
+
             This is a valid policy choice but should be intentional.
         <Class TestEnumAndStateValidation>
           Verify enum values and state transitions are validated.
           <Function test_state_transition_validation>
             Negative: Invalid state transitions should be rejected.
-            
+
             Tests the same invariant as tenant lifecycle but for generic state machines.
           <Function test_invalid_enum_value_rejected>
             Negative: Invalid enum values should be rejected during validation.
-            
+
             Prevents data pollution with unexpected status values.
         <Class TestUnsafeStringSanitization>
           Verify unsafe string content is sanitized.
-          
+
           NOTE: These tests document security gaps. Production implementation must:
           1. Add XSS sanitization middleware ( bleach/html-sanitizer )
           2. Use parameterized queries exclusively (sqlalchemy text())
           3. Validate input encoding and reject null bytes
-          
+
           See: docs/core-concepts/security-model.md
           <Function test_xss_sanitization_applied_to_json_fields>
             User-supplied string fields are centrally sanitized.
@@ -4297,10 +4297,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_enrichment.py>
           Tests for Data Intelligence Layer Phase 1 ù Layer 4 Components.
-          
+
           Covers:
             Task 1.2 ù Account Enrichment Pipeline (enrichment_orchestrator.py, enrichment.py routes)
-          
+
           These tests use mock-based isolation to avoid the full import chain
           (database.py requires __future__ annotations for Python 3.11 compat).
           <Class TestEnrichmentOrchestrator>
@@ -4331,7 +4331,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               _determine_sources excludes SEC EDGAR for low/no-revenue accounts.
           <Class TestEnrichmentRouteModels>
             Test Pydantic models matching the enrichment route contracts.
-            
+
             The L4 route import chain has pre-existing issues (merge conflict markers
             in business_case.py, missing SignalStreamCompleteEvent). We define
             equivalent Pydantic models inline to validate the API contract without
@@ -4354,7 +4354,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir arch>
       <Module test_tenant_architecture.py>
         Architecture tests for tenant isolation invariants.
-        
+
         These tests are static and do not require live infrastructure.
         <Function test_tenant_scoped_sql_queries_are_guarded>
           Critical service query paths should include tenant_id predicates.
@@ -4367,11 +4367,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_tenant_mismatch.py>
         Tenant Mismatch Security Tests ù P0 Critical Gap Remediation
-        
+
         Validates that X-Tenant-ID header cannot override JWT tenant claim.
-        
+
         Production Invariant: JWT tenant claim takes precedence; mismatches rejected.
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-28
         <Class TestHeaderVsJwtPriority>
@@ -4386,7 +4386,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             POSITIVE: Matching X-Tenant-ID header allowed.
           <Function test_jwt_tenant_mismatch_with_header_rejected>
             P0: JWT tenant A + X-Tenant-ID header B = Rejected.
-            
+
             This prevents tenant spoofing via headers.
         <Class TestTenantSpoofingAttempts>
           NEGATIVE: Various tenant spoofing techniques blocked.
@@ -4429,7 +4429,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_checkpoint_resume_failure_paths.py>
           Failure-path tests for workflow checkpoint/resume.
-          
+
           Tests corrupted state recovery, partial resume, missing dependencies,
           failed agent calls, and inconsistent state scenarios.
           <Class TestPartialResume>
@@ -4467,7 +4467,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Package audit>
         <Module test_ledger_chain.py>
           Tests for hash-chained audit ledger handler.
-          
+
           Covers:
           - Chain monotonicity (sequence numbers increase)
           - Hash continuity (previous_hash links to prior event)
@@ -4505,7 +4505,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_checkpoint_boundary.py>
           Checkpoint/resume boundary tests.
-          
+
           Tests verify:
           1. State survives Postgres restart.
           2. Thread_id consistency across resume.
@@ -4541,21 +4541,21 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_websocket_auth.py>
         WebSocket Authentication Security Tests ù P0 Critical Gap Remediation
-        
+
         Validates that WebSocket connections require valid authentication and
         enforce tenant isolation boundaries.
-        
+
         These tests address the P0 gap identified in the security audit:
         - WebSocket connections were accepted without valid authentication
         - No negative tests existed for WebSocket auth bypass
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-28
         <Class TestWebSocketConnectionLifecycle>
           P1: WebSocket connection lifecycle security.
           <Function test_websocket_disconnect_on_auth_failure>
             NEGATIVE: Connection closed cleanly on auth failure.
-            
+
             Verifies that failed auth doesn't leave dangling connections.
         <Class TestWebSocketProtocolSecurity>
           P1: WebSocket protocol header security tests.
@@ -4565,17 +4565,17 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             POSITIVE: Protocol header with just token (no 'token,' prefix) works.
           <Function test_websocket_rejects_token_in_query_param>
             NEGATIVE: JWT in query parameter is rejected (P1-13 fix).
-            
+
             Tokens in query params get logged by proxies - security risk.
         <Class TestWebSocketAuthentication>
           P0: WebSocket connection authentication enforcement.
           <Function test_websocket_valid_token_accepts_connection>
             POSITIVE: Valid JWT token allows WebSocket connection.
-            
+
             Proves that properly authenticated users can establish WebSocket connections.
           <Function test_websocket_missing_token_rejects_connection>
             NEGATIVE: Missing authentication rejects WebSocket connection.
-            
+
             Proves that unauthenticated WebSocket connections are blocked.
             This is a P0 security requirement.
           <Function test_websocket_expired_token_rejects_connection>
@@ -4590,30 +4590,30 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           P0: WebSocket tenant isolation enforcement.
           <Function test_websocket_cross_tenant_subscription_blocked>
             NEGATIVE: Tenant A cannot subscribe to Tenant B's workflow events.
-            
+
             This is a critical P0 test - cross-tenant data access must be blocked.
           <Function test_websocket_tenant_context_propagated>
             POSITIVE: Valid tenant context is extracted and propagated.
-            
+
             Proves that tenant_id from JWT is correctly extracted and used
             for workflow subscription authorization.
         <Class TestWebSocketRegressionFixes>
           Regression tests for P0 vulnerabilities fixed.
           <Function test_regression_pr_0013_query_param_token_rejected>
             REGRESSION: P1-13 - Query param token must be rejected.
-            
+
             This test prevents regression of the fix for token logging vulnerability.
           <Function test_regression_auth_required_for_websocket>
             REGRESSION: WebSocket requires authentication.
-            
+
             This test prevents regression where WebSocket accepted unauthenticated connections.
       <Module test_knowledge_tools_tenant_isolation.py>
         P0: Knowledge Tools Tenant Isolation Tests
-        
+
         Validates that knowledge graph query tools enforce tenant boundaries.
         These tests address the gap where QueryGraphTool executes Cypher queries
         without validating tenant context, potentially allowing cross-tenant data access.
-        
+
         Ship/No-Ship Gate: FAIL on this file blocks release.
         <Class TestKnowledgeToolsAuditLogging>
           P1: Knowledge tools generate audit logs for security events.
@@ -4629,24 +4629,24 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           P0: Verify query_graph tool enforces tenant isolation.
           <Coroutine test_query_graph_injects_tenant_filter>
             POSITIVE: Tool injects tenant filter into Cypher query when context available.
-            
+
             When TenantContext is set, the query_graph tool should:
             1. Extract tenant_id from context
             2. Modify query to add tenant filter
             3. Execute modified query
           <Coroutine test_cross_tenant_query_blocked>
             NEGATIVE: Tenant A cannot query Tenant B data via tenant_id spoofing.
-            
+
             Attempting to override tenant_id in query parameters should be blocked.
             The tool must use the authenticated context tenant_id, not the input.
           <Coroutine test_query_graph_without_tenant_context_fails_closed>
             NEGATIVE: Tool fails closed when no tenant context is available.
-            
+
             Without RequestContext, the tool must either:
             1. Reject the query entirely
             2. Require explicit tenant_id in input
             3. Return error response
-            
+
             This is a P0 negative test - it proves the tool doesn't execute
             unscoped queries that could return cross-tenant data.
         <Class TestKnowledgeToolsRateLimiting>
@@ -4659,7 +4659,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             POSITIVE: Semantic search includes tenant_id in metadata filter.
       <Module test_neo4j_tenant_query_enforcement.py>
         Security tests for Neo4j tenant query enforcement (Sprint 5).
-        
+
         Validates that Cypher queries in Layer 3 include tenant_id filtering
         when tenant context is available. This prevents cross-tenant data leaks.
         <Class TestTenantIdParameterValidation>
@@ -4679,7 +4679,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package shared>
       <Module test_observability.py>
         Unit tests for shared.observability helpers.
-        
+
         Covers:
           - PathNormalizer cardinality controls (UUID, hash, numeric, depth cap, known-route mapping)
           - is_internal_ip RFC1918/loopback recognition
@@ -4723,9 +4723,9 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir e2e>
       <Module test_value_engine_workflow.py>
         End-to-End 7-Step Value Engine Workflow Validation.
-        
+
         Phase 9: Prove the core Value Engine workflow works for a real account executive user.
-        
+
         Precondition: Structural gates must pass (Phase 7) or blockers documented.
         <Class TestValueEngineE2E>
           7-Step Value Engine E2E Test Suite.
@@ -4762,7 +4762,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
         <Dir unit>
           <Module test_workflow_state_machine.py>
             Unit tests for workflow state machine and state transitions.
-            
+
             Tests the core workflow state management without external dependencies.
             Follows the test pyramid: fast, isolated, deterministic.
             <Class TestBaseWorkflow>
@@ -4843,7 +4843,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
                 Whitespace state can be created with input data.
         <Module test_tenant_lifecycle.py>
           Tests for Phase 1 Tenant Lifecycle Hardening.
-          
+
           Covers:
           - Task 1.4: Tenant status lifecycle (transition_to, audit fields)
           - Task 1.5: Suspended/pending/deleted tenant enforcement in middleware
@@ -4910,12 +4910,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_owasp_top10.py>
         OWASP Top 10 Manual Security Tests
-        
+
         Complements automated ZAP scanning with business-logic-aware tests
         for categories ZAP cannot fully validate: A01-A04.
         <Class TestInsecureDesign>
           OWASP A04: Insecure Design
-          
+
           Tests for business-logic security flaws and missing controls.
           <Function test_resource_exhaustion_protection>
             P0: Resource-intensive operations have limits.
@@ -4929,7 +4929,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             P0: High-risk operations require additional confirmation or MFA.
         <Class TestBrokenAccessControl>
           OWASP A01: Broken Access Control
-          
+
           ZAP misses business-logic authorization. These tests verify:
           - IDOR (Insecure Direct Object Reference) prevention
           - Path traversal protection
@@ -4946,7 +4946,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             P0: IDOR via sequential ID enumeration is blocked.
         <Class TestInjection>
           OWASP A03: Injection
-          
+
           Complements existing SQL/XSS tests with additional injection vectors.
           <Function test_cypher_injection_blocked>
             P0: Neo4j Cypher injection is prevented.
@@ -4958,7 +4958,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             P0: LDAP injection patterns are blocked.
         <Class TestCryptographicFailures>
           OWASP A02: Cryptographic Failures
-          
+
           Tests for password handling, key management, and sensitive data exposure.
           <Function test_jwt_uses_secure_algorithm>
             P0: JWT tokens use secure algorithm (HS256 or RS256).
@@ -4972,7 +4972,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             P0: Database connection strings not exposed via API.
       <Module test_tenant_audit.py>
         Tests for tenant resolution audit logging (Task 3.1).
-        
+
         Verifies that TENANT_RESOLVED and TENANT_CONTEXT_SET audit events are properly emitted
         with structured details at authentication and DB session setup points.
         <Class TestTenantContextSetDetails>
@@ -4985,7 +4985,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Integration-style tests for audit event flow.
           <Coroutine test_end_to_end_audit_trail>
             Full flow: auth -> tenant resolution -> DB context set.
-            
+
             This simulates the complete flow from authentication through
             database session establishment, verifying both audit events are emitted.
         <Class TestTenantResolvedDetails>
@@ -5008,12 +5008,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Module test_graph_api_contract.py>
         LAYER 5: CONTRACT TESTS
         Pact-style contract tests ensuring request/response shapes match
-        
+
         Requirements:
         - Pact-style contract tests ensuring request/response shapes match
         - Version compatibility checks
         - Schema validation against OpenAPI/swagger definitions
-        
+
         This tests the contract between:
         1. Frontend (Consumer) - useGraphQuery hooks
         2. Backend (Provider) - Layer 3 Graph API
@@ -5092,7 +5092,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package release>
       <Module test_release_metadata.py>
         Release Policy: Version and release metadata validation.
-        
+
         Verifies that release metadata exists and is current for release-candidate.
         <Class TestReleaseMetadata>
           Enforce: Release metadata exists and is current.
@@ -5113,11 +5113,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_tenant_context_contract.py>
         S2-A: Tenant Context Contract Tests ù Production Approval Suite, Pillar 2.
-        
+
         Ship/No-Ship Gate: These tests verify structural invariants about how every
         route in the platform resolves tenant identity.  They parse source code and
         inspect FastAPI dependency graphs ù no running database required.
-        
+
         Key invariants tested:
             1. No L4 route uses the deprecated ``get_db`` dependency (must use
                ``get_db_from_context`` which enforces RLS via tenant_id).
@@ -5125,7 +5125,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             3. GovernanceMiddleware always resets the ContextVar at request start.
             4. RequestContext.tenant_id is always a UUID (never a raw string).
             5. The ``require_authenticated`` dependency raises 401 when context is None.
-        
+
         Expected Initial State:
             - test_no_l4_routes_use_deprecated_get_db:  FAIL (9 endpoints in accounts.py)
             - test_no_write_routes_use_optional_context: FAIL (export_business_case)
@@ -5135,13 +5135,13 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
         <Class TestNoOptionalContextOnWriteRoutes>
           Write/mutation endpoints must use ``require_authenticated``, not
           ``get_optional_context``.
-          
+
           ``get_optional_context`` returns ``None`` when no auth is present, which
           means the endpoint handler must manually check ù and if it forgets, the
           mutation proceeds without tenant scoping.
           <Function test_no_write_routes_use_optional_context>
             Scan all L4 route files for write endpoints using get_optional_context.
-            
+
             Expected initial state: FAIL ù analysis.py export_business_case uses
             get_optional_context on a POST endpoint.
         <Class TestGovernanceMiddlewareContextReset>
@@ -5150,7 +5150,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           same ASGI worker.
           <Function test_dispatch_resets_context_in_finally>
             Verify the dispatch method resets context in a finally block.
-            
+
             Even if the request handler raises an exception, the context must be
             cleaned up to prevent leakage to the next request.
           <Function test_dispatch_resets_context_at_start>
@@ -5165,17 +5165,17 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             require_context() must raise RuntimeError when no context is set.
         <Class TestNoDeprecatedGetDb>
           Every L4 route must use ``get_db_from_context``, never bare ``get_db``.
-          
+
           ``get_db`` creates a database session without setting ``app.tenant_id``,
           which means RLS policies are not enforced.  This is the single most
           critical tenant isolation defect class.
           <Function test_get_db_from_context_requires_tenant_id>
             Verify ``get_db_from_context`` rejects requests without tenant context.
-            
+
             This is a unit test of the dependency function itself.
           <Function test_no_l4_routes_use_deprecated_get_db>
             Scan all L4 route files for ``Depends(get_db)`` usage.
-            
+
             Expected initial state: FAIL ù accounts.py has 9 endpoints using get_db.
         <Class TestImportConsistency>
           Verify that route files import from the correct identity module.
@@ -5187,21 +5187,21 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             must have a matching import statement.
       <Module test_cross_tenant_api.py>
         S2-B: Cross-Tenant API Isolation Tests ù Production Approval Suite, Pillar 2.
-        
+
         Ship/No-Ship Gate: These tests verify that Tenant A's JWT cannot read, modify,
         or delete resources belonging to Tenant B.  They exercise the actual FastAPI
         route handlers through ``TestClient`` with signed JWTs.
-        
+
         Because the L4 app requires PostgreSQL, Redis, and checkpoint infrastructure
         at startup, these tests use a **lightweight mock app** that mirrors the real
         route registration and GovernanceMiddleware wiring but stubs out external
         dependencies.  This lets us test the auth/tenant enforcement layer in isolation.
-        
+
         Expected Initial State:
             - Tests targeting accounts routes: FAIL (accounts.py uses get_db, no tenant scoping)
             - Tests targeting workflow routes:  PASS (workflows.py uses require_authenticated)
             - Tests targeting signal routes:    PASS (signals.py uses require_authenticated)
-        
+
         The tests that FAIL prove the RLS bypass is exploitable at the HTTP layer.
         When the accounts routes are migrated to get_db_from_context, these tests
         will pass.
@@ -5219,26 +5219,26 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Workflow endpoints must require authentication.
         <Class TestTenantAdminRouteTenantEnforcement>
           Verify that tenant management routes use tenant-scoped DB.
-          
+
           These routes manage tenants, users, and API keys ù they are the most
           sensitive endpoints in the system.
           <Function test_users_routes_use_tenant_scoped_db>
             User management routes must use get_db_from_context.
-            
+
             Expected initial state: FAIL ù users.py has 5 get_db usages.
           <Function test_api_keys_routes_use_tenant_scoped_db>
             API key management routes must use get_db_from_context.
-            
+
             Expected initial state: FAIL ù api_keys.py has 3 get_db usages.
           <Function test_admin_routes_use_tenant_scoped_db>
             Admin routes must use get_db_from_context.
-            
+
             Expected initial state: FAIL ù admin.py has 5 get_db usages.
         <Class TestAnalysisRouteTenantEnforcement>
           Verify that analysis/business case routes enforce tenant isolation.
           <Function test_export_business_case_requires_auth>
             GET /cases/{case_id}/export must require authentication.
-            
+
             Expected initial state: FAIL ù uses get_optional_context.
           <Function test_generate_business_case_requires_auth>
             POST /cases must require authentication.
@@ -5246,95 +5246,95 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             POST /analysis/whitespace must require authentication.
           <Function test_export_business_case_uses_tenant_scoped_db>
             GET /cases/{case_id}/export must enforce tenant context.
-            
+
             The export endpoint uses WorkflowExecutor (not direct DB), so tenant
             scoping is enforced via require_authenticated rather than
             get_db_from_context. Both are acceptable.
         <Class TestAccountsRouteTenantEnforcement>
           Verify that accounts routes enforce tenant isolation.
-          
+
           The accounts routes are the highest-risk surface because they currently
           use ``get_db`` (no RLS) and have no ``require_authenticated`` dependency.
           <Function test_account_endpoint_requires_authentication[sync_accounts-POST]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_uses_tenant_scoped_db[search_accounts-POST]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_uses_tenant_scoped_db[get_sync_status_all-GET]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_requires_authentication[get_sync_status_all-GET]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_requires_authentication[create_account-POST]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_requires_authentication[get_filter_options-GET]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_uses_tenant_scoped_db[list_accounts-GET]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_requires_authentication[search_accounts-POST]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_requires_authentication[get_account-GET]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_uses_tenant_scoped_db[get_account-GET]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_uses_tenant_scoped_db[create_account-POST]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_requires_authentication[get_account_activity-GET]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_uses_tenant_scoped_db[get_filter_options-GET]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_uses_tenant_scoped_db[refresh_account-POST]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_requires_authentication[refresh_account-POST]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_requires_authentication[list_accounts-GET]>
             Each accounts endpoint must use require_authenticated.
-            
+
             Even with get_db_from_context, the endpoint should explicitly require
             authentication to prevent unauthenticated access.
           <Function test_account_endpoint_uses_tenant_scoped_db[sync_accounts-POST]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
           <Function test_account_endpoint_uses_tenant_scoped_db[get_account_activity-GET]>
             Each accounts endpoint must use get_db_from_context (not get_db).
-            
+
             Expected initial state: FAIL for all 9 endpoints.
         <Class TestSignalRouteTenantEnforcement>
           Verify that signal/prospect routes enforce tenant isolation.
@@ -5349,7 +5349,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           <Function test_total_deprecated_get_db_count>
             Total Depends(get_db) usages across all L4 routes must be zero
             (excluding intentional pre-auth/webhook files).
-            
+
             This is the aggregate gate ù it fails if ANY non-allowlisted route
             uses the deprecated dependency.
   <Dir services>
@@ -5357,11 +5357,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_dil_phase1.py>
           Tests for Data Intelligence Layer Phase 1 ù Layer 3 Components.
-          
+
           Covers:
             Task 1.1 ù Product Portfolio Graph (product_service.py, products.py routes)
             Task 1.3 ù Evidence Library (case_study_service.py, evidence.py routes)
-          
+
           All Neo4j interactions are mocked; these are unit/contract tests that verify
           service logic and API endpoint contracts without requiring a live database.
           <Class TestProductService>
@@ -5434,7 +5434,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_oidc.py>
           Unit tests for OIDC client, claim mapping, and configuration.
-          
+
           Tests the shared OIDC client with PKCE support and role mapping.
           <Class TestOIDCClient>
             Tests for OIDCClient discovery and token verification.
@@ -5513,7 +5513,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_integration_service.py>
           Unit tests for Integration Service refinements.
-          
+
           Tests validation logic, edge cases, and error handling.
           <Class TestIntegrationValidation>
             Test suite for integration configuration validation.
@@ -5564,7 +5564,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_rbac.py>
         Security tests for Role-Based Access Control (RBAC).
-        
+
         Validates that:
         1. Role permissions are properly enforced
         2. Admin endpoints require admin role
@@ -5611,7 +5611,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             JWT role claim is immutable - cannot be forged.
           <Function test_standard_user_blocked_from_admin_endpoint[/api/v1/admin/config]>
             P0: Standard users cannot access admin endpoints.
-            
+
             Each endpoint is tested independently for clearer failure reporting.
           <Function test_permission_check_on_every_request>
             RBAC is validated on every request, not just at login.
@@ -5619,17 +5619,17 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Admin users can access admin endpoints.
           <Function test_standard_user_blocked_from_admin_endpoint[/api/v1/admin/audit-logs]>
             P0: Standard users cannot access admin endpoints.
-            
+
             Each endpoint is tested independently for clearer failure reporting.
           <Function test_standard_user_blocked_from_admin_endpoint[/api/v1/admin/users]>
             P0: Standard users cannot access admin endpoints.
-            
+
             Each endpoint is tested independently for clearer failure reporting.
     <Package contracts>
       <Package gate>
         <Module test_phase1_contracts.py>
           Contract tests for GATE Phase 1 JSON Schemas.
-          
+
           Validates that:
           - Python model serialization conforms to the JSON Schema contracts
           - Invalid payloads are rejected
@@ -5704,7 +5704,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_tenant_read_isolation.py>
           Tests for tenant-aware Neo4j query helpers.
-          
+
           Verifies that all query helpers enforce mandatory tenant_id filtering
           and prevent cross-tenant data leakage.
           <Class TestCrossTenantIsolation>
@@ -5781,12 +5781,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_rate_limit_safety.py>
         Rate Limit Safety Tests ù P0 Critical Gap Remediation
-        
+
         Validates that rate limiting is safe in multi-worker deployments
         and properly rejects requests when limits are exceeded.
-        
+
         Production Invariant: Multi-worker deployments require Redis for rate limiting.
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-29
         <Class TestRateLimitHeaders>
@@ -5852,7 +5852,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_pack_variable_loader.py>
           Unit tests for PackVariableLoader ù Phase 2 of Canonical Contract Migration.
-          
+
           Tests cover:
           - Variable loading from pack files
           - Idempotent loading (skip already-registered variables)
@@ -5915,7 +5915,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               Should skip variables that already exist in registry.
         <Module test_notification.py>
           Unit tests for NotificationService.
-          
+
           Tests quiet hours enforcement, event generation, and channel selection.
           <Class TestNotificationEventProperties>
             Test suite for NotificationEvent dataclass.
@@ -5959,7 +5959,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
               Test that workflow completed events also have unique IDs.
         <Module test_workflow_controls.py>
           Tests for workflow control endpoints: pause, resume, and edge cases.
-          
+
           API-level async tests via httpx.AsyncClient that validate public contract/status behavior.
           <Class TestWorkflowPause>
             Test suite for workflow pause functionality.
@@ -6008,10 +6008,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package k8s>
       <Module test_routing_check.py>
         Unit tests for `scripts/ci/k8s_routing_check.py`.
-        
+
         These tests exercise the gate's behaviour against minimal synthetic renders so
         that future changes to the gate cannot silently weaken its guarantees:
-        
+
           - Mutual exclusivity of routing kinds per axis.
           - Sentinel-survival detection (`__HOST__`, `__API_HOST__`).
           - Per-listener bucket-swap detection (an `https-api` listener that carries
@@ -6020,7 +6020,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           - Missing `routing-host` ConfigMap.
           - Backend Service-existence.
           - Routing stack importing `../../base`.
-        
+
         The gate is invoked as a subprocess so we cover the real CLI surface; this
         matches the way CI runs it.
         <Function test_gate_detects_sentinel_survival>
@@ -6031,7 +6031,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           A host that is neither `host` nor `apiHost` fails consistency.
         <Function test_gate_tolerates_comments_about_base>
           A comment mentioning `../../base` does not trip the base-import rule.
-          
+
           Regression test: an earlier implementation grepped raw text and tripped
           on documentation comments. The current implementation parses YAML.
         <Function test_gate_detects_routing_stack_importing_base>
@@ -6042,7 +6042,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           A render that omits the routing-host ConfigMap fails.
         <Function test_gate_detects_listener_bucket_swap>
           An `https-api` listener that carries the frontend host must fail.
-          
+
           This is the regression test for the P1 weakness identified during
           refinement: previously the gate dumped every listener host into both
           buckets, so a swap was invisible. After the refactor, listener.name
@@ -6052,12 +6052,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_auth_source_validation.py>
         Authentication Source Validation Tests ù P0 Critical Gap Remediation
-        
+
         Validates that auth_source is properly set and validated,
         and that AUTH_SOURCE_UNKNOWN is rejected.
-        
+
         Production Invariant: Only valid auth sources (JWT, API key, service account) are accepted.
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-29
         <Class TestValidAuthSources>
@@ -6126,12 +6126,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_phase3_control_plane.py>
           Phase 3 tests: Tier enforcement, usage tracking, and admin dashboard.
-          
+
           Tests are organized into three groups:
           1. TierEnforcement ù limit checks, feature gates, usage summary
           2. UsageTrackingService ù aggregation queries, daily breakdown, monthly counters
           3. AdminDashboard ù authorization, settings CRUD, branding feature gate
-          
+
           All tests use mock DB sessions to avoid infrastructure dependencies.
           Tests are designed to FAIL initially until the application code is
           correctly wired ù per Agent Workflow Testing Best Practices.
@@ -6299,7 +6299,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_p1_13_websocket_auth.py>
         Regression tests for P1-13: WebSocket JWT authentication.
-        
+
         These tests verify that JWT tokens in query parameters are rejected
         and tokens must be passed via Sec-WebSocket-Protocol header.
         <Class TestWebSocketJWTAuth>
@@ -6312,10 +6312,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             JWT in Sec-WebSocket-Protocol header should be accepted.
       <Module test_secrets_protection.py>
         P1: Secrets Protection Tests ù Production Assurance Suite.
-        
+
         Validates that sensitive data (API keys, passwords, JWT tokens, credentials)
         is never exposed in logs, error responses, or audit trails.
-        
+
         These tests verify ACTUAL current behavior, not document future gaps.
         For documented security gaps, see: .windsurf/plans/security-gaps.md
         <Class TestHeaderSanitization>
@@ -6330,18 +6330,18 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             API keys with 'vf_' prefix must not appear in plaintext logs.
           <Function test_password_not_logged>
             Document P1 requirement: Passwords must never appear in any log output.
-            
+
             Passwords are the most sensitive credential type.
             Production must sanitize authentication payloads before logging.
           <Function test_jwt_token_not_logged_in_plaintext>
             Document P1 requirement: Full JWT tokens must not appear in plaintext logs.
-            
+
             JWTs contain sensitive claims and could be reused if leaked.
             Production must implement request logging middleware that redacts
             Authorization headers before writing to logs.
           <Function test_database_connection_string_not_logged>
             Document P1 requirement: Database credentials in connection strings must be redacted.
-            
+
             Connection strings often contain embedded passwords.
             Production must parse and redact credentials from logged connection strings.
         <Class TestErrorResponseSanitization>
@@ -6363,7 +6363,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_security_fixes.py>
           Regression tests for production security fixes.
-          
+
           Tests the security improvements made during the billing/webhook security audit:
           1. /metrics endpoint access control
           2. Health endpoint authentication
@@ -6439,7 +6439,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir skills>
         <Module test_semantic_search.py>
           Eval tests for the semantic_search skill.
-          
+
           These tests validate that the skill contract is honoured.
           In CI they run against mock implementations.
           Mark with @pytest.mark.slow for tests that need a real knowledge graph.
@@ -6469,13 +6469,13 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package integration>
       <Module test_entity_api.py>
         Integration tests for Entity Browser canonical API.
-        
+
         Tests the /v1/entities endpoints with comprehensive coverage of:
         - List entities with filtering
         - Get entity detail
         - Pagination
         - Edge cases
-        
+
         Note: These tests require Neo4j. When Neo4j is unavailable, they are skipped.
         <Class TestEntityDetailAPI>
           Tests for GET /v1/entities/{id} endpoint.
@@ -6526,7 +6526,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_tenant_context_extraction.py>
           Tests for tenant context extraction helper (Sprint 5).
-          
+
           Validates that _extract_tenant_id() correctly extracts tenant context
           from FastAPI request objects for multi-tenant security.
           <Class TestExtractTenantId>
@@ -6553,7 +6553,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_interfaces_exports.py>
           Tests for Layer 4 interfaces package exports and basic interface behavior.
-          
+
           Uses src.* imports with pytest pythonpath configuration.
           <Function test_interfaces_module_exports_core_symbols>
             Verify all core interface symbols are exported from the interfaces module.
@@ -6585,7 +6585,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_security_headers.py>
         Security tests for HTTP security headers.
-        
+
         Validates that all responses include required security headers.
         <Class TestSecurityHeaders>
           Test suite for security headers.
@@ -6641,7 +6641,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir billing_entitlements>
         <Module test_billing_entitlements_regression.py>
           Regression pack for billing + entitlement behavior.
-          
+
           This suite is intentionally implementation-agnostic: it encodes behavioral
           contracts that any billing/entitlement service should satisfy.
           <Class TestBillingImpactingScenarios>
@@ -6660,7 +6660,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_supply_chain.py>
         Supply chain integrity tests.
-        
+
         Validates that:
         1. Images are signed with Cosign
         2. SBOMs are attached and valid
@@ -6709,7 +6709,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package integration>
       <Module test_pack_integration.py>
         Integration Tests for Value Pack Loading and API
-        
+
         Validates that packs load correctly and API endpoints work as expected.
         <Class TestPackConsistency>
           Test consistency across pack files.
@@ -6743,7 +6743,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Package crypto>
         <Module test_canonical.py>
           Tests for RFC 8785 canonical JSON hashing utility.
-          
+
           Covers:
           - Round-trip stability (key ordering)
           - Float normalization edge cases
@@ -6804,13 +6804,13 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_layer_integration.py>
         Runtime Contract Tests ù End-to-End Layer Integration
-        
+
         Validates actual data flow between layers by calling live endpoints.
         These tests verify that:
         - L4 clients call correct L1/L2 routes (not 404s)
         - Data flows from L1 \u2192 L3 (ingested entities are queryable)
         - L4 workflows orchestrate real L1 and L2 jobs
-        
+
         Requirements:
         - L1 service running on localhost:8001
         - L2 service running on localhost:8002
@@ -6865,7 +6865,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_tier_policy.py>
           Tests for tier-based access policy in extraction pipeline.
-          
+
           Validates:
           - Tier-operation mapping correctness
           - Fail-closed behavior for unknown tiers/operations
@@ -6912,7 +6912,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_p1_12_prompt_delimiters.py>
         Regression tests for P1-12: LLM prompt injection delimiters.
-        
+
         These tests verify that user-controlled content is wrapped in delimiters
         to prevent prompt injection attacks.
         <Class TestPromptInjectionDelimiters>
@@ -6932,7 +6932,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_langgraph_execution.py>
           LangGraph workflow execution tests with mocked LLM.
-          
+
           Tests verify:
           1. BusinessCaseGeneratorWorkflow runs end-to-end with all LLM calls mocked.
           2. ROICalculatorWorkflow runs end-to-end with all tool calls mocked.
@@ -7031,14 +7031,14 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_neo4j_schema_integration.py>
           Integration tests for Neo4j schema layer (between unit and e2e).
-          
+
           These tests verify real Neo4j behavior with actual schema constraints,
           without requiring full Layer 2 \u2192 Layer 3 workflow orchestration.
-          
+
           Requirements:
               - Docker running locally
               - testcontainers[neo4j] installed
-          
+
           Run with:
               pytest tests/test_neo4j_schema_integration.py -v -m integration
           <Class TestNeo4jIndexPerformance>
@@ -7069,10 +7069,10 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_workflows_real_execution.py>
           Real LangGraph workflow execution tests with InMemory checkpointing.
-          
+
           Tier A: Fast tests using InMemorySaver (no Redis required).
           Validates actual LangGraph execution, not mocks.
-          
+
           Key scenarios:
           - Workflow executes and terminates deterministically
           - Recursion limit enforced
@@ -7099,7 +7099,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir arch>
       <Module test_testability_architecture.py>
         Architecture tests enforcing testability contracts.
-        
+
         These tests ensure that the shared testability primitives maintain their
         contracts and can be used as drop-in replacements for hard-coded time/ID calls.
         <Class TestIDGeneratorCompliance>
@@ -7127,7 +7127,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_import_topology.py>
         Contract tests for import topology correctness.
-        
+
         Phase 4: Verify canonical imports resolve deterministically.
         <Class TestImportTopology>
           Verify import namespace resolution.
@@ -7154,18 +7154,18 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           <Function test_pytest_collection_no_import_errors>
             pytest --collect-only should have zero import errors.
           <Function test_no_root_shared_shadowing>
-            Root shared/ should not shadow value-fabric/shared/.
+            Root shared/ should not shadow packages/shared/src/value_fabric/shared/.
           <Function test_layer_imports[layer1_ingestion]>
             Each layer should be importable via value_fabric.
     <Package security>
       <Module test_jwt_config_validation.py>
         JWT Configuration Validation Tests ù P0 Critical Gap Remediation
-        
+
         Validates that JWT configuration is properly validated at startup,
         especially in production environments.
-        
+
         Production Invariant: Production deployments must have secure JWT configuration.
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-29
         <Class TestProductionJWTSecretValidation>
@@ -7209,7 +7209,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package chaos>
       <Module test_external_dependency_failure.py>
         Chaos tests for external API and enrichment dependency failures.
-        
+
         Verifies system behavior when external enrichment sources, crawlers, or
         third-party APIs become unavailable:
         - Ingestion/enrichment client failures don't crash workflows
@@ -7220,11 +7220,11 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify errors are classified correctly for operational handling.
           <Coroutine test_error_classification_includes_retry_recommendation>
             Error classification must indicate whether retry is recommended.
-            
+
             Operational: SRE needs to know if automatic retry is safe.
           <Coroutine test_errors_classified_by_severity>
             External dependency errors must be classified by severity.
-            
+
             P0: Data loss, security breach
             P1: Feature degraded
             P2: Monitoring/alerting only
@@ -7232,68 +7232,68 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
           Verify tenant isolation when external dependencies fail.
           <Coroutine test_external_api_credentials_not_leaked_on_failure>
             When external API fails, credentials must not appear in error messages.
-            
+
             Security: API keys, tokens must not be exposed in logs or error responses.
           <Coroutine test_external_cache_failure_does_not_expose_cross_tenant_data>
             When external cache (Redis/CDN) fails, tenant isolation must be maintained.
-            
+
             Fallback to shared storage must not expose cross-tenant data.
         <Class TestRetryPolicyApplication>
           Verify retry policies are applied correctly.
           <Coroutine test_retry_backoff_prevents_thundering_herd>
             Retry backoff must prevent thundering herd when service recovers.
-            
+
             Security: Randomized exponential backoff prevents synchronized retries.
           <Coroutine test_no_retry_on_permanent_failures>
             Permanent failures (400, 404) must not trigger retry.
-            
+
             Efficiency: Don't waste resources on non-retriable errors.
           <Coroutine test_retry_policy_applied_to_transient_failures>
             Transient failures (503, timeout) trigger retry with backoff.
-            
+
             Retry must not be applied to permanent failures (404, 400).
         <Class TestCrawlerDependencyFailure>
           Verify crawler behavior when dependencies fail.
           <Coroutine test_crawler_handles_robots_txt_fetch_failure>
             When robots.txt fetch fails, crawler must make safe assumption.
-            
+
             Compliance: If robots.txt is unreachable, assume disallow-all (conservative).
           <Coroutine test_crawler_handles_target_site_unavailable>
             When target site is unreachable, error must be explicit.
-            
+
             The failure must be distinguished from successful crawl with no data.
           <Coroutine test_crawler_quality_gate_still_enforced_under_failure>
             When crawling fails, quality gates must still be enforced.
-            
+
             Low-quality data must not slip through because of failure conditions.
         <Class TestExternalAPIFailure>
           Verify behavior when external APIs fail.
           <Coroutine test_partial_state_is_explicit>
             When external dependency fails, partial state must be explicitly indicated.
-            
+
             The caller must know that the result is incomplete.
           <Coroutine test_external_api_connection_error_fails_explicitly>
             When external API is unreachable, error is explicit and structured.
-            
+
             Security: Error must not expose internal network details.
             Safety: Caller must know the external dependency failed.
           <Coroutine test_external_api_timeout_handled_gracefully>
             When external API times out, workflow continues with explicit degraded state.
-            
+
             The workflow must not crash; it must continue with the degradation noted.
           <Coroutine test_workflow_does_not_crash_on_external_failure>
             External API failure must not crash the entire workflow.
-            
+
             Resilience: Partial failures should be isolated.
         <Class TestCircuitBreakerPattern>
           Verify circuit breaker patterns for external dependencies.
           <Coroutine test_circuit_opens_after_consecutive_failures>
             Circuit breaker must open after threshold of consecutive failures.
-            
+
             When external service is down, stop hammering it with requests.
           <Coroutine test_circuit_half_open_allows_probe_requests>
             In half-open state, limited requests are allowed to test recovery.
-            
+
             Circuit breaker must not immediately fully close after timeout.
     <Dir evals>
       <Dir skills>
@@ -7313,7 +7313,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_llm_cost_tracking.py>
           LLM token and cost tracking tests.
-          
+
           Tests verify:
           1. Token counting accuracy across tool calls.
           2. Cost calculation with pricing tiers.
@@ -7344,7 +7344,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_no_infra_adapter_contracts.py>
         No-infra adapter contract tests for dependency probes and gate messaging.
-        
+
         These tests run without Postgres/Redis/Neo4j and validate the behavioral contract
         for infrastructure probes and gate reasons using mocks/fakes.
         <Function test_check_neo4j_contract_with_fake_driver>
@@ -7358,12 +7358,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_frontend_compat_routes.py>
           Integration tests for frontend compatibility routes.
-          
+
           Tests the following alias routes:
           - POST /v1/auth/register
           - GET /v1/tenant/settings
           - PATCH /v1/tenant/settings
-          
+
           Uses inline FastAPI app with in-memory stores to avoid heavy DB setup.
           <Coroutine test_auth_register_creates_tenant>
             POST /v1/auth/register creates a new tenant and returns tenant_id.
@@ -7379,7 +7379,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
       <Dir tests>
         <Module test_value_packs.py>
           Tests for Value Packs API routes.
-          
+
           Tests cover:
           - Formula execution in execute_pack
           - Update pack semantics after refactoring
@@ -7453,8 +7453,8 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package contract>
       <Module test_layer4_contract.py>
         Contract tests for Layer 4 Agents API.
-        
-        Validates that L4 endpoints (workflows, tools, agents, billing) 
+
+        Validates that L4 endpoints (workflows, tools, agents, billing)
         conform to the OpenAPI specification and return expected response shapes.
         <Coroutine test_agent_execute_endpoint_exists>
           Verify POST /v1/agents/{agent_id}/execute is implemented.
@@ -7505,12 +7505,12 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_cross_tenant_write.py>
         Cross-Tenant Write Isolation Tests ù P0 Critical Gap Remediation
-        
+
         Validates that write operations (CREATE, UPDATE, DELETE) are properly
         tenant-isolated and cannot affect another tenant's data.
-        
+
         Production Invariant: Tenant A cannot write to Tenant B's data.
-        
+
         Author: Autonomous Test Assurance Agent
         Date: 2026-04-29
         <Class TestWriteAuditTrail>
@@ -7554,7 +7554,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package k8s>
       <Module test_monitoring_validation.py>
         Tests for monitoring validation scripts and alert rules.
-        
+
         Validates:
         - monitoring-validation.sh script functionality
         - Prometheus recording rules
@@ -7605,7 +7605,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Dir e2e>
       <Module test_tenant_control_plane.py>
         E2E tests for tenant control plane (Phase 3).
-        
+
         Tests self-service registration, admin dashboard, and tier enforcement.
         <Coroutine test_tenant_settings_update_unauthorized>
           Test settings update requires authentication.
@@ -7638,7 +7638,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package k8s>
       <Module test_kustomize_overlays.py>
         Tests for Kustomize overlay composition and configuration.
-        
+
         Validates:
         - Base layer resources are correctly defined
         - Dev/prod overlays extend base properly
@@ -7733,7 +7733,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
     <Package security>
       <Module test_shared_security_middleware.py>
         Unit tests for shared SecurityMiddleware.
-        
+
         Validates the centralized security implementation directly without requiring
         a full FastAPI app fixture.
         <Class TestSecurityValidator>
@@ -7786,7 +7786,7 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
             Custom config values are stored correctly.
         <Class TestSqlInjectionFalsePositives>
           Regression tests for SQL injection pattern false positives.
-          
+
           The # character is common in benign content (markdown headers, color codes,
           issue references) but was previously matched by an overly broad pattern.
           <Function test_malicious_sql_comments_still_detected>
@@ -7796,9 +7796,9 @@ collecting ... collected 2485 items / 53 errors / 2 skipped
         <Class TestMiddlewareImportPath>
           Guard against importing the wrong shared/security/middleware.py.
           <Function test_authoritative_middleware_is_imported>
-            Layer 2+ tests must resolve to value-fabric/shared/security/middleware.py.
-            
-            There are two 'shared' packages in this repo (root and value-fabric/).
+            Layer 2+ tests must resolve to packages/shared/src/value_fabric/shared/security/middleware.py.
+
+            There are two 'shared' packages in this repo (root and services/).
             This test fails if pytest resolves the root one, preventing silent
             regression when the wrong file is patched.
         <Class TestSecurityMiddlewareRDFHandling>
@@ -7829,7 +7829,7 @@ E   ModuleNotFoundError: No module named 'src.crawler'
 
 WeasyPrint could not import some external libraries. Please carefully follow the installation steps before reporting an issue:
 https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation
-https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting 
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting
 
 -----
 
@@ -7838,7 +7838,7 @@ https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting
 
 WeasyPrint could not import some external libraries. Please carefully follow the installation steps before reporting an issue:
 https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation
-https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting 
+https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#troubleshooting
 
 -----
 
@@ -8362,7 +8362,7 @@ tests\agents\test_conversation_service.py:52: in <module>
     ???
 <frozen importlib._bootstrap_external>:950: in get_data
     ???
-E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/services/conversation.py'
+E   FileNotFoundError: [Errno 2] No such file or directory: 'C:\\home/ubuntu/Fabric_4L/services/layer4-agents/src/services/conversation.py'
 _________ ERROR collecting tests/cache/test_redis_tenant_isolation.py _________
 ImportError while importing test module 'C:\Users\BBB\Fabric_4L\tests\cache\test_redis_tenant_isolation.py'.
 Hint: make sure your test modules/packages have valid Python names.

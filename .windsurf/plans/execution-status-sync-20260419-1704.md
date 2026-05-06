@@ -1,8 +1,8 @@
 # Execution Status Sync Report - 2026-04-19 17:04
 
-**Workflow:** `/execution-status-sync`  
-**Repository:** Fabric_4L  
-**Commit:** `0a617e9` (docs: add technical debt cleanup log)  
+**Workflow:** `/execution-status-sync`
+**Repository:** Fabric_4L
+**Commit:** `0a617e9` (docs: add technical debt cleanup log)
 **Status:** Production Readiness Assessment Complete
 
 ---
@@ -173,10 +173,10 @@
 shared/identity/
   oidc.py (NEW)
 
-value-fabric/layer4-agents/src/tenants/api/routes/
+services/layer4-agents/src/tenants/api/routes/
   oidc.py (NEW)
 
-value-fabric/layer4-agents/src/api/main.py
+services/layer4-agents/src/api/main.py
   - Wire OIDC router
 
 frontend/client/src/
@@ -228,12 +228,12 @@ tests/security/
 | Feature Flags API | `layer4-agents/src/feature_flags/api/routes.py` | 156 | ✅ Exists |
 | Feature Flags Helpers | `shared/identity/feature_flags.py` | 148 | ✅ Exists |
 | Rate Limit Manager | `layer3-knowledge/src/rate_limiting/manager.py` | 400+ | ✅ TENANT scope exists |
-| uv.lock L1 | `value-fabric/layer1-ingestion/uv.lock` | 451 KB | ✅ Exists |
-| uv.lock L2 | `value-fabric/layer2-extraction/uv.lock` | 534 KB | ✅ Exists |
-| uv.lock L3 | `value-fabric/layer3-knowledge/uv.lock` | 470 KB | ✅ Exists |
-| uv.lock L4 | `value-fabric/layer4-agents/uv.lock` | 925 KB | ✅ Exists |
-| uv.lock L5 | `value-fabric/layer5-ground-truth/uv.lock` | 347 KB | ✅ Exists |
-| uv.lock L6 | `value-fabric/layer6-benchmarks/uv.lock` | 162 KB | ✅ Exists |
+| uv.lock L1 | `services/layer1-ingestion/uv.lock` | 451 KB | ✅ Exists |
+| uv.lock L2 | `services/layer2-extraction/uv.lock` | 534 KB | ✅ Exists |
+| uv.lock L3 | `services/layer3-knowledge/uv.lock` | 470 KB | ✅ Exists |
+| uv.lock L4 | `services/layer4-agents/uv.lock` | 925 KB | ✅ Exists |
+| uv.lock L5 | `services/layer5-ground-truth/uv.lock` | 347 KB | ✅ Exists |
+| uv.lock L6 | `services/layer6-benchmarks/uv.lock` | 162 KB | ✅ Exists |
 | OpenAPI Export | `scripts/export_openapi.py` | 150+ | ✅ Works |
 | OIDC Client | `shared/identity/oidc.py` | 275 | ✅ **NEW - PKCE, discovery, verification** |
 | OIDC Config | `shared/identity/oidc_config.py` | 70 | ✅ **NEW - from_settings() factory** |
@@ -276,7 +276,7 @@ tests/security/
 **Implementation Completed:**
 ✅ **Task 87: SSO/OIDC Backend** - Enterprise SSO ready with PKCE, auto-provisioning, role mapping
 
-**Platform Status:** 
+**Platform Status:**
 All P0 tasks complete. The platform is ready for production launch. Enterprise customers can now:
 - Authenticate via OIDC (Okta, Azure AD, Google Workspace)
 - Enjoy tenant isolation with PostgreSQL RLS
@@ -285,5 +285,5 @@ All P0 tasks complete. The platform is ready for production launch. Enterprise c
 
 ---
 
-*Report generated: 2026-04-19 17:04 UTC*  
+*Report generated: 2026-04-19 17:04 UTC*
 *Workflow: /execution-status-sync*

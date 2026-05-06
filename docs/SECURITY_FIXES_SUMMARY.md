@@ -10,7 +10,7 @@ This document summarizes all security fixes implemented in response to the adver
 ## P0 Fixes (Critical)
 
 ### P0-8/F-2: `/tools/invoke` Authentication Bypass
-**File:** `value-fabric/layer4-agents/src/api/routes/tools.py`
+**File:** `services/layer4-agents/src/api/routes/tools.py`
 **Change:** Added `require_authenticated` dependency to:
 - `GET /v1/tools`
 - `GET /v1/tools/{tool_name}`
@@ -19,35 +19,35 @@ This document summarizes all security fixes implemented in response to the adver
 **Impact:** Tools endpoints now require valid authentication, preventing unauthorized tool invocation.
 
 ### P0-3: Dev Tenant UUID Fallback
-**File:** `value-fabric/layer1-ingestion/src/api/main.py`
+**File:** `services/layer1-ingestion/src/api/main.py`
 **Change:** Removed hardcoded dev tenant UUID fallback (`00000000-0000-0000-0000-000000000001`). Now raises HTTP 401 when authentication is missing.
 **Impact:** Prevents bypass of tenant isolation in development mode.
 
 ### P0-4/F-11: Query Parameter Authentication Bypass
 **File:** `shared/identity/middleware_sync.py`
-**Change:** 
+**Change:**
 - Removed `ALLOW_TENANT_QUERY_PARAM` logic entirely
 - Query parameter `tenant_id` no longer grants authentication
 **Impact:** Eliminates client-supplied identity bypass vector.
 
 ### F-1: X-Tenant-ID Service Trust Header
 **File:** `shared/identity/middleware_sync.py`
-**Change:** 
+**Change:**
 - Added `SERVICE_AUTH_SECRET` environment variable requirement
 - X-Tenant-ID header now requires matching X-Service-Auth header
 - Uses `hmac.compare_digest` for constant-time comparison
 **Impact:** Prevents SYSTEM role spoofing via X-Tenant-ID header.
 
 ### P0-7: Container Running as Root
-**File:** `value-fabric/layer3-knowledge/Dockerfile`
-**Change:** 
+**File:** `services/layer3-knowledge/Dockerfile`
+**Change:**
 - Added `RUN groupadd -r appgroup && useradd -r -g appgroup appuser`
 - Added `USER appuser` before EXPOSE
 **Impact:** Layer 3 container now runs as non-root user, reducing host privilege escalation risk.
 
 ### P0-2/F-3: `eval()` Code Execution
-**File:** `value-fabric/layer3-knowledge/src/services/signal_quantification.py`
-**Change:** 
+**File:** `services/layer3-knowledge/src/services/signal_quantification.py`
+**Change:**
 - Replaced `eval()` with AST-based safe evaluator
 - Added `_eval_node()` method that only allows:
   - Constants (numeric only)
@@ -59,16 +59,16 @@ This document summarizes all security fixes implemented in response to the adver
 **Impact:** Prevents arbitrary code execution via formula evaluation.
 
 ### P0-1: SOQL Injection
-**File:** `value-fabric/layer4-agents/src/tools/crm_tools.py`
-**Change:** 
+**File:** `services/layer4-agents/src/tools/crm_tools.py`
+**Change:**
 - Added Salesforce ID format validation (15 or 18 alphanumeric chars)
 - Added URL encoding for SOQL queries with `urllib.parse.quote()`
 - Added `_validate_sfdc_id()` static method
 **Impact:** Prevents SQL injection via attacker-controlled prospect_id.
 
 ### P0-9: WebSocket Unauthenticated
-**File:** `value-fabric/layer4-agents/src/api/routes/signals.py`
-**Change:** 
+**File:** `services/layer4-agents/src/api/routes/signals.py`
+**Change:**
 - Added JWT token validation before WebSocket accept
 - Token must be provided in query parameter
 - Validates token with `decode_jwt()` and checks tenant_id
@@ -76,7 +76,7 @@ This document summarizes all security fixes implemented in response to the adver
 
 ### P0-6: Committed Secrets
 **Status:** **REQUIRES SECRETS TEAM**
-**Action Required:** 
+**Action Required:**
 - Rotate all secrets found in committed files
 - Remove `k8s/secrets.yml` from git history (already in .gitignore)
 - Update `.env.production.example` to remove actual secrets
@@ -85,22 +85,22 @@ This document summarizes all security fixes implemented in response to the adver
 ## P1 Fixes (High Priority)
 
 ### P1-10: Pickle Deserialization
-**File:** `value-fabric/layer3-knowledge/src/cache/redis_cache.py`
-**Change:** 
+**File:** `services/layer3-knowledge/src/cache/redis_cache.py`
+**Change:**
 - Disabled pickle serializer entirely
 - Raises `ValueError` if `serializer="pickle"` is requested
 **Impact:** Prevents arbitrary code execution via Redis cache poisoning.
 
 ### P1-15: L6 Fails Open on Middleware Import
-**File:** `value-fabric/layer6-benchmarks/src/api/main.py`
-**Change:** 
+**File:** `services/layer6-benchmarks/src/api/main.py`
+**Change:**
 - In production/staging, raises `RuntimeError` if GovernanceMiddleware cannot be imported
 - Only allows skip in development mode
 **Impact:** Ensures authentication cannot be bypassed in production.
 
 ### P1-11: Cypher Injection
-**File:** `value-fabric/layer4-agents/src/tools/knowledge_tools.py`
-**Change:** 
+**File:** `services/layer4-agents/src/tools/knowledge_tools.py`
+**Change:**
 - Added `_validate_read_only()` method
 - Rejects write keywords: CREATE, DELETE, DETACH, SET, MERGE, REMOVE, DROP, CALL
 - Only allows read-only Cypher (MATCH, RETURN, WITH, WHERE, ORDER BY, LIMIT)
@@ -108,19 +108,19 @@ This document summarizes all security fixes implemented in response to the adver
 
 ### P1-16: C_FORCE_ROOT Environment Variable
 **File:** `k8s/base/layer1-celery.yaml`
-**Change:** 
+**Change:**
 - Changed `C_FORCE_ROOT` from `"true"` to `"false"` in all three deployments (worker, beat, flower)
 **Impact:** Ensures Celery respects non-root user in containers.
 
 ### P1-19: Jinja2 XSS
-**File:** `value-fabric/layer4-agents/src/tools/document_export.py`
+**File:** `services/layer4-agents/src/tools/document_export.py`
 **Status:** **ALREADY FIXED**
 **Verification:** Line 319 already has `autoescape=select_autoescape(['html', 'xml'])`
 **Impact:** XSS protection already in place.
 
 ### P1-20: XXE Vulnerability
-**File:** `value-fabric/layer1-ingestion/src/adapters/xbrl_parser.py`
-**Change:** 
+**File:** `services/layer1-ingestion/src/adapters/xbrl_parser.py`
+**Change:**
 - Replaced `xml.etree.ElementTree` with `defusedxml.ElementTree`
 - Uses `defusedxml.fromstring()` instead of `ET.fromstring()`
 - Added `defusedxml>=0.7.1` to layer1-ingestion dependencies
@@ -128,7 +128,7 @@ This document summarizes all security fixes implemented in response to the adver
 
 ### P1-18: K8s Security Contexts
 **File:** `k8s/base/layer1-celery.yaml`
-**Change:** 
+**Change:**
 - Added pod-level `securityContext` to all deployments (worker, beat, flower):
   - `runAsNonRoot: true`
   - `runAsUser: 1000`
@@ -147,7 +147,7 @@ This document summarizes all security fixes implemented in response to the adver
 **Impact:** No dangerous secret fallbacks found.
 
 ### Docker-Compose Hardening (F-5, F-7, F-8)
-**File:** `value-fabric/docker-compose.yml`
+**File:** `docker-compose.full.yml`
 **Changes:**
 - **F-5 (Grafana):** Changed from hardcoded password to `GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?required}`
 - **F-7 (Redis):** Added `command: redis-server --requirepass ${REDIS_PASSWORD:?required}` and updated healthcheck
@@ -189,7 +189,7 @@ New workflow adds:
 
 ## Dependencies Added
 
-- `value-fabric/layer1-ingestion/pyproject.toml`: Added `defusedxml>=0.7.1` for XXE protection
+- `services/layer1-ingestion/pyproject.toml`: Added `defusedxml>=0.7.1` for XXE protection
 
 ## Remaining Work (Requires Human Action)
 
@@ -213,7 +213,7 @@ New workflow adds:
 pytest tests/security/test_security_fixes.py -v
 
 # Run Bandit scan manually
-bandit -r value-fabric/layer1-ingestion/src value-fabric/layer4-agents/src shared/
+bandit -r services/layer1-ingestion/src services/layer4-agents/src shared/
 
 # Run Trivy secret scan
 trivy fs --severity CRITICAL,HIGH .
@@ -222,25 +222,25 @@ trivy fs --severity CRITICAL,HIGH .
 grep -r "C_FORCE_ROOT" k8s/base/
 
 # Verify defusedxml is used
-grep -r "defusedxml" value-fabric/layer1-ingestion/src/
+grep -r "defusedxml" services/layer1-ingestion/src/
 ```
 
 ## Files Modified
 
-1. `value-fabric/layer4-agents/src/api/routes/tools.py`
-2. `value-fabric/layer1-ingestion/src/api/main.py`
+1. `services/layer4-agents/src/api/routes/tools.py`
+2. `services/layer1-ingestion/src/api/main.py`
 3. `shared/identity/middleware_sync.py`
-4. `value-fabric/layer3-knowledge/Dockerfile`
-5. `value-fabric/layer3-knowledge/src/services/signal_quantification.py`
-6. `value-fabric/layer4-agents/src/tools/crm_tools.py`
-7. `value-fabric/layer4-agents/src/api/routes/signals.py`
-8. `value-fabric/layer3-knowledge/src/cache/redis_cache.py`
-9. `value-fabric/layer6-benchmarks/src/api/main.py`
-10. `value-fabric/layer4-agents/src/tools/knowledge_tools.py`
+4. `services/layer3-knowledge/Dockerfile`
+5. `services/layer3-knowledge/src/services/signal_quantification.py`
+6. `services/layer4-agents/src/tools/crm_tools.py`
+7. `services/layer4-agents/src/api/routes/signals.py`
+8. `services/layer3-knowledge/src/cache/redis_cache.py`
+9. `services/layer6-benchmarks/src/api/main.py`
+10. `services/layer4-agents/src/tools/knowledge_tools.py`
 11. `k8s/base/layer1-celery.yaml`
-12. `value-fabric/layer1-ingestion/src/adapters/xbrl_parser.py`
-13. `value-fabric/docker-compose.yml`
-14. `value-fabric/layer1-ingestion/pyproject.toml`
+12. `services/layer1-ingestion/src/adapters/xbrl_parser.py`
+13. `docker-compose.full.yml`
+14. `services/layer1-ingestion/pyproject.toml`
 
 ## Files Created
 

@@ -1,6 +1,6 @@
 # Test Quality Audit Report
-**Date**: 2025-04-20  
-**Auditor**: Cascade / Test Quality Auditor  
+**Date**: 2025-04-20
+**Auditor**: Cascade / Test Quality Auditor
 **Scope**: Frontend TypeScript + Python Backend Layers
 
 ---
@@ -72,7 +72,7 @@
 
 ---
 
-### File: `value-fabric/layer5-ground-truth/tests/test_state_machine.py`
+### File: `services/layer5-ground-truth/tests/test_state_machine.py`
 
 | Principle | Score | Evidence |
 |-----------|-------|----------|
@@ -145,7 +145,7 @@
 | P1-4 | `frontend/client/src/hooks/useIngestion.test.ts` | May have implementation coupling | Review assertions |
 | P1-5 | `packs/*/tests/test_pack_integrity.py` (7 files) | Duplicated test structure | Extract shared fixtures to `packs/conftest.py` |
 | P1-6 | `packs/*/tests/test_formula_execution.py` (7 files) | Duplicated test logic | Create shared formula test utilities |
-| P1-7 | `value-fabric/layer2-extraction/tests/test_sse_streaming*.py` | SSE streaming tests may have race conditions | Add proper async synchronization |
+| P1-7 | `services/layer2-extraction/tests/test_sse_streaming*.py` | SSE streaming tests may have race conditions | Add proper async synchronization |
 | P1-8 | `sdk/python/tests/` | Missing coverage for error paths | Add tests for exception handling |
 
 ---
@@ -155,7 +155,7 @@
 | ID | File | Issue | Recommended Action |
 |----|------|-------|-------------------|
 | P2-1 | `frontend/client/src/stores/userTierStore.test.ts:15` | Comment about setUserRole behavior | Convert to TODO with ticket |
-| P2-2 | `value-fabric/layer5-ground-truth/tests/conftest.py` | Could extract `make_truth`/`make_source` to shared fixture file | Extract factory functions |
+| P2-2 | `services/layer5-ground-truth/tests/conftest.py` | Could extract `make_truth`/`make_source` to shared fixture file | Extract factory functions |
 | P2-3 | Multiple Python tests | Docstrings use triple quotes inconsistently | Standardize to Google/NumPy style |
 | P2-4 | `frontend/client/src/hooks/use*.test.ts` (19 files) | Some have repetitive wrapper creation | Extract `createHookWrapper` helper |
 | P2-5 | `tests/contract/test_*.py` | Contract tests use inline schemas | Use shared schema fixtures |

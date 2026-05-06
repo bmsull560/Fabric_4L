@@ -1,6 +1,6 @@
 # Missing Routes Implementation Plan
 
-**Date:** 2026-05-01  
+**Date:** 2026-05-01
 **Status:** Analysis Complete — Ready for Implementation
 
 ---
@@ -56,7 +56,7 @@
 
 ### Route 1: POST /v1/formulas (Create Formula)
 
-**File:** `value-fabric/layer3-knowledge/src/api/routes/formulas.py`
+**File:** `services/layer3-knowledge/src/api/routes/formulas.py`
 
 **Implementation:**
 ```python
@@ -140,7 +140,7 @@ RETURN f
 
 ### Route 2: PATCH /v1/formulas/{id} (Update Formula)
 
-**File:** `value-fabric/layer3-knowledge/src/api/routes/formulas.py`
+**File:** `services/layer3-knowledge/src/api/routes/formulas.py`
 
 **Implementation:**
 ```python
@@ -188,7 +188,7 @@ class UpdateFormulaRequest(BaseModel):
 
 ### Route 3: DELETE /v1/formulas/{id} (Delete Formula)
 
-**File:** `value-fabric/layer3-knowledge/src/api/routes/formulas.py`
+**File:** `services/layer3-knowledge/src/api/routes/formulas.py`
 
 **Implementation:**
 ```python
@@ -239,7 +239,7 @@ DELETE f
 
 ### Route 4: GET /v1/roi/benchmarks (List All ROI Benchmarks)
 
-**File:** `value-fabric/layer3-knowledge/src/api/routes/roi_calculator.py`
+**File:** `services/layer3-knowledge/src/api/routes/roi_calculator.py`
 
 **Implementation:**
 ```python

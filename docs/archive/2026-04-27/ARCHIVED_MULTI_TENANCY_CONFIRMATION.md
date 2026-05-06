@@ -9,9 +9,9 @@ Status: Historical reference only
 
 # Multi-Tenancy RLS Enhancement - Implementation Confirmation
 
-**Date:** 2026-04-23  
-**Auditor:** Cascade AI  
-**Plan:** `.windsurf/plans/multi-tenancy-rls-enhancement-381581.md`  
+**Date:** 2026-04-23
+**Auditor:** Cascade AI
+**Plan:** `.windsurf/plans/multi-tenancy-rls-enhancement-381581.md`
 **Status Report:** `.windsurf/plans/multi-tenancy-implementation-status.md`
 
 ---
@@ -37,7 +37,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and operatio
 - `validate_tenant_id()` provides fail-safe UUID validation
 - Isolation tier awareness with framework for schema/database tiers
 - Audit event emission on context set
-- **Evidence:** `value-fabric/layer4-agents/src/database.py` (592 lines)
+- **Evidence:** `services/layer4-agents/src/database.py` (592 lines)
 
 **Task 1.3: Super-Admin & Cross-Tenant Access Rules** ✅
 - Service account support in RequestContext
@@ -54,13 +54,13 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and operatio
 - `ScheduledTask` includes tenant_id and tenant_context fields
 - `get_tenant_id()` and `get_full_tenant_context()` helper methods
 - Background jobs execute with proper tenant isolation
-- **Evidence:** `value-fabric/layer4-agents/src/engine/scheduler.py` (592 lines)
+- **Evidence:** `services/layer4-agents/src/engine/scheduler.py` (592 lines)
 
 **Task 2.2: SSE/WebSocket Tenant Propagation** ✅
 - `WorkflowConnection` includes tenant_id and user_id fields
 - `connect()` method accepts and stores tenant context
 - Tenant-scoped message routing in place
-- **Evidence:** `value-fabric/layer4-agents/src/api/websocket/manager.py` (513 lines)
+- **Evidence:** `services/layer4-agents/src/api/websocket/manager.py` (513 lines)
 - **Tests:** 85 WebSocket test cases passing
 
 **Task 2.3: Agent & Tool Query Enforcement** ✅
@@ -102,7 +102,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and operatio
 - Currently supports "shared" tier (RLS-based) - production ready
 - Framework ready for "schema" and "database" tiers (returns 501 for future implementation)
 - Tenant model supports isolation_tier in settings JSONB field
-- **Evidence:** `shared/identity/context.py`, `value-fabric/layer4-agents/src/database.py`
+- **Evidence:** `shared/identity/context.py`, `services/layer4-agents/src/database.py`
 
 ---
 
@@ -242,7 +242,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and operatio
 ## ROADMAP Status Update
 
 ### Task 53: Neo4j Tenant Scoping (P0)
-**Current Status in ROADMAP:** 🟡 IN PROGRESS  
+**Current Status in ROADMAP:** 🟡 IN PROGRESS
 **Actual Status:** ✅ **COMPLETE**
 
 **Completed Criteria:**
@@ -257,7 +257,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and operatio
 **Recommendation:** Update ROADMAP.md Task 53 status to ✅ COMPLETE
 
 ### Task 54: PostgreSQL Row-Level Security (P0)
-**Current Status in ROADMAP:** ✅ COMPLETE  
+**Current Status in ROADMAP:** ✅ COMPLETE
 **Actual Status:** ✅ **CONFIRMED COMPLETE**
 
 **All acceptance criteria met:**
@@ -371,10 +371,10 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and operatio
 
 The multi-tenancy RLS enhancement plan has been **fully implemented and validated** across all 5 phases:
 
-✅ **Phase 1:** Tenant Context Standardization (100%)  
-✅ **Phase 2:** Background Job & Async Context Propagation (100%)  
-✅ **Phase 3:** Audit Logging & Security Hardening (100%)  
-✅ **Phase 4:** Isolation Tier Support (100% framework, "shared" tier production-ready)  
+✅ **Phase 1:** Tenant Context Standardization (100%)
+✅ **Phase 2:** Background Job & Async Context Propagation (100%)
+✅ **Phase 3:** Audit Logging & Security Hardening (100%)
+✅ **Phase 4:** Isolation Tier Support (100% framework, "shared" tier production-ready)
 ✅ **Phase 5:** Documentation & Rollout (100%)
 
 **Security Validation:**
@@ -403,13 +403,13 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and validate
 - `shared/identity/dependencies.py` (201 lines)
 
 **Database Layer:**
-- `value-fabric/layer4-agents/src/database.py` (592 lines)
-- `value-fabric/layer1-ingestion/src/shared/database.py`
-- `value-fabric/layer5-ground-truth/src/layer5_ground_truth/database.py`
+- `services/layer4-agents/src/database.py` (592 lines)
+- `services/layer1-ingestion/src/shared/database.py`
+- `services/layer5-ground-truth/src/layer5_ground_truth/database.py`
 
 **Async Context:**
-- `value-fabric/layer4-agents/src/engine/scheduler.py` (592 lines)
-- `value-fabric/layer4-agents/src/api/websocket/manager.py` (513 lines)
+- `services/layer4-agents/src/engine/scheduler.py` (592 lines)
+- `services/layer4-agents/src/api/websocket/manager.py` (513 lines)
 
 **Audit System:**
 - `shared/audit/models.py`
@@ -427,7 +427,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and validate
 - `tests/security/test_security_smoke.py`
 - `tests/security/test_rbac.py`
 - `tests/security/test_owasp_top10.py`
-- `value-fabric/layer4-agents/tests/test_websocket_manager.py`
+- `services/layer4-agents/tests/test_websocket_manager.py`
 
 ### Related Documents
 
@@ -439,6 +439,6 @@ The multi-tenancy RLS enhancement plan has been **fully implemented and validate
 
 ---
 
-**Confirmed by:** Cascade AI  
-**Date:** 2026-04-23  
+**Confirmed by:** Cascade AI
+**Date:** 2026-04-23
 **Signature:** Full implementation audit complete ✅

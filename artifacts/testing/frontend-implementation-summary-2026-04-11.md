@@ -1,6 +1,6 @@
 # Frontend Testing Infrastructure + Pagination Audit — Implementation Summary
 
-**Date**: 2026-04-11  
+**Date**: 2026-04-11
 **Status**: ✅ Phase 1-2 Complete, Phase 4 Complete
 
 ---
@@ -88,8 +88,8 @@ Tests       35 failed | 87 passed (122)
 
 ### Findings
 
-**Endpoint**: `GET /api/v1/agents/workflows/active`  
-**Location**: `value-fabric/layer4-agents/src/api/routes/workflows.py:490-503`
+**Endpoint**: `GET /api/v1/agents/workflows/active`
+**Location**: `services/layer4-agents/src/api/routes/workflows.py:490-503`
 
 ### Current Implementation
 ```python
@@ -101,7 +101,7 @@ async def list_active_workflows(
     """List currently active workflows. Filters by tenant_id if provided."""
     tenant = get_current_tenant()
     tenant_id = tenant.tenant_id if tenant else None
-    
+
     active = await executor.list_active_workflows(tenant_id=tenant_id)
     return active  # Returns ALL active workflows, no pagination
 ```
@@ -123,7 +123,7 @@ async def list_active_workflows(
 2. **Suggested API Design**:
    ```
    GET /api/v1/workflows?status=active&limit=20&offset=0
-   
+
    Response:
    {
      "items": [...],

@@ -20,7 +20,7 @@ rules:
         - "frontend/**/*.tsx"
       forbidden_imports:
         - "services/layer*"
-        - "services/shared/**"
+        - "packages/shared/src/value_fabric/shared/**"
         - "shared/**"
       # Allow frontend's local shared/ alias
       allowed_imports:
@@ -74,7 +74,7 @@ rules:
       type: import_violation
       files:
         - "shared/identity/**/*.py"
-        - "services/shared/identity/**/*.py"
+        - "packages/shared/src/value_fabric/shared/identity/**/*.py"
       forbidden_imports:
         - "layer*"
         - "value_fabric.layer*"

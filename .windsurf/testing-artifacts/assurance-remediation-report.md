@@ -1,6 +1,6 @@
 # Test Assurance Remediation Report
 
-Generated: 2026-04-28 by Autonomous Test Assurance Agent  
+Generated: 2026-04-28 by Autonomous Test Assurance Agent
 Status: Phase 4 Complete - WebSocket Auth & Tenant Lifecycle Tests Added
 
 ## Executive Summary
@@ -20,7 +20,7 @@ Status: Phase 4 Complete - WebSocket Auth & Tenant Lifecycle Tests Added
 
 **Status**: ✅ **FIXED** with regression tests
 
-The WebSocket routes at `value-fabric/layer4-agents/src/api/websocket/routes.py` were **accepting connections without valid authentication**. The code extracted tenant_id from JWT but allowed `None` values to proceed.
+The WebSocket routes at `services/layer4-agents/src/api/websocket/routes.py` were **accepting connections without valid authentication**. The code extracted tenant_id from JWT but allowed `None` values to proceed.
 
 **Production Fix Applied**: Lines 124-127 now reject connections without valid tenant_id:
 ```python
@@ -52,22 +52,22 @@ if not tenant_id:
 ### Tenant Isolation
 - **Rule**: No cross-tenant reads or writes
 - **Enforcement**: RLS policies, middleware validation, tool-level tenant scoping
-- **Code Path**: `value-fabric/shared/identity/middleware.py`, `value-fabric/layer4-agents/src/tools/knowledge_tools.py`
+- **Code Path**: `packages/shared/src/value_fabric/shared/identity/middleware.py`, `services/layer4-agents/src/tools/knowledge_tools.py`
 
 ### Authentication
 - **Rule**: No unauthenticated access to protected resources
 - **Enforcement**: `GovernanceMiddleware`, `require_authenticated` dependency
-- **Code Path**: `value-fabric/shared/identity/middleware.py:134-177`, `value-fabric/shared/identity/dependencies.py:39-56`
+- **Code Path**: `packages/shared/src/value_fabric/shared/identity/middleware.py:134-177`, `packages/shared/src/value_fabric/shared/identity/dependencies.py:39-56`
 
 ### Authorization
 - **Rule**: No authorization bypass via headers, params, body fields, or stale context
 - **Enforcement**: Role checks (`require_role`), permission validators (`require_permission`)
-- **Code Path**: `value-fabric/shared/identity/dependencies.py:74-209`
+- **Code Path**: `packages/shared/src/value_fabric/shared/identity/dependencies.py:74-209`
 
 ### Input Validation
 - **Rule**: No unvalidated input reaching persistence, queues, tools, or LLM calls
 - **Enforcement**: Pydantic schemas, `_CYPHER_WRITE_KEYWORDS` regex
-- **Code Path**: `value-fabric/layer4-agents/src/tools/knowledge_tools.py:59-76`
+- **Code Path**: `services/layer4-agents/src/tools/knowledge_tools.py:59-76`
 
 ---
 
@@ -142,7 +142,7 @@ if not tenant_id:
 
 | File | Change | Lines | Reason |
 |------|--------|-------|--------|
-| `value-fabric/layer4-agents/src/api/websocket/routes.py` | Add auth check after token extraction | 124-127 | Reject WS connections without valid tenant_id |
+| `services/layer4-agents/src/api/websocket/routes.py` | Add auth check after token extraction | 124-127 | Reject WS connections without valid tenant_id |
 
 **Change Details:**
 ```python
@@ -156,10 +156,10 @@ if not tenant_id:
 
 | File | Tools Modified | Lines | Change |
 |------|----------------|-------|--------|
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | GetEntityTool | 414-469 | Add tenant context extraction, inject tenant_id filter |
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | GetRelationshipsTool | 519-585 | Add tenant context extraction, inject tenant_id filter |
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | TraverseTreeTool | 615-672 | Add tenant context extraction, inject tenant_id filter |
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | FindPathsTool | 703-770 | Add tenant context extraction, inject tenant_id filter |
+| `services/layer4-agents/src/tools/knowledge_tools.py` | GetEntityTool | 414-469 | Add tenant context extraction, inject tenant_id filter |
+| `services/layer4-agents/src/tools/knowledge_tools.py` | GetRelationshipsTool | 519-585 | Add tenant context extraction, inject tenant_id filter |
+| `services/layer4-agents/src/tools/knowledge_tools.py` | TraverseTreeTool | 615-672 | Add tenant context extraction, inject tenant_id filter |
+| `services/layer4-agents/src/tools/knowledge_tools.py` | FindPathsTool | 703-770 | Add tenant context extraction, inject tenant_id filter |
 
 **Note**: QueryGraphTool and SemanticSearchTool already had tenant isolation applied (lines 167-179 and 313-324).
 
@@ -181,7 +181,7 @@ result = await session.run(query, {"entity_id": entity_id, "tenant_id": str(tena
 
 | File | Change | Reason |
 |------|--------|--------|
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | Add rate limit check before query execution | Prevent abuse (P1) |
+| `services/layer4-agents/src/tools/knowledge_tools.py` | Add rate limit check before query execution | Prevent abuse (P1) |
 
 ---
 

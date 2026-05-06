@@ -10,7 +10,7 @@
 ## Atomic Tasks Completed
 
 ### 1. ✅ Add CRM env vars to `.env.example`
-**File:** `value-fabric/.env.example`
+**File:** `.env.example`
 
 Added comprehensive CRM environment variable documentation:
 - `CRM_TYPE` - Provider selection (salesforce/hubspot)
@@ -21,7 +21,7 @@ Added comprehensive CRM environment variable documentation:
 - `CRM_SYNC_INTERVAL_MINUTES` - Sync interval (default: 60)
 
 ### 2. ✅ Implement CRM sync service
-**File:** `value-fabric/layer4-agents/src/services/crm_sync_service.py`
+**File:** `services/layer4-agents/src/services/crm_sync_service.py`
 
 Already existed with complete implementation including:
 - Full and incremental sync modes
@@ -32,7 +32,7 @@ Already existed with complete implementation including:
 - Error tracking with detailed error messages
 
 ### 3. ✅ Add webhook handlers for real-time updates
-**File:** `value-fabric/layer4-agents/src/api/routes/crm_webhooks.py` (NEW)
+**File:** `services/layer4-agents/src/api/routes/crm_webhooks.py` (NEW)
 
 Created webhook endpoints:
 - `POST /v1/webhooks/crm/salesforce` - Handles Salesforce platform events
@@ -46,18 +46,18 @@ Features:
 - Graceful error handling (returns 200 to prevent retries)
 
 ### 4. ✅ Wire sync to /sync endpoint
-**File:** `value-fabric/layer4-agents/src/api/main.py`
+**File:** `services/layer4-agents/src/api/main.py`
 
 - Added import for `crm_webhooks_router`
 - Registered webhook routes with `/v1` prefix
 
 ### 5. ✅ Add `employees` field to Account model
-**File:** `value-fabric/layer4-agents/src/models/account.py`
+**File:** `services/layer4-agents/src/models/account.py`
 
 Added `employees: Mapped[Optional[int]]` field to support CRM data sync from both Salesforce and HubSpot.
 
 ### 6. ✅ Created comprehensive tests
-**File:** `value-fabric/layer4-agents/tests/test_crm_sync_service.py` (NEW)
+**File:** `services/layer4-agents/tests/test_crm_sync_service.py` (NEW)
 
 Test coverage includes:
 - CRMSyncService unit tests (sync provider, single refresh, error handling)
@@ -135,11 +135,11 @@ CRM_SYNC_INTERVAL_MINUTES=60
 
 ## Files Modified
 
-1. `value-fabric/.env.example` - Added CRM environment variables
-2. `value-fabric/layer4-agents/src/models/account.py` - Added `employees` field
-3. `value-fabric/layer4-agents/src/api/main.py` - Added webhook router
-4. `value-fabric/layer4-agents/src/api/routes/crm_webhooks.py` - NEW webhook handlers
-5. `value-fabric/layer4-agents/tests/test_crm_sync_service.py` - NEW tests
+1. `.env.example` - Added CRM environment variables
+2. `services/layer4-agents/src/models/account.py` - Added `employees` field
+3. `services/layer4-agents/src/api/main.py` - Added webhook router
+4. `services/layer4-agents/src/api/routes/crm_webhooks.py` - NEW webhook handlers
+5. `services/layer4-agents/tests/test_crm_sync_service.py` - NEW tests
 
 ---
 
@@ -157,7 +157,7 @@ CRM_SYNC_INTERVAL_MINUTES=60
 
 ```bash
 # Syntax check
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 python -m py_compile src/api/routes/crm_webhooks.py
 python -m py_compile src/models/account.py
 python -m py_compile src/services/crm_sync_service.py

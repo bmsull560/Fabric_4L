@@ -1,9 +1,9 @@
 # Test Quality Audit Report
 
-**Repository**: Value Fabric Monorepo  
-**Audit Date**: 2026-04-10  
-**Auditor**: Test Quality Remediation Agent  
-**Scope**: All Python test files in value-fabric/layer{1-5}-*
+**Repository**: Value Fabric Monorepo
+**Audit Date**: 2026-04-10
+**Auditor**: Test Quality Remediation Agent
+**Scope**: All Python test files in services/layer{1-5}-*
 
 ---
 
@@ -29,7 +29,7 @@
 ### Discovery Output (Current)
 
 - Frameworks:
-  - Backend: `pytest` (+ `pytest-asyncio`) across `value-fabric/layer1..layer6`
+  - Backend: `pytest` (+ `pytest-asyncio`) across `services/layer1..layer6`
   - Frontend unit/integration: `Vitest` (`frontend/vitest.config.ts`)
   - Frontend E2E: `Playwright` (`frontend/e2e/*.spec.ts`)
 - Test file inventory:
@@ -46,37 +46,37 @@
 
 The following files were audited as highest-impact based on current failures and recent changes:
 
-1. `value-fabric/layer3-knowledge/tests/conftest.py`
-2. `value-fabric/layer3-knowledge/tests/test_health_endpoints.py`
-3. `value-fabric/layer3-knowledge/tests/test_api.py`
-4. `value-fabric/layer3-knowledge/tests/test_versioning_registration.py`
+1. `services/layer3-knowledge/tests/conftest.py`
+2. `services/layer3-knowledge/tests/test_health_endpoints.py`
+3. `services/layer3-knowledge/tests/test_api.py`
+4. `services/layer3-knowledge/tests/test_versioning_registration.py`
 5. `frontend/client/src/hooks/useJobStream.test.ts`
 6. `frontend/client/src/stores/userTierStore.test.ts`
 
 ### Per-File Assessment (Condensed)
 
-#### `value-fabric/layer3-knowledge/tests/conftest.py`
+#### `services/layer3-knowledge/tests/conftest.py`
 - Score: **28/35**
 - Issues:
   - **P0 (fixed)**: async fixture produced async-generator object instead of `AsyncClient`
   - **P1 (fixed)**: `httpx` compatibility drift (`AsyncClient(app=...)`)
 - Action: rewrote async fixture to `@pytest_asyncio.fixture` + `ASGITransport`
 
-#### `value-fabric/layer3-knowledge/tests/test_health_endpoints.py`
+#### `services/layer3-knowledge/tests/test_health_endpoints.py`
 - Score: **24/35**
 - Issues:
   - **P1 (fixed)**: environment-coupled assertions requiring `status == "healthy"`
   - **P1**: some integration path still sensitive to startup/runtime dependencies
 - Action: relaxed status assertions to contract-valid values (`healthy|degraded|unhealthy`)
 
-#### `value-fabric/layer3-knowledge/tests/test_api.py`
+#### `services/layer3-knowledge/tests/test_api.py`
 - Score: **22/35**
 - Issues:
   - **P1 (fixed)**: module-level shared `TestClient` caused cross-test lifecycle coupling
   - **P1**: some assertions remain broad (`200|500|503`) and could be tightened with endpoint-level mocking
 - Action: switched to fixture-injected `test_client` for isolation
 
-#### `value-fabric/layer3-knowledge/tests/test_versioning_registration.py`
+#### `services/layer3-knowledge/tests/test_versioning_registration.py`
 - Score: **31/35**
 - Notes: behavior-focused and deterministic; strong registration-boundary coverage
 - Action: no rewrite needed
@@ -173,7 +173,7 @@ Applied `/refinement` workflow to the remediated test files for production-grade
 ### Verification
 
 ```bash
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 python -m pytest tests/test_health_endpoints.py::TestHealthEndpoints::test_basic_health_check tests/test_api.py::test_health_endpoint -v
 # Result: 2 passed in 141.78s
 ```
@@ -393,7 +393,7 @@ python -m pytest tests/test_health_endpoints.py::TestHealthEndpoints::test_basic
 - **P0**: `test_auto_advances_to_corroborated_with_two_sources` fails with assertion error
 - **P1**: `make_truth()` helper at line 42 uses `datetime.now()` which can cause microsecond comparison issues - use `freezegun` or fixed timestamps
 
-**Recommended Action**: 
+**Recommended Action**:
 - 🔧 Fix P0 failures (likely production code issues with datetime handling)
 - 🔧 Fix P1 by using deterministic timestamps
 
@@ -467,7 +467,7 @@ python -m pytest tests/test_health_endpoints.py::TestHealthEndpoints::test_basic
   - Logger expects `exc_info` tuple, not custom kwargs
   - See `test_exception_handlers.py` for validation
 
-**Root Cause**: 
+**Root Cause**:
 1. Schema uses enterprise-only constraints incompatible with Community edition
 2. Logging calls pass invalid kwargs to `logger.error()`
 
@@ -630,7 +630,7 @@ Based on code review:
 
 **Status**: **OPERATIONAL** ✅
 
-- Directory `value-fabric/layer4-agents/tests/` exists with 4 test files
+- Directory `services/layer4-agents/tests/` exists with 4 test files
 - **11 tests collected and running** (was previously blocked, now fixed)
 - Minor runtime issues remain but tests execute
 
@@ -781,26 +781,26 @@ Based on code review:
 
 ```bash
 # Layer 5 (Ground Truth) - Has some working tests
-cd value-fabric/layer5-ground-truth
+cd services/layer5-ground-truth
 pytest tests/ -v --tb=short
 
 # Layer 3 (Knowledge) - BLOCKED by pytest.ini
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 # Fix pytest.ini first, then:
 pytest tests/ -v --tb=short
 
 # Layer 2 (Extraction) - BLOCKED by import error
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 # Fix imports first, then:
 pytest tests/ -v --tb=short
 
 # Layer 1 (Ingestion) - BLOCKED by collection errors
-cd value-fabric/layer1-ingestion
+cd services/layer1-ingestion
 # Fix model and scheduler first, then:
 pytest tests/unit -v --tb=short
 
 # Layer 4 (Agents) - NO TESTS
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 # Create tests first
 
 # Frontend - NO TESTS
@@ -838,7 +838,7 @@ pnpm test  # Vitest installed but no tests exist
 |  | L4 tests now collect | `layer4-agents/tests/` | Was blocked by import/module errors |
 |  | L2 extraction tests pass | `layer2-extraction/tests/` | Now 28 passed, 1 skipped |
 
-### L5 Fixed - All Tests Now Passing 
+### L5 Fixed - All Tests Now Passing
 
 | Fix | Location | Issue |
 |-----|----------|-------|
@@ -866,7 +866,7 @@ pnpm test  # Vitest installed but no tests exist
 
 **Issue Identified**: User added WebSocket support to `main.py` but no tests existed for the WebSocket manager.
 
-**Location**: `value-fabric/layer4-agents/src/api/websocket/manager.py`
+**Location**: `services/layer4-agents/src/api/websocket/manager.py`
 
 **Gap Analysis**:
 - WebSocket manager: 452 lines of production code
@@ -928,13 +928,13 @@ Created `tests/test_websocket_manager.py` with **36 comprehensive tests** follow
 ### Verified Today (2026-04-13)
 
 #### ✅ L4 Checkpoint Tests - NOW PASSING
-- **File**: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`
+- **File**: `services/layer4-agents/tests/test_checkpoint_resume.py`
 - **Status**: 11 tests collected, **11 passed**, 28 warnings (deprecation only)
 - **Previous Issue**: ModuleNotFoundError importing 'src' — RESOLVED via conftest.py path setup
 - **Quality**: Good (28/35) — well-structured, clear AAA pattern, behavior-focused
 
 #### ⚠️ L3 E2E Pipeline Tests - HANGING
-- **File**: `value-fabric/layer3-knowledge/tests/test_e2e_pipeline.py`
+- **File**: `services/layer3-knowledge/tests/test_e2e_pipeline.py`
 - **Status**: Tests hang indefinitely on Neo4j Community Edition
 - **Root Cause**: Enterprise-only property existence constraints (`ASSERT EXISTS`) not supported
 - **Fix Applied**: Updated schema constraints to use Community-compatible composite unique constraints
@@ -1003,7 +1003,7 @@ L3 E2E Pipeline Tests: 14 passed, 2 failed, 1 skipped in 178s
 
 Applied `/refinement` workflow to `health_tracker.py` and `notification.py` in Layer 4.
 
-#### `value-fabric/layer4-agents/src/services/health_tracker.py`
+#### `services/layer4-agents/src/services/health_tracker.py`
 
 **Issues Fixed**:
 
@@ -1039,7 +1039,7 @@ async def _update_component_internal(self, ...):
 
 ---
 
-#### `value-fabric/layer4-agents/src/services/notification.py`
+#### `services/layer4-agents/src/services/notification.py`
 
 **Issues Fixed**:
 
@@ -1177,7 +1177,7 @@ f"notif-{timestamp:.6f}-{workflow_id}-{secrets.token_hex(4)}"
 ---
 
 ```bash
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 pytest tests/test_websocket_manager.py -v
 # Result: 36 passed, 152 warnings (deprecation warnings for datetime.utcnow())
 ```
@@ -1214,7 +1214,7 @@ pytest tests/test_websocket_manager.py -v
 1. Fix 2 pre-existing L4 checkpoint/resume test failures
 2. Address L3 Neo4j Community compatibility
 
-#### P1 - Material  
+#### P1 - Material
 3. Replace deprecated `datetime.utcnow()` throughout codebase
 4. Add WebSocket route tests (HTTP-level)
 
@@ -1240,7 +1240,7 @@ pytest tests/test_websocket_manager.py -v
 
 ### Audit (Phase 2) - Additional Files Reviewed
 
-#### `value-fabric/layer3-knowledge/tests/test_versioning_registration.py` ⭐ **GOOD EXAMPLE**
+#### `services/layer3-knowledge/tests/test_versioning_registration.py` ⭐ **GOOD EXAMPLE**
 **Score**: 31/35 (Excellent - Updated 2026-04-13)
 
 | Principle | Score | Notes |
@@ -1270,7 +1270,7 @@ pytest tests/test_websocket_manager.py -v
 
 ---
 
-#### `value-fabric/layer2-extraction/tests/test_extract_and_ingest_pipeline.py` (Re-verified)
+#### `services/layer2-extraction/tests/test_extract_and_ingest_pipeline.py` (Re-verified)
 **Score**: 32/35 (Excellent - Confirmed 2026-04-13)
 
 Confirmed as **reference quality** for orchestration testing:
@@ -1338,7 +1338,7 @@ The files audited in this run (`test_versioning_registration.py`, `test_extract_
 ### Executed Rewrites (Phase 4)
 
 #### Fix 1: Scheduler Dataclass Field Order
-**File**: `value-fabric/layer1-ingestion/src/scheduler/priority_queue.py`
+**File**: `services/layer1-ingestion/src/scheduler/priority_queue.py`
 **Issue**: `QueueItem` dataclass had `job_id: str = field(compare=False)` (no default) after `depth: int = field(compare=False, default=0)` (with default), causing `TypeError: non-default argument 'job_id' follows default argument 'depth'`.
 **Fix**: Reordered fields so all non-default fields come before fields with defaults:
 ```python
@@ -1483,7 +1483,7 @@ All crawler tests meet quality standards. No rewrites justified.
 
 #### Import Verification
 ```bash
-cd value-fabric/layer1-ingestion
+cd services/layer1-ingestion
 python -c "from src.crawler.crawler_config import CrawlerConfig; print('✓ Config imports OK')"
 python -c "from src.crawler.telemetry import init_telemetry; print('✓ Telemetry imports OK')"
 python -c "from src.crawler.playwright_crawler import PlaywrightCrawler; print('✓ Crawler imports OK')"
@@ -1491,7 +1491,7 @@ python -c "from src.crawler.playwright_crawler import PlaywrightCrawler; print('
 
 #### Test Collection
 ```bash
-cd value-fabric/layer1-ingestion
+cd services/layer1-ingestion
 pytest tests/unit/test_crawler_*.py --collect-only
 # Result: 63 tests collected
 ```

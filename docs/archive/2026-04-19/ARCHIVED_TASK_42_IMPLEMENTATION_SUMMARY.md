@@ -1,10 +1,10 @@
 # Task 42: HashiCorp Vault Integration - Implementation Summary
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records a completed implementation. Current Vault status is in [ROADMAP.md](../../ROADMAP.md). See the [Archive Registry](../archive-registry.md).
 
-**Status:** ✅ COMPLETE  
-**Date:** 2026-04-19  
+**Status:** ✅ COMPLETE
+**Date:** 2026-04-19
 **Scope:** Verification-first approach with cross-layer Vault health checks and production wiring
 
 ---
@@ -21,11 +21,11 @@ Added production Vault smoke gate to all layers:
 
 | Layer | File | Pattern Used |
 |-------|------|--------------|
-| L1 | `value-fabric/layer1-ingestion/src/api/main.py` | `@app.on_event("startup")` |
-| L2 | `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py` | `@app.on_event("startup")` |
-| L3 | `value-fabric/layer3-knowledge/src/api/main.py` | `lifespan()` function |
-| L4 | `value-fabric/layer4-agents/src/api/main.py` | `lifespan()` (already existed) |
-| L5 | `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/main.py` | `lifespan()` function |
+| L1 | `services/layer1-ingestion/src/api/main.py` | `@app.on_event("startup")` |
+| L2 | `services/layer2-extraction/src/layer2_extraction/api/main.py` | `@app.on_event("startup")` |
+| L3 | `services/layer3-knowledge/src/api/main.py` | `lifespan()` function |
+| L4 | `services/layer4-agents/src/api/main.py` | `lifespan()` (already existed) |
+| L5 | `services/layer5-ground-truth/src/layer5_ground_truth/api/main.py` | `lifespan()` function |
 
 Each layer:
 - Imports `check_vault_health` from `shared.identity.vault_check`
@@ -103,10 +103,10 @@ Updated `ROADMAP.md`:
 
 | File | Changes |
 |------|---------|
-| `value-fabric/layer1-ingestion/src/api/main.py` | Added Vault import + startup event |
-| `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py` | Added Vault import + startup check |
-| `value-fabric/layer3-knowledge/src/api/main.py` | Added Vault import + lifespan check |
-| `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/main.py` | Added Vault import + lifespan check |
+| `services/layer1-ingestion/src/api/main.py` | Added Vault import + startup event |
+| `services/layer2-extraction/src/layer2_extraction/api/main.py` | Added Vault import + startup check |
+| `services/layer3-knowledge/src/api/main.py` | Added Vault import + lifespan check |
+| `services/layer5-ground-truth/src/layer5_ground_truth/api/main.py` | Added Vault import + lifespan check |
 | `scripts/smoke/vault_smoke.py` | Expanded to test all layer roles |
 | `k8s/external-secrets/cluster-secret-store.yaml` | Added TLS/config documentation |
 | `docs/secrets-management.md` | Added verification & troubleshooting |

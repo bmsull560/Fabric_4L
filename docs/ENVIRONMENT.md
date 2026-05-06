@@ -58,7 +58,7 @@ Variables: `VITE_API_BASE`, `VITE_ENABLE_QUERY_DEVTOOLS`, `VITE_API_LOG_LEVEL`
 ```
 Fabric_4L/
 ├─ .infisical.json             # Infisical project/path mapping
-├─ value-fabric/
+├─ services/
 │  ├─ .env.example             # Full variable list with placeholders
 │  ├─ .env.test                # Deterministic test values
 │  ├─ .env.staging             # Staging shape with placeholders

@@ -213,7 +213,7 @@ repos:
         name: Validate test discovery
         entry: python scripts/ci/ci_eval_gate.py --discover-only
         language: system
-        files: ^(tests/|value-fabric/.+/tests/)
+        files: ^(tests/|services/.+/tests/)
         pass_filenames: false
         always_run: true
 

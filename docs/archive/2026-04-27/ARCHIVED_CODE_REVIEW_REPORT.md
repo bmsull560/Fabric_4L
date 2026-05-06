@@ -8,8 +8,8 @@ Status: Historical reference only
 ---
 
 # Autonomous Code Review Report
-**Generated**: 2026-04-21  
-**Scope**: Full Stack (Frontend + Backend Layers 1-6)  
+**Generated**: 2026-04-21
+**Scope**: Full Stack (Frontend + Backend Layers 1-6)
 **Status**: Active Issues Found
 
 ---
@@ -28,7 +28,7 @@ Status: Historical reference only
 ## 🔴 P0 - Critical Issues (Blockers)
 
 ### 1. Duplicate Export Error in client.ts
-**File**: `frontend/client/src/api/client.ts:373`  
+**File**: `frontend/client/src/api/client.ts:373`
 **Error**: `TS2484: Export declaration conflicts with exported declaration of 'LayerKey'`
 
 **Issue**: `LayerKey` is exported twice:
@@ -38,7 +38,7 @@ Status: Historical reference only
 **Fix**: Remove line 373 (redundant re-export).
 
 ### 2. Type Mismatch in ProspectSetup.tsx
-**File**: `frontend/client/src/workflow/pages/ProspectSetup.tsx:63`  
+**File**: `frontend/client/src/workflow/pages/ProspectSetup.tsx:63`
 **Error**: `Type 'string | undefined' is not assignable to type 'string'`
 
 **Fix**: Add null check or default value before assignment.
@@ -48,7 +48,7 @@ Status: Historical reference only
 ## 🟡 P1 - High Priority
 
 ### 3. Missing Import in audit_and_fix_all_packs.py
-**File**: `scripts/audit_and_fix_all_packs.py:36`  
+**File**: `scripts/audit_and_fix_all_packs.py:36`
 **Error**: `F821 Undefined name 're'`
 
 **Fix**: Add `import re` at top of file.
@@ -62,7 +62,7 @@ Status: Historical reference only
 **Fix**: Remove unused `import pytest` statements.
 
 ### 5. Import Sorting Issues in Layer 4
-**File**: `value-fabric/layer4-agents/src/api/main.py:23`  
+**File**: `services/layer4-agents/src/api/main.py:23`
 **Error**: `I001 Import block is un-sorted or un-formatted`
 
 ---
@@ -72,7 +72,7 @@ Status: Historical reference only
 ### 6. Import Consolidation Debt
 **47 files** still using deep imports instead of barrel exports:
 
-**Pattern**: `from "@/components/ui/...`  
+**Pattern**: `from "@/components/ui/...`
 **Should be**: `from "@/components"`
 
 **Top Offenders**:
@@ -95,8 +95,8 @@ Status: Historical reference only
 
 ### Staged Changes (Uncommitted)
 1. **frontend/client/src/api/client.ts** - New deduplication logic, but has duplicate export
-2. **value-fabric/layer3-knowledge/src/retrieval/graph_rag.py** - Entity serialization improvements
-3. **value-fabric/layer3-knowledge/src/retrieval/hybrid_search.py** - GraphRAG integration
+2. **services/layer3-knowledge/src/retrieval/graph_rag.py** - Entity serialization improvements
+3. **services/layer3-knowledge/src/retrieval/hybrid_search.py** - GraphRAG integration
 
 ### New Files
 - `.windsurf/config.yaml` - Auto-review configuration ✅

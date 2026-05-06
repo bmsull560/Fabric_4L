@@ -9,8 +9,8 @@ Status: Historical reference only
 
 # Fabric 4L Contract Enforcement Assessment
 
-**Assessment Date:** 2026-04-23  
-**Assessor:** Cascade (AI Agent)  
+**Assessment Date:** 2026-04-23
+**Assessor:** Cascade (AI Agent)
 **Scope:** Contract enforcement and migration across all layers
 
 ---
@@ -52,7 +52,7 @@ Fabric 4L has established a **strong documentation foundation** with `contract.m
 - **Documented:** `contract.md` lines 19-49
 - **Lint Rule:** `no-tenant-id-parameter.ts` - ✅ Implemented
 - **Runtime:** `shared/identity/middleware.py:280-336` - ✅ `GovernanceMiddleware` sets context
-- **Gap:** `value-fabric/layer4-agents/src/tenants/service.py:68` - `create_tenant(db, request)` takes explicit params instead of context
+- **Gap:** `services/layer4-agents/src/tenants/service.py:68` - `create_tenant(db, request)` takes explicit params instead of context
 - **Instance Count (DEPRECATIONS.md):** ~47 instances
 
 #### DB Session Isolation (§2.2)
@@ -94,7 +94,7 @@ Fabric 4L has established a **strong documentation foundation** with `contract.m
 ## 3. Prioritized Migration Plan
 
 ### Phase 1: Fix Non-Blocking CI (Immediate - P0)
-**Effort:** 1 hour  
+**Effort:** 1 hour
 **Impact:** Enables actual enforcement
 
 1. **Remove `continue-on-error: true`** from `contract-compliance.yml:106`
@@ -102,7 +102,7 @@ Fabric 4L has established a **strong documentation foundation** with `contract.m
 3. **Verify** `make verify` fails on contract violations
 
 ### Phase 2: Frontend State-Machine Navigation (Week 1-2 - P1)
-**Effort:** 3 days  
+**Effort:** 3 days
 **Impact:** Aligns UI with contract §2.6
 
 1. **Create `RouteManifest`** type in frontend based on canonical example
@@ -111,7 +111,7 @@ Fabric 4L has established a **strong documentation foundation** with `contract.m
 4. **Enable `no-imperative-navigation`** rule as error
 
 ### Phase 3: Python Tool Structured Errors (Week 2-3 - P1)
-**Effort:** 4 days  
+**Effort:** 4 days
 **Impact:** Aligns Layer 4 with contract §2.4
 
 1. **Define `ToolResult[T]`** Pydantic model in shared package
@@ -120,7 +120,7 @@ Fabric 4L has established a **strong documentation foundation** with `contract.m
 4. **Add runtime guard** in tool registry to reject unwrapped exceptions
 
 ### Phase 4: Tenant Context in DB Layer (Week 3-4 - P2)
-**Effort:** 5 days  
+**Effort:** 5 days
 **Impact:** Aligns data layer with contract §2.2
 
 1. **Implement `TenantAwarePool`** based on canonical example
@@ -129,7 +129,7 @@ Fabric 4L has established a **strong documentation foundation** with `contract.m
 4. **Enable `no-explicit-db-connect`** rule
 
 ### Phase 5: Reference Implementation Integration (Week 4-5 - P2)
-**Effort:** 3 days  
+**Effort:** 3 days
 **Impact:** Makes canonical code testable and importable
 
 1. **Add `package.json` to `examples/canonical/`** for standalone compilation
@@ -165,28 +165,28 @@ These files should be treated as the **authoritative implementation** for their 
 ## 5. Top 3 Hard-Blocking Contract Gaps
 
 ### Gap 1: CI Does Not Block on Contract Violations
-**Severity:** P0 - Critical  
-**Location:** `.github/workflows/contract-compliance.yml:106`  
-**Issue:** `continue-on-error: true` means violations are logged but PRs are not blocked  
-**Fix:** Remove the line, ensure `make verify` fails on violations  
+**Severity:** P0 - Critical
+**Location:** `.github/workflows/contract-compliance.yml:106`
+**Issue:** `continue-on-error: true` means violations are logged but PRs are not blocked
+**Fix:** Remove the line, ensure `make verify` fails on violations
 **Impact:** Without this, contract enforcement is advisory only
 
 ### Gap 2: Frontend ESLint Rules Are Disabled
-**Severity:** P0 - Critical  
-**Location:** `frontend/.eslintrc.js:43-46`  
+**Severity:** P0 - Critical
+**Location:** `frontend/.eslintrc.js:43-46`
 **Issue:** Five contract rules explicitly disabled:
 - `no-raw-tenant-query: off`
 - `no-explicit-db-connect: off`
 - `no-inline-middleware: off`
 - `no-inline-tool-definition: off`
-**Fix:** Remove these overrides or set to "error" after migration  
+**Fix:** Remove these overrides or set to "error" after migration
 **Impact:** Frontend can introduce violations without detection
 
 ### Gap 3: No Runtime Tool Error Structure Enforcement
-**Severity:** P1 - High  
-**Location:** `value-fabric/layer4-agents/src/tools/*.py`  
-**Issue:** Tools can raise exceptions; no runtime guard ensures structured `ToolResult`  
-**Fix:** Add decorator/wrapper in tool registry that catches exceptions and converts to error results  
+**Severity:** P1 - High
+**Location:** `services/layer4-agents/src/tools/*.py`
+**Issue:** Tools can raise exceptions; no runtime guard ensures structured `ToolResult`
+**Fix:** Add decorator/wrapper in tool registry that catches exceptions and converts to error results
 **Impact:** Agent cannot reliably handle tool failures; violates contract §2.4
 
 ---

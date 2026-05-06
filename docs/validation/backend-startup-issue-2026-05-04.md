@@ -42,7 +42,7 @@ Output:
 - Docker Compose YAML syntax valid (`docker compose config` succeeded)
 - All service directories exist with valid Dockerfiles
 - Volume mount paths correct (`./packages/shared/src/value_fabric/shared` exists)
-- Init script path correct (`./value-fabric/scripts/init-multiple-dbs.sh` exists)
+- Init script path correct (`./scripts/db/init-multiple-dbs.sh` exists)
 - Build contexts valid for all services
 
 ## Follow-up Repo Hardening Applied on 2026-05-05

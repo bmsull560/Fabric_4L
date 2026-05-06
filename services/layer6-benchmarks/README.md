@@ -32,7 +32,7 @@ docker build -t layer6-benchmarks .
 docker run -p 8006:8006 layer6-benchmarks
 
 # Or run locally
-cd value-fabric/layer6-benchmarks
+cd services/layer6-benchmarks
 python -m uvicorn src.api.main:app --port 8006
 ```
 

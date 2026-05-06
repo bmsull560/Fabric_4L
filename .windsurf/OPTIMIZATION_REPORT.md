@@ -24,17 +24,17 @@ The `.windsurf/` directory is well-structured with strong architectural foundati
 
 ### 1.1 Path Prefix Errors (RULE_REVIEW.md Lines 25-36)
 
-**Issue:** 6 rules use `layer*/**/*.py` globs that will never match because layers live at `value-fabric/layer*/`.
+**Issue:** 6 rules use `layer*/**/*.py` globs that will never match because layers live at `services/layer*/`.
 
 **Affected Rules:**
 
-- `HC-003`: `layer4-agents/migrations/*.py` → `value-fabric/layer4-agents/migrations/*.py`
-- `DR-002`: `layer*/**/*.py` → `value-fabric/layer*/**/*.py` ✅ Already correct
-- `SR-001`: `layer*/**/*.py` → `value-fabric/layer*/**/*.py` ✅ Already correct
-- `SR-003`: `layer*/src/api/**/*.py` → `value-fabric/layer*/src/api/**/*.py` ✅ Already correct
-- `SR-006`: `layer*/src/api/**/*.py` → `value-fabric/layer*/src/api/**/*.py` ✅ Already correct
+- `HC-003`: `layer4-agents/migrations/*.py` → `services/layer4-agents/migrations/*.py`
+- `DR-002`: `layer*/**/*.py` → `services/layer*/**/*.py` ✅ Already correct
+- `SR-001`: `layer*/**/*.py` → `services/layer*/**/*.py` ✅ Already correct
+- `SR-003`: `layer*/src/api/**/*.py` → `services/layer*/src/api/**/*.py` ✅ Already correct
+- `SR-006`: `layer*/src/api/**/*.py` → `services/layer*/src/api/**/*.py` ✅ Already correct
 
-**Status:** Most rules already have correct `value-fabric/` prefix. Verify `HC-003` is correct.
+**Status:** Most rules already have correct `services/` prefix. Verify `HC-003` is correct.
 
 ### 1.2 SR-003 Auth Pattern (RULE_REVIEW.md Lines 40-54)
 

@@ -1,10 +1,10 @@
 # Tier 1 Production Blockers - Implementation Specification
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records superseded implementation plans. All blockers are resolved. See [ROADMAP.md](../../ROADMAP.md) and the [Archive Registry](../archive-registry.md).
 
-**Date:** April 17, 2026  
-**Status:** Ready for Execution  
+**Date:** April 17, 2026
+**Status:** Ready for Execution
 **Order:** (1) Vault Integration → (2) L1 Celery/Redis → (3) Monitoring Tuning
 
 ---
@@ -368,7 +368,7 @@ Layer 1 uses Celery with Redis for async task processing. Celery workers scale i
 #### Step 2.1: Update Celery Configuration
 
 **File to Modify:**
-- `value-fabric/layer1-ingestion/src/shared/tasks.py`
+- `services/layer1-ingestion/src/shared/tasks.py`
 
 ```python
 from celery import Celery
@@ -419,7 +419,7 @@ def handle_task_success(sender=None, result=None, **kwargs):
 #### Step 2.2: Create Celery Tasks
 
 **File to Create:**
-- `value-fabric/layer1-ingestion/src/crawler/celery_tasks.py`
+- `services/layer1-ingestion/src/crawler/celery_tasks.py`
 
 ```python
 from layer1_ingestion.src.shared.tasks import celery_app
@@ -432,19 +432,19 @@ logger = logging.getLogger(__name__)
 def crawl_url_task(self, url: str, tenant_id: str, source_type: str = "web"):
     """
     Celery task to crawl a URL and ingest content.
-    
+
     Args:
         url: URL to crawl
         tenant_id: Tenant identifier for isolation
         source_type: Type of source (web, pdf, sec)
-    
+
     Returns:
         dict: Ingestion result with document_id
     """
     try:
         engine = IngestionEngine(tenant_id=tenant_id)
         result = engine.ingest_url(url, source_type=source_type)
-        
+
         logger.info(f"Successfully ingested {url} for tenant {tenant_id}")
         return {
             "status": "success",
@@ -461,18 +461,18 @@ def crawl_url_task(self, url: str, tenant_id: str, source_type: str = "web"):
 def process_document_task(self, document_id: str, tenant_id: str):
     """
     Process an already ingested document (extract, parse, store).
-    
+
     Args:
         document_id: Document identifier
         tenant_id: Tenant identifier
-    
+
     Returns:
         dict: Processing result
     """
     try:
         engine = IngestionEngine(tenant_id=tenant_id)
         result = engine.process_document(document_id)
-        
+
         logger.info(f"Successfully processed document {document_id}")
         return {
             "status": "success",
@@ -488,15 +488,15 @@ def cleanup_old_documents_task(days: int = 30):
     """Scheduled task to clean up old documents"""
     from layer1_ingestion.src.shared.models import Document
     from datetime import datetime, timedelta
-    
+
     cutoff = datetime.utcnow() - timedelta(days=days)
     old_docs = Document.query.filter(Document.created_at < cutoff).all()
-    
+
     count = 0
     for doc in old_docs:
         doc.delete()
         count += 1
-    
+
     logger.info(f"Cleaned up {count} old documents")
     return {"cleaned": count}
 ```
@@ -510,14 +510,14 @@ def cleanup_old_documents_task(days: int = 30):
 #### Step 2.3: Add Celery Worker to Docker Compose
 
 **File to Modify:**
-- `value-fabric/docker-compose.yml`
+- `docker-compose.full.yml`
 
 ```yaml
 version: '3.8'
 
 services:
   # Existing services...
-  
+
   # Celery Worker for Layer 1
   layer1-worker:
     build:
@@ -715,7 +715,7 @@ spec:
 #### Step 2.5: Add Celery Beat Schedule
 
 **File to Create:**
-- `value-fabric/layer1-ingestion/celerybeat-schedule.py`
+- `services/layer1-ingestion/celerybeat-schedule.py`
 
 ```python
 from celery.schedules import crontab
@@ -841,7 +841,7 @@ groups:
       - alert: HighErrorRate
         expr: |
           (
-            sum(rate(http_requests_total{status=~"5.."}[5m])) 
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
             / sum(rate(http_requests_total[5m]))
           ) > 0.01
         for: 5m
@@ -856,7 +856,7 @@ groups:
       # High Latency (p99)
       - alert: HighLatency
         expr: |
-          histogram_quantile(0.99, 
+          histogram_quantile(0.99,
             sum(rate(http_request_duration_seconds_bucket[5m])) by (le, layer)
           ) > 2.0
         for: 10m
@@ -871,7 +871,7 @@ groups:
       - alert: HighLLMCostRate
         expr: |
           (
-            sum(increase(llm_cost_total[1h])) 
+            sum(increase(llm_cost_total[1h]))
             > 50  # $50/hour threshold
           )
         for: 15m
@@ -886,7 +886,7 @@ groups:
       - alert: HighLLMCostCritical
         expr: |
           (
-            sum(increase(llm_cost_total[1h])) 
+            sum(increase(llm_cost_total[1h]))
             > 100  # $100/hour threshold
           )
         for: 5m
@@ -913,7 +913,7 @@ groups:
       - alert: DiskSpaceLow
         expr: |
           (
-            node_filesystem_avail_bytes{mountpoint="/"} 
+            node_filesystem_avail_bytes{mountpoint="/"}
             / node_filesystem_size_bytes{mountpoint="/"}
           ) < 0.15
         for: 5m
@@ -928,7 +928,7 @@ groups:
       - alert: MemoryUsageHigh
         expr: |
           (
-            container_memory_usage_bytes 
+            container_memory_usage_bytes
             / container_spec_memory_limit_bytes
           ) > 0.85
         for: 10m

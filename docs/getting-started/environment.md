@@ -39,26 +39,26 @@ graph TB
         C[🟢 Class C<br/>Public Config<br/>Git Committed]
         D[🔵 Class D<br/>Local Dev<br/>Never Deployed]
     end
-    
+
     subgraph "Environments"
         DEV[Development<br/>Local]
         TEST[Test<br/>CI/Local]
         STAGE[Staging<br/>Cloud]
         PROD[Production<br/>Cloud]
     end
-    
+
     subgraph "Storage"
         INF[Infisical<br/>Vault]
         GIT[Git Repo<br/>Contracts]
         LOCAL[.env.local<br/>Ignored]
     end
-    
+
     A --> INF
     B --> INF
     B --> GIT
     C --> GIT
     D --> LOCAL
-    
+
     INF --> DEV
     INF --> STAGE
     INF --> PROD
@@ -67,7 +67,7 @@ graph TB
     GIT --> STAGE
     GIT --> PROD
     LOCAL --> DEV
-    
+
     style A fill:#e74c3c,color:white
     style B fill:#e67e22,color:white
     style C fill:#2ecc71,color:white
@@ -134,7 +134,7 @@ JWT_SECRET=a3f5c7e9...
 
 ## Required Variables
 
-### Backend (value-fabric/)
+### Backend services (services/)
 
 ```bash
 # Class A - Required
@@ -183,11 +183,11 @@ sequenceDiagram
     participant I as Infisical CLI
     participant INF as Infisical Cloud
     participant S as Service
-    
+
     D->>I: infisical login
     I->>INF: Authenticate
     INF-->>I: Token
-    
+
     D->>I: infisical run --env=dev
     I->>INF: Fetch secrets
     INF-->>I: Decrypted secrets
@@ -281,7 +281,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     jwt_secret: str
     database_url: str
-    
+
     @validator('jwt_secret')
     def validate_jwt_secret(cls, v):
         if v == 'changeme-in-production':
@@ -289,7 +289,7 @@ class Settings(BaseSettings):
         if len(v) < 32:
             raise ValueError('JWT_SECRET must be at least 32 characters')
         return v
-    
+
     @validator('openai_api_key')
     def validate_openai_key(cls, v):
         if not v.startswith('sk-'):

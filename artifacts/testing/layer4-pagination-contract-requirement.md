@@ -1,7 +1,7 @@
 # Layer 4 Pagination Contract — Frontend Requirements
 
-**Status**: Backend Contract Gap Identified  
-**Date**: 2026-04-11  
+**Status**: Backend Contract Gap Identified
+**Date**: 2026-04-11
 **Priority**: P2 (Medium) — Not blocking current functionality
 
 ---
@@ -131,7 +131,7 @@ export function useWorkflowHistory(filters: {
   sortBy?: 'created_at' | 'updated_at';
 } = {}) {
   const { status = 'all', limit = 20, offset = 0, sortBy = 'created_at' } = filters;
-  
+
   return useQuery({
     queryKey: WORKFLOW_KEYS.history({ status, limit, offset, sortBy }),
     queryFn: async () => {
@@ -198,7 +198,7 @@ const WORKFLOW_KEYS = {
 ## Related Files
 
 - Frontend: `frontend/client/src/hooks/useWorkflows.ts` (lines 125-136)
-- Backend: `value-fabric/layer4-agents/src/api/routes/workflows.py` (lines 490-503)
+- Backend: `services/layer4-agents/src/api/routes/workflows.py` (lines 490-503)
 - Tests: `frontend/client/src/hooks/useWorkflows.test.ts`
 
 ---

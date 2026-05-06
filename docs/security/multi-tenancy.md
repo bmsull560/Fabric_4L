@@ -241,11 +241,11 @@ Test cross-tenant denial:
 @pytest.mark.asyncio
 async def test_cannot_access_other_tenant_data():
     tenant_a, tenant_b = create_test_tenants()
-    
+
     # Create data in tenant_a
     async with db_session(tenant_id=tenant_a) as db:
         await create_account(db, tenant_a, "Test Account")
-    
+
     # Query with tenant_b context should return no results
     async with db_session(tenant_id=tenant_b) as db:
         accounts = await list_accounts(db)
@@ -309,24 +309,24 @@ Every request has its tenant resolution logged:
 ## Migration Roadmap
 
 ### Phase 1: Shared (Current)
-✅ RLS-based isolation  
-✅ RequestContext standardization  
-✅ Audit logging  
+✅ RLS-based isolation
+✅ RequestContext standardization
+✅ Audit logging
 
 ### Phase 2: Schema (Future)
-⬜ Tier-aware connection routing  
-⬜ Schema provisioning automation  
-⬜ Cross-schema query utilities  
+⬜ Tier-aware connection routing
+⬜ Schema provisioning automation
+⬜ Cross-schema query utilities
 
 ### Phase 3: Database (Future)
-⬜ Multi-database connection pools  
-⬜ Database provisioning pipeline  
-⬜ Geographic data residency  
+⬜ Multi-database connection pools
+⬜ Database provisioning pipeline
+⬜ Geographic data residency
 
 ## References
 
 - [Token Contract](./token-contract.md) - JWT claim specification
 - `shared/identity/context.py` - RequestContext definition
 - `shared/identity/middleware.py` - GovernanceMiddleware
-- `value-fabric/layer4-agents/src/database.py` - DB session management
-- `value-fabric/layer4-agents/src/tenants/models/` - Tenant models
+- `services/layer4-agents/src/database.py` - DB session management
+- `services/layer4-agents/src/tenants/models/` - Tenant models

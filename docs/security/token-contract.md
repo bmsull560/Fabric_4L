@@ -184,7 +184,7 @@ def generate_user_token(
 ) -> str:
     """Generate a user JWT token for Fabric 4L."""
     now = datetime.now(UTC)
-    
+
     payload = {
         "sub": user_id,
         "tenant_id": tenant_id,
@@ -197,7 +197,7 @@ def generate_user_token(
         "iat": now,
         "exp": now + timedelta(minutes=ttl_minutes),
     }
-    
+
     return jwt.encode(payload, jwt_secret, algorithm="HS256")
 
 
@@ -210,7 +210,7 @@ def generate_service_account_token(
 ) -> str:
     """Generate a service account JWT token."""
     now = datetime.now(UTC)
-    
+
     payload = {
         "service_account_id": service_account_id,
         "tenant_id": tenant_id,
@@ -220,7 +220,7 @@ def generate_service_account_token(
         "iat": now,
         "exp": now + timedelta(hours=ttl_hours),
     }
-    
+
     return jwt.encode(payload, jwt_secret, algorithm="HS256")
 ```
 
@@ -233,7 +233,7 @@ const { v4: uuidv4 } = require('uuid');
 function generateUserToken(jwtSecret, userId, tenantId, options = {}) {
     const now = Math.floor(Date.now() / 1000);
     const ttlSeconds = (options.ttlMinutes || 60) * 60;
-    
+
     const payload = {
         sub: userId,
         tenant_id: tenantId,
@@ -246,14 +246,14 @@ function generateUserToken(jwtSecret, userId, tenantId, options = {}) {
         iat: now,
         exp: now + ttlSeconds,
     };
-    
+
     return jwt.sign(payload, jwtSecret, { algorithm: 'HS256' });
 }
 
 function generateServiceAccountToken(jwtSecret, serviceAccountId, tenantId, scopes, options = {}) {
     const now = Math.floor(Date.now() / 1000);
     const ttlSeconds = (options.ttlHours || 24) * 3600;
-    
+
     const payload = {
         service_account_id: serviceAccountId,
         tenant_id: tenantId,
@@ -263,7 +263,7 @@ function generateServiceAccountToken(jwtSecret, serviceAccountId, tenantId, scop
         iat: now,
         exp: now + ttlSeconds,
     };
-    
+
     return jwt.sign(payload, jwtSecret, { algorithm: 'HS256' });
 }
 ```
@@ -351,7 +351,7 @@ See `shared/identity/middleware.py` for implementation details.
 - [Multi-Tenancy Architecture](./multi-tenancy.md)
 - `shared/identity/context.py` - RequestContext
 - `shared/identity/middleware.py` - Token validation
-- `value-fabric/layer4-agents/src/tenants/models/` - Tenant resolution
+- `services/layer4-agents/src/tenants/models/` - Tenant resolution
 
 ## Migration Note (May 2026): Cookie-Based Session Transport
 

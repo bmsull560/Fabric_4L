@@ -16,11 +16,11 @@
       "instanceCount": 225,
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/*/src/**/*.py"
+        "services/*/src/**/*.py"
       ],
       "allowedPaths": [
-        "value-fabric/*/migrations/**",
-        "value-fabric/*/tests/**"
+        "services/*/migrations/**",
+        "services/*/tests/**"
       ],
       "replacement": "getTenantContext() from async scope",
       "rationale": "Tenant context must flow through request-scoped AsyncLocalStorage, not explicit parameters. Prevents parameter pollution and cross-tenant spoofing.",
@@ -42,7 +42,7 @@
       "instanceCount": 23,
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/*/src/**/*.py"
+        "services/*/src/**/*.py"
       ],
       "allowedPaths": [
         "shared/identity/middleware.py"
@@ -67,10 +67,10 @@
       "instanceCount": 15,
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/*/src/**/*.py"
+        "services/*/src/**/*.py"
       ],
       "allowedPaths": [
-        "value-fabric/*/migrations/**",
+        "services/*/migrations/**",
         "scripts/analytics/**"
       ],
       "replacement": "ORM with automatic tenant scoping via db.getSession()",
@@ -93,7 +93,7 @@
       "instanceCount": 31,
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/*/src/**/*.py"
+        "services/*/src/**/*.py"
       ],
       "allowedPaths": [],
       "replacement": "db.getSession() which reads tenant from context",
@@ -116,7 +116,7 @@
       "instanceCount": 42,
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/*/src/api/**/*.py",
+        "services/*/src/api/**/*.py",
         "frontend/client/src/**/*.ts",
         "frontend/client/src/**/*.tsx"
       ],
@@ -143,11 +143,11 @@
       "instanceCount": 19,
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/layer4-agents/src/agents/**/*.py",
-        "value-fabric/layer4-agents/workflows/**/*.py"
+        "services/layer4-agents/src/agents/**/*.py",
+        "services/layer4-agents/workflows/**/*.py"
       ],
       "allowedPaths": [
-        "value-fabric/layer4-agents/src/tools/**/*.py",
+        "services/layer4-agents/src/tools/**/*.py",
         "examples/canonical/tools/**"
       ],
       "replacement": "Central ToolRegistry with schema-first definitions",
@@ -172,10 +172,10 @@
       "lastMigration": "2026-04-28T08:35:00Z",
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/layer4-agents/src/tools/**/*.py"
+        "services/layer4-agents/src/tools/**/*.py"
       ],
       "allowedPaths": [
-        "value-fabric/layer4-agents/tests/**"
+        "services/layer4-agents/tests/**"
       ],
       "replacement": "ToolResult with status: error and structured error payload",
       "rationale": "Tools must return structured errors, not throw exceptions. Agents need recoverability info to reason about failures.",
@@ -197,7 +197,7 @@
       "instanceCount": 13,
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
-        "value-fabric/layer4-agents/src/**/*.py",
+        "services/layer4-agents/src/**/*.py",
         "frontend/client/src/**/*.ts",
         "frontend/client/src/**/*.tsx"
       ],

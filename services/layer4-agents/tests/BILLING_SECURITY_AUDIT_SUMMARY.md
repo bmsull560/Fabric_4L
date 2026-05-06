@@ -1,17 +1,17 @@
 # Billing Webhook & Idempotency Security Audit Summary
 
-**Date:** 2026-04-26  
-**Auditor:** Production-Readiness Audit Agent  
+**Date:** 2026-04-26
+**Auditor:** Production-Readiness Audit Agent
 **Scope:** Webhook signature verification, idempotency, tenant isolation, usage metering
 
 ---
 
 ## Executive Summary
 
-**Tests Created:** 27 new security tests  
-**Tests Passing:** 20 (74%)  
-**Tests Failing:** 7 (26%) - Revealing security gaps  
-**P0 Issues Fixed:** 3  
+**Tests Created:** 27 new security tests
+**Tests Passing:** 20 (74%)
+**Tests Failing:** 7 (26%) - Revealing security gaps
+**P0 Issues Fixed:** 3
 **Pre-existing Bugs Fixed:** 5
 
 ---
@@ -66,7 +66,7 @@
 ## P0 Security Issues Fixed
 
 ### 1. Webhook Race Condition (FIXED)
-**Risk:** Concurrent webhooks with same event_id could duplicate side effects  
+**Risk:** Concurrent webhooks with same event_id could duplicate side effects
 **Fix:** Added IntegrityError handling in `billing_service.py`:
 ```python
 except IntegrityError:
@@ -77,7 +77,7 @@ except IntegrityError:
 **Validation:** test_webhook_idempotency_uses_db_constraint_not_raceable_select ✅
 
 ### 2. Missing Database Rollback (FIXED)
-**Risk:** Database failures leave partial writes, corrupting billing state  
+**Risk:** Database failures leave partial writes, corrupting billing state
 **Fix:** Added try/except/rollback wrapper in `handle_webhook()`:
 ```python
 except Exception:
@@ -87,7 +87,7 @@ except Exception:
 **Validation:** test_webhook_database_failure_rolls_back ✅
 
 ### 3. Empty Signature Not Rejected (FIXED)
-**Risk:** Missing signature header not explicitly rejected  
+**Risk:** Missing signature header not explicitly rejected
 **Fix:** Added validation at start of `handle_webhook()`:
 ```python
 if not signature:
@@ -100,13 +100,13 @@ if not signature:
 ## P0 Security Issues Identified (Not Fixed)
 
 ### 1. UsageService Missing Rollback
-**Risk:** Usage ingestion failures don't rollback, potentially corrupting usage totals  
-**Evidence:** test_usage_event_db_failure_rolls_back fails  
+**Risk:** Usage ingestion failures don't rollback, potentially corrupting usage totals
+**Evidence:** test_usage_event_db_failure_rolls_back fails
 **Fix Needed:** Wrap `ingest_event()` and `ingest_batch()` with try/except/rollback
 
 ### 2. Tenant Resolution From Metadata Only
-**Risk:** Webhook uses `metadata.customer_id` without verifying customer belongs to tenant  
-**Evidence:** test_webhook_tenant_resolution_from_customer_record fails  
+**Risk:** Webhook uses `metadata.customer_id` without verifying customer belongs to tenant
+**Evidence:** test_webhook_tenant_resolution_from_customer_record fails
 **Fix Needed:** Look up customer from DB, verify tenant_id matches authenticated context
 
 ---
@@ -126,23 +126,23 @@ if not signature:
 ## Files Modified
 
 ### Security Fixes
-- `value-fabric/layer4-agents/src/services/billing_service.py` - Webhook rollback, race condition handling
+- `services/layer4-agents/src/services/billing_service.py` - Webhook rollback, race condition handling
 
 ### Pre-existing Bug Fixes
-- `value-fabric/layer4-agents/src/database.py` - `__future__` annotations
-- `value-fabric/layer4-agents/src/config/checkpoint.py` - `__future__` annotations
-- `value-fabric/layer4-agents/src/models/billing.py` - metadata field names
-- `value-fabric/layer4-agents/src/services/usage_service.py` - event_metadata usage
-- `value-fabric/layer4-agents/src/models/pain_signal.py` - ErrorCategory class
-- `value-fabric/layer4-agents/src/messaging/signal_events.py` - SignalStreamCompleteEvent name
-- `value-fabric/layer4-agents/src/messaging/__init__.py` - Export name
+- `services/layer4-agents/src/database.py` - `__future__` annotations
+- `services/layer4-agents/src/config/checkpoint.py` - `__future__` annotations
+- `services/layer4-agents/src/models/billing.py` - metadata field names
+- `services/layer4-agents/src/services/usage_service.py` - event_metadata usage
+- `services/layer4-agents/src/models/pain_signal.py` - ErrorCategory class
+- `services/layer4-agents/src/messaging/signal_events.py` - SignalStreamCompleteEvent name
+- `services/layer4-agents/src/messaging/__init__.py` - Export name
 
 ### Test Files Created
-- `value-fabric/layer4-agents/tests/test_webhook_security.py` - 12 webhook security tests
-- `value-fabric/layer4-agents/tests/test_usage_idempotency.py` - 15 usage idempotency tests
+- `services/layer4-agents/tests/test_webhook_security.py` - 12 webhook security tests
+- `services/layer4-agents/tests/test_usage_idempotency.py` - 15 usage idempotency tests
 
 ### Test Files Updated
-- `value-fabric/layer4-agents/tests/test_usage_service.py` - Updated fixture to use event_metadata
+- `services/layer4-agents/tests/test_usage_service.py` - Updated fixture to use event_metadata
 
 ---
 
@@ -154,7 +154,7 @@ billing-security-tests:
   steps:
     - run: uv run pytest tests/test_webhook_security.py -v --tb=short
     - run: uv run pytest tests/test_usage_idempotency.py -v --tb=short
-    
+
   failure_conditions:
     - Any P0 security test fails
     - Any tenant isolation test fails
@@ -198,7 +198,7 @@ Fix remaining test failures by properly configuring AsyncMock for:
 
 ```bash
 # Run all billing security tests
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 uv run pytest tests/test_webhook_security.py tests/test_usage_idempotency.py -v
 
 # Run with coverage

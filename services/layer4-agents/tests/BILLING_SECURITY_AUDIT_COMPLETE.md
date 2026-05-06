@@ -1,8 +1,8 @@
 # Billing & Webhook Security Audit - Complete
 
-**Date**: 2025-01-22  
-**Auditor**: Cascade AI  
-**Scope**: Billing and webhook systems in Layer 4 Agents  
+**Date**: 2025-01-22
+**Auditor**: Cascade AI
+**Scope**: Billing and webhook systems in Layer 4 Agents
 
 ---
 
@@ -50,12 +50,12 @@ Comprehensive production security audit completed. **10 security/reliability iss
 ## Files Changed
 
 ```
-value-fabric/layer4-agents/src/api/main.py                          (+14 lines)
-value-fabric/layer4-agents/src/api/routes/billing.py                (+63 lines)
-value-fabric/layer4-agents/src/api/routes/health_badges.py        (+14 lines)
-value-fabric/layer4-agents/src/config/settings.py                   (+46 lines)
-value-fabric/layer4-agents/src/metrics/prometheus_metrics.py      (+76 lines)
-value-fabric/layer4-agents/tests/test_security_fixes.py             (+342 lines)
+services/layer4-agents/src/api/main.py                          (+14 lines)
+services/layer4-agents/src/api/routes/billing.py                (+63 lines)
+services/layer4-agents/src/api/routes/health_badges.py        (+14 lines)
+services/layer4-agents/src/config/settings.py                   (+46 lines)
+services/layer4-agents/src/metrics/prometheus_metrics.py      (+76 lines)
+services/layer4-agents/tests/test_security_fixes.py             (+342 lines)
 ```
 
 **Total**: ~555 lines added/modified across 6 files
@@ -140,7 +140,7 @@ security-audit:
     - name: Run security tests
       run: |
         pytest tests/test_security_fixes.py -v
-        
+
     - name: Verify no high-cardinality labels
       run: |
         # Check that tenant_id is not used as metric label

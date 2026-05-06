@@ -29,7 +29,7 @@
 
 ## 2026-05-06: Canonical path structure
 **Decision:** Runtime Python package root is `value_fabric/` with layer-specific subdirectories (layer1/ through layer6/). Service deployment layer is in `services/`. Frontend canonical location is `apps/web/`.
-**Rationale:** Clear separation between runtime packages and service deployment layer. Legacy paths (frontend/, value-fabric/) retained for compatibility.
+**Rationale:** Clear separation between runtime packages and service deployment layer. Historical frontend artifacts and legacy Value Fabric materials are retained only under archived compatibility locations such as `docs/archive/legacy-value-fabric/`.
 **Alternatives considered:** Flat structure (unclear boundaries), multiple package roots (complexity overhead).
 **Status:** active
 
@@ -40,7 +40,7 @@
 **Status:** active
 
 ## 2026-05-06: Provider-agnostic orchestration
-**Decision:** Core orchestration logic in `value-fabric/layer4-agents/src/engine/` is provider-agnostic. Vendor-specific adapters (OpenAI, Anthropic, Neo4j, pgvector) are isolated.
+**Decision:** Core orchestration logic in `services/layer4-agents/src/engine/` is provider-agnostic. Vendor-specific adapters (OpenAI, Anthropic, Neo4j, pgvector) are isolated.
 **Rationale:** Enables easy swapping of LLM providers and databases without touching core logic.
 **Alternatives considered:** Vendor-specific implementations throughout (lock-in risk), abstraction layer only (insufficient isolation).
 **Status:** active

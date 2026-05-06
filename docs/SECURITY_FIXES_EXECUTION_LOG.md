@@ -36,13 +36,13 @@
 ## STEP 2: Patch P0s ✅
 
 ### P0-8/F-2: Tools Authentication
-**File:** `value-fabric/layer4-agents/src/api/routes/tools.py`
+**File:** `services/layer4-agents/src/api/routes/tools.py`
 **Lines Modified:** 70-76, 104-109, 129-134, 460-463
 **Change:** Added `ctx: RequestContext = Depends(require_authenticated)` to 4 endpoints
 **Status:** ✅ PATCHED
 
 ### P0-3: Dev Tenant Fallback
-**File:** `value-fabric/layer1-ingestion/src/api/main.py`
+**File:** `services/layer1-ingestion/src/api/main.py`
 **Lines Modified:** 272-274
 **Change:** Replaced hardcoded UUID return with `raise HTTPException(401)`
 **Status:** ✅ PATCHED
@@ -60,25 +60,25 @@
 **Status:** ✅ PATCHED
 
 ### P0-7: Container Root User
-**File:** `value-fabric/layer3-knowledge/Dockerfile`
+**File:** `services/layer3-knowledge/Dockerfile`
 **Lines Modified:** 15-16
 **Change:** Added `RUN groupadd -r appgroup && useradd -r -g appgroup appuser` and `USER appuser`
 **Status:** ✅ PATCHED
 
 ### P0-2/F-3: eval() RCE
-**File:** `value-fabric/layer3-knowledge/src/services/signal_quantification.py`
+**File:** `services/layer3-knowledge/src/services/signal_quantification.py`
 **Lines Modified:** 9 (import ast), 61-75 (AST operator mappings), 441-527 (replace _safe_eval with AST evaluator, add _eval_node)
 **Change:** Replaced `eval()` with AST-based safe evaluator that only allows constants, names, binary ops, unary ops, and safe functions
 **Status:** ✅ PATCHED
 
 ### P0-1: SOQL Injection
-**File:** `value-fabric/layer4-agents/src/tools/crm_tools.py`
+**File:** `services/layer4-agents/src/tools/crm_tools.py`
 **Lines Modified:** 3-5 (import re, urllib.parse), 10-11 (SFDC ID pattern), 74-92 (add _validate_sfdc_id), 98-99, 119 (URL-encode SOQL queries)
 **Change:** Added Salesforce ID format validation (15/18 alphanumeric chars) and URL encoding
 **Status:** ✅ PATCHED
 
 ### P0-9: WebSocket Auth
-**File:** `value-fabric/layer4-agents/src/api/routes/signals.py`
+**File:** `services/layer4-agents/src/api/routes/signals.py`
 **Lines Modified:** 314-330
 **Change:** Added JWT token validation before WebSocket accept
 **Status:** ✅ PATCHED
@@ -92,19 +92,19 @@
 ## STEP 3: Patch P1s ✅
 
 ### P1-10: Pickle Deserialization
-**File:** `value-fabric/layer3-knowledge/src/cache/redis_cache.py`
+**File:** `services/layer3-knowledge/src/cache/redis_cache.py`
 **Lines Modified:** 143-158, 160-175
 **Change:** Disabled pickle serializer, raises ValueError if requested
 **Status:** ✅ PATCHED
 
 ### P1-15: L6 Fails Closed
-**File:** `value-fabric/layer6-benchmarks/src/api/main.py`
+**File:** `services/layer6-benchmarks/src/api/main.py`
 **Lines Modified:** 177-185
 **Change:** Raises RuntimeError in production/staging if GovernanceMiddleware cannot import
 **Status:** ✅ PATCHED
 
 ### P1-11: Cypher Injection
-**File:** `value-fabric/layer4-agents/src/tools/knowledge_tools.py`
+**File:** `services/layer4-agents/src/tools/knowledge_tools.py`
 **Lines Modified:** 4 (import re), 57-74 (add _validate_read_only with write keyword regex), 76-79 (call validation in execute)
 **Change:** Rejects write operations (CREATE, DELETE, SET, MERGE, etc.)
 **Status:** ✅ PATCHED
@@ -119,7 +119,7 @@
 **Status:** ✅ ALREADY FIXED (line 319 has autoescape)
 
 ### P1-20: XXE Vulnerability
-**File:** `value-fabric/layer1-ingestion/src/adapters/xbrl_parser.py`
+**File:** `services/layer1-ingestion/src/adapters/xbrl_parser.py`
 **Lines Modified:** 8-9 (import defusedxml), 139-140 (use defusedxml.fromstring)
 **Dependency Added:** `defusedxml>=0.7.1` to layer1-ingestion/pyproject.toml
 **Status:** ✅ PATCHED
@@ -134,7 +134,7 @@
 **Status:** ✅ ALREADY HANDLED (JWT_SECRET requires secrets)
 
 ### Docker-Compose Hardening (F-5, F-7, F-8)
-**File:** `value-fabric/docker-compose.yml`
+**File:** `docker-compose.full.yml`
 **Lines Modified:** 14, 55, 124, 161, 325, 351, 376-379, 425-426, 469, 478 (all REDIS_URL updates)
 **Change:** Grafana password env var, Redis requirepass, Flower basic_auth, all Redis URLs with password
 **Status:** ✅ PATCHED
@@ -200,20 +200,20 @@
 
 | # | File | Lines Changed | Type |
 |---|------|---------------|------|
-| 1 | `value-fabric/layer4-agents/src/api/routes/tools.py` | 4 | P0-8 |
-| 2 | `value-fabric/layer1-ingestion/src/api/main.py` | 3 | P0-3 |
+| 1 | `services/layer4-agents/src/api/routes/tools.py` | 4 | P0-8 |
+| 2 | `services/layer1-ingestion/src/api/main.py` | 3 | P0-3 |
 | 3 | `shared/identity/middleware_sync.py` | ~40 | P0-4, F-1 |
-| 4 | `value-fabric/layer3-knowledge/Dockerfile` | 2 | P0-7 |
-| 5 | `value-fabric/layer3-knowledge/src/services/signal_quantification.py` | ~90 | P0-2 |
-| 6 | `value-fabric/layer4-agents/src/tools/crm_tools.py` | ~20 | P0-1 |
-| 7 | `value-fabric/layer4-agents/src/api/routes/signals.py` | ~17 | P0-9 |
-| 8 | `value-fabric/layer3-knowledge/src/cache/redis_cache.py` | ~15 | P1-10 |
-| 9 | `value-fabric/layer6-benchmarks/src/api/main.py` | ~8 | P1-15 |
-| 10 | `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | ~20 | P1-11 |
+| 4 | `services/layer3-knowledge/Dockerfile` | 2 | P0-7 |
+| 5 | `services/layer3-knowledge/src/services/signal_quantification.py` | ~90 | P0-2 |
+| 6 | `services/layer4-agents/src/tools/crm_tools.py` | ~20 | P0-1 |
+| 7 | `services/layer4-agents/src/api/routes/signals.py` | ~17 | P0-9 |
+| 8 | `services/layer3-knowledge/src/cache/redis_cache.py` | ~15 | P1-10 |
+| 9 | `services/layer6-benchmarks/src/api/main.py` | ~8 | P1-15 |
+| 10 | `services/layer4-agents/src/tools/knowledge_tools.py` | ~20 | P1-11 |
 | 11 | `k8s/base/layer1-celery.yaml` | ~30 | P1-16, P1-18 |
-| 12 | `value-fabric/layer1-ingestion/src/adapters/xbrl_parser.py` | ~5 | P1-20 |
-| 13 | `value-fabric/docker-compose.yml` | ~10 | F-5, F-7, F-8 |
-| 14 | `value-fabric/layer1-ingestion/pyproject.toml` | 1 | Dependency |
+| 12 | `services/layer1-ingestion/src/adapters/xbrl_parser.py` | ~5 | P1-20 |
+| 13 | `docker-compose.full.yml` | ~10 | F-5, F-7, F-8 |
+| 14 | `services/layer1-ingestion/pyproject.toml` | 1 | Dependency |
 
 **Total Files Modified:** 14
 **Total Lines Changed:** ~265
@@ -266,7 +266,7 @@
 pytest tests/security/test_security_fixes.py -v
 
 # Run Bandit scan manually
-bandit -r value-fabric/layer1-ingestion/src value-fabric/layer4-agents/src shared/
+bandit -r services/layer1-ingestion/src services/layer4-agents/src shared/
 
 # Run Trivy secret scan
 trivy fs --severity CRITICAL,HIGH .
@@ -276,15 +276,15 @@ grep -r "C_FORCE_ROOT" k8s/base/
 # Expected: All should be "false"
 
 # Verify defusedxml is used
-grep -r "defusedxml" value-fabric/layer1-ingestion/src/
+grep -r "defusedxml" services/layer1-ingestion/src/
 # Expected: Should find imports and usage
 
 # Verify no eval() in signal_quantification
-grep "eval(" value-fabric/layer3-knowledge/src/services/signal_quantification.py
+grep "eval(" services/layer3-knowledge/src/services/signal_quantification.py
 # Expected: Should only be in comments or error messages
 
 # Verify tools endpoints have auth dependency
-grep "require_authenticated" value-fabric/layer4-agents/src/api/routes/tools.py
+grep "require_authenticated" services/layer4-agents/src/api/routes/tools.py
 # Expected: Should be in 4+ endpoint signatures
 ```
 

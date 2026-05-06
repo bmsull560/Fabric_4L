@@ -1,15 +1,15 @@
 # Test Quality Remediation Summary
 
-**Date**: 2026-04-13  
-**Workflow**: /test-quality-remediation  
-**Target**: Layer 4 Agents - test_accounts_api.py  
+**Date**: 2026-04-13
+**Workflow**: /test-quality-remediation
+**Target**: Layer 4 Agents - test_accounts_api.py
 **Status**: ✅ COMPLETE
 
 ---
 
 ## Summary
 
-Fixed failing tests in `value-fabric/layer4-agents/tests/test_accounts_api.py` that were failing due to **environment coupling** and **API contract mismatch** issues.
+Fixed failing tests in `services/layer4-agents/tests/test_accounts_api.py` that were failing due to **environment coupling** and **API contract mismatch** issues.
 
 | Metric | Before | After |
 |--------|--------|-------|
@@ -45,10 +45,10 @@ async def test_sync_accounts_all_providers(client: AsyncClient):
 # After: Test mocks the service
 async def test_sync_accounts_all_providers(client: AsyncClient, monkeypatch):
     from src.services.crm_sync_service import CRMSyncService
-    
+
     async def mock_sync_provider(self, provider, incremental=True, account_ids=None):
         return {"updated": 5, "failed": 0, "errors": []}
-    
+
     monkeypatch.setattr(CRMSyncService, "sync_provider", mock_sync_provider)
     response = await client.post("/v1/accounts/sync", json={})
     assert data["status"] in ("completed", "partial")  # Correct assertion
@@ -145,7 +145,7 @@ These require deeper refactoring of the CRM sync service test infrastructure.
 ## Validation
 
 ```bash
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 python -m pytest tests/test_accounts_api.py -v
 ```
 
@@ -157,9 +157,9 @@ All warnings are deprecation notices (FastAPI regex, Pydantic v2 config) - no fu
 
 ## Files Modified
 
-- `value-fabric/layer4-agents/tests/test_accounts_api.py`
+- `services/layer4-agents/tests/test_accounts_api.py`
   - Lines 469-491: `test_sync_accounts_all_providers` - Added mock, fixed assertion
-  - Lines 494-518: `test_sync_accounts_specific_provider` - Added mock, fixed assertion  
+  - Lines 494-518: `test_sync_accounts_specific_provider` - Added mock, fixed assertion
   - Lines 519-540: `test_sync_accounts_force_refresh` - Added mock, fixed assertion
   - Lines 580-599: `test_refresh_account_success` - Added mock
   - Line 410: `test_get_account_detail` - Fixed type coercion

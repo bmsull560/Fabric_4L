@@ -41,14 +41,14 @@ Determine which anti-pattern to fix. Accept one of:
 For the selected anti-pattern, grep for the deprecated pattern:
 
 ```
-AP-1: grep -rn "def.*tenant_id" value-fabric/layer{2,3,4}*/src/ --include="*.py"
-AP-2: grep -rn "headers\[.*tenant" value-fabric/layer*/src/ --include="*.py"
-AP-3: grep -rn "tenant_id" value-fabric/layer*/src/ --include="*.py" | grep -i "select\|where\|insert\|update"
-AP-4: grep -rn "db\.connect\|db\.withTenant\|db\.with_tenant" value-fabric/ --include="*.py"
-AP-5: grep -rn "app\.use\|app\.add_middleware" value-fabric/layer*/src/api/ --include="*.py"
-AP-6: grep -rn "lambda.*tool\|tools.*=.*\[" value-fabric/layer4-agents/src/agents/ --include="*.py"
-AP-7: grep -rn "raise ToolError\|raise ValueError\|raise Exception" value-fabric/layer4-agents/src/tools/ --include="*.py"
-AP-8: grep -rn "json\.loads\|JSON\.parse" value-fabric/layer4-agents/src/ --include="*.py"
+AP-1: grep -rn "def.*tenant_id" services/layer{2,3,4}*/src/ --include="*.py"
+AP-2: grep -rn "headers\[.*tenant" services/layer*/src/ --include="*.py"
+AP-3: grep -rn "tenant_id" services/layer*/src/ --include="*.py" | grep -i "select\|where\|insert\|update"
+AP-4: grep -rn "db\.connect\|db\.withTenant\|db\.with_tenant" services/ --include="*.py"
+AP-5: grep -rn "app\.use\|app\.add_middleware" services/layer*/src/api/ --include="*.py"
+AP-6: grep -rn "lambda.*tool\|tools.*=.*\[" services/layer4-agents/src/agents/ --include="*.py"
+AP-7: grep -rn "raise ToolError\|raise ValueError\|raise Exception" services/layer4-agents/src/tools/ --include="*.py"
+AP-8: grep -rn "json\.loads\|JSON\.parse" services/layer4-agents/src/ --include="*.py"
 AP-9: grep -rn "router\.push\|history\.push\|navigate(" frontend/client/src/ --include="*.tsx" --include="*.ts"
 AP-10: grep -rn '+ "/' frontend/client/src/ --include="*.tsx" --include="*.ts"
 ```
@@ -88,7 +88,7 @@ For each instance, apply the canonical replacement:
 
 After each migration:
 1. Run the relevant layer's tests:
-   - Python: `python -m pytest value-fabric/layer{N}/tests/ -x -q`
+   - Python: `python -m pytest services/layer{N}/tests/ -x -q`
    - Frontend: `cd frontend && pnpm test --run`
 2. Run contract tests: `python -m pytest tests/contract/ -x -q`
 3. Run deprecation checker: `python scripts/ci/check_deprecations.py --format markdown`
@@ -106,7 +106,7 @@ After successful migration:
 - **Whitelisted instances:** `scripts/analytics/*.py` raw SQL is whitelisted (AP-3) — skip these
 - **Test files:** Don't migrate patterns in test mocks/fixtures unless the test is testing the pattern itself
 - **Shared identity:** Never modify `shared/identity/` without security review (AGENTS.md P0 rule #2)
-- **Migrations:** Never modify `value-fabric/layer4-agents/migrations/` by hand (AGENTS.md P0 rule #3)
+- **Migrations:** Never modify `services/layer4-agents/migrations/` by hand (AGENTS.md P0 rule #3)
 
 ## Verification Command
 

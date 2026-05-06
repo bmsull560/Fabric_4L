@@ -1,8 +1,8 @@
 # Test Gap Matrix - Fabric 4L
 
-**Document:** P0/P1 Security Test Gaps  
-**Date:** 2026-04-28  
-**Severity:** P0 = Blocks Release, P1 = Core Workflow Missing Coverage  
+**Document:** P0/P1 Security Test Gaps
+**Date:** 2026-04-28
+**Severity:** P0 = Blocks Release, P1 = Core Workflow Missing Coverage
 
 ---
 
@@ -57,7 +57,7 @@
 
 ## Priority 1: WebSocket Auth (P0-1)
 
-**File:** `value-fabric/layer4-agents/src/api/websocket/routes.py`
+**File:** `services/layer4-agents/src/api/websocket/routes.py`
 
 **Current State:**
 ```python

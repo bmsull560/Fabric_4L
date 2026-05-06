@@ -24,7 +24,7 @@ Example: `1.4.2-a1b2c3d-20250415.3`
 registry/org/service:<semver>-<sha>
 ```
 
-Example: `ghcr.io/value-fabric/layer4-agents:1.4.2-a1b2c3d`
+Example: `ghcr.io/services/layer4-agents:1.4.2-a1b2c3d`
 
 ### Helm Charts
 
@@ -129,6 +129,6 @@ GET /health/version
 
 ---
 
-**Last Updated**: 2026-04-15  
-**Version**: 1.0.0  
+**Last Updated**: 2026-04-15
+**Version**: 1.0.0
 **Owner**: Platform Engineering

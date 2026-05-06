@@ -1,10 +1,10 @@
 # HTTPX Fast Path — Production Signoff
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records a completed production signoff. For current HTTPX configuration, see [docs/operations/COMMAND_REFERENCE.md](../../operations/COMMAND_REFERENCE.md). See the [Archive Registry](../archive-registry.md).
 
-**Date**: 2026-04-16  
-**Version**: 1.0.0  
+**Date**: 2026-04-16
+**Version**: 1.0.0
 **Status**: ✅ APPROVED FOR PRODUCTION
 
 ---
@@ -135,27 +135,27 @@ python scripts/benchmark_router.py --sample
 ## Files Modified/Created
 
 ### New Files (Week 1):
-- `value-fabric/layer1-ingestion/src/crawler/smart_router.py`
-- `value-fabric/layer1-ingestion/src/crawler/httpx_crawler.py`
-- `value-fabric/layer1-ingestion/src/crawler/quality_gate.py`
-- `value-fabric/layer1-ingestion/src/crawler/decision_store.py`
-- `value-fabric/layer1-ingestion/src/crawler/execution_logger.py`
-- `value-fabric/layer1-ingestion/migrations/versions/005_add_crawl_path_and_decisions.py`
+- `services/layer1-ingestion/src/crawler/smart_router.py`
+- `services/layer1-ingestion/src/crawler/httpx_crawler.py`
+- `services/layer1-ingestion/src/crawler/quality_gate.py`
+- `services/layer1-ingestion/src/crawler/decision_store.py`
+- `services/layer1-ingestion/src/crawler/execution_logger.py`
+- `services/layer1-ingestion/migrations/versions/005_add_crawl_path_and_decisions.py`
 
 ### New Files (Week 2):
-- `value-fabric/layer1-ingestion/tests/fixtures/static_pages/*.html` (4 files)
-- `value-fabric/layer1-ingestion/tests/fixtures/spa_pages/*.html` (2 files)
-- `value-fabric/layer1-ingestion/tests/integration/test_router_edge_cases.py`
-- `value-fabric/layer1-ingestion/tests/benchmarks/test_router_performance.py`
-- `value-fabric/layer1-ingestion/scripts/benchmark_router.py`
+- `services/layer1-ingestion/tests/fixtures/static_pages/*.html` (4 files)
+- `services/layer1-ingestion/tests/fixtures/spa_pages/*.html` (2 files)
+- `services/layer1-ingestion/tests/integration/test_router_edge_cases.py`
+- `services/layer1-ingestion/tests/benchmarks/test_router_performance.py`
+- `services/layer1-ingestion/scripts/benchmark_router.py`
 - `.windsurf/plans/http-fast-path-week-2-plan-0993a5.md`
 - `HTTPX_FAST_PATH_PRODUCTION_SIGNOFF.md`
 
 ### Modified Files:
-- `value-fabric/layer1-ingestion/src/api/main.py` (+336 lines)
-- `value-fabric/layer1-ingestion/src/shared/tasks.py` (+~200 lines)
-- `value-fabric/layer1-ingestion/src/shared/models.py` (+~60 lines)
-- `value-fabric/layer1-ingestion/src/crawler/__init__.py` (docstring)
+- `services/layer1-ingestion/src/api/main.py` (+336 lines)
+- `services/layer1-ingestion/src/shared/tasks.py` (+~200 lines)
+- `services/layer1-ingestion/src/shared/models.py` (+~60 lines)
+- `services/layer1-ingestion/src/crawler/__init__.py` (docstring)
 
 ---
 

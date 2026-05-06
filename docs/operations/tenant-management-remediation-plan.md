@@ -17,7 +17,7 @@ This document outlines the detailed remediation steps for the 6 security vulnera
   ```
 
 ## 2. Critical: SQL Injection & JSON Corruption
-**Location:** `value-fabric/layer4-agents/src/tenants/api/routes/admin_dashboard.py:405`
+**Location:** `services/layer4-agents/src/tenants/api/routes/admin_dashboard.py:405`
 **Issue:** In `PATCH /settings`, the code dynamically constructs a `SET` clause and serializes the JSON settings dict using naive string replacement `str(updates['settings']).replace("'", '"')`.
 **Remediation:**
 - Replace the naive string replacement with proper JSON serialization using Python's built-in `json` module.
@@ -31,7 +31,7 @@ This document outlines the detailed remediation steps for the 6 security vulnera
   ```
 
 ## 3. High: Silent Provisioning Failure
-**Location:** `value-fabric/layer4-agents/src/tenants/provisioning.py:172`
+**Location:** `services/layer4-agents/src/tenants/provisioning.py:172`
 **Issue:** Audit emitter signature mismatch. `emit_audit_event()` requires `outcome` and `resource_type` parameters, but the provisioning service calls it without them.
 **Remediation:**
 - Update all 6 calls to `emit_audit_event()` in `provisioning.py` to include the required `outcome` and `resource_type` parameters.
@@ -56,7 +56,7 @@ This document outlines the detailed remediation steps for the 6 security vulnera
   ```python
   # In models.py
   ALLOWED_API_SCOPES = {"api:read", "api:write", "agent:execute"}
-  
+
   @field_validator("permissions")
   @classmethod
   def validate_permissions(cls, v: list[str] | None) -> list[str] | None:
@@ -80,7 +80,7 @@ This document outlines the detailed remediation steps for the 6 security vulnera
   ```
 
 ## 6. Medium: Potential SQL Injection via f-string
-**Location:** `value-fabric/layer4-agents/src/tenants/usage_tracking.py:309`
+**Location:** `services/layer4-agents/src/tenants/usage_tracking.py:309`
 **Issue:** In `_count_events_by_field`, the `group_field` parameter is interpolated directly into the SQL string via an f-string.
 **Remediation:**
 - Add an allowlist validation for the `group_field` parameter before interpolating it into the SQL query.

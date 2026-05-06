@@ -1,10 +1,10 @@
 # Tier 1 Production Blockers - Implementation Complete
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records completed blocker resolution. See [ROADMAP.md](../../ROADMAP.md) for current status and the [Archive Registry](../archive-registry.md).
 
-**Date:** April 17, 2026  
-**Status:** ✅ IMPLEMENTED  
+**Date:** April 17, 2026
+**Status:** ✅ IMPLEMENTED
 **Blockers:** 3/3 Complete
 
 ---
@@ -89,7 +89,7 @@ kubectl exec <layer1-pod> -n value-fabric -- env | grep DATABASE_URL
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `value-fabric/docker-compose.yml` | Added Celery worker, beat, Flower | ✅ Modified |
+| `docker-compose.full.yml` | Added Celery worker, beat, Flower | ✅ Modified |
 | `k8s/base/layer1-celery.yaml` | K8s deployments for Celery | ✅ Created |
 
 ### Implementation Details
@@ -187,7 +187,7 @@ route:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
-  
+
   routes:
     - match: {team: finops} → slack-finops + pagerduty-finops (critical)
     - match: {severity: critical} → pagerduty-critical + slack-critical
@@ -261,7 +261,7 @@ k8s/vault/vault-deployment.yaml                     (verified existing)
 scripts/vault-setup.sh                              (created)
 
 # L1 Celery/Redis
-value-fabric/docker-compose.yml                     (modified)
+docker-compose.full.yml                     (modified)
 k8s/base/layer1-celery.yaml                         (created)
 
 # Monitoring Tuning
@@ -303,7 +303,7 @@ docs/operations/SLOs.md                              (created)
    # Configure secrets
    vi k8s/monitoring/alertmanager-secrets.yaml  # Add real values
    kubectl apply -f k8s/monitoring/alertmanager-secrets.yaml
-   
+
    # Apply configs
    kubectl apply -f monitoring/alerting/rules-production.yml
    kubectl apply -f monitoring/alertmanager/alertmanager-production.yml

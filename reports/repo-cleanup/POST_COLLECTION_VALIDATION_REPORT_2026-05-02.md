@@ -145,7 +145,7 @@
 
 1. **State Tests Stale Paths** - 1 failed, 5 errors
    - Files: tests/state/test_state_alignment.py
-   - Issue: Stale value-fabric/layer4-agents paths
+   - Issue: Stale services/layer4-agents paths
    - Action Required: Fix paths to use services/layer4-agents
    - **Status:** Engineering blocker - requires path fixes
 

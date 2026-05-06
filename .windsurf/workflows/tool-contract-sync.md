@@ -45,10 +45,10 @@ Read all three sources and cross-reference:
 
 ```bash
 # Tools registered in code
-grep -oP "name = \"[^\"]+\"" value-fabric/layer4-agents/src/tools/*.py | sort
+grep -oP "name = \"[^\"]+\"" services/layer4-agents/src/tools/*.py | sort
 
 # Skill definitions
-ls value-fabric/layer4-agents/skills/*.md | xargs -I{} basename {} .md | sort
+ls services/layer4-agents/skills/*.md | xargs -I{} basename {} .md | sort
 
 # Tool manifests
 ls contracts/tool-manifests/*.json | xargs -I{} basename {} .json | sort
@@ -69,7 +69,7 @@ Produce a gap matrix:
 
 ### Step 2: Generate Missing Skill Definitions
 
-For each tool without a skill MD, create `value-fabric/layer4-agents/skills/{tool_name}.md`:
+For each tool without a skill MD, create `services/layer4-agents/skills/{tool_name}.md`:
 
 ```markdown
 ---

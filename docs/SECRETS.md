@@ -62,7 +62,7 @@ For variable classification and file layout, see [ENVIRONMENT.md](./ENVIRONMENT.
 
 ### Adding a New Secret
 
-1. Add the key to `value-fabric/.env.example` (with placeholder value)
+1. Add the key to `.env.example` (with placeholder value)
 2. Add validation to `packages/config/src/env/backend.ts` (or `frontend.ts`)
 3. Add the real value to the appropriate Infisical paths
 4. Update this document's inventory table

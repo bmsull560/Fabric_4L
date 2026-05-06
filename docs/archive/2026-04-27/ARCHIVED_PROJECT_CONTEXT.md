@@ -9,8 +9,8 @@ Status: Historical reference only
 
 # Project Context - Value Fabric Architectural Audit
 
-**Generated:** 2026-04-21  
-**Auditor:** Principal Staff Engineer  
+**Generated:** 2026-04-21
+**Auditor:** Principal Staff Engineer
 **Repository:** Fabric_4L (Value Fabric Enterprise AI Platform)
 
 ---
@@ -47,12 +47,12 @@ The Value Fabric platform follows a **layered microservices architecture** with 
 
 | Module | Path | Responsibility |
 |--------|------|----------------|
-| **Layer 1 Ingestion** | `value-fabric/layer1-ingestion/` | Web crawling via Playwright, content extraction, rate limiting, robots.txt compliance, PII redaction |
-| **Layer 2 Extraction** | `value-fabric/layer2-extraction/` | LLM-based entity extraction (Capability, UseCase, Persona, ValueDriver), relationship mapping, RDF/OWL output |
-| **Layer 3 Knowledge** | `value-fabric/layer3-knowledge/` | Neo4j graph storage, vector embeddings, GraphRAG retrieval, hybrid search |
-| **Layer 4 Agents** | `value-fabric/layer4-agents/` | LangGraph workflow engine, agent orchestration, tool registry (24 skills), checkpoint/resume |
-| **Layer 5 Ground Truth** | `value-fabric/layer5-ground-truth/` | Truth state persistence, audit logging, ground truth evaluation |
-| **Layer 6 Benchmarks** | `value-fabric/layer6-benchmarks/` | Performance testing, load testing, SLO validation |
+| **Layer 1 Ingestion** | `services/layer1-ingestion/` | Web crawling via Playwright, content extraction, rate limiting, robots.txt compliance, PII redaction |
+| **Layer 2 Extraction** | `services/layer2-extraction/` | LLM-based entity extraction (Capability, UseCase, Persona, ValueDriver), relationship mapping, RDF/OWL output |
+| **Layer 3 Knowledge** | `services/layer3-knowledge/` | Neo4j graph storage, vector embeddings, GraphRAG retrieval, hybrid search |
+| **Layer 4 Agents** | `services/layer4-agents/` | LangGraph workflow engine, agent orchestration, tool registry (24 skills), checkpoint/resume |
+| **Layer 5 Ground Truth** | `services/layer5-ground-truth/` | Truth state persistence, audit logging, ground truth evaluation |
+| **Layer 6 Benchmarks** | `services/layer6-benchmarks/` | Performance testing, load testing, SLO validation |
 | **Shared Identity** | `shared/identity/` | Cross-layer JWT auth, RBAC, tenant isolation, API key management |
 | **Shared Audit** | `shared/audit/` | Append-only audit logging (DB trigger-enforced) |
 | **Frontend** | `frontend/` | React 19 + TypeScript + Vite UI with tiered navigation |
@@ -201,7 +201,7 @@ The Value Fabric platform follows a **layered microservices architecture** with 
 
 | Environment | Target | Configuration |
 |-------------|--------|---------------|
-| Local | Docker Compose | `value-fabric/docker-compose.yml` |
+| Local | Docker Compose | `docker-compose.full.yml` |
 | Development | Kubernetes (K8s) | `k8s/` manifests |
 | Production | EKS/GKE + Helm | Terraform planned |
 
@@ -306,7 +306,7 @@ async def fabric_error_handler(request: Request, exc: FabricError):
 ### Database Query Patterns
 
 **N+1 Risks Identified:**
-1. **Layer 3** `value-fabric/layer3-knowledge/src/api/main.py`:
+1. **Layer 3** `services/layer3-knowledge/src/api/main.py`:
    - Lines 2091, 2133, 2152, 2171 - Node queries without `tenant_id` filtering
    - Lines 2672, 2704, 2725 - Graph queries matching by `id` only
    - **Risk:** Multi-tenant read security gap (documented in memory)
@@ -374,13 +374,13 @@ async def fabric_error_handler(request: Request, exc: FabricError):
 
 | Location | Issue | Priority |
 |----------|-------|----------|
-| `value-fabric/layer4-agents/tests/test_llm_cost_tracking.py:133` | Wire up actual metrics recording | P2 |
-| `value-fabric/layer4-agents/tests/test_llm_cost_tracking.py:185` | Import actual CostRecord | P2 |
-| `value-fabric/layer3-knowledge/src/api/models.py:957` | Deprecate legacy ontology fields | P2 |
-| `value-fabric/layer3-knowledge/src/api/models.py:1011` | Deprecate 'type' field | P2 |
-| `value-fabric/layer1-ingestion/src/shared/tasks.py:597` | Implement schema validation | P1 |
-| `value-fabric/layer1-ingestion/src/crawler/decision_store.py:6-8` | Async methods use sync SQLAlchemy | **P0** |
-| `value-fabric/layer1-ingestion/src/api/main.py:330` | Use cron-validator library | P2 |
+| `services/layer4-agents/tests/test_llm_cost_tracking.py:133` | Wire up actual metrics recording | P2 |
+| `services/layer4-agents/tests/test_llm_cost_tracking.py:185` | Import actual CostRecord | P2 |
+| `services/layer3-knowledge/src/api/models.py:957` | Deprecate legacy ontology fields | P2 |
+| `services/layer3-knowledge/src/api/models.py:1011` | Deprecate 'type' field | P2 |
+| `services/layer1-ingestion/src/shared/tasks.py:597` | Implement schema validation | P1 |
+| `services/layer1-ingestion/src/crawler/decision_store.py:6-8` | Async methods use sync SQLAlchemy | **P0** |
+| `services/layer1-ingestion/src/api/main.py:330` | Use cron-validator library | P2 |
 | `sdk/python/src/valuefabric/cli/auth.py:148` | Implement callback server for token | P2 |
 | `scripts/load_value_packs.py:149` | API integration pending | P2 |
 | `frontend/client/src/hooks/useSources.ts:219` | Backend should add source_category | P2 |
@@ -407,12 +407,12 @@ async def fabric_error_handler(request: Request, exc: FabricError):
 
 | File | Lines | Concern |
 |------|-------|---------|
-| `value-fabric/layer2-extraction/src/api/main.py` | 651+ | Monolithic API - consider router split |
-| `value-fabric/layer3-knowledge/src/api/main.py` | ~3700 | **Critical** - Severely oversized, needs router decomposition |
-| `value-fabric/layer4-agents/src/api/main.py` | ~4000 | **Critical** - Severely oversized |
+| `services/layer2-extraction/src/api/main.py` | 651+ | Monolithic API - consider router split |
+| `services/layer3-knowledge/src/api/main.py` | ~3700 | **Critical** - Severely oversized, needs router decomposition |
+| `services/layer4-agents/src/api/main.py` | ~4000 | **Critical** - Severely oversized |
 | `frontend/client/src/pages/GraphExplorer.tsx` | 585 | Acceptable - complex visualization |
 | `frontend/client/src/pages/ExtractionEngine.tsx` | ~400 | Acceptable - streaming UI complexity |
-| `value-fabric/layer3-knowledge/src/api/models.py` | ~1000 | Large but models are declarative |
+| `services/layer3-knowledge/src/api/models.py` | ~1000 | Large but models are declarative |
 
 ### Tight Coupling / Circular Dependencies
 
@@ -487,8 +487,8 @@ async def fabric_error_handler(request: Request, exc: FabricError):
 |------|----------|--------|
 | `displays error state with retry button` | `frontend/client/src/pages/ValuePacks.test.tsx:117` | Error state not rendering - implementation issue |
 | `mobile menu is accessible` | `frontend/e2e/navigation.spec.ts:276` | Mobile UI not implemented (#456) |
-| L4 checkpoint/resume tests | `value-fabric/layer4-agents/tests/` | ModuleNotFoundError importing 'src' during collection |
-| L3 e2e pipeline tests | `value-fabric/layer3-knowledge/tests/` | Neo4j Community edition incompatibility |
+| L4 checkpoint/resume tests | `services/layer4-agents/tests/` | ModuleNotFoundError importing 'src' during collection |
+| L3 e2e pipeline tests | `services/layer3-knowledge/tests/` | Neo4j Community edition incompatibility |
 
 ---
 
@@ -548,7 +548,7 @@ async def fabric_error_handler(request: Request, exc: FabricError):
 ## Appendix A: File Reference Quick Links
 
 ### Key Configuration Files
-- `value-fabric/docker-compose.yml` - Local orchestration
+- `docker-compose.full.yml` - Local orchestration
 - `Makefile` - Build automation
 - `pytest.ini` - Test configuration
 - `frontend/vite.config.ts` - Frontend build
@@ -557,8 +557,8 @@ async def fabric_error_handler(request: Request, exc: FabricError):
 ### Critical Source Files
 - `shared/identity/__init__.py` - Auth exports
 - `shared/identity/middleware.py` - Governance middleware
-- `value-fabric/layer3-knowledge/src/api/main.py` - L3 API (lines 3700+)
-- `value-fabric/layer4-agents/src/api/main.py` - L4 API (lines 4000+)
+- `services/layer3-knowledge/src/api/main.py` - L3 API (lines 3700+)
+- `services/layer4-agents/src/api/main.py` - L4 API (lines 4000+)
 - `frontend/client/src/components/index.ts` - Component barrel
 - `frontend/client/src/hooks/index.ts` - Hooks barrel
 
@@ -576,6 +576,6 @@ async def fabric_error_handler(request: Request, exc: FabricError):
 - **Medium** - Inferred from patterns, partial inspection
 - **Low** - Documentation-based, not directly verified
 
-*Most metrics: High confidence*  
-*Performance baselines: Medium confidence (estimated)*  
+*Most metrics: High confidence*
+*Performance baselines: Medium confidence (estimated)*
 *Bundle sizes: Low confidence (no direct measurement)*

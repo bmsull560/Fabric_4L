@@ -22,8 +22,8 @@ Enforce contracts, detect security issues, evaluate test quality, and identify d
 
 ## Forbidden Paths
 
-- `value-fabric/shared/identity/` — Read-only; no suggestions without security review
-- `value-fabric/layer4-agents/migrations/` — Alembic-managed
+- `packages/shared/src/value_fabric/shared/identity/` — Read-only; no suggestions without security review
+- `services/layer4-agents/migrations/` — Alembic-managed
 - `contracts/tool-manifests/` — Requires `tool-contract-sync` skill
 
 ## Context Requirements

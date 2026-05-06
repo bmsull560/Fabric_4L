@@ -668,16 +668,16 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
     try {
       const response = await fetch(url, options);
       if (response.ok) return response;
-      
+
       if (response.status === 429 || response.status === 503) {
         const retryAfter = response.headers.get('Retry-After');
-        const delay = retryAfter 
-          ? parseInt(retryAfter) * 1000 
+        const delay = retryAfter
+          ? parseInt(retryAfter) * 1000
           : Math.pow(2, i) * 1000; // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      
+
       throw new Error(`Request failed: ${response.status}`);
     } catch (error) {
       if (i === maxRetries - 1) throw error;
@@ -698,8 +698,8 @@ curl -X GET https://api.valuefabric.com/api/v1/accounts \
   -H "Authorization: Bearer {your_jwt_token}"
 ```
 
-**Token Format**: JWT (JSON Web Token)  
-**Token Source**: Obtained from `/auth/login` or `/auth/refresh`  
+**Token Format**: JWT (JSON Web Token)
+**Token Source**: Obtained from `/auth/login` or `/auth/refresh`
 **Token Expiration**: Typically 1 hour (refresh via `/auth/refresh`)
 
 ---
@@ -731,5 +731,5 @@ List endpoints support pagination via query parameters:
 
 - [Core User Workflow](../workflows/core-user-workflow.md)
 - [Component Interaction Map](../architecture/component-interaction-map.md)
-- [Data Intelligence Layer Architecture](../../value-fabric/docs/data-intelligence-layer.md)
+- [Data Intelligence Layer Architecture](../../docs/architecture/data-intelligence-layer.md)
 - [API Reference](../API_REFERENCE.md)

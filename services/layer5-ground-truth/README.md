@@ -99,7 +99,7 @@ Interactive docs: `http://localhost:8005/docs`
 ### Local Development
 
 ```bash
-cd value-fabric/layer5-ground-truth
+cd services/layer5-ground-truth
 
 # Install dependencies
 pip install -e ".[dev]"
@@ -122,7 +122,7 @@ Add to the root `docker-compose.yml`:
 
 ```yaml
 layer5-ground-truth:
-  build: ./value-fabric/layer5-ground-truth
+  build: ./services/layer5-ground-truth
   ports:
     - "8005:8005"
   environment:

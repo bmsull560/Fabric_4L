@@ -9,7 +9,7 @@ Status: Historical reference only
 
 # Fabric 4L Launch Slice Analysis
 
-**Date:** 2026-04-23  
+**Date:** 2026-04-23
 **Objective:** Identify one production-worthy launch slice and drive convergence
 
 ---
@@ -41,7 +41,7 @@ The repository has three competing workflow patterns. The Business Case flow has
 
 ### Backend Workflows (Layer 4)
 
-**BusinessCaseGeneratorWorkflow** (`@value-fabric/layer4-agents/src/workflows/business_case.py`)
+**BusinessCaseGeneratorWorkflow** (`@services/layer4-agents/src/workflows/business_case.py`)
 - 5-node pipeline: gather_inputs → run_roi → verify_truth → generate_narrative → assemble_document
 - Uses ROICalculatorWorkflow as sub-workflow
 - Full checkpoint/resume support via PostgresCheckpointSaver
@@ -188,12 +188,12 @@ The repository has three competing workflow patterns. The Business Case flow has
 ## 7. Evidence Citations
 
 - **Workflow redirects:** `@frontend/client/src/App.tsx:714-728`
-- **Business case workflow:** `@value-fabric/layer4-agents/src/workflows/business_case.py:1-287`
-- **Orchestration controller:** `@value-fabric/layer4-agents/src/engine/executor.py:74-910`
-- **Workflow routes:** `@value-fabric/layer4-agents/src/api/routes/workflows.py:218-610`
-- **Analysis routes:** `@value-fabric/layer4-agents/src/api/routes/analysis.py:215-504`
-- **Account routes:** `@value-fabric/layer4-agents/src/api/routes/accounts.py:123-365`
-- **Export provenance:** `@value-fabric/layer4-agents/src/services/export_provenance.py`
+- **Business case workflow:** `@services/layer4-agents/src/workflows/business_case.py:1-287`
+- **Orchestration controller:** `@services/layer4-agents/src/engine/executor.py:74-910`
+- **Workflow routes:** `@services/layer4-agents/src/api/routes/workflows.py:218-610`
+- **Analysis routes:** `@services/layer4-agents/src/api/routes/analysis.py:215-504`
+- **Account routes:** `@services/layer4-agents/src/api/routes/accounts.py:123-365`
+- **Export provenance:** `@services/layer4-agents/src/services/export_provenance.py`
 
 ---
 

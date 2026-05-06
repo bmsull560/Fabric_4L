@@ -81,9 +81,9 @@ for layer in "${layers[@]}"; do
   echo "${layer}=${digest}" >> "$DEPLOY_DIGESTS_FILE"
   (
     cd "$OVERLAY_DIR"
-    kustomize edit --reorder none set image "value-fabric/${layer}=${image_name}@${digest}" >/dev/null
+    kustomize edit --reorder none set image "services/${layer}=${image_name}@${digest}" >/dev/null
   )
-  echo "Pinned value-fabric/${layer} to ${image_name}@${digest}"
+  echo "Pinned services/${layer} to ${image_name}@${digest}"
 done
 
 kustomize build --load-restrictor=LoadRestrictionsNone "$OVERLAY_DIR" > "$RENDERED_OUTPUT"

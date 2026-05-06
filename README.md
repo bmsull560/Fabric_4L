@@ -46,6 +46,10 @@ automatically, at scale, with full auditability.
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Frontend Governance
+
+Frontend changes are governed by the root [`DESIGN.md`](DESIGN.md) contract. Human contributors and AI coding agents must read it before modifying `apps/web/`, reuse existing React/Vite/TypeScript/Tailwind/shadcn/TanStack Query patterns, and report validation results with any remaining risks.
+
 ## Quickstart
 
 ```bash
@@ -53,11 +57,11 @@ automatically, at scale, with full auditability.
 git clone https://github.com/bmsull560/Fabric_4L.git && cd Fabric_4L
 
 # 2. Copy environment template
-cp value-fabric/.env.example value-fabric/.env
+cp .env.example .env
 # Fill in OPENAI_API_KEY and JWT_SECRET
 
 # 3. Start all services
-cd value-fabric && docker compose up -d
+docker compose -f docker-compose.full.yml up -d
 
 # 4. Run database migrations
 make migrate
@@ -84,8 +88,8 @@ open http://localhost:5173
 | `services/` | **Maintained (service deployment layer)** | Deployable service apps, migrations, manifests, and service-specific tests |
 | `services/layer1-ingestion/` ... `services/layer6-benchmarks/` | **Maintained** | Layer service entrypoints and infra wrappers |
 | `services/api/` | **Maintained** | Cross-layer API service |
-| `value-fabric/` | **Legacy reference** | Historical monorepo path naming retained for compatibility/docs backreferences |
-| `frontend/` | **Legacy reference** | Historical frontend location; canonical UI is `apps/web/` |
+| `services/` | **Legacy reference** | Historical monorepo path naming retained for compatibility/docs backreferences |
+| `apps/web/` | Canonical frontend | Current web UI package and build target |
 | `contracts/` | **Canonical** | Versioned tool manifests, JSON Schemas, OpenAPI specs |
 | `apps/web/` | **Canonical** | React + TypeScript UI |
 | `k8s/` | **Canonical** | Kubernetes manifests |
@@ -118,7 +122,7 @@ Domain/runtime packages (exact paths):
 ## Core concepts
 
 - **Contracts** — All tool schemas and API shapes live in `contracts/`. They are the source of truth.
-- **Runtime** — Provider-agnostic orchestration in `value-fabric/layer4-agents/src/engine/`.
+- **Runtime** — Provider-agnostic orchestration in `services/layer4-agents/src/engine/`.
 - **Agents** — Behavior defined as versioned artifacts in `layer4-agents/agents/` and `layer4-agents/skills/`.
 - **Providers** — Vendor-specific adapters (OpenAI, Anthropic, Neo4j, pgvector) isolated from core logic.
 - **Packs** — Domain vertical extensions that add ontology, formulas, and variables without touching core.
@@ -177,6 +181,7 @@ Our documentation follows the [Diátaxis Framework](https://diataxis.fr/) with t
 | Document | Description |
 |----------|-------------|
 | [`AGENTS.md`](AGENTS.md) | How to work with this repo as an AI agent |
+| [`DESIGN.md`](DESIGN.md) | Production frontend governance contract for `apps/web/` |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Developer contribution guide |
 | [`SECURITY.md`](SECURITY.md) | Vulnerability reporting |
 | [`ROADMAP.md`](ROADMAP.md) | Completion status and roadmap |

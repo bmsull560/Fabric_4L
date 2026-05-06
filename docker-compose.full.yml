@@ -1,3 +1,4 @@
+# Migrated from value-fabric/docker-compose.yml during legacy path cleanup.
 version: "3.8"
 
 services:
@@ -5,7 +6,7 @@ services:
   layer1-ingestion:
     build:
       context: .
-      dockerfile: ./layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile
     container_name: value-fabric-layer1
     ports:
       - "8001:8000"
@@ -45,7 +46,7 @@ services:
   layer2-extraction:
     build:
       context: .
-      dockerfile: ./layer2-extraction/Dockerfile
+      dockerfile: ./services/layer2-extraction/Dockerfile
     container_name: value-fabric-layer2
     ports:
       - "8002:8000"
@@ -113,7 +114,7 @@ services:
   layer3-knowledge:
     build:
       context: .
-      dockerfile: ./layer3-knowledge/Dockerfile
+      dockerfile: ./services/layer3-knowledge/Dockerfile
     container_name: value-fabric-layer3
     ports:
       - "8003:8001"
@@ -150,7 +151,7 @@ services:
   layer4-agents:
     build:
       context: .
-      dockerfile: ./layer4-agents/Dockerfile
+      dockerfile: ./services/layer4-agents/Dockerfile
     container_name: value-fabric-layer4
     ports:
       - "8004:8000"
@@ -202,7 +203,7 @@ services:
   layer5-ground-truth:
     build:
       context: .
-      dockerfile: ./layer5-ground-truth/Dockerfile
+      dockerfile: ./services/layer5-ground-truth/Dockerfile
     container_name: value-fabric-layer5
     ports:
       - "8005:8005"
@@ -248,7 +249,7 @@ services:
   layer5-migrate:
     build:
       context: .
-      dockerfile: ./layer5-ground-truth/Dockerfile
+      dockerfile: ./services/layer5-ground-truth/Dockerfile
     container_name: value-fabric-layer5-migrate
     command: alembic upgrade head
     environment:
@@ -264,7 +265,7 @@ services:
   layer6-benchmarks:
     build:
       context: .
-      dockerfile: ./layer6-benchmarks/Dockerfile
+      dockerfile: ./services/layer6-benchmarks/Dockerfile
     container_name: value-fabric-layer6
     ports:
       - "8006:8006"
@@ -317,7 +318,7 @@ services:
   layer1-celery-worker:
     build:
       context: .
-      dockerfile: ./layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile
     container_name: value-fabric-layer1-celery-worker
     command: celery -A src.shared.tasks worker --loglevel=info --concurrency=4 -Q celery,ingestion,processing
     environment:
@@ -343,7 +344,7 @@ services:
   layer1-celery-beat:
     build:
       context: .
-      dockerfile: ./layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile
     container_name: value-fabric-layer1-celery-beat
     command: celery -A src.shared.tasks beat --loglevel=info
     environment:
@@ -371,7 +372,7 @@ services:
   flower:
     build:
       context: .
-      dockerfile: ./layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile
     container_name: value-fabric-flower
     command: celery -A src.shared.tasks flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:?FLOWER_PASSWORD is required}
     environment:

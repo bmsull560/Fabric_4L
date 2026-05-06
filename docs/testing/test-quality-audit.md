@@ -1,7 +1,7 @@
 # Test Quality Audit Report
 
-**Generated:** 2026-04-19  
-**Auditor:** /test-quality-remediation workflow  
+**Generated:** 2026-04-19
+**Auditor:** /test-quality-remediation workflow
 **Scope:** Full repository test inventory (Python + TypeScript)
 
 ---
@@ -16,8 +16,8 @@
 | **Contract Tests** | 8 | ~30 | ✅ 100% Pass | N/A |
 | **Cross-Layer** | 15 | ~80 | 🟡 Partial | N/A |
 
-**Critical Issues:** 3 P0 issues identified  
-**Material Issues:** 11 P1 issues identified  
+**Critical Issues:** 3 P0 issues identified
+**Material Issues:** 11 P1 issues identified
 **Overall Grade:** B+ (Good, needs targeted fixes)
 
 ---
@@ -39,7 +39,7 @@
 ### Backend Python Tests (by Layer)
 
 #### Layer 1: Ingestion (9 test files, ~25 tests)
-**Location:** `value-fabric/layer1-ingestion/tests/`
+**Location:** `services/layer1-ingestion/tests/`
 
 | File | Tests | Status | Score | Issues |
 |------|-------|--------|-------|--------|
@@ -58,7 +58,7 @@
 ---
 
 #### Layer 2: Extraction (8 test files, ~71 tests)
-**Location:** `value-fabric/layer2-extraction/tests/`
+**Location:** `services/layer2-extraction/tests/`
 
 | File | Tests | Status | Score | Issues |
 |------|-------|--------|-------|--------|
@@ -76,7 +76,7 @@
 ---
 
 #### Layer 3: Knowledge (22 test files, ~233 tests)
-**Location:** `value-fabric/layer3-knowledge/tests/`
+**Location:** `services/layer3-knowledge/tests/`
 
 | File | Tests | Status | Score | Issues |
 |------|-------|--------|-------|--------|
@@ -106,7 +106,7 @@
 ---
 
 #### Layer 4: Agents (24 test files, ~180 tests)
-**Location:** `value-fabric/layer4-agents/tests/`
+**Location:** `services/layer4-agents/tests/`
 
 | File | Tests | Status | Score | Issues |
 |------|-------|--------|-------|--------|
@@ -141,7 +141,7 @@
 ---
 
 #### Layer 5: Ground Truth (test file count TBD)
-**Location:** `value-fabric/layer5-ground-truth/tests/`
+**Location:** `services/layer5-ground-truth/tests/`
 
 **Status:** Recently added Model Registry tests (~10 tests, passing)
 
@@ -203,7 +203,7 @@
 
 ### Fix 1: L4 Import Path Corrections
 **Files Modified:**
-- `value-fabric/layer4-agents/tests/test_llm_cost_tracking.py` (lines 37, 71, 113, 152)
+- `services/layer4-agents/tests/test_llm_cost_tracking.py` (lines 37, 71, 113, 152)
 
 **Changes:**
 ```python
@@ -276,7 +276,7 @@ with patch("src.tools.generation_tools.AsyncOpenAI")
 ## Backend Test Quality Deep-Dive
 
 ### Layer 3 Knowledge: High-Quality Example
-**File:** `value-fabric/layer3-knowledge/tests/conftest.py` (413 lines)
+**File:** `services/layer3-knowledge/tests/conftest.py` (413 lines)
 
 **Strengths:**
 - ✅ Comprehensive fixtures with `TestSettings` for safe defaults
@@ -297,7 +297,7 @@ async def async_client(...) -> AsyncGenerator[AsyncClient, None]:
 ```
 
 ### Layer 3: Exception Tests
-**File:** `value-fabric/layer3-knowledge/tests/test_exceptions.py` (510 lines, 37 test functions)
+**File:** `services/layer3-knowledge/tests/test_exceptions.py` (510 lines, 37 test functions)
 
 **Strengths:**
 - ✅ Tests all exception classes in the module
@@ -307,7 +307,7 @@ async def async_client(...) -> AsyncGenerator[AsyncClient, None]:
 - ✅ Descriptive test names: `test_exception_with_all_fields`, `test_exception_to_dict_minimal`
 
 ### Layer 4: Import Path Fragility
-**File:** `value-fabric/layer4-agents/tests/conftest.py`
+**File:** `services/layer4-agents/tests/conftest.py`
 
 **Issues Found:**
 - 🔴 Global `sys.path` mutation at import time (line 16-17)
@@ -322,7 +322,7 @@ async def async_client(...) -> AsyncGenerator[AsyncClient, None]:
 pythonpath = ["src"]
 
 # Or use editable install:
-# pip install -e value-fabric/layer4-agents
+# pip install -e services/layer4-agents
 ```
 
 ### Test Framework Configuration
@@ -341,8 +341,8 @@ pythonpath = ["src"]
 ## Critical Issues (P0)
 
 ### Issue 1: L4 Checkpoint/Resume Test Import Failure
-**File:** `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`
-**Severity:** P0  
+**File:** `services/layer4-agents/tests/test_checkpoint_resume.py`
+**Severity:** P0
 **Status:** 🔴 FAILING
 
 **Problem:**
@@ -352,7 +352,7 @@ from src.config.checkpoint import CheckpointConfig  # Fails
 from src.engine.executor import OrchestrationController  # Fails
 ```
 
-**Root Cause:** 
+**Root Cause:**
 The `conftest.py` adds `layer4_dir` to `sys.path` but imports use `src.X` which only works when running from specific directories. This is a **fragile import pattern** that fails when:
 - Running tests from repo root
 - Running in CI with different working directory
@@ -371,14 +371,14 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 # Option C: Install package in editable mode (recommended)
-# pip install -e value-fabric/layer4-agents
+# pip install -e services/layer4-agents
 ```
 
 ---
 
 ### Issue 2: L3 E2E Pipeline Neo4j Community Edition Incompatibility
-**File:** `value-fabric/layer3-knowledge/tests/test_e2e_pipeline.py`
-**Severity:** P0  
+**File:** `services/layer3-knowledge/tests/test_e2e_pipeline.py`
+**Severity:** P0
 **Status:** 🔴 FAILING
 
 **Problem:**
@@ -410,8 +410,8 @@ def _create_constraints(neo4j_edition: str):
 ---
 
 ### Issue 3: Shared State Risk in L4 Tests
-**File:** `value-fabric/layer4-agents/tests/conftest.py` (line 16-17)
-**Severity:** P0  
+**File:** `services/layer4-agents/tests/conftest.py` (line 16-17)
+**Severity:** P0
 **Status:** 🟡 RISK
 
 **Problem:**
@@ -443,7 +443,7 @@ pythonpath = ["src"]
 ## Material Issues (P1)
 
 ### Issue 4: Implementation Coupling in test_llm_extractor.py
-**File:** `value-fabric/layer2-extraction/tests/test_llm_extractor.py`
+**File:** `services/layer2-extraction/tests/test_llm_extractor.py`
 **Severity:** P1
 
 **Problem:** Tests assert on internal method calls rather than extracted output behavior.
@@ -453,7 +453,7 @@ pythonpath = ["src"]
 ---
 
 ### Issue 5: Weak Naming in test_todo_placeholder_regressions.py
-**File:** `value-fabric/layer1-ingestion/tests/test_todo_placeholder_regressions.py`
+**File:** `services/layer1-ingestion/tests/test_todo_placeholder_regressions.py`
 **Severity:** P1
 
 **Problem:** Test names like `test_case_1`, `test_case_2` don't describe behavior.
@@ -463,7 +463,7 @@ pythonpath = ["src"]
 ---
 
 ### Issue 6: OpenAI API Key Required for test_extraction.py
-**File:** `value-fabric/layer2-extraction/tests/test_extraction.py`
+**File:** `services/layer2-extraction/tests/test_extraction.py`
 **Severity:** P1
 
 **Problem:** 1 test skipped because it requires real OPENAI_API_KEY. Should mock LLM.
@@ -473,7 +473,7 @@ pythonpath = ["src"]
 ---
 
 ### Issue 7: Complex Test in test_langgraph_execution.py
-**File:** `value-fabric/layer4-agents/tests/test_langgraph_execution.py`
+**File:** `services/layer4-agents/tests/test_langgraph_execution.py`
 **Severity:** P1
 
 **Problem:** 20 tests, 33,688 bytes - contains mixed concerns and complex setup.
@@ -513,7 +513,7 @@ pythonpath = ["src"]
 ---
 
 ### Issue 11: Slow Tests in test_playwright_crawler.py
-**File:** `value-fabric/layer1-ingestion/tests/test_playwright_crawler.py`
+**File:** `services/layer1-ingestion/tests/test_playwright_crawler.py`
 **Severity:** P1
 
 **Problem:** 14 tests, potentially slow due to real browser automation.
@@ -570,17 +570,17 @@ pythonpath = ["src"]
 # Run all layer tests
 for layer in layer{1..5}-*; do
   echo "=== Testing $layer ==="
-  (cd "value-fabric/$layer" && pytest -q)
+  (cd "services/$layer" && pytest -q)
 done
 
 # Run with coverage
 pytest --cov=src --cov-report=term-missing
 
 # Run specific failing tests
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 pytest tests/test_checkpoint_resume.py -v
 
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 pytest tests/test_e2e_pipeline.py -v
 
 # Frontend tests

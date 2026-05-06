@@ -14,14 +14,14 @@
 | 4 | test_c1_proxy.py | AssertionError at analysis.py:247 | FastAPI route definition error | Invalid dependency declaration in FastAPI route |
 | 5 | test_case_permissions_and_audit.py | ImportError: no pq wrapper available | missing dependency | psycopg3 binary wrapper not installed |
 | 6 | test_crm_sync_service.py | ImportError: no pq wrapper available | missing dependency | psycopg3 binary wrapper not installed |
-| 7 | test_crm_webhook_tenant_isolation.py | ModuleNotFoundError: No module named 'src' | stale path from value-fabric/services move | Test imports from `src.api.routes.crm_webhooks` instead of `value_fabric.layer4.api.routes.crm_webhooks` |
+| 7 | test_crm_webhook_tenant_isolation.py | ModuleNotFoundError: No module named 'src' | stale path from services/services move | Test imports from `src.api.routes.crm_webhooks` instead of `value_fabric.layer4.api.routes.crm_webhooks` |
 | 8 | test_feature_flags.py | ImportError: no pq wrapper available | missing dependency | psycopg3 binary wrapper not installed |
-| 9 | test_frontend_endpoint_contracts.py | ModuleNotFoundError: No module named 'value_fabric.layer4_agents' | stale path from value-fabric/services move | Test imports from `value_fabric.layer4_agents.src.api.main` instead of `value_fabric.layer4.api.main` |
+| 9 | test_frontend_endpoint_contracts.py | ModuleNotFoundError: No module named 'value_fabric.layer4_agents' | stale path from services/services move | Test imports from `value_fabric.layer4_agents.src.api.main` instead of `value_fabric.layer4.api.main` |
 | 10 | test_messaging.py | ImportError: attempted relative import beyond top-level package | package topology error | Relative imports in messaging package fail when imported from repo root |
 | 11 | test_tenant_api.py | ImportError: cannot import name 'get_db_session' | missing import / package topology error | Function not exported from value_fabric.layer4.database |
 | 12 | test_tenant_isolation.py | ImportError: cannot import name 'require_tenant_context' | shared namespace issue | Function not exported from value_fabric.shared.identity.dependencies |
 | 13 | test_tenant_rate_limits.py | ImportError: cannot import name '_check_tenant_rate_limit' | shared namespace issue | Function not exported from value_fabric.shared.identity.middleware |
-| 14 | test_webhook_security.py | ModuleNotFoundError: No module named 'src.models.billing' | stale path from value-fabric/services move | Test imports from `src.services.billing_service` instead of `value_fabric.layer4.services.billing_service` |
+| 14 | test_webhook_security.py | ModuleNotFoundError: No module named 'src.models.billing' | stale path from services/services move | Test imports from `src.services.billing_service` instead of `value_fabric.layer4.services.billing_service` |
 
 ### Summary by Classification (Phase A - RESOLVED)
 
@@ -36,7 +36,7 @@
 - test_crm_sync_service.py
 - test_feature_flags.py
 
-**Stale path from value-fabric/services move (4):** - FIXED
+**Stale path from services/services move (4):** - FIXED
 - test_crm_webhook_tenant_isolation.py
 - test_frontend_endpoint_contracts.py
 - test_webhook_security.py

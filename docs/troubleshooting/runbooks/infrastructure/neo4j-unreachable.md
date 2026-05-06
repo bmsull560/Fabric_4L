@@ -10,7 +10,7 @@ Neo4j knowledge graph database is unreachable or reporting unhealthy status, imp
 - **Dashboard:** [Neo4j Performance](../../monitoring/grafana/dashboards/neo4j-performance.json)
 - **Log Query:**
   ```
-  {component="neo4j"} |= "Connection refused" 
+  {component="neo4j"} |= "Connection refused"
   or
   {layer="layer3"} |= "Neo4jError\|ServiceUnavailable"
   ```
@@ -84,7 +84,7 @@ kubectl get endpoints -n value-fabric neo4j
    ```bash
    # Graceful restart
    kubectl rollout restart deployment/neo4j -n value-fabric
-   
+
    # Wait for readiness
    kubectl wait --for=condition=ready pod -l app=neo4j -n value-fabric --timeout=120s
    ```
@@ -93,11 +93,11 @@ kubectl get endpoints -n value-fabric neo4j
    ```bash
    # Check disk usage
    kubectl exec -n value-fabric -it deployment/neo4j -- du -sh /data/* | sort -hr | head -10
-   
+
    # If logs consuming space, truncate
    kubectl exec -n value-fabric -it deployment/neo4j -- \
      find /var/log/neo4j -name "*.log.*" -mtime +7 -delete
-   
+
    # Check transaction logs
    kubectl exec -n value-fabric -it deployment/neo4j -- \
      ls -la /data/databases/neo4j/transactions/
@@ -108,7 +108,7 @@ kubectl get endpoints -n value-fabric neo4j
    # Edit deployment to increase memory
    kubectl set resources deployment/neo4j -n value-fabric \
      --limits=memory=8Gi --requests=memory=4Gi
-   
+
    # Restart to apply
    kubectl rollout restart deployment/neo4j -n value-fabric
    ```
@@ -120,7 +120,7 @@ kubectl get endpoints -n value-fabric neo4j
    # Check license status
    kubectl exec -n value-fabric -it deployment/neo4j -- \
      cypher-shell -u neo4j -p $NEO4J_PASSWORD "CALL dbms.components() YIELD name, edition"
-   
+
    # Check for license file
    kubectl get secret -n value-fabric neo4j-license -o jsonpath='{.data.license}' | base64 -d
    ```
@@ -129,7 +129,7 @@ kubectl get endpoints -n value-fabric neo4j
    ```bash
    # Check if read replicas exist
    kubectl get pods -n value-fabric -l app=neo4j-read-replica
-   
+
    # Route read traffic to replicas temporarily
    kubectl set env deployment/layer3-knowledge \
      NEO4J_READ_REPLICA_ENABLED=true \
@@ -143,11 +143,11 @@ kubectl get endpoints -n value-fabric neo4j
    # List available backups
    kubectl exec -n value-fabric -it deployment/neo4j-backup -- \
      ls -la /backups/
-   
+
    # Restore latest backup (destructive - confirm first!)
    kubectl exec -n value-fabric -it deployment/neo4j -- \
      neo4j-admin database restore --from-path=/backups/neo4j-$(date +%Y%m%d).backup --database=neo4j --force
-   
+
    # Restart after restore
    kubectl rollout restart deployment/neo4j -n value-fabric
    ```
@@ -201,7 +201,7 @@ kubectl logs -n value-fabric -l app=layer3-knowledge --tail=50 | grep -c "200 OK
 
 - Neo4j Operations Manual: https://neo4j.com/docs/operations-manual/current/
 - Neo4j Kubernetes Helm Chart: `k8s/base/neo4j.yaml`
-- Layer 3 Neo4j Client: `value-fabric/layer3-knowledge/src/db/neo4j_client.py`
+- Layer 3 Neo4j Client: `services/layer3-knowledge/src/db/neo4j_client.py`
 
 ---
 

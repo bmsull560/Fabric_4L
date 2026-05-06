@@ -30,7 +30,7 @@ USER_TEST = "test-user"
 
 # The deprecated root `shared/` package may already be cached in
 # `sys.modules` (imported by earlier-collected tests).  Evict it
-# temporarily so the canonical `services/shared/` package is found.
+# temporarily so the canonical `packages/shared/src/value_fabric/shared/` package is found.
 _existing_shared_modules = {
     name: mod for name, mod in sys.modules.items()
     if name == "shared" or name.startswith("shared.")
@@ -70,7 +70,7 @@ class TestTenantBoundaryFailsClosed:
         """P0 FIX: require_tenant_context() must raise, not return None."""
         with pytest.raises(TenantBoundaryError) as exc_info:
             require_tenant_context()
-        
+
         assert "Tenant context required" in str(exc_info.value)
         assert "GovernanceMiddleware" in str(exc_info.value)
 
@@ -96,14 +96,14 @@ class TestTenantBoundaryWithContext:
     def test_require_tenant_context_returns_context_when_set(self):
         """require_tenant_context() returns context when available."""
         from uuid import UUID
-        
+
         ctx = RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",
             roles=["admin"],
             source="test",
         )
-        
+
         token = set_request_context(ctx)
         try:
             result = require_tenant_context()
@@ -116,14 +116,14 @@ class TestTenantBoundaryWithContext:
     def test_require_tenant_id_returns_uuid_when_context_set(self):
         """require_tenant_id() returns UUID when context is available."""
         from uuid import UUID
-        
+
         ctx = RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",
             roles=["admin"],
             source="test",
         )
-        
+
         token = set_request_context(ctx)
         try:
             tenant_id = require_tenant_id()
@@ -139,7 +139,7 @@ class TestDirectHeaderAccessBlocked:
 
     def test_violation_patterns_detected_by_ci_script(self):
         """CI script must detect direct header access patterns."""
-        
+
         # These patterns should be detected by scripts/ci/boundary_check.py
         violation_patterns = [
             "tenant_id = headers['X-Tenant-ID']",
@@ -151,7 +151,7 @@ class TestDirectHeaderAccessBlocked:
             "tenant_id = req.headers['X-Tenant-ID']",
             "tenant_id = req.headers.get('X-Tenant-ID')",
         ]
-        
+
         # CI script patterns (must match these)
         ci_patterns = [
             r"headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
@@ -161,7 +161,7 @@ class TestDirectHeaderAccessBlocked:
             r"req\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
             r"req\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
         ]
-        
+
         for violation in violation_patterns:
             # At least one pattern should match
             matched = any(re.search(p, violation, re.IGNORECASE) for p in ci_patterns)
@@ -173,7 +173,7 @@ class TestToolBoundaryIntegration:
 
     def test_query_graph_tool_fails_without_tenant_context(self):
         """Simulate QueryGraphTool with require_tenant_context().
-        
+
         This is the key test for the P0 fix:
         "QueryGraphTool → passes test_query_graph_without_tenant_context_fails_closed"
         """
@@ -182,25 +182,25 @@ class TestToolBoundaryIntegration:
             # Tool should call require_tenant_context() to get tenant
             ctx = require_tenant_context()
             return {"tenant_id": str(ctx.tenant_id)}
-        
+
         with pytest.raises(TenantBoundaryError):
             mock_query_graph_tool_execution()
 
     def test_tool_with_context_succeeds(self):
         """Tool execution succeeds when proper context is available."""
         from uuid import UUID
-        
+
         def mock_query_graph_tool_execution():
             ctx = require_tenant_context()
             return {"tenant_id": str(ctx.tenant_id)}
-        
+
         ctx = RequestContext(
             tenant_id=UUID("12345678-1234-1234-1234-123456789abc"),
             user_id="test-user",
             roles=["admin"],
             source="test",
         )
-        
+
         token = set_request_context(ctx)
         try:
             result = mock_query_graph_tool_execution()

@@ -32,8 +32,8 @@ Source of truth for all agents operating in the Value Fabric monorepo. Every age
 - `structured-outputs`
 
 **Forbidden Paths:**
-- `value-fabric/shared/identity/` (security-sensitive — read-only, no suggestions)
-- `value-fabric/layer4-agents/migrations/` (Alembic-managed)
+- `packages/shared/src/value_fabric/shared/identity/` (security-sensitive — read-only, no suggestions)
+- `services/layer4-agents/migrations/` (Alembic-managed)
 - `contracts/tool-manifests/` (requires skill sync)
 
 **Context Requirements:**
@@ -94,7 +94,7 @@ Source of truth for all agents operating in the Value Fabric monorepo. Every age
 - `structured-outputs`
 
 **Forbidden Paths:**
-- `value-fabric/shared/identity/` (security review required)
+- `packages/shared/src/value_fabric/shared/identity/` (security review required)
 - Production infrastructure configs
 
 **Context Requirements:**
@@ -131,8 +131,8 @@ Source of truth for all agents operating in the Value Fabric monorepo. Every age
 - `pytest`
 
 **Forbidden Paths:**
-- `value-fabric/shared/identity/`
-- `value-fabric/layer4-agents/migrations/`
+- `packages/shared/src/value_fabric/shared/identity/`
+- `services/layer4-agents/migrations/`
 
 **Context Requirements:**
 - Anti-pattern catalog with exact grep commands
@@ -213,7 +213,7 @@ A lightweight coordinator scans active agent states every 60 seconds:
 {
   "agent_id": "deprecation-migrator-001",
   "role": "deprecation-migrator",
-  "files_touched": ["value-fabric/layer4-agents/src/tools/query_graph.py"],
+  "files_touched": ["services/layer4-agents/src/tools/query_graph.py"],
   "tests_run": ["tests/evals/skills/test_query_graph.py"],
   "started_at": "2026-04-28T16:00:00Z",
   "stage": "executing",

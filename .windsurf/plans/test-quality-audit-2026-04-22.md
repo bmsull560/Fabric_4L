@@ -24,7 +24,7 @@
 
 ## Audit Results
 
-### File: `value-fabric/layer4-agents/tests/test_tenant_isolation.py`
+### File: `services/layer4-agents/tests/test_tenant_isolation.py`
 
 **Overview:**
 - Test count: 26 (was 22, added 4 focused tests)
@@ -61,7 +61,7 @@
 
 ---
 
-### File: `value-fabric/layer4-agents/tests/test_websocket_manager.py`
+### File: `services/layer4-agents/tests/test_websocket_manager.py`
 
 **Overview:**
 - Test count: ~25
@@ -87,7 +87,7 @@
 
 ---
 
-### File: `value-fabric/layer4-agents/tests/test_scheduler.py` (Assessed)
+### File: `services/layer4-agents/tests/test_scheduler.py` (Assessed)
 
 **Overview:**
 - Test count: ~20

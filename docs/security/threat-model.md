@@ -113,11 +113,11 @@ sequenceDiagram
 
 | Control family | Code/workflow control | Source of truth |
 |---|---|---|
-| Identity verification | Governance middleware accepts only supported auth mechanisms and validates identity claims | `value-fabric/shared/identity/middleware.py` |
-| Authorization | Route-level policy via `require_role` / `require_permission` helpers | `value-fabric/shared/identity/dependencies.py` |
-| Tenant isolation in data plane | Tenant-scoped SQL/Cypher/query/cache primitives | `value-fabric/shared/identity/isolation.py` |
+| Identity verification | Governance middleware accepts only supported auth mechanisms and validates identity claims | `packages/shared/src/value_fabric/shared/identity/middleware.py` |
+| Authorization | Route-level policy via `require_role` / `require_permission` helpers | `packages/shared/src/value_fabric/shared/identity/dependencies.py` |
+| Tenant isolation in data plane | Tenant-scoped SQL/Cypher/query/cache primitives | `packages/shared/src/value_fabric/shared/identity/isolation.py` |
 | Network segmentation | Kubernetes default deny + per-layer allowlist NetworkPolicies | `k8s/base/network-policies/` |
-| Auditability | Append-only audit event model and emitter | `value-fabric/shared/audit/` |
+| Auditability | Append-only audit event model and emitter | `packages/shared/src/value_fabric/shared/audit/` |
 | Continuous assurance | CI/nightly zero-trust validation workflow with artifacts | `.github/workflows/zero-trust-validation.yml` |
 
 ---

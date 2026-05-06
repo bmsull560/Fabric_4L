@@ -65,7 +65,7 @@ Every important production invariant must have at least:
 # Auto-discover project layout
 find . -maxdepth 3 -type f -name "*.py" | head -50 | xargs dirname | sort -u
 find . -maxdepth 3 -type f -name "*.ts" -o -name "*.tsx" | head -50 | xargs dirname | sort -u
-ls -la value-fabric/*/ 2>/dev/null || echo "No value-fabric directory"
+ls -la services/*/ 2>/dev/null || echo "No services directory"
 ls -la frontend/*/ 2>/dev/null || echo "No frontend directory"
 ls -la packs/*/ 2>/dev/null || echo "No packs directory"
 ls -la shared/*/ 2>/dev/null || echo "No shared directory"
@@ -74,7 +74,7 @@ ls -la shared/*/ 2>/dev/null || echo "No shared directory"
 // turbo
 ```bash
 # Auto-discover API routes with fallback patterns
-grep -rE "(@router|@app|\.get\(|\.post\(|\.put\(|\.delete\()" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -30
+grep -rE "(@router|@app|\.get\(|\.post\(|\.put\(|\.delete\()" services/*/src/ --include="*.py" 2>/dev/null | head -30
 grep -rE "(createRouter|router\.|route\()" frontend/*/src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -30
 ```
 
@@ -83,9 +83,9 @@ grep -rE "(createRouter|router\.|route\()" frontend/*/src/ --include="*.ts" --in
 // turbo
 ```bash
 # Discover auth patterns with multiple fallback searches
-grep -rE "(middleware|auth|login|token|jwt|session|guard)" value-fabric/*/src/ --include="*.py" 2>/dev/null | grep -i "auth\|token\|verify\|check" | head -20
-grep -rE "(require_auth|authenticate|verify_token|check_perm)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
-grep -rE "(tenant_id|tenant_context|x-tenant|X-Tenant)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(middleware|auth|login|token|jwt|session|guard)" services/*/src/ --include="*.py" 2>/dev/null | grep -i "auth\|token\|verify\|check" | head -20
+grep -rE "(require_auth|authenticate|verify_token|check_perm)" services/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(tenant_id|tenant_context|x-tenant|X-Tenant)" services/*/src/ --include="*.py" 2>/dev/null | head -20
 ```
 
 **Self-direction**: If standard patterns not found, expand search to:
@@ -99,9 +99,9 @@ grep -rE "(tenant_id|tenant_context|x-tenant|X-Tenant)" value-fabric/*/src/ --in
 // turbo
 ```bash
 # Discover RLS and tenant policies
-grep -rE "(RLS|row_level_security|USING|WITH CHECK|tenant_id)" value-fabric/*/migrations/ --include="*.sql" 2>/dev/null | head -20
-grep -rE "(get_db|get_session|async_session|create_session|db_session)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
-grep -rE "(engine\.connect|SessionLocal|scoped_session)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -10
+grep -rE "(RLS|row_level_security|USING|WITH CHECK|tenant_id)" services/*/migrations/ --include="*.sql" 2>/dev/null | head -20
+grep -rE "(get_db|get_session|async_session|create_session|db_session)" services/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(engine\.connect|SessionLocal|scoped_session)" services/*/src/ --include="*.py" 2>/dev/null | head -10
 ```
 
 ### 1.4 Test Pyramid Autonomous Mapping
@@ -214,9 +214,9 @@ Generated: <timestamp>
 // turbo
 ```bash
 # Auto-discover boundary enforcement with multiple patterns
-grep -rE "(raise.*Forbidden|raise.*Unauthorized|HTTPException.*403|HTTPException.*401|abort.*403|abort.*401)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
-grep -rE "(Depends.*auth|require_auth|get_current_user|check_permission|has_role)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
-grep -rE "(@require_|@protected|@authorized|@permission_required)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -15
+grep -rE "(raise.*Forbidden|raise.*Unauthorized|HTTPException.*403|HTTPException.*401|abort.*403|abort.*401)" services/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(Depends.*auth|require_auth|get_current_user|check_permission|has_role)" services/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(@require_|@protected|@authorized|@permission_required)" services/*/src/ --include="*.py" 2>/dev/null | head -15
 ```
 
 **Auto-recovery**: If no standard patterns found:
@@ -388,12 +388,12 @@ async def test_user_can_read_own_tenant_data(client, auth_headers, tenant_a):
     data = response.json()
     assert all(e["tenant_id"] == tenant_a.id for e in data)
 
-# Negative test  
+# Negative test
 async def test_user_cannot_read_other_tenant_data(client, auth_headers, tenant_a, tenant_b):
     """Proves tenant A user cannot read tenant B data."""
     # Create entity in tenant B
     entity_b = await create_entity(tenant_id=tenant_b.id)
-    
+
     # Try to access as tenant A user
     response = await client.get(
         f"/api/entities/{entity_b.id}",
@@ -410,7 +410,7 @@ it('allows authenticated users to access protected route', async () => {
   const wrapper = render(<ProtectedRoute />, {
     wrapper: createAuthWrapper({ isAuthenticated: true, user: mockUser })
   });
-  
+
   await waitFor(() => {
     expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument();
   });
@@ -421,7 +421,7 @@ it('redirects unauthenticated users to login', async () => {
   const wrapper = render(<ProtectedRoute />, {
     wrapper: createAuthWrapper({ isAuthenticated: false })
   });
-  
+
   await waitFor(() => {
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
@@ -572,7 +572,7 @@ pnpm e2e:smoke
 ## Executive Summary
 - Production invariants identified: N
 - P0 gaps addressed: N
-- P1 gaps addressed: N  
+- P1 gaps addressed: N
 - Tests added: N positive, N negative
 - Tests refactored: N
 - Production fixes required: N (minimal)
@@ -624,7 +624,7 @@ pnpm e2e:smoke
 pytest tests/security/test_tenant_isolation.py -v
 # Result: X passed, Y failed
 
-# Broader gate  
+# Broader gate
 make test-security
 # Result: All passed
 ```
@@ -716,7 +716,7 @@ START → Phase 1 (Discovery)
 ### Priority 1: Tenant Isolation
 ```bash
 # Start here
-grep -r "tenant_id" value-fabric/*/src/api/routes.py --include="*.py"
+grep -r "tenant_id" services/*/src/api/routes.py --include="*.py"
 ```
 
 Tests to add:
@@ -728,7 +728,7 @@ Tests to add:
 
 ### Priority 2: Authorization
 ```bash
-grep -r "role\|permission\|admin" value-fabric/*/src/ --include="*.py" | grep -i "require\|check\|verify"
+grep -r "role\|permission\|admin" services/*/src/ --include="*.py" | grep -i "require\|check\|verify"
 ```
 
 Tests to add:
@@ -739,7 +739,7 @@ Tests to add:
 
 ### Priority 3: Input Validation
 ```bash
-grep -r "BaseModel\|validator\|Field" value-fabric/*/src/models/ --include="*.py"
+grep -r "BaseModel\|validator\|Field" services/*/src/models/ --include="*.py"
 ```
 
 Tests to add:
@@ -750,7 +750,7 @@ Tests to add:
 
 ### Priority 4: Database/RLS
 ```bash
-grep -r "USING\|WITH CHECK" value-fabric/*/migrations/ --include="*.sql"
+grep -r "USING\|WITH CHECK" services/*/migrations/ --include="*.sql"
 ```
 
 Tests to add:
@@ -760,7 +760,7 @@ Tests to add:
 
 ### Priority 5: Webhook/Job Idempotency
 ```bash
-grep -r "idempotency\|dedup" value-fabric/*/src/ --include="*.py"
+grep -r "idempotency\|dedup" services/*/src/ --include="*.py"
 ```
 
 Tests to add:
@@ -849,7 +849,7 @@ Every autonomous test PR must include:
 
 ```
 /autonomous-test-assurance-agent focus:tenant-isolation
-/autonomous-test-assurance-agent focus:auth-boundaries  
+/autonomous-test-assurance-agent focus:auth-boundaries
 /autonomous-test-assurance-agent focus:rls-policies
 /autonomous-test-assurance-agent focus:input-validation
 /autonomous-test-assurance-agent focus:webhook-idempotency
@@ -917,24 +917,24 @@ Add to `.windsurf/config.yaml`:
 autonomous_test_assurance:
   enabled: true
   level: 4  # 3=human-checkpoints, 4=fully-autonomous
-  
+
   # Autonomy settings
   max_tests_per_session: 15
   auto_run_broader_gate: true
   require_negative_tests: true
   severity_threshold: P1  # Don't auto-address P2/P3
-  
+
   # Self-direction settings
   auto_recover: true
   auto_prioritize: true
   auto_checkpoint: true
   parallel_discovery: true
-  
+
   # Recovery settings
   max_retries_per_test: 3
   max_failures_before_pause: 0.5  # 50% of new tests
   max_lines_for_auto_fix: 10
-  
+
   # Evidence settings
   auto_commit_progress: true
   generate_pr_artifacts: true

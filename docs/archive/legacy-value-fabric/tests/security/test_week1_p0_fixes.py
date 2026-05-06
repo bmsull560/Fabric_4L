@@ -1,3 +1,5 @@
+# Migrated from tests/security/test_week1_p0_fixes.py during legacy path cleanup.
+
 """Week 1 P0 Security Fixes — Regression Tests.
 
 Tests for:
@@ -246,7 +248,7 @@ class TestFormulaEvalNoEval:
 
         # Read the source file
         source_path = (
-            "value-fabric/layer3-knowledge/src/services/signal_quantification.py"
+            "services/layer3-knowledge/src/services/signal_quantification.py"
         )
         if not os.path.exists(source_path):
             # Try from repo root

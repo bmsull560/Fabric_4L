@@ -1,17 +1,17 @@
 # Docker Compose Deployment Reality Report
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records a historical deployment snapshot. See [DEPLOYMENT_COMPLETE.md](../../DEPLOYMENT_COMPLETE.md) for current status and the [Archive Registry](../archive-registry.md).
 
-**Date:** 2026-04-12  
+**Date:** 2026-04-12
 **Phase:** 1 - Deployment Validation
 
 ---
 
 ## Critical Finding: Docker Daemon Unavailable
 
-**Status:** ❌ BLOCKED  
-**Issue:** Docker Desktop is installed but not running  
+**Status:** ❌ BLOCKED
+**Issue:** Docker Desktop is installed but not running
 **Impact:** Cannot build, start, or validate containers
 
 ```
@@ -37,7 +37,7 @@ User must:
 
 ## Static Analysis Findings
 
-### Docker Compose Structure (from value-fabric/docker-compose.yml)
+### Docker Compose Structure (from docker-compose.full.yml)
 
 **Services Defined:** 11 total
 
@@ -87,7 +87,7 @@ User must:
 
 ### Missing .env File
 
-**Status:** No `.env` file exists in `value-fabric/` directory  
+**Status:** No `.env` file exists in `services/` directory
 **Impact:** Services requiring `OPENAI_API_KEY` will fail to start
 
 ---
@@ -107,7 +107,7 @@ Before attempting deployment again, verify:
 ## Recommended Next Steps
 
 1. **Immediate:** Start Docker Desktop manually
-2. **Create .env file** in `value-fabric/` directory:
+2. **Create .env file** in `services/` directory:
    ```bash
    cd value-fabric
    echo "OPENAI_API_KEY=your-key-here" > .env
@@ -125,9 +125,9 @@ Before attempting deployment again, verify:
 
 ## Phase 1 Status
 
-**Result:** ❌ BLOCKED - Infrastructure prerequisite not met  
-**Completion:** 10% (static analysis only)  
-**Blocker:** Docker Desktop daemon not running  
+**Result:** ❌ BLOCKED - Infrastructure prerequisite not met
+**Completion:** 10% (static analysis only)
+**Blocker:** Docker Desktop daemon not running
 **Governance Audit Cross-Reference:** Major governance expansion record tracked in `.windsurf/plans/execution-status-sync-20260412-0518.md` (PR `#2`: `https://github.com/bmsull560/Fabric_4L/pull/2`, commit `d6529b474ea3abe3800dcaaf7a411939c3757e43`).
 
 ---

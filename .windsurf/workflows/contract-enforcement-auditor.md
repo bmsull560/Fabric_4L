@@ -90,17 +90,17 @@ For each contract, check if runtime enforcement exists:
 
 **§2.1 Tenant Context:**
 ```bash
-grep -rn "getTenantContext\|get_tenant_context\|RequestContext" value-fabric/layer*/src/ --include="*.py" | wc -l
+grep -rn "getTenantContext\|get_tenant_context\|RequestContext" services/layer*/src/ --include="*.py" | wc -l
 ```
 
 **§2.2 DB Session:**
 ```bash
-grep -rn "getSession\|get_session\|TenantAwarePool" value-fabric/layer*/src/ --include="*.py" | wc -l
+grep -rn "getSession\|get_session\|TenantAwarePool" services/layer*/src/ --include="*.py" | wc -l
 ```
 
 **§2.4 Tool Invocation:**
 ```bash
-grep -rn "ToolResult\|tool_result\|ToolGateway" value-fabric/layer4-agents/src/ --include="*.py" | wc -l
+grep -rn "ToolResult\|tool_result\|ToolGateway" services/layer4-agents/src/ --include="*.py" | wc -l
 ```
 
 ### Step 3: Scan for Violations
@@ -109,30 +109,30 @@ For each contract in scope, grep for violations:
 
 **§2.1 — Tenant passed as parameter:**
 ```bash
-grep -rn "def.*tenant_id.*:" value-fabric/layer*/src/ --include="*.py"
-grep -rn "headers\[.*tenant" value-fabric/layer*/src/ --include="*.py"
+grep -rn "def.*tenant_id.*:" services/layer*/src/ --include="*.py"
+grep -rn "headers\[.*tenant" services/layer*/src/ --include="*.py"
 ```
 
 **§2.2 — Direct DB connect with tenant:**
 ```bash
-grep -rn "db\.connect\|db\.withTenant" value-fabric/layer*/src/ --include="*.py"
-grep -rn "WHERE.*tenant_id" value-fabric/layer*/src/ --include="*.py"
+grep -rn "db\.connect\|db\.withTenant" services/layer*/src/ --include="*.py"
+grep -rn "WHERE.*tenant_id" services/layer*/src/ --include="*.py"
 ```
 
 **§2.3 — Inline middleware:**
 ```bash
-grep -rn "app\.use\|app\.add_middleware\|@app\.middleware" value-fabric/layer*/src/api/ --include="*.py"
+grep -rn "app\.use\|app\.add_middleware\|@app\.middleware" services/layer*/src/api/ --include="*.py"
 ```
 
 **§2.4 — Inline tools / throwing tools:**
 ```bash
-grep -rn "lambda.*tool\|tools.*=.*\[" value-fabric/layer4-agents/src/agents/ --include="*.py"
-grep -rn "raise ToolError\|raise ValueError" value-fabric/layer4-agents/src/tools/ --include="*.py"
+grep -rn "lambda.*tool\|tools.*=.*\[" services/layer4-agents/src/agents/ --include="*.py"
+grep -rn "raise ToolError\|raise ValueError" services/layer4-agents/src/tools/ --include="*.py"
 ```
 
 **§2.5 — JSON.parse on agent output:**
 ```bash
-grep -rn "json\.loads\|json\.parse\|JSON\.parse" value-fabric/layer4-agents/src/ --include="*.py"
+grep -rn "json\.loads\|json\.parse\|JSON\.parse" services/layer4-agents/src/ --include="*.py"
 ```
 
 **§2.6 — Imperative navigation / URL concat:**

@@ -1,9 +1,9 @@
 # Gate Graduation Report
 
-**Date:** 2026-05-02  
-**Status:** PARTIAL GRADUATION - BLOCKED  
-**Chaos Tests:** 64 tests passing, 2 minor failures  
-**Release-Policy Tests:** 17 tests passing, 2 intentional blockers  
+**Date:** 2026-05-02
+**Status:** PARTIAL GRADUATION - BLOCKED
+**Chaos Tests:** 64 tests passing, 2 minor failures
+**Release-Policy Tests:** 17 tests passing, 2 intentional blockers
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### Chaos Gate (DEPENDENCY CHAOS AND FAILURE INJECTION)
 
-**Status:** IMPLEMENTED (Placeholder → Blocking candidate)  
+**Status:** IMPLEMENTED (Placeholder → Blocking candidate)
 **Test Files Created:** 4 files, 70 total tests
 
 | File | Tests | Coverage |
@@ -33,7 +33,7 @@
 
 ### Release-Policy Gate (RELEASE POLICY COMPLIANCE)
 
-**Status:** IMPLEMENTED (Placeholder → Blocking candidate)  
+**Status:** IMPLEMENTED (Placeholder → Blocking candidate)
 **Test Files Created:** 5 files, 19 total tests
 
 | File | Tests | Coverage |
@@ -158,7 +158,7 @@ The gates should remain `placeholder` until stakeholders explicitly approve grad
 python -m pytest tests/chaos -v --tb=short
 # Result: 64 passed, 2 failed, 2 skipped
 
-# Release-policy tests  
+# Release-policy tests
 python -m pytest tests/release -v --tb=short
 # Result: 17 passed, 2 failed, 3 skipped
 ```
@@ -182,9 +182,9 @@ python -m pytest tests/release -v --tb=short
      - `frontend/.env.production`
      - `frontend/.env.staging`
      - `frontend/.env.test`
-     - `value-fabric/.env.production.example`
-     - `value-fabric/.env.staging`
-     - `value-fabric/.env.test`
+     - `.env.production.example`
+     - `.env.staging`
+     - `.env.test`
 
 ### Minor Test Logic Issues (Non-blocking)
 

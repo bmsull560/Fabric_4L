@@ -1,8 +1,8 @@
 # Test Quality Audit Report
 
-**Date**: 2026-04-15  
-**Auditor**: /test-quality-remediation workflow  
-**Scope**: Backend Python tests + Frontend TypeScript tests  
+**Date**: 2026-04-15
+**Auditor**: /test-quality-remediation workflow
+**Scope**: Backend Python tests + Frontend TypeScript tests
 **Frameworks**: pytest (backend), Vitest + React Testing Library (frontend)
 
 ---
@@ -50,7 +50,7 @@
 ### P0 Issues (Critical - Fix Immediately)
 
 #### 1. Packs Tests - Import Error Blocking Collection
-**File**: `packs/*/tests/test_workflow_template.py`  
+**File**: `packs/*/tests/test_workflow_template.py`
 **Issue**: `ModuleNotFoundError: No module named 'conftest'`
 
 ```python
@@ -62,29 +62,29 @@ from conftest import REQUIRED_WORKFLOW_FIELDS  # ❌ Wrong import
 # Just reference REQUIRED_WORKFLOW_FIELDS directly or import from a shared module.
 ```
 
-**Impact**: 7 pack test suites cannot run (retail-consumer, manufacturing, life-sciences, etc.)  
-**Principle Violated**: Deterministic (tests won't even collect)  
+**Impact**: 7 pack test suites cannot run (retail-consumer, manufacturing, life-sciences, etc.)
+**Principle Violated**: Deterministic (tests won't even collect)
 **Rewrite Priority**: **P0-1** - Fix first
 
 ---
 
 #### 2. L3 GraphRAG Tests - Endpoint Contract Drift
-**Files**: `value-fabric/layer3-knowledge/tests/test_graphrag_endpoints.py`  
+**Files**: `services/layer3-knowledge/tests/test_graphrag_endpoints.py`
 **Issue**: Tests expect 200, endpoints return 404
 
-**Impact**: ~20 tests failing, blocking L3 verification  
-**Principle Violated**: Behavior-Focused (testing against wrong contract)  
-**Root Cause**: API implementation drift from OpenAPI spec  
+**Impact**: ~20 tests failing, blocking L3 verification
+**Principle Violated**: Behavior-Focused (testing against wrong contract)
+**Root Cause**: API implementation drift from OpenAPI spec
 **Rewrite Priority**: **P0-2** - Needs API fix first, then test alignment
 
 ---
 
 #### 3. L4 Checkpoint Tests - Infrastructure Dependency
-**File**: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`  
+**File**: `services/layer4-agents/tests/test_checkpoint_resume.py`
 **Issue**: `test_get_checkpoint_saver_returns_none_on_failure` fails on database unavailable
 
-**Impact**: 1 test failing in CI  
-**Principle Violated**: Isolated (depends on external DB)  
+**Impact**: 1 test failing in CI
+**Principle Violated**: Isolated (depends on external DB)
 **Rewrite Priority**: **P0-3** - Mock the database or skip when unavailable
 
 ---
@@ -92,7 +92,7 @@ from conftest import REQUIRED_WORKFLOW_FIELDS  # ❌ Wrong import
 ### P1 Issues (Material - Fix This Sprint)
 
 #### 4. Weak Test Naming
-**Files**: Multiple across layers  
+**Files**: Multiple across layers
 **Examples**:
 ```python
 # BEFORE (weak):
@@ -111,13 +111,13 @@ def test_advances_pipeline_stage_when_conditions_met(self):
 - `test_models.py` - Multiple vague names
 - `test_celery_tasks.py` - Some good, some weak
 
-**Principle Violated**: Clear/Readable  
+**Principle Violated**: Clear/Readable
 **Rewrite Priority**: **P1-1** - Rename during next touch
 
 ---
 
 #### 5. AAA Structure Not Obvious
-**File**: `frontend/client/src/hooks/useAccounts.test.tsx` (lines 110-160)  
+**File**: `frontend/client/src/hooks/useAccounts.test.tsx` (lines 110-160)
 **Issue**: Mixed Arrange/Act/Assert without clear visual separation
 
 ```typescript
@@ -134,13 +134,13 @@ it('should apply filters correctly', async () => {
 });
 ```
 
-**Principle Violated**: Clear/Readable  
+**Principle Violated**: Clear/Readable
 **Rewrite Priority**: **P1-2** - Add comments/whitespace to clarify AAA
 
 ---
 
 #### 6. Missing Async `act()` Wrapping
-**Files**: `frontend/client/src/hooks/useBilling.test.tsx`  
+**Files**: `frontend/client/src/hooks/useBilling.test.tsx`
 **Issue**: Console warnings about state updates not wrapped in `act()`
 
 ```
@@ -148,13 +148,13 @@ stderr | useBilling > should initiate checkout for upgrade
 An update to TestComponent inside a test was not wrapped in act(...)
 ```
 
-**Principle Violated**: Deterministic (timing issues)  
+**Principle Violated**: Deterministic (timing issues)
 **Rewrite Priority**: **P1-3** - Wrap state updates properly
 
 ---
 
 #### 7. Session-Scoped Fixtures Holding Files Open
-**File**: `packs/retail-consumer/tests/conftest.py` (lines 79-112)  
+**File**: `packs/retail-consumer/tests/conftest.py` (lines 79-112)
 **Issue**: Session-scoped fixtures load JSON files and hold them open
 
 ```python
@@ -163,14 +163,14 @@ def formulas_data() -> dict[str, Any]:
     return load_json_file("formulas.json")
 ```
 
-**Impact**: File descriptor exhaustion under high concurrency  
-**Principle Violated**: Isolated (resource leak)  
+**Impact**: File descriptor exhaustion under high concurrency
+**Principle Violated**: Isolated (resource leak)
 **Rewrite Priority**: **P1-4** - Use function scope or lazy loading
 
 ---
 
 #### 8. Mixed Concerns in Single Test
-**File**: `value-fabric/layer1-ingestion/tests/unit/test_celery_tasks.py`  
+**File**: `services/layer1-ingestion/tests/unit/test_celery_tasks.py`
 **Pattern**: Some tests verify multiple unrelated behaviors
 
 ```python
@@ -179,7 +179,7 @@ def test_full_pipeline(self):
     # 1. Creates job
     job = create_job()
     assert job.id
-    # 2. Processes content  
+    # 2. Processes content
     result = process(job)
     assert result.status == "completed"
     # 3. Cleans up
@@ -187,13 +187,13 @@ def test_full_pipeline(self):
     assert cleaned
 ```
 
-**Principle Violated**: Focused  
+**Principle Violated**: Focused
 **Rewrite Priority**: **P1-5** - Split into focused tests
 
 ---
 
 #### 9. Overly Broad Exception Handling
-**File**: `tests/contracts/conftest.py` (lines 36-40)  
+**File**: `tests/contracts/conftest.py` (lines 36-40)
 **Issue**: Catches all exceptions, may mask real bugs
 
 ```python
@@ -205,13 +205,13 @@ except Exception:  # ❌ Too broad
     pytest.fail(f"Failed to load {filepath}")
 ```
 
-**Principle Violated**: Meaningful (hides real errors)  
+**Principle Violated**: Meaningful (hides real errors)
 **Rewrite Priority**: **P1-6** - Catch specific exceptions
 
 ---
 
 #### 10. Magic Numbers Without Context
-**Files**: Various test files  
+**Files**: Various test files
 **Examples**:
 ```python
 assert len(cap.id) == 36  # Why 36? (UUID length, but not obvious)
@@ -219,7 +219,7 @@ assert result.code == 422  # Why 422? (Unprocessable Entity)
 assert timeout == 30  # Why 30? (seconds? retries?)
 ```
 
-**Principle Violated**: Clear/Readable  
+**Principle Violated**: Clear/Readable
 **Rewrite Priority**: **P1-7** - Use named constants
 
 ---
@@ -227,42 +227,42 @@ assert timeout == 30  # Why 30? (seconds? retries?)
 ### P2 Issues (Improvement - Fix Opportunistically)
 
 #### 11. Test Duplication
-**Files**: `frontend/client/src/hooks/useValuePacks.test.tsx`  
-**Status**: ✅ **Already Fixed** in recent refinement  
+**Files**: `frontend/client/src/hooks/useValuePacks.test.tsx`
+**Status**: ✅ **Already Fixed** in recent refinement
 **Note**: `createMockResponse<T>()` factory extracted, reduced ~20 lines
 
 ---
 
 #### 12. Snapshot Misuse Potential
-**Pattern**: Some tests may use large snapshots  
-**Files**: Not specifically identified yet  
-**Principle**: Meaningful (snapshots may capture irrelevant details)  
+**Pattern**: Some tests may use large snapshots
+**Files**: Not specifically identified yet
+**Principle**: Meaningful (snapshots may capture irrelevant details)
 **Action**: Review snapshot tests for specificity
 
 ---
 
 #### 13. Missing Edge Case Coverage
-**Files**: Various  
+**Files**: Various
 **Gaps Identified**:
 - Empty string handling in formula expressions
 - Null/None variable values
 - Boundary values (0, MAX_INT, etc.)
 - Unicode/emoji in entity names
 
-**Principle Violated**: Meaningful  
+**Principle Violated**: Meaningful
 **Rewrite Priority**: **P2-1** - Add when touching related code
 
 ---
 
 #### 14. Implementation Coupling in Assertions
-**File**: `tests/contract/test_l3_formulas_contract.py`  
+**File**: `tests/contract/test_l3_formulas_contract.py`
 **Pattern**: Tests OpenAPI schema structure (acceptable for contract tests)
 **Risk**: Medium - contract tests SHOULD verify implementation details
 
 ---
 
 #### 15. Commented-Out or Dead Test Code
-**Files**: To be identified in deeper audit  
+**Files**: To be identified in deeper audit
 **Action**: Search for `skip`, `xfail`, `# TODO: test` patterns
 
 ---
@@ -270,11 +270,11 @@ assert timeout == 30  # Why 30? (seconds? retries?)
 ## Phase 4: Rewrite Completed
 
 ### P0-1: Packs Import Error ✅ FIXED
-**Status**: Already resolved in current codebase  
+**Status**: Already resolved in current codebase
 **Verification**: `cd packs/retail-consumer && pytest tests/` - 49 tests pass
 
 ### P1-1: Weak Test Naming ✅ FIXED
-**File**: `value-fabric/layer2-extraction/tests/test_extraction.py`  
+**File**: `services/layer2-extraction/tests/test_extraction.py`
 **Changes**:
 - `test_capability_creation` → `test_creates_capability_with_valid_name_and_description`
 - `test_capability_validation` → `test_rejects_capability_with_empty_name`
@@ -287,31 +287,31 @@ assert timeout == 30  # Why 30? (seconds? retries?)
 **Verification**: 9/9 tests pass with improved names
 
 ### P1-4: Session Fixture Resource Leak ✅ FIXED
-**File**: `packs/retail-consumer/tests/conftest.py`  
+**File**: `packs/retail-consumer/tests/conftest.py`
 **Change**: Changed `ontology_data`, `formulas_data`, `variables_data`, `workflow_template_data` from `@pytest.fixture(scope="session")` to `@pytest.fixture` (function scope)
 
-**Impact**: Prevents file descriptor exhaustion under high concurrency  
+**Impact**: Prevents file descriptor exhaustion under high concurrency
 **Verification**: 49/49 tests pass, no performance regression observed
 
 ### P1-7: Magic Numbers ✅ FIXED
-**File**: `value-fabric/layer2-extraction/tests/test_extraction.py`  
+**File**: `services/layer2-extraction/tests/test_extraction.py`
 **Change**: Added `UUID_STRING_LENGTH = 36` constant and replaced magic number
 
 ### P0-2: L3 GraphRAG API Alignment ✅ FIXED
-**File**: `value-fabric/layer3-knowledge/src/api/main.py`  
+**File**: `services/layer3-knowledge/src/api/main.py`
 **Change**: Added backward-compatible `/v1/graphrag` endpoint alias that delegates to same handler as `/v1/query/graph`
 
-**File**: `value-fabric/layer3-knowledge/tests/test_graphrag_endpoints.py`  
+**File**: `services/layer3-knowledge/tests/test_graphrag_endpoints.py`
 **Changes**:
 - Added `CANONICAL_GRAPH_RAG_ENDPOINT = "/v1/query/graph"` constant
 - Updated all 16 test methods to use canonical endpoint
 - Added explicit `test_graphrag_legacy_alias_endpoint` test to verify backward compatibility
 
-**File**: `frontend/test/mocks/handlers.ts`  
+**File**: `frontend/test/mocks/handlers.ts`
 **Change**: Added MSW mock handler for legacy `/api/v1/graphrag` endpoint alongside existing canonical endpoint mock
 
 ### P0-3: L4 Checkpoint Test Deterministic Mocking ✅ FIXED
-**File**: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`  
+**File**: `services/layer4-agents/tests/test_checkpoint_resume.py`
 **Changes**:
 - Fixed test name: `test_get_checkpoint_saver_returns_none_on_failure` → `test_get_checkpoint_saver_raises_connection_error_on_failure`
 - Fixed exception type: `RuntimeError` → `CheckpointConnectionError` (matches actual code behavior)
@@ -357,7 +357,7 @@ assert timeout == 30  # Why 30? (seconds? retries?)
 
 ### Rewrite 1: Fix Packs Import Error (P0-1)
 
-**Files**: `packs/retail-consumer/tests/test_workflow_template.py`  
+**Files**: `packs/retail-consumer/tests/test_workflow_template.py`
 **Pattern**: Remove invalid `from conftest import` statements
 
 ```python
@@ -376,7 +376,7 @@ REQUIRED_WORKFLOW_FIELDS = ["template_id", "template_name", "description", "phas
 
 ### Rewrite 2: Fix L4 Checkpoint Test Isolation (P0-3)
 
-**File**: `test_checkpoint_resume.py`  
+**File**: `test_checkpoint_resume.py`
 **Pattern**: Add mock for database unavailable scenario
 
 ```python
@@ -430,11 +430,11 @@ it('should apply filters correctly', async () => {
 it('should apply filters correctly', async () => {
   // Arrange
   (apiClient.get as Mock).mockResolvedValueOnce(...);
-  
+
   // Act
   renderHook(() => useAccounts({...}), { wrapper });
   await waitFor(() => expect(apiClient.get).toHaveBeenCalled());
-  
+
   // Assert
   expect(callUrl).toContain('provider=salesforce');
 });
@@ -451,16 +451,16 @@ it('should apply filters correctly', async () => {
 cd packs/retail-consumer && pytest tests/ -v
 
 # Run L1 tests
-cd value-fabric/layer1-ingestion && pytest tests/ -v
+cd services/layer1-ingestion && pytest tests/ -v
 
-# Run L2 tests  
-cd value-fabric/layer2-extraction && pytest tests/ -v
+# Run L2 tests
+cd services/layer2-extraction && pytest tests/ -v
 
 # Run L3 tests (expect some GraphRAG failures)
-cd value-fabric/layer3-knowledge && pytest tests/ -v
+cd services/layer3-knowledge && pytest tests/ -v
 
 # Run L4 tests (expect 1 checkpoint failure)
-cd value-fabric/layer4-agents && pytest tests/ -v
+cd services/layer4-agents && pytest tests/ -v
 
 # Run contract tests
 cd tests/contracts && pytest -v

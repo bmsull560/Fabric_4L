@@ -31,7 +31,7 @@ For every agent invocation, reserve the context window as follows:
 2. Inject as structured JSON:
    ```json
    {
-     "target": "value-fabric/layer4-agents/src/tools/query_graph.py",
+     "target": "services/layer4-agents/src/tools/query_graph.py",
      "dependencies": ["layer3-knowledge", "shared/identity"],
      "dependents": ["frontend/client/src/hooks/useGraphQuery.ts"],
      "affected_tests": ["tests/evals/skills/test_query_graph.py"],
@@ -80,7 +80,7 @@ retrieval_validation:
    ```diff
    {git_diff}
    ```
-   
+
    ## Recent Commits
    {commit_history}
    ```
@@ -103,7 +103,7 @@ retrieval_validation:
 
 **Example Mapping:**
 ```yaml
-file_path: "value-fabric/layer4-agents/src/tools/query_graph.py"
+file_path: "services/layer4-agents/src/tools/query_graph.py"
 active_rules:
   - hard-constraints.yaml#tool-manifest-sync-required
   - safety-rules.yaml#no-pii-in-prompts

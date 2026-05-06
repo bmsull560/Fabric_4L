@@ -36,7 +36,7 @@ RUN curl -LO https://github.com/sigstore/cosign/releases/latest/download/cosign-
     mv cosign-linux-amd64 /usr/local/bin/cosign
 
 # Set up Python path for workspace
-ENV PYTHONPATH=/workspace/value-fabric/layer1-ingestion/src:/workspace/value-fabric/layer2-extraction/src:/workspace/value-fabric/layer3-knowledge/src:/workspace/value-fabric/layer4-agents/src:/workspace/value-fabric/layer5-ground-truth/src:/workspace/value-fabric/layer6-benchmarks/src
+ENV PYTHONPATH=/workspace/services/layer1-ingestion/src:/workspace/services/layer2-extraction/src:/workspace/services/layer3-knowledge/src:/workspace/services/layer4-agents/src:/workspace/services/layer5-ground-truth/src:/workspace/services/layer6-benchmarks/src
 
 # Default working directory
 WORKDIR /workspace

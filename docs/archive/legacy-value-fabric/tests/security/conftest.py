@@ -1,3 +1,5 @@
+# Migrated from tests/security/conftest.py during legacy path cleanup.
+
 """
 Security Test Infrastructure — Phase 0.
 

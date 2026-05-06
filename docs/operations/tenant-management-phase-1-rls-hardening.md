@@ -99,12 +99,12 @@ Request → GovernanceMiddleware → Tenant Status Check → RLS Context Set →
 ## 4. Task Breakdown
 
 ### Task 1.1: Layer 1 Column Rename Migration
-**Estimated Effort:** 4 hours  
+**Estimated Effort:** 4 hours
 **Priority:** P1
 
 Create migration to rename `organization_id` to `tenant_id` in Layer 1.
 
-**Migration File:** `value-fabric/layer1-ingestion/migrations/versions/006_rename_org_to_tenant.py`
+**Migration File:** `services/layer1-ingestion/migrations/versions/006_rename_org_to_tenant.py`
 
 ```python
 """Rename organization_id to tenant_id in Layer 1 tables.
@@ -151,20 +151,20 @@ def downgrade() -> None:
 ```
 
 **Model Updates:**
-- `value-fabric/layer1-ingestion/src/models.py`: Update all `organization_id` references
+- `services/layer1-ingestion/src/models.py`: Update all `organization_id` references
 
 **Task Updates:**
-- `value-fabric/layer1-ingestion/src/shared/tasks.py`: Update Celery task queries
+- `services/layer1-ingestion/src/shared/tasks.py`: Update Celery task queries
 
 ---
 
 ### Task 1.2: Layer 5 Column Rename Migration
-**Estimated Effort:** 3 hours  
+**Estimated Effort:** 3 hours
 **Priority:** P1
 
 Create migration to rename `organization_id` to `tenant_id` in Layer 5.
 
-**Migration File:** `value-fabric/layer5-ground-truth/src/layer5_ground_truth/migrations/versions/004_rename_org_to_tenant.py`
+**Migration File:** `services/layer5-ground-truth/src/layer5_ground_truth/migrations/versions/004_rename_org_to_tenant.py`
 
 ```python
 """Rename organization_id to tenant_id in Layer 5 tables.
@@ -186,17 +186,17 @@ TABLES = [
 ```
 
 **Model Updates:**
-- `value-fabric/layer5-ground-truth/src/layer5_ground_truth/models.py`
+- `services/layer5-ground-truth/src/layer5_ground_truth/models.py`
 
 ---
 
 ### Task 1.3: Tenant Status Lifecycle Implementation
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P0
 
 Implement proper status lifecycle with transition validation.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/models/tenant.py`
+**Modified File:** `services/layer4-agents/src/tenants/models/tenant.py`
 
 Add to existing Tenant class:
 
@@ -256,7 +256,7 @@ def transition_to(
     self.status_reason = reason
 ```
 
-**New File:** `value-fabric/layer4-agents/src/tenants/constants.py`
+**New File:** `services/layer4-agents/src/tenants/constants.py`
 
 ```python
 """Tenant management constants."""
@@ -275,12 +275,12 @@ SCHEMA_PREFIX = "t_"
 ---
 
 ### Task 1.4: Suspended Tenant Enforcement
-**Estimated Effort:** 3 hours  
+**Estimated Effort:** 3 hours
 **Priority:** P0
 
 Add middleware check to block suspended tenants.
 
-**Modified File:** `value-fabric/shared/identity/middleware.py`
+**Modified File:** `packages/shared/src/value_fabric/shared/identity/middleware.py`
 
 Add after tenant resolution:
 
@@ -294,7 +294,7 @@ async def check_tenant_status(db_session, tenant_id: UUID) -> None:
         select(Tenant.status).where(Tenant.id == tenant_id)
     )
     status = result.scalar()
-    
+
     if status == TenantStatus.SUSPENDED.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -323,12 +323,12 @@ if context.tenant_id:
 ---
 
 ### Task 1.5: RLS Policy Audit & Enhancement
-**Estimated Effort:** 4 hours  
+**Estimated Effort:** 4 hours
 **Priority:** P1
 
 Audit and complete RLS coverage across all layers.
 
-**New Migration:** `value-fabric/layer4-agents/migrations/versions/012_add_missing_rls.py`
+**New Migration:** `services/layer4-agents/migrations/versions/012_add_missing_rls.py`
 
 Check for uncovered tables and add RLS:
 
@@ -359,8 +359,8 @@ def upgrade() -> None:
             DO $$
             BEGIN
                 IF NOT EXISTS (
-                    SELECT 1 FROM pg_policies 
-                    WHERE tablename = '{table}' 
+                    SELECT 1 FROM pg_policies
+                    WHERE tablename = '{table}'
                     AND policyname = 'tenant_isolation_policy'
                 ) THEN
                     CREATE POLICY tenant_isolation_policy ON {table}
@@ -369,7 +369,7 @@ def upgrade() -> None:
             END
             $$;
         """)
-        
+
         # Enable RLS
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
@@ -378,12 +378,12 @@ def upgrade() -> None:
 ---
 
 ### Task 1.6: Tenant Service Lifecycle Methods
-**Estimated Effort:** 4 hours  
+**Estimated Effort:** 4 hours
 **Priority:** P1
 
 Add lifecycle management to tenant service.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/service.py`
+**Modified File:** `services/layer4-agents/src/tenants/service.py`
 
 ```python
 from .constants import TenantStatus
@@ -391,7 +391,7 @@ from shared.audit import emit_audit_event, AuditAction
 
 class TenantService:
     """Enhanced tenant service with lifecycle management."""
-    
+
     async def suspend_tenant(
         self,
         tenant_id: UUID,
@@ -401,7 +401,7 @@ class TenantService:
         """Suspend a tenant."""
         tenant = await self.get_tenant(tenant_id)
         tenant.transition_to(TenantStatus.SUSPENDED.value, reason)
-        
+
         await emit_audit_event(
             action=AuditAction.TENANT_SUSPENDED,
             tenant_id=tenant_id,
@@ -409,7 +409,7 @@ class TenantService:
             details={"reason": reason},
         )
         return tenant
-    
+
     async def reactivate_tenant(
         self,
         tenant_id: UUID,
@@ -419,7 +419,7 @@ class TenantService:
         """Reactivate a suspended tenant."""
         tenant = await self.get_tenant(tenant_id)
         tenant.transition_to(TenantStatus.ACTIVE.value, reason)
-        
+
         await emit_audit_event(
             action=AuditAction.TENANT_REACTIVATED,
             tenant_id=tenant_id,
@@ -427,7 +427,7 @@ class TenantService:
             details={"reason": reason},
         )
         return tenant
-    
+
     async def soft_delete_tenant(
         self,
         tenant_id: UUID,
@@ -437,7 +437,7 @@ class TenantService:
         """Soft delete a tenant."""
         tenant = await self.get_tenant(tenant_id)
         tenant.transition_to(TenantStatus.DELETED.value, reason)
-        
+
         await emit_audit_event(
             action=AuditAction.TENANT_DELETED,
             tenant_id=tenant_id,
@@ -450,12 +450,12 @@ class TenantService:
 ---
 
 ### Task 1.7: Provisioning Service Skeleton
-**Estimated Effort:** 2 hours  
+**Estimated Effort:** 2 hours
 **Priority:** P2
 
 Create skeleton for Phase 2 provisioning.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/provisioning.py`
+**New File:** `services/layer4-agents/src/tenants/provisioning.py`
 
 ```python
 """Tenant provisioning service — Phase 1 skeleton for Phase 2 implementation."""
@@ -478,10 +478,10 @@ class ProvisioningState:
 
 class TenantProvisioningService:
     """Service for automated tenant provisioning (Phase 2 implementation)."""
-    
+
     async def provision_tenant(self, tenant_id: UUID) -> ProvisioningState:
         """Provision a new tenant.
-        
+
         Phase 2 implementation will:
         1. Create Infisical secret path
         2. Seed default configuration
@@ -489,7 +489,7 @@ class TenantProvisioningService:
         """
         # Skeleton for Phase 2
         raise NotImplementedError("Phase 2 implementation required")
-    
+
     async def get_provisioning_status(
         self,
         tenant_id: UUID,
@@ -502,12 +502,12 @@ class TenantProvisioningService:
 ---
 
 ### Task 1.8: Update API Routes for Status Management
-**Estimated Effort:** 3 hours  
+**Estimated Effort:** 3 hours
 **Priority:** P1
 
 Add tenant lifecycle endpoints.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/api/routes/tenants.py`
+**Modified File:** `services/layer4-agents/src/tenants/api/routes/tenants.py`
 
 Add endpoints:
 
@@ -546,15 +546,15 @@ async def reactivate_tenant(
 ---
 
 ### Task 1.9: Test Updates
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P1
 
 Update tests for renamed columns and status lifecycle.
 
 **Modified Files:**
-- `value-fabric/layer4-agents/tests/test_tenant_isolation.py`
-- `value-fabric/layer1-ingestion/tests/unit/test_celery_tasks.py`
-- `value-fabric/tests/security/test_tenant_isolation.py`
+- `services/layer4-agents/tests/test_tenant_isolation.py`
+- `services/layer1-ingestion/tests/unit/test_celery_tasks.py`
+- `tests/security/test_tenant_isolation.py`
 
 **New Tests:**
 - Status transition validation
@@ -646,8 +646,8 @@ After Phase 1 completion:
 
 ## References
 
-- `value-fabric/layer4-agents/src/database.py` — RLS session management
-- `value-fabric/layer4-agents/src/tenants/models/tenant.py` — Tenant model
+- `services/layer4-agents/src/database.py` — RLS session management
+- `services/layer4-agents/src/tenants/models/tenant.py` — Tenant model
 - `shared/identity/context.py` — RequestContext with isolation tiers
 - `shared/identity/middleware.py` — GovernanceMiddleware
 - `shared/identity/oidc.py` — Generic OIDC client (not Keycloak-specific)

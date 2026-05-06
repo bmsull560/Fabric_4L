@@ -1,7 +1,7 @@
 # Security Remediation Verification Report
 
-**Date:** April 26, 2026  
-**Scope:** Verification of the 6 critical/high/medium security findings identified in the Phase 1-3 Tenant Management audit.  
+**Date:** April 26, 2026
+**Scope:** Verification of the 6 critical/high/medium security findings identified in the Phase 1-3 Tenant Management audit.
 **Methodology:** Direct inspection of the committed code on the `main` branch (commit `f5ed728`), followed by a codebase-wide sweep for recurring vulnerable patterns.
 
 ## 1. Verification of Specific Fixes
@@ -15,12 +15,12 @@ All 6 findings have been successfully and permanently remediated in the codebase
 
 ### F2: SQL Injection & JSON Corruption (Critical)
 - **Status:** **Verified Fixed**
-- **Location:** `value-fabric/layer4-agents/src/tenants/api/routes/admin_dashboard.py` (Line 407)
+- **Location:** `services/layer4-agents/src/tenants/api/routes/admin_dashboard.py` (Line 407)
 - **Confirmation:** The vulnerable `str(updates["settings"]).replace("'", '"')` pattern has been completely removed. The code now correctly uses `json.dumps(updates["settings"])` to serialize the JSONB payload before passing it to the parameterized query.
 
 ### F3: Silent Provisioning Failure (High)
 - **Status:** **Verified Fixed**
-- **Location:** `value-fabric/layer4-agents/src/tenants/provisioning.py`
+- **Location:** `services/layer4-agents/src/tenants/provisioning.py`
 - **Confirmation:** All 6 calls to `emit_audit_event()` in the provisioning workflow now include the required `outcome` and `resource_type` parameters. This ensures the audit emitter will not raise a `ValidationError` and silently roll back the provisioning transaction.
 
 ### F4: Privilege Escalation (High)
@@ -35,7 +35,7 @@ All 6 findings have been successfully and permanently remediated in the codebase
 
 ### F6: f-string SQL Injection (Medium)
 - **Status:** **Verified Fixed**
-- **Location:** `value-fabric/layer4-agents/src/tenants/usage_tracking.py` (Lines 301-325)
+- **Location:** `services/layer4-agents/src/tenants/usage_tracking.py` (Lines 301-325)
 - **Confirmation:** The `_count_events_by_field()` method now validates the `group_field` parameter against a hardcoded `_ALLOWED_GROUP_FIELDS` frozenset before interpolating it into the SQL f-string. This eliminates the latent SQL injection risk.
 
 ---

@@ -24,9 +24,9 @@ Autonomous Level 3 task agent that inspects the repository, identifies test gaps
 
 ## Forbidden Paths
 
-- `value-fabric/shared/identity/` (security review required)
+- `packages/shared/src/value_fabric/shared/identity/` (security review required)
 - Production infrastructure configs
-- `value-fabric/layer4-agents/migrations/`
+- `services/layer4-agents/migrations/`
 
 ## Context Requirements
 

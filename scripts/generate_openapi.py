@@ -95,11 +95,11 @@ def format_openapi(spec: dict) -> str:
 
 def update_openapi_file(output_path: Path, new_spec: dict, dry_run: bool = False) -> bool:
     """Update OpenAPI file with new spec.
-    
+
     Returns True if file was changed.
     """
     formatted = format_openapi(new_spec)
-    
+
     if dry_run:
         if output_path.exists():
             current = output_path.read_text(encoding='utf-8')
@@ -112,7 +112,7 @@ def update_openapi_file(output_path: Path, new_spec: dict, dry_run: bool = False
         else:
             print(f"📝 {output_path} - Would create (dry-run)")
             return True
-    
+
     # Write file
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(formatted, encoding='utf-8')
@@ -150,68 +150,68 @@ def main():
         action="store_true",
         help="Generate for all layers",
     )
-    
+
     args = parser.parse_args()
-    
+
     layers_to_generate = []
-    
+
     if args.all:
         layers_to_generate = list(LAYERS.keys())
     else:
         layers_to_generate = [args.layer]
-    
+
     changed = False
-    
+
     for layer in layers_to_generate:
         config = LAYERS[layer]
         output_path = args.output or Path(config["default_output"])
         module_path = config["module"]
-        
+
         print(f"\n📦 Processing {layer}...")
         print(f"   Module: {module_path}")
         print(f"   Output: {output_path}")
-        
+
         try:
-            # Change to services directory for proper imports
+            # Change to value-fabric directory for proper imports
             import os
             original_dir = os.getcwd()
-            
-            layer_dir = Path(f"services/layer{layer.replace('layer', '')}")
+
+            layer_dir = Path(f"services/{layer}")
             if layer_dir.exists():
                 os.chdir(layer_dir)
                 sys.path.insert(0, str(Path("src").absolute()))
-            
+
             # Generate spec
             spec = generate_openapi(module_path)
-            
+
             # Restore directory
             os.chdir(original_dir)
-            
+
             # Update file
             was_changed = update_openapi_file(
                 output_path,
                 spec,
                 dry_run=args.dry_run or args.check,
             )
-            
+
             if was_changed:
                 changed = True
-            
+
             # Print stats
             paths_count = len(spec.get("paths", {}))
             schemas_count = len(spec.get("components", {}).get("schemas", {}))
             print(f"   Stats: {paths_count} paths, {schemas_count} schemas")
-            
+
         except Exception as e:
             print(f"   ❌ Error: {e}")
             if args.check:
                 sys.exit(1)
-    
+
     if args.check and changed:
         print("\n⚠️  OpenAPI specs are out of date!")
         print("   Run without --check to regenerate")
         sys.exit(1)
-    
+
     print("\n✅ Done!")
 
 
