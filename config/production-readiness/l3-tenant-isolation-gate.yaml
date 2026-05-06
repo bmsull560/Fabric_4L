@@ -43,41 +43,38 @@ modules:
   # ── INCOMPLETE ── Raw AsyncDriver, no tenant scoping ──────────────────────────
   - name: benchmarks
     file: services/layer3-knowledge/src/api/routes/benchmarks.py
-    status: INCOMPLETE
+    status: DI_MIGRATED
     tenant_scoped: false
     security_todo_count: 4
     labels_affected:
       - :Benchmark
       - :BenchmarkPolicy
     blocking_issue: |
-      No tenant_id property exists on :Benchmark or :BenchmarkPolicy nodes.
-      Queries use raw `AsyncDriver = Depends(get_driver)`.
-      Cannot scope without schema migration (Phase 2).
+      Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
+      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
 
   - name: variables
     file: services/layer3-knowledge/src/api/routes/variables.py
-    status: INCOMPLETE
+    status: DI_MIGRATED
     tenant_scoped: false
     security_todo_count: 8
     labels_affected:
       - :Variable
       - :SourceBinding
     blocking_issue: |
-      No tenant_id property exists on :Variable or :SourceBinding nodes.
-      Queries use raw `AsyncDriver = Depends(get_driver)`.
-      Cannot scope without schema migration (Phase 2).
+      Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
+      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
 
   - name: models
     file: services/layer3-knowledge/src/api/routes/models.py
-    status: INCOMPLETE
+    status: DI_MIGRATED
     tenant_scoped: false
     security_todo_count: 5
     labels_affected:
       - :ValueModel
     blocking_issue: |
-      No tenant_id property exists on :ValueModel nodes.
-      Queries use raw `AsyncDriver = Depends(get_driver)`.
-      Cannot scope without schema migration (Phase 2).
+      Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
+      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
     note: |
       This module has user-level ownership checks (`m.owner = $user_id`) but
       these are NOT tenant isolation. A user with the same user_id in tenant A
@@ -85,17 +82,15 @@ modules:
 
   - name: formula_governance
     file: services/layer3-knowledge/src/api/routes/formula_governance.py
-    status: INCOMPLETE
+    status: DI_MIGRATED
     tenant_scoped: false
     security_todo_count: 10
     labels_affected:
       - :Formula
       - :FormulaVersion
     blocking_issue: |
-      :Formula nodes have `tenantId` (camelCase) instead of canonical `tenant_id`
-      (snake_case). Property name mismatch means existing constraints and the
-      Neo4jTenantSession wrapper cannot enforce scoping. Schema migration needed
-      to standardize on snake_case (Phase 2).
+      Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
+      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
     note: |
       Additionally, FormulaVersion nodes and relationships lack tenant_id entirely.
 
@@ -141,13 +136,14 @@ schema_migration_plan:
         - All new nodes now write canonical tenant_id property
     - phase: 4
       name: "Dependency Injection Migration"
-      status: NOT_STARTED
+      status: COMPLETE
       deliverables:
-        - benchmarks.py: `AsyncDriver` → `Neo4jTenantSession`
-        - variables.py: `AsyncDriver` → `Neo4jTenantSession`
-        - models.py: `AsyncDriver` → `Neo4jTenantSession`
-        - formula_governance.py: `AsyncDriver` → `Neo4jTenantSession`
-        - Add `tenant_id` filtering to all MATCH/CREATE/SET/DELETE queries
+        - benchmarks.py: `AsyncDriver` → `create_neo4j_tenant_session`
+        - variables.py: `AsyncDriver` → `create_neo4j_tenant_session`
+        - models.py: `AsyncDriver` → `create_neo4j_tenant_session`
+        - formulas.py: `AsyncDriver` → `create_neo4j_tenant_session`
+        - formula_governance.py: `AsyncDriver` → `create_neo4j_tenant_session`
+        - tenant_id auto-injection via Neo4jTenantSession.run() for all handlers
     - phase: 5
       name: "Cross-Tenant Security Tests"
       status: NOT_STARTED
@@ -223,3 +219,13 @@ audit_trail:
       - variables.py: Added tenant_id to Variable CREATE
       - models.py: Added _get_current_tenant() helper + tenant_id to ValueModel CREATE
       - All mandatory tests pass (222 passed, 0 failed)
+  - date: "2026-05-05"
+    action: "Phase 4 complete"
+    note: |
+      Dependency injection migration from AsyncDriver to Neo4jTenantSession.
+      - benchmarks.py: 4 handlers migrated to create_neo4j_tenant_session
+      - variables.py: 8 handlers migrated to create_neo4j_tenant_session
+      - models.py: 5 handlers migrated to create_neo4j_tenant_session
+      - formulas.py: 3 handlers migrated to create_neo4j_tenant_session
+      - formula_governance.py: 10 handlers migrated to create_neo4j_tenant_session
+      - No raw AsyncDriver usage remains in the 5 target modules

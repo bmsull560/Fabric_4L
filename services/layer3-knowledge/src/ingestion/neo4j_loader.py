@@ -202,17 +202,18 @@ class Neo4jLoader:
     ) -> dict[str, list[dict[str, Any]]] | list[dict[str, Any]]:
         """Extract relationships from RDF graph by type with all properties.
 
-        Production callers consume relationships grouped by predicate. Legacy unit
-        tests call this helper directly without metadata arguments and expect a
-        flat list, so that no-metadata call shape remains supported.
+        The loader's production path consumes relationships grouped by predicate.
+        Older unit tests call this helper directly without metadata arguments and
+        expect a flat list, so the no-metadata call shape is retained as a
+        backwards-compatible convenience.
         """
         legacy_flat_result = source_id is None and extraction_job_id is None
         relationships: dict[str, list[dict[str, Any]]] = {
             rel_type: [] for rel_type in RELATIONSHIP_TYPES
         }
 
-        # Build a lookup of known relationship predicates using canonical and
-        # historical HTTPS namespaces.
+        # Build a lookup of known relationship predicates using both canonical
+        # and historical HTTPS namespaces.
         known_predicates = {
             **{VF[rt]: rt for rt in RELATIONSHIP_TYPES},
             **{VF_HTTPS[rt]: rt for rt in RELATIONSHIP_TYPES},
@@ -291,21 +292,16 @@ class Neo4jLoader:
 
             relationships[predicate_name].append(rel_data)
 
-        # Legacy fixtures often model relationships as direct triples instead of
-        # reified RDF statements. Preserve production grouped output while
-        # recognizing those triples for direct helper calls.
-        relationship_keys = {rel_type.lower(): rel_type for rel_type in RELATIONSHIP_TYPES}
+        # Support simple direct triples in legacy fixtures that do not use RDF
+        # reification for relationship properties.
         for subject_uri, predicate_uri, object_uri in graph:
             predicate_name = known_predicates.get(predicate_uri)
-            raw_predicate_name = self._extract_property_name(predicate_uri)
-            if predicate_name is None:
-                predicate_name = relationship_keys.get(raw_predicate_name.lower())
             if not predicate_name or not isinstance(object_uri, URIRef):
                 continue
             rel_data = {
                 "source_id": self._resolve_entity_id(graph, subject_uri),
                 "target_id": self._resolve_entity_id(graph, object_uri),
-                "predicate": raw_predicate_name if legacy_flat_result else predicate_name,
+                "predicate": predicate_name,
                 "confidence": 1.0,
                 "source": source_id,
                 "extraction_job_id": extraction_job_id,

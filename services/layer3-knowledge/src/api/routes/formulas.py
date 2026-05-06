@@ -10,13 +10,12 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from neo4j import AsyncDriver
 from pydantic import BaseModel, Field, field_validator
 
 from ...agents.scenario_engine import VariableAdjustment, scenario_engine
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key, require_admin_role
-from ...db.driver import get_driver
+from ..dependencies_tenant import create_neo4j_tenant_session
 from ...logging_config import get_logger
 from ..routes.formula_governance import STATUS_DRAFT, STATUS_UNDER_REVIEW
 
@@ -913,7 +912,6 @@ def _build_formula_metadata(formula_node: dict, variables_nodes: list) -> Formul
 )
 async def create_formula(
     request: CreateFormulaRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ) -> FormulaMetadata:
     """Create a new formula with Neo4j persistence.
@@ -927,9 +925,9 @@ async def create_formula(
     tenant_id = getattr(api_key, "tenant_id", None)
     owner = request.owner or getattr(api_key, "owner_email", None)
 
-    async with driver.session() as session:
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
         # Check for name collision within tenant
-        check_result = await session.run(
+        check_result = await neo4j.run(
             """
             MATCH (f:Formula {name: $name})
             WHERE f.tenant_id = $tenant_id
@@ -946,7 +944,7 @@ async def create_formula(
             )
 
         # Create formula, version, and variables
-        await session.run(
+        await neo4j.run(
             """
             CREATE (f:Formula {
                 id: $formula_id,
@@ -989,7 +987,7 @@ async def create_formula(
 
         # Create variables if provided
         if request.variables:
-            await session.run(
+            await neo4j.run(
                 """
                 MATCH (f:Formula {id: $formula_id})
                 UNWIND $variables as var
@@ -1011,7 +1009,7 @@ async def create_formula(
             )
 
         # Fetch created formula
-        result = await session.run(
+        result = await neo4j.run(
             """
             MATCH (f:Formula {id: $formula_id})
             OPTIONAL MATCH (f)-[:REQUIRES]->(v:Variable)
@@ -1055,7 +1053,6 @@ async def create_formula(
 async def update_formula(
     formula_id: str,
     request: UpdateFormulaRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ) -> FormulaMetadata:
     """Update an existing formula.
@@ -1065,9 +1062,9 @@ async def update_formula(
     """
     tenant_id = getattr(api_key, "tenant_id", None)
 
-    async with driver.session() as session:
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
         # Check formula exists and is editable
-        check_result = await session.run(
+        check_result = await neo4j.run(
             """
             MATCH (f:Formula {id: $formula_id})
             WHERE f.tenant_id = $tenant_id
@@ -1121,7 +1118,7 @@ async def update_formula(
 
         # Update formula
         if update_fields:
-            await session.run(
+            await neo4j.run(
                 f"""
                 MATCH (f:Formula {{id: $formula_id}})
                 WHERE f.tenant_id = $tenant_id
@@ -1134,7 +1131,7 @@ async def update_formula(
         if expr_changed:
             new_version = _bump_minor_version(current_version)
             version_id = f"fv_{uuid.uuid4().hex[:12]}"
-            await session.run(
+            await neo4j.run(
                 """
                 MATCH (f:Formula {id: $formula_id})
                 CREATE (fv:FormulaVersion {
@@ -1161,7 +1158,7 @@ async def update_formula(
         # Update variables if provided
         if request.variables is not None:
             # Remove old variable relationships
-            await session.run(
+            await neo4j.run(
                 """
                 MATCH (f:Formula {id: $formula_id})-[r:REQUIRES]->(v:Variable)
                 DELETE r
@@ -1169,7 +1166,7 @@ async def update_formula(
                 formula_id=formula_id,
             )
             # Create new variables
-            await session.run(
+            await neo4j.run(
                 """
                 MATCH (f:Formula {id: $formula_id})
                 UNWIND $variables as var
@@ -1191,7 +1188,7 @@ async def update_formula(
             )
 
         # Fetch updated formula
-        result = await session.run(
+        result = await neo4j.run(
             """
             MATCH (f:Formula {id: $formula_id})
             OPTIONAL MATCH (f)-[:REQUIRES]->(v:Variable)
@@ -1232,7 +1229,6 @@ async def update_formula(
 )
 async def delete_formula(
     formula_id: str,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(require_admin_role),
 ) -> dict[str, str]:
     """Delete a formula and all associated versions and variables.
@@ -1241,9 +1237,9 @@ async def delete_formula(
     """
     tenant_id = getattr(api_key, "tenant_id", None)
 
-    async with driver.session() as session:
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
         # Check formula exists
-        check_result = await session.run(
+        check_result = await neo4j.run(
             """
             MATCH (f:Formula {id: $formula_id})
             WHERE f.tenant_id = $tenant_id
@@ -1268,7 +1264,7 @@ async def delete_formula(
             )
 
         # Delete formula and related nodes
-        await session.run(
+        await neo4j.run(
             """
             MATCH (f:Formula {id: $formula_id})
             WHERE f.tenant_id = $tenant_id

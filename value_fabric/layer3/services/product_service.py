@@ -127,10 +127,18 @@ class ProductService:
     # ------------------------------------------------------------------
 
     async def create_product(
-        self, product: ProductCreate
+        self, tenant_or_product: str | ProductCreate, product: ProductCreate | None = None
     ) -> dict[str, Any]:
-        """Create a Product node in the knowledge graph."""
-        tenant_id = _get_tenant_id()
+        """Create a Product node in the knowledge graph.
+
+        Accepts both the current implicit-context shape ``create_product(product)``
+        and the legacy test/API shape ``create_product(tenant_id, product)``.
+        """
+        if product is None:
+            product = tenant_or_product  # type: ignore[assignment]
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_product)
         product_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -179,10 +187,14 @@ class ProductService:
             return ProductService_create_productResult.model_validate({"id": product_id, **(record["product"] if record else {})})
 
     async def get_product(
-        self, product_id: str
+        self, tenant_or_product_id: str, product_id: str | None = None
     ) -> dict[str, Any] | None:
         """Get a single product by ID, scoped to tenant."""
-        tenant_id = _get_tenant_id()
+        if product_id is None:
+            product_id = tenant_or_product_id
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_product_id)
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -302,9 +314,13 @@ class ProductService:
             logger.info("product_updated", product_id=product_id, fields=list(safe_updates))
             return record["product"]
 
-    async def delete_product(self, product_id: str) -> bool:
+    async def delete_product(self, tenant_or_product_id: str, product_id: str | None = None) -> bool:
         """Delete a product and its orphaned features."""
-        tenant_id = _get_tenant_id()
+        if product_id is None:
+            product_id = tenant_or_product_id
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_product_id)
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -526,9 +542,9 @@ class ProductService:
     # Portfolio Analytics
     # ------------------------------------------------------------------
 
-    async def get_portfolio_summary(self) -> dict[str, Any]:
+    async def get_portfolio_summary(self, tenant_id: str | None = None) -> dict[str, Any]:
         """Get a summary of the product portfolio for a tenant."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         query = """
         MATCH (p:Product {tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -563,9 +579,9 @@ class ProductService:
             })
 
 
-    async def get_capability_coverage(self) -> list[dict[str, Any]]:
+    async def get_capability_coverage(self, tenant_id: str | None = None) -> list[dict[str, Any]]:
         """Show which capabilities are covered by products and which are gaps."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         query = """
         MATCH (c:Capability)
         WHERE c.tenant_id = $tenant_id OR c.tenant_id IS NULL

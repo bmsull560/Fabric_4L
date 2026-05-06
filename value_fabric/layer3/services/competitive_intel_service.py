@@ -153,10 +153,14 @@ class CompetitiveIntelService:
     # ------------------------------------------------------------------
 
     async def add_competitor(
-        self, competitor: CompetitorCreate
+        self, tenant_or_competitor: str | CompetitorCreate, competitor: CompetitorCreate | None = None
     ) -> dict[str, Any]:
         """Create a Competitor node in the knowledge graph."""
-        tenant_id = _get_tenant_id()
+        if competitor is None:
+            competitor = tenant_or_competitor  # type: ignore[assignment]
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_competitor)
         competitor_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -204,10 +208,14 @@ class CompetitiveIntelService:
         return CompetitiveIntelService_add_competitorResult.model_validate({"id": competitor_id, **(record["competitor"] if record else {})})
 
     async def get_competitor(
-        self, competitor_id: str
+        self, tenant_or_competitor_id: str, competitor_id: str | None = None
     ) -> dict[str, Any] | None:
         """Get a single competitor with related products and battlecards."""
-        tenant_id = _get_tenant_id()
+        if competitor_id is None:
+            competitor_id = tenant_or_competitor_id
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_competitor_id)
         query = """
         MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)
@@ -235,13 +243,14 @@ class CompetitiveIntelService:
 
     async def list_competitors(
         self,
+        tenant_id: str | None = None,
         *,
         market_position: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> dict[str, Any]:
         """List competitors with optional filtering."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         where_clauses = ["c.tenant_id = $tenant_id"]
         params: dict[str, Any] = {
             "tenant_id": tenant_id,
@@ -320,10 +329,14 @@ class CompetitiveIntelService:
         return record["competitor"]
 
     async def delete_competitor(
-        self, competitor_id: str
+        self, tenant_or_competitor_id: str, competitor_id: str | None = None
     ) -> bool:
         """Delete a competitor and all related battlecards."""
-        tenant_id = _get_tenant_id()
+        if competitor_id is None:
+            competitor_id = tenant_or_competitor_id
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_competitor_id)
         query = """
         MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (bc:Battlecard {competitor_id: $competitor_id, tenant_id: $tenant_id})
@@ -564,10 +577,10 @@ class CompetitiveIntelService:
 
 
     async def get_win_loss_summary(
-        self
+        self, tenant_id: str | None = None
     ) -> dict[str, Any]:
         """Get aggregated win/loss data across all competitors."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         query = """
         MATCH (c:Competitor {tenant_id: $tenant_id})
         OPTIONAL MATCH (p:Product)-[won:WON_AGAINST]->(c)

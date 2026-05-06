@@ -3,7 +3,7 @@
  * 
  * Uses real API data from Layer 3 Calculator service for value lever configuration.
  */
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { useValueLevers, useCreateValueCase } from "@/hooks/useCalculators";
 import { Save, RotateCcw, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
@@ -24,9 +24,21 @@ export default function Calculator() {
 
   const [leverValues, setLeverValues] = useState<Record<string, { valA: number; valB: number }>>({});
 
+  // Initialize lever values when config loads
+  useEffect(() => {
+    if (leverConfig && Object.keys(leverValues).length === 0) {
+      setLeverValues(
+        leverConfig.levers.reduce((acc, l) => ({
+          ...acc,
+          [l.id]: { valA: l.min_value, valB: l.base_value }
+        }), {})
+      );
+    }
+  }, [leverConfig, leverValues]);
+
   const handleSave = async () => {
     if (!prospect?.companyId || !leverConfig) return;
-    
+
     const leversData = Object.entries(leverValues).map(([id, values]) => ({
       lever_id: id,
       scenario_a: values.valA,
@@ -39,7 +51,7 @@ export default function Calculator() {
         name: "Conservative" as const,
         total_value: leverConfig.levers.reduce((sum, l) => {
           const lever = leverValues[l.id];
-          if (!lever) return sum;
+          if (!lever || l.base_value === 0) return sum;
           return sum + (l.annual_impact * (lever.valA / l.base_value));
         }, 0),
         breakdown: [],
@@ -48,7 +60,7 @@ export default function Calculator() {
         name: "Expected" as const,
         total_value: leverConfig.levers.reduce((sum, l) => {
           const lever = leverValues[l.id];
-          if (!lever) return sum;
+          if (!lever || l.base_value === 0) return sum;
           return sum + (l.annual_impact * (lever.valB / l.base_value));
         }, 0),
         breakdown: [],
@@ -70,6 +82,7 @@ export default function Calculator() {
       navigateTo('workflow-value-case');
     } catch (err) {
       console.error('Failed to save value case:', err);
+      alert('Failed to save value case. Please try again.');
     }
   };
 
@@ -81,8 +94,8 @@ export default function Calculator() {
   const totals = useMemo(() => {
     if (!leverConfig) return { A: 0, B: 0, C: 0 };
     return {
-      A: leverConfig.levers.reduce((s, l) => s + l.annual_impact * ((leverValues[l.id]?.valA || l.min_value) / l.base_value), 0),
-      B: leverConfig.levers.reduce((s, l) => s + l.annual_impact * ((leverValues[l.id]?.valB || l.base_value) / l.base_value), 0),
+      A: leverConfig.levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valA || l.min_value) / l.base_value), 0),
+      B: leverConfig.levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valB || l.base_value) / l.base_value), 0),
       C: leverConfig.levers.reduce((s, l) => s + l.annual_impact * 1.25, 0),
     };
   }, [leverValues, leverConfig]);
@@ -101,8 +114,8 @@ export default function Calculator() {
         <header className="flex items-center justify-between">
           <div><h1 className="text-xl font-bold text-foreground">Value Calculator</h1><p className="text-sm text-muted-foreground mt-0.5">Prospect-specific scenario modeling. AI pre-filled from Meridian profile.</p></div>
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted"><RotateCcw className="w-4 h-4" /> Reset</button>
-            <button className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted"><Save className="w-4 h-4" /> Save</button>
+            <button onClick={handleReset} className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted"><RotateCcw className="w-4 h-4" /> Reset</button>
+            <button onClick={handleSave} className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted"><Save className="w-4 h-4" /> Save</button>
             <button onClick={handleContinue} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 shadow-lg shadow-primary/25">
               <ArrowRight className="w-4 h-4" /> Generate Value Case
             </button>
@@ -112,12 +125,12 @@ export default function Calculator() {
         {/* Scenario Cards */}
         <section className="flex gap-3">
           {(["A", "B", "C"] as const).map((s) => (
-            <button key={s} onClick={() => {}} className={`flex-1 px-5 py-4 rounded-xl border text-left transition-all ${s === "B" ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-border/80"}`}>
+            <div key={s} className={`flex-1 px-5 py-4 rounded-xl border text-left ${s === "B" ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card"}`}>
               <span className={`text-sm font-semibold ${s === "B" ? "text-primary" : "text-foreground"}`}>{s === "A" ? "Conservative" : s === "B" ? "Expected" : "Optimistic"}</span>
               {s === "B" && <span className="text-[10px] px-1.5 py-0.5 bg-primary text-primary-foreground rounded-full ml-2">Base</span>}
               <p className="text-2xl font-bold text-card-foreground mt-1">${(totals[s] / 1_000_000).toFixed(2)}M</p>
               <p className="text-xs text-muted-foreground">Annual value</p>
-            </button>
+            </div>
           ))}
         </section>
 
@@ -146,7 +159,7 @@ export default function Calculator() {
                             min={lever.min_value}
                             max={lever.max_value}
                             value={leverValues[lever.id]?.valA ?? lever.min_value}
-                            onChange={(e) => setLeverValues(prev => ({ ...prev, [lever.id]: { ...prev[lever.id], valA: Number(e.target.value) } }))}
+                            onChange={(e) => setLeverValues(prev => ({ ...prev, [lever.id]: { valA: Number(e.target.value), valB: prev[lever.id]?.valB ?? lever.base_value } }))}
                             className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
                           />
                           <div className="text-[10px] text-center text-muted-foreground mt-0.5">{leverValues[lever.id]?.valA ?? lever.min_value} {lever.unit}</div>
@@ -158,7 +171,7 @@ export default function Calculator() {
                             min={lever.min_value}
                             max={lever.max_value}
                             value={leverValues[lever.id]?.valB ?? lever.base_value}
-                            onChange={(e) => setLeverValues(prev => ({ ...prev, [lever.id]: { ...prev[lever.id], valB: Number(e.target.value) } }))}
+                            onChange={(e) => setLeverValues(prev => ({ ...prev, [lever.id]: { valA: prev[lever.id]?.valA ?? lever.min_value, valB: Number(e.target.value) } }))}
                             className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
                           />
                           <div className="text-[10px] text-center text-muted-foreground mt-0.5">{leverValues[lever.id]?.valB ?? lever.base_value} {lever.unit}</div>
@@ -192,7 +205,7 @@ export default function Calculator() {
                 {leverConfig?.levers.map((l) => {
                   const lever = leverValues[l.id];
                   const val = lever ? lever.valB : l.base_value;
-                  const pct = current > 0 ? (l.annual_impact * (val / l.base_value) / current) * 100 : 0;
+                  const pct = current > 0 && l.base_value !== 0 ? (l.annual_impact * (val / l.base_value) / current) * 100 : 0;
                   return (
                     <div key={l.id}>
                       <div className="flex justify-between mb-1"><span className="text-xs text-muted-foreground">{l.name.split(" (")[0]}</span><span className="text-xs font-semibold">{pct.toFixed(0)}%</span></div>

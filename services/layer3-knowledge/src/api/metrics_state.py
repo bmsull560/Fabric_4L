@@ -30,7 +30,6 @@ from .models import ServiceMetrics
 
 logger = logging.getLogger(__name__)
 
-# Track application startup time for uptime calculation.
 _app_start_time = time.time()
 _app_metrics: Any | None = None
 
@@ -52,13 +51,8 @@ def get_app_start_time() -> float:
 
 
 def get_system_metrics() -> ServiceMetrics:
-    """Collect system and application metrics from Prometheus.
-
-    Extracts real counter values from the Prometheus registry by iterating
-    through collected metrics and summing sample values for counters.
-    """
+    """Collect system and application metrics from Prometheus."""
     uptime = time.time() - _app_start_time
-
     memory_info = psutil.virtual_memory()
     memory_usage_mb = memory_info.used / (1024 * 1024)
     cpu_percent = psutil.cpu_percent(interval=None)

@@ -136,7 +136,7 @@ async function updateValueCase(
 
 export function useValueLevers(filters: LeverConfigRequest = {}) {
   return useQuery<LeverConfigResponse, CalculatorsApiError>({
-    queryKey: ["calculators", "levers", JSON.stringify(filters)],
+    queryKey: QK.calculators.levers(filters),
     queryFn: () => withApiError(fetchValueLevers(filters), CalculatorsApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
@@ -146,7 +146,7 @@ export function useValueLevers(filters: LeverConfigRequest = {}) {
 
 export function useValueCase(caseId: string | null) {
   return useQuery<ValueCaseResponse, CalculatorsApiError>({
-    queryKey: ["calculators", "detail", caseId || ""],
+    queryKey: QK.calculators.detail(caseId || ""),
     queryFn: async () => {
       if (!caseId) throw new CalculatorsApiError("No case ID provided");
       return withApiError(fetchValueCase(caseId), CalculatorsApiError);

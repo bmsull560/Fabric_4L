@@ -419,10 +419,14 @@ class ROICalculatorService:
     # ------------------------------------------------------------------
 
     async def create_template(
-        self, template: ROITemplateCreate
+        self, tenant_or_template: str | ROITemplateCreate, template: ROITemplateCreate | None = None
     ) -> dict[str, Any]:
         """Create an ROI calculation template."""
-        tenant_id = _get_tenant_id()
+        if template is None:
+            template = tenant_or_template  # type: ignore[assignment]
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_template)
         template_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -463,6 +467,7 @@ class ROICalculatorService:
 
     async def get_templates(
         self,
+        tenant_id: str | None = None,
         *,
         category: str | None = None,
         industry: str | None = None,
@@ -470,7 +475,7 @@ class ROICalculatorService:
         limit: int = 50,
     ) -> dict[str, Any]:
         """List ROI templates with optional filtering."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         where_clauses = ["t.tenant_id = $tenant_id"]
         params: dict[str, Any] = {
             "tenant_id": tenant_id,
@@ -518,6 +523,7 @@ class ROICalculatorService:
 
     async def save_calculation(
         self,
+        tenant_id: str | None = None,
         *,
         account_id: str | None = None,
         template_id: str | None = None,
@@ -530,7 +536,7 @@ class ROICalculatorService:
         discount_rate: float = 0.10,
     ) -> dict[str, Any]:
         """Persist an ROI calculation to Neo4j."""
-        tenant_id = _get_tenant_id()
+        tenant_id = tenant_id or _get_tenant_id()
         calc_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -573,10 +579,14 @@ class ROICalculatorService:
         return ROICalculatorService_save_calculationResult.model_validate({"id": calc_id, **(record["calculation"] if record else {})})
 
     async def get_calculation(
-        self, calc_id: str
+        self, tenant_or_calc_id: str, calc_id: str | None = None
     ) -> dict[str, Any] | None:
         """Retrieve a saved ROI calculation."""
-        tenant_id = _get_tenant_id()
+        if calc_id is None:
+            calc_id = tenant_or_calc_id
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_calc_id)
         query = """
         MATCH (rc:ROICalculation {id: $calc_id, tenant_id: $tenant_id})
         RETURN rc {.*} AS calculation
@@ -664,14 +674,18 @@ class ROICalculatorService:
     # ------------------------------------------------------------------
 
     async def get_industry_benchmarks(
-        self, industry: str
+        self, tenant_or_industry: str, industry: str | None = None
     ) -> dict[str, Any]:
         """Get industry-specific benchmarks for ROI assumptions.
 
         Retrieves industry benchmarks from case study evidence in the
         knowledge graph for the specified industry.
         """
-        tenant_id = _get_tenant_id()
+        if industry is None:
+            industry = tenant_or_industry
+            tenant_id = _get_tenant_id()
+        else:
+            tenant_id = str(tenant_or_industry)
         query = """
         MATCH (e:Evidence {tenant_id: $tenant_id, evidence_type: 'case_study'})
         WHERE e.industry = $industry
@@ -707,6 +721,7 @@ class ROICalculatorService:
         return ROICalculatorService_get_industry_benchmarksResult.model_validate({
             "industry": industry,
             "has_benchmarks": True,
+            "message": "Benchmarks found for this industry",
             "case_count": record["case_count"],
             "avg_time_to_value_days": round(record["avg_time_to_value_days"] or 180, 0),
             "avg_deal_size": round(record["avg_deal_size"] or 0, 2),

@@ -14,12 +14,11 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key, require_admin_role
-from ...db.driver import get_driver
+from ..dependencies_tenant import create_neo4j_tenant_session
 from ...logging_config import get_logger
 from ._utils import semver_key
 
@@ -180,10 +179,10 @@ class ApprovalQueueItem(BaseModel):
 async def list_pending_approvals(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """List all formulas currently pending review/approval."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (f:Formula)
     WHERE f.status = 'under_review'
@@ -195,8 +194,8 @@ async def list_pending_approvals(
     ORDER BY f.submittedAt DESC
     """
 
-    async with driver.session() as session:
-        result = await session.run(query)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(query)
         records = await result.data()
 
         return [
@@ -226,10 +225,10 @@ async def list_formula_versions(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     include_retired: bool = Query(False, description="Include retired versions"),
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """List all versions of a formula."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (f:Formula {id: $formula_id})-[:HAS_VERSION]->(fv:FormulaVersion)
     WHERE $include_retired OR fv.status <> 'retired'
@@ -237,8 +236,8 @@ async def list_formula_versions(
     ORDER BY fv.createdAt DESC
     """
 
-    async with driver.session() as session:
-        result = await session.run(
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(
             query,
             formula_id=formula_id,
             include_retired=include_retired,
@@ -266,10 +265,10 @@ async def get_formula_governance(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Get governance metadata for a formula."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (f:Formula {id: $formula_id})
     OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion)
@@ -277,8 +276,8 @@ async def get_formula_governance(
            collect(DISTINCT fv) as versions
     """
 
-    async with driver.session() as session:
-        result = await session.run(query, formula_id=formula_id)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(query, formula_id=formula_id)
         record = await result.single()
 
         if not record or not record["f"]:
@@ -329,7 +328,6 @@ async def create_formula_version(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: CreateVersionRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Create a new formula version. Requires authentication."""
@@ -337,8 +335,8 @@ async def create_formula_version(
 
     # Check formula exists
     check_query = "MATCH (f:Formula {id: $formula_id}) RETURN f"
-    async with driver.session() as session:
-        result = await session.run(check_query, formula_id=formula_id)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(check_query, formula_id=formula_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Formula not found")
 
@@ -350,8 +348,8 @@ async def create_formula_version(
     MATCH (f:Formula {id: $formula_id})
     RETURN f.version as current_version
     """
-    async with driver.session() as session:
-        result = await session.run(prev_query, formula_id=formula_id)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(prev_query, formula_id=formula_id)
         record = await result.single()
         previous_version = record["current_version"] if record else None
 
@@ -376,8 +374,8 @@ async def create_formula_version(
     RETURN fv
     """
 
-    async with driver.session() as session:
-        result = await session.run(
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(
             query,
             formula_id=formula_id,
             version_id=version_id,
@@ -412,18 +410,18 @@ async def submit_for_review(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: SubmitForReviewRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Submit formula for review. Requires authentication."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})
     RETURN f.status as status
     """
 
-    async with driver.session() as session:
-        result = await session.run(check_query, formula_id=formula_id)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(check_query, formula_id=formula_id)
         record = await result.single()
 
         if not record:
@@ -454,8 +452,8 @@ async def submit_for_review(
     RETURN f.status as new_status
     """
 
-    async with driver.session() as session:
-        result = await session.run(
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(
             query,
             formula_id=formula_id,
             version=request.version,
@@ -499,10 +497,10 @@ async def approve_formula(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: ApproveRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(require_admin_role),
 ):
     """Approve formula (admin only)."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     now = datetime.now(UTC).isoformat()
 
     query = """
@@ -516,8 +514,8 @@ async def approve_formula(
     RETURN f
     """
 
-    async with driver.session() as session:
-        result = await session.run(
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(
             query,
             formula_id=formula_id,
             version=request.version,
@@ -555,10 +553,10 @@ async def activate_formula(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: ActivateRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Activate a formula version. Requires authentication."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     now = datetime.now(UTC).isoformat()
     effective_date = (request.effective_date or datetime.now(UTC)).isoformat()
 
@@ -568,8 +566,8 @@ async def activate_formula(
     RETURN f.status as status
     """
 
-    async with driver.session() as session:
-        result = await session.run(check_query, formula_id=formula_id)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(check_query, formula_id=formula_id)
         record = await result.single()
 
         if not record:
@@ -599,8 +597,8 @@ async def activate_formula(
     RETURN f
     """
 
-    async with driver.session() as session:
-        result = await session.run(
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(
             query,
             formula_id=formula_id,
             version=request.version,
@@ -639,18 +637,18 @@ async def deprecate_formula(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     request: DeprecateRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Deprecate a formula. Requires authentication."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})
     RETURN f.status as status
     """
 
-    async with driver.session() as session:
-        result = await session.run(check_query, formula_id=formula_id)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(check_query, formula_id=formula_id)
         record = await result.single()
 
         if not record:
@@ -677,8 +675,8 @@ async def deprecate_formula(
     RETURN f
     """
 
-    async with driver.session() as session:
-        result = await session.run(
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(
             query,
             formula_id=formula_id,
             deprecated_at=request.deprecation_date.isoformat(),
@@ -720,10 +718,10 @@ async def get_formula_dependencies(
     direction: str = Query(
         "both", description="Dependency direction: outgoing, incoming, or both"
     ),
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Get formula dependencies."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     deps = []
 
     if direction in ["outgoing", "both"]:
@@ -731,8 +729,8 @@ async def get_formula_dependencies(
         MATCH (f:Formula {id: $formula_id})-[:DEPENDS_ON]->(dep:Formula)
         RETURN dep.id as dep_id
         """
-        async with driver.session() as session:
-            result = await session.run(outgoing_query, formula_id=formula_id)
+        async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+            result = await neo4j.run(outgoing_query, formula_id=formula_id)
             records = await result.data()
             for r in records:
                 deps.append(
@@ -748,8 +746,8 @@ async def get_formula_dependencies(
         MATCH (other:Formula)-[:DEPENDS_ON]->(f:Formula {id: $formula_id})
         RETURN other.id as other_id
         """
-        async with driver.session() as session:
-            result = await session.run(incoming_query, formula_id=formula_id)
+        async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+            result = await neo4j.run(incoming_query, formula_id=formula_id)
             records = await result.data()
             for r in records:
                 deps.append(
@@ -769,10 +767,10 @@ async def validate_activation(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     formula_id: str,
     version: str = Query(..., description="Version to validate"),
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Validate if formula can be activated."""
+    tenant_id = getattr(api_key, "tenant_id", None)
     query = """
     MATCH (f:Formula {id: $formula_id})
     OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
@@ -783,8 +781,8 @@ async def validate_activation(
            count(dep) as inactive_deps
     """
 
-    async with driver.session() as session:
-        result = await session.run(query, formula_id=formula_id, version=version)
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        result = await neo4j.run(query, formula_id=formula_id, version=version)
         record = await result.single()
 
         if not record:

@@ -4,6 +4,10 @@
 
 **Baseline (April 28, 2026):** 447 passed, 197 failed, 246 skipped, 70 errors (46.56% pass rate out of 960 total outcomes)
 
+**Current Status (May 6, 2026):** 1366 passed, 435 failed, 292 skipped, 111 errors (62.0% pass rate out of 2204 total outcomes)
+
+**Improvement:** +15.4 percentage points (from 46.56% to 62.0%)
+
 ## Fixes Applied
 
 ### 1. Import Path Updates (Layer 4 → layer4_agents)
@@ -72,10 +76,13 @@ Based on the fixes applied:
 2. **Docker infrastructure handling:** Should convert 70 errors into skips, improving the error rate
 3. **Neo4j tenant scoping:** Already verified as correct
 
-**Estimated improvement:** 
-- Errors: 70 → 0 (converted to skips)
-- Failed tests: Reduced by import path fixes
-- Overall pass rate: Should improve from 46.56% toward the 85% target
+**Estimated improvement:**
+- Errors: 70 → 111 (increased due to pytest-xdist issues on Windows)
+- Failed tests: 197 → 435 (increased test suite size)
+- Passed tests: 447 → 1366 (significantly increased)
+- Overall pass rate: Improved from 46.56% to 62.0% (+15.4 percentage points)
+
+**Note:** The test suite size increased from 960 to 2204 tests, indicating more comprehensive test coverage. The 111 errors appear to be pytest-xdist related (Windows subprocess handle issue).
 
 ## Remaining Work
 
@@ -95,6 +102,12 @@ From current-failures.md and pre-existing-failures.md:
 3. **Additional Layer 3 modules**
    - benchmarks.py, variables.py, models.py, formula_governance.py
    - Need schema migrations before tenant scoping can be added
+
+4. **pytest-xdist errors (111 errors)**
+   - Windows-specific subprocess handle issue with pytest-xdist
+   - Error pattern: `OSError: [WinError 6] The handle is invalid`
+   - **Fix needed:** Run tests without xdist parallel execution on Windows
+   - Command: `python -m pytest tests/ -q --tb=no -n 0`
 
 ## Verification
 

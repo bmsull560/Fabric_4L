@@ -1,10 +1,9 @@
 /**
  * Intelligence Page - Production Implementation
- * 
+ *
  * Uses real API data from Layer 4 Intelligence service.
  * Sections without API support have been removed.
  */
-import { useState } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { useAccountBriefing } from "@/hooks/useIntelligence";
 import {
@@ -22,14 +21,14 @@ export default function Intelligence() {
   const { navigateTo } = useNavigation();
   const { setCurrentStep, setEnrichedEntities } = useWorkflowStore();
   const { prospect } = useWorkflowStore();
-  // Use account ID from URL params or prospect if available
-  const accountId = prospect?.companyName || null;
+  // Use account ID from prospect if available
+  const accountId = prospect?.companyId || null;
   
   // Fetch real intelligence data from API
   const { data: briefing, isLoading, error } = useAccountBriefing(accountId);
   
   const handleContinue = () => {
-    if (briefing?.signals.recent) {
+    if (briefing?.signals?.recent) {
       setEnrichedEntities(briefing.signals.recent.map((signal, index) => ({
         id: signal.id,
         name: signal.text,
@@ -105,7 +104,9 @@ export default function Intelligence() {
                       <p className="text-[10px] text-muted-foreground/60 mt-0.5">Category: {signal.category}</p>
                     </div>
                     <div className="w-24 shrink-0">
-                      <span className="text-[10px] text-muted-foreground">Detected {new Date(signal.detected_at).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Detected {signal.detected_at ? new Date(signal.detected_at).toLocaleDateString() : "N/A"}
+                      </span>
                     </div>
                   </div>
                 ))
