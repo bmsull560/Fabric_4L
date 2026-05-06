@@ -275,10 +275,12 @@ class CompetitiveIntelService:
         """
 
         async with self._driver.session() as session:
+            # strict-scoped-query-execution: dynamic query parameters include tenant_id
             count_result = await session.run(count_query, params)
             count_record = await count_result.single()
             total = count_record["total"] if count_record else 0
 
+            # strict-scoped-query-execution: dynamic query parameters include tenant_id
             list_result = await session.run(list_query, params)
             records = [record async for record in list_result]
 
@@ -321,6 +323,7 @@ class CompetitiveIntelService:
         params = {"competitor_id": competitor_id, "tenant_id": tenant_id, **safe_updates}
 
         async with self._driver.session() as session:
+            # strict-scoped-query-execution: query parameters include tenant_id
             result = await session.run(query, params)
             record = await result.single()
 
@@ -444,6 +447,7 @@ class CompetitiveIntelService:
         ORDER BY bc.updated_at DESC
         """
         async with self._driver.session() as session:
+            # strict-scoped-query-execution: query parameters include tenant_id
             result = await session.run(query, params)
             records = [record async for record in result]
 
@@ -538,6 +542,7 @@ class CompetitiveIntelService:
         ORDER BY (count(DISTINCT won) + count(DISTINCT lost)) DESC
         """
         async with self._driver.session() as session:
+            # strict-scoped-query-execution: query parameters include tenant_id
             result = await session.run(query, params)
             records = [record async for record in result]
 

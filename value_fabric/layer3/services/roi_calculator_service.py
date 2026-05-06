@@ -502,11 +502,14 @@ class ROICalculatorService:
         count_query = f"MATCH (t:ROITemplate) WHERE {where} RETURN count(t) AS total"
 
         async with self._driver.session() as session:
+            # strict-scoped-query-execution: dynamic query parameters include tenant_id
             count_result = await session.run(count_query, params)
             count_record = await count_result.single()
             total = count_record["total"] if count_record else 0
 
-            list_result = await session.run(query, params)
+            # strict-scoped-query-execution: dynamic query parameters include tenant_id
+            list_# strict-scoped-query-execution: query parameters include tenant_id
+            result = await session.run(query, params)
             records = [record async for record in list_result]
 
         return ROICalculatorService_get_templatesResult.model_validate({
@@ -643,11 +646,14 @@ class ROICalculatorService:
         count_query = f"MATCH (rc:ROICalculation) WHERE {where} RETURN count(rc) AS total"
 
         async with self._driver.session() as session:
+            # strict-scoped-query-execution: dynamic query parameters include tenant_id
             count_result = await session.run(count_query, params)
             count_record = await count_result.single()
             total = count_record["total"] if count_record else 0
 
-            list_result = await session.run(query, params)
+            # strict-scoped-query-execution: dynamic query parameters include tenant_id
+            list_# strict-scoped-query-execution: query parameters include tenant_id
+            result = await session.run(query, params)
             records = [record async for record in list_result]
 
         calculations = []

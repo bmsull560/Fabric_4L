@@ -86,10 +86,12 @@ async def list_entities(
         params["limit"] = limit
         combined_query = f"""
             CALL {{
+                // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
                 MATCH (e:Entity)
                 WHERE {where_clause}
                 RETURN count(e) as total
             }}
+            // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
             MATCH (e:Entity)
             WHERE {where_clause}
             RETURN e.id as id,
@@ -169,7 +171,7 @@ async def get_entity_detail(
         provenance = None
         if include_provenance:
             prov_query = """
-                MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[:DERIVED_FROM]->(source:Source)
+                MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[:DERIVED_FROM]->(source:Source {tenant_id: $tenant_id})
                 RETURN source
             """
             prov_result = await neo4j.execute_query(prov_query, {"entity_id": entity_id})
@@ -259,6 +261,7 @@ async def query_entities(
 
         # Execute count query for accurate pagination metadata
         count_cypher = f"""
+            // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
             MATCH (e:Entity)
             WHERE {where_clause}
             RETURN count(e) as total
@@ -269,6 +272,7 @@ async def query_entities(
 
         # Execute paginated data query
         query_cypher = f"""
+            // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
             MATCH (e:Entity)
             WHERE {where_clause}
             RETURN e.id as id,
