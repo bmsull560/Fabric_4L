@@ -151,7 +151,7 @@ data: {"event_id":"...","event_type":"node_started|node_completed|workflow_compl
 | User compares versions | L4/L5 | `VersionDiff` | `change_count`, `changed_fields` | Query | `version_id`, `compare_to_version_id` | `QK.versions.compare(versionId, compareTo)` |
 | User exports audit report | L5 | `AuditExportJob` | `status: pending|ready|failed|blocked` | POST response + polling | `audit_export_id` | `QK.governance.auditExport(id)` |
 
-**🟢 Contracted:** Canonical L4/L5 governance objects and endpoints are documented in `docs/contracts/l4-l5-governance-lineage-contract.md`, including immutable audit expectations and shared `correlation_id` lineage requirements.
+**🟢 Contracted:** Canonical L4/L5 governance objects and endpoints are documented in `docs/contracts/l4-l5-governance-lineage-contract.md`, including immutable audit expectations, immutable approval history, version comparison, and audit export, plus shared `correlation_id` lineage requirements.
 
 ---
 

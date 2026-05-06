@@ -89,11 +89,13 @@ async def list_entities_impl(request: Any, search_text: str | None, entity_types
     if sort_by not in valid_sort_fields:
         sort_by = "updated_at"
     sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+    # strict-scoped-query-execution: Entity listing predicates always include e.tenant_id = $tenant_id.
     count_query = f"""MATCH (e:Entity) {where_clause} RETURN count(e) as total"""
     async with neo4j_driver.session() as session:
         count_result = await session.run(count_query, params)
         total_count_record = await count_result.single()
         total_count = total_count_record["total"] if total_count_record else 0
+        # strict-scoped-query-execution: Entity listing predicates always include e.tenant_id = $tenant_id.
         entity_query = f"""MATCH (e:Entity) {where_clause} RETURN e {{.id,.name,.entity_type,.domain,.status,.confidence,.confidence_label,.description,.updated_at,.source_name,.extraction_job_id,.created_at,.created_by}} ORDER BY e.{sort_by} {sort_direction} SKIP $offset LIMIT $limit"""
         params["offset"] = offset
         params["limit"] = limit

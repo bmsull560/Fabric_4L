@@ -1,9 +1,26 @@
+import os
+
 from fastapi.testclient import TestClient
+
+# The Layer 4 app is instantiated at import time, so contract tests that exercise
+# protected governance routes must enable the explicitly acknowledged local
+# development identity before importing the app. Production/default-deny behavior
+# remains covered by the dedicated security tests outside this module.
+os.environ.setdefault("DEV_AUTH_BYPASS", "true")
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("ALLOW_DEV_AUTH_BYPASS", "I_UNDERSTAND_RISK")
 
 from value_fabric.layer4.api.main import app
 
 
 client = TestClient(app)
+
+
+def _error_message(response) -> str:
+    """Return the API error message across canonical and legacy response envelopes."""
+
+    body = response.json()
+    return body.get("message") or body.get("detail", "")
 
 
 def _lineage(correlation_id: str, business_case_id: str = "bc-1") -> dict:
@@ -182,7 +199,7 @@ def test_immutable_governance_objects_reject_duplicate_ids() -> None:
 
     duplicate = client.post("/v1/governance/reviews", json={**payload, "status": "approved"})
     assert duplicate.status_code == 409
-    assert "immutable" in duplicate.json()["detail"]
+    assert "immutable" in _error_message(duplicate)
 
 
 def test_export_fails_closed_when_correlation_id_does_not_match_review() -> None:
@@ -205,4 +222,4 @@ def test_export_fails_closed_when_correlation_id_does_not_match_review() -> None
     )
 
     assert export.status_code == 400
-    assert export.json()["detail"] == "export lineage mismatch"
+    assert _error_message(export) == "export lineage mismatch"

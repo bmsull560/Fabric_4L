@@ -43,6 +43,9 @@ def create_app() -> FastAPI:
     if settings.otel_exporter_endpoint:
         FastAPIInstrumentor.instrument_app(app)
 
+    app.state.metrics = initialize_metrics()
+    configure_middleware(app)
+
     try:
         from value_fabric.shared.identity.dev_bypass import maybe_install_dev_bypass
 
@@ -50,8 +53,6 @@ def create_app() -> FastAPI:
     except Exception:
         pass
 
-    app.state.metrics = initialize_metrics()
-    configure_middleware(app)
     register_core_routes(app)
     register_routers(app)
     return app
