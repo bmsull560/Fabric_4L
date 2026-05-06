@@ -98,6 +98,17 @@ updates:
   # Node.js Dependencies — Apps and Packages (npm ecosystem)
   # ============================================================================
   - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, javascript, root-workspace]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - value-fabric/frontend-leads
+      - value-fabric/sre-leads
+
+  - package-ecosystem: npm
     directory: /apps/web
     schedule:
       interval: weekly
