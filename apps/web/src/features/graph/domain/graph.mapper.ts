@@ -32,6 +32,12 @@ import type {
 
 const log = createFeatureLogger('graph.mapper');
 
+// ── Constants ───────────────────────────────────────────────────────────────────
+
+const DEFAULT_CONFidence = 0.8;
+const DEFAULT_ENTITY_TYPE = 'Unknown';
+const DEFAULT_RELATIONSHIP_TYPE = 'RELATED_TO';
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeNodeId(id: unknown): string {
@@ -58,7 +64,7 @@ function extractEntityType(dto: GraphNodeDto | Record<string, unknown>): string 
   if ('entity_type' in dto && typeof dto.entity_type === 'string' && dto.entity_type.length > 0) {
     return dto.entity_type;
   }
-  return 'Unknown';
+  return DEFAULT_ENTITY_TYPE;
 }
 
 function extractConfidence(dto: GraphNodeDto | Record<string, unknown>): number {
@@ -68,7 +74,7 @@ function extractConfidence(dto: GraphNodeDto | Record<string, unknown>): number 
   if ('confidence_score' in dto && typeof dto.confidence_score === 'number') {
     return dto.confidence_score;
   }
-  return 0.8;
+  return DEFAULT_CONFidence;
 }
 
 function extractRelationshipType(dto: GraphEdgeDto | Record<string, unknown>): string {
@@ -78,7 +84,7 @@ function extractRelationshipType(dto: GraphEdgeDto | Record<string, unknown>): s
   if ('relationship_type' in dto && typeof dto.relationship_type === 'string') {
     return dto.relationship_type;
   }
-  return 'RELATED_TO';
+  return DEFAULT_RELATIONSHIP_TYPE;
 }
 
 // ── Node / Edge Mappers ──────────────────────────────────────────────────────

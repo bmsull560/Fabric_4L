@@ -253,14 +253,9 @@ export function useEntity(id: string | null) {
  * This feature requires a new endpoint to create entities in the knowledge graph.
  */
 export function useCreateEntity() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (_entity: Omit<Entity, 'id' | 'createdAt'>) => {
       throw new Error('Entity creation not supported - requires backend API endpoint (L3-XXX)');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.entities.list() });
     },
   });
 }

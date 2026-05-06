@@ -13,6 +13,7 @@ import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { toast } from "sonner";
 
 const log = createFeatureLogger('Calculator');
 
@@ -85,7 +86,7 @@ export default function Calculator() {
       navigateTo('workflow-value-case');
     } catch (err) {
       log.error('Failed to save value case', { error: err instanceof Error ? err.message : String(err) });
-      alert('Failed to save value case. Please try again.');
+      toast.error('Failed to save value case. Please try again.');
     }
   };
 
