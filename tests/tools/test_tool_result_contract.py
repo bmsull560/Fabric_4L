@@ -16,11 +16,11 @@ import pytest
 from pydantic import BaseModel
 
 # Use canonical namespace import
-from value_fabric.layer4.tools.registry import BaseTool, ToolRegistry, ToolResult
-from value_fabric.layer4.tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
+from layer4_agents.tools.registry import BaseTool, ToolRegistry, ToolResult
+from layer4_agents.tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
 # Use canonical namespace import
-from value_fabric.layer4.tools.registry import BaseTool, ToolRegistry, ToolResult
-from value_fabric.layer4.tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
+from layer4_agents.tools.registry import BaseTool, ToolRegistry, ToolResult
+from layer4_agents.tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
 
 
 def validate_tool_result(result):
@@ -421,7 +421,7 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_validates_correct_json(self):
         """Test that valid LLM JSON response is parsed correctly."""
-        from value_fabric.layer4.tools.competitive_tools import (
+        from layer4_agents.tools.competitive_tools import (
             LLMDifferenceItem,
             LLMDifferencesResponse,
         )
@@ -437,7 +437,7 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_handles_invalid_json(self):
         """Test that invalid JSON is handled gracefully."""
-        from value_fabric.layer4.tools.competitive_tools import (
+        from layer4_agents.tools.competitive_tools import (
             LLMDifferencesResponse,
         )
 
@@ -449,7 +449,7 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_uses_defaults_for_missing_fields(self):
         """Test that missing fields use sensible defaults."""
-        from value_fabric.layer4.tools.competitive_tools import (
+        from layer4_agents.tools.competitive_tools import (
             LLMDifferenceItem,
         )
 

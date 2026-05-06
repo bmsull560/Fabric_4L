@@ -5,30 +5,45 @@ structured, actionable knowledge through an ontology-guided pipeline and autonom
 
 ## What it is
 
-Value Fabric is an **enterprise agentic SaaS platform** built on a 4-layer semantic pipeline.
+Value Fabric is an **enterprise agentic SaaS platform** built on a 6-layer semantic pipeline.
 Agents reason over a knowledge graph to produce ROI analyses, business cases, and executive insights—
 automatically, at scale, with full auditability.
 
-```
-┌──────────────────────────────────────────────────────┐
-│  LAYER 4 · AGENTIC WORKFLOW ENGINE                   │
-│  LangGraph · Business Analyst Agent · ROI Engine     │
-└────────────────────┬─────────────────────────────────┘
-                     │
-┌────────────────────▼─────────────────────────────────┐
-│  LAYER 3 · KNOWLEDGE GRAPH & SEMANTIC LAYER          │
-│  Neo4j · GraphRAG · Hybrid Retrieval · pgvector      │
-└────────────────────┬─────────────────────────────────┘
-                     │
-┌────────────────────▼─────────────────────────────────┐
-│  LAYER 2 · ONTOLOGY-GUIDED EXTRACTION PIPELINE       │
-│  Pydantic · LLM Extraction · RDF/OWL Generation      │
-└────────────────────┬─────────────────────────────────┘
-                     │
-┌────────────────────▼─────────────────────────────────┐
-│  LAYER 1 · INTELLIGENT DATA INGESTION                │
-│  Playwright · Redis Queue · PostgreSQL · Rate Limit  │
-└──────────────────────────────────────────────────────┘
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND: REACT PRESENTATION                        │
+│         (Vite · React Query · Zustand · shadcn/ui · Tailwind)             │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │ REST/WebSocket
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│              LAYER 6: BENCHMARK SERVICE (Port 8006)                        │
+│              (Peer Comparison · Statistical Validation · Datasets)         │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│              LAYER 5: GROUND TRUTH (Port 8005)                              │
+│    (TruthObject Validation · Maturity Ladder · Evidence-backed Claims)     │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│              LAYER 4: AGENTIC WORKFLOW ENGINE (Port 8004)                    │
+│      (LangGraph · ROI Calculator · Business Case Generator · Checkpoints)  │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │ REST
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│          LAYER 3: KNOWLEDGE GRAPH & SEMANTIC LAYER (Port 8003)              │
+│       (Neo4j · GraphRAG · Hybrid Retrieval · pgvector · Subgraph API)       │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │ RDF/Turtle
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│         LAYER 2: ONTOLOGY-GUIDED EXTRACTION PIPELINE (Port 8002)           │
+│    (Pydantic v2 · LLM Extraction · RDF/OWL · Provenance · Batch Ingest)    │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │ Markdown chunks
+┌───────────────────────────────▼─────────────────────────────────────────────┐
+│           LAYER 1: INTELLIGENT DATA INGESTION SERVICE (Port 8001)         │
+│     (Playwright · Celery/Redis · PostgreSQL · Multi-tenancy · Compliance) │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Quickstart
@@ -58,15 +73,14 @@ open http://localhost:5173
 
 | Path | Purpose |
 |------|---------|
-| `value-fabric/` | Core monorepo — all backend services |
-| `value-fabric/layer1-ingestion/` | Data ingestion service (FastAPI + Playwright) |
-| `value-fabric/layer2-extraction/` | Ontology-guided extraction (LLM + RDF) |
-| `value-fabric/layer3-knowledge/` | Knowledge graph API (Neo4j + pgvector) |
-| `value-fabric/layer4-agents/` | Agentic workflow engine (LangGraph) |
-| `value-fabric/layer5-ground-truth/` | Ground truth & evaluation store |
-| `value-fabric/layer6-benchmarks/` | Benchmark harness |
-| `value-fabric/shared/` | Cross-layer identity, auth, and audit libraries |
-| `layer4-agents/` | Agent behavior artifacts (prompts, skills, workflows) |
+| `services/` | Core backend services (6 layers) |
+| `services/layer1-ingestion/` | Data ingestion service (FastAPI + Playwright) |
+| `services/layer2-extraction/` | Ontology-guided extraction (LLM + RDF) |
+| `services/layer3-knowledge/` | Knowledge graph API (Neo4j + pgvector) |
+| `services/layer4-agents/` | Agentic workflow engine (LangGraph) |
+| `services/layer5-ground-truth/` | Ground truth & evaluation store |
+| `services/layer6-benchmarks/` | Benchmark harness |
+| `services/api/` | Cross-layer shared services |
 | `contracts/` | Versioned tool manifests, JSON Schemas, OpenAPI specs |
 | `apps/web/` | React + TypeScript UI (canonical frontend) |
 | `frontend/` | ⚠️ OBSOLETE — migrated to `apps/web/` |

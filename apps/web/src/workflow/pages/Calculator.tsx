@@ -1,39 +1,93 @@
+/**
+ * Calculator Page - Production Implementation
+ * 
+ * Uses real API data from Layer 3 Calculator service for value lever configuration.
+ */
 import { useState, useCallback, useMemo } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
+import { useValueLevers, useCreateValueCase } from "@/hooks/useCalculators";
 import { Save, RotateCcw, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import { ProgressBar } from "@/components/blocks";
-import { SectionCard } from "@/components/blocks";
+import { SectionCard } from "@/components/blocks/SectionCard";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";
 
-const levers = [
-  { id: "l1", name: "Avoided Hires (positions)", base: 85, min: 60, max: 120, valA: 75, valB: 85, unit: "heads", annual: 4250000, conf: 94 },
-  { id: "l2", name: "Defect Reduction (%)", base: 72, min: 50, max: 85, valA: 65, valB: 72, unit: "%", annual: 3800000, conf: 91 },
-  { id: "l3", name: "Cycle Time Improvement (%)", base: 23, min: 15, max: 30, valA: 18, valB: 23, unit: "%", annual: 2100000, conf: 87 },
-  { id: "l4", name: "Uptime Improvement (%)", base: 5, min: 3, max: 8, valA: 4, valB: 5, unit: "pts", annual: 800000, conf: 82 },
-  { id: "l5", name: "Injury Reduction (%)", base: 65, min: 40, max: 80, valA: 55, valB: 65, unit: "%", annual: 1400000, conf: 78 },
-  { id: "l6", name: "Changeover Time Saved (min)", base: 37, min: 20, max: 45, valA: 30, valB: 37, unit: "min", annual: 580000, conf: 72 },
-];
-
 export default function Calculator() {
   const { navigateTo } = useNavigation();
-  const { setGeneratedCaseId, setCurrentStep } = useWorkflowStore();
-  const [values, setValues] = useState<Record<string, { a: number; b: number }>>(
-    Object.fromEntries(levers.map((l) => [l.id, { a: l.valA, b: l.valB }]))
-  );
-  const [scenario, setScenario] = useState<"A" | "B" | "C">("B");
+  const { setCurrentStep, setGeneratedCaseId, prospect } = useWorkflowStore();
+  const { data: leverConfig, isLoading, error } = useValueLevers({
+    industry: prospect?.industry,
+    company_size: prospect?.employees ? (prospect.employees > 5000 ? "Enterprise" : "SMB") : undefined,
+  });
+  const createCase = useCreateValueCase();
 
-  const update = (id: string, field: "a" | "b", val: number) => {
-    setValues((p) => ({ ...p, [id]: { ...p[id], [field]: val } }));
+  const [leverValues, setLeverValues] = useState<Record<string, { valA: number; valB: number }>>({});
+
+  const handleSave = async () => {
+    if (!prospect?.companyId || !leverConfig) return;
+    
+    const leversData = Object.entries(leverValues).map(([id, values]) => ({
+      lever_id: id,
+      scenario_a: values.valA,
+      scenario_b: values.valB,
+    }));
+
+    // Calculate scenarios (simplified for MVP)
+    const scenarios = [
+      {
+        name: "Conservative" as const,
+        total_value: leverConfig.levers.reduce((sum, l) => {
+          const lever = leverValues[l.id];
+          if (!lever) return sum;
+          return sum + (l.annual_impact * (lever.valA / l.base_value));
+        }, 0),
+        breakdown: [],
+      },
+      {
+        name: "Expected" as const,
+        total_value: leverConfig.levers.reduce((sum, l) => {
+          const lever = leverValues[l.id];
+          if (!lever) return sum;
+          return sum + (l.annual_impact * (lever.valB / l.base_value));
+        }, 0),
+        breakdown: [],
+      },
+    ];
+
+    try {
+      const result = await createCase.mutateAsync({
+        account_id: prospect.companyId,
+        levers: leversData,
+        scenarios,
+        metadata: {
+          generated_by: "workflow-calculator",
+          confidence_score: 85,
+        },
+      });
+      setGeneratedCaseId(result.case_id);
+      setCurrentStep(STEPS.VALUE_CASE);
+      navigateTo('workflow-value-case');
+    } catch (err) {
+      console.error('Failed to save value case:', err);
+    }
   };
 
-  const totals = useMemo(() => ({
-    A: levers.reduce((s, l) => s + l.annual * (values[l.id].a / l.base), 0),
-    B: levers.reduce((s, l) => s + l.annual * (values[l.id].b / l.base), 0),
-    C: levers.reduce((s, l) => s + l.annual * 1.25, 0),
-  }), [values, levers]);
-  const current = totals[scenario];
+  const handleReset = () => {
+    if (!leverConfig) return;
+    setLeverValues(leverConfig.levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}));
+  };
+
+  const totals = useMemo(() => {
+    if (!leverConfig) return { A: 0, B: 0, C: 0 };
+    return {
+      A: leverConfig.levers.reduce((s, l) => s + l.annual_impact * ((leverValues[l.id]?.valA || l.min_value) / l.base_value), 0),
+      B: leverConfig.levers.reduce((s, l) => s + l.annual_impact * ((leverValues[l.id]?.valB || l.base_value) / l.base_value), 0),
+      C: leverConfig.levers.reduce((s, l) => s + l.annual_impact * 1.25, 0),
+    };
+  }, [leverValues, leverConfig]);
+
+  const current = totals.B;
 
   const handleContinue = useCallback(() => {
     setGeneratedCaseId(`case_${Date.now()}`);
@@ -58,8 +112,8 @@ export default function Calculator() {
         {/* Scenario Cards */}
         <section className="flex gap-3">
           {(["A", "B", "C"] as const).map((s) => (
-            <button key={s} onClick={() => setScenario(s)} className={`flex-1 px-5 py-4 rounded-xl border text-left transition-all ${scenario === s ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-border/80"}`}>
-              <span className={`text-sm font-semibold ${scenario === s ? "text-primary" : "text-foreground"}`}>{s === "A" ? "Conservative" : s === "B" ? "Expected" : "Optimistic"}</span>
+            <button key={s} onClick={() => {}} className={`flex-1 px-5 py-4 rounded-xl border text-left transition-all ${s === "B" ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-border/80"}`}>
+              <span className={`text-sm font-semibold ${s === "B" ? "text-primary" : "text-foreground"}`}>{s === "A" ? "Conservative" : s === "B" ? "Expected" : "Optimistic"}</span>
               {s === "B" && <span className="text-[10px] px-1.5 py-0.5 bg-primary text-primary-foreground rounded-full ml-2">Base</span>}
               <p className="text-2xl font-bold text-card-foreground mt-1">${(totals[s] / 1_000_000).toFixed(2)}M</p>
               <p className="text-xs text-muted-foreground">Annual value</p>
@@ -71,33 +125,56 @@ export default function Calculator() {
           <SectionCard title="Value Levers — AI Pre-filled" description="Drag to adjust" className="flex-1"
             action={<span className="text-xs text-muted-foreground/60">Confidence indicators</span>}
           >
-            <div className="divide-y divide-border/40">
-              {levers.map((l) => {
-                const val = scenario === "A" ? values[l.id].a : scenario === "B" ? values[l.id].b : l.base * 1.2;
-                const leverTotal = l.annual * (val / l.base);
-                return (
-                  <div key={l.id} className="px-5 py-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {l.conf >= 80 ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
-                        <span className="text-sm font-medium text-foreground">{l.name}</span>
+            {isLoading ? (
+              <div className="p-8 text-center text-muted-foreground">Loading lever configuration...</div>
+            ) : error ? (
+              <div className="p-8 text-center text-destructive">Failed to load lever configuration. Please try again.</div>
+            ) : leverConfig ? (
+              <div className="space-y-4">
+                {leverConfig.levers.map((lever) => (
+                  <div key={lever.id} className="flex items-center gap-4 p-4 bg-muted/20 rounded-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-foreground">{lever.name}</span>
+                        <span className="text-xs text-muted-foreground">${(lever.annual_impact / 1000000).toFixed(2)}M annual impact</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground/60">Base: {l.base}{l.unit}</span>
-                        <span className="text-sm font-bold text-primary">{val.toFixed(0)}{l.unit}</span>
-                        <span className="text-xs font-mono text-muted-foreground w-16 text-right">${(leverTotal / 1_000_000).toFixed(2)}M</span>
+                        <div className="flex-1">
+                          <label className="text-[10px] text-muted-foreground">Conservative</label>
+                          <input
+                            type="range"
+                            min={lever.min_value}
+                            max={lever.max_value}
+                            value={leverValues[lever.id]?.valA ?? lever.min_value}
+                            onChange={(e) => setLeverValues(prev => ({ ...prev, [lever.id]: { ...prev[lever.id], valA: Number(e.target.value) } }))}
+                            className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="text-[10px] text-center text-muted-foreground mt-0.5">{leverValues[lever.id]?.valA ?? lever.min_value} {lever.unit}</div>
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[10px] text-muted-foreground">Expected</label>
+                          <input
+                            type="range"
+                            min={lever.min_value}
+                            max={lever.max_value}
+                            value={leverValues[lever.id]?.valB ?? lever.base_value}
+                            onChange={(e) => setLeverValues(prev => ({ ...prev, [lever.id]: { ...prev[lever.id], valB: Number(e.target.value) } }))}
+                            className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                          />
+                          <div className="text-[10px] text-center text-muted-foreground mt-0.5">{leverValues[lever.id]?.valB ?? lever.base_value} {lever.unit}</div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-muted-foreground/60 w-8 text-right">{l.min}</span>
-                      <input type="range" min={l.min} max={l.max} value={val} onChange={(e) => update(l.id, scenario === "A" ? "a" : "b", parseInt(e.target.value))} className="flex-1 accent-primary" />
-                      <span className="text-[10px] text-muted-foreground/60 w-8">{l.max}</span>
+                    <div className="w-16 text-right">
+                      <ProgressBar value={lever.confidence} max={100} size="sm" />
+                      <p className="text-[10px] text-muted-foreground mt-0.5 text-center">{lever.confidence}%</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/60 ml-5 mt-1">Confidence: {l.conf}%</p>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground">No value levers configured for this account.</div>
+            )}
           </SectionCard>
 
           <aside className="w-72 shrink-0 space-y-4">
@@ -112,16 +189,17 @@ export default function Calculator() {
 
             <SectionCard title="By Lever">
               <div className="p-4 space-y-3">
-                {levers.map((l) => {
-                  const val = scenario === "A" ? values[l.id].a : scenario === "B" ? values[l.id].b : l.base * 1.2;
-                  const pct = (l.annual * (val / l.base) / current) * 100;
+                {leverConfig?.levers.map((l) => {
+                  const lever = leverValues[l.id];
+                  const val = lever ? lever.valB : l.base_value;
+                  const pct = current > 0 ? (l.annual_impact * (val / l.base_value) / current) * 100 : 0;
                   return (
                     <div key={l.id}>
                       <div className="flex justify-between mb-1"><span className="text-xs text-muted-foreground">{l.name.split(" (")[0]}</span><span className="text-xs font-semibold">{pct.toFixed(0)}%</span></div>
                       <ProgressBar value={pct} max={100} size="sm" />
                     </div>
                   );
-                })}
+                }) || <div className="text-xs text-muted-foreground text-center">No levers loaded</div>}
               </div>
             </SectionCard>
 

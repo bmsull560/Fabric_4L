@@ -621,6 +621,7 @@ if OTEL_AVAILABLE and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
 # Include routers from routes modules
 from .routes import (
     benchmarks,
+    calculators,
     competitive_intel,
     entities,
     evidence,
@@ -651,6 +652,7 @@ include_router_mounts(
         RouterMount(competitive_intel.router, prefix="/v1"),
         RouterMount(roi_calculator.router, prefix="/v1"),
         RouterMount(benchmarks.router, prefix="/v1/roi"),
+        RouterMount(calculators.router, prefix="/v1"),
         RouterMount(system.router),
     ],
 )

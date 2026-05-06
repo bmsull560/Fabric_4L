@@ -1,22 +1,24 @@
+/**
+ * Value Case Page - Production Implementation
+ * 
+ * Uses real API data from Layer 3 Calculator service for value cases.
+ */
 import {
   FileText, Download, Share2, Trophy, TrendingUp, Shield, CheckCircle2,
   AlertTriangle, BarChart3, ArrowRight, Zap, Clock, Printer, BrainCircuit
 } from "lucide-react";
 import { StatCard, ProgressBar } from "@/components/blocks";
-import { SectionCard } from "@/components/blocks";
+import { SectionCard } from "@/components/blocks/SectionCard";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
-
-const results = [
-  { rank: 1, area: "Labor Cost Reduction", value: "$6.20M", pct: 42, breakdown: [{ label: "Avoided New Hires", amount: "$4.25M", evidence: "NAM Skills Gap Report", conf: 94 }, { label: "Overtime Elimination", amount: "$1.45M", evidence: "BMW Cobot Case Study", conf: 88 }, { label: "Reduced Turnover", amount: "$500K", evidence: "Internal HR Data", conf: 82 }] },
-  { rank: 2, area: "Quality Improvement", value: "$3.80M", pct: 26, breakdown: [{ label: "Scrap & Rework", amount: "$1.60M", evidence: "Fraunhofer IPA Study", conf: 92 }, { label: "Warranty Avoided", amount: "$1.50M", evidence: "JD Power Warranty", conf: 80 }, { label: "Recall Prevention", amount: "$700K", evidence: "Industry Analysis", conf: 75 }] },
-  { rank: 3, area: "Throughput Gain", value: "$2.90M", pct: 20, breakdown: [{ label: "Cycle Time (23%)", amount: "$2.10M", evidence: "BMW Dingolfing Report", conf: 95 }, { label: "Uptime (91% to 96%)", amount: "$800K", evidence: "Predictive Maint. Data", conf: 82 }] },
-  { rank: 4, area: "Safety / Ergonomics", value: "$1.40M", pct: 9, breakdown: [{ label: "Workers Comp", amount: "$850K", evidence: "MIT Manufacturing Review", conf: 90 }, { label: "Lost Productivity", amount: "$550K", evidence: "OSHA 300A Analysis", conf: 78 }] },
-  { rank: 5, area: "Mixed-Model Flexibility", value: "$580K", pct: 4, breakdown: [{ label: "Changeover Time", amount: "$380K", evidence: "Axiom Pilot — Magna", conf: 86 }, { label: "WIP Reduction", amount: "$200K", evidence: "Production Engineering", conf: 70 }] },
-];
+import { useValueCase } from "@/hooks/useCalculators";
 
 export default function ValueCase() {
   const { prospect, generatedCaseId } = useWorkflowStore();
+  const { data: valueCase, isLoading, error } = useValueCase(generatedCaseId);
+  
+  const results = valueCase?.scenarios?.[1]?.breakdown || [];
+  const total = results.reduce((s, r) => s + r.value, 0);
   const companyName = prospect?.companyName ?? "Meridian Automotive";
   const caseId = generatedCaseId ?? "VC-2026-0417";
 
@@ -60,34 +62,39 @@ export default function ValueCase() {
 
         <div className="flex gap-4">
           <div className="flex-1 space-y-4">
-            {/* Ranked Results */}
-            {results.map((r) => (
-              <SectionCard key={r.area}>
-                <div className="p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${r.rank === 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{r.rank}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h2 className="font-semibold text-foreground">{r.area}</h2>
-                        <span className="text-xl font-bold text-primary">{r.value}</span>
+            {/* Results */}
+            {isLoading ? (
+              <SectionCard title="Loading Value Case">
+                <div className="p-8 text-center text-muted-foreground">Loading value case...</div>
+              </SectionCard>
+            ) : error ? (
+              <SectionCard title="Error Loading Value Case">
+                <div className="p-8 text-center text-destructive">Failed to load value case. Please try again.</div>
+              </SectionCard>
+            ) : valueCase ? (
+              <SectionCard title={`Value Case Results — ${companyName}`} description="Generated from calculator scenarios">
+                <div className="space-y-3">
+                  {results.map((r: any, i: number) => (
+                    <div key={i} className="flex items-center gap-4 p-4 bg-muted/20 rounded-lg">
+                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-primary-foreground">{i + 1}</span>
                       </div>
-                      <ProgressBar value={r.pct} max={100} size="sm" className="mt-1" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{r.area}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-bold text-primary">${(r.value / 1000000).toFixed(2)}M</p>
+                        <p className="text-[10px] text-muted-foreground">{r.percentage.toFixed(0)}% of total</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="ml-11 space-y-2">
-                    {r.breakdown.map((b) => (
-                      <div key={b.label} className="flex items-center justify-between py-2 px-3 bg-muted rounded-lg">
-                        <div className="flex items-center gap-2"><Zap className="w-3 h-3 text-amber-500" /><span className="text-xs text-foreground">{b.label}</span></div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono text-muted-foreground">{b.amount}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${b.conf >= 80 ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"}`}>{b.conf}%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </SectionCard>
-            ))}
+            ) : (
+              <SectionCard title="No Value Case">
+                <div className="p-8 text-center text-muted-foreground">No value case found. Please complete the calculator first.</div>
+              </SectionCard>
+            )}
 
             {/* 3-Year Projection */}
             <SectionCard title="3-Year Value Projection" icon={<BarChart3 className="w-4 h-4" />}>

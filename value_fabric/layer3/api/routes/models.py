@@ -2,11 +2,14 @@
 
 Provides endpoints for Value Model CRUD and management.
 
-SECURITY WARNING: This module is NOT tenant-scoped. Cypher queries operate
-on the full graph without tenant_id filtering. This is a known gap tracked
-in config/production-readiness/l3-tenant-isolation-gate.yaml.
-Do NOT mark L3 tenant isolation complete until this module is migrated.
-See: docs/audit/l3-neo4j-label-tenant-classification.md (T1)
+TENANT ISOLATION STATUS: Phase 4 complete (DI migration), Phase 6 pending (query scoping).
+- list_models: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
+- get_folder_counts: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
+- get_model_detail: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
+- create_model: DI migrated to create_neo4j_tenant_session; writes tenant_id via params
+- delete_model: DI migrated to create_neo4j_tenant_session; Cypher queries lack tenant_id WHERE clauses
+
+See: config/production-readiness/l3-tenant-isolation-gate.yaml
 """
 
 import base64
@@ -15,7 +18,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
 
 from ..dependencies_tenant import create_neo4j_tenant_session
@@ -45,6 +48,9 @@ FOLDER_FAVORITES = "favorites"
 VALID_FOLDERS = {FOLDER_ALL, FOLDER_MY_MODELS, FOLDER_SHARED, FOLDER_FAVORITES}
 VALID_SORT_FIELDS = {"name", "updated_at", "created_at"}
 VALID_SORT_DIRS = {"asc", "desc"}
+
+# JWT Bearer token prefix length ("Bearer " = 7 characters)
+BEARER_PREFIX_LENGTH = 7
 
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -176,7 +182,7 @@ def _get_current_user(request: Request) -> str:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    token = auth_header[7:]  # Remove "Bearer " prefix
+    token = auth_header[BEARER_PREFIX_LENGTH:]  # Remove "Bearer " prefix
     
     try:
         payload = _decode_jwt_payload(token)
@@ -207,7 +213,7 @@ def _get_current_tenant(request: Request) -> str:
     if not auth_header or not auth_header.startswith("Bearer "):
         return "default"
     
-    token = auth_header[7:]
+    token = auth_header[BEARER_PREFIX_LENGTH:]
     
     try:
         payload = _decode_jwt_payload(token)
@@ -237,7 +243,7 @@ def _model_node_to_summary(record: dict[str, Any]) -> ModelSummary:
     )
 
 
-async def _ensure_constraints(neo4j) -> None:
+async def _ensure_constraints(neo4j: Any) -> None:
     """Ensure required Neo4j constraints exist.
     
     Idempotent - safe to call multiple times.
@@ -278,8 +284,6 @@ async def _ensure_constraints(neo4j) -> None:
     },
 )
 async def list_models(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     search: str | None = Query(None, description="Search in name, description, tags"),
     folder: str = Query(FOLDER_ALL, description="Filter by folder"),
@@ -289,107 +293,108 @@ async def list_models(
     sort_dir: str = Query("desc", description="Sort direction: asc, desc"),
     limit: int = Query(50, ge=1, le=100, description="Maximum results to return"),
     offset: int = Query(0, ge=0, description="Results to skip"),
-    driver: AsyncDriver = Depends(get_driver),
 ) -> ModelListResponse:
     """List value models with filtering and pagination."""
-    await _ensure_constraints(driver)
+    current_tenant = _get_current_tenant(request)
     
-    current_user = _get_current_user(request)
-    
-    # Validate parameters
-    if folder not in VALID_FOLDERS:
-        raise HTTPException(status_code=400, detail=f"Invalid folder: {folder}")
-    if sort_by not in VALID_SORT_FIELDS:
-        raise HTTPException(status_code=400, detail=f"Invalid sort_by: {sort_by}")
-    if sort_dir not in VALID_SORT_DIRS:
-        raise HTTPException(status_code=400, detail=f"Invalid sort_dir: {sort_dir}")
-    
-    # Build query dynamically
-    where_clauses = []
-    params: dict[str, Any] = {"user_id": current_user, "limit": limit, "offset": offset}
-    
-    # Folder filtering (affects ownership/visibility logic)
-    if folder == FOLDER_MY_MODELS:
-        where_clauses.append("m.owner = $user_id")
-        where_clauses.append("m.folder = $folder")
-        params["folder"] = FOLDER_MY_MODELS
-    elif folder == FOLDER_SHARED:
-        where_clauses.append("m.is_shared = true")
-        where_clauses.append("m.owner <> $user_id")
-    elif folder == FOLDER_FAVORITES:
-        where_clauses.append("m.folder = $folder")
-        params["folder"] = FOLDER_FAVORITES
-    # FOLDER_ALL needs no filter
-    
-    # Status filtering
-    if status != "all" and status in [s.value for s in ModelStatus]:
-        where_clauses.append("m.status = $status")
-        params["status"] = status
-    
-    # Industry filtering
-    if industry:
-        where_clauses.append("m.industry = $industry")
-        params["industry"] = industry
-    
-    # Search (name, description, tags)
-    if search:
-        where_clauses.append(
-            "(m.name CONTAINS $search OR m.description CONTAINS $search OR ANY(tag IN m.tags WHERE tag CONTAINS $search))"
-        )
-        params["search"] = search.lower()
-    
-    # Construct WHERE clause
-    where_clause = " AND ".join(where_clauses) if where_clauses else ""
-    if where_clause:
-        where_clause = "WHERE " + where_clause
-    
-    # Sorting
-    sort_field = sort_by
-    sort_direction = "DESC" if sort_dir == "desc" else "ASC"
-    
-    # Count query
-    count_query = f"""
-    MATCH (m:ValueModel)
-    {where_clause}
-    RETURN count(m) as total
-    """
-    
-    # Data query
-    data_query = f"""
-    MATCH (m:ValueModel)
-    {where_clause}
-    RETURN m
-    ORDER BY m.{sort_field} {sort_direction}
-    SKIP $offset
-    LIMIT $limit
-    """
-    
-    try:
-        # Execute count
-        count_result = await driver.execute_query(count_query, params)
-        total = count_result[0][0].get("total", 0) if count_result and count_result[0] else 0
+    async with await create_neo4j_tenant_session(current_tenant) as neo4j:
+        await _ensure_constraints(neo4j)
+        current_user = _get_current_user(request)
         
-        # Execute data query
-        data_result = await driver.execute_query(data_query, params)
-        models = [_model_node_to_summary(record) for record in data_result[0]] if data_result else []
+        # Validate parameters
+        if folder not in VALID_FOLDERS:
+            raise HTTPException(status_code=400, detail=f"Invalid folder: {folder}")
+        if sort_by not in VALID_SORT_FIELDS:
+            raise HTTPException(status_code=400, detail=f"Invalid sort_by: {sort_by}")
+        if sort_dir not in VALID_SORT_DIRS:
+            raise HTTPException(status_code=400, detail=f"Invalid sort_dir: {sort_dir}")
         
-        return ModelListResponse(
-            models=models,
-            total=total,
-            offset=offset,
-            limit=limit,
-            filters_applied={
-                "search": search,
-                "folder": folder,
-                "industry": industry,
-                "status": status,
-                "sort_by": sort_by,
-                "sort_dir": sort_dir,
-            }
-        )
-    except Exception as e:
-        logger.error(f"Failed to list models: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        # Build query dynamically
+        where_clauses = []
+        params: dict[str, Any] = {"user_id": current_user, "limit": limit, "offset": offset}
+        
+        # Folder filtering (affects ownership/visibility logic)
+        if folder == FOLDER_MY_MODELS:
+            where_clauses.append("m.owner = $user_id")
+            where_clauses.append("m.folder = $folder")
+            params["folder"] = FOLDER_MY_MODELS
+        elif folder == FOLDER_SHARED:
+            where_clauses.append("m.is_shared = true")
+            where_clauses.append("m.owner <> $user_id")
+        elif folder == FOLDER_FAVORITES:
+            where_clauses.append("m.folder = $folder")
+            params["folder"] = FOLDER_FAVORITES
+        # FOLDER_ALL needs no filter
+        
+        # Status filtering
+        if status != "all" and status in [s.value for s in ModelStatus]:
+            where_clauses.append("m.status = $status")
+            params["status"] = status
+        
+        # Industry filtering
+        if industry:
+            where_clauses.append("m.industry = $industry")
+            params["industry"] = industry
+        
+        # Search (name, description, tags)
+        if search:
+            where_clauses.append(
+                "(m.name CONTAINS $search OR m.description CONTAINS $search OR ANY(tag IN m.tags WHERE tag CONTAINS $search))"
+            )
+            params["search"] = search.lower()
+        
+        # Construct WHERE clause
+        where_clause = " AND ".join(where_clauses) if where_clauses else ""
+        if where_clause:
+            where_clause = "WHERE " + where_clause
+        
+        # Sorting
+        sort_field = sort_by
+        sort_direction = "DESC" if sort_dir == "desc" else "ASC"
+        
+        # Count query
+        count_query = f"""
+        MATCH (m:ValueModel)
+        {where_clause}
+        RETURN count(m) as total
+        """
+        
+        # Data query
+        data_query = f"""
+        MATCH (m:ValueModel)
+        {where_clause}
+        RETURN m
+        ORDER BY m.{sort_field} {sort_direction}
+        SKIP $offset
+        LIMIT $limit
+        """
+        
+        try:
+            # Execute count
+            count_records = await neo4j.execute_query(count_query, params)
+            total = count_records[0][0].get("total", 0) if count_records and count_records[0] else 0
+            
+            # Execute data query
+            data_records = await neo4j.execute_query(data_query, params)
+            models = [_model_node_to_summary(record[0]) for record in data_records] if data_records else []
+            
+            return ModelListResponse(
+                models=models,
+                total=total,
+                offset=offset,
+                limit=limit,
+                filters_applied={
+                    "search": search,
+                    "folder": folder,
+                    "industry": industry,
+                    "status": status,
+                    "sort_by": sort_by,
+                    "sort_dir": sort_dir,
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to list models: {e}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.get(
@@ -403,45 +408,45 @@ async def get_folder_counts(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
-    driver: AsyncDriver = Depends(get_driver),
 ) -> FoldersResponse:
     """Get folder counts for sidebar navigation."""
-    await _ensure_constraints(driver)
-    
     current_user = _get_current_user(request)
+    current_tenant = _get_current_tenant(request)
     
-    query = """
-    MATCH (m:ValueModel)
-    WITH 
-        count(m) as all_count,
-        count(CASE WHEN m.owner = $user_id AND m.folder = 'my-models' THEN 1 END) as my_models_count,
-        count(CASE WHEN m.is_shared = true AND m.owner <> $user_id THEN 1 END) as shared_count,
-        count(CASE WHEN m.folder = 'favorites' THEN 1 END) as favorites_count
-    RETURN all_count, my_models_count, shared_count, favorites_count
-    """
-    
-    try:
-        result = await driver.execute_query(query, {"user_id": current_user})
-        if result and result[0]:
-            record = result[0][0]
-            folders = [
-                ModelFolderSummary(folder_id=FOLDER_ALL, name="All Models", count=record.get("all_count", 0)),
-                ModelFolderSummary(folder_id=FOLDER_MY_MODELS, name="My Models", count=record.get("my_models_count", 0)),
-                ModelFolderSummary(folder_id=FOLDER_SHARED, name="Shared With Me", count=record.get("shared_count", 0)),
-                ModelFolderSummary(folder_id=FOLDER_FAVORITES, name="Favorites", count=record.get("favorites_count", 0)),
-            ]
-        else:
-            folders = [
-                ModelFolderSummary(folder_id=FOLDER_ALL, name="All Models", count=0),
-                ModelFolderSummary(folder_id=FOLDER_MY_MODELS, name="My Models", count=0),
-                ModelFolderSummary(folder_id=FOLDER_SHARED, name="Shared With Me", count=0),
-                ModelFolderSummary(folder_id=FOLDER_FAVORITES, name="Favorites", count=0),
-            ]
+    async with await create_neo4j_tenant_session(current_tenant) as neo4j:
+        await _ensure_constraints(neo4j)
         
-        return FoldersResponse(folders=folders)
-    except Exception as e:
-        logger.error(f"Failed to get folder counts: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        query = """
+        MATCH (m:ValueModel)
+        WITH 
+            count(m) as all_count,
+            count(CASE WHEN m.owner = $user_id AND m.folder = 'my-models' THEN 1 END) as my_models_count,
+            count(CASE WHEN m.is_shared = true AND m.owner <> $user_id THEN 1 END) as shared_count,
+            count(CASE WHEN m.folder = 'favorites' THEN 1 END) as favorites_count
+        RETURN all_count, my_models_count, shared_count, favorites_count
+        """
+        try:
+            records = await neo4j.execute_query(query, {"user_id": current_user})
+            if records:
+                record = records[0]
+                folders = [
+                    ModelFolderSummary(folder_id=FOLDER_ALL, name="All Models", count=record.get("all_count", 0)),
+                    ModelFolderSummary(folder_id=FOLDER_MY_MODELS, name="My Models", count=record.get("my_models_count", 0)),
+                    ModelFolderSummary(folder_id=FOLDER_SHARED, name="Shared With Me", count=record.get("shared_count", 0)),
+                    ModelFolderSummary(folder_id=FOLDER_FAVORITES, name="Favorites", count=record.get("favorites_count", 0)),
+                ]
+            else:
+                folders = [
+                    ModelFolderSummary(folder_id=FOLDER_ALL, name="All Models", count=0),
+                    ModelFolderSummary(folder_id=FOLDER_MY_MODELS, name="My Models", count=0),
+                    ModelFolderSummary(folder_id=FOLDER_SHARED, name="Shared With Me", count=0),
+                    ModelFolderSummary(folder_id=FOLDER_FAVORITES, name="Favorites", count=0),
+                ]
+            
+            return FoldersResponse(folders=folders)
+        except Exception as e:
+            logger.error(f"Failed to get folder counts: {e}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.get(
@@ -460,9 +465,11 @@ async def get_model_detail(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
     model_id: str,
-    driver: AsyncDriver = Depends(get_driver),
+    request: Request,
 ) -> ModelDetail:
     """Get detailed information about a specific model."""
+    current_tenant = _get_current_tenant(request)
+    
     query = """
     MATCH (m:ValueModel {model_id: $model_id})
     OPTIONAL MATCH (m)-[:HAS_FORMULA]->(f)
@@ -475,25 +482,26 @@ async def get_model_detail(
     RETURN m, formula_ids, entity_ids, pack_ids
     """
     
-    try:
-        result = await driver.execute_query(query, {"model_id": model_id})
-        if not result or not result[0]:
-            raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
-        
-        record = result[0][0]
-        summary = _model_node_to_summary(record)
-        
-        return ModelDetail(
-            **summary.model_dump(),
-            formula_ids=record.get("formula_ids", []),
-            entity_ids=record.get("entity_ids", []),
-            pack_ids=record.get("pack_ids", []),
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get model detail: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    async with await create_neo4j_tenant_session(current_tenant) as neo4j:
+        try:
+            records = await neo4j.execute_query(query, {"model_id": model_id})
+            if not records:
+                raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
+            
+            record = records[0]
+            summary = _model_node_to_summary(record)
+            
+            return ModelDetail(
+                **summary.model_dump(),
+                formula_ids=record.get("formula_ids", []),
+                entity_ids=record.get("entity_ids", []),
+                pack_ids=record.get("pack_ids", []),
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to get model detail: {e}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.post(
@@ -505,17 +513,15 @@ async def get_model_detail(
     description="Creates a new value model with the specified properties.",
     responses={
         201: {"description": "Model created successfully"},
+    },
 )
 async def create_model(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     data: ModelCreateRequest,
-    driver: AsyncDriver = Depends(get_driver),
 ) -> CreateResponse:
     """Create a new value model."""
-    await _ensure_constraints(driver)
-    
     current_user = _get_current_user(request)
     current_tenant = _get_current_tenant(request)
     model_id = f"mdl_{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')[:-3]}"
@@ -557,15 +563,17 @@ async def create_model(
         "tenant_id": current_tenant,
     }
     
-    try:
-        result = await driver.execute_query(query, params)
-        if result and result[0]:
-            return CreateResponse(model_id=model_id)
-        else:
-            raise HTTPException(status_code=500, detail="Failed to create model")
-    except Exception as e:
-        logger.error(f"Failed to create model: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    async with await create_neo4j_tenant_session(current_tenant) as neo4j:
+        await _ensure_constraints(neo4j)
+        try:
+            records = await neo4j.execute_query(query, params)
+            if records:
+                return CreateResponse(model_id=model_id)
+            else:
+                raise HTTPException(status_code=500, detail="Failed to create model")
+        except Exception as e:
+            logger.error(f"Failed to create model: {e}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 @router.delete(
@@ -582,42 +590,41 @@ responses={
 },
 )
 async def delete_model(
-    # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
-    # See module docstring and l3-tenant-isolation-gate.yaml.
     request: Request,
     model_id: str,
-    driver: AsyncDriver = Depends(get_driver),
 ) -> DeleteResponse:
     """Delete a value model (owner only)."""
     current_user = _get_current_user(request)
+    current_tenant = _get_current_tenant(request)
     
-    # Check ownership
-    check_query = """
-    MATCH (m:ValueModel {model_id: $model_id})
-    RETURN m.owner as owner
-    """
-    
-    try:
-        check_result = await driver.execute_query(check_query, {"model_id": model_id})
-        if not check_result or not check_result[0]:
-            raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
-        
-        owner = check_result[0][0].get("owner")
-        if owner != current_user:
-            # In production, also check admin/superuser roles
-            raise HTTPException(status_code=403, detail="Not authorized to delete this model")
-        
-        # Delete with relationships
-        delete_query = """
+    async with await create_neo4j_tenant_session(current_tenant) as neo4j:
+        # Check ownership
+        check_query = """
         MATCH (m:ValueModel {model_id: $model_id})
-        OPTIONAL MATCH (m)-[r]-()
-        DELETE r, m
+        RETURN m.owner as owner
         """
         
-        await driver.execute_query(delete_query, {"model_id": model_id})
-        return DeleteResponse(model_id=model_id)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to delete model: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        try:
+            check_records = await neo4j.execute_query(check_query, {"model_id": model_id})
+            if not check_records:
+                raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
+            
+            owner = check_records[0].get("owner")
+            if owner != current_user:
+                # In production, also check admin/superuser roles
+                raise HTTPException(status_code=403, detail="Not authorized to delete this model")
+            
+            # Delete with relationships
+            delete_query = """
+            MATCH (m:ValueModel {model_id: $model_id})
+            OPTIONAL MATCH (m)-[r]-()
+            DELETE r, m
+            """
+            
+            await neo4j.execute_query(delete_query, {"model_id": model_id})
+            return DeleteResponse(model_id=model_id)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to delete model: {e}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

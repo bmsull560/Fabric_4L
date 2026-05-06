@@ -70,6 +70,15 @@ INFRA_DEPENDENCIES: Dict[str, InfraDependency] = {
             "graph-backed integration workflows",
         ),
     ),
+    "docker": InfraDependency(
+        key="docker",
+        display_name="Docker",
+        startup_command="Start Docker Desktop",
+        categories=(
+            "testcontainers-based integration tests",
+            "containerized service tests",
+        ),
+    ),
 }
 
 
@@ -377,6 +386,18 @@ def _check_neo4j() -> bool:
         return False
 
 
+def _check_docker() -> bool:
+    """Return True if Docker daemon is available."""
+    try:
+        import docker
+        client = docker.from_env()
+        client.ping()
+        client.close()
+        return True
+    except Exception:
+        return False
+
+
 @pytest.fixture(scope="session")
 def require_postgres():
     """Skip (local) or fail (CI) if PostgreSQL is unavailable."""
@@ -405,6 +426,16 @@ def require_neo4j():
     if os.getenv("CI") == "true":
         pytest.fail(make_infra_ci_failure_reason("neo4j"))
     pytest.skip(make_infra_skip_reason("neo4j"))
+
+
+@pytest.fixture(scope="session")
+def require_docker():
+    """Skip (local) or fail (CI) if Docker daemon is unavailable."""
+    if _check_docker():
+        return True
+    if os.getenv("CI") == "true":
+        pytest.fail(make_infra_ci_failure_reason("docker"))
+    pytest.skip(make_infra_skip_reason("docker"))
 
 
 # ---------------------------------------------------------------------------

@@ -166,11 +166,11 @@ export default function IngestionJobs() {
   const handleBatchRetry = useCallback(async () => {
     if (batchOperation.isPending || jobs.length === 0) return;
     
-    // Filter failed jobs and validate UUID format (lowercase only)
+    // Filter failed jobs and validate UUID format
     const failedJobs = jobs.filter(j => j.status === 'failed');
     const validJobIds = failedJobs
       .map(j => j.id)
-      .filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id));
+      .filter(id => UUID_REGEX.test(id));
     
     // Validate that we have valid UUIDs to retry
     if (validJobIds.length === 0) {

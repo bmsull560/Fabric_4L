@@ -208,13 +208,14 @@ async def search_variables(
     data_type: str | None = Query(None, description="Filter by data type"),
     source_type: str | None = Query(None, description="Filter by source type"),
     is_active: bool = Query(True, description="Only active variables"),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Search variables by context."""
-    tenant_id = "default"
+    tenant_id = getattr(api_key, "tenant_id", None) or "default"
     # Build safe query with parameterized WHERE conditions only
     # NEVER use string interpolation (f-strings or .format()) for Cypher queries
     where_conditions = ["v.isActive = $is_active", "v.tenant_id = $tenant_id"]
-    params: dict[str, Any] = {"is_active": is_active}
+    params: dict[str, Any] = {"is_active": is_active, "tenant_id": tenant_id}
 
     if industry:
         where_conditions.append("v.industry = $industry")
@@ -274,9 +275,10 @@ async def get_variable(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
     variable_id: str,
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Get variable definition by ID."""
-    tenant_id = "default"
+    tenant_id = getattr(api_key, "tenant_id", None) or "default"
     query = """
     MATCH (v:Variable {id: $variable_id})
     WHERE v.tenant_id = $tenant_id
@@ -284,7 +286,7 @@ async def get_variable(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query, variable_id=variable_id)
+        result = await neo4j.run(query, variable_id=variable_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -337,7 +339,6 @@ async def create_variable(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
     request: VariableCreateRequest,
-    driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Register a new variable definition. Requires authentication."""
@@ -345,7 +346,7 @@ async def create_variable(
 
     variable_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
-    tenant_id = getattr(api_key, "tenant_id", None)
+    tenant_id = getattr(api_key, "tenant_id", None) or "default"
 
     # Build validation rules
     validation_rules = []
@@ -450,7 +451,7 @@ async def update_variable(
     # Check variable exists
     check_query = "MATCH (v:Variable {id: $variable_id}) WHERE v.tenant_id = $tenant_id RETURN v"
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(check_query, variable_id=variable_id)
+        result = await neo4j.run(check_query, variable_id=variable_id, tenant_id=tenant_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Variable not found")
 
@@ -542,7 +543,7 @@ async def resolve_variable(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(var_query, variable_id=variable_id)
+        result = await neo4j.run(var_query, variable_id=variable_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -609,9 +610,10 @@ async def validate_value(
     # See module docstring and l3-tenant-isolation-gate.yaml.
     variable_id: str,
     request: ValidateRequest,
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Validate value against variable rules."""
-    tenant_id = "default"
+    tenant_id = getattr(api_key, "tenant_id", None) or "default"
     # Get variable validation rules
     query = """
     MATCH (v:Variable {id: $variable_id})
@@ -620,7 +622,7 @@ async def validate_value(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query, variable_id=variable_id)
+        result = await neo4j.run(query, variable_id=variable_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -727,9 +729,10 @@ class SourceBindingResponse(BaseModel):
 async def get_variable_stats(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Return aggregate statistics for the variable registry."""
-    tenant_id = "default"
+    tenant_id = getattr(api_key, "tenant_id", None) or "default"
     query = """
     MATCH (v:Variable)
     WHERE v.tenant_id = $tenant_id
@@ -743,7 +746,7 @@ async def get_variable_stats(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query)
+        result = await neo4j.run(query, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -763,9 +766,10 @@ async def get_variable_stats(
 async def list_source_bindings(
     # SECURITY-TODO: Cypher queries in this handler are not tenant-scoped.
     # See module docstring and l3-tenant-isolation-gate.yaml.
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """List data source binding configurations and their health status."""
-    tenant_id = "default"
+    tenant_id = getattr(api_key, "tenant_id", None) or "default"
     query = """
     MATCH (sb:SourceBinding)
     WHERE sb.tenant_id = $tenant_id
@@ -775,7 +779,7 @@ async def list_source_bindings(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query)
+        result = await neo4j.run(query, tenant_id=tenant_id)
         records = await result.data()
 
         return [

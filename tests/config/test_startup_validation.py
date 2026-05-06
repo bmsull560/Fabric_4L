@@ -461,4 +461,4 @@ class TestNegativePathStartupScenarios:
             # Validation should fail during import
             with pytest.raises(ValueError):
                 # This import should trigger validation
-                import value_fabric.layer4.main
+                import layer4_agents.main

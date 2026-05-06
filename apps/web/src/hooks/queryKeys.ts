@@ -30,6 +30,7 @@ import type { CompetitorListFilters } from "./useCompetitiveIntel";
 import type { ROICalculationListFilters } from "./useROICalculator";
 import type { AccountHypothesesFilters } from "./useHypotheses";
 import type { NarrativeListFilters } from "./useNarratives";
+import type { LeverConfigRequest } from "./useCalculators";
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 export const QK = {
@@ -261,6 +262,14 @@ export const QK = {
     benchmarksList: () => ["roi", "benchmarks-list"] as const,
     benchmarkDetail: (id: string) => ["roi", "benchmark", id] as const,
     agentCalculation: () => ["roi", "agent-calculation"] as const,
+  },
+
+  // L3 — Value Calculators (Workflow)
+  calculators: {
+    all: ["calculators"] as const,
+    levers: (filters: unknown) =>
+      ["calculators", "levers", stableKey(filters)] as const,
+    detail: (id: string) => ["calculators", "detail", id] as const,
   },
 
   // L4 — Account Enrichment

@@ -38,45 +38,45 @@ class TestImportTopology:
         "layer1_ingestion",
         "layer2_extraction",
         "layer3_knowledge",
-        "layer4",
+        "layer4_agents",
         "layer5_ground_truth",
         "layer6_benchmarks",
     ])
     def test_layer_imports(self, layer):
         """Each layer should be importable via value_fabric."""
         try:
-            module = __import__(f"value_fabric.{layer}", fromlist=[layer])
+            module = __import__(f"layer4_agents", fromlist=["layer4_agents"])
             assert module is not None
         except ImportError as e:
-            pytest.skip(f"Layer {layer} not yet available: {e}")
+            pytest.skip(f"Layer 4 agents not yet available: {e}")
 
     def test_layer4_engine_import(self):
-        """Layer 4 engine module should be importable via value_fabric.layer4."""
+        """Layer 4 engine module should be importable via layer4_agents."""
         try:
-            import value_fabric.layer4.engine
-            assert value_fabric.layer4.engine.__file__ is not None
+            import layer4_agents.engine
+            assert layer4_agents.engine.__file__ is not None
         except ImportError as e:
             pytest.skip(f"Layer 4 engine not yet available: {e}")
 
     def test_layer4_tools_import(self):
-        """Layer 4 tools module should be importable via value_fabric.layer4."""
+        """Layer 4 tools module should be importable via layer4_agents."""
         try:
-            import value_fabric.layer4.tools
-            assert value_fabric.layer4.tools.__file__ is not None
+            import layer4_agents.tools
+            assert layer4_agents.tools.__file__ is not None
         except ImportError as e:
             pytest.skip(f"Layer 4 tools not yet available: {e}")
 
     def test_layer4_models_import(self):
-        """Layer 4 models module should be importable via value_fabric.layer4."""
+        """Layer 4 models module should be importable via layer4_agents."""
         try:
-            import value_fabric.layer4.models
-            assert value_fabric.layer4.models.__file__ is not None
+            import layer4_agents.models
+            assert layer4_agents.models.__file__ is not None
         except ImportError as e:
             pytest.skip(f"Layer 4 models not yet available: {e}")
 
     def test_layer4_resolves_to_canonical_service_tree(self):
-        """value_fabric.layer4.* must resolve via services/layer4-agents/src/."""
-        import value_fabric.layer4
+        """layer4_agents must resolve via services/layer4-agents/src/."""
+        import layer4_agents
 
         canonical = (REPO_ROOT / "services" / "layer4-agents" / "src").resolve()
         assert any(

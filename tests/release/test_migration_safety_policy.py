@@ -17,7 +17,7 @@ MIGRATION_ROOTS = [
     Path("services/layer2-extraction/migrations/versions"),
     Path("services/layer4-agents/migrations/versions"),
     Path("services/layer5-ground-truth/src/layer5_ground_truth/migrations/versions"),
-    Path("value_fabric/layer5/migrations/versions"),
+    Path("services/layer5-ground-truth/src/layer5_ground_truth/migrations/versions"),
 ]
 
 DESTRUCTIVE_PATTERNS = (
