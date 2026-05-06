@@ -135,7 +135,7 @@ data: {"event_id": "...", "event_type": "node_started|node_completed|workflow_co
 | User compares versions | L4/L5 | `VersionDiff` | `change_count`, `changed_fields` | Query | `version_id`, `compare_to_version_id` | `QK.versions.compare(versionId, compareTo)` |
 | User exports audit report | L5 | `AuditExportJob` | `status: pending|ready|failed` | POST response + polling | `audit_export_id` | `QK.governance.auditExport(id)` |
 
-**🔴 Gap:** The workflow inventory expects immutable approval history, version comparison, and audit export. These objects and query keys should share a common trace identifier with the originating value model or business case so approval lineage can be followed without stitching unrelated IDs manually.
+**🟢 Contracted:** Canonical L4/L5 governance objects and endpoints are documented in `docs/contracts/l4-l5-governance-lineage-contract.md`, including immutable audit expectations and shared `correlation_id` lineage requirements.
 
 ---
 

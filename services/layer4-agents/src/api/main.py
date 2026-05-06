@@ -90,6 +90,7 @@ from .routes.enrichment import router as enrichment_router
 from .routes.frontend_compat import router as frontend_compat_router
 from .routes.ground_truth_proxy import router as ground_truth_proxy_router
 from .routes.health_badges import health_badges_router
+from .routes.governance_workflows import router as governance_workflows_router
 from .routes.integrations import router as integrations_router
 from .routes.intelligence import router as intelligence_router
 from .routes.narratives import router as narratives_router
@@ -429,6 +430,7 @@ app.include_router(value_hypotheses_router, prefix="/v1")  # DIL Phase 2 — Val
 app.include_router(narratives_router, prefix="/v1")  # DIL Phase 3 — Narrative Builder
 app.include_router(intelligence_router, prefix="/v1")  # DIL Phase 3 — Intelligence Orchestrator
 app.include_router(ground_truth_proxy_router)  # L5 Ground Truth Proxy — Governance Data
+app.include_router(governance_workflows_router, prefix="/v1")
 
 # Billing routes (conditional on feature flag)
 if settings.is_billing_configured:
@@ -634,5 +636,4 @@ async def root():
         "health": "/health",
         "metrics": "/metrics",
     })
-
 

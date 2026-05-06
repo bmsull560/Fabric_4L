@@ -170,10 +170,27 @@ export const QK = {
   },
 
   governance: {
+    all: ["governance"] as const,
     tenants: ["governance", "tenants"] as const,
     users: (tenantId?: string) => ["governance", "users", tenantId] as const,
     apiKeys: (tenantId?: string) =>
       ["governance", "api-keys", tenantId] as const,
+    review: (reviewId: string) => ["governance", "review", reviewId] as const,
+    reviewQueue: (filters: { status?: string; subject_type?: string }) =>
+      ["governance", "review-queue", stableKey(filters)] as const,
+    reviewComments: (reviewId: string) =>
+      ["governance", "review-comments", reviewId] as const,
+    audit: (reviewId: string) => ["governance", "audit", reviewId] as const,
+    auditExport: (jobId: string) => ["governance", "audit-export", jobId] as const,
+    lineage: (correlationId: string) =>
+      ["governance", "lineage", correlationId] as const,
+  },
+
+  versions: {
+    all: ["versions"] as const,
+    detail: (versionId: string) => ["versions", "detail", versionId] as const,
+    compare: (versionId: string, compareToVersionId: string) =>
+      ["versions", "compare", versionId, compareToVersionId] as const,
   },
 
   accounts: {
