@@ -40,7 +40,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Domain packs: life-sciences, manufacturing, software
 
 ### Changed
-- Shared identity library (`value-fabric/shared/identity/`) promoted to single cross-layer auth package
+- Shared identity library (`packages/shared/src/value_fabric/shared/identity/`) promoted to single cross-layer auth package
 
 ### Fixed
 - Pagination contract consistency across all layer APIs

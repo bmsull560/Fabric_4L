@@ -1,6 +1,6 @@
 # Test Rewrite Priority Queue
 
-**Generated:** 2026-04-19  
+**Generated:** 2026-04-19
 **Source:** `docs/testing/test-quality-audit.md`
 
 ---
@@ -8,8 +8,8 @@
 ## P0 - Critical (Fix Immediately)
 
 ### 1. L4 Checkpoint/Resume Import Fix
-**File:** `value-fabric/layer4-agents/tests/conftest.py`  
-**Effort:** 30 min  
+**File:** `services/layer4-agents/tests/conftest.py`
+**Effort:** 30 min
 **Impact:** Unblocks 12 failing tests
 
 **Problem:** `sys.path.insert()` pattern causes import failures
@@ -21,15 +21,15 @@ if str(layer4_dir) not in sys.path:
     sys.path.insert(0, str(layer4_dir))
 
 # AFTER - Use editable install approach
-# In CI/pip install: pip install -e value-fabric/layer4-agents
+# In CI/pip install: pip install -e services/layer4-agents
 # Remove manual path manipulation from conftest.py
 ```
 
 ---
 
 ### 2. L3 E2E Neo4j Edition Detection
-**File:** `value-fabric/layer3-knowledge/tests/test_e2e_pipeline.py`  
-**Effort:** 1 hour  
+**File:** `services/layer3-knowledge/tests/test_e2e_pipeline.py`
+**Effort:** 1 hour
 **Impact:** Fixes 6 failing tests
 
 **Problem:** Tests require Neo4j Enterprise but testcontainers uses Community
@@ -54,8 +54,8 @@ async def neo4j_edition(neo4j_driver):
 ---
 
 ### 3. L4 Test Isolation Fix
-**File:** `value-fabric/layer4-agents/tests/conftest.py`  
-**Effort:** 30 min  
+**File:** `services/layer4-agents/tests/conftest.py`
+**Effort:** 30 min
 **Impact:** Prevents cross-test contamination
 
 **Problem:** Global sys.path modification affects all tests
@@ -77,7 +77,7 @@ pythonpath = ["src"]
 ## P1 - Material (Next 2 Sprints)
 
 ### 4. Weak Test Naming (L1)
-**File:** `value-fabric/layer1-ingestion/tests/test_todo_placeholder_regressions.py`  
+**File:** `services/layer1-ingestion/tests/test_todo_placeholder_regressions.py`
 **Effort:** 30 min
 
 **Before:**
@@ -95,7 +95,7 @@ def test_rejects_todo_placeholder_in_raw_content_body(self): ...
 ---
 
 ### 5. LLM Mock Migration (L2)
-**File:** `value-fabric/layer2-extraction/tests/test_extraction.py`  
+**File:** `services/layer2-extraction/tests/test_extraction.py`
 **Effort:** 2 hours
 
 **Problem:** 1 test skipped due to missing OPENAI_API_KEY
@@ -105,7 +105,7 @@ def test_rejects_todo_placeholder_in_raw_content_body(self): ...
 ---
 
 ### 6. Slow Test Markers (L1)
-**File:** `value-fabric/layer1-ingestion/tests/test_playwright_crawler.py`  
+**File:** `services/layer1-ingestion/tests/test_playwright_crawler.py`
 **Effort:** 30 min
 
 **Solution:**
@@ -118,7 +118,7 @@ async def test_real_browser_crawling(): ...
 ---
 
 ### 7. Deprecation Cleanup (L1)
-**Files:** Multiple L1 test files  
+**Files:** Multiple L1 test files
 **Effort:** 1 hour
 
 **Solution:**
@@ -127,7 +127,7 @@ async def test_real_browser_crawling(): ...
 from datetime import datetime
 datetime.utcnow()
 
-# AFTER  
+# AFTER
 from datetime import datetime, UTC
 datetime.now(UTC)
 ```
@@ -135,7 +135,7 @@ datetime.now(UTC)
 ---
 
 ### 8. E2E CI Integration (Frontend)
-**File:** `.github/workflows/pr-checks.yml`  
+**File:** `.github/workflows/pr-checks.yml`
 **Effort:** 4 hours
 
 **Solution:** Add E2E job step with Playwright
@@ -143,7 +143,7 @@ datetime.now(UTC)
 ---
 
 ### 9. Implementation Coupling (L2)
-**File:** `value-fabric/layer2-extraction/tests/test_llm_extractor.py`  
+**File:** `services/layer2-extraction/tests/test_llm_extractor.py`
 **Effort:** 4 hours
 
 **Problem:** Tests internal method calls
@@ -153,7 +153,7 @@ datetime.now(UTC)
 ---
 
 ### 10. Test Split (L4)
-**File:** `value-fabric/layer4-agents/tests/test_langgraph_execution.py` (33,688 bytes)  
+**File:** `services/layer4-agents/tests/test_langgraph_execution.py` (33,688 bytes)
 **Effort:** 8 hours
 
 **Solution:** Split into:

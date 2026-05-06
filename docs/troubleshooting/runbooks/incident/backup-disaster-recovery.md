@@ -173,10 +173,10 @@ All backup/restore functionality must be tested:
 
 ```bash
 # Unit tests
-pytest value-fabric/layer3-knowledge/tests/test_backup_manager.py -v
+pytest services/layer3-knowledge/tests/test_backup_manager.py -v
 
 # Integration tests (requires test storage backend)
-pytest value-fabric/layer3-knowledge/tests/test_backup_manager.py -m integration -v
+pytest services/layer3-knowledge/tests/test_backup_manager.py -m integration -v
 
 # Full DR drill (production-like environment)
 make test-backup-drills

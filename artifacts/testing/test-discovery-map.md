@@ -6,7 +6,7 @@ Generated: 2026-04-11
 
 ```
 Fabric_4L/
-├── value-fabric/           # Backend layers (Python)
+├── services/           # Backend layers (Python)
 │   ├── layer1-ingestion/   # 3 unit tests
 │   ├── layer2-extraction/  # 3 test files
 │   ├── layer3-knowledge/   # 15 test files

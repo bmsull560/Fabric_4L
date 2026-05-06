@@ -6,7 +6,7 @@
 
 ### 1. Route Files Exist ✅
 - **formulas.py**: 21,651 bytes
-- **value_trees.py**: 10,870 bytes  
+- **value_trees.py**: 10,870 bytes
 - **variables.py**: 19,804 bytes
 - **formula_governance.py**: 20,103 bytes
 
@@ -63,8 +63,8 @@ With Task 29 complete, **Task 11 (Formula Builder Frontend)** is unblocked and c
 
 ## Files Verified
 
-1. ✅ `value-fabric/layer3-knowledge/src/api/routes/formulas.py` - exists with endpoints
-2. ✅ `value-fabric/layer3-knowledge/src/api/routes/value_trees.py` - exists with endpoints
-3. ✅ `value-fabric/layer3-knowledge/src/api/routes/variables.py` - exists with endpoints
-4. ✅ `value-fabric/layer3-knowledge/src/api/main.py` - routers included
+1. ✅ `services/layer3-knowledge/src/api/routes/formulas.py` - exists with endpoints
+2. ✅ `services/layer3-knowledge/src/api/routes/value_trees.py` - exists with endpoints
+3. ✅ `services/layer3-knowledge/src/api/routes/variables.py` - exists with endpoints
+4. ✅ `services/layer3-knowledge/src/api/main.py` - routers included
 5. ✅ OpenAPI schema includes Formula and Value Tree tags

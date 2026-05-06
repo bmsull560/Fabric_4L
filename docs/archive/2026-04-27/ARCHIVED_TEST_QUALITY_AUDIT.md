@@ -44,12 +44,12 @@ The Fabric 4L repository demonstrates **high overall test quality** with well-st
 
 | Layer | Test Count | Location | Framework | Makefile Target |
 |-------|------------|----------|-----------|-----------------|
-| Layer 1 (Ingestion) | 17+ | `value-fabric/layer1-ingestion/tests/` | pytest | ✅ `test-layer1` |
-| Layer 2 (Extraction) | 1+ | `value-fabric/layer2-extraction/tests/` | pytest | ✅ `test-layer2` |
-| Layer 3 (Knowledge) | 4+ | `value-fabric/layer3-knowledge/tests/` | pytest | ✅ `test-layer3` |
-| Layer 4 (Agents) | 10+ | `value-fabric/layer4-agents/tests/` | pytest | ✅ `test-layer4` |
-| Layer 5 (Ground Truth) | 6+ | `value-fabric/layer5-ground-truth/tests/` | pytest | ✅ `test-layer5` |
-| Layer 6 (Benchmarks) | 1+ | `value-fabric/layer6-benchmarks/tests/` | pytest | ✅ `test-layer6` (added) |
+| Layer 1 (Ingestion) | 17+ | `services/layer1-ingestion/tests/` | pytest | ✅ `test-layer1` |
+| Layer 2 (Extraction) | 1+ | `services/layer2-extraction/tests/` | pytest | ✅ `test-layer2` |
+| Layer 3 (Knowledge) | 4+ | `services/layer3-knowledge/tests/` | pytest | ✅ `test-layer3` |
+| Layer 4 (Agents) | 10+ | `services/layer4-agents/tests/` | pytest | ✅ `test-layer4` |
+| Layer 5 (Ground Truth) | 6+ | `services/layer5-ground-truth/tests/` | pytest | ✅ `test-layer5` |
+| Layer 6 (Benchmarks) | 1+ | `services/layer6-benchmarks/tests/` | pytest | ✅ `test-layer6` (added) |
 | SDK | 6 | `sdk/python/tests/` | pytest | - |
 | Cross-layer | 72 | `tests/` | pytest | `contract-tests` |
 | Packs | 21 | `packs/*/tests/` | pytest | - |
@@ -71,7 +71,7 @@ The Fabric 4L repository demonstrates **high overall test quality** with well-st
 
 ### ✅ Exemplary Tests (Score: 30-35)
 
-#### `value-fabric/layer4-agents/tests/test_tenant_isolation.py`
+#### `services/layer4-agents/tests/test_tenant_isolation.py`
 | Principle | Score | Notes |
 |-------------|-------|-------|
 | Behavior-Focused | 5 | Tests JWT claim extraction, RLS enforcement |
@@ -109,7 +109,7 @@ The Fabric 4L repository demonstrates **high overall test quality** with well-st
 
 ---
 
-#### `value-fabric/layer1-ingestion/tests/unit/test_celery_tasks.py`
+#### `services/layer1-ingestion/tests/unit/test_celery_tasks.py`
 | Principle | Score | Notes |
 |-------------|-------|-------|
 | Behavior-Focused | 5 | Tests Celery pipeline dispatch |
@@ -146,7 +146,7 @@ The Fabric 4L repository demonstrates **high overall test quality** with well-st
 
 ---
 
-#### `value-fabric/layer2-extraction/tests/test_llm_extractor.py`
+#### `services/layer2-extraction/tests/test_llm_extractor.py`
 | Principle | Score | Notes |
 |-------------|-------|-------|
 | Behavior-Focused | 5 | Tests LLM extraction logic |
@@ -166,7 +166,7 @@ The Fabric 4L repository demonstrates **high overall test quality** with well-st
 
 ### ✅ Good Tests (Score: 25-29)
 
-#### `value-fabric/layer4-agents/tests/test_interfaces_exports.py`
+#### `services/layer4-agents/tests/test_interfaces_exports.py`
 | Principle | Score | Notes |
 |-------------|-------|-------|
 | Behavior-Focused | 4 | Tests construction (P2: could test behavior) |
@@ -218,7 +218,7 @@ The Fabric 4L repository demonstrates **high overall test quality** with well-st
 ### P1 - Material (0 issues found)
 ✅ **FIXED:** `tests/quarantine/test_l4_frontend_contract.py` - Un-quarantined
 
-**Resolution:** 
+**Resolution:**
 - Removed skip marker from `tests/contract/test_l4_frontend_contract.py`
 - Deleted duplicate from `tests/quarantine/`
 - Test doesn't actually require Docker - it validates JSON schemas and AST-parses Python source
@@ -267,7 +267,7 @@ Date Fixed: 2026-04-26
 #### ✅ FIXED: Implementation Coupling in Interface Tests
 **Severity:** P2 → RESOLVED
 **Type:** Implementation coupling
-**File:** `value-fabric/layer4-agents/tests/test_interfaces_exports.py`
+**File:** `services/layer4-agents/tests/test_interfaces_exports.py`
 
 **Finding:** `test_http_benchmark_client_close_is_safe_without_open_client` asserted on internal state (`assert client._client is None`).
 
@@ -280,7 +280,7 @@ Date Fixed: 2026-04-26
 #### Issue 3: Layer 6 Test Coverage Gap
 **Severity:** P2
 **Type:** Missing coverage
-**File:** `value-fabric/layer6-benchmarks/tests/`
+**File:** `services/layer6-benchmarks/tests/`
 
 **Finding:** Original `test_benchmark_api.py` only had basic happy-path tests.
 
@@ -346,7 +346,7 @@ All tests are of sufficient quality that no urgent rewrites are needed. Focus sh
 pytest -v
 
 # Run specific layer
-cd value-fabric/layer1-ingestion && pytest -v
+cd services/layer1-ingestion && pytest -v
 
 # Run frontend tests
 cd frontend && pnpm test

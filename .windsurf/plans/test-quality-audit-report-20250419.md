@@ -1,7 +1,7 @@
 # Test Quality Audit Report
 
-**Date**: 2026-04-19  
-**Auditor**: Test Quality Remediation Workflow  
+**Date**: 2026-04-19
+**Auditor**: Test Quality Remediation Workflow
 **Scope**: Critical path tests (L2-L3 orchestration, L4 checkpoint/resume, L3 e2e, Frontend API hooks)
 
 ---
@@ -26,7 +26,7 @@
 
 ### 1. `test_extract_and_ingest_pipeline.py` (L2-L3 Orchestration)
 
-**Status**: ✅ Well-structured, passing  
+**Status**: ✅ Well-structured, passing
 **Lines**: 548 | **Tests**: 6 | **Score**: 32/35
 
 | Principle | Score | Evidence |
@@ -55,7 +55,7 @@
 
 ### 2. `test_checkpoint_resume.py` (L4 Agents)
 
-**Status**: ❌ Failing during collection  
+**Status**: ❌ Failing during collection
 **Lines**: 339 | **Tests**: 12 | **Score**: N/A (cannot run)
 
 **Critical Issue (P0)**:
@@ -88,7 +88,7 @@ from layer4_agents.config.checkpoint import CheckpointConfig
 
 ### 3. `test_e2e_pipeline.py` (L3 Knowledge)
 
-**Status**: ⚠️ Conditional skip, enterprise constraints failing  
+**Status**: ⚠️ Conditional skip, enterprise constraints failing
 **Lines**: 828 | **Tests**: 8+ | **Score**: 24/35
 
 | Principle | Score | Evidence |
@@ -108,7 +108,7 @@ from layer4_agents.config.checkpoint import CheckpointConfig
 
 2. **Large test file**: 828 lines suggests mixed concerns
    - Schema initialization
-   - Data ingestion  
+   - Data ingestion
    - GraphRAG queries
    - Hybrid search
 
@@ -117,7 +117,7 @@ from layer4_agents.config.checkpoint import CheckpointConfig
    ```python
    # Wrong
    logger.error("msg", exception_type="X", path="Y")
-   
+
    # Correct
    logger.error("msg", extra={"exception_type": "X", "path": "Y"})
    ```
@@ -131,7 +131,7 @@ from layer4_agents.config.checkpoint import CheckpointConfig
 
 ### 4. `useGraphQuery.test.ts` (Frontend Hooks)
 
-**Status**: ✅ Well-structured, likely passing  
+**Status**: ✅ Well-structured, likely passing
 **Lines**: 214 | **Tests**: 13 | **Score**: 28/35
 
 | Principle | Score | Evidence |
@@ -155,7 +155,7 @@ from layer4_agents.config.checkpoint import CheckpointConfig
    ```typescript
    // Current
    await waitFor(() => expect(result.current.isError).toBe(true));
-   
+
    // Improved
    await waitFor(() => {
      expect(result.current.isError).toBe(true);
@@ -218,7 +218,7 @@ from layer4_agents.config.checkpoint import CheckpointConfig
 
 ### Immediate Actions
 1. **Fix L4 imports**: Update `test_checkpoint_resume.py` to use `layer4_agents.` prefix
-2. **Verify CI**: Run `pytest value-fabric/layer4-agents/tests/test_checkpoint_resume.py --collect-only`
+2. **Verify CI**: Run `pytest services/layer4-agents/tests/test_checkpoint_resume.py --collect-only`
 
 ### Architectural Improvements
 1. **Test Helpers**: Create `tests/factories.py` for shared test data builders

@@ -62,7 +62,7 @@ class TestMiddlewareImportPath:
     """Guard against importing the wrong shared/security/middleware.py."""
 
     def test_authoritative_middleware_is_imported(self):
-        """Layer 2+ tests must resolve to services/shared/security/middleware.py.
+        """Layer 2+ tests must resolve to packages/shared/src/value_fabric/shared/security/middleware.py.
 
         There are two 'shared' packages in this repo (root and services/).
         This test fails if pytest resolves the root one, preventing silent
@@ -70,10 +70,10 @@ class TestMiddlewareImportPath:
         """
         import value_fabric.shared.security.middleware as _middleware
 
-        assert "services/shared/security/middleware.py" in _middleware.__file__.replace(
+        assert "packages/shared/src/value_fabric/shared/security/middleware.py" in _middleware.__file__.replace(
             "\\", "/"
         ), (
-            f"Expected services/shared/security/middleware.py, got {_middleware.__file__}"
+            f"Expected packages/shared/src/value_fabric/shared/security/middleware.py, got {_middleware.__file__}"
         )
 
 
@@ -296,7 +296,7 @@ class TestSecurityMiddlewareRDFHandling:
     def test_is_rdf_data_detects_turtle(self):
         """RDF/Turtle data is correctly identified."""
         from value_fabric.shared.security.middleware import SecurityMiddleware
-        
+
         rdf_text = """
         @prefix ex: <http://example.org/> .
         @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -308,7 +308,7 @@ class TestSecurityMiddlewareRDFHandling:
     def test_is_rdf_data_rejects_non_rdf(self):
         """Non-RDF text is not identified as RDF."""
         from value_fabric.shared.security.middleware import SecurityMiddleware
-        
+
         middleware = SecurityMiddleware(app=None, config=SecurityConfig())
         assert middleware._is_rdf_data("normal text") is False
         assert middleware._is_rdf_data("SELECT * FROM table") is False

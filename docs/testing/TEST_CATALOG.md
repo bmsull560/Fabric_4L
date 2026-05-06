@@ -1,8 +1,8 @@
 # Value Fabric Test Catalog
 ## Complete Inventory of Test Suite
 
-**Generated:** April 19, 2026  
-**Total Test Files:** 100+  
+**Generated:** April 19, 2026
+**Total Test Files:** 100+
 **Total Estimated Tests:** 500+
 
 ---
@@ -382,9 +382,9 @@
 | `pytest.ini` | Root pytest configuration with markers, coverage |
 | `tests/factories.py` | Factory Boy test data factories |
 | `tests/conftest.py` | Shared pytest fixtures (root) |
-| `value-fabric/layer1-ingestion/tests/conftest.py` | L1 fixtures |
-| `value-fabric/layer4-agents/tests/conftest.py` | L4 fixtures |
-| `value-fabric/layer5-ground-truth/tests/conftest.py` | L5 fixtures |
+| `services/layer1-ingestion/tests/conftest.py` | L1 fixtures |
+| `services/layer4-agents/tests/conftest.py` | L4 fixtures |
+| `services/layer5-ground-truth/tests/conftest.py` | L5 fixtures |
 | `tests/security/conftest.py` | Security test fixtures |
 | `tests/contracts/conftest.py` | Contract test fixtures |
 | `tests/evals/conftest.py` | Eval test fixtures |
@@ -452,8 +452,8 @@
 
 ### Recently Added
 
-1. `value-fabric/layer4-agents/tests/unit/test_workflow_state_machine.py` (30 tests)
-2. `value-fabric/layer5-ground-truth/tests/unit/test_ground_truth_service.py` (20 tests)
+1. `services/layer4-agents/tests/unit/test_workflow_state_machine.py` (30 tests)
+2. `services/layer5-ground-truth/tests/unit/test_ground_truth_service.py` (20 tests)
 3. `frontend/e2e/accessibility/axe-audit.spec.ts` (15 tests)
 4. `tests/security/test_owasp_top10_complete.py` (80 tests)
 5. `tests/factories.py` (Factory Boy data factories)
@@ -474,7 +474,7 @@ None currently flagged. Monitor CI for new flaky tests.
 
 ## Document Information
 
-**Maintainer:** Value Fabric Engineering  
-**Last Updated:** April 19, 2026  
-**Update Frequency:** Sprint-based  
+**Maintainer:** Value Fabric Engineering
+**Last Updated:** April 19, 2026
+**Update Frequency:** Sprint-based
 **Next Review:** May 19, 2026

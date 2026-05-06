@@ -1,7 +1,7 @@
 # Test Quality Remediation - Execution Summary
 
-**Date**: 2026-04-10  
-**Workflow**: `/test-quality-remediation`  
+**Date**: 2026-04-10
+**Workflow**: `/test-quality-remediation`
 **Auditor**: Cascade AI Agent
 
 ---
@@ -28,7 +28,7 @@ Test quality remediation workflow executed successfully. **Fixed 1 critical P0 i
 ## Fix Applied
 
 ### Issue: Async Fixture Without Proper Decorator (P0)
-**File**: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py:368`
+**File**: `services/layer4-agents/tests/test_checkpoint_resume.py:368`
 
 **Problem**: Async fixture `orchestrator_with_checkpoint` used `@pytest.fixture` instead of `@pytest_asyncio.fixture`, causing:
 ```
@@ -42,7 +42,7 @@ SyntaxError: 'await' outside async function
 async def orchestrator_with_checkpoint(...):
     await controller.start()  # SyntaxError!
 
-# After  
+# After
 @pytest_asyncio.fixture
 async def orchestrator_with_checkpoint(...):
     await controller.start()  # Works correctly
@@ -62,7 +62,7 @@ async def orchestrator_with_checkpoint(...):
 ### Layer 2: Extraction ✅ OPERATIONAL
 - **Files**: 3 test files
 - **Status**: 37 passed, 4 failed, 1 skipped
-- **Issues**: 
+- **Issues**:
   - P1: 4 tests with ontology/semantic alignment issues (runtime, not collection)
   - Pipeline tests (`test_extract_and_ingest_pipeline.py`): 5/5 passing ⭐
 
@@ -79,7 +79,7 @@ async def orchestrator_with_checkpoint(...):
 - **Remaining**: 2 LangGraph state management failures (pre-existing, non-blocking)
 
 ### Layer 5: Ground Truth ✅ OPERATIONAL
-- **Files**: 3 test files  
+- **Files**: 3 test files
 - **Status**: 54 tests passing
 - **Quality**: Excellent test patterns, reference quality
 
@@ -141,7 +141,7 @@ Based on the existing audit with updated status:
 
 ## Files Modified
 
-1. `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`
+1. `services/layer4-agents/tests/test_checkpoint_resume.py`
    - Added `import pytest_asyncio`
    - Changed `@pytest.fixture` to `@pytest_asyncio.fixture` for async fixture
 
@@ -151,16 +151,16 @@ Based on the existing audit with updated status:
 
 ```bash
 # Layer 1 - 10 tests passing
-python -m pytest value-fabric/layer1-ingestion/tests/unit/ -v
+python -m pytest services/layer1-ingestion/tests/unit/ -v
 
 # Layer 2 - 37 passed, 4 failed (pre-existing)
-python -m pytest value-fabric/layer2-extraction/tests/ -v
+python -m pytest services/layer2-extraction/tests/ -v
 
-# Layer 4 - 9 passed, 2 failed (pre-existing)  
-python -m pytest value-fabric/layer4-agents/tests/ -v
+# Layer 4 - 9 passed, 2 failed (pre-existing)
+python -m pytest services/layer4-agents/tests/ -v
 
 # Layer 5 - 54 tests passing
-python -m pytest value-fabric/layer5-ground-truth/tests/ -v
+python -m pytest services/layer5-ground-truth/tests/ -v
 ```
 
 ---

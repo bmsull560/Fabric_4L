@@ -143,7 +143,7 @@ sequenceDiagram
 
 ### Layer 4: Agentic Workflow Engine
 
-**Port**: 8004  
+**Port**: 8004
 **Primary Services**:
 
 1. **Value Hypothesis Engine**
@@ -243,7 +243,7 @@ GET /api/v1/evidence/by-product/:productId
 
 ### Layer 3: Knowledge Graph
 
-**Port**: 8003  
+**Port**: 8003
 **Primary Graphs**:
 
 1. **Product Portfolio Graph**
@@ -616,6 +616,6 @@ The following operations can run in parallel:
 ## Related Documentation
 
 - [Core User Workflow](../workflows/core-user-workflow.md)
-- [Data Intelligence Layer Architecture](../../value-fabric/docs/data-intelligence-layer.md)
+- [Data Intelligence Layer Architecture](../../docs/architecture/data-intelligence-layer.md)
 - [System Architecture Overview](system-overview.md)
 - [API Reference](../API_REFERENCE.md)

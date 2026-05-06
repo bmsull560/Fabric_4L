@@ -1,7 +1,7 @@
 # Test Rewrite Priority Queue
 
 Generated: Apr 11, 2026
-Updated: Apr 11, 2026 (WeasyPrint fix applied)  
+Updated: Apr 11, 2026 (WeasyPrint fix applied)
 Based on: Test Quality Audit + Task 33 Review
 
 ---
@@ -18,7 +18,7 @@ Based on: Test Quality Audit + Task 33 Review
 - **Issue**: Cannot collect tests due to model/scheduler issues
 - **Impact**: 0 tests running, critical path blocked
 - **Effort**: Medium (fix imports, signatures)
-- **Files**: 
+- **Files**:
   - `src/shared/models.py` - reserved `metadata` attribute
   - `src/scheduler.py` - function signature mismatch
 
@@ -63,7 +63,7 @@ Based on: Test Quality Audit + Task 33 Review
 ### 8. layer4-agents Test Coverage - PARTIALLY RESOLVED ✅
 - **Issue**: ~~Only 4 test files, import errors~~ Tests now run (39 passed, 2 xfailed)
 - **Impact**: WeasyPrint OSError fixed by catching (ImportError, OSError)
-- **Files Modified**: 
+- **Files Modified**:
   - `src/tools/document_export.py` - Added OSError catch
   - `src/tools/generation_tools.py` - Added import guard + OSError catch
 - **Status**: Tests operational, 2 pre-existing xfails remain (LangGraph state)
@@ -115,7 +115,7 @@ Based on: Test Quality Audit + Task 33 Review
 # After fixes, verify all layers collect
 for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth; do
   echo "=== $layer ==="
-  cd value-fabric/$layer
+  cd services/$layer
   pytest --collect-only 2>&1 | head -5
   cd ../..
 done

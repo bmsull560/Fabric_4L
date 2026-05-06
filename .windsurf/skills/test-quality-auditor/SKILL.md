@@ -122,7 +122,7 @@ This skill enables systematic evaluation of test suites against seven core testi
 ```python
 class TestSpecificBehavior:
     """Docstring describing the behavior being tested."""
-    
+
     @pytest.mark.asyncio
     async def test_<action>_<condition>_<expected_result>(self, db, fixture):
         """Should <expected behavior> when <condition>."""
@@ -130,10 +130,10 @@ class TestSpecificBehavior:
         entity = make_entity(status=Status.EXTRACTED)
         db.add(entity)
         await db.flush()
-        
+
         # Act
         result = await service.process(entity)
-        
+
         # Assert
         assert result.status == Status.SUPPORTED
         assert result.processed_at is not None
@@ -173,11 +173,11 @@ def make_entity(**overrides) -> Entity:
 #### Running Tests by Layer
 ```bash
 # Layer 5 (Ground Truth)
-cd value-fabric/layer5-ground-truth
+cd services/layer5-ground-truth
 pytest -v
 
-# Layer 3 (Knowledge)  
-cd value-fabric/layer3-knowledge
+# Layer 3 (Knowledge)
+cd services/layer3-knowledge
 pytest -v
 
 # Specific test file
@@ -201,10 +201,10 @@ describe('ComponentName', () => {
       // Arrange
       const user = userEvent.setup();
       render(<Component prop={value} />);
-      
+
       // Act
       await user.click(screen.getByRole('button', { name: /submit/i }));
-      
+
       // Assert
       expect(screen.getByText(/success/i)).toBeInTheDocument();
     });

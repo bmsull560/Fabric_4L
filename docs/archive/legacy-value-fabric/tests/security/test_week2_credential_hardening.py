@@ -1,3 +1,5 @@
+# Migrated from tests/security/test_week2_credential_hardening.py during legacy path cleanup.
+
 """Week 2 Credential Hardening — Regression Tests.
 
 Tests for:

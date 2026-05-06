@@ -23,7 +23,7 @@
 
 ## Files Audited
 
-### 1. `value-fabric/layer4-agents/src/api/routes/crm_webhooks.py`
+### 1. `services/layer4-agents/src/api/routes/crm_webhooks.py`
 
 **Score: 30/35 (Excellent)**
 
@@ -62,7 +62,7 @@ data = json.loads(body.decode())  # ✅ Parse cached bytes
 
 ---
 
-### 2. `value-fabric/layer4-agents/tests/test_crm_sync_service.py`
+### 2. `services/layer4-agents/tests/test_crm_sync_service.py`
 
 **Score: 28/35 (Good)**
 
@@ -84,7 +84,7 @@ data = json.loads(body.decode())  # ✅ Parse cached bytes
 
 ---
 
-### 3. `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`
+### 3. `services/layer4-agents/tests/test_checkpoint_resume.py`
 
 **Score: 32/35 (Excellent)**
 
@@ -102,7 +102,7 @@ data = json.loads(body.decode())  # ✅ Parse cached bytes
 
 ---
 
-### 4. `value-fabric/layer4-agents/tests/conftest.py`
+### 4. `services/layer4-agents/tests/conftest.py`
 
 **Score: 27/35 (Good)**
 
@@ -122,7 +122,7 @@ data = json.loads(body.decode())  # ✅ Parse cached bytes
 
 ## Shared Audit Infrastructure Changes
 
-### `value-fabric/shared/audit/models.py`
+### `packages/shared/src/value_fabric/shared/audit/models.py`
 
 **Changes**:
 ```python
@@ -139,7 +139,7 @@ This enables audit logging for webhook processing failures, satisfying complianc
 
 ### L4 Agents Test Collection
 ```bash
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 python -m pytest tests/ --collect-only
 ```
 
@@ -147,7 +147,7 @@ python -m pytest tests/ --collect-only
 
 ### CRM Webhook Tests (Executed 2026-04-13)
 ```bash
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 python -m pytest tests/test_crm_sync_service.py::TestCRMWebhooks -v
 ```
 
@@ -156,7 +156,7 @@ python -m pytest tests/test_crm_sync_service.py::TestCRMWebhooks -v
 Tests verified:
 - `test_salesforce_webhook_health` - Health endpoint returns 200
 - `test_salesforce_webhook_accepts_platform_event` - Platform events return 202
-- `test_hubspot_webhook_accepts_company_events` - Company events return 202  
+- `test_hubspot_webhook_accepts_company_events` - Company events return 202
 - `test_hubspot_webhook_handles_multiple_events` - Batch events handled correctly
 
 ---

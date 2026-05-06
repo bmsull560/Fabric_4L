@@ -30,7 +30,7 @@ This skill provides systematic auditing of AI/ML components in the Value Fabric 
 |-----------|------|----------|---------|-------------|
 | audit_scope | string | No | "all" | Areas: all, prompt_security, model_governance, rag_architecture, llm_costs, agent_orchestration |
 | layers | string[] | No | ["L2", "L4"] | Layers to audit (L2=extraction, L4=agents) |
-| prompt_paths | string[] | No | ["value-fabric/layer2-extraction/.../prompts/"] | Paths to prompt files for scanning |
+| prompt_paths | string[] | No | ["services/layer2-extraction/.../prompts/"] | Paths to prompt files for scanning |
 | severity_threshold | string | No | "medium" | Minimum severity: critical, high, medium, low |
 | include_cost_analysis | boolean | No | true | Include LLM cost anomaly detection |
 | check_model_registry | boolean | No | true | Validate model registry entries |
@@ -45,7 +45,7 @@ Scan all prompt files for injection vulnerabilities:
 
 ```bash
 # Locate all prompt files
-find value-fabric/layer2-extraction -name "*.md" -o -name "*.txt" -o -name "*.prompt" | grep -i prompt
+find services/layer2-extraction -name "*.md" -o -name "*.txt" -o -name "*.prompt" | grep -i prompt
 
 # Check for injection patterns
 ```
@@ -94,10 +94,10 @@ Evaluate knowledge retrieval systems:
 async def test_retrieval_accuracy(query: str, expected_entities: list):
     response = await hybrid_search(query)
     retrieved = [e.name for e in response.entities]
-    
+
     precision = len(set(retrieved) & set(expected_entities)) / len(retrieved)
     recall = len(set(retrieved) & set(expected_entities)) / len(expected_entities)
-    
+
     return {"precision": precision, "recall": recall, "f1": 2 * (precision * recall) / (precision + recall)}
 ```
 
@@ -155,7 +155,7 @@ curl -s http://localhost:8004/v1/workflows/checkpoint-stats | jq
 **Prompt Security Findings:**
 ```json
 {
-  "file": "value-fabric/layer2-extraction/.../extraction.prompt",
+  "file": "services/layer2-extraction/.../extraction.prompt",
   "line": 42,
   "severity": "high",
   "category": "unsanitized_input",

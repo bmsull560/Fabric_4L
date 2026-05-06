@@ -1,7 +1,7 @@
 # Test Quality Audit - Fabric_4L Repository
 
-**Date**: April 14, 2026  
-**Scope**: Full repository testing landscape  
+**Date**: April 14, 2026
+**Scope**: Full repository testing landscape
 **Frameworks**: Python/pytest (backend), TypeScript/Vitest (frontend)
 
 ---
@@ -32,8 +32,8 @@ The test suite demonstrates solid testing practices with good coverage of critic
 
 #### File: `frontend/client/src/hooks/useAuth.test.ts` (363 lines)
 
-**Test Count**: 14 tests across 3 describe blocks  
-**Fixtures**: Uses `createWrapper`, `createWrapperWithRouterPath`  
+**Test Count**: 14 tests across 3 describe blocks
+**Fixtures**: Uses `createWrapper`, `createWrapperWithRouterPath`
 **External Mocks**: `useAuthContext`, `wouter` navigation
 
 | Principle | Score | Evidence |
@@ -57,8 +57,8 @@ The test suite demonstrates solid testing practices with good coverage of critic
 
 #### File: `frontend/client/src/stores/userTierStore.test.ts` (427 lines)
 
-**Test Count**: 24 tests across 5 describe blocks  
-**Fixtures**: `localStorage`, `renderHook`  
+**Test Count**: 24 tests across 5 describe blocks
+**Fixtures**: `localStorage`, `renderHook`
 **External Mocks**: Zustand store
 
 | Principle | Score | Evidence |
@@ -81,8 +81,8 @@ The test suite demonstrates solid testing practices with good coverage of critic
 
 #### File: `frontend/client/src/contexts/AuthContext.test.tsx` (479 lines)
 
-**Test Count**: 16 tests  
-**Fixtures**: MSW server, `localStorage`, `sessionStorage`  
+**Test Count**: 16 tests
+**Fixtures**: MSW server, `localStorage`, `sessionStorage`
 **External Mocks**: API client (MSW handlers)
 
 | Principle | Score | Evidence |
@@ -108,8 +108,8 @@ The test suite demonstrates solid testing practices with good coverage of critic
 
 #### File: `tests/contract/test_l4_frontend_contract.py` (120 lines)
 
-**Test Count**: 5 tests  
-**Fixtures**: JSON loading, AST parsing  
+**Test Count**: 5 tests
+**Fixtures**: JSON loading, AST parsing
 **External Mocks**: None (static validation)
 
 | Principle | Score | Evidence |
@@ -132,8 +132,8 @@ The test suite demonstrates solid testing practices with good coverage of critic
 
 #### File: `tests/contract/test_l3_formulas_contract.py` (156 lines)
 
-**Test Count**: 7 tests  
-**Fixtures**: `_load_json`, `_schema_ref` helpers  
+**Test Count**: 7 tests
+**Fixtures**: `_load_json`, `_schema_ref` helpers
 **External Mocks**: None
 
 | Principle | Score | Evidence |
@@ -155,10 +155,10 @@ The test suite demonstrates solid testing practices with good coverage of critic
 
 ### Layer 4 Python Tests
 
-#### File: `value-fabric/layer4-agents/tests/test_langgraph_execution.py` (836 lines)
+#### File: `services/layer4-agents/tests/test_langgraph_execution.py` (836 lines)
 
-**Test Count**: 35+ tests across 3 classes  
-**Fixtures**: Mock tool registry, mock OpenAI  
+**Test Count**: 35+ tests across 3 classes
+**Fixtures**: Mock tool registry, mock OpenAI
 **External Mocks**: AsyncOpenAI, ToolRegistry
 
 | Principle | Score | Evidence |
@@ -182,10 +182,10 @@ The test suite demonstrates solid testing practices with good coverage of critic
 
 ### Layer 3 Python Tests
 
-#### File: `value-fabric/layer3-knowledge/tests/test_graphrag_endpoints.py` (329 lines)
+#### File: `services/layer3-knowledge/tests/test_graphrag_endpoints.py` (329 lines)
 
-**Test Count**: 16 tests  
-**Fixtures**: `test_client`, `sample_graphrag_query`, `test_utils`  
+**Test Count**: 16 tests
+**Fixtures**: `test_client`, `sample_graphrag_query`, `test_utils`
 **External Mocks**: TestClient (FastAPI)
 
 | Principle | Score | Evidence |
@@ -227,14 +227,14 @@ No critical issues found. All tests are stable and provide meaningful coverage.
 ### Rewrite Priority Queue
 
 #### P1 - Material (COMPLETED)
-1. ✅ `value-fabric/layer4-agents/tests/test_langgraph_execution.py` - Path setup moved to conftest.py - **31 tests pass, 5 pre-existing failures documented below**
+1. ✅ `services/layer4-agents/tests/test_langgraph_execution.py` - Path setup moved to conftest.py - **31 tests pass, 5 pre-existing failures documented below**
 
 #### P2 - Improvements (deferred)
 1. [ ] `frontend/client/src/hooks/useAuth.test.ts` - Replace setTimeout with more robust pattern
 2. [ ] `frontend/client/src/stores/userTierStore.test.ts` - Split multi-transition test
 3. [ ] `frontend/client/src/contexts/AuthContext.test.tsx` - Extract common test helpers
 4. [ ] `tests/contract/test_l4_frontend_contract.py` - Add AST dependency documentation
-5. [ ] `value-fabric/layer4-agents/tests/test_langgraph_execution.py` - Consider extracting workflow setup helpers
+5. [ ] `services/layer4-agents/tests/test_langgraph_execution.py` - Consider extracting workflow setup helpers
 
 ---
 

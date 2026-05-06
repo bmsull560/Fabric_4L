@@ -138,7 +138,7 @@ Scan container images for vulnerabilities:
 ```bash
 # Build and scan each layer
 for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks; do
-  docker build -t $layer:scan value-fabric/$layer
+  docker build -t $layer:scan services/$layer
   trivy image $layer:scan --severity HIGH,CRITICAL
   grype $layer:scan
   done
@@ -235,7 +235,7 @@ security_gates:
     - frontend-security-audit  # NPM audit
     - dockerfile-non-root-check  # Container hardening
     - dependency-review    # GitHub dependency review
-  
+
   required_artifacts:
     - sbom-*              # Every layer
     - security-evidence   # Consolidated evidence
@@ -278,7 +278,7 @@ policies:
   - allow-dns             # CoreDNS access
   - allow-monitoring      # Prometheus scraping
   - layer-specific-policy # Layer-to-layer rules
-  
+
 # Layer3 Knowledge (sensitive) - extra policies:
 extra_policies:
   - neo4j-access          # Restrict Neo4j access

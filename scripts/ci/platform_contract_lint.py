@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env python3
 """Python enforcement script for Fabric 4L platform contract.
 
-Scans value-fabric/ and shared/ for non-canonical patterns.
+Scans services/ and packages/shared/src/value_fabric/shared/ for non-canonical patterns.
  - ERROR: violations that block CI.
  - WARN: violations that escalate to ERROR after the migration deadline.
 """
@@ -73,7 +73,7 @@ def _enclosing_function_name(content: str, line_number: int) -> str | None:
 
 def scan_file(path: str) -> list[tuple]:
     """Scan a Python file for contract violations.
-    
+
     Returns list of tuples: (level, path, line, name, description, [deadline])
     where level is 'ERROR' or 'WARN'.
     """
@@ -108,7 +108,7 @@ def scan_file(path: str) -> list[tuple]:
 def main():
     targets = [
         PROJECT_ROOT / "services",
-        PROJECT_ROOT / "shared",
+        PROJECT_ROOT / "packages" / "shared" / "src" / "value_fabric" / "shared",
     ]
 
     all_violations = []

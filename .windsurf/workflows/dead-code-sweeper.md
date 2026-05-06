@@ -109,10 +109,10 @@ grep "value-studio" frontend/client/src/App.tsx
 
 ```bash
 # Files in tools/ directory
-ls value-fabric/layer4-agents/src/tools/*.py | xargs -I{} basename {}
+ls services/layer4-agents/src/tools/*.py | xargs -I{} basename {}
 
 # Imports in __init__.py
-grep "^from \." value-fabric/layer4-agents/src/tools/__init__.py
+grep "^from \." services/layer4-agents/src/tools/__init__.py
 ```
 
 Any tool file not imported in `__init__.py` is a dead code candidate.
@@ -123,20 +123,20 @@ For each service file, extract public methods and check if they're called from r
 
 ```bash
 # Extract public methods from a service
-grep "async def [^_]" value-fabric/layer4-agents/src/services/{service}.py
+grep "async def [^_]" services/layer4-agents/src/services/{service}.py
 
 # Check if each method is referenced in routes
-grep -rn "{method_name}" value-fabric/layer4-agents/src/api/routes/ --include="*.py"
+grep -rn "{method_name}" services/layer4-agents/src/api/routes/ --include="*.py"
 ```
 
 #### 3c. Unused Route Files
 
 ```bash
 # Route files
-ls value-fabric/layer4-agents/src/api/routes/*.py
+ls services/layer4-agents/src/api/routes/*.py
 
 # Routes registered in main.py
-grep "include_router\|app\.include" value-fabric/layer4-agents/src/api/main.py
+grep "include_router\|app\.include" services/layer4-agents/src/api/main.py
 ```
 
 ### Step 4: Verify Before Removal

@@ -116,7 +116,7 @@
 **Fixes Applied:**
 
 1. **Docker compose paths (2 fixes):**
-   - `docker-compose.dev.yml` - Fixed build context path from `./value-fabric/layer4-agents` to `./services/layer4-agents`
+   - `docker-compose.dev.yml` - Fixed build context path from `./services/layer4-agents` to `./services/layer4-agents`
    - `docker-compose.dev.yml` - Fixed volume mount paths to use correct directory structure
 
 **Result:** Docker compose dev stack can now build successfully
@@ -203,7 +203,7 @@ When running pytest with `--import-mode=importlib`, 30 additional collection err
 
 **Classification:**
 
-1. **Stale path from value-fabric/services move (13):** - BLOCKED
+1. **Stale path from services/services move (13):** - BLOCKED
    - All layer1-ingestion tests importing from `src.*`
    - tests/agents/test_conversation_service.py importing from `services.conversation`
 

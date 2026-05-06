@@ -1,7 +1,7 @@
 # Execution Status Sync - 2026-04-19 14:51
 
-**Generated:** 2026-04-19 14:51 UTC  
-**Scope:** Tasks 1-68, Full Platform Assessment  
+**Generated:** 2026-04-19 14:51 UTC
+**Scope:** Tasks 1-68, Full Platform Assessment
 **Method:** Code inspection + test execution + runtime validation
 
 ---
@@ -256,14 +256,14 @@ Previous sync selected Task 43 (Incident Runbooks) as lowest risk. However, Task
 **Atomic Tasks:**
 | # | Task | File | Effort |
 |---|------|------|--------|
-| 1 | Create ModelVersion model | `value-fabric/layer5-ground-truth/src/models/model_registry.py` | 4 hrs |
+| 1 | Create ModelVersion model | `services/layer5-ground-truth/src/models/model_registry.py` | 4 hrs |
 | 2 | Create ModelDeployment model | Same file | 2 hrs |
 | 3 | Create ModelEvaluation model | Same file | 2 hrs |
-| 4 | Add POST /v1/models endpoint | `value-fabric/layer5-ground-truth/src/api/routes/models.py` | 4 hrs |
+| 4 | Add POST /v1/models endpoint | `services/layer5-ground-truth/src/api/routes/models.py` | 4 hrs |
 | 5 | Add POST /v1/models/{id}/promote | Same file | 3 hrs |
 | 6 | Add GET /v1/models endpoints | Same file | 3 hrs |
-| 7 | Wire to L2 llm_client | `value-fabric/layer2-extraction/src/shared/llm_client.py` | 4 hrs |
-| 8 | Add tests | `value-fabric/layer5-ground-truth/tests/test_model_registry.py` | 4 hrs |
+| 7 | Wire to L2 llm_client | `services/layer2-extraction/src/shared/llm_client.py` | 4 hrs |
+| 8 | Add tests | `services/layer5-ground-truth/tests/test_model_registry.py` | 4 hrs |
 
 **Dependencies:** None (self-contained L5 feature)
 
@@ -289,9 +289,9 @@ Previous sync selected Task 43 (Incident Runbooks) as lowest risk. However, Task
 
 **Files to Create/Modify:**
 ```
-value-fabric/layer5-ground-truth/src/models/model_registry.py      [NEW]
-value-fabric/layer5-ground-truth/migrations/003_add_model_registry.py [NEW]
-value-fabric/layer5-ground-truth/src/models/__init__.py             [MODIFY]
+services/layer5-ground-truth/src/models/model_registry.py      [NEW]
+services/layer5-ground-truth/migrations/003_add_model_registry.py [NEW]
+services/layer5-ground-truth/src/models/__init__.py             [MODIFY]
 ```
 
 **Model Schema:**
@@ -330,7 +330,7 @@ class ModelEvaluation(Base):
 
 **Files to Create:**
 ```
-value-fabric/layer5-ground-truth/src/api/routes/models.py          [NEW]
+services/layer5-ground-truth/src/api/routes/models.py          [NEW]
 ```
 
 **Endpoints:**
@@ -347,7 +347,7 @@ value-fabric/layer5-ground-truth/src/api/routes/models.py          [NEW]
 
 **Files to Modify:**
 ```
-value-fabric/layer2-extraction/src/shared/llm_client.py            [MODIFY]
+services/layer2-extraction/src/shared/llm_client.py            [MODIFY]
 ```
 
 **Test Coverage:**

@@ -1,4 +1,6 @@
-# ADR-006: Repository Pattern for Data Access
+<!-- Migrated from services/ADRs/ during legacy path cleanup. -->
+
+# ADR-012: Repository Pattern for Data Access
 
 **Status:** Accepted  
 **Date:** April 2026  

@@ -3,6 +3,6 @@
 #    pip-compile pyproject.toml -o requirements.lock
 #
 # This file serves as a placeholder. Run the following to regenerate:
-#   cd value-fabric/layer4-agents
+#   cd services/layer4-agents
 #   pip install pip-tools
 #   pip-compile pyproject.toml -o requirements.lock --generate-hashes

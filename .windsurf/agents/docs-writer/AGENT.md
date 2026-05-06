@@ -24,7 +24,7 @@ Produce clear, accurate, and well-structured documentation for software systems,
 
 - Any source code outside `docs/` and `*.md` files
 - API keys, `.env`, secrets
-- `value-fabric/shared/identity/`
+- `packages/shared/src/value_fabric/shared/identity/`
 
 ## Context Requirements
 

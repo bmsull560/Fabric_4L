@@ -76,7 +76,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/value-fabric/layer1-ingestion"
+Homepage = "https://github.com/services/layer1-ingestion"
 Documentation = "https://docs.value-fabric.io/layer1"
 
 [tool.setuptools.packages.find]

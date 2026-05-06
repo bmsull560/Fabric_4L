@@ -1,8 +1,8 @@
 # Layer 2 Connect, Test, Debug Validation Report
 
-**Date:** 2026-04-30  
-**Status:** DISCOVERY & HARDENED PLAN EXECUTION  
-**Validated By:** AI Agent  
+**Date:** 2026-04-30
+**Status:** DISCOVERY & HARDENED PLAN EXECUTION
+**Validated By:** AI Agent
 
 ---
 
@@ -100,14 +100,14 @@ frontend      - Vite dev server (port 3001)
 # CORRECT - Confirmed from pyproject.toml and __init__.py
 uvicorn layer2_extraction.api.main:app
 
-# Working directory must be: value-fabric/layer2-extraction/src
+# Working directory must be: services/layer2-extraction/src
 # Or PYTHONPATH must include src/
 ```
 
 **Package Structure:**
 
 ```text
-value-fabric/layer2-extraction/
+services/layer2-extraction/
 ├── src/
 │   └── layer2_extraction/
 │       ├── __init__.py           # Package root
@@ -253,7 +253,7 @@ export RDF_OUTPUT_DIR="/tmp/rdf"
 
 ```bash
 # 1. Navigate to source
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 
 # 2. Activate virtual environment
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
@@ -280,7 +280,7 @@ curl -s http://localhost:8002/health | jq .
 **Test Configuration:**
 
 ```bash
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 
 # Unit tests only (no LLM calls)
 pytest tests/test_chunker.py -v
@@ -519,5 +519,5 @@ All assumptions have been verified against actual source code. The plan now refl
 
 ---
 
-*Report generated: 2026-04-30*  
+*Report generated: 2026-04-30*
 *Validation methodology: Source code inspection, no runtime assumptions*

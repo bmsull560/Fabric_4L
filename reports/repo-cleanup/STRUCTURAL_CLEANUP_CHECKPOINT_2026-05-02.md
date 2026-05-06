@@ -1,7 +1,7 @@
 # Structural Cleanup Checkpoint Report
 
-**Date:** 2026-05-02  
-**Commits:** Ready for commit (shared consolidation + layer migration)  
+**Date:** 2026-05-02
+**Commits:** Ready for commit (shared consolidation + layer migration)
 **Scope:** P0 secret freeze, P1 shared/ consolidation, P1 layer migration, junction removal
 
 ---
@@ -11,8 +11,8 @@
 Completed the three highest-priority cleanup items:
 
 1. **P0: Secret-bearing files frozen** — Created inventory report and updated remediation runbook. No secret contents were read or modified.
-2. **P1: shared/ consolidated** — Merged 107 files from `shared/` (root) and `value-fabric/shared/` into `packages/shared/src/value_fabric/shared/`. Updated 425 imports across 264 files. Removed old directories from git tracking.
-3. **P1: Layers migrated** — Moved all 6 backend layers from `value-fabric/` to `services/`. Removed all NTFS junctions.
+2. **P1: shared/ consolidated** — Merged 107 files from `shared/` (root) and `packages/shared/src/value_fabric/shared/` into `packages/shared/src/value_fabric/shared/`. Updated 425 imports across 264 files. Removed old directories from git tracking.
+3. **P1: Layers migrated** — Moved all 6 backend layers from `services/` to `services/`. Removed all NTFS junctions.
 
 ---
 
@@ -29,8 +29,8 @@ Completed the three highest-priority cleanup items:
 - `frontend/.env.production`
 - `frontend/.env.staging`
 - `frontend/.env.test`
-- `value-fabric/.env.staging`
-- `value-fabric/.env.test`
+- `.env.staging`
+- `.env.test`
 
 **Agent constraints observed:**
 - ✅ No `.env` file contents were read, printed, or modified
@@ -46,7 +46,7 @@ Completed the three highest-priority cleanup items:
 | Source | Files | Status |
 |--------|-------|--------|
 | `shared/` (root) | 57 | Removed from git |
-| `value-fabric/shared/` | 72 | Removed from git |
+| `packages/shared/src/value_fabric/shared/` | 72 | Removed from git |
 | `packages/shared/src/value_fabric/shared/` | 107 | New canonical location |
 
 ### Modules Merged
@@ -90,7 +90,7 @@ Completed the three highest-priority cleanup items:
 | `pytest --collect-only tests/shared/` | 0 collected (errors) | 130 collected, 0 errors | ✅ PASS |
 | `import value_fabric.shared` | resolved to junction | resolves to `packages/shared/src` | ✅ PASS |
 | `shared/` root directory | tracked (57 files) | removed from git | ✅ PASS |
-| `value-fabric/shared/` | tracked (72 files) | removed from git | ✅ PASS |
+| `packages/shared/src/value_fabric/shared/` | tracked (72 files) | removed from git | ✅ PASS |
 
 ---
 
@@ -100,12 +100,12 @@ Completed the three highest-priority cleanup items:
 
 | Layer | From | To |
 |-------|------|-----|
-| layer1-ingestion | `value-fabric/layer1-ingestion/` | `services/layer1-ingestion/` |
-| layer2-extraction | `value-fabric/layer2-extraction/` | `services/layer2-extraction/` |
-| layer3-knowledge | `value-fabric/layer3-knowledge/` | `services/layer3-knowledge/` |
-| layer4-agents | `value-fabric/layer4-agents/` | `services/layer4-agents/` |
-| layer5-ground-truth | `value-fabric/layer5-ground-truth/` | `services/layer5-ground-truth/` |
-| layer6-benchmarks | `value-fabric/layer6-benchmarks/` | `services/layer6-benchmarks/` |
+| layer1-ingestion | `services/layer1-ingestion/` | `services/layer1-ingestion/` |
+| layer2-extraction | `services/layer2-extraction/` | `services/layer2-extraction/` |
+| layer3-knowledge | `services/layer3-knowledge/` | `services/layer3-knowledge/` |
+| layer4-agents | `services/layer4-agents/` | `services/layer4-agents/` |
+| layer5-ground-truth | `services/layer5-ground-truth/` | `services/layer5-ground-truth/` |
+| layer6-benchmarks | `services/layer6-benchmarks/` | `services/layer6-benchmarks/` |
 
 ### Junctions Removed
 
@@ -157,6 +157,6 @@ Removed 7 NTFS junctions from `value_fabric/`:
 1078 files changed, 115435 insertions(+), 99327 deletions(-)
 ```
 
-**Deletions:** `shared/` (57 files), `value-fabric/shared/` (72 files), `value-fabric/layerX/` (6 layers)  
-**Additions:** `packages/shared/src/value_fabric/shared/` (107 files), `services/` (6 layers)  
+**Deletions:** `shared/` (57 files), `packages/shared/src/value_fabric/shared/` (72 files), `services/layerX/` (6 layers)
+**Additions:** `packages/shared/src/value_fabric/shared/` (107 files), `services/` (6 layers)
 **Modifications:** Import updates across 264 files, pytest.ini, conftest.py, sitecustomize.py

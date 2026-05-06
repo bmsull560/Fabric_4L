@@ -1,6 +1,6 @@
 # My Models — Production Readiness Report
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records a completed readiness assessment. For current status, see [ROADMAP.md](../../ROADMAP.md). See the [Archive Registry](../archive-registry.md).
 
 ## Executive Summary
@@ -13,7 +13,7 @@ The My Models feature has been brought to production readiness through the imple
 
 ### Backend API (Layer 3)
 
-**New Routes Created** (`value-fabric/layer3-knowledge/src/api/routes/models.py`):
+**New Routes Created** (`services/layer3-knowledge/src/api/routes/models.py`):
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -143,7 +143,7 @@ MyModels.tsx
 ### Responsive Design
 
 - ✅ 3-column grid on XL screens
-- ✅ 2-column grid on MD screens  
+- ✅ 2-column grid on MD screens
 - ✅ 1-column on mobile
 - ✅ Sidebar collapses (visual hierarchy preserved)
 
@@ -245,8 +245,8 @@ The My Models feature is **production-ready for MVP launch** with the following 
 ### Files Created/Modified
 
 **Backend**:
-- ✅ `value-fabric/layer3-knowledge/src/api/routes/models.py` (new, 330 lines)
-- ✅ `value-fabric/layer3-knowledge/src/api/main.py` (modified, +2 lines)
+- ✅ `services/layer3-knowledge/src/api/routes/models.py` (new, 330 lines)
+- ✅ `services/layer3-knowledge/src/api/main.py` (modified, +2 lines)
 
 **Frontend**:
 - ✅ `frontend/client/src/hooks/useModels.ts` (rewritten, 248 lines)
@@ -269,6 +269,6 @@ The My Models feature is **production-ready for MVP launch** with the following 
 
 ---
 
-**Report Date**: 2026-04-18  
-**Feature**: My Models  
+**Report Date**: 2026-04-18
+**Feature**: My Models
 **Status**: Production-ready for MVP (with auth caveat)

@@ -1,6 +1,6 @@
 # Test Quality Remediation Plan
 
-**Date**: 2026-04-19  
+**Date**: 2026-04-19
 **Status**: Audit Complete, Remediation in Progress
 
 ---
@@ -33,18 +33,18 @@ Add layer4-agents src to pythonpath:
 
 ```ini
 # pytest.ini
-pythonpath = 
-    value-fabric/layer1-ingestion/src
-    value-fabric/layer2-extraction/src
-    value-fabric/layer3-knowledge/src
-    value-fabric/layer4-agents/src  # <-- ADD THIS
-    value-fabric/layer5-ground-truth/src
-    value-fabric/layer6-benchmarks/src
+pythonpath =
+    services/layer1-ingestion/src
+    services/layer2-extraction/src
+    services/layer3-knowledge/src
+    services/layer4-agents/src  # <-- ADD THIS
+    services/layer5-ground-truth/src
+    services/layer6-benchmarks/src
     shared/
 ```
 
 #### Option B: Fix conftest.py Path Insertion
-Update `value-fabric/layer4-agents/tests/conftest.py`:
+Update `services/layer4-agents/tests/conftest.py`:
 
 ```python
 # Add before any imports
@@ -59,7 +59,7 @@ if str(_layer4_src) not in sys.path:
 
 #### Option C: Run from Layer4 Directory
 ```bash
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 pytest tests/test_checkpoint_resume.py
 ```
 
@@ -82,15 +82,15 @@ pytest tests/test_checkpoint_resume.py
 @pytest.fixture(scope="module")
 async def neo4j_driver(neo4j_container):
     driver = AsyncGraphDatabase.driver(...)
-    
+
     # Detect edition
     async with driver.session() as session:
         result = await session.run("CALL dbms.components() YIELD edition")
         record = await result.single()
         edition = record["edition"]
-    
+
     yield driver
-    
+
     # Skip enterprise-only tests on Community
     if edition == "community":
         pytest.skip("Enterprise-only test")
@@ -168,7 +168,7 @@ Separate `useGraphQuery.test.ts` into:
 ### Verify P0 Fix
 ```bash
 # From repo root
-pytest value-fabric/layer4-agents/tests/test_checkpoint_resume.py --collect-only
+pytest services/layer4-agents/tests/test_checkpoint_resume.py --collect-only
 
 # Should output: collected 12 items
 ```
@@ -176,7 +176,7 @@ pytest value-fabric/layer4-agents/tests/test_checkpoint_resume.py --collect-only
 ### Verify P1 Fixes
 ```bash
 # L3 e2e with Neo4j Community
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 pytest tests/test_e2e_pipeline.py -v --tb=short
 
 # Frontend hooks

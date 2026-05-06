@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: migrate
-          image: value-fabric/layer5-ground-truth:main
+          image: services/layer5-ground-truth:main
           imagePullPolicy: Always
           command: ["alembic", "upgrade", "head"]
           env:
@@ -51,7 +51,7 @@ spec:
       containers:
         # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: value-fabric/layer5-ground-truth:main
+          image: services/layer5-ground-truth:main
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

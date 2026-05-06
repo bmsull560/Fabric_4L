@@ -1,6 +1,6 @@
 # Execution Status Sync Report
-**Generated:** 2026-04-10 10:26 UTC  
-**Scope:** Tasks 25-31 (Production Evidence Gate)  
+**Generated:** 2026-04-10 10:26 UTC
+**Scope:** Tasks 25-31 (Production Evidence Gate)
 **Status:** Evidence-based roadmap validation complete
 
 ---
@@ -81,8 +81,8 @@ app.include_router(variables.router, prefix="/v1")
 
 ### Task 28: Workflow Control API Parity ✅
 **Files Verified:**
-- `value-fabric/layer4-agents/src/api/routes/workflows.py:406-470` - `POST /workflows/{id}/pause` implemented
-- `value-fabric/layer4-agents/tests/test_workflow_controls.py` - 11 tests, all passing
+- `services/layer4-agents/src/api/routes/workflows.py:406-470` - `POST /workflows/{id}/pause` implemented
+- `services/layer4-agents/tests/test_workflow_controls.py` - 11 tests, all passing
 
 **Test Results:**
 ```
@@ -118,9 +118,9 @@ pytest tests/test_checkpoint_resume.py -v
 
 ### Task 25: Vector Index E2E Verification 🔄
 **Files Exist:**
-- `value-fabric/layer3-knowledge/src/schema/initializer.py` - schema initialization
-- `value-fabric/layer3-knowledge/src/schema/constraints.py` - Community-safe constraints
-- `value-fabric/layer3-knowledge/src/retrieval/vector_store.py` - vector operations
+- `services/layer3-knowledge/src/schema/initializer.py` - schema initialization
+- `services/layer3-knowledge/src/schema/constraints.py` - Community-safe constraints
+- `services/layer3-knowledge/src/retrieval/vector_store.py` - vector operations
 
 **E2E Test Results:**
 ```
@@ -201,7 +201,7 @@ fetchGraph: async (rootEntityId) => {
 ## Selected Execution Slice (Next 1-3 Days)
 
 ### ✅ COMPLETED: Task 26 - Cross-Layer Production Smoke Gate (2 days → 0 days)
-**Status:** IMPLEMENTED AND TESTED 2026-04-10  
+**Status:** IMPLEMENTED AND TESTED 2026-04-10
 **Evidence:** `python scripts/smoke/production_smoke.py --help` returns valid usage. JSON report generated successfully.
 
 ### Primary: Task 25 - Vector Index E2E Verification (1 day)

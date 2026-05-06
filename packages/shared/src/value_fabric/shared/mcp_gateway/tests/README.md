@@ -55,7 +55,7 @@ tests/
 
 ### Unit Tests (Fast, no dependencies)
 ```bash
-cd value-fabric/shared/mcp_gateway
+cd packages/shared/src/value_fabric/shared/mcp_gateway
 pytest tests/unit -v
 ```
 
@@ -178,7 +178,7 @@ async def test_tool_registry_enables_for_tenant(sample_tool_registry):
     """Tool can be enabled for specific tenant."""
     registry = sample_tool_registry
     registry.enable_tool_for_tenant("test_search", "tenant-123")
-    
+
     tool = registry.get_tool("test_search", "tenant-123")
     assert tool is not None
 ```
@@ -190,10 +190,10 @@ async def test_tools_list_returns_schema(upstream_server):
     """C-101: tools/list returns properly structured tools."""
     client = MockMCPClient()
     client.set_request_handler(lambda r: upstream_server.handle_request(r))
-    
+
     await client.send_initialize()
     response = await client.send_tools_list()
-    
+
     assert "tools" in response.result
     for tool in response.result["tools"]:
         assert "name" in tool

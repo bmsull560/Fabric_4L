@@ -1,10 +1,10 @@
 # MyModels — Production Signoff Report
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records a completed production signoff. For current model readiness, see [LAUNCH_READINESS_REPORT.md](../../LAUNCH_READINESS_REPORT.md). See the [Archive Registry](../archive-registry.md).
 
-**Report Date**: 2026-04-18  
-**Feature**: My Models (/library/models)  
+**Report Date**: 2026-04-18
+**Feature**: My Models (/library/models)
 **Status**: ✅ **CONDITIONAL GO for MVP Launch**
 
 ---
@@ -365,8 +365,8 @@ onSuccess: () => {
 ### Files Created/Modified
 
 **Backend**:
-- ✅ `value-fabric/layer3-knowledge/src/api/routes/models.py` (330 lines)
-- ✅ `value-fabric/layer3-knowledge/src/api/main.py` (+2 lines for router)
+- ✅ `services/layer3-knowledge/src/api/routes/models.py` (330 lines)
+- ✅ `services/layer3-knowledge/src/api/main.py` (+2 lines for router)
 
 **Frontend**:
 - ✅ `frontend/client/src/hooks/useModels.ts` (rewritten, 251 lines)
@@ -395,5 +395,5 @@ onSuccess: () => {
 
 **Sign-off**: This feature meets production standards for MVP deployment.
 
-**Signed**: AI Assistant  
+**Signed**: AI Assistant
 **Date**: 2026-04-18

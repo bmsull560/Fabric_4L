@@ -10,7 +10,7 @@ cd tests/security
 cp .env.example .env
 
 # 2. Start infrastructure services
-docker-compose -f ../../value-fabric/docker-compose.yml up postgres redis neo4j -d
+docker-compose -f ../../docker-compose.full.yml up postgres redis neo4j -d
 
 # 3. Run smoke tests (fast)
 pytest test_security_smoke.py -v

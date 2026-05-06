@@ -114,7 +114,7 @@ Generate, update, and validate professional technical documentation from source 
 ## Example Uses
 
 ```
-Create API reference for Layer 5 Ground Truth endpoints from value-fabric/layer5-ground-truth/src/api/router.py
+Create API reference for Layer 5 Ground Truth endpoints from services/layer5-ground-truth/src/api/router.py
 Update README for layer2-extraction with new env vars from .env.example
 Generate ADR for Neo4j migration in docs/architecture/decisions/
 Create runbook for database failover from src/operations/recovery.py

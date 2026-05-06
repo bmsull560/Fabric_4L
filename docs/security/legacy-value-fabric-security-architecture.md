@@ -1,3 +1,5 @@
+<!-- Migrated from docs/security/legacy-value-fabric-security-architecture.md during legacy path cleanup. -->
+
 # Value Fabric — Security Architecture & Threat Model
 
 **Version:** 2.0  

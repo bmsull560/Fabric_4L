@@ -2,7 +2,7 @@
 
 ## Scope
 
-Assessed `value-fabric/shared/mcp_gateway/` and directly related test coverage to evaluate:
+Assessed `packages/shared/src/value_fabric/shared/mcp_gateway/` and directly related test coverage to evaluate:
 
 - secure implementation quality,
 - hardening level for production use,

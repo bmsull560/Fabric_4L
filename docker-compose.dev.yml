@@ -34,7 +34,7 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - dev-postgres-data:/var/lib/postgresql/data
-      - ./value-fabric/scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - ./scripts/db/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
       - ./k8s/base/postgresql.conf:/etc/postgresql/postgresql.conf:ro
     ports:
       - "5432:5432"

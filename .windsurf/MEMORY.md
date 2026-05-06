@@ -36,7 +36,7 @@ Stored in `memory/working/session-<thread_id>.json`:
   },
   "active_rules": ["hard-constraints.yaml#no-raw-sql", "safety-rules.yaml#auth-middleware"],
   "files_in_context": [
-    {"path": "value-fabric/layer4-agents/src/tools/query_graph.py", "reason": "primary_target", "token_count": 1200}
+    {"path": "services/layer4-agents/src/tools/query_graph.py", "reason": "primary_target", "token_count": 1200}
   ],
   "retrieved_memories": [
     {"type": "semantic", "rule_id": "auto-generated-0042", "relevance": 0.94}
@@ -68,7 +68,7 @@ When approaching token limit:
   "agent_id": "test-assurance-001",
   "task_hash": "sha256(task_desc + target_files)",
   "task_description": "Add adversarial tests for query_graph tool",
-  "target_files": ["value-fabric/layer4-agents/src/tools/query_graph.py"],
+  "target_files": ["services/layer4-agents/src/tools/query_graph.py"],
   "started_at": "2026-04-28T16:00:00Z",
   "completed_at": "2026-04-28T16:15:00Z",
   "outcome": "success",
@@ -117,7 +117,7 @@ created_at: 2026-04-28
 derived_from: ["episode-uuid-1", "episode-uuid-2"]
 confidence: 0.92
 applies_to:
-  - "value-fabric/layer4-agents/src/tools/*.py"
+  - "services/layer4-agents/src/tools/*.py"
   - "tests/evals/skills/test_*.py"
 tags: ["testing", "neo4j", "mocking"]
 ---

@@ -7,7 +7,7 @@ Generated: 2026-05-04 (Autonomous Test Assurance Agent - Phase 2)
 ### Tenant Isolation
 - **Rule**: No cross-tenant reads or writes across API, persistence, graph, search, agent, export, and audit surfaces
 - **Enforcement**: PostgreSQL RLS policies with `SET LOCAL app.tenant_id`, RequestContext tenant context, fail-safe validation
-- **Code Path**: 
+- **Code Path**:
   - `services/layer4-agents/src/database.py` - validate_tenant_id(), set_tenant_context(), get_db_from_context()
   - `services/layer5-ground-truth/src/layer5_ground_truth/database.py` - validate_tenant_id(), get_db_from_context()
   - `packages/shared/src/value_fabric/shared/identity/context.py` - RequestContext with immutable tenant_id
@@ -21,7 +21,7 @@ Generated: 2026-05-04 (Autonomous Test Assurance Agent - Phase 2)
 ### Authentication
 - **Rule**: No unauthenticated access to protected resources
 - **Enforcement**: GovernanceMiddleware with JWT verification, X-API-Key HMAC verification, X-Tenant-ID header fallback
-- **Code Path**: 
+- **Code Path**:
   - `packages/shared/src/value_fabric/shared/identity/middleware.py` - GovernanceMiddleware resolution order
   - `services/layer5-ground-truth/src/layer5_ground_truth/api/auth.py` - get_current_user() dependency
   - JWT decoded with JWT_SECRET, verifies exp claim, HMAC-SHA256 signature
@@ -59,8 +59,8 @@ Generated: 2026-05-04 (Autonomous Test Assurance Agent - Phase 2)
 - **Rule**: No secrets exposed in logs, errors, responses, bundles, or LLM prompts
 - **Enforcement**: Secret redaction in LLM safety guards, K8s secretKeyRef for credentials, Infisical integration
 - **Code Path**:
-  - `value-fabric/tests/security/test_week4_llm_safety.py` - password/API key redaction
-  - `value-fabric/tests/security/test_week2_credential_hardening.py` - secretKeyRef validation
+  - `tests/security/test_week4_llm_safety.py` - password/API key redaction
+  - `tests/security/test_week2_credential_hardening.py` - secretKeyRef validation
   - `services/layer6-benchmarks/src/api/main.py` - load_infisical_secrets()
   - MIN_SERVICE_SECRET_LENGTH = 32 for X-Service-Auth header
 - **Failure Mode**: Secret redaction before logging or LLM inclusion

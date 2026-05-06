@@ -29,7 +29,7 @@ Created minimal working Alertmanager configuration with:
 - Placeholder receiver (ready for PagerDuty/Slack integration)
 
 ### 3. Docker Compose Monitoring Stack
-**File:** `value-fabric/docker-compose.yml`
+**File:** `docker-compose.full.yml`
 
 Added three new services:
 - **prometheus** (v2.54.1): Scrapes all layer metrics
@@ -109,7 +109,7 @@ Bash script for manual runtime validation including:
 |------|--------|---------|
 | `monitoring/prometheus/prometheus.yml` | Modified | Fixed scrape target hostnames |
 | `monitoring/alerting/alertmanager.yml` | Created | Alertmanager configuration |
-| `value-fabric/docker-compose.yml` | Modified | Added prometheus, alertmanager, grafana services |
+| `docker-compose.full.yml` | Modified | Added prometheus, alertmanager, grafana services |
 | `k8s/monitoring-alertmanager.yml` | Created | K8s Alertmanager manifest |
 | `k8s/monitoring-prometheus.yml` | Created | K8s Prometheus manifest |
 | `k8s/README.md` | Modified | Added monitoring deployment & verification docs |

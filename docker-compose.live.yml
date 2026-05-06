@@ -28,7 +28,7 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - live-postgres-data:/var/lib/postgresql/data
-      - ./value-fabric/scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - ./scripts/db/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
     networks:
       - live-network
     healthcheck:

@@ -7,7 +7,7 @@ Auditor: Cascade / Test Quality Remediation Workflow
 
 Total Test Files Audited: 25 (representative sample)
 - **Excellent (30-35)**: 4 files
-- **Good (25-29)**: 12 files  
+- **Good (25-29)**: 12 files
 - **Fair (20-24)**: 6 files
 - **Poor (<20)**: 3 files
 
@@ -20,7 +20,7 @@ Total Test Files Audited: 25 (representative sample)
 ## Per-File Assessments
 
 ### Layer 1 - test_adapters.py
-**Path**: `value-fabric/layer1-ingestion/tests/unit/test_adapters.py`
+**Path**: `services/layer1-ingestion/tests/unit/test_adapters.py`
 
 | Principle | Score | Evidence |
 |-----------|-------|----------|
@@ -150,7 +150,7 @@ Total Test Files Audited: 25 (representative sample)
 ---
 
 ### Layer 3 - value_packs.py (refined)
-**Path**: `value-fabric/layer3-knowledge/src/api/routes/value_packs.py`
+**Path**: `services/layer3-knowledge/src/api/routes/value_packs.py`
 
 **Note**: This is production code, but let me check if there are corresponding tests...
 

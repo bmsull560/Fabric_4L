@@ -23,7 +23,7 @@ Embedding magnitude: 1.0000 (should be ~1.0)
 ```
 
 ### 3. Test File Exists ✅
-- **Location:** `value-fabric/layer3-knowledge/tests/test_vector_e2e.py`
+- **Location:** `services/layer3-knowledge/tests/test_vector_e2e.py`
 - **Size:** 427 lines
 - **Test Classes:** 5
   - `TestVectorIndexCreation` - Verifies vector indexes created by schema initializer
@@ -33,7 +33,7 @@ Embedding magnitude: 1.0000 (should be ~1.0)
   - `TestVectorE2EComplete` - Complete end-to-end pipeline test
 
 ### 4. Vector Indexes Configured ✅
-- **File:** `value-fabric/layer3-knowledge/src/schema/constraints.py` (lines 267-271)
+- **File:** `services/layer3-knowledge/src/schema/constraints.py` (lines 267-271)
 - **Configured Indexes:**
   - `capability_embedding_idx` on Capability.embedding
   - `usecase_embedding_idx` on UseCase.embedding
@@ -43,7 +43,7 @@ Embedding magnitude: 1.0000 (should be ~1.0)
 - **Similarity:** Cosine
 
 ### 5. Embedding Wired in Loader ✅
-- **File:** `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py`
+- **File:** `services/layer3-knowledge/src/ingestion/neo4j_loader.py`
 - **Methods:**
   - `_get_embedding_model()` - Lazy loads sentence-transformers model (lines 247-259)
   - `_build_embedding_text()` - Builds text from entity fields (lines 261-270)
@@ -52,7 +52,7 @@ Embedding magnitude: 1.0000 (should be ~1.0)
 - **Vector Entity Types:** Capability, UseCase, Persona, ValueDriver (line 35)
 
 ### 6. Schema Initializer Supports Vector Indexes ✅
-- **File:** `value-fabric/layer3-knowledge/src/schema/initializer.py`
+- **File:** `services/layer3-knowledge/src/schema/initializer.py`
 - **Method:** `_build_vector_index_cypher()` (lines 119-136)
 - **Dynamic dimension:** Uses settings.embedding_dimension (default 384)
 
@@ -62,7 +62,7 @@ Embedding magnitude: 1.0000 (should be ~1.0)
 
 **When Docker is available, run:**
 ```bash
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 python -m pytest tests/test_vector_e2e.py -v --tb=short
 # Expected: 5 test classes, ~10 test cases pass
 ```

@@ -8,7 +8,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 # Add paths so imports match Docker layout:
-# - shared.* -> services/shared
+# - shared.* -> packages/shared/src/value_fabric/shared
 # - src.*    -> layer1-ingestion/src (when layer1-ingestion is on path)
 layer1_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 value_fabric_root = os.path.abspath(os.path.join(layer1_root, '..'))
@@ -22,11 +22,11 @@ if src_path in sys.path:
 if layer1_root not in sys.path:
     sys.path.insert(0, layer1_root)
 
-# Add services root so 'shared' resolves correctly
+# Add value-fabric root so 'shared' resolves correctly
 if value_fabric_root not in sys.path:
     sys.path.insert(0, value_fabric_root)
 
-# Import models (use src.* to avoid shadowing services/shared)
+# Import models (use src.* to avoid shadowing packages/shared/src/value_fabric/shared)
 from src.shared.config import settings
 from src.shared.models import Base
 

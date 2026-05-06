@@ -1,8 +1,8 @@
 # Refinement Summary: relationships.py
 
-**Date**: 2026-04-13  
-**Workflow**: /refinement  
-**Target**: `value-fabric/layer2-extraction/src/layer2_extraction/models/relationships.py`  
+**Date**: 2026-04-13
+**Workflow**: /refinement
+**Target**: `services/layer2-extraction/src/layer2_extraction/models/relationships.py`
 **Status**: COMPLETE
 
 ---
@@ -91,7 +91,7 @@ def get_inverse(self) -> "Relationship | None":
 ## Test Results
 
 ```bash
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 pytest tests/test_extraction.py tests/test_ontology_alignment.py -v
 ```
 

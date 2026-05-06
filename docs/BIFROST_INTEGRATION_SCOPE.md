@@ -16,14 +16,14 @@ Maxim AI's Bifrost acts as a unified AI model gateway, providing a single API en
 
 ## 3. Fabric_4L Current State Analysis
 
-Fabric_4L currently utilizes a custom `LLMClient` in `/home/ubuntu/Fabric_4L/value-fabric/layer2-extraction/src/layer2_extraction/shared/llm_client.py` that directly integrates with OpenAI and Anthropic SDKs [5]. This client handles:
+Fabric_4L currently utilizes a custom `LLMClient` in `/home/ubuntu/Fabric_4L/services/layer2-extraction/src/layer2_extraction/shared/llm_client.py` that directly integrates with OpenAI and Anthropic SDKs [5]. This client handles:
 
 *   Provider-agnostic interface for LLM calls.
 *   Automatic cost tracking and token counting.
 *   Retry logic for API errors.
 *   Optional model resolution from the Layer 4 model registry.
 
-Layer 4 (`/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/main.py`) includes OpenTelemetry tracing for distributed observability, using an OTLP HTTP exporter [6]. Layer 5 (`/home/ubuntu/Fabric_4L/value-fabric/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py`) maintains a robust model registry for governance, tracking model versions, deployments, capabilities, cost, and evaluation results [7].
+Layer 4 (`/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/main.py`) includes OpenTelemetry tracing for distributed observability, using an OTLP HTTP exporter [6]. Layer 5 (`/home/ubuntu/Fabric_4L/services/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py`) maintains a robust model registry for governance, tracking model versions, deployments, capabilities, cost, and evaluation results [7].
 
 ## 4. Proposed Integration Architecture and Data Flow
 
@@ -61,7 +61,7 @@ Integrating Maxim AI's Bifrost offers several significant advantages for Fabric_
 ### Phase 1: Bifrost Deployment & Basic Integration (2-4 weeks + 1 week buffer)
 
 *   **Task 1.1**: Deploy Bifrost as a dedicated microservice within the Fabric_4L infrastructure (e.g., Kubernetes deployment). Configure it to proxy requests to existing OpenAI and Anthropic endpoints.
-*   **Task 1.2**: Modify `LLMClient` in Layer 2 (`/home/ubuntu/Fabric_4L/value-fabric/layer2-extraction/src/layer2_extraction/shared/llm_client.py`) to route all LLM requests through the Bifrost gateway, controlled by a feature flag (`USE_BIFROST_GATEWAY`) [5]. Document specific extraction prompts that may produce different outputs with provider switching.
+*   **Task 1.2**: Modify `LLMClient` in Layer 2 (`/home/ubuntu/Fabric_4L/services/layer2-extraction/src/layer2_extraction/shared/llm_client.py`) to route all LLM requests through the Bifrost gateway, controlled by a feature flag (`USE_BIFROST_GATEWAY`) [5]. Document specific extraction prompts that may produce different outputs with provider switching.
 *   **Task 1.3**: Enable the Maxim plugin in Bifrost's configuration to forward observability data to the Maxim AI platform [3].
 *   **Task 1.4**: Verify basic LLM functionality and ensure requests are correctly logged and traced in the Maxim AI dashboard. Run `make evals` on extraction golden-traces after `LLMClient` changes.
 *   **Task 1.5 (Buffer)**: Dedicated 1-week buffer for golden-trace regression testing and `make verify && make evals` gate.
@@ -90,6 +90,6 @@ Integrating Maxim AI's Bifrost into Fabric_4L represents a strategic enhancement
 [2] Enterprise-Grade Full-Stack SaaS Development for Agentic B2B GTM Systems (Knowledge)
 [3] [Maxim AI - Bifrost Observability](https://docs.getbifrost.ai/features/observability/maxim)
 [4] [Understanding Agentic RAG, Choosing the Right tool for ...](https://www.getmaxim.ai/articles/agentic-rag-and-best-tool-for-rag-observability/)
-[5] `/home/ubuntu/Fabric_4L/value-fabric/layer2-extraction/src/layer2_extraction/shared/llm_client.py`
-[6] `/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/main.py`
-[7] `/home/ubuntu/Fabric_4L/value-fabric/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py`
+[5] `/home/ubuntu/Fabric_4L/services/layer2-extraction/src/layer2_extraction/shared/llm_client.py`
+[6] `/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/main.py`
+[7] `/home/ubuntu/Fabric_4L/services/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py`

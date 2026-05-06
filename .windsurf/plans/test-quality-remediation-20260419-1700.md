@@ -5,7 +5,7 @@
 ### Repository Structure
 ```
 Fabric_4L/
-├── value-fabric/           # Backend (6 layers)
+├── services/           # Backend (6 layers)
 │   ├── layer1-ingestion/   # 15 test files
 │   ├── layer2-extraction/  # 9 test files
 │   ├── layer3-knowledge/   # 21 test files
@@ -113,7 +113,7 @@ Fabric_4L/
 
 ### Target 1: L4 Import Error (P0)
 
-**File**: `value-fabric/layer4-agents/tests/unit/test_workflow_state_machine.py`
+**File**: `services/layer4-agents/tests/unit/test_workflow_state_machine.py`
 
 **Issue**: Import error - module path incorrect
 

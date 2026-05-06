@@ -1,7 +1,7 @@
 # Tracked Secret-Bearing Files Report
 
-**Generated:** 2026-05-02  
-**Constraint:** No file contents were read, printed, or modified.  
+**Generated:** 2026-05-02
+**Constraint:** No file contents were read, printed, or modified.
 **Purpose:** Inventory tracked non-example `.env` files for human credential rotation.
 
 ---
@@ -32,8 +32,8 @@
 | `frontend/.env.production` | Yes | No | CRITICAL | Rotate any credentials, replace with `.env.production.example`, purge history |
 | `frontend/.env.staging` | Yes | No | CRITICAL | Rotate any credentials, replace with `.env.staging.example`, purge history |
 | `frontend/.env.test` | Yes | No | CRITICAL | Rotate any credentials, replace with `.env.test.example`, purge history |
-| `value-fabric/.env.staging` | Yes | No | CRITICAL | Rotate any credentials, replace with `.env.staging.example`, purge history |
-| `value-fabric/.env.test` | Yes | No | CRITICAL | Rotate any credentials, replace with `.env.test.example`, purge history |
+| `.env.staging` | Yes | No | CRITICAL | Rotate any credentials, replace with `.env.staging.example`, purge history |
+| `.env.test` | Yes | No | CRITICAL | Rotate any credentials, replace with `.env.test.example`, purge history |
 
 ## Example Template `.env` Files (LOW)
 
@@ -44,8 +44,8 @@
 | `frontend/.env.example` | Yes | No | LOW | Verify only placeholders. No action required. |
 | `frontend/client/.env.example` | Yes | No | LOW | Verify only placeholders. No action required. |
 | `tests/security/.env.example` | Yes | No | LOW | Verify only placeholders. No action required. |
-| `value-fabric/.env.example` | Yes | No | LOW | Verify only placeholders. No action required. |
-| `value-fabric/.env.production.example` | Yes | No | LOW | Verify only placeholders. No action required. |
+| `.env.example` | Yes | No | LOW | Verify only placeholders. No action required. |
+| `.env.production.example` | Yes | No | LOW | Verify only placeholders. No action required. |
 
 ---
 

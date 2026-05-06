@@ -24,7 +24,7 @@ This workflow guides systematic test quality improvement across the Value Fabric
 ### 1.1 Identify Repository Structure
 ```bash
 # Check for monorepo structure
-ls -la value-fabric/
+ls -la services/
 ls -la frontend/
 ```
 
@@ -53,14 +53,14 @@ find frontend -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.ts"
 ls -la .github/workflows/
 
 # Check for Makefile, justfile, scripts
-ls -la value-fabric/scripts/
+ls -la scripts/
 cat package.json | grep -A10 '"scripts"'
 ```
 
 ### 1.5 Document Coverage Tools
 ```bash
 # Check for coverage configuration
-grep -r "pytest-cov\|coverage" value-fabric/*/pyproject.toml
+grep -r "pytest-cov\|coverage" services/*/pyproject.toml
 grep -r "coverage\|istanbul" frontend/package.json
 ```
 
@@ -108,7 +108,7 @@ For each test file, assess:
 
 ### Issues Found
 - **P0**: Critical issues
-- **P1**: Material issues  
+- **P1**: Material issues
 - **P2**: Improvement opportunities
 
 ### Recommended Action
@@ -298,7 +298,7 @@ def test_timeout(self, mock_time):
 
 ```bash
 # Single file
-cd value-fabric/layer5-ground-truth
+cd services/layer5-ground-truth
 pytest tests/test_state_machine.py -v
 
 # Run 5x to verify determinism
@@ -309,25 +309,25 @@ for i in {1..5}; do pytest tests/test_state_machine.py -q; done
 
 ```bash
 # Layer 5
-cd value-fabric/layer5-ground-truth && pytest -v
+cd services/layer5-ground-truth && pytest -v
 
 # Layer 3
-cd value-fabric/layer3-knowledge && pytest -v
+cd services/layer3-knowledge && pytest -v
 
 # Layer 1
-cd value-fabric/layer1-ingestion && pytest -v
+cd services/layer1-ingestion && pytest -v
 ```
 
 ### 5.3 Run Full Suite
 
 ```bash
 # If there's a root-level test runner
-pytest value-fabric/
+pytest services/
 
 # Or per-layer combined
 for layer in layer{1..5}-*; do
   echo "=== Testing $layer ==="
-  (cd "value-fabric/$layer" && pytest -q)
+  (cd "services/$layer" && pytest -q)
 done
 ```
 
@@ -482,16 +482,16 @@ Before completing remediation:
 ### Running Tests by Layer
 ```bash
 # Layer 5 (Ground Truth)
-cd value-fabric/layer5-ground-truth && pytest -v --tb=short
+cd services/layer5-ground-truth && pytest -v --tb=short
 
 # Layer 3 (Knowledge)
-cd value-fabric/layer3-knowledge && pytest -v --tb=short
+cd services/layer3-knowledge && pytest -v --tb=short
 
 # Layer 1 (Ingestion)
-cd value-fabric/layer1-ingestion && pytest tests/unit -v --tb=short
+cd services/layer1-ingestion && pytest tests/unit -v --tb=short
 
 # Layer 2 (Extraction)
-cd value-fabric/layer2-extraction && pytest -v --tb=short
+cd services/layer2-extraction && pytest -v --tb=short
 
 # Frontend (Vitest)
 cd frontend && pnpm test

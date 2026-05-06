@@ -40,7 +40,7 @@ For each backend layer, verify the frontend prefix matches the backend router's 
 
 **How to check backend prefix:**
 ```bash
-grep -rn "prefix=" value-fabric/ --include="*.py" | grep "APIRouter\|include_router"
+grep -rn "prefix=" services/ --include="*.py" | grep "APIRouter\|include_router"
 ```
 
 A `/v1` discrepancy means every API call from that layer will 404 in production.

@@ -90,12 +90,12 @@ If step N fails:
 ## 4. Task Breakdown
 
 ### Task 2.1: Infisical API Client
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P0
 
 Create service to interact with Infisical API for tenant secrets.
 
-**New File:** `value-fabric/shared/secrets/infisical_client.py`
+**New File:** `packages/shared/src/value_fabric/shared/secrets/infisical_client.py`
 
 ```python
 """Infisical API client for tenant secret management."""
@@ -110,7 +110,7 @@ class InfisicalConfig(BaseModel):
     api_url: str = "https://app.infisical.com"
     service_token: str
     workspace_id: str
-    
+
     @classmethod
     def from_env(cls) -> "InfisicalConfig":
         return cls(
@@ -121,7 +121,7 @@ class InfisicalConfig(BaseModel):
 
 class InfisicalClient:
     """Client for Infisical API operations."""
-    
+
     def __init__(self, config: InfisicalConfig | None = None) -> None:
         self.config = config or InfisicalConfig.from_env()
         self._client = httpx.AsyncClient(
@@ -129,7 +129,7 @@ class InfisicalClient:
             headers={"Authorization": f"Bearer {self.config.service_token}"},
             timeout=30.0,
         )
-    
+
     async def create_folder(
         self,
         environment: str,
@@ -145,7 +145,7 @@ class InfisicalClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     async def create_secret(
         self,
         environment: str,
@@ -165,7 +165,7 @@ class InfisicalClient:
         )
         response.raise_for_status()
         return response.json()
-    
+
     async def delete_folder(
         self,
         environment: str,
@@ -185,12 +185,12 @@ class InfisicalClient:
 ---
 
 ### Task 2.2: Tenant Secrets Service
-**Estimated Effort:** 4 hours  
+**Estimated Effort:** 4 hours
 **Priority:** P0
 
 Create high-level service for tenant secret operations.
 
-**New File:** `value-fabric/shared/secrets/tenant_secrets.py`
+**New File:** `packages/shared/src/value_fabric/shared/secrets/tenant_secrets.py`
 
 ```python
 """Tenant-scoped secrets management service."""
@@ -217,46 +217,46 @@ DEFAULT_SECRETS = {
 
 class TenantSecretsService:
     """Manages secrets provisioning for tenants."""
-    
+
     def __init__(self, client: InfisicalClient | None = None) -> None:
         self.client = client or InfisicalClient()
-    
+
     async def provision_tenant_secrets(
         self,
         tenant_slug: str,
         environments: list[str] | None = None,
     ) -> dict[str, Any]:
         """Create secret paths and seed defaults for a tenant.
-        
+
         Args:
             tenant_slug: URL-safe tenant identifier
             environments: List of environments to provision (default: all)
-            
+
         Returns:
             Provisioning results per environment
         """
         envs = environments or ["dev", "test", "staging", "prod"]
         results = {}
-        
+
         for env in envs:
             # Create folder path: /tenants/{tenant_slug}
             folder_path = f"/tenants/{tenant_slug}"
             folder = await self.client.create_folder(env, folder_path)
-            
+
             # Seed default secrets
             secrets = DEFAULT_SECRETS.get(env, {})
             created_secrets = []
             for key, value in secrets.items():
                 secret = await self.client.create_secret(env, folder_path, key, value)
                 created_secrets.append(secret)
-            
+
             results[env] = {
                 "folder": folder,
                 "secrets": created_secrets,
             }
-        
+
         return results
-    
+
     async def rollback_tenant_secrets(
         self,
         tenant_slug: str,
@@ -264,7 +264,7 @@ class TenantSecretsService:
     ) -> None:
         """Delete tenant secret paths (for rollback)."""
         envs = environments or ["dev", "test", "staging", "prod"]
-        
+
         for env in envs:
             try:
                 await self.client.delete_folder(env, f"/tenants/{tenant_slug}")
@@ -276,12 +276,12 @@ class TenantSecretsService:
 ---
 
 ### Task 2.3: Provisioning Workflow Implementation
-**Estimated Effort:** 8 hours  
+**Estimated Effort:** 8 hours
 **Priority:** P0
 
 Implement the full provisioning orchestration.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/provisioning.py`
+**Modified File:** `services/layer4-agents/src/tenants/provisioning.py`
 
 ```python
 """Tenant provisioning workflow implementation."""
@@ -322,7 +322,7 @@ class ProvisioningState:
     completed_steps: list[ProvisioningStep] = field(default_factory=list)
     error: str | None = None
     retryable: bool = True
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "tenant_id": str(self.tenant_id),
@@ -335,7 +335,7 @@ class ProvisioningState:
 
 class TenantProvisioningService:
     """Orchestrates tenant provisioning workflow."""
-    
+
     def __init__(
         self,
         db_session: AsyncSession,
@@ -344,24 +344,24 @@ class TenantProvisioningService:
         self.db = db_session
         self.secrets = secrets_service or TenantSecretsService()
         self.tenant_service = TenantService(db_session)
-    
+
     async def provision_tenant(
         self,
         tenant_id: UUID,
         actor_id: UUID | None = None,
     ) -> ProvisioningState:
         """Execute full provisioning workflow for a tenant.
-        
+
         Steps:
         1. Verify tenant in PENDING status
         2. Create Infisical secret paths
         3. Seed default secrets
         4. Update tenant status to ACTIVE
-        
+
         Args:
             tenant_id: UUID of tenant to provision
             actor_id: User/system that triggered provisioning (for audit)
-            
+
         Returns:
             Final provisioning state
         """
@@ -369,53 +369,53 @@ class TenantProvisioningService:
             tenant_id=tenant_id,
             status=ProvisioningStatus.IN_PROGRESS,
         )
-        
+
         try:
             # Step 1: Verify tenant record
             state.current_step = ProvisioningStep.CREATE_RECORD
             tenant = await self.tenant_service.get_tenant(tenant_id)
-            
+
             if tenant.status != TenantStatus.PENDING.value:
                 raise ValueError(f"Tenant not in PENDING status: {tenant.status}")
-            
+
             state.completed_steps.append(ProvisioningStep.CREATE_RECORD)
             await self._emit_step_audit(state, actor_id)
-            
+
             # Step 2: Create Infisical paths
             state.current_step = ProvisioningStep.CREATE_INFISICAL
             await self.secrets.provision_tenant_secrets(tenant.slug)
             state.completed_steps.append(ProvisioningStep.CREATE_INFISICAL)
             await self._emit_step_audit(state, actor_id)
-            
+
             # Step 3: Update tenant status to ACTIVE
             state.current_step = ProvisioningStep.UPDATE_STATUS
             tenant.transition_to(TenantStatus.ACTIVE.value, "Provisioning completed")
             await self.db.commit()
             state.completed_steps.append(ProvisioningStep.UPDATE_STATUS)
             await self._emit_step_audit(state, actor_id)
-            
+
             # Mark complete
             state.status = ProvisioningStatus.COMPLETED
             state.current_step = None
             state.retryable = False
-            
+
             logger.info(f"Tenant {tenant_id} provisioned successfully")
-            
+
         except Exception as e:
             state.status = ProvisioningStatus.FAILED
             state.error = str(e)
             logger.error(f"Tenant {tenant_id} provisioning failed: {e}")
-            
+
             await self._emit_failure_audit(state, actor_id)
-            
+
             # Don't rollback here — allow manual retry
-        
+
         return state
-    
+
     async def get_provisioning_status(self, tenant_id: UUID) -> ProvisioningState:
         """Get current provisioning status for a tenant."""
         tenant = await self.tenant_service.get_tenant(tenant_id)
-        
+
         # Derive state from tenant status
         if tenant.status == TenantStatus.ACTIVE.value:
             return ProvisioningState(
@@ -437,20 +437,20 @@ class TenantProvisioningService:
                 error=f"Tenant status: {tenant.status}",
                 retryable=True,
             )
-    
+
     async def retry_provisioning(
         self,
         tenant_id: UUID,
         actor_id: UUID | None = None,
     ) -> ProvisioningState:
         """Retry failed provisioning.
-        
+
         Idempotent: Checks what steps completed and continues from there.
         """
         # For simplicity, re-run full workflow
         # Production: Would check state and resume from failed step
         return await self.provision_tenant(tenant_id, actor_id)
-    
+
     async def _emit_step_audit(
         self,
         state: ProvisioningState,
@@ -469,7 +469,7 @@ class TenantProvisioningService:
                 "completed_steps": [s.value for s in state.completed_steps],
             },
         )
-    
+
     async def _emit_failure_audit(
         self,
         state: ProvisioningState,
@@ -494,12 +494,12 @@ class TenantProvisioningService:
 ---
 
 ### Task 2.4: Provisioning API Endpoints
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P0
 
 Add tenant provisioning endpoints.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/api/routes/tenants.py`
+**Modified File:** `services/layer4-agents/src/tenants/api/routes/tenants.py`
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -539,7 +539,7 @@ async def provision_tenant(
         tenant_id=tenant_id,
         actor_id=context.user_id,
     )
-    
+
     if state.status == "failed":
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -549,7 +549,7 @@ async def provision_tenant(
                 "retryable": state.retryable,
             },
         )
-    
+
     return ProvisioningStatusResponse.from_state(state)
 
 @router.get("/{tenant_id}/provision-status", response_model=ProvisioningStatusResponse)
@@ -581,12 +581,12 @@ async def retry_provisioning(
 ---
 
 ### Task 2.5: Provisioning Webhook Handler
-**Estimated Effort:** 4 hours  
+**Estimated Effort:** 4 hours
 **Priority:** P1
 
 Create webhook endpoint for external provisioning triggers.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/api/routes/provisioning_webhook.py`
+**New File:** `services/layer4-agents/src/tenants/api/routes/provisioning_webhook.py`
 
 ```python
 """Webhook handlers for external provisioning triggers."""
@@ -635,7 +635,7 @@ async def provision_tenant_webhook(
     x_webhook_id: str = Header(..., alias="X-Webhook-ID"),
 ) -> dict[str, Any]:
     """Receive provisioning trigger from external system.
-    
+
     Authentication: HMAC-SHA256 of payload using shared secret.
     Idempotency: X-Webhook-ID tracked to prevent duplicates.
     """
@@ -646,15 +646,15 @@ async def provision_tenant_webhook(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid webhook signature",
         )
-    
+
     # Get DB session (outside FastAPI dependency injection)
     async with get_db_session(require_tenant=False) as db:
         # Check if webhook already processed (idempotency)
         # TODO: Check X-Webhook-ID in processed webhooks table
-        
+
         # Create tenant service
         tenant_service = TenantService(db)
-        
+
         # Check if tenant exists by slug
         existing = await tenant_service.get_tenant_by_slug(payload.slug)
         if existing:
@@ -663,7 +663,7 @@ async def provision_tenant_webhook(
                 "tenant_id": str(existing.id),
                 "message": "Tenant already exists",
             }
-        
+
         # Create tenant (PENDING status)
         tenant = await tenant_service.create_tenant(
             name=payload.name,
@@ -672,14 +672,14 @@ async def provision_tenant_webhook(
             metadata=payload.metadata,
             created_by=None,  # System/webhook created
         )
-        
+
         # Trigger provisioning
         provisioning = TenantProvisioningService(db)
         state = await provisioning.provision_tenant(
             tenant_id=tenant.id,
             actor_id=None,  # System/webhook actor
         )
-        
+
         # Emit audit event
         await emit_audit_event(
             action=AuditAction.TENANT_PROVISIONED_WEBHOOK,
@@ -693,7 +693,7 @@ async def provision_tenant_webhook(
                 "provisioning_status": state.status,
             },
         )
-        
+
         return {
             "status": state.status,
             "tenant_id": str(tenant.id),
@@ -704,7 +704,7 @@ async def provision_tenant_webhook(
 ---
 
 ### Task 2.6: OIDC Configuration Guide
-**Estimated Effort:** 2 hours  
+**Estimated Effort:** 2 hours
 **Priority:** P2
 
 Document OIDC setup for new tenants.
@@ -772,7 +772,7 @@ External provisioning systems can trigger tenant creation via webhook:
 ---
 
 ### Task 2.7: Audit Action Additions
-**Estimated Effort:** 2 hours  
+**Estimated Effort:** 2 hours
 **Priority:** P1
 
 Add provisioning audit actions.
@@ -782,7 +782,7 @@ Add provisioning audit actions.
 ```python
 class AuditAction(str, Enum):
     # Existing actions...
-    
+
     # Provisioning actions
     PROVISIONING_STEP_COMPLETED = "provisioning_step_completed"
     PROVISIONING_FAILED = "provisioning_failed"
@@ -794,7 +794,7 @@ class AuditAction(str, Enum):
 ---
 
 ### Task 2.8: Integration Tests
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P1
 
 Create comprehensive integration tests.
@@ -819,7 +819,7 @@ async def test_provisioning_workflow(client: AsyncClient, admin_token: str):
     assert response.status_code == 201
     tenant_id = response.json()["id"]
     assert response.json()["status"] == "pending"
-    
+
     # 2. Trigger provisioning
     response = await client.post(
         f"/tenants/{tenant_id}/provision",
@@ -827,7 +827,7 @@ async def test_provisioning_workflow(client: AsyncClient, admin_token: str):
     )
     assert response.status_code == 200
     assert response.json()["status"] == "completed"
-    
+
     # 3. Verify tenant active
     response = await client.get(
         f"/tenants/{tenant_id}",
@@ -839,7 +839,7 @@ async def test_provisioning_workflow(client: AsyncClient, admin_token: str):
 async def test_webhook_provisioning(client: AsyncClient, webhook_secret: str):
     """Test webhook-triggered provisioning."""
     import hmac, hashlib, json
-    
+
     payload = {
         "name": "Webhook Tenant",
         "slug": "webhook-tenant",
@@ -851,7 +851,7 @@ async def test_webhook_provisioning(client: AsyncClient, webhook_secret: str):
         body,
         hashlib.sha256,
     ).hexdigest()
-    
+
     response = await client.post(
         "/webhooks/provision-tenant",
         content=body,

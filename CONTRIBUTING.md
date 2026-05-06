@@ -21,8 +21,8 @@ repo structure, change safety rules, and how to add agents, skills, and provider
 git clone https://github.com/bmsull560/Fabric_4L.git && cd Fabric_4L
 
 # 2. Configure environment
-cp value-fabric/.env.example value-fabric/.env
-# Edit value-fabric/.env — fill in OPENAI_API_KEY and JWT_SECRET at minimum
+cp .env.example .env
+# Edit .env — fill in OPENAI_API_KEY and JWT_SECRET at minimum
 
 # 3. Start infrastructure
 cd value-fabric && docker compose up -d
@@ -109,8 +109,8 @@ Test categories:
 
 | Category | Location | Rules |
 |----------|----------|-------|
-| Unit | `value-fabric/*/tests/` | Deterministic, no external calls, fast |
-| Integration | `value-fabric/*/tests/` | May use Docker services, marked `@pytest.mark.integration` |
+| Unit | `services/*/tests/` | Deterministic, no external calls, fast |
+| Integration | `services/*/tests/` | May use Docker services, marked `@pytest.mark.integration` |
 | E2E | `frontend/e2e/` | Playwright, critical flows only |
 | Contract | `tests/contract/` | Validate tool manifest schemas |
 | Evals | `tests/evals/` | Golden traces for agent skills |

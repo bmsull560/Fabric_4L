@@ -1,9 +1,9 @@
 # Phase 2 Readiness Status Report
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document refers to a completed readiness assessment. Current status is tracked in [ROADMAP.md](../../ROADMAP.md). See the [Archive Registry](../archive-registry.md).
 
-**Date:** 2026-04-11  
+**Date:** 2026-04-11
 **Status:** 🔄 **LAUNCH READINESS ASSESSMENT COMPLETE — CORRECTED**
 
 **Launch Readiness: ~74%** (revised from 86% based on survivability criteria)
@@ -30,14 +30,14 @@ The original assessment underweighted **DevOps + observability**, treating them 
 ## Blockers Fixed
 
 ### 1. L4 Checkpoint/Resume Test Import Failure ✅ FIXED
-**Issue:** `ModuleNotFoundError` importing 'src' during pytest collection  
-**Root Cause:** `conftest.py` path manipulation runs too late for collection-time imports  
-**Fix Applied:** Added `pythonpath = [".", "src"]` to `pyproject.toml` pytest configuration  
+**Issue:** `ModuleNotFoundError` importing 'src' during pytest collection
+**Root Cause:** `conftest.py` path manipulation runs too late for collection-time imports
+**Fix Applied:** Added `pythonpath = [".", "src"]` to `pyproject.toml` pytest configuration
 **Verification:** `tests/test_checkpoint_resume.py` now collects 11 tests and passes
 
 ### 2. L3 E2E Pipeline Issues ✅ CONTAINED
-**Issue:** Test failures due to missing dependencies, not Neo4j Community constraints  
-**Root Cause:** 
+**Issue:** Test failures due to missing dependencies, not Neo4j Community constraints
+**Root Cause:**
 - `sentence_transformers` module not installed (embedding generation)
 - Some entity/relationship assertions fail due to incomplete data flow
 **Assessment:** Schema initialization works (Community-compatible unique constraints only). E2E pipeline has dependency gaps, not architectural blockers.
@@ -47,8 +47,8 @@ The original assessment underweighted **DevOps + observability**, treating them 
 - Full E2E pipeline stabilization is Phase 1 work, not a Phase 2 blocker
 
 ### 3. Cross-Layer Smoke Gate ✅ COMPLETE
-**Issue:** No repeatable cross-layer verification; cannot prove E2E workflow works  
-**Solution:** 
+**Issue:** No repeatable cross-layer verification; cannot prove E2E workflow works
+**Solution:**
 - `scripts/smoke/production_smoke.py` - 6-stage Python script with retry logic
 - `.github/workflows/smoke-gate.yml` - CI integration with Docker Compose
 - JSON artifacts with pass/fail + timing per stage
@@ -170,8 +170,8 @@ Rationale: You are not in "feature completion mode" anymore. You are in **system
 - ✅ Structured logging: No misuse found
 
 **Files Created:**
-- `value-fabric/layer5-ground-truth/src/metrics/` (prometheus_metrics.py, __init__.py)
-- `value-fabric/layer6-benchmarks/src/metrics/` (prometheus_metrics.py, __init__.py)
+- `services/layer5-ground-truth/src/metrics/` (prometheus_metrics.py, __init__.py)
+- `services/layer6-benchmarks/src/metrics/` (prometheus_metrics.py, __init__.py)
 
 ### Phase 2: DevOps Foundation — COMPLETE
 

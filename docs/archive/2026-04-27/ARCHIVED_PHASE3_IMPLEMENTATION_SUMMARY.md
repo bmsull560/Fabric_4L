@@ -26,33 +26,33 @@ Phase 3 delivers the self-service control plane enabling:
 
 | File | Purpose |
 |------|---------|
-| `value-fabric/layer4-agents/src/tenants/tiers.py` | Tier configuration (free, basic, pro, enterprise) |
-| `value-fabric/layer4-agents/src/tenants/usage.py` | Usage tracking service for metrics |
-| `value-fabric/layer4-agents/src/tenants/email_verification.py` | Email verification with Redis tokens |
+| `services/layer4-agents/src/tenants/tiers.py` | Tier configuration (free, basic, pro, enterprise) |
+| `services/layer4-agents/src/tenants/usage.py` | Usage tracking service for metrics |
+| `services/layer4-agents/src/tenants/email_verification.py` | Email verification with Redis tokens |
 
 ### API Routes
 
 | File | Purpose |
 |------|---------|
-| `value-fabric/layer4-agents/src/tenants/api/routes/registration.py` | Public registration endpoints |
-| `value-fabric/layer4-agents/src/tenants/api/routes/admin.py` | Tenant admin dashboard API |
+| `services/layer4-agents/src/tenants/api/routes/registration.py` | Public registration endpoints |
+| `services/layer4-agents/src/tenants/api/routes/admin.py` | Tenant admin dashboard API |
 
 ### Tests
 
 | File | Purpose |
 |------|---------|
 | `tests/e2e/test_tenant_control_plane.py` | E2E tests for control plane |
-| `value-fabric/layer4-agents/tests/test_tiers.py` | Unit tests for tier configuration |
+| `services/layer4-agents/tests/test_tiers.py` | Unit tests for tier configuration |
 
 ## Files Modified
 
 | File | Changes |
 |------|---------|
 | `shared/audit/models.py` | Added `API_CALL`, `LLM_USAGE`, `AGENT_EXECUTION` audit actions |
-| `value-fabric/layer4-agents/src/tenants/service.py` | Added `count_users`, `count_api_keys`, `get_tier_api_key_limit`, `update_tenant` functions |
-| `value-fabric/layer4-agents/src/tenants/api/__init__.py` | Exported new `registration_router` and `admin_router` |
-| `value-fabric/layer4-agents/src/tenants/__init__.py` | Exported Phase 3 modules (tiers, usage, email_verification) |
-| `value-fabric/layer4-agents/src/api/main.py` | Registered new routes in FastAPI app |
+| `services/layer4-agents/src/tenants/service.py` | Added `count_users`, `count_api_keys`, `get_tier_api_key_limit`, `update_tenant` functions |
+| `services/layer4-agents/src/tenants/api/__init__.py` | Exported new `registration_router` and `admin_router` |
+| `services/layer4-agents/src/tenants/__init__.py` | Exported Phase 3 modules (tiers, usage, email_verification) |
+| `services/layer4-agents/src/api/main.py` | Registered new routes in FastAPI app |
 
 ## API Endpoints
 
@@ -123,7 +123,7 @@ APP_BASE_URL=https://fabric4l.example.com
 
 ```bash
 # Unit tests for tiers
-pytest value-fabric/layer4-agents/tests/test_tiers.py -v
+pytest services/layer4-agents/tests/test_tiers.py -v
 
 # E2E tests for control plane
 pytest tests/e2e/test_tenant_control_plane.py -v --e2e
@@ -162,7 +162,7 @@ Following the `test-quality-remediation` workflow, applied fixes to Phase 3 and 
 | File | Issue | Fix |
 |------|-------|-----|
 | `tests/e2e/test_tenant_control_plane.py` | Inline `import uuid` inside 7 test functions | Moved to module-level import |
-| `value-fabric/layer4-agents/tests/test_tiers.py` | Unused `UUID` import | Removed unused import |
+| `services/layer4-agents/tests/test_tiers.py` | Unused `UUID` import | Removed unused import |
 
 ### P1 - Material Issues Fixed
 | File | Issue | Fix |
@@ -172,7 +172,7 @@ Following the `test-quality-remediation` workflow, applied fixes to Phase 3 and 
 
 ### Files Modified
 - `tests/e2e/test_tenant_control_plane.py` - 7 inline imports removed
-- `value-fabric/layer4-agents/tests/test_tiers.py` - 1 unused import removed
+- `services/layer4-agents/tests/test_tiers.py` - 1 unused import removed
 - `tests/security/test_cross_layer_tenant.py` - 2 constants imported and used
 
 All modified files pass `python -m py_compile` validation.

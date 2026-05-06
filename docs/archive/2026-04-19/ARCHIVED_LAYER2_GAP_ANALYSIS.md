@@ -1,11 +1,11 @@
 # Layer 2 Extraction Engine - Gap Analysis Report
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document refers to deprecated analysis that is no longer accurate. Layer 2 is now 90% complete. For current status, see [ROADMAP.md](../../ROADMAP.md) and the [Archive Registry](../archive-registry.md).
 
-**Date:** April 18, 2026  
-**Status:** ⚠️ CRITICAL ISSUES IDENTIFIED - Not Production Ready  
-**Analyst:** AI Code Review  
+**Date:** April 18, 2026
+**Status:** ⚠️ CRITICAL ISSUES IDENTIFIED - Not Production Ready
+**Analyst:** AI Code Review
 
 ---
 
@@ -15,7 +15,7 @@
 
 ```
 Entrypoint: uvicorn src.layer2_extraction.api.main:app --host 0.0.0.0 --port 8000
-Module Root: value-fabric/layer2-extraction/src/layer2_extraction/
+Module Root: services/layer2-extraction/src/layer2_extraction/
 ```
 
 **Package Structure:**
@@ -226,8 +226,8 @@ Layer3KnowledgeClient.ingest_extraction_result()
 
 **Error Message:**
 ```
-fastapi.exceptions.FastAPIError: Invalid args for response field! 
-Hint: check that <class 'layer2_extraction.repositories.ontology_schema_repository.OntologySchemaRepository'> 
+fastapi.exceptions.FastAPIError: Invalid args for response field!
+Hint: check that <class 'layer2_extraction.repositories.ontology_schema_repository.OntologySchemaRepository'>
 is a valid Pydantic field type.
 ```
 
@@ -392,7 +392,7 @@ async def get_ontology_schema(
 
 ### Phase 1: Critical Fix (Blocks All Testing)
 
-**File:** `value-fabric/layer2-extraction/src/layer2_extraction/api/routes/ontology.py`
+**File:** `services/layer2-extraction/src/layer2_extraction/api/routes/ontology.py`
 
 **Changes Required:**
 
@@ -416,14 +416,14 @@ repo: OntologySchemaRepository = Depends(get_repository)
 
 **Verification:**
 ```bash
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 python -c "from layer2_extraction.api.main import app; print('✓ Import successful')"
 pytest tests/test_extract_and_ingest_pipeline.py -v --collect-only
 ```
 
 ### Phase 2: Fix Deprecation Warnings
 
-**File:** `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py`
+**File:** `services/layer2-extraction/src/layer2_extraction/api/main.py`
 
 **Changes:**
 Replace `@app.on_event` with lifespan context manager:
@@ -453,7 +453,7 @@ app = FastAPI(lifespan=lifespan)
 
 ### Phase 3: Add Job Persistence
 
-**File:** `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py`
+**File:** `services/layer2-extraction/src/layer2_extraction/api/main.py`
 
 Replace `PIPELINE_JOBS: dict` with a proper store:
 

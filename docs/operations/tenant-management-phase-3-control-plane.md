@@ -121,12 +121,12 @@ PATCH /tenants/{id}/settings
 ## 4. Task Breakdown
 
 ### Task 3.1: Tier Configuration System
-**Estimated Effort:** 4 hours  
+**Estimated Effort:** 4 hours
 **Priority:** P1
 
 Create JSON-based tier definitions.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/tiers.py`
+**New File:** `services/layer4-agents/src/tenants/tiers.py`
 
 ```python
 """Subscription tier configuration.
@@ -267,12 +267,12 @@ def get_public_tiers() -> list[TierConfig]:
 
 def check_limit(tier_id: str, limit_name: str, current_value: int) -> bool:
     """Check if current value is within tier limit.
-    
+
     Returns True if within limit, False if exceeded.
     """
     tier = get_tier_config(tier_id)
     limit = getattr(tier.limits, limit_name)
-    
+
     if limit is None:  # Unlimited
         return True
     return current_value <= limit
@@ -281,12 +281,12 @@ def check_limit(tier_id: str, limit_name: str, current_value: int) -> bool:
 ---
 
 ### Task 3.2: Tier Enforcement Middleware
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P1
 
 Add middleware to enforce tier limits.
 
-**Modified File:** `value-fabric/shared/identity/middleware.py`
+**Modified File:** `packages/shared/src/value_fabric/shared/identity/middleware.py`
 
 ```python
 from fastapi import HTTPException, status
@@ -295,7 +295,7 @@ from layer4_agents.src.tenants.service import TenantService
 
 class TierEnforcementMiddleware:
     """Middleware to enforce tenant tier limits."""
-    
+
     async def check_user_limit(
         self,
         db: AsyncSession,
@@ -305,17 +305,17 @@ class TierEnforcementMiddleware:
         service = TenantService(db)
         tenant = await service.get_tenant(tenant_id)
         config = get_tier_config(tenant.tier_id)
-        
+
         if config.limits.max_users is None:
             return  # Unlimited
-        
+
         current_users = await service.count_users(tenant_id)
         if current_users >= config.limits.max_users:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"User limit reached: {config.limits.max_users}",
             )
-    
+
     async def check_agent_limit(
         self,
         db: AsyncSession,
@@ -325,10 +325,10 @@ class TierEnforcementMiddleware:
         service = TenantService(db)
         tenant = await service.get_tenant(tenant_id)
         config = get_tier_config(tenant.tier_id)
-        
+
         if config.limits.max_agents is None:
             return
-        
+
         current_agents = await service.count_agents(tenant_id)
         if current_agents >= config.limits.max_agents:
             raise HTTPException(
@@ -345,13 +345,13 @@ async def enforce_tier_limits(
     """Check tier limits for mutating operations."""
     if request.method not in ("POST", "PUT", "PATCH"):
         return  # Skip for read operations
-    
+
     if not context.tenant_id:
         return  # Skip for non-tenant operations
-    
+
     # Check specific limits based on endpoint
     path = request.url.path
-    
+
     if "/users" in path:
         await TierEnforcementMiddleware().check_user_limit(db, context.tenant_id)
     elif "/agents" in path:
@@ -361,12 +361,12 @@ async def enforce_tier_limits(
 ---
 
 ### Task 3.3: Usage Tracking Service
-**Estimated Effort:** 8 hours  
+**Estimated Effort:** 8 hours
 **Priority:** P1
 
 Implement usage metrics collection for billing preparation.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/usage.py`
+**New File:** `services/layer4-agents/src/tenants/usage.py`
 
 ```python
 """Tenant usage tracking for metrics and billing preparation."""
@@ -388,44 +388,44 @@ class UsageMetrics:
     tenant_id: UUID
     period_start: datetime
     period_end: datetime
-    
+
     # API usage
     api_calls_total: int
     api_calls_by_endpoint: dict[str, int]
-    
+
     # Agent usage
     agent_executions: int
     agent_execution_time_ms: int
-    
+
     # LLM usage
     llm_tokens_input: int
     llm_tokens_output: int
     llm_requests: int
-    
+
     # Storage
     storage_bytes: int
     neo4j_nodes: int
     postgres_rows: int
-    
+
     # Compute
     compute_seconds: int
 
 class UsageTrackingService:
     """Service for tracking and querying tenant usage."""
-    
+
     def __init__(self, db: AsyncSession | None = None) -> None:
         self.db = db
         self._external_db = db is not None
-    
+
     async def __aenter__(self):
         if not self._external_db:
             self.db = await get_db_session().__aenter__()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if not self._external_db and self.db:
             await self.db.__aexit__(exc_type, exc_val, exc_tb)
-    
+
     async def record_api_call(
         self,
         tenant_id: UUID,
@@ -434,12 +434,12 @@ class UsageTrackingService:
         duration_ms: int,
     ) -> None:
         """Record an API call for usage tracking.
-        
+
         Implementation: Write to Redis or time-series DB for aggregation.
         Phase 3: Store in PostgreSQL (simpler, can migrate later).
         """
         from shared.audit import emit_audit_event, AuditAction
-        
+
         await emit_audit_event(
             action=AuditAction.API_CALL,
             tenant_id=tenant_id,
@@ -449,7 +449,7 @@ class UsageTrackingService:
                 "duration_ms": duration_ms,
             },
         )
-    
+
     async def record_llm_usage(
         self,
         tenant_id: UUID,
@@ -460,7 +460,7 @@ class UsageTrackingService:
     ) -> None:
         """Record LLM token usage."""
         from shared.audit import emit_audit_event, AuditAction
-        
+
         await emit_audit_event(
             action=AuditAction.LLM_USAGE,
             tenant_id=tenant_id,
@@ -471,7 +471,7 @@ class UsageTrackingService:
                 "duration_ms": duration_ms,
             },
         )
-    
+
     async def record_agent_execution(
         self,
         tenant_id: UUID,
@@ -481,7 +481,7 @@ class UsageTrackingService:
     ) -> None:
         """Record agent execution."""
         from shared.audit import emit_audit_event, AuditAction
-        
+
         await emit_audit_event(
             action=AuditAction.AGENT_EXECUTION,
             tenant_id=tenant_id,
@@ -491,7 +491,7 @@ class UsageTrackingService:
                 "success": success,
             },
         )
-    
+
     async def get_usage_summary(
         self,
         tenant_id: UUID,
@@ -500,10 +500,10 @@ class UsageTrackingService:
         """Get usage summary for a tenant."""
         end = datetime.now(UTC)
         start = end - timedelta(days=days)
-        
+
         # Query audit events for the period
         from shared.audit.models import AuditLogEntry
-        
+
         result = await self.db.execute(
             select(
                 AuditLogEntry.action,
@@ -515,14 +515,14 @@ class UsageTrackingService:
             .where(AuditLogEntry.timestamp <= end)
             .group_by(AuditLogEntry.action)
         )
-        
+
         # Aggregate metrics
         rows = result.all()
         metrics = {
             row.action: {"count": row.count, "duration": row.total_duration or 0}
             for row in rows
         }
-        
+
         return UsageMetrics(
             tenant_id=tenant_id,
             period_start=start,
@@ -539,7 +539,7 @@ class UsageTrackingService:
             postgres_rows=0,
             compute_seconds=0,
         )
-    
+
     async def get_current_month_usage(
         self,
         tenant_id: UUID,
@@ -547,12 +547,12 @@ class UsageTrackingService:
         """Get current month usage for limit checking."""
         today = datetime.now(UTC)
         start_of_month = today.replace(day=1, hour=0, minute=0, second=0)
-        
+
         summary = await self.get_usage_summary(
             tenant_id,
             days=(today - start_of_month).days + 1,
         )
-        
+
         return {
             "api_calls": summary.api_calls_total,
             "llm_tokens": summary.llm_tokens_input + summary.llm_tokens_output,
@@ -564,12 +564,12 @@ class UsageTrackingService:
 ---
 
 ### Task 3.4: Email Verification Service
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P1
 
 Implement email verification for registration.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/email_verification.py`
+**New File:** `services/layer4-agents/src/tenants/email_verification.py`
 
 ```python
 """Email verification service for tenant registration."""
@@ -590,10 +590,10 @@ class EmailConfig(BaseModel):
     smtp_user: str = ""
     smtp_pass: str = ""
     from_address: str = "noreply@fabric4l.example.com"
-    
+
     # Or use external service (SendGrid, etc.)
     sendgrid_api_key: str = ""
-    
+
     @classmethod
     def from_env(cls) -> "EmailConfig":
         return cls(
@@ -616,17 +616,17 @@ class VerificationToken:
 
 class EmailVerificationService:
     """Service for email verification."""
-    
+
     TOKEN_EXPIRY_HOURS = 24
-    
+
     def __init__(self, redis_client=None) -> None:
         self.redis = redis_client
         self.config = EmailConfig.from_env()
-    
+
     def generate_token(self, tenant_id: UUID, email: str) -> str:
         """Generate and store verification token."""
         token = secrets.token_urlsafe(32)
-        
+
         # Store in Redis with expiry
         key = f"email_verification:{token}"
         data = {
@@ -635,36 +635,36 @@ class EmailVerificationService:
             "expires": (datetime.now(UTC) + timedelta(hours=self.TOKEN_EXPIRY_HOURS)).isoformat(),
             "used": False,
         }
-        
+
         if self.redis:
             self.redis.setex(
                 key,
                 int(timedelta(hours=self.TOKEN_EXPIRY_HOURS).total_seconds()),
                 json.dumps(data),
             )
-        
+
         return token
-    
+
     async def verify_token(self, token: str) -> VerificationToken | None:
         """Verify a token and return tenant info."""
         if not self.redis:
             return None
-        
+
         key = f"email_verification:{token}"
         data = self.redis.get(key)
-        
+
         if not data:
             return None
-        
+
         parsed = json.loads(data)
-        
+
         if parsed["used"]:
             return None
-        
+
         expires = datetime.fromisoformat(parsed["expires"])
         if datetime.now(UTC) > expires:
             return None
-        
+
         return VerificationToken(
             tenant_id=UUID(parsed["tenant_id"]),
             email=parsed["email"],
@@ -672,17 +672,17 @@ class EmailVerificationService:
             expires_at=expires,
             used=parsed["used"],
         )
-    
+
     async def mark_token_used(self, token: str) -> None:
         """Mark token as used after verification."""
         if not self.redis:
             return
-        
+
         key = f"email_verification:{token}"
         data = json.loads(self.redis.get(key))
         data["used"] = True
         self.redis.setex(key, 3600, json.dumps(data))  # Keep for 1 hour
-    
+
     async def send_verification_email(
         self,
         to_email: str,
@@ -691,24 +691,24 @@ class EmailVerificationService:
     ) -> bool:
         """Send verification email."""
         verify_url = f"https://fabric4l.example.com/verify-email?token={verification_token}"
-        
+
         subject = f"Verify your email for {tenant_name}"
         body = f"""
         Welcome to Fabric 4L!
-        
+
         Please verify your email by clicking the link below:
         {verify_url}
-        
+
         This link expires in 24 hours.
-        
+
         If you didn't request this, please ignore this email.
         """
-        
+
         if self.config.sendgrid_api_key:
             return await self._send_sendgrid(to_email, subject, body)
         else:
             return await self._send_smtp(to_email, subject, body)
-    
+
     async def _send_sendgrid(
         self,
         to_email: str,
@@ -728,7 +728,7 @@ class EmailVerificationService:
                 },
             )
             return response.status_code == 202
-    
+
     async def _send_smtp(
         self,
         to_email: str,
@@ -737,7 +737,7 @@ class EmailVerificationService:
     ) -> bool:
         """Send via SMTP (async wrapper)."""
         import aiosmtplib
-        
+
         try:
             await aiosmtplib.send(
                 sender=self.config.from_address,
@@ -758,12 +758,12 @@ class EmailVerificationService:
 ---
 
 ### Task 3.5: Registration API
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P0
 
 Create public registration endpoints.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/api/routes/registration.py`
+**New File:** `services/layer4-agents/src/tenants/api/routes/registration.py`
 
 ```python
 """Public tenant registration endpoints."""
@@ -786,7 +786,7 @@ class RegisterTenantRequest(BaseModel):
     slug: str = Field(..., min_length=2, max_length=63, regex=r"^[a-z0-9-]+$")
     admin_email: EmailStr
     tier_id: str = "free"  # Default to free tier
-    
+
     # Optional
     organization_name: str | None = None
     phone: str | None = None
@@ -798,14 +798,14 @@ class VerifyEmailRequest(BaseModel):
 @router.post("/register", status_code=status.HTTP_202_ACCEPTED)
 async def register_tenant(request: RegisterTenantRequest) -> dict:
     """Register a new tenant.
-    
+
     Process:
     1. Validate slug uniqueness
     2. Validate tier exists and is public
     3. Create tenant (PENDING status)
     4. Generate verification token
     5. Send verification email
-    
+
     Returns immediately; provisioning happens after email verification.
     """
     async with get_db_session(require_tenant=False) as db:
@@ -817,7 +817,7 @@ async def register_tenant(request: RegisterTenantRequest) -> dict:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Tenant slug already exists",
             )
-        
+
         # Validate tier
         try:
             tier = get_tier_config(request.tier_id)
@@ -831,7 +831,7 @@ async def register_tenant(request: RegisterTenantRequest) -> dict:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid tier",
             )
-        
+
         # Create tenant
         tenant = await service.create_tenant(
             name=request.name,
@@ -844,22 +844,22 @@ async def register_tenant(request: RegisterTenantRequest) -> dict:
             },
             created_by=None,  # Self-registration
         )
-        
+
         # Generate verification token
         email_service = EmailVerificationService()
         token = email_service.generate_token(tenant.id, request.admin_email)
-        
+
         # Send verification email
         email_sent = await email_service.send_verification_email(
             request.admin_email,
             request.name,
             token,
         )
-        
+
         if not email_sent:
             # Log but don't fail — can resend
             logger.warning(f"Failed to send verification email to {request.admin_email}")
-        
+
         return {
             "message": "Registration received. Check your email to verify.",
             "tenant_id": str(tenant.id),
@@ -870,7 +870,7 @@ async def register_tenant(request: RegisterTenantRequest) -> dict:
 async def verify_email(request: VerifyEmailRequest) -> dict:
     """Verify email address and trigger provisioning."""
     email_service = EmailVerificationService()
-    
+
     # Verify token
     verification = await email_service.verify_token(request.token)
     if not verification:
@@ -878,15 +878,15 @@ async def verify_email(request: VerifyEmailRequest) -> dict:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired verification token",
         )
-    
+
     # Mark token used
     await email_service.mark_token_used(request.token)
-    
+
     # Trigger provisioning
     async with get_db_session(require_tenant=False) as db:
         provisioning = TenantProvisioningService(db)
         state = await provisioning.provision_tenant(verification.tenant_id)
-        
+
         if state.status != "completed":
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -896,7 +896,7 @@ async def verify_email(request: VerifyEmailRequest) -> dict:
                     "retryable": state.retryable,
                 },
             )
-    
+
     return {
         "message": "Email verified and tenant provisioned successfully",
         "tenant_id": str(verification.tenant_id),
@@ -909,7 +909,7 @@ async def validate_slug(slug: str) -> dict:
     async with get_db_session(require_tenant=False) as db:
         service = TenantService(db)
         existing = await service.get_tenant_by_slug(slug)
-        
+
         return {
             "slug": slug,
             "available": existing is None,
@@ -942,12 +942,12 @@ async def list_tiers() -> list[dict]:
 ---
 
 ### Task 3.6: Admin Dashboard API
-**Estimated Effort:** 8 hours  
+**Estimated Effort:** 8 hours
 **Priority:** P1
 
 Create tenant admin endpoints.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/api/routes/admin.py`
+**New File:** `services/layer4-agents/src/tenants/api/routes/admin.py`
 
 ```python
 """Tenant admin dashboard API."""
@@ -982,10 +982,10 @@ async def list_tenant_users(
     # Verify tenant access
     if context.tenant_id != tenant_id and not context.is_super_admin():
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     service = TenantService(db)
     users = await service.get_tenant_users(tenant_id)
-    
+
     return [
         {
             "id": str(u.id),
@@ -1007,10 +1007,10 @@ async def get_tenant_usage(
     """Get usage metrics for tenant."""
     if context.tenant_id != tenant_id and not context.is_super_admin():
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     usage_service = UsageTrackingService(db)
     summary = await usage_service.get_usage_summary(tenant_id, days)
-    
+
     return {
         "tenant_id": str(tenant_id),
         "period": {
@@ -1042,10 +1042,10 @@ async def get_tenant_audit_log(
     """Get audit log for tenant."""
     if context.tenant_id != tenant_id and not context.is_super_admin():
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Query audit log
     events = await get_audit_log_for_tenant(db, tenant_id, limit, offset)
-    
+
     return {
         "events": [
             {
@@ -1071,10 +1071,10 @@ async def get_tenant_settings(
     """Get tenant settings."""
     if context.tenant_id != tenant_id and not context.is_super_admin():
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     service = TenantService(db)
     tenant = await service.get_tenant(tenant_id)
-    
+
     return {
         "id": str(tenant.id),
         "name": tenant.name,
@@ -1096,14 +1096,14 @@ async def update_tenant_settings(
     """Update tenant settings (tenant_admin only)."""
     if context.tenant_id != tenant_id and not context.is_super_admin():
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     service = TenantService(db)
     tenant = await service.update_tenant(
         tenant_id,
         name=update.name,
         settings_update=update.settings,
     )
-    
+
     return {
         "id": str(tenant.id),
         "name": tenant.name,
@@ -1115,12 +1115,12 @@ async def update_tenant_settings(
 ---
 
 ### Task 3.7: Enhanced API Key Management
-**Estimated Effort:** 4 hours  
+**Estimated Effort:** 4 hours
 **Priority:** P2
 
 Extend API key management for tenant self-service.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/api/routes/api_keys.py`
+**Modified File:** `services/layer4-agents/src/tenants/api/routes/api_keys.py`
 
 ```python
 """Enhanced API key management with tenant self-service."""
@@ -1163,9 +1163,9 @@ async def create_api_key(
     """Create new API key (tenant_admin only)."""
     if context.tenant_id != tenant_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     service = TenantService(db)
-    
+
     # Check tier limit
     current_keys = await service.count_api_keys(tenant_id)
     tier_limit = await service.get_tier_api_key_limit(tenant_id)
@@ -1174,12 +1174,12 @@ async def create_api_key(
             status_code=403,
             detail=f"API key limit reached: {tier_limit}",
         )
-    
+
     # Create key
     expires_at = None
     if request.expires_in_days:
         expires_at = datetime.now(UTC) + timedelta(days=request.expires_in_days)
-    
+
     api_key = await service.create_api_key(
         tenant_id=tenant_id,
         name=request.name,
@@ -1187,7 +1187,7 @@ async def create_api_key(
         scopes=request.scopes,
         expires_at=expires_at,
     )
-    
+
     # Return full key only once
     return {
         "id": str(api_key.id),
@@ -1205,10 +1205,10 @@ async def list_api_keys(
     """List API keys (tenant_admin only)."""
     if context.tenant_id != tenant_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     service = TenantService(db)
     keys = await service.get_tenant_api_keys(tenant_id)
-    
+
     return [
         ApiKeyResponse(
             id=k.id,
@@ -1232,17 +1232,17 @@ async def revoke_api_key(
     """Revoke API key (tenant_admin only)."""
     if context.tenant_id != tenant_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     service = TenantService(db)
     await service.revoke_api_key(tenant_id, key_id, revoked_by=context.user_id)
-    
+
     return {"message": "API key revoked"}
 ```
 
 ---
 
 ### Task 3.8: E2E Tests
-**Estimated Effort:** 6 hours  
+**Estimated Effort:** 6 hours
 **Priority:** P1
 
 Create end-to-end tests for control plane.
@@ -1270,11 +1270,11 @@ async def test_tenant_registration_flow(client: AsyncClient):
     )
     assert response.status_code == 202
     tenant_id = response.json()["tenant_id"]
-    
+
     # 2. Verify slug is taken
     response = await client.get("/tenants/validate-slug?slug=e2e-test-tenant")
     assert response.json()["available"] is False
-    
+
     # 3. Verify email (would need to extract token from email in real test)
     # Skipped in E2E — requires email integration
 
@@ -1286,7 +1286,7 @@ async def test_tenant_admin_dashboard(
 ):
     """Test tenant admin dashboard endpoints."""
     tenant_id = test_tenant["id"]
-    
+
     # Get settings
     response = await client.get(
         f"/tenants/{tenant_id}/settings",
@@ -1294,7 +1294,7 @@ async def test_tenant_admin_dashboard(
     )
     assert response.status_code == 200
     assert response.json()["id"] == tenant_id
-    
+
     # Get usage
     response = await client.get(
         f"/tenants/{tenant_id}/usage?days=7",
@@ -1302,7 +1302,7 @@ async def test_tenant_admin_dashboard(
     )
     assert response.status_code == 200
     assert "api_calls" in response.json()
-    
+
     # Get audit log
     response = await client.get(
         f"/tenants/{tenant_id}/audit-log",
@@ -1310,7 +1310,7 @@ async def test_tenant_admin_dashboard(
     )
     assert response.status_code == 200
     assert "events" in response.json()
-    
+
     # Update settings
     response = await client.patch(
         f"/tenants/{tenant_id}/settings",
@@ -1328,7 +1328,7 @@ async def test_api_key_self_service(
 ):
     """Test tenant admin API key management."""
     tenant_id = test_tenant["id"]
-    
+
     # Create key
     response = await client.post(
         f"/tenants/{tenant_id}/api-keys",
@@ -1339,7 +1339,7 @@ async def test_api_key_self_service(
     key_id = response.json()["id"]
     full_key = response.json()["key"]
     assert len(full_key) > 20  # Reasonable key length
-    
+
     # List keys
     response = await client.get(
         f"/tenants/{tenant_id}/api-keys",
@@ -1348,7 +1348,7 @@ async def test_api_key_self_service(
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["key_preview"].startswith("...")
-    
+
     # Revoke key
     response = await client.delete(
         f"/tenants/{tenant_id}/api-keys/{key_id}",

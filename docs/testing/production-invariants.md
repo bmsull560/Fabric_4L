@@ -1,7 +1,7 @@
 # Production Invariants
 
-**Generated:** April 29, 2026  
-**Purpose:** Document non-negotiable security, isolation, and governance rules  
+**Generated:** April 29, 2026
+**Purpose:** Document non-negotiable security, isolation, and governance rules
 **Scope:** Cross-layer boundaries enforced by code
 
 ---
@@ -66,11 +66,11 @@ async def require_tenant_context(context: RequestContext) -> RequestContext:
 
 **Code Paths:**
 ```python
-# value-fabric/layer3-knowledge/tests/test_tenant_read_isolation.py:45-51
+# services/layer3-knowledge/tests/test_tenant_read_isolation.py:45-51
 async def test_requires_tenant_id(self, mock_session):
     with pytest.raises(ValueError, match="tenant_id is required"):
         await get_entity_by_id(mock_session, entity_id="abc", tenant_id="")
-    
+
     with pytest.raises(ValueError, match="tenant_id is required"):
         await get_entity_by_id(mock_session, entity_id="abc", tenant_id=None)
 ```
@@ -361,7 +361,7 @@ def require_privileged_access(privilege_reason_header: str = "X-Privileged-Reaso
     async def _check_privileged(request: Request, context: RequestContext) -> RequestContext:
         if not context.is_super_admin():
             raise HTTPException(status_code=403, detail="Privileged access requires super admin role")
-        
+
         reason = request.headers.get(privilege_reason_header)
         if not reason:
             raise HTTPException(

@@ -1,7 +1,7 @@
 # Execution Status Sync Report
-**Generated:** 2026-04-19 13:05 UTC-04:00  
-**Workflow:** /execution-status-sync  
-**Repository:** bmsull560/Fabric_4L  
+**Generated:** 2026-04-19 13:05 UTC-04:00
+**Workflow:** /execution-status-sync
+**Repository:** bmsull560/Fabric_4L
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Task | Title | Layer | Priority | Status | Owner | Evidence Path |
 |------|-------|-------|----------|--------|-------|---------------|
-| 70 | Model Registry | L5 | P0 | **COMPLETE** | - | `value-fabric/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py` (462 lines), 30+ tests passing |
+| 70 | Model Registry | L5 | P0 | **COMPLETE** | - | `services/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py` (462 lines), 30+ tests passing |
 | 71 | Vault Wiring | Infra | P0 | **COMPLETE** | - | `k8s/external-secrets/vault-integration.yml`, health checks in L1-L5 |
 | 72 | Incident Runbooks | Ops | P0 | **COMPLETE** | - | `docs/runbooks/` - 13 runbooks (189-281 lines each), all alert rules covered |
 | 73 | Alertmanager + Notifications | Monitoring | P1 | **PARTIAL** | - | `k8s/base/monitoring-alertmanager.yml` (278 lines), routing configured - needs runtime validation |

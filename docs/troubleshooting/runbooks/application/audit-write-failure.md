@@ -58,9 +58,9 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
 # Check for locks blocking audit writes
 kubectl exec -n value-fabric -it deployment/postgres -- \
   psql -U postgres -d value_fabric_audit -c "
-  SELECT pid, state, query_start, query 
-  FROM pg_stat_activity 
-  WHERE state = 'active' 
+  SELECT pid, state, query_start, query
+  FROM pg_stat_activity
+  WHERE state = 'active'
   AND query_start < NOW() - INTERVAL '5 minutes'
   AND query LIKE '%audit%';
 "
@@ -69,7 +69,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
 kubectl exec -n value-fabric -it deployment/postgres -- \
   psql -U postgres -c "
   SELECT spcname, pg_size_pretty(pg_tablespace_size(spcname))
-  FROM pg_tablespace 
+  FROM pg_tablespace
   WHERE spcname LIKE '%audit%';
 "
 ```
@@ -112,10 +112,10 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    ```bash
    # Restart Layer 4 agents (contains audit emitter)
    kubectl rollout restart deployment/layer4-agents -n value-fabric
-   
+
    # Wait for rollout
    kubectl rollout status deployment/layer4-agents -n value-fabric --timeout=120s
-   
+
    # Verify health
    kubectl exec -n value-fabric -it deployment/layer4-agents -- \
      curl -s http://localhost:8000/health | jq '.dependencies.postgres'
@@ -125,7 +125,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    ```bash
    # Check queue depth first
    QUEUE_DEPTH=$(kubectl exec -n value-fabric -it deployment/redis -- redis-cli LLEN audit_queue)
-   
+
    # If queue > 10000, drain and alert (data may be lost)
    if [ $QUEUE_DEPTH -gt 10000 ]; then
      kubectl exec -n value-fabric -it deployment/redis -- \
@@ -141,7 +141,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
      AUDIT_DB_POOL_SIZE=20 \
      AUDIT_DB_MAX_OVERFLOW=10 \
      AUDIT_WRITE_TIMEOUT_MS=5000
-   
+
    # Restart to apply
    kubectl rollout restart deployment/layer4-agents -n value-fabric
    ```
@@ -155,7 +155,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
      AUDIT_MODE=async \
      AUDIT_BUFFER_SIZE=1000 \
      AUDIT_FLUSH_INTERVAL_MS=1000
-   
+
    # Restart to apply
    kubectl rollout restart deployment/layer4-agents -n value-fabric
    ```
@@ -164,7 +164,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    ```bash
    # Check current resource usage
    kubectl top pod -n value-fabric -l app=postgres
-   
+
    # Scale postgres if needed (requires pod restart)
    kubectl patch deployment postgres -n value-fabric -p '{"spec":{"template":{"spec":{"containers":[{"name":"postgres","resources":{"limits":{"cpu":"2000m","memory":"4Gi"}}}]}}}}'
    ```
@@ -176,7 +176,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
 # Add storage or clean old audit logs (per retention policy)
 kubectl exec -n value-fabric -it deployment/postgres -- \
   psql -U postgres -d value_fabric_audit -c "
-  DELETE FROM audit_log 
+  DELETE FROM audit_log
   WHERE created_at < NOW() - INTERVAL '90 days';
 "
 
@@ -190,8 +190,8 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
 # Check for duplicate or malformed entries
 kubectl exec -n value-fabric -it deployment/postgres -- \
   psql -U postgres -d value_fabric_audit -c "
-  SELECT event_type, COUNT(*) 
-  FROM audit_log 
+  SELECT event_type, COUNT(*)
+  FROM audit_log
   WHERE created_at > NOW() - INTERVAL '1 hour'
   GROUP BY event_type;
 "
@@ -225,7 +225,7 @@ kubectl logs -n value-fabric -l app=layer4-agents --tail=100 | grep -c "audit_wr
 # Verify audit trail continuity
 kubectl exec -n value-fabric -it deployment/postgres -- \
   psql -U postgres -d value_fabric_audit -c "
-  SELECT 
+  SELECT
     date_trunc('hour', created_at) as hour,
     COUNT(*) as events
   FROM audit_log
@@ -268,9 +268,9 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
 
 ## References
 
-- Audit Emitter: `value-fabric/shared/audit/emitter.py`
-- Audit Models: `value-fabric/shared/audit/models.py`
-- Database Schema: `value-fabric/layer4-agents/migrations/audit_log.sql`
+- Audit Emitter: `packages/shared/src/value_fabric/shared/audit/emitter.py`
+- Audit Models: `packages/shared/src/value_fabric/shared/audit/models.py`
+- Database Schema: `services/layer4-agents/migrations/audit_log.sql`
 - Compliance Policy: `docs/compliance/audit-requirements.md`
 
 ---

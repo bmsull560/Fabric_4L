@@ -828,12 +828,12 @@ System Admin → Tenant Admin → Analyst/Developer → Viewer
 ### Test Categories
 
 **Unit Tests:**
-- Location: `value-fabric/*/tests/`
+- Location: `services/*/tests/`
 - Rules: Deterministic, no external calls, fast
 - Markers: `@pytest.mark.unit`
 
 **Integration Tests:**
-- Location: `value-fabric/*/tests/`
+- Location: `services/*/tests/`
 - Rules: May use Docker services
 - Markers: `@pytest.mark.integration`
 
@@ -898,8 +898,8 @@ System Admin → Tenant Admin → Analyst/Developer → Viewer
 git clone https://github.com/bmsull560/Fabric_4L.git && cd Fabric_4L
 
 # 2. Configure environment
-cp value-fabric/.env.example value-fabric/.env
-# Edit value-fabric/.env — fill in OPENAI_API_KEY and JWT_SECRET at minimum
+cp .env.example .env
+# Edit .env — fill in OPENAI_API_KEY and JWT_SECRET at minimum
 
 # 3. Start infrastructure
 cd value-fabric && docker compose up -d
@@ -1111,7 +1111,7 @@ automatically, at scale, with full auditability.
 git clone https://github.com/bmsull560/Fabric_4L.git && cd Fabric_4L
 
 # 2. Copy environment template
-cp value-fabric/.env.example value-fabric/.env
+cp .env.example .env
 # Fill in OPENAI_API_KEY and JWT_SECRET
 
 # 3. Start all services

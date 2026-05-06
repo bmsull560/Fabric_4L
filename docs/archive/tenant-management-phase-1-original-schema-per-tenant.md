@@ -127,9 +127,9 @@ Add the library to the dependency specifications for all backend layers.
 
 | File | Change |
 |------|--------|
-| `value-fabric/layer4-agents/pyproject.toml` | Add `"fastapi-tenancy[full]>=0.4.0"` to `dependencies` |
-| `value-fabric/layer1-ingestion/pyproject.toml` | Add `"fastapi-tenancy[postgres,migrations]>=0.4.0"` to `dependencies` |
-| `value-fabric/layer5-ground-truth/pyproject.toml` | Add `"fastapi-tenancy[postgres,migrations]>=0.4.0"` to `dependencies` |
+| `services/layer4-agents/pyproject.toml` | Add `"fastapi-tenancy[full]>=0.4.0"` to `dependencies` |
+| `services/layer1-ingestion/pyproject.toml` | Add `"fastapi-tenancy[postgres,migrations]>=0.4.0"` to `dependencies` |
+| `services/layer5-ground-truth/pyproject.toml` | Add `"fastapi-tenancy[postgres,migrations]>=0.4.0"` to `dependencies` |
 
 ---
 
@@ -139,7 +139,7 @@ Add the library to the dependency specifications for all backend layers.
 
 Create a new shared module that centralizes the `fastapi-tenancy` configuration. This module will be imported by all layers.
 
-**New File:** `value-fabric/shared/tenancy/config.py`
+**New File:** `packages/shared/src/value_fabric/shared/tenancy/config.py`
 
 ```python
 """Shared fastapi-tenancy configuration for all layers.
@@ -170,7 +170,7 @@ def get_tenancy_config() -> TenancyConfig:
     )
 ```
 
-**New File:** `value-fabric/shared/tenancy/__init__.py`
+**New File:** `packages/shared/src/value_fabric/shared/tenancy/__init__.py`
 
 ---
 
@@ -180,7 +180,7 @@ def get_tenancy_config() -> TenancyConfig:
 
 Mount the `TenancyMiddleware` alongside the existing `GovernanceMiddleware` in the Layer 4 FastAPI application.
 
-**Modified File:** `value-fabric/layer4-agents/src/api/main.py`
+**Modified File:** `services/layer4-agents/src/api/main.py`
 
 The key changes are:
 
@@ -218,7 +218,7 @@ get_tenant_db = make_tenant_db_dependency(tenancy_manager)
 
 Replace the custom RLS-based session management with `fastapi-tenancy`'s dependency injection.
 
-**Modified File:** `value-fabric/layer4-agents/src/database.py`
+**Modified File:** `services/layer4-agents/src/database.py`
 
 The following functions will be modified:
 
@@ -283,7 +283,7 @@ async def db_session(
 
 This is the highest-risk task. The 11 pipeline stage functions in `layer1-ingestion/src/shared/tasks.py` must be updated to establish tenant schema context before any database operation.
 
-**Modified File:** `value-fabric/layer1-ingestion/src/shared/tasks.py`
+**Modified File:** `services/layer1-ingestion/src/shared/tasks.py`
 
 **Strategy:** Create a helper function that wraps the existing `get_db_session()` to resolve the tenant schema from the job's `organization_id`:
 
@@ -337,7 +337,7 @@ session.execute(text(f"SET search_path TO t_{tenant_slug}, public"))
 
 **Estimated Effort:** 3 hours
 
-**Modified File:** `value-fabric/layer5-ground-truth/src/layer5_ground_truth/database.py`
+**Modified File:** `services/layer5-ground-truth/src/layer5_ground_truth/database.py`
 
 Layer 5 currently has no tenant context in its session manager. The `get_db()` dependency and `db_session()` context manager must be updated to use `fastapi-tenancy`'s schema routing, following the same pattern as Layer 4.
 
@@ -355,9 +355,9 @@ Each layer's Alembic `env.py` must be updated to iterate over all registered ten
 
 | File | Change |
 |------|--------|
-| `value-fabric/layer1-ingestion/migrations/env.py` | Add tenant schema iteration loop |
-| `value-fabric/layer4-agents/migrations/env.py` (to be created — currently missing) | Create with tenant schema iteration |
-| `value-fabric/layer5-ground-truth/alembic.ini` + `env.py` | Add tenant schema iteration loop |
+| `services/layer1-ingestion/migrations/env.py` | Add tenant schema iteration loop |
+| `services/layer4-agents/migrations/env.py` (to be created — currently missing) | Create with tenant schema iteration |
+| `services/layer5-ground-truth/alembic.ini` + `env.py` | Add tenant schema iteration loop |
 
 The updated `env.py` pattern (using `fastapi-tenancy`'s built-in runner):
 
@@ -438,7 +438,7 @@ def downgrade():
 
 For each existing tenant in the `public.tenants` table, create the tenant schema and migrate the existing rows from the shared tables into the tenant-specific schema.
 
-**New File:** `value-fabric/scripts/migrate_to_schema_per_tenant.py`
+**New File:** `scripts/migrate_to_schema_per_tenant.py`
 
 The migration script will:
 
@@ -467,7 +467,7 @@ Update the existing test infrastructure to work with schema-per-tenant isolation
 | `layer1-ingestion/tests/unit/test_celery_tasks.py` | Update `get_db_session` patches to use tenant-scoped sessions |
 | All test fixtures | Add test tenant provisioning (create schema, run migrations) |
 
-**New File:** `value-fabric/shared/testing/tenant_fixtures.py`
+**New File:** `packages/shared/src/value_fabric/shared/testing/tenant_fixtures.py`
 
 ```python
 """Shared pytest fixtures for schema-per-tenant testing."""

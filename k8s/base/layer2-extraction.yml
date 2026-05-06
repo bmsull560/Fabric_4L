@@ -49,7 +49,7 @@ spec:
       containers:
         # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: value-fabric/layer2-extraction:main
+          image: services/layer2-extraction:main
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

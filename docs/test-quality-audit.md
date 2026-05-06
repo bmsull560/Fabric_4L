@@ -46,14 +46,14 @@ All OAuth/token exchange tests skipped with `@pytest.mark.skip(reason="Requires 
 **Impact**: Core security flow untested.
 
 #### 3. Weak Test Naming (Sampled)
-**Location**: `value-fabric/layer1-ingestion/tests/unit/test_models.py`
+**Location**: `services/layer1-ingestion/tests/unit/test_models.py`
 
 - `test_create_scraping_job` → should be `test_creates_job_with_valid_configuration`
 - `test_job_status_enum` → tests trivial enum values, not behavior
 - `test_create_queue_item` → weak naming, no behavior description
 
 #### 4. Missing Edge Case Coverage
-**Location**: `value-fabric/layer3-knowledge/tests/test_api.py`
+**Location**: `services/layer3-knowledge/tests/test_api.py`
 
 - Tests only validate status codes, not response structure
 - No tests for malformed JSON, large payloads, or timeout scenarios

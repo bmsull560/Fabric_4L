@@ -8,38 +8,38 @@
       {
         "id": "layer1",
         "name": "Ingestion",
-        "path": "value-fabric/layer1-ingestion",
+        "path": "services/layer1-ingestion",
         "purpose": "Document processing, OCR, chunking, vectorization",
         "port": 8000,
         "base_url": "/api/v1/ingestion",
-        "primary_file": "value-fabric/layer1-ingestion/src/api/main.py"
+        "primary_file": "services/layer1-ingestion/src/api/main.py"
       },
       {
         "id": "layer2",
         "name": "Extraction",
-        "path": "value-fabric/layer2-extraction",
+        "path": "services/layer2-extraction",
         "purpose": "Entity extraction, relationship mapping, NLP",
         "port": 8000,
         "base_url": "/",
-        "primary_file": "value-fabric/layer2-extraction/src/api/main.py"
+        "primary_file": "services/layer2-extraction/src/api/main.py"
       },
       {
         "id": "layer3",
         "name": "Knowledge",
-        "path": "value-fabric/layer3-knowledge",
+        "path": "services/layer3-knowledge",
         "purpose": "Knowledge graph, embeddings, query engine",
         "port": 8001,
         "base_url": "/",
-        "primary_file": "value-fabric/layer3-knowledge/src/api/models.py"
+        "primary_file": "services/layer3-knowledge/src/api/models.py"
       },
       {
         "id": "layer4",
         "name": "Agents",
-        "path": "value-fabric/layer4-agents",
+        "path": "services/layer4-agents",
         "purpose": "AI skills, workflows, business logic",
         "port": 8002,
         "base_url": "/v1",
-        "primary_file": "value-fabric/layer4-agents/src/api/main.py"
+        "primary_file": "services/layer4-agents/src/api/main.py"
       }
     ]
   },
@@ -51,11 +51,11 @@
       "trigger": "ScrapingJob completion",
       "models": {
         "input": {
-          "file": "value-fabric/layer1-ingestion/src/shared/models.py",
+          "file": "services/layer1-ingestion/src/shared/models.py",
           "key_classes": ["RawContent", "ScrapingJob", "ExtractedData"]
         },
         "output": {
-          "file": "value-fabric/layer2-extraction/src/api/main.py",
+          "file": "services/layer2-extraction/src/api/main.py",
           "schema": "ExtractRequest",
           "fields": ["content_id", "source_url", "markdown_content", "extraction_config"]
         }
@@ -70,17 +70,17 @@
     "layer2_to_layer3": {
       "direction": "L2 → L3",
       "protocol": "REST API (HTTP + JSON)",
-      "client_file": "value-fabric/layer2-extraction/src/integration/layer3_client.py",
+      "client_file": "services/layer2-extraction/src/integration/layer3_client.py",
       "endpoint": "POST /ingest",
       "data_format": "RDF/Turtle triples",
       "models": {
         "input": {
-          "file": "value-fabric/layer2-extraction/src/models/ontology.py",
+          "file": "services/layer2-extraction/src/models/ontology.py",
           "key_classes": ["Capability", "UseCase", "Persona", "ValueDriver", "Relationship"],
           "enums": ["RoleType", "ValueCategory"]
         },
         "output": {
-          "file": "value-fabric/layer3-knowledge/src/api/models.py",
+          "file": "services/layer3-knowledge/src/api/models.py",
           "schema": "IngestRequest",
           "fields": ["rdf_data", "source_id", "extraction_job_id", "content_hash"]
         }
@@ -101,7 +101,7 @@
       "data_format": "JSON entities and relationships",
       "models": {
         "input": {
-          "file": "value-fabric/layer3-knowledge/src/api/models.py",
+          "file": "services/layer3-knowledge/src/api/models.py",
           "schemas": ["SearchRequest", "GraphRAGQuery", "EntityContextRequest"],
           "entity_types": [
             "Capability", "UseCase", "Persona", "ValueDriver", "ValueMetric",
@@ -110,7 +110,7 @@
           ]
         },
         "output": {
-          "file": "value-fabric/layer3-knowledge/src/api/models.py",
+          "file": "services/layer3-knowledge/src/api/models.py",
           "schemas": ["SearchResponse", "GraphRAGResponse", "EntityContextResponse"],
           "key_fields": ["entities", "relationships", "confidence_score", "sources"]
         }
@@ -134,7 +134,7 @@
         "find_path",
         "multi_hop_reason"
       ],
-      "response_model": "value-fabric/layer4-agents/src/models/tool_schemas.py"
+      "response_model": "services/layer4-agents/src/models/tool_schemas.py"
     }
   },
   "data_contracts": {
@@ -152,7 +152,7 @@
       "size": "Default 2000 tokens, overlap 200"
     },
     "extraction_result": {
-      "file": "value-fabric/layer2-extraction/src/models/ontology.py",
+      "file": "services/layer2-extraction/src/models/ontology.py",
       "contains": ["entities", "relationships", "provenance", "confidence_scores"],
       "output_formats": ["RDF/Turtle", "JSON-LD"]
     }

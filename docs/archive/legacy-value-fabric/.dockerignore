@@ -1,3 +1,5 @@
+<!-- Migrated from .dockerignore during legacy path cleanup. -->
+
 # Root-level dockerignore for multi-layer builds with parent context
 # See: https://docs.docker.com/engine/reference/builder/#dockerignore-file
 

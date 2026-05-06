@@ -57,7 +57,7 @@ Status: Historical reference only - not actively maintained
 
 | Item | Impact |
 |------|--------|
-| `value-fabric/.env` | Cannot verify actual secrets, JWT_SECRET strength |
+| `.env` | Cannot verify actual secrets, JWT_SECRET strength |
 | `k8s/secrets.yml` | Cannot verify deployed secret values |
 | `k8s/envs/` overlay secrets | Cannot verify prod-specific overrides |
 | Sensor registration API | Referenced in context but no sensor code found — this is a knowledge-graph/LLM platform, not a sensor fleet |
@@ -142,8 +142,8 @@ The platform has a mature identity layer (JWT + API keys + RBAC + tenant isolati
 
 **Minimal patch:**
 ```diff
---- a/value-fabric/shared/identity/middleware.py
-+++ b/value-fabric/shared/identity/middleware.py
+--- a/packages/shared/src/value_fabric/shared/identity/middleware.py
++++ b/packages/shared/src/value_fabric/shared/identity/middleware.py
 @@ -252,6 +252,14 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
          # 3. X-Tenant-ID (service-to-service)
          x_tenant = request.headers.get("X-Tenant-ID")
@@ -180,8 +180,8 @@ The platform has a mature identity layer (JWT + API keys + RBAC + tenant isolati
 
 **Minimal patch:**
 ```diff
---- a/value-fabric/layer4-agents/src/api/routes/tools.py
-+++ b/value-fabric/layer4-agents/src/api/routes/tools.py
+--- a/services/layer4-agents/src/api/routes/tools.py
++++ b/services/layer4-agents/src/api/routes/tools.py
 @@ -69,7 +69,9 @@ def get_executor() -> WorkflowExecutor:
  @router.get("/tools", response_model=list[ToolListResponse])
  async def list_tools(
@@ -221,8 +221,8 @@ The platform has a mature identity layer (JWT + API keys + RBAC + tenant isolati
 **Minimal patch:** Replace `eval()` with the AST-based evaluator already implemented in `roi_calculation.py:451-504`:
 
 ```diff
---- a/value-fabric/layer3-knowledge/src/services/signal_quantification.py
-+++ b/value-fabric/layer3-knowledge/src/services/signal_quantification.py
+--- a/services/layer3-knowledge/src/services/signal_quantification.py
++++ b/services/layer3-knowledge/src/services/signal_quantification.py
 @@ -438,12 +438,10 @@ class SignalQuantificationService:
          if expression in context:
              return float(context[expression])
@@ -283,8 +283,8 @@ The platform has a mature identity layer (JWT + API keys + RBAC + tenant isolati
 
 **Minimal patch:**
 ```diff
---- a/value-fabric/docker-compose.yml
-+++ b/value-fabric/docker-compose.yml
+--- a/docker-compose.full.yml
++++ b/docker-compose.full.yml
 @@ -466,6 +466,7 @@ services:
    redis:
      image: redis:7-alpine

@@ -1,8 +1,8 @@
 # Performance Optimization Report
 
-**Project:** Fabric_4L Full Stack Performance Optimization  
-**Date:** 2026-04-21  
-**Target:** Sub-100ms response times  
+**Project:** Fabric_4L Full Stack Performance Optimization
+**Date:** 2026-04-21
+**Target:** Sub-100ms response times
 **Status:** ✅ COMPLETE
 
 ---
@@ -31,12 +31,12 @@ Optimized the full Fabric_4L stack (Layer 3 Knowledge Graph API, Frontend React 
 
 ### 1. Parallelized Hybrid Search (3x speedup)
 
-**File:** `value-fabric/layer3-knowledge/src/retrieval/hybrid_search.py`
+**File:** `services/layer3-knowledge/src/retrieval/hybrid_search.py`
 
 ```python
 # BEFORE: Sequential execution - sum of all search latencies
 bm25_results = await self._bm25_search(...)          # ~50ms
-vector_results = await self._vector_search(...)      # ~80ms  
+vector_results = await self._vector_search(...)      # ~80ms
 graph_results = await self._graph_search(...)        # ~30ms
 # Total: ~160ms
 
@@ -54,7 +54,7 @@ bm25_results, vector_results, graph_results = await asyncio.gather(
 
 ### 2. Batched Entity Enrichment (N+1 → 1 query)
 
-**File:** `value-fabric/layer3-knowledge/src/retrieval/graph_rag.py:372-402`
+**File:** `services/layer3-knowledge/src/retrieval/graph_rag.py:372-402`
 
 ```python
 # BEFORE: O(n) round trips
@@ -82,7 +82,7 @@ batch_result = await session.run(
 
 ### 3. Set-Based Relationship Deduplication (O(n²) → O(1))
 
-**File:** `value-fabric/layer3-knowledge/src/retrieval/graph_rag.py:467-513`
+**File:** `services/layer3-knowledge/src/retrieval/graph_rag.py:467-513`
 
 ```python
 # BEFORE: O(n²) list scan
@@ -178,7 +178,7 @@ async def get_subgraph_cached(entity_id: str, depth: int):
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)
-    
+
     result = await compute_subgraph(entity_id, depth)
     await redis.setex(cache_key, 300, json.dumps(result))  # 5min TTL
     return result
@@ -204,7 +204,7 @@ async def get_subgraph_cached(entity_id: str, depth: int):
 ### Backend Tests (Layer 3)
 
 ```bash
-$ cd value-fabric/layer3-knowledge
+$ cd services/layer3-knowledge
 $ python -m pytest tests/test_performance.py -v
 
 test_hybrid_search_parallelization ... PASSED (80ms avg)
@@ -270,8 +270,8 @@ $ npm run test:perf
 
 ### Files Modified
 
-1. `value-fabric/layer3-knowledge/src/retrieval/hybrid_search.py`
-2. `value-fabric/layer3-knowledge/src/retrieval/graph_rag.py`
+1. `services/layer3-knowledge/src/retrieval/hybrid_search.py`
+2. `services/layer3-knowledge/src/retrieval/graph_rag.py`
 3. `frontend/client/src/api/client.ts`
 4. `frontend/client/src/hooks/useGraphData.ts`
 5. `frontend/client/src/hooks/useGraphCanvas.ts`
@@ -288,11 +288,11 @@ make test-layer3
 npm test
 
 # Type check all modifications
-cd value-fabric/layer3-knowledge && ruff check src/
+cd services/layer3-knowledge && ruff check src/
 cd frontend/client && npx tsc --noEmit
 ```
 
 ---
 
-**Signed-off:** Performance Engineer  
+**Signed-off:** Performance Engineer
 **Review:** All optimizations are measurable, correct, and production-ready.

@@ -38,7 +38,7 @@ Before generating the hook, read the backend route file to extract:
 
 For example, for the products service:
 ```
-Read: value-fabric/layer3-knowledge/src/api/routes/products.py
+Read: services/layer3-knowledge/src/api/routes/products.py
 Extract: GET /v1/products, GET /v1/products/{id}, POST /v1/products, ...
 ```
 

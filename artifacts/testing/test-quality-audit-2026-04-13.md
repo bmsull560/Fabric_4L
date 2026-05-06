@@ -1,6 +1,6 @@
 # Test Quality Audit Report
-**Date**: 2026-04-13  
-**Auditor**: AI Agent  
+**Date**: 2026-04-13
+**Auditor**: AI Agent
 **Scope**: Full repository test suite (Python + TypeScript)
 
 ---
@@ -17,7 +17,7 @@
 | L6 Benchmarks | 1 file | pytest | ⚠️ Unknown | Unknown | Not tested in audit |
 | Frontend | 21 files | Vitest | ✅ Passing | ~70% | None critical |
 
-**Overall Assessment**: 
+**Overall Assessment**:
 - **Backend**: 35 test files, ~50% failing due to infrastructure issues (not test quality)
 - **Frontend**: 21 test files, all passing
 - **Critical Finding**: L3 and L4 tests cannot run due to code/infrastructure issues, not test logic
@@ -126,7 +126,7 @@ client/src/utils.test.ts
 
 ### Layer 3 Knowledge - 🔴 Infrastructure Blocked
 
-**Root Cause**: 
+**Root Cause**:
 ```python
 # src/api/main.py:1949
 async def _create_entity(driver, operation: BatchEntityOperation) -> Dict[str, Any]:
@@ -140,7 +140,7 @@ NameError: name 'BatchEntityOperation' is not defined
 
 ### Layer 4 Agents - 🔴 Infrastructure Blocked
 
-**Root Cause**: 
+**Root Cause**:
 ```python
 # test_accounts_api.py uses SQLite
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -154,7 +154,7 @@ opportunities = Column(JSONB, default=list)
 
 **Assessment**: Tests cannot run due to database incompatibility.
 
-**Recommendation**: 
+**Recommendation**:
 1. Use PostgreSQL via testcontainers for L4 tests
 2. Or create SQLite-compatible JSON type wrapper
 
@@ -180,13 +180,13 @@ opportunities = Column(JSONB, default=list)
 ### P0 - Critical (Fix First)
 
 1. **L3 Import Error** (`BatchEntityOperation` missing)
-   - **File**: `value-fabric/layer3-knowledge/src/api/main.py:1949`
+   - **File**: `services/layer3-knowledge/src/api/main.py:1949`
    - **Impact**: 16 test files cannot run
    - **Fix**: Add missing import
    - **Effort**: 5 minutes
 
 2. **L4 SQLite/JSONB Incompatibility**
-   - **File**: `value-fabric/layer4-agents/tests/test_accounts_api.py`
+   - **File**: `services/layer4-agents/tests/test_accounts_api.py`
    - **Impact**: 15 test files cannot run
    - **Fix Options**:
      - Option A: Switch to PostgreSQL testcontainers (recommended)
@@ -222,13 +222,13 @@ opportunities = Column(JSONB, default=list)
 
 ### Fix 1: L3 Missing Import
 ```python
-# Add to value-fabric/layer3-knowledge/src/api/main.py
+# Add to services/layer3-knowledge/src/api/main.py
 from src.models.schemas import BatchEntityOperation  # or correct path
 ```
 
 ### Fix 2: L4 PostgreSQL Testcontainers
 ```python
-# Update value-fabric/layer4-agents/tests/test_accounts_api.py
+# Update services/layer4-agents/tests/test_accounts_api.py
 
 import pytest
 from testcontainers.postgres import PostgresContainer
@@ -253,7 +253,7 @@ class Capability(BaseModel):
     class Config:
         orm_mode = True
 
-# After  
+# After
 from pydantic import ConfigDict
 
 class Capability(BaseModel):
@@ -268,13 +268,13 @@ Run these after fixes:
 
 ```bash
 # L3
- cd value-fabric/layer3-knowledge && python -m pytest tests/test_api.py -v
+ cd services/layer3-knowledge && python -m pytest tests/test_api.py -v
 
 # L4
- cd value-fabric/layer4-agents && python -m pytest tests/test_accounts_api.py -v
+ cd services/layer4-agents && python -m pytest tests/test_accounts_api.py -v
 
 # L2 (verify no regressions)
- cd value-fabric/layer2-extraction && python -m pytest tests/ -v
+ cd services/layer2-extraction && python -m pytest tests/ -v
 
 # Frontend
  cd frontend && npx vitest run

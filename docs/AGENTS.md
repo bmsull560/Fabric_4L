@@ -197,7 +197,7 @@ make test-frontend  # Frontend unit + type-check
 
 1. Create the provider adapter in the relevant layer's `src/` directory.
 2. Accept configuration via environment variables only — never hardcode credentials.
-3. Add the new env vars to `value-fabric/.env.example` if using the legacy template path, or to the relevant service-local env template where applicable.
+3. Add the new env vars to `.env.example` if using the legacy template path, or to the relevant service-local env template where applicable.
 4. Document the provider in `Providers.md`.
 5. Write integration tests that can run without the real provider (use mocks/fixtures).
 
@@ -228,7 +228,7 @@ For production traces, see `monitoring/` for Grafana dashboards.
 - **TypeScript**: Follow ESLint config in `apps/web/`. No `any` unless unavoidable.
 - **Tests**: Deterministic unit tests only — no external calls. Use `pytest-mock` or `unittest.mock`.
 - **Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `chore:`, `test:`.
-- **Secrets**: Use `value-fabric/.env.example` for templates. Never put real values anywhere tracked by git.
+- **Secrets**: Use `.env.example` for templates. Never put real values anywhere tracked by git.
 
 ## Runtime request limiting canonical module
 

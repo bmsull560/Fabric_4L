@@ -2,8 +2,8 @@
 
 Copy-Pasteable Commands for Build, Deploy, Test, and Operations
 
-**Context:** Vite/React frontend, Python FastAPI/Flask backend, PostgreSQL, Redis, Neo4j, Docker, Kubernetes  
-**Assumptions:** Repository root at `Fabric_4L/`, frontend at `apps/web/`, backend at `value-fabric/`
+**Context:** Vite/React frontend, Python FastAPI/Flask backend, PostgreSQL, Redis, Neo4j, Docker, Kubernetes
+**Assumptions:** Repository root at `Fabric_4L/`, frontend at `apps/web/`, backend services at `services/`
 
 ---
 
@@ -365,10 +365,10 @@ docker-compose exec postgres pg_dump -U fabric fabric > backup_$(date +%Y%m%d).s
 cat backup_20240115.sql | docker-compose exec -T postgres psql -U fabric -d fabric
 
 # Check table sizes
-SELECT schemaname, tablename, 
+SELECT schemaname, tablename,
        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
-FROM pg_tables 
-WHERE schemaname = 'public' 
+FROM pg_tables
+WHERE schemaname = 'public'
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 ```
 
@@ -515,13 +515,13 @@ HEALTHY=0
 for i in "${!PORTS[@]}"; do
   port="${PORTS[$i]}"
   name="${NAMES[$i]}"
-  
+
   # Check HTTP health
   http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost:$port/health" 2>/dev/null)
-  
+
   # Check response body
   body=$(curl -s --max-time 5 "http://localhost:$port/health" 2>/dev/null | head -c 100)
-  
+
   if [ "$http_code" = "200" ]; then
     echo "  ✅ $name (port $port) — HTTP 200"
     echo "     Response: $body"
@@ -920,8 +920,8 @@ command -v redis-cli >/dev/null 2>&1 || { echo "⚠️ redis-cli not found (opti
 echo "✅ Prerequisites met"
 
 # Create .env if missing
-if [ ! -f value-fabric/.env ]; then
-  cp value-fabric/.env.example value-fabric/.env
+if [ ! -f .env ]; then
+  cp .env.example .env
   echo "⚠️ Created .env from example — UPDATE WITH REAL VALUES"
 fi
 
@@ -960,7 +960,7 @@ curl -s http://localhost:7474 > /dev/null 2>&1 && echo "✅ Neo4j" || echo "❌ 
 echo ""
 echo "=== Setup Complete ==="
 echo "Next steps:"
-echo "  1. Update value-fabric/.env with real secrets"
+echo "  1. Update .env with real secrets"
 echo "  2. cd value-fabric && docker-compose up -d (all services)"
 echo "  3. cd apps/web && npm run dev"
 echo "  4. Open http://localhost:5173"

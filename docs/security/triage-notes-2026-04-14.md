@@ -1,7 +1,7 @@
 # Security Scan Triage Notes
 
-**Date**: 2026-04-14  
-**Scan Type**: Semgrep SAST + Custom Rules  
+**Date**: 2026-04-14
+**Scan Type**: Semgrep SAST + Custom Rules
 **Scope**: Full repository
 
 ---
@@ -25,9 +25,9 @@
 
 **Files Modified**:
 - `frontend/Dockerfile` - Added `USER node` directive
-- `value-fabric/layer3-knowledge/Dockerfile` - Added `appuser` creation and `USER appuser`
-- `value-fabric/layer4-agents/Dockerfile` - Added `appuser` creation and `USER appuser`
-- `value-fabric/layer6-benchmarks/Dockerfile` - Added `appuser` creation and `USER appuser`
+- `services/layer3-knowledge/Dockerfile` - Added `appuser` creation and `USER appuser`
+- `services/layer4-agents/Dockerfile` - Added `appuser` creation and `USER appuser`
+- `services/layer6-benchmarks/Dockerfile` - Added `appuser` creation and `USER appuser`
 
 **Pattern Applied**:
 ```dockerfile
@@ -43,8 +43,8 @@ USER appuser
 - Builds images and verifies runtime user != root
 
 **Already Secure**:
-- `value-fabric/layer1-ingestion/Dockerfile` - Already had non-root user
-- `value-fabric/layer5-ground-truth/Dockerfile` - Already had non-root user (UID 1000)
+- `services/layer1-ingestion/Dockerfile` - Already had non-root user
+- `services/layer5-ground-truth/Dockerfile` - Already had non-root user (UID 1000)
 
 ---
 
@@ -92,8 +92,8 @@ const link = this.page.getByRole('link', { name: new RegExp(escaped, 'i') });
 - Tools execute business logic, not database queries
 
 **Files Updated**:
-- `value-fabric/layer4-agents/src/tools/registry.py:223`
-- `value-fabric/layer4-agents/src/api/routes/tools.py:122, 219`
+- `services/layer4-agents/src/tools/registry.py:223`
+- `services/layer4-agents/src/api/routes/tools.py:122, 219`
 
 **Inline Comments Added**: Yes
 
@@ -109,7 +109,7 @@ const link = this.page.getByRole('link', { name: new RegExp(escaped, 'i') });
 1. Unverified decode to extract `kid` (key ID) for JWKS lookup
 2. Verified decode with fetched signing key validates signature and claims
 
-**File**: `value-fabric/shared/identity/oidc.py:170-184`
+**File**: `packages/shared/src/value_fabric/shared/identity/oidc.py:170-184`
 
 **Inline Comments Added**: Yes, with RFC reference and `# nosec B105`
 

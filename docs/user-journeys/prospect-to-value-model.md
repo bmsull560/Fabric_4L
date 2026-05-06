@@ -6,8 +6,8 @@ This document provides a detailed step-by-step guide for users navigating from i
 
 This user journey covers the complete end-to-end workflow for creating a value case for a prospect, from entering initial company information to generating a quantitative value model with ROI analysis.
 
-**Target Users**: Sales representatives, business analysts, value engineers  
-**Estimated Time**: 15-30 minutes for a complete workflow  
+**Target Users**: Sales representatives, business analysts, value engineers
+**Estimated Time**: 15-30 minutes for a complete workflow
 **Prerequisites**: User account with appropriate permissions, active subscription
 
 ## Phase 1: Prospect Input
@@ -470,6 +470,6 @@ Each value line includes:
 ## Related Documentation
 
 - [Core User Workflow](../workflows/core-user-workflow.md)
-- [Data Intelligence Layer Architecture](../../value-fabric/docs/data-intelligence-layer.md)
+- [Data Intelligence Layer Architecture](../../docs/architecture/data-intelligence-layer.md)
 - [Three-Tier UX Model](../../specs/three_tier_ux_model.md)
 - [API Reference](../API_REFERENCE.md)

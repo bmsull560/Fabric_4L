@@ -7,12 +7,12 @@
 | Location | Framework | Test Command | Coverage Tool |
 |----------|-----------|--------------|---------------|
 | Root (`/tests/`) | pytest | `pytest tests/` | pytest-cov (80% min) |
-| `value-fabric/layer1-ingestion/` | pytest | `pytest` | pytest-cov |
-| `value-fabric/layer2-extraction/` | pytest | `pytest` | pytest-cov |
-| `value-fabric/layer3-knowledge/` | pytest | `pytest` | pytest-cov |
-| `value-fabric/layer4-agents/` | pytest | `pytest` | pytest-cov |
-| `value-fabric/layer5-ground-truth/` | pytest | `pytest` | pytest-cov |
-| `value-fabric/layer6-benchmarks/` | pytest | `pytest` | pytest-cov |
+| `services/layer1-ingestion/` | pytest | `pytest` | pytest-cov |
+| `services/layer2-extraction/` | pytest | `pytest` | pytest-cov |
+| `services/layer3-knowledge/` | pytest | `pytest` | pytest-cov |
+| `services/layer4-agents/` | pytest | `pytest` | pytest-cov |
+| `services/layer5-ground-truth/` | pytest | `pytest` | pytest-cov |
+| `services/layer6-benchmarks/` | pytest | `pytest` | pytest-cov |
 | `frontend/` | Vitest + Playwright | `pnpm test` / `pnpm test:e2e` | @vitest/coverage-v8 |
 | `sdk/python/` | pytest | `pytest` | pytest-cov |
 | `packs/*/` | pytest | `pytest` | Not configured |

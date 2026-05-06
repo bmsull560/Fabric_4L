@@ -32,7 +32,7 @@ spec:
       containers:
         # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: value-fabric/layer6-benchmarks:main
+          image: services/layer6-benchmarks:main
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

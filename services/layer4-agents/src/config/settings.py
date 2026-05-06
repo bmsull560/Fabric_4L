@@ -101,22 +101,27 @@ class Settings(BaseSettings):
     )
     allow_insecure_service_http_in_development: bool = Field(
         default=False,
+        validation_alias=AliasChoices("LAYER4_ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT", "ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT"),
         description="Allow HTTP service URLs only for local development/testing."
     )
     layer1_api_url: str = Field(
         default="",
+        validation_alias=AliasChoices("LAYER4_LAYER1_API_URL", "LAYER1_API_URL"),
         description="Layer 1 Ingestion API URL"
     )
     layer2_api_url: str = Field(
         default="",
+        validation_alias=AliasChoices("LAYER4_LAYER2_API_URL", "LAYER2_API_URL"),
         description="Layer 2 Extraction API URL"
     )
     layer3_api_url: str = Field(
         default="",
+        validation_alias=AliasChoices("LAYER4_LAYER3_API_URL", "LAYER3_API_URL"),
         description="Layer 3 Knowledge Graph API URL"
     )
     layer5_api_url: str = Field(
         default="",
+        validation_alias=AliasChoices("LAYER4_LAYER5_API_URL", "LAYER5_GROUND_TRUTH_URL"),
         description="Layer 5 Ground Truth API URL"
     )
     neo4j_uri: str = Field(

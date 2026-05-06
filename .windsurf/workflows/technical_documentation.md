@@ -280,9 +280,9 @@ Documentation is complete when:
 ## Example Commands
 
 ```
-/technical_documentation doc_type=API_REFERENCE subject="Layer 5 Ground Truth" source_files=["value-fabric/layer5-ground-truth/src/api/router.py"] target_audience=DEVELOPER
+/technical_documentation doc_type=API_REFERENCE subject="Layer 5 Ground Truth" source_files=["services/layer5-ground-truth/src/api/router.py"] target_audience=DEVELOPER
 
-/technical_documentation doc_type=DEPLOYMENT subject="Layer 2 Extraction" source_files=["value-fabric/layer2-extraction/docker-compose.yml", "value-fabric/layer2-extraction/.env.example"] existing_docs="docs/deployment/layer2.md" update_mode=UPDATE
+/technical_documentation doc_type=DEPLOYMENT subject="Layer 2 Extraction" source_files=["services/layer2-extraction/docker-compose.yml", "services/layer2-extraction/.env.example"] existing_docs="docs/deployment/layer2.md" update_mode=UPDATE
 
-/technical_documentation doc_type=RUNBOOK subject="Neo4j Connection Failures" source_files=["value-fabric/layer3-knowledge/src/db/connection.py", "alerts/database-connection-error.yml"] target_audience=DEVOPS
+/technical_documentation doc_type=RUNBOOK subject="Neo4j Connection Failures" source_files=["services/layer3-knowledge/src/db/connection.py", "alerts/database-connection-error.yml"] target_audience=DEVOPS
 ```
