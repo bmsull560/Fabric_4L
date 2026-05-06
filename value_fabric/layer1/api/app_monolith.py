@@ -31,18 +31,16 @@ from value_fabric.shared.error_handling.handlers import (
     validation_exception_handler as shared_validation_exception_handler,
 )
 from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
-<<<<<<< ours
 from value_fabric.shared.identity.fallback_telemetry import (
     enforce_fallback_enabled,
     record_fallback_usage,
 )
-=======
->>>>>>> theirs
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from value_fabric.shared.identity import RequestContext, Role, require_authenticated, require_role
 from value_fabric.shared.fastapi_framework import (
+    add_request_id_middleware,
     add_governance_middleware,
     add_security_validation_middleware,
 )
@@ -327,6 +325,8 @@ async def layer1_global_exception_handler(request: Request, exc: Exception) -> J
 # middleware installation, and credentials are never combined with wildcard
 # origins or broad method/header exposure.
 app.add_middleware(CORSMiddleware, **settings.cors_policy)
+
+add_request_id_middleware(app)
 
 # SecurityMiddleware — input validation and security headers (mandatory)
 _security_config_l1 = add_security_validation_middleware(

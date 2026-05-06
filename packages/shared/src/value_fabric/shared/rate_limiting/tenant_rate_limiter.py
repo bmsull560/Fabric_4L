@@ -524,6 +524,7 @@ class SlidingWindowAdapter:
                 retry_after = window_seconds
                 if oldest:
                     retry_after = max(0, int(oldest[0][1] + window_seconds - now))
+                reset_epoch = int(now + retry_after)
                 return SlidingWindowDecision(
                     allowed=False,
                     limit=limit,
@@ -546,12 +547,15 @@ class SlidingWindowAdapter:
         allowed = len(history) < limit
         if allowed:
             history.append(now)
+        elif history:
+            reset_epoch = int(history[0] + window_seconds)
+        retry_after = None if allowed else max(0, reset_epoch - int(now))
         remaining = max(0, limit - len(history))
         return SlidingWindowDecision(
             allowed=allowed,
             limit=limit,
             remaining=remaining,
             reset_epoch=reset_epoch,
-            retry_after=None if allowed else window_seconds,
+            retry_after=retry_after,
         )
 

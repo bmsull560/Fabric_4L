@@ -2,6 +2,7 @@
 """
 
 import sys
+import os
 from pathlib import Path
 
 # ── Path Setup ─────────────────────────────────────────────────────────────
@@ -17,6 +18,14 @@ if str(_repo_root) not in sys.path:
 _layer4_src = _layer4_dir / "src"
 if str(_layer4_src) not in sys.path:
     sys.path.insert(0, str(_layer4_src))
+
+# Settings are instantiated by several service imports during collection.
+# Keep tests hermetic while still allowing callers to provide real endpoints.
+os.environ.setdefault("LAYER4_LAYER1_API_URL", "http://localhost:8001")
+os.environ.setdefault("LAYER4_LAYER2_API_URL", "http://localhost:8002")
+os.environ.setdefault("LAYER4_LAYER3_API_URL", "http://localhost:8003")
+os.environ.setdefault("LAYER4_LAYER5_API_URL", "http://localhost:8005")
+os.environ.setdefault("LAYER4_ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT", "true")
 
 import pytest
 from unittest.mock import MagicMock

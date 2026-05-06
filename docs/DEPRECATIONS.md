@@ -303,6 +303,7 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 
 - [P2] graph-node-legacy-fields: GraphNode alias fields (name, entity_type, confidence_score) are deprecated in favor of canonical fields (label, type, confidence). Target removal: 2026-07-01.
 - [P2] graph-edge-legacy-field: GraphEdge alias field (relationship_type) is deprecated in favor of canonical field (type). Target removal: 2026-07-01.
+- [P1] legacy-error-response-aliases: `HTTPValidationError` and Layer 1's top-level `error: "authentication_required"` adapter remain compatibility aliases only. New clients must consume `ErrorResponse` with `message`, `code`, `trace_id`, and optional sanitized `details`. Target removal: 2026-08-01.
 
 ---
 

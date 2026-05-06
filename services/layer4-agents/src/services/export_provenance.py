@@ -14,9 +14,9 @@ from ..config.settings import settings
 
 
 class _normalize_source_pointerResult(TypedDictModel):
-    locator: bool
-    pointer: bool
-    type: bool
+    locator: Any
+    pointer: Any
+    type: Any
 
 class _validate_claim_and_metric_provenanceResult(TypedDictModel):
     is_valid: bool
@@ -317,7 +317,7 @@ def build_export_provenance_manifest(
     deterministic_snapshot["provenance_validation"] = _validate_claim_and_metric_provenance(
         claims=narrative_claims,
         metric_formulas=metric_formulas,
-    )
+    ).model_dump()
     deterministic_snapshot["deterministic_fingerprint"] = _hash_canonical(
         deterministic_snapshot
     )

@@ -225,7 +225,7 @@ export const OPENAPI_SCHEMA_MAP: Record<
   // Common
   ApiErrorSchema: {
     specFile: 'layer4-agents.json',
-    ref: '#/components/schemas/HTTPValidationError',
+    ref: '#/components/schemas/ErrorResponse',
     description: 'Common API error shape',
   },
 };

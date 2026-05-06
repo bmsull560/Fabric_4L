@@ -267,7 +267,7 @@ describe('Contract: governance auth failures', () => {
   it('401 matches ApiError shape', () => {
     assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-gov-401' },
+      { message: 'Authentication required', code: 'AUTHENTICATION_ERROR', trace_id: 'trace-gov-401' },
       'ApiError (401 governance)'
     );
   });
@@ -275,10 +275,10 @@ describe('Contract: governance auth failures', () => {
   it('non-admin 403 matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'super_admin role required', code: 'FORBIDDEN', trace_id: 'trace-gov-403' },
+      { message: 'super_admin role required', code: 'AUTHORIZATION_ERROR', trace_id: 'trace-gov-403' },
       'ApiError (403 governance)'
     );
-    expect(err.code).toBe('FORBIDDEN');
+    expect(err.code).toBe('AUTHORIZATION_ERROR');
     expect(err.trace_id).toBeTruthy();
   });
 

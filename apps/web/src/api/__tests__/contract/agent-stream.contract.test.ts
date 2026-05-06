@@ -177,7 +177,7 @@ describe('Contract: C1 stream auth failures', () => {
   it('401 before stream opens matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-c1-401' },
+      { message: 'Authentication required', code: 'AUTHENTICATION_ERROR', trace_id: 'trace-c1-401' },
       'ApiError (401 pre-stream)'
     );
     expect(err.message).toBeTruthy();

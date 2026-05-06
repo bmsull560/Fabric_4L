@@ -509,8 +509,6 @@ def validate_database_config() -> None:
                 f"SQLite is not supported in {environment_label}. "
                 "Use PostgreSQL with RLS for multi-tenant isolation."
             )
-<<<<<<< ours
-<<<<<<< ours
         _validate_database_tls_mode(
             database_url,
             source_variable="DATABASE_URL",
@@ -524,47 +522,32 @@ def validate_database_config() -> None:
                 source_variable="DATABASE_URL_SYNC",
                 environment_label=environment_label,
             )
-=======
-=======
->>>>>>> theirs
-        _validate_database_tls_mode(database_url, source_variable="DATABASE_URL")
-
-        sync_database_url = os.getenv("DATABASE_URL_SYNC", "")
-        if sync_database_url:
-            _validate_database_tls_mode(sync_database_url, source_variable="DATABASE_URL_SYNC")
-
-
-def _validate_database_tls_mode(database_url: str, *, source_variable: str) -> None:
-    parsed = urlparse(database_url)
-    query_params = {key.lower(): value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
-    sslmode = (query_params.get("sslmode", "") or "").strip().lower()
-
-    if sslmode not in _APPROVED_DATABASE_SSL_MODES:
-        raise ValueError(
-            f"Production {source_variable} must include sslmode=require or stronger "
-            "(verify-ca/verify-full); verify-full is preferred."
-        )
-    if sslmode != _PREFERRED_DATABASE_SSL_MODE:
-        logger.info(
-            "%s uses sslmode=%s; sslmode=%s is preferred.",
-            source_variable,
-            sslmode,
-            _PREFERRED_DATABASE_SSL_MODE,
-        )
-<<<<<<< ours
->>>>>>> theirs
 
 
 def _validate_database_tls_mode(database_url: str, *, source_variable: str, environment_label: str = "production") -> None:
     parsed = urlparse(database_url)
-    query_params = {key.lower(): value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
-    sslmode = (query_params.get("sslmode", "") or "").strip().lower()
+    sslmode_values = [
+        value.strip().lower()
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key.lower() == "sslmode"
+    ]
 
-    if sslmode not in _APPROVED_DATABASE_SSL_MODES:
+    if not sslmode_values:
+        raise ValueError(
+            f"{environment_label.title()} {source_variable} must enforce TLS and include "
+            "sslmode=require, sslmode=verify-ca, or sslmode=verify-full."
+        )
+
+    unsupported_sslmodes = [
+        sslmode for sslmode in sslmode_values if sslmode not in _APPROVED_DATABASE_SSL_MODES
+    ]
+    if unsupported_sslmodes:
         raise ValueError(
             f"{environment_label.title()} {source_variable} must enforce TLS with sslmode=require or stronger "
             "(verify-ca/verify-full); verify-full is preferred."
         )
+
+    sslmode = sslmode_values[-1]
     if sslmode != _PREFERRED_DATABASE_SSL_MODE:
         logger.info(
             "%s uses sslmode=%s; sslmode=%s is preferred.",
@@ -596,8 +579,6 @@ def validate_datastore_transport_security() -> None:
         raise ValueError("Production REDIS_URL must use rediss:// to enforce TLS")
     if not neo4j_uri.lower().startswith(("neo4j+s://", "neo4j+ssc://", "bolt+s://", "bolt+ssc://")):
         raise ValueError("Production NEO4J_URI must use a TLS scheme (neo4j+s:// or bolt+s://)")
-=======
->>>>>>> theirs
 
 
 def validate_jwt_secret_strength() -> None:

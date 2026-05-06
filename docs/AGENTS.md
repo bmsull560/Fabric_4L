@@ -238,3 +238,6 @@ For production traces, see `monitoring/` for Grafana dashboards.
   - `value_fabric/layer3/api/rate_limiter.py`
 - Rule: adapter modules must delegate through a narrow interface and must not duplicate
   sliding-window state math or Redis counter semantics.
+- Contract: HTTP adapters return `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+  `X-RateLimit-Reset`, and `Retry-After` on throttled requests, with body fields
+  `detail`, `error`, and `retry_after`.

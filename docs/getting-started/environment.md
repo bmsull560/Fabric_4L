@@ -357,7 +357,7 @@ DEBUG_MODE=false
 ENABLE_SWAGGER=true  # For API testing
 
 # Cloud services (placeholder URLs)
-DATABASE_URL=postgresql://...:5432/fabric_staging
+DATABASE_URL=postgresql://...:5432/fabric_staging?sslmode=verify-full
 REDIS_URL=redis://...:6379/0
 NEO4J_URI=neo4j+s://...
 ```
@@ -380,10 +380,15 @@ API_KEY_RATE_LIMIT=600  # requests per minute
 MAX_UPLOAD_SIZE=10485760  # 10MB
 
 # Cloud services
-DATABASE_URL=postgresql://...:5432/fabric_prod
+DATABASE_URL=postgresql://...:5432/fabric_prod?sslmode=verify-full
 REDIS_URL=redis://...:6379/0
 NEO4J_URI=neo4j+s://...
 ```
+
+Production-like environments (`production` and `staging`) must set database TLS
+explicitly on `DATABASE_URL`. Startup validation accepts only
+`sslmode=require`, `sslmode=verify-ca`, or `sslmode=verify-full`; `verify-full`
+is preferred.
 
 ---
 

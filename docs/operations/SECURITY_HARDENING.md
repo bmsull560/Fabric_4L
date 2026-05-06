@@ -41,6 +41,7 @@ Required secrets for production:
 # Production/Staging: TLS is mandatory.
 # Allowed sslmode values: require, verify-ca, verify-full
 DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=verify-full
+DATABASE_URL_SYNC=postgresql://user:password@host:5432/dbname?sslmode=verify-full
 NEO4J_URI=bolt://neo4j-host:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=<strong-password>
@@ -58,7 +59,7 @@ S3_ACCESS_KEY=<access-key>
 S3_SECRET_KEY=<secret-key>
 ```
 
-> **Operational requirement:** In `production` and `staging`, startup validation fails fast when `DATABASE_URL` omits `sslmode` or uses a mode other than `require`, `verify-ca`, or `verify-full`.
+> **Operational requirement:** In `production` and `staging`, startup validation fails fast when `DATABASE_URL` omits `sslmode` or uses a mode other than `require`, `verify-ca`, or `verify-full`. If `DATABASE_URL_SYNC` is configured, it must follow the same TLS policy.
 
 ### Kubernetes Secrets
 

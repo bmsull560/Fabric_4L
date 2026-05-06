@@ -7263,8 +7263,8 @@
               "anyOf": [
                 {
                   "type": "number",
-                  "maximum": 1.0,
-                  "minimum": 0.0
+                  "maximum": 1,
+                  "minimum": 0
                 },
                 {
                   "type": "null"
@@ -7875,7 +7875,7 @@
           "prospects"
         ],
         "summary": "Start Prospect Analysis",
-        "description": "Start prospect analysis workflow \u2014 real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
+        "description": "Start prospect analysis workflow — real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
         "operationId": "start_prospect_analysis_v1_prospects__prospect_id__start_analysis_post",
         "parameters": [
           {
@@ -8019,8 +8019,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 10000.0,
-                "minimum": 1.0
+                "maximum": 10000,
+                "minimum": 1
               },
               {
                 "type": "null"
@@ -8059,7 +8059,7 @@
           "api_key": {
             "type": "string",
             "title": "Api Key",
-            "description": "Full key \u2014 shown ONCE, store securely"
+            "description": "Full key — shown ONCE, store securely"
           },
           "prefix": {
             "type": "string",
@@ -8119,7 +8119,7 @@
           "created_at"
         ],
         "title": "APIKeyCreateResponse",
-        "description": "Returned once on key creation \u2014 includes the raw secret (shown only once)."
+        "description": "Returned once on key creation — includes the raw secret (shown only once)."
       },
       "APIKeyModel": {
         "properties": {
@@ -8207,8 +8207,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 10000.0,
-                "minimum": 1.0
+                "maximum": 10000,
+                "minimum": 1
               },
               {
                 "type": "null"
@@ -8808,14 +8808,14 @@
           },
           "page": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Page",
             "default": 1
           },
           "page_size": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 1.0,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Page Size",
             "default": 20
           },
@@ -9282,8 +9282,8 @@
         "properties": {
           "limit": {
             "type": "integer",
-            "maximum": 500.0,
-            "minimum": 1.0,
+            "maximum": 500,
+            "minimum": 1,
             "title": "Limit",
             "description": "Max accounts to enrich",
             "default": 50
@@ -9661,17 +9661,17 @@
           "total_value": {
             "type": "number",
             "title": "Total Value",
-            "default": 0.0
+            "default": 0
           },
           "implementation_cost": {
             "type": "number",
             "title": "Implementation Cost",
-            "default": 0.0
+            "default": 0
           },
           "roi_ratio": {
             "type": "number",
             "title": "Roi Ratio",
-            "default": 0.0
+            "default": 0
           },
           "payback_months": {
             "type": "integer",
@@ -9681,7 +9681,7 @@
           "confidence_score": {
             "type": "number",
             "title": "Confidence Score",
-            "default": 0.0
+            "default": 0
           },
           "recommendations": {
             "items": {
@@ -10123,10 +10123,10 @@
           },
           "packet_loss_percent": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0,
+            "maximum": 100,
+            "minimum": 0,
             "title": "Packet Loss Percent",
-            "default": 0.0
+            "default": 0
           },
           "connection_type": {
             "type": "string",
@@ -10344,7 +10344,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -10977,28 +10977,28 @@
         "properties": {
           "overall_pass_rate": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Overall Pass Rate",
             "description": "Overall evaluation pass rate"
           },
           "total_tests": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Tests",
             "description": "Total number of tests run",
             "default": 0
           },
           "passed_tests": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Passed Tests",
             "description": "Number of passing tests",
             "default": 0
           },
           "skills_evaluated": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Skills Evaluated",
             "description": "Number of skills evaluated",
             "default": 0
@@ -11139,8 +11139,8 @@
           },
           "rollout_percentage": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 0.0,
+            "maximum": 100,
+            "minimum": 0,
             "title": "Rollout Percentage"
           },
           "description": {
@@ -11204,8 +11204,8 @@
           },
           "rollout_percentage": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 0.0,
+            "maximum": 100,
+            "minimum": 0,
             "title": "Rollout Percentage"
           },
           "description": {
@@ -11300,15 +11300,15 @@
           },
           "min_confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Min Confidence",
             "default": 0.3
           },
           "max_hypotheses": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 1.0,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Max Hypotheses",
             "default": 20
           },
@@ -11326,17 +11326,43 @@
         "description": "Request to generate value hypotheses for an account."
       },
       "HTTPValidationError": {
+        "type": "object",
+        "title": "HTTPValidationError",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
           }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
+        "description": "Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients."
       },
       "HealthBadgeInfo": {
         "properties": {
@@ -11561,15 +11587,15 @@
           },
           "sync_interval_minutes": {
             "type": "integer",
-            "maximum": 1440.0,
-            "minimum": 5.0,
+            "maximum": 1440,
+            "minimum": 5,
             "title": "Sync Interval Minutes",
             "default": 60
           },
           "sync_batch_size": {
             "type": "integer",
-            "maximum": 500.0,
-            "minimum": 10.0,
+            "maximum": 500,
+            "minimum": 10,
             "title": "Sync Batch Size",
             "default": 100
           },
@@ -11735,8 +11761,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
+                "maximum": 1,
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -11908,15 +11934,15 @@
           },
           "roi_time_horizon_months": {
             "type": "integer",
-            "maximum": 120.0,
-            "minimum": 1.0,
+            "maximum": 120,
+            "minimum": 1,
             "title": "Roi Time Horizon Months",
             "default": 36
           },
           "top_n_hypotheses": {
             "type": "integer",
-            "maximum": 20.0,
-            "minimum": 1.0,
+            "maximum": 20,
+            "minimum": 1,
             "title": "Top N Hypotheses",
             "default": 5
           },
@@ -13238,7 +13264,7 @@
           "system"
         ],
         "title": "Role",
-        "description": "Business roles used across all layers.\n\nHierarchy (highest \u2192 lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
+        "description": "Business roles used across all layers.\n\nHierarchy (highest → lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
       },
       "SaveScenarioRequest": {
         "properties": {
@@ -14527,7 +14553,7 @@
           "email"
         ],
         "title": "UserModel",
-        "description": "Read-only representation of a user (returned by API \u2014 no password)."
+        "description": "Read-only representation of a user (returned by API — no password)."
       },
       "UserStatus": {
         "type": "string",
@@ -14599,11 +14625,11 @@
           },
           "confidence_adjustment": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Confidence Adjustment",
             "description": "Additive confidence adjustment",
-            "default": 0.0
+            "default": 0
           }
         },
         "type": "object",
@@ -15208,10 +15234,10 @@
           },
           "percent": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0,
+            "maximum": 100,
+            "minimum": 0,
             "title": "Percent",
-            "default": 0.0
+            "default": 0
           },
           "message": {
             "type": "string",
@@ -15387,10 +15413,10 @@
           },
           "progress_percentage": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0,
+            "maximum": 100,
+            "minimum": 0,
             "title": "Progress Percentage",
-            "default": 0.0
+            "default": 0
           },
           "started_at": {
             "anyOf": [
@@ -15814,6 +15840,44 @@
         ],
         "title": "RegisterTenantRequest",
         "description": "Request to register a new tenant."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "title": "ErrorResponse",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
+          }
+        }
       }
     }
   }
