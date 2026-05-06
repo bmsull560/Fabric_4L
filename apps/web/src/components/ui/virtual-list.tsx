@@ -16,6 +16,7 @@ interface VirtualListProps<T> {
   overscan?: number;
   className?: string;
   itemClassName?: string;
+  columns?: number;
 }
 
 export function VirtualList<T>({
@@ -25,11 +26,13 @@ export function VirtualList<T>({
   overscan = 5,
   className,
   itemClassName,
+  columns = 1,
 }: VirtualListProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
+  const rowCount = Math.ceil(items.length / columns);
 
   const virtualizer = useVirtualizer({
-    count: items.length,
+    count: rowCount,
     getScrollElement: () => parentRef.current,
     estimateSize: () => estimateSize,
     overscan,
@@ -48,18 +51,31 @@ export function VirtualList<T>({
           position: "relative",
         }}
       >
-        {virtualizer.getVirtualItems().map((virtualItem) => (
-          <div
-            key={virtualItem.key}
-            className={cn("absolute left-0 top-0 w-full", itemClassName)}
-            style={{
-              height: `${virtualItem.size}px`,
-              transform: `translateY(${virtualItem.start}px)`,
-            }}
-          >
-            {renderItem(items[virtualItem.index], virtualItem.index)}
-          </div>
-        ))}
+        {virtualizer.getVirtualItems().map((virtualItem) => {
+          const rowStartIndex = virtualItem.index * columns;
+          const rowItems = items.slice(rowStartIndex, rowStartIndex + columns);
+
+          return (
+            <div
+              key={virtualItem.key}
+              className={cn("absolute left-0 top-0 w-full", itemClassName)}
+              style={{
+                height: `${virtualItem.size}px`,
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+            >
+              {columns > 1 ? (
+                <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: '0.75rem' }}>
+                  {rowItems.map((item, colIndex) =>
+                    renderItem(item, rowStartIndex + colIndex)
+                  )}
+                </div>
+              ) : (
+                renderItem(items[virtualItem.index], virtualItem.index)
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

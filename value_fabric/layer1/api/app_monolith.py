@@ -350,43 +350,6 @@ class legacy_health_checkResult(TypedDictModel):
     status: Any
 
 
-# =============================================================================
-# BATCH OPERATION MODELS
-# =============================================================================
-
-
-class BatchOperationType(str, PyEnum):
-    """Types of batch operations supported."""
-    EXECUTE = "execute"
-    CANCEL = "cancel"
-    RETRY = "retry"
-
-
-class BatchOperationRequest(BaseModel):
-    """Request for batch operations on jobs and targets."""
-    operation: BatchOperationType = Field(..., description="Operation to perform")
-    target_ids: list[UUID] = Field(default_factory=list, description="Target IDs for execute operation")
-    job_ids: list[UUID] = Field(default_factory=list, description="Job IDs for cancel/retry operations")
-    options: dict[str, Any] = Field(default_factory=dict, description="Additional operation options")
-
-
-class BatchOperationItemResult(BaseModel):
-    """Result of a single item in a batch operation."""
-    id: UUID = Field(..., description="Target or job ID")
-    status: str = Field(..., description="Operation status: succeeded, failed, or skipped")
-    job_id: UUID | None = Field(None, description="Resulting job ID (if applicable)")
-    error: str | None = Field(None, description="Error message if failed")
-
-
-class BatchOperationResponse(BaseModel):
-    """Response for batch operation."""
-    operation: BatchOperationType = Field(..., description="Operation performed")
-    requested: int = Field(..., description="Total number of items requested")
-    succeeded: int = Field(..., description="Number of successful operations")
-    failed: int = Field(..., description="Number of failed operations")
-    results: list[BatchOperationItemResult] = Field(..., description="Per-item results")
-
-
 add_governance_middleware(app, rate_limiter=redis_rate_limiter)
 
 # Add metrics middleware if available — INNERMOST

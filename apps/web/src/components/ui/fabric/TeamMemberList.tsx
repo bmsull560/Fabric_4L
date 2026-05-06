@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { StatusBadge } from "./StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ export function TeamMemberList({ members, className, onMemberClick, actions }: T
         >
           <Avatar className="h-8 w-8 bg-muted">
             {member.avatar ? (
-              <img src={member.avatar} alt={member.name} />
+              <OptimizedImage src={member.avatar} alt={member.name} />
             ) : (
               <AvatarFallback className="text-[12px] font-medium bg-muted text-muted-foreground">
                 {member.name.split(" ").map(n => n[0]).join("").toUpperCase()}

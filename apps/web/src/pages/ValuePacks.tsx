@@ -16,6 +16,7 @@ import {
   ErrorBoundary,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components";
+import { VirtualList } from "@/components/ui/virtual-list";
 import {
   useValuePacks,
   useValuePack,
@@ -706,22 +707,28 @@ function ValuePacksContent() {
             <>
               <div className="border border-border rounded-lg bg-muted/20 p-4 mb-6">
                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3">Pack Grid</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  {filtered.map(pack => (
-                    <PackCard
-                      key={pack.pack_id}
-                      pack={pack}
-                      isSelected={selectedPackId === pack.pack_id}
-                      onSelect={handleSelectPack}
+                {filtered.length > 0 ? (
+                  <div className="h-[500px]">
+                    <VirtualList
+                      items={filtered}
+                      estimateSize={180}
+                      columns={3}
+                      overscan={2}
+                      renderItem={(pack) => (
+                        <PackCard
+                          pack={pack}
+                          isSelected={selectedPackId === pack.pack_id}
+                          onSelect={handleSelectPack}
+                        />
+                      )}
                     />
-                  ))}
-                  {filtered.length === 0 && (
-                    <div className="col-span-3 text-center py-12 text-muted-foreground/60 text-[13px]">
-                      <Package size={36} className="mx-auto mb-3 text-muted-foreground/40" />
-                      <p>No value packs match your filters.</p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="col-span-3 text-center py-12 text-muted-foreground/60 text-[13px]">
+                    <Package size={36} className="mx-auto mb-3 text-muted-foreground/40" />
+                    <p>No value packs match your filters.</p>
+                  </div>
+                )}
               </div>
 
               {/* My Packs Section */}

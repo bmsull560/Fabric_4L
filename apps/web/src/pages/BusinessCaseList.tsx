@@ -23,6 +23,7 @@ import { useNavigation } from "@/hooks";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { EmptyState } from "@/components/states";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VirtualList } from "@/components/ui/virtual-list";
 import {
   Dialog,
   DialogContent,
@@ -438,16 +439,22 @@ function BusinessCaseListContent() {
       </div>
 
       {/* Case List */}
-      <div className="space-y-4">
-        {sortedCases.map(caseItem => (
-          <CaseCard
-            key={caseItem.id}
-            caseItem={caseItem}
-            onArchive={handleArchive}
-            isArchiving={archiveMutation.isPending}
+      {sortedCases.length > 0 && (
+        <div className="h-[600px]">
+          <VirtualList
+            items={sortedCases}
+            estimateSize={120}
+            overscan={3}
+            renderItem={(caseItem) => (
+              <CaseCard
+                caseItem={caseItem}
+                onArchive={handleArchive}
+                isArchiving={archiveMutation.isPending}
+              />
+            )}
           />
-        ))}
-      </div>
+        </div>
+      )}
 
       {sortedCases.length === 0 && (
         <EmptyState
