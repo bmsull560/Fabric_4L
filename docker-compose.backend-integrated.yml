@@ -376,6 +376,7 @@ services:
         condition: service_healthy
     volumes:
       - ./services/layer5-ground-truth/src:/app/src:ro
+      - ./value_fabric/layer5:/app/value_fabric/layer5:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -403,6 +404,7 @@ services:
         condition: service_healthy
     volumes:
       - ./services/layer5-ground-truth/src:/app/src:ro
+      - ./value_fabric/layer5:/app/value_fabric/layer5:ro
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"

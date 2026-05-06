@@ -27,7 +27,7 @@ RUN uv sync --frozen --no-install-project
 
 # Copy application code
 COPY src/ ./src/
-COPY ../../value_fabric/ ./value_fabric/
+COPY value_fabric/ ./value_fabric/
 
 # Set PATH to use uv virtual environment and PYTHONPATH for imports
 ENV PATH="/app/.venv/bin:$PATH"

@@ -34,9 +34,14 @@ jobs:
           RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/$REPO/branches/$BRANCH/protection")
 
+          # Install jq for JSON parsing if not available
+          if ! command -v jq &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+
           MISSING=()
           for check in "${REQUIRED_CHECKS[@]}"; do
-            if ! echo "$RESPONSE" | grep -q "$check"; then
+            if ! echo "$RESPONSE" | jq -e ".required_status_checks.checks[].name == \"$check\"" &> /dev/null; then
               MISSING+=("$check")
             fi
           done

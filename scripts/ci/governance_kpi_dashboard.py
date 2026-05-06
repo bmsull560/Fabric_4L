@@ -35,12 +35,15 @@ def _count_security_gate_passes() -> dict[str, Any]:
 def _compute_contract_compliance() -> dict[str, Any]:
     scorecard_path = Path("contract-scorecard.json")
     if scorecard_path.exists():
-        data = json.loads(scorecard_path.read_text())
-        return {
-            "overall_score": data.get("overall_score", 0.0),
-            "total_violations": data.get("total_violations", 0),
-            "target_score": data.get("target_score", 85.0),
-        }
+        try:
+            data = json.loads(scorecard_path.read_text())
+            return {
+                "overall_score": data.get("overall_score", 0.0),
+                "total_violations": data.get("total_violations", 0),
+                "target_score": data.get("target_score", 85.0),
+            }
+        except (json.JSONDecodeError, OSError) as exc:
+            return {"overall_score": 0.0, "total_violations": 0, "target_score": 85.0, "error": str(exc)}
     return {"overall_score": 58.0, "total_violations": 449, "target_score": 85.0}
 
 
@@ -124,7 +127,9 @@ def main() -> int:
 
     output = args.output or f"docs/governance/kpi-report-{args.month}.md"
     report = generate_report(args.month)
-    Path(output).write_text(report, encoding="utf-8")
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(report, encoding="utf-8")
     print(f"Report written to {output}")
     return 0
 

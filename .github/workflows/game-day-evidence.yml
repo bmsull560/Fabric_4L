@@ -111,6 +111,20 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+          BRANCH="game-day-${{ inputs.scenario }}-${{ github.run_id }}"
+          git checkout -b $BRANCH
           git add artifacts/obs/game-day-results.json
           git diff --cached --quiet || git commit -m "chore(obs): game day results for ${{ inputs.scenario }} [run ${{ github.run_id }}]"
-          git push
+          git push origin $BRANCH
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: game-day-${{ inputs.scenario }}-${{ github.run_id }}
+          title: "Game Day Results: ${{ inputs.scenario }}"
+          body: |
+            Automated game day evidence capture for scenario: ${{ inputs.scenario }}
+            Environment: ${{ inputs.environment }}
+            Run ID: ${{ github.run_id }}
+          labels: game-day,observability
+          draft: false

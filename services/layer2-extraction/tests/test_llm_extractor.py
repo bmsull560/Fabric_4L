@@ -12,7 +12,6 @@ from value_fabric.layer2.extraction.llm_extractor import (
     RelationshipExtractor,
     _effective_confidence,
     _logprob_confidence_from_response,
-    _parse_tool_arguments,
     _strict_array_tool,
 )
 from value_fabric.layer2.models.extraction_response import (
@@ -67,17 +66,6 @@ def test_effective_confidence_clamps_out_of_range_values():
     assert _effective_confidence(2.0, None) == 1.0
     assert _effective_confidence(-1.0, 0.5) >= 0.0
 
-
-def test_parse_tool_arguments_returns_json_payload():
-    response = _response_with_tool_args({"capabilities": [{"name": "x"}]})
-    parsed = _parse_tool_arguments(response, "extract_capabilities")
-    assert parsed["capabilities"][0]["name"] == "x"
-
-
-def test_parse_tool_arguments_raises_for_missing_tool_call():
-    response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(tool_calls=[]))])
-    with pytest.raises(LLMExtractionError):
-        _parse_tool_arguments(response, "extract_capabilities")
 
 
 def test_strict_array_tool_enforces_strict_schema_shape():

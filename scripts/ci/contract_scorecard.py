@@ -61,15 +61,19 @@ CONTRACT_RULES = {
 }
 
 
-def _count_matches(pattern: str, paths: list[Path]) -> int:
-    """Count grep matches across paths."""
+def _count_matches(pattern: str, paths: list[Path], file_types: list[str] | None = None) -> int:
+    """Count grep matches across paths with file type filtering."""
     total = 0
     for p in paths:
         if not p.exists():
             continue
         try:
+            rg_args = ["rg", "-c", "--multiline", pattern, str(p)]
+            if file_types:
+                for ft in file_types:
+                    rg_args.extend(["-t", ft])
             result = subprocess.run(
-                ["rg", "-c", "--multiline", pattern, str(p)],
+                rg_args,
                 capture_output=True,
                 text=True,
             )
@@ -77,8 +81,13 @@ def _count_matches(pattern: str, paths: list[Path]) -> int:
                 total += sum(1 for line in result.stdout.splitlines() if line.strip())
         except FileNotFoundError:
             # Fallback to Python regex if ripgrep unavailable
-            text = p.read_text(encoding="utf-8", errors="ignore")
-            total += len(re.findall(pattern, text, re.MULTILINE))
+            for ext in (file_types or ["*"]):
+                for file_path in p.rglob(f"*.{ext}" if ext != "*" else "*"):
+                    if file_path.is_file() and not any(
+                        skip in str(file_path) for skip in ["node_modules", ".venv", "__pycache__", ".git"]
+                    ):
+                        text = file_path.read_text(encoding="utf-8", errors="ignore")
+                        total += len(re.findall(pattern, text, re.MULTILINE))
     return total
 
 
@@ -93,10 +102,12 @@ def _scan_contract(contract_id: str, config: dict[str, Any]) -> dict[str, Any]:
     for pattern, label, severity in config["patterns"]:
         if label in ("imperative navigation", "imperative router.push", "URL string concatenation"):
             paths = frontend_paths
+            file_types = ["ts", "tsx", "js", "jsx"]
         else:
             paths = backend_paths
+            file_types = ["py"]
 
-        count = _count_matches(pattern, paths)
+        count = _count_matches(pattern, paths, file_types=file_types)
         if count:
             total_count += count
             violations.append({
