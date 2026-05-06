@@ -171,7 +171,8 @@ describe('Contract: Workspace Tab API', () => {
         ApiErrorSchema,
         {
           message: 'Invalid tab_key. Must be one of the allowed workspace tabs.',
-          code: 'bad_request',
+          code: 'VALIDATION_ERROR',
+          trace_id: 'trace-workspace-400',
         },
         'workspace invalid-tab error response'
       );
