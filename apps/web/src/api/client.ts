@@ -90,7 +90,11 @@ const LAYER_PREFIXES = {
  * Generate a request correlation ID for tracing
  */
 function generateRequestId(): string {
-  return `req_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `req_${crypto.randomUUID()}`;
+  }
+  // Fallback for rare legacy runtimes
+  return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
 /**
@@ -212,7 +216,8 @@ class ApiClient {
         (config) => {
           // Add correlation ID for request tracing
           config.headers['X-Request-ID'] = generateRequestId();
-          config.headers['X-Tenant-ID'] = sessionService.getTenantId();
+          // Tenant identity must be resolved server-side from authenticated context.
+          // Do not send client-controlled tenant headers from browser code.
 
           // Access token is in the httpOnly vf_session cookie; sent automatically
           // via withCredentials: true. No Authorization header needed.

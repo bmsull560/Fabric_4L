@@ -42,7 +42,7 @@ class _ToolGatewayUnavailable(RuntimeError):
 
 try:
     # Compatibility import path required by the release gate:
-    # from shared.governance.tool_gateway import ToolGateway
+    # from value_fabric.shared.governance.tool_gateway import ToolGateway
     from value_fabric.shared.governance.abom import AgentBillOfMaterials
     from value_fabric.shared.governance.tool_gateway import (
         InvariantViolation,

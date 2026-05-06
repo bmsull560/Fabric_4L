@@ -1,6 +1,8 @@
 """FastAPI application for Layer 3: Knowledge Graph & Semantic Layer.
 
-P1-29: OpenTelemetry tracing integration for observability.
+Migration ledger:
+- moved groups: operational system routes (/health,/metrics) and query/search implementations to api/routes modules.
+- remaining groups: legacy aliases, deprecation header compatibility, and incremental endpoint extraction backlog.
 """
 
 import json
@@ -48,6 +50,7 @@ from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.fastapi_framework import (
     RouterMount,
     add_governance_middleware,
+    add_request_id_middleware,
     add_security_validation_middleware,
     include_router_mounts,
     resolve_cors_policy,
@@ -114,7 +117,6 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
-from value_fabric.shared.error_handling.middleware import RequestIDMiddleware  # type: ignore[import-untyped]
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
 from .exceptions import (
@@ -626,6 +628,7 @@ from .routes import (
     formulas,
     models,
     products,
+    query_search,
     roi_calculator,
     system,
     value_packs,
@@ -710,7 +713,7 @@ app.add_middleware(
 # Request ID middleware (Task 61: Request Correlation IDs)
 # Must be after CORS but before request processing
 if SHARED_ERROR_HANDLING_AVAILABLE:
-    app.add_middleware(RequestIDMiddleware)
+    add_request_id_middleware(app)
     logger.info("RequestIDMiddleware enabled for trace correlation")
 
 # Security middleware — runs before auth to validate input
@@ -1603,43 +1606,8 @@ async def graph_rag_legacy_alias(
     query: GraphRAGQuery,
     graph_rag=Depends(get_graph_rag),
 ):
-    """Execute a GraphRAG query - backward-compatible alias for /v1/query/graph.
-
-    This endpoint exists for backward compatibility with existing clients and tests.
-    New implementations should use `/v1/query/graph` (preferred) or `/v1/query`.
-    """
-    try:
-        deduplicator = get_request_deduplicator()
-
-        if deduplicator:
-            params = {
-                "query": query.query,
-                "entity_type": query.entity_type,
-                "max_hops": query.max_hops,
-                "max_results": query.max_results,
-            }
-            return await deduplicator.execute(
-                operation="graph_rag_query",
-                params=params,
-                executor=_execute_graph_rag_query,
-                ttl=60,
-                graph_rag=graph_rag,
-                query_text=query.query,
-                entity_type=query.entity_type,
-                max_hops=query.max_hops,
-                max_results=query.max_results,
-            )
-        else:
-            return await _execute_graph_rag_query(
-                graph_rag,
-                query.query,
-                query.entity_type,
-                query.max_hops,
-                query.max_results,
-            )
-    except Exception as e:
-        logger.error(f"GraphRAG query failed: {e}")
-        raise HTTPException(status_code=500, detail="Query processing failed. Please try again later.")
+    """Compatibility alias; implementation moved to routes.query_search."""
+    return await query_search.graph_rag_query_impl(query, graph_rag)
 
 
 @app.post("/v1/query/graph", response_model=GraphRAGResponse)
@@ -1648,50 +1616,8 @@ async def graph_rag_query(
     query: GraphRAGQuery,
     graph_rag=Depends(get_graph_rag),
 ):
-    """Execute a GraphRAG query with multi-hop traversal.
-
-    Uses request deduplication to prevent redundant computation for
-    identical concurrent queries. Results are cached for 60 seconds.
-
-    Notes:
-    - Preferred route: `/v1/query/graph`
-    - Legacy route retained: `/v1/query` (deprecate later)
-    - Backward-compatible alias: `/v1/graphrag`
-    """
-    try:
-        deduplicator = get_request_deduplicator()
-
-        if deduplicator:
-            # Use request deduplication for identical concurrent queries
-            params = {
-                "query": query.query,
-                "entity_type": query.entity_type,
-                "max_hops": query.max_hops,
-                "max_results": query.max_results,
-            }
-            return await deduplicator.execute(
-                operation="graph_rag_query",
-                params=params,
-                executor=_execute_graph_rag_query,
-                ttl=60,  # 60 second deduplication window
-                graph_rag=graph_rag,
-                query_text=query.query,
-                entity_type=query.entity_type,
-                max_hops=query.max_hops,
-                max_results=query.max_results,
-            )
-        else:
-            # Fallback to direct execution
-            return await _execute_graph_rag_query(
-                graph_rag,
-                query.query,
-                query.entity_type,
-                query.max_hops,
-                query.max_results,
-            )
-    except Exception as e:
-        logger.error(f"GraphRAG query failed: {e}")
-        raise HTTPException(status_code=500, detail="Query processing failed. Please try again later.")
+    """Compatibility forwarder; implementation moved to routes.query_search."""
+    return await query_search.graph_rag_query_impl(query, graph_rag)
 
 
 @app.post("/v1/query/graph/stream")
@@ -1699,61 +1625,8 @@ async def graph_rag_query_stream(
     query: GraphRAGQuery,
     graph_rag=Depends(get_graph_rag),
 ):
-    """Execute a streaming GraphRAG query with progressive results.
-
-    Uses Server-Sent Events (SSE) to stream results as they are discovered:
-    - start: Query initialization
-    - seed_entity: Initial matching entities found
-    - context_node: Entities discovered during graph traversal
-    - context_edge: Relationships discovered
-    - progress: Periodic progress updates
-    - result: Final aggregated result
-    - complete: Stream completion
-
-    Example usage with curl:
-        curl -N -H "Accept: text/event-stream" \
-             -X POST http://localhost:8000/v1/query/graph/stream \
-             -H "Content-Type: application/json" \
-             -d '{"query": "What capabilities enable automated invoice processing?"}'
-    """
-    import json
-    from datetime import datetime
-
-    async def event_generator():
-        try:
-            async for event in graph_rag.query_stream(
-                query_text=query.query,
-                entity_type=query.entity_type,
-                max_hops=query.max_hops,
-                max_results=query.max_results,
-            ):
-                # Convert to SSE format
-                event_data = {
-                    "event_type": event["event_type"],
-                    "data": event["data"],
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "progress_percent": event.get("progress_percent", 0.0),
-                }
-                yield f"data: {json.dumps(event_data)}\n\n"
-        except Exception as e:
-            logger.error(f"Streaming GraphRAG query failed: {e}")
-            error_event = {
-                "event_type": "error",
-                "data": {"message": str(e)},
-                "timestamp": datetime.utcnow().isoformat(),
-                "progress_percent": 100.0,
-            }
-            yield f"data: {json.dumps(error_event)}\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering for SSE
-        },
-    )
+    """Compatibility forwarder; implementation moved to routes.query_search."""
+    return await query_search.graph_rag_query_stream_impl(query, graph_rag)
 
 
 # Search endpoints
@@ -1810,56 +1683,8 @@ async def hybrid_search(
     request: SearchRequest,
     hybrid_search=Depends(get_hybrid_search),
 ):
-    """DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.
-
-    This endpoint is deprecated in favor of the canonical entity browser API.
-    Sunset date: 2026-05-18 (30 days from deprecation).
-
-    Legacy behavior: Execute hybrid search combining BM25, vector, and graph signals.
-    Uses request deduplication to prevent redundant computation.
-
-    Migration guide:
-    - For entity listing: Use GET /v1/entities with filter parameters
-    - For text search: Use search_text query param on /v1/entities
-    - For type filtering: Use entity_types query param on /v1/entities
-    """
-    try:
-        deduplicator = get_request_deduplicator()
-
-        if deduplicator:
-            # Use request deduplication for identical concurrent searches
-            params = {
-                "query": request.query,
-                "entity_type": request.entity_type,
-                "search_type": request.search_type,
-                "top_k": request.top_k,
-                "weights": request.weights,
-            }
-            return await deduplicator.execute(
-                operation="hybrid_search",
-                params=params,
-                executor=_execute_hybrid_search,
-                ttl=30,  # 30 second deduplication window
-                hybrid_search=hybrid_search,
-                query=request.query,
-                entity_type=request.entity_type,
-                search_type=request.search_type,
-                top_k=request.top_k,
-                weights=request.weights,
-            )
-        else:
-            # Fallback to direct execution
-            return await _execute_hybrid_search(
-                hybrid_search,
-                request.query,
-                request.entity_type,
-                request.search_type,
-                request.top_k,
-                request.weights,
-            )
-    except Exception as e:
-        logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail="Search failed. Please try again later.")
+    """DEPRECATED compatibility forwarder; implementation moved to routes.query_search."""
+    return await query_search.hybrid_search_impl(request, hybrid_search)
 
 
 # Entity endpoints

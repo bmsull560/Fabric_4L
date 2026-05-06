@@ -5,6 +5,7 @@ from app.core.tenant_context import tenant_required
 from app.models.schemas import Signal, Stakeholder
 
 router = APIRouter(prefix="/accounts/{account_id}", tags=["Intelligence"])
+legacy_router = APIRouter(prefix="/intelligence/account/{account_id}", tags=["Intelligence"])
 
 
 @router.get("/signals", response_model=list[Signal])
@@ -57,3 +58,30 @@ async def get_enrichment(account_id: str, tenant_id: str = Depends(tenant_requir
         "tech_stack": ["Salesforce", "HubSpot", "Slack"],
         "public_sources": ["LinkedIn", "Crunchbase"],
     }
+
+
+@legacy_router.get("/signals", response_model=list[Signal])
+async def list_signals_legacy(account_id: str, tenant_id: str = Depends(tenant_required)):
+    return await list_signals(account_id=account_id, tenant_id=tenant_id)
+
+
+@legacy_router.post("/signals/extract", response_model=Signal, status_code=201)
+async def extract_signal_legacy(
+    account_id: str, signal: Signal, tenant_id: str = Depends(tenant_required)
+):
+    return await extract_signal(account_id=account_id, signal=signal, tenant_id=tenant_id)
+
+
+@legacy_router.get("/stakeholders", response_model=list[Stakeholder])
+async def list_stakeholders_legacy(account_id: str, tenant_id: str = Depends(tenant_required)):
+    return await list_stakeholders(account_id=account_id, tenant_id=tenant_id)
+
+
+@legacy_router.get("/ontology-match")
+async def get_ontology_match_legacy(account_id: str, tenant_id: str = Depends(tenant_required)):
+    return await get_ontology_match(account_id=account_id, tenant_id=tenant_id)
+
+
+@legacy_router.get("/enrichment")
+async def get_enrichment_legacy(account_id: str, tenant_id: str = Depends(tenant_required)):
+    return await get_enrichment(account_id=account_id, tenant_id=tenant_id)

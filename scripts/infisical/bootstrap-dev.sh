@@ -46,7 +46,7 @@ echo "Verifying secret paths exist..."
 
 PATHS=(
   "/fabric-4l/value-fabric/dev"
-  "/fabric-4l/frontend/dev"
+  "/fabric-4l/apps/web/dev"
 )
 
 for p in "${PATHS[@]}"; do
@@ -66,7 +66,7 @@ echo "  # Backend"
 echo "  infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- pnpm --dir value-fabric dev"
 echo ""
 echo "  # Frontend"
-echo "  infisical run --env=dev --path=/fabric-4l/frontend/dev -- pnpm --dir frontend dev"
+echo "  infisical run --env=dev --path=/fabric-4l/apps/web/dev -- pnpm --dir apps/web dev"
 echo ""
 echo "  # Or use package scripts (if configured in root package.json):"
 echo "  pnpm dev:backend"

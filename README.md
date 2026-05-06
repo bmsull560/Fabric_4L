@@ -71,25 +71,49 @@ open http://localhost:5173
 
 ## Repository map
 
-| Path | Purpose |
-|------|---------|
-| `services/` | Core backend services (6 layers) |
-| `services/layer1-ingestion/` | Data ingestion service (FastAPI + Playwright) |
-| `services/layer2-extraction/` | Ontology-guided extraction (LLM + RDF) |
-| `services/layer3-knowledge/` | Knowledge graph API (Neo4j + pgvector) |
-| `services/layer4-agents/` | Agentic workflow engine (LangGraph) |
-| `services/layer5-ground-truth/` | Ground truth & evaluation store |
-| `services/layer6-benchmarks/` | Benchmark harness |
-| `services/api/` | Cross-layer shared services |
-| `contracts/` | Versioned tool manifests, JSON Schemas, OpenAPI specs |
-| `apps/web/` | React + TypeScript UI (canonical frontend) |
-| `frontend/` | ⚠️ OBSOLETE — migrated to `apps/web/` |
-| `k8s/` | Kubernetes manifests |
-| `monitoring/` | Prometheus + Grafana dashboards |
-| `packs/` | Domain-specific data packs (life-sciences, manufacturing, software) |
-| `docs/` | Architecture docs and runbooks |
-| `tests/` | Cross-layer integration and agent evaluation tests |
-| `.github/workflows/` | CI pipelines |
+| Path | Status | Purpose |
+|------|--------|---------|
+| `value_fabric/` | **Canonical** | Runtime Python package root for the six-layer platform |
+| `value_fabric/layer1/` | **Canonical** | Layer 1 ingestion runtime modules |
+| `value_fabric/layer2/` | **Canonical** | Layer 2 extraction runtime modules |
+| `value_fabric/layer3/` | **Canonical** | Layer 3 knowledge/retrieval runtime modules |
+| `value_fabric/layer4/` | **Canonical** | Layer 4 agent orchestration runtime modules |
+| `value_fabric/layer5/` | **Canonical** | Layer 5 ground-truth runtime modules |
+| `value_fabric/layer6/` | **Canonical** | Layer 6 benchmark runtime modules |
+| `value_fabric/shared/` | **Canonical** | Shared runtime packages (identity, security, models, boundaries) |
+| `services/` | **Maintained (service deployment layer)** | Deployable service apps, migrations, manifests, and service-specific tests |
+| `services/layer1-ingestion/` ... `services/layer6-benchmarks/` | **Maintained** | Layer service entrypoints and infra wrappers |
+| `services/api/` | **Maintained** | Cross-layer API service |
+| `value-fabric/` | **Legacy reference** | Historical monorepo path naming retained for compatibility/docs backreferences |
+| `frontend/` | **Legacy reference** | Historical frontend location; canonical UI is `apps/web/` |
+| `contracts/` | **Canonical** | Versioned tool manifests, JSON Schemas, OpenAPI specs |
+| `apps/web/` | **Canonical** | React + TypeScript UI |
+| `k8s/` | **Canonical** | Kubernetes manifests |
+| `monitoring/` | **Canonical** | Prometheus + Grafana dashboards |
+| `packs/` | **Canonical** | Domain-specific data packs (life-sciences, manufacturing, software) |
+| `docs/` | **Canonical** | Architecture docs and runbooks |
+| `tests/` | **Canonical** | Cross-layer integration and agent evaluation tests |
+| `.github/workflows/` | **Canonical** | CI pipelines |
+
+### Source of truth paths
+
+Runtime API modules (exact paths):
+
+- `value_fabric/layer1/api/routes/`
+- `value_fabric/layer2/api/routes/`
+- `value_fabric/layer3/api/routes/`
+- `value_fabric/layer5/api/`
+- `value_fabric/layer6/api/routes/`
+
+Domain/runtime packages (exact paths):
+
+- `value_fabric/layer1/`
+- `value_fabric/layer2/`
+- `value_fabric/layer3/`
+- `value_fabric/layer4/`
+- `value_fabric/layer5/`
+- `value_fabric/layer6/`
+- `value_fabric/shared/`
 
 ## Core concepts
 

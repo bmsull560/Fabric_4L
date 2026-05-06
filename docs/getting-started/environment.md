@@ -156,7 +156,7 @@ NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 ```
 
-### Frontend (frontend/)
+### Frontend (apps/web/)
 
 ```bash
 # Class C - All public, all safe to commit
@@ -216,7 +216,7 @@ infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- \
   docker compose up -d
 
 # 4. Run frontend
-infisical run --env=dev --path=/fabric-4l/frontend/dev -- \
+infisical run --env=dev --path=/fabric-4l/apps/web/dev -- \
   npm run dev
 ```
 

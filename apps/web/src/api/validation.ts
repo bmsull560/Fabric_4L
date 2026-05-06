@@ -75,40 +75,6 @@ export const EntityListResponseSchema = z.object({
 });
 
 // ============================================================================
-// Layer 4: Workflow Validation
-// ============================================================================
-
-/**
- * @deprecated Use `WorkflowStatusEnum` from contract helpers or types
- * from `@/api/workflows` instead. This schema uses `active` status which
- * does not exist in the backend API.
- */
-export const WorkflowSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  status: z.enum(['active', 'paused', 'completed', 'failed']),
-  last_run: z.string().datetime({ message: 'Invalid datetime' }).optional(),
-  configuration: z.record(z.string(), z.unknown()).optional(),
-});
-
-/**
- * @deprecated Use types from `@/api/workflows` instead.
- */
-export const WorkflowExecutionSchema = z.object({
-  id: z.string().uuid(),
-  workflow_id: z.string().uuid(),
-  status: z.enum(['pending', 'running', 'completed', 'failed']),
-  started_at: z.string().datetime({ message: 'Invalid datetime' }),
-  completed_at: z.string().datetime({ message: 'Invalid datetime' }).optional(),
-  results: z.record(z.string(), z.unknown()).optional(),
-  logs: z.array(z.object({
-    timestamp: z.string().datetime({ message: 'Invalid datetime' }),
-    level: z.enum(['info', 'warning', 'error']),
-    message: z.string(),
-  })),
-});
-
-// ============================================================================
 // Value Trees
 // ============================================================================
 

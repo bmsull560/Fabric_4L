@@ -12,8 +12,11 @@ import logging
 from typing import Any, Protocol
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from neo4j import AsyncDriver
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+try:
+    from neo4j import AsyncDriver
+except ImportError:  # pragma: no cover - optional dependency for test/runtime variants
+    AsyncDriver = Any  # type: ignore[misc,assignment]
 from pydantic import BaseModel, Field
 
 from value_fabric.shared.identity.context import RequestContext
@@ -95,10 +98,22 @@ class TenantUsageResponse(BaseModel):
 # Dependency Injection
 # ═══════════════════════════════════════════════════════════════════════════
 
-async def get_rate_limiter() -> TenantRateLimiter:
-    """Get rate limiter instance (injected by app)."""
-    # This should be injected via app.state or dependency override
-    raise NotImplementedError("Rate limiter must be injected via dependency override")
+async def get_rate_limiter(request: Request) -> TenantRateLimiter:
+    """Get configured rate limiter from FastAPI application state."""
+    rate_limiter = getattr(request.app.state, "tenant_rate_limiter", None)
+    if isinstance(rate_limiter, TenantRateLimiter):
+        return rate_limiter
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "code": "RATE_LIMITER_UNAVAILABLE",
+            "message": "Tenant rate limiter is not configured on application state.",
+            "remediation": (
+                "Set app.state.tenant_rate_limiter to a configured TenantRateLimiter "
+                "instance during startup, or disable admin rate-limit endpoints."
+            ),
+        },
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════

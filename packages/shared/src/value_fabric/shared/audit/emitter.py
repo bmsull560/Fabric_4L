@@ -103,6 +103,19 @@ def validate_audit_config() -> _AuditConfigValidation:
             "limited to structured logs until AUDIT_SINK_URL is set."
         )
 
+    ledger_mode = os.getenv("AUDIT_LEDGER_MODE", "disabled").lower()
+    instance_count_raw = os.getenv("INSTANCE_COUNT", "1")
+    try:
+        instance_count = int(instance_count_raw)
+    except ValueError:
+        instance_count = 1
+    redis_url = os.getenv("REDIS_URL", "")
+    if ledger_mode == "enabled" and instance_count > 1 and not redis_url:
+        raise ValueError(
+            "AUDIT_LEDGER_MODE=enabled requires distributed chain backend in multi-instance "
+            "deployments. Configure REDIS_URL (or disable ledger mode) to prevent hash forks."
+        )
+
     return _AuditConfigValidation(audit_sink_url=audit_sink_url, timeout=timeout)
 
 # Keys that must never appear in the structured log (scrubbed from ``details``).

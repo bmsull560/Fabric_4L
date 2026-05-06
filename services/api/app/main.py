@@ -46,6 +46,7 @@ app = create_fabric_app(
 
 app.include_router(accounts.router, prefix="/v1")
 app.include_router(intelligence.router, prefix="/v1")
+app.include_router(intelligence.legacy_router, prefix="/v1")
 app.include_router(hypotheses.router, prefix="/v1")
 app.include_router(drivers.router, prefix="/v1")
 app.include_router(evidence.router, prefix="/v1")

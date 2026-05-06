@@ -1,8 +1,8 @@
 """
 Encryption service for at-rest credential encryption.
 
-Uses AES-256-GCM for authenticated encryption with associated data (AEAD).
-Key management is abstracted - supports environment variables, AWS KMS, HashiCorp Vault.
+Canonical runtime algorithm:
+- Fernet tokens backed by AES-128-CBC + HMAC-SHA256 authentication.
 """
 
 import asyncio
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_KEY_ID: str = "v1"
 PBKDF2_ITERATIONS: int = 100000  # OWASP recommendation (see _get_fernet docs)
 MAX_CACHE_SIZE: int = 32
+ENCRYPTION_ALGORITHM: str = "Fernet (AES-128-CBC + HMAC-SHA256)"
 
 
 # Module-level lock for thread-safe initialization

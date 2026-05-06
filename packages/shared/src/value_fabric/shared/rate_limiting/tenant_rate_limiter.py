@@ -1,5 +1,9 @@
 """
-Tenant-scoped rate limiting (Task 5).
+Canonical runtime request limiting implementation.
+
+This module is the source of truth for sliding-window state math and Redis
+interaction details. Other layers should delegate through a thin adapter
+instead of re-implementing counters/window calculations.
 
 Extends rate limiter to support tenant-level quotas with:
 - Tenant tier-based limits (shared/dedicated/enterprise)
@@ -78,6 +82,17 @@ class RateLimitScope(str, Enum):
     USER = "user"  # Per-user limit
     API_KEY = "api_key"  # Per-API-key limit
     ENDPOINT = "endpoint"  # Per-endpoint limit
+
+
+@dataclass
+class SlidingWindowDecision:
+    """Canonical sliding-window decision returned by adapter calls."""
+
+    allowed: bool
+    limit: int
+    remaining: int
+    reset_epoch: int
+    retry_after: int | None = None
 
 
 @dataclass
@@ -435,5 +450,58 @@ class TenantRateLimiter:
             "usage": usage,
             "custom_limits": tenant_id in self.custom_limits,
         })
+
+
+class SlidingWindowAdapter:
+    """Narrow adapter for generic request limiting via canonical state math."""
+
+    def __init__(self, redis_client: Any | None = None):
+        self._redis = redis_client
+        self._memory_windows: dict[str, list[float]] = {}
+
+    async def check(self, *, key: str, limit: int, window_seconds: int) -> SlidingWindowDecision:
+        """Evaluate a single sliding window and return standardized fields."""
+        now = datetime.utcnow().timestamp()
+        cutoff = now - window_seconds
+        reset_epoch = int(now + window_seconds)
+
+        if self._redis is not None:
+            await self._redis.zremrangebyscore(key, 0, cutoff)
+            current_count = await self._redis.zcard(key)
+            if current_count >= limit:
+                oldest = await self._redis.zrange(key, 0, 0, withscores=True)
+                retry_after = window_seconds
+                if oldest:
+                    retry_after = max(0, int(oldest[0][1] + window_seconds - now))
+                return SlidingWindowDecision(
+                    allowed=False,
+                    limit=limit,
+                    remaining=0,
+                    reset_epoch=reset_epoch,
+                    retry_after=retry_after,
+                )
+            request_id = f"{now}:{secrets.token_hex(8)}"
+            await self._redis.zadd(key, {request_id: now})
+            await self._redis.expire(key, window_seconds * TTL_MULTIPLIER)
+            return SlidingWindowDecision(
+                allowed=True,
+                limit=limit,
+                remaining=max(0, limit - current_count - 1),
+                reset_epoch=reset_epoch,
+            )
+
+        history = self._memory_windows.setdefault(key, [])
+        history[:] = [ts for ts in history if ts > cutoff]
+        allowed = len(history) < limit
+        if allowed:
+            history.append(now)
+        remaining = max(0, limit - len(history))
+        return SlidingWindowDecision(
+            allowed=allowed,
+            limit=limit,
+            remaining=remaining,
+            reset_epoch=reset_epoch,
+            retry_after=None if allowed else window_seconds,
+        )
 
 

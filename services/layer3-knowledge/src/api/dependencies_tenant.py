@@ -8,6 +8,7 @@ constraints (id, tenant_id) and query scoping.
 from __future__ import annotations
 
 import logging
+import inspect
 from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, HTTPException, Request, status
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     from value_fabric.shared.identity.context import RequestContext
 
 from .dependencies import get_neo4j_driver
+from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +28,8 @@ try:
     SHARED_IDENTITY_AVAILABLE = True
 except ImportError:
     SHARED_IDENTITY_AVAILABLE = False
-    RequestContext = None  # type: ignore
-    get_current_context = None  # type: ignore
+    RequestContext = None  # type: ignore[assignment]
+    get_current_context = None
 
 
 try:
@@ -38,6 +40,18 @@ except ImportError:
     emit_audit_event = None
     AuditAction = None
     AuditOutcome = None
+
+_context_provider: RequestContextProvider | None = get_current_context
+
+
+def _require_context_provider() -> RequestContextProvider:
+    if _context_provider is None:
+        raise ProviderUnavailableError(
+            provider="value_fabric.shared.identity.dependencies.get_current_context",
+            code="IDENTITY_PROVIDER_UNAVAILABLE",
+            detail="shared.identity is required for tenant-aware Neo4j dependencies.",
+        )
+    return _context_provider
 
 
 class Neo4jTenantSession:
@@ -174,7 +188,7 @@ async def create_neo4j_tenant_session(tenant_id: str | None) -> Neo4jTenantSessi
 
 async def get_neo4j_with_tenant(
     request: Request,
-    context: RequestContext = Depends(get_current_context),  # type: ignore
+    context: RequestContext | None = Depends(_require_context_provider()),
 ) -> Neo4jTenantSession:
     """FastAPI dependency for Neo4j session with tenant context (Sprint 5).
 
@@ -198,9 +212,7 @@ async def get_neo4j_with_tenant(
         HTTPException: 503 if Neo4j is unavailable
     """
     if not SHARED_IDENTITY_AVAILABLE:
-        raise RuntimeError(
-            "shared.identity required for get_neo4j_with_tenant"
-        )
+        _require_context_provider()
 
     if not context or not context.tenant_id:
         raise HTTPException(
@@ -256,7 +268,7 @@ async def get_neo4j_with_tenant(
 
 async def get_neo4j_with_optional_tenant(
     request: Request,
-    context: RequestContext = Depends(get_current_context),  # type: ignore
+    context: RequestContext | None = Depends(_require_context_provider()),
 ) -> Neo4jTenantSession:
     """Neo4j session with optional tenant for super-admin operations (Sprint 5).
 
@@ -277,9 +289,7 @@ async def get_neo4j_with_optional_tenant(
         HTTPException: 503 if Neo4j is unavailable
     """
     if not SHARED_IDENTITY_AVAILABLE:
-        raise RuntimeError(
-            "shared.identity required for get_neo4j_with_optional_tenant"
-        )
+        _require_context_provider()
 
     session = None
     try:
@@ -293,14 +303,14 @@ async def get_neo4j_with_optional_tenant(
         ) from e
 
     try:
-        if context.is_super_admin():
+        if context and context.is_super_admin():
             # Super-admin bypass - no tenant scoping
             return Neo4jTenantSession(
                 session=session,
                 tenant_id=None,
                 is_bypass=True,
             )
-        elif context.tenant_id:
+        elif context and context.tenant_id:
             return Neo4jTenantSession(
                 session=session,
                 tenant_id=str(context.tenant_id),
@@ -347,7 +357,10 @@ def require_tenant_header_for_internal():
                 detail="Identity system unavailable. Ensure shared.identity is configured.",
             )
 
-        ctx = get_current_context(request)
+        provider = _require_context_provider()
+        ctx = provider(request)
+        if inspect.isawaitable(ctx):
+            ctx = await ctx
         if ctx and ctx.tenant_id:
             return str(ctx.tenant_id)
 

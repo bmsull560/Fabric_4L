@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.core.database import db
 from app.core.tenant_context import tenant_required
@@ -8,6 +12,30 @@ from app.models.schemas import AgentRun
 from app.services.agent_orchestrator import orchestrator
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
+
+
+# Canonical naming: backend domain model is "run" (AgentRun).
+# Compatibility naming: frontend workflow hooks still call "workflow" routes.
+# The compatibility routes below adapt /agents/workflows* <-> /agents/runs*.
+def _run_to_workflow_payload(run: AgentRun) -> dict[str, Any]:
+    updated_at = run.updated_at or run.created_at
+    return {
+        "workflow_id": run.id,
+        "workflow_instance_id": run.id,
+        "id": run.id,
+        "name": run.workflow_type,
+        "workflow_type": run.workflow_type,
+        "status": run.status,
+        "progress": 100 if run.status == "completed" else 0,
+        "progress_percentage": 100 if run.status == "completed" else 0,
+        "created_at": run.created_at,
+        "updated_at": updated_at,
+        "started_at": run.created_at,
+        "completed_at": updated_at if run.status in {"completed", "cancelled", "failed"} else None,
+        "result": run.output,
+        "input": run.input,
+        "tenant_id": run.tenant_id,
+    }
 
 
 @router.post("/runs", response_model=AgentRun, status_code=201)
@@ -43,3 +71,79 @@ async def cancel_agent_run(run_id: str, tenant_id: str = Depends(tenant_required
     if not run:
         raise HTTPException(status_code=404, detail="Agent run not found")
     return orchestrator.cancel_run(run_id)
+
+
+@router.post("/workflows", status_code=201)
+async def create_workflow(payload: dict[str, Any], tenant_id: str = Depends(tenant_required)):
+    run = orchestrator.create_run(
+        tenant_id=tenant_id,
+        workflow_type=payload.get("workflow_type", "unknown"),
+        account_id=payload.get("account_id"),
+        input_data=payload.get("inputs"),
+    )
+    return _run_to_workflow_payload(run)
+
+
+@router.get("/workflows/active")
+async def list_active_workflows(tenant_id: str = Depends(tenant_required)):
+    active_like_statuses = {"pending", "running", "paused", "interrupted"}
+    runs = db.agent_runs.list(tenant_id=tenant_id)
+    workflows = [_run_to_workflow_payload(run) for run in runs if run.status in active_like_statuses]
+    return workflows
+
+
+@router.get("/workflows/{id}")
+async def get_workflow(id: str, tenant_id: str = Depends(tenant_required)):
+    run = db.agent_runs.get(id, tenant_id=tenant_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return _run_to_workflow_payload(run)
+
+
+@router.delete("/workflows/{id}")
+async def cancel_workflow(id: str, tenant_id: str = Depends(tenant_required)):
+    run = db.agent_runs.get(id, tenant_id=tenant_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    cancelled = orchestrator.cancel_run(id)
+    return _run_to_workflow_payload(cancelled)
+
+
+@router.post("/workflows/{id}/pause")
+async def pause_workflow(id: str, tenant_id: str = Depends(tenant_required)):
+    run = db.agent_runs.get(id, tenant_id=tenant_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    if run.status == "running":
+        db.agent_runs.update(id, tenant_id=tenant_id, status="paused")
+        run = db.agent_runs.get(id, tenant_id=tenant_id)
+    return _run_to_workflow_payload(run)
+
+
+@router.post("/workflows/{id}/resume")
+async def resume_workflow(id: str, tenant_id: str = Depends(tenant_required)):
+    run = db.agent_runs.get(id, tenant_id=tenant_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    resumed = orchestrator.resume_run(id)
+    return _run_to_workflow_payload(resumed)
+
+
+@router.get("/workflows/{id}/events")
+async def workflow_events(id: str, tenant_id: str = Depends(tenant_required)):
+    run = db.agent_runs.get(id, tenant_id=tenant_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    async def stream() -> Any:
+        payload = _run_to_workflow_payload(run)
+        yield f"data: {{\"payload\": {payload!r}}}\n\n".replace("'", '"')
+        yield (
+            "data: {\"payload\": {"
+            f"\"workflow_id\": \"{run.id}\","
+            f"\"status\": \"{run.status}\","
+            f"\"updated_at\": \"{datetime.now(UTC).isoformat()}\""
+            "}}\n\n"
+        )
+
+    return StreamingResponse(stream(), media_type="text/event-stream")

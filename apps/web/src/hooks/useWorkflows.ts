@@ -87,8 +87,6 @@ export function parseWorkflowSseMessageJson(
 }
 
 interface RawWorkflow {
-  workflow_id?: string;
-  workflow_instance_id?: string;
   id?: string;
   name?: string;
   workflow_type?: string;
@@ -130,15 +128,14 @@ const WorkflowTypesResponseSchema = z
   .passthrough();
 
 function normalizeWorkflow(raw: RawWorkflow): Workflow | null {
-  const normalizedId = raw.workflow_id || raw.workflow_instance_id || raw.id;
-  const normalizedIdText = String(normalizedId || "").trim();
+  const normalizedIdText = String(raw.id || "").trim();
   if (!normalizedIdText) {
     return null;
   }
 
   const normalizedName = raw.name || raw.workflow_type || "workflow";
   const normalizedProgress = normalizeWorkflowProgress(
-    raw.progress ?? raw.progress_percentage ?? 0
+    raw.progress ?? 0
   );
 
   return {
@@ -146,8 +143,8 @@ function normalizeWorkflow(raw: RawWorkflow): Workflow | null {
     name: String(normalizedName),
     status: normalizeWorkflowStatus(raw.status),
     progress: normalizedProgress,
-    createdAt: raw.createdAt || raw.created_at || raw.started_at,
-    updatedAt: raw.updatedAt || raw.updated_at || raw.completed_at,
+    createdAt: raw.createdAt || raw.created_at,
+    updatedAt: raw.updatedAt || raw.updated_at,
   };
 }
 
@@ -186,27 +183,12 @@ function normalizeWorkflowList(data: unknown): Workflow[] {
 }
 
 function extractWorkflowList(data: unknown): RawWorkflow[] {
-  // Handle new paginated response format: { items: [...], total, limit, offset, has_more }
   if (
     data &&
     typeof data === "object" &&
     Array.isArray((data as { items?: unknown[] }).items)
   ) {
     return (data as { items: RawWorkflow[] }).items;
-  }
-
-  // Handle legacy array format
-  if (Array.isArray(data)) {
-    return data as RawWorkflow[];
-  }
-
-  // Handle legacy { workflows: [...] } format
-  if (
-    data &&
-    typeof data === "object" &&
-    Array.isArray((data as { workflows?: unknown[] }).workflows)
-  ) {
-    return (data as { workflows: RawWorkflow[] }).workflows;
   }
 
   return [];
@@ -223,13 +205,12 @@ export interface PaginatedWorkflows {
 
 /**
  * Parse API response into PaginatedWorkflows structure.
- * Handles both new paginated format and legacy formats.
+ * Requires canonical paginated format.
  */
 function parsePaginatedResponse(
   data: unknown,
   items: Workflow[]
 ): PaginatedWorkflows {
-  // Check if response is already paginated
   if (data && typeof data === "object" && "items" in data && "total" in data) {
     const paginated = data as PaginatedWorkflows;
     return {
@@ -240,15 +221,7 @@ function parsePaginatedResponse(
       has_more: paginated.has_more,
     };
   }
-
-  // Legacy fallback: treat all as single page
-  return {
-    items,
-    total: items.length,
-    limit: items.length,
-    offset: 0,
-    has_more: false,
-  };
+  throw new Error("Workflow list response is not canonical paginated format");
 }
 
 /**

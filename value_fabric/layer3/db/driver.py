@@ -16,6 +16,7 @@ from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.exceptions import (
     AuthError,
     ConfigurationError,
+    Neo4jError,
     ServiceUnavailable,
     TransientError,
 )
@@ -176,6 +177,16 @@ async def health_check(settings: Settings | None = None) -> dict:
         return health_checkResult.model_validate({"status": "unhealthy", "error": f"Service unavailable: {exc}"})
     except ConfigurationError as exc:
         return health_checkResult.model_validate({"status": "unhealthy", "error": f"Configuration error: {exc}"})
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Health check failed with unexpected error")
-        return health_checkResult.model_validate({"status": "unhealthy", "error": str(exc)})
+    except Neo4jError as exc:
+        logger.exception(
+            "Neo4j health check query failed",
+            extra={
+                "component": "layer3.db.driver",
+                "dependency": "neo4j",
+                "action": "health_check",
+                "uri": cfg.neo4j_uri,
+                "database": cfg.neo4j_database,
+                "error_type": type(exc).__name__,
+            },
+        )
+        return health_checkResult.model_validate({"status": "unhealthy", "error": f"Neo4j query error: {exc}"})

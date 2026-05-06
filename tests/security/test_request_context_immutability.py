@@ -298,6 +298,7 @@ class TestRequestContextRoleMethods:
 class TestRequestContextAuthSourceNormalization:
     """Test suite for auth source normalization invariants."""
 
+    @pytest.mark.temporary_compat
     def test_auth_source_normalization_jwt(self):
         """
         POSITIVE: Auth source 'jwt' should be normalized to 'jwt_claim'.
@@ -311,6 +312,7 @@ class TestRequestContextAuthSourceNormalization:
 
         assert context.auth_source == AUTH_SOURCE_JWT
 
+    @pytest.mark.temporary_compat
     def test_auth_source_normalization_bearer(self):
         """
         POSITIVE: Auth source 'bearer' should be normalized to 'jwt_claim'.
@@ -324,6 +326,7 @@ class TestRequestContextAuthSourceNormalization:
 
         assert context.auth_source == AUTH_SOURCE_JWT
 
+    @pytest.mark.temporary_compat
     def test_auth_source_normalization_api_key(self):
         """
         POSITIVE: Auth source 'api-key' should be normalized to 'api_key'.

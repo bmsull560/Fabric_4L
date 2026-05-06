@@ -33,6 +33,7 @@
     "test:a11y:components": "vitest run client/src/accessibility.a11y.spec.tsx",
     "test:a11y:pages": "node scripts/a11y/axe-critical-scan.mjs",
     "test:a11y:launch-smoke": "A11Y_ROUTES=/,/home,/login,/discover/accounts node scripts/a11y/axe-critical-scan.mjs && A11Y_MIN_ROUTES_SCANNED=4 node scripts/a11y/enforce-thresholds.mjs",
+    "test:a11y:keyboard-flow": "pnpm exec playwright test e2e/accessibility/keyboard-flow.spec.ts --config=playwright.a11y.config.ts",
     "test:a11y:gate": "node scripts/a11y/enforce-thresholds.mjs",
     "test:e2e:contracts": "pnpm run test:e2e:guard && playwright test --project=contracts",
     "test:e2e:journeys": "pnpm run test:e2e:guard && playwright test --project=journeys",

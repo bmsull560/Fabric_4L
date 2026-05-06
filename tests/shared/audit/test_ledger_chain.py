@@ -16,6 +16,7 @@ from uuid import uuid4
 from value_fabric.shared.audit.emitter import AuditEmitter, emit_audit_event, _create_audit_event
 from value_fabric.shared.audit.ledger import LedgerCommitHandler
 from value_fabric.shared.audit.models import AuditAction, AuditEvent, AuditOutcome
+from value_fabric.shared.audit.emitter import validate_audit_config
 
 
 def _make_event(
@@ -201,3 +202,38 @@ class TestEmitterIntegration:
         assert event.sequence_number == 1
         assert event.event_hash is not None
         assert event.previous_hash is None
+
+
+class _FakeRedis:
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
+
+    async def get(self, key: str) -> str | None:
+        return self.store.get(key)
+
+    async def eval(self, _script: str, _numkeys: int, key: str, expected: str, new: str) -> int:
+        current = self.store.get(key)
+        if (current is None and expected == "0|") or current == expected:
+            self.store[key] = new
+            return 1
+        return 0
+
+
+@pytest.mark.asyncio
+async def test_redis_backed_chain_head_flow() -> None:
+    handler = LedgerCommitHandler(redis_client=_FakeRedis())
+    first = _make_event(chain_id="redis-chain")
+    await handler.handle(first)
+    second = _make_event(chain_id="redis-chain")
+    await handler.handle(second)
+    assert first.sequence_number == 1
+    assert second.sequence_number == 2
+    assert second.previous_hash == first.event_hash
+
+
+def test_validate_audit_config_fails_for_multi_instance_without_distributed_backend(monkeypatch) -> None:
+    monkeypatch.setenv("AUDIT_LEDGER_MODE", "enabled")
+    monkeypatch.setenv("INSTANCE_COUNT", "3")
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    with pytest.raises(ValueError, match="distributed chain backend"):
+        validate_audit_config()

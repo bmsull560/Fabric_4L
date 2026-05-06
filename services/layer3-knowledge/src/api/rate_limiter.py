@@ -335,7 +335,7 @@ def add_rate_limiting(
 
 
 # ---------------------------------------------------------------------------
-# Tenant-scoped rate limiter (Redis-backed sliding window)
+# Tenant-scoped rate limiter adapter (delegates to canonical shared module)
 # ---------------------------------------------------------------------------
 
 # Default request limits per subscription tier (requests per minute).
@@ -348,30 +348,11 @@ TIER_RATE_LIMITS: dict[str, int] = {
 
 
 class TenantRateLimiter:
-    """Redis-backed sliding-window rate limiter scoped to tenant_id.
-
-    Falls back to an in-memory counter when Redis is unavailable, ensuring
-    the service degrades gracefully rather than failing open.
-
-    Usage::
-
-        limiter = TenantRateLimiter(redis_client)
-
-        allowed, headers = await limiter.check(
-            tenant_id=ctx.tenant_id,
-            tier="pro",
-            api_key_id=ctx.api_key_id,
-            key_limit=ctx.api_key_rate_limit_per_minute,
-        )
-        if not allowed:
-            raise HTTPException(429, detail="Rate limit exceeded")
-    """
+    """Layer 3 adapter over canonical shared sliding-window limiter."""
 
     def __init__(self, redis_client=None) -> None:
-        self._redis = redis_client
-        # Fallback in-memory counters when Redis is unavailable
-        self._memory: dict[str, deque] = defaultdict(lambda: deque())
-        self._lock = asyncio.Lock()
+        from value_fabric.shared.rate_limiting.tenant_rate_limiter import SlidingWindowAdapter
+        self._adapter = SlidingWindowAdapter(redis_client)
 
     async def check(
         self,
@@ -391,80 +372,40 @@ class TenantRateLimiter:
 
         # Check tenant-level limit
         tenant_key = f"ratelimit:tenant:{tenant_id}:minute"
-        tenant_allowed, tenant_info = await self._sliding_window(
-            tenant_key, tenant_limit, window_seconds
+        tenant_decision = await self._adapter.check(
+            key=tenant_key, limit=tenant_limit, window_seconds=window_seconds
         )
 
         # Check per-API-key limit if a key-specific override exists
         key_allowed = True
-        key_info: dict[str, int] = {}
+        key_headers: dict[str, int] = {}
         if api_key_id and key_limit:
             key_cache_key = f"ratelimit:apikey:{api_key_id}:minute"
-            key_allowed, key_info = await self._sliding_window(
-                key_cache_key, key_limit, window_seconds
+            key_decision = await self._adapter.check(
+                key=key_cache_key, limit=key_limit, window_seconds=window_seconds
             )
+            key_allowed = key_decision.allowed
+            key_headers = {
+                "limit": key_decision.limit,
+                "remaining": key_decision.remaining,
+                "reset": key_decision.reset_epoch,
+            }
 
-        allowed = tenant_allowed and key_allowed
+        allowed = tenant_decision.allowed and key_allowed
 
         # Return the most restrictive headers
-        if key_info:
+        tenant_headers = {
+            "limit": tenant_decision.limit,
+            "remaining": tenant_decision.remaining,
+            "reset": tenant_decision.reset_epoch,
+        }
+        if key_headers:
             headers = {
-                "limit": min(tenant_info["limit"], key_info["limit"]),
-                "remaining": min(tenant_info["remaining"], key_info["remaining"]),
-                "reset": max(tenant_info["reset"], key_info["reset"]),
+                "limit": min(tenant_headers["limit"], key_headers["limit"]),
+                "remaining": min(tenant_headers["remaining"], key_headers["remaining"]),
+                "reset": max(tenant_headers["reset"], key_headers["reset"]),
             }
         else:
-            headers = tenant_info
+            headers = tenant_headers
 
         return allowed, headers
-
-    async def _sliding_window(
-        self, key: str, limit: int, window_seconds: int
-    ) -> tuple[bool, dict[str, int]]:
-        """Execute a sliding-window check against Redis or the in-memory fallback."""
-        now = time.time()
-        cutoff = now - window_seconds
-        reset_at = int(now + window_seconds)
-
-        if self._redis is not None:
-            try:
-                return await self._redis_check(
-                    key, limit, window_seconds, now, cutoff, reset_at
-                )
-            except Exception:
-                logger.warning(
-                    "Redis unavailable for rate limiting — using in-memory fallback"
-                )
-
-        # In-memory fallback
-        async with self._lock:
-            q = self._memory[key]
-            while q and q[0] <= cutoff:
-                q.popleft()
-            current = len(q)
-            allowed = current < limit
-            if allowed:
-                q.append(now)
-            remaining = max(0, limit - len(q))
-            return allowed, {"limit": limit, "remaining": remaining, "reset": reset_at}
-
-    async def _redis_check(
-        self,
-        key: str,
-        limit: int,
-        window_seconds: int,
-        now: float,
-        cutoff: float,
-        reset_at: int,
-    ) -> tuple[bool, dict[str, int]]:
-        """Atomic sliding-window check using Redis sorted sets."""
-        pipe = self._redis.pipeline()
-        pipe.zremrangebyscore(key, "-inf", cutoff)
-        pipe.zcard(key)
-        pipe.zadd(key, {str(now): now})
-        pipe.expire(key, window_seconds + 1)
-        results = await pipe.execute()
-        current = int(results[1])
-        allowed = current < limit
-        remaining = max(0, limit - current)
-        return allowed, {"limit": limit, "remaining": remaining, "reset": reset_at}

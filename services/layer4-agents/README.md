@@ -22,6 +22,13 @@ pip install -e ".[dev]"
 export OPENAI_API_KEY=sk-...
 export NEO4J_URI=bolt://localhost:7687
 export REDIS_URL=redis://localhost:6379
+export LAYER1_API_URL=https://layer1-ingestion.value-fabric.svc.cluster.local:8000
+export LAYER2_API_URL=https://layer2-extraction.value-fabric.svc.cluster.local:8000
+export LAYER3_API_URL=https://layer3-knowledge.value-fabric.svc.cluster.local:8001
+export LAYER5_API_URL=https://layer5-ground-truth.value-fabric.svc.cluster.local:8005
+
+# Optional: enable only when HTTPS is terminated by an enforced service mesh mTLS path
+export SERVICE_MESH_MTLS_ENABLED=true
 
 # Run tests
 pytest tests/ -v
@@ -68,5 +75,12 @@ src/
 - **Utility** (2): `validate_input`, `format_currency`
 
 ## License
+
+## Secure service-to-service configuration
+
+- Production/staging **must** configure explicit `LAYER{1,2,3,5}_API_URL` values; insecure HTTP defaults are not used.
+- Canonical path is HTTPS to in-cluster service FQDNs (for example, `https://layer1-ingestion.value-fabric.svc.cluster.local:8000`).
+- Service-mesh HTTP exceptions are allowed only when `SERVICE_MESH_MTLS_ENABLED=true` and mesh-level mTLS is enforced.
+- Local development can use HTTP endpoints only with explicit `ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true`.
 
 Proprietary - Value Fabric Enterprise Platform

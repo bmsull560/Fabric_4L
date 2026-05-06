@@ -12,6 +12,7 @@ import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -47,6 +48,9 @@ class list_active_workflowsResult(TypedDictModel):
     limit: Any
     offset: Any
     total: Any
+
+
+WorkflowStatusValue = Literal["pending", "running", "paused", "interrupted", "completed", "failed", "cancelled"]
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -165,12 +169,12 @@ class WorkflowStatusResponse(BaseModel):
     - results: object
     """
 
-    workflow_instance_id: str = Field(..., alias="workflow_instance_id")
+    id: str
     workflow_type: str
-    status: str
+    status: WorkflowStatusValue
     current_state: str | None = Field(None, alias="current_state")
     current_node: str | None = None
-    progress_percentage: float = Field(default=0.0, ge=0.0, le=100.0, alias="progress_percentage")
+    progress: float = Field(default=0.0, ge=0.0, le=100.0)
     started_at: str | None = None
     completed_at: str | None = None
     error_count: int = 0
@@ -180,9 +184,24 @@ class WorkflowStatusResponse(BaseModel):
     user_id: str | None = None
     priority: int | None = None
     scheduler_status: str | None = None
-    progress: WorkflowProgressSchema | None = None
+    progress_meta: WorkflowProgressSchema | None = None
 
-    model_config = ConfigDict(populate_by_name=True)
+class WorkflowListItem(BaseModel):
+    id: str
+    name: str
+    workflow_type: str
+    status: WorkflowStatusValue
+    progress: float = Field(default=0.0, ge=0.0, le=100.0)
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class WorkflowListResponse(BaseModel):
+    items: list[WorkflowListItem]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
 
 
 class WorkflowEvent(BaseModel):
@@ -200,6 +219,14 @@ class WorkflowEvent(BaseModel):
     timestamp: str
     message: str
     payload: dict[str, Any] | None = None
+
+
+class WorkflowEventPayload(BaseModel):
+    id: str
+    status: WorkflowStatusValue
+    progress: float = Field(default=0.0, ge=0.0, le=100.0)
+    current_node: str | None = None
+    normalized_progress: dict[str, Any] | None = None
 
 
 class WorkflowResumeRequest(BaseModel):
@@ -346,11 +373,24 @@ async def _filter_and_paginate_workflows(
         all_active = [w for w in all_active if w.get("workflow_type", "").lower() == type_lower]
 
     total = len(all_active)
-    paginated = all_active[offset:offset + limit]
+    paginated_raw = all_active[offset:offset + limit]
+    paginated = [
+        WorkflowListItem(
+            id=str(w.get("workflow_id") or w.get("id") or ""),
+            name=str(w.get("name") or w.get("workflow_type") or "workflow"),
+            workflow_type=str(w.get("workflow_type") or "unknown"),
+            status=str(w.get("status") or "pending"),
+            progress=float(w.get("progress") if w.get("progress") is not None else (w.get("progress_percentage") or 0)),
+            created_at=w.get("created_at") or w.get("started_at"),
+            updated_at=w.get("updated_at") or w.get("completed_at"),
+        )
+        for w in paginated_raw
+        if str(w.get("workflow_id") or w.get("id") or "").strip()
+    ]
     has_more = (offset + limit) < total
 
     return {
-        "items": paginated,
+        "items": [p.model_dump() for p in paginated],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -367,7 +407,7 @@ async def list_workflows(
     type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
     _ctx: RequestContext = Depends(require_authenticated),
     executor: OrchestrationController = Depends(get_executor),
-) -> dict[str, Any]:
+) -> WorkflowListResponse:
     """List workflows for the authenticated tenant (frontend compatibility alias).
 
     Supports ?type=business_case filter used by the business-cases hook.
@@ -375,7 +415,7 @@ async def list_workflows(
     result = await _filter_and_paginate_workflows(
         executor, _ctx.tenant_id, limit, offset, status, type
     )
-    return list_active_workflowsResult.model_validate(result)
+    return WorkflowListResponse.model_validate(result)
 
 
 @router.get("/workflows/active")
@@ -387,7 +427,7 @@ async def list_active_workflows(
     workflow_type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
     _ctx: RequestContext = Depends(require_authenticated),
     executor: OrchestrationController = Depends(get_executor),
-) -> dict[str, Any]:
+) -> WorkflowListResponse:
     """List currently active workflows for the authenticated tenant with pagination.
     
     Returns a paginated list of workflows with metadata for efficient client-side rendering.
@@ -395,7 +435,7 @@ async def list_active_workflows(
     result = await _filter_and_paginate_workflows(
         executor, _ctx.tenant_id, limit, offset, status, workflow_type
     )
-    return list_active_workflowsResult.model_validate(result)
+    return WorkflowListResponse.model_validate(result)
 
 
 @router.get("/workflows/types")
@@ -437,12 +477,12 @@ async def get_workflow_status(
         )
 
     return WorkflowStatusResponse(
-        workflow_instance_id=status.get("workflow_id", workflow_id),
+        id=status.get("workflow_id", workflow_id),
         workflow_type=status.get("workflow_type", "unknown"),
-        status=status.get("status", "unknown"),
+        status=status.get("status", "pending"),
         current_state=status.get("current_node"),
         current_node=status.get("current_node"),
-        progress_percentage=status.get("progress_percentage", 0.0),
+        progress=status.get("progress_percentage", 0.0),
         started_at=status.get("started_at"),
         completed_at=status.get("completed_at"),
         error_count=status.get("error_count", 0),
@@ -452,7 +492,7 @@ async def get_workflow_status(
         user_id=status.get("user_id"),
         priority=status.get("priority"),
         scheduler_status=status.get("scheduler_status"),
-        progress=normalize_workflow_progress(status=status),
+        progress_meta=normalize_workflow_progress(status=status),
     )
 
 
@@ -727,16 +767,16 @@ async def get_workflow_events(
                     event_type="status_update",
                     timestamp=datetime.now(UTC).isoformat(),
                     message=f"Workflow status: {status.get('status')}",
-                    payload={
-                        "workflow_id": workflow_id,
-                        "status": status.get("status"),
-                        "progress": status.get("progress_percentage"),
-                        "current_node": status.get("current_node"),
-                        "normalized_progress": normalize_workflow_progress(
+                    payload=WorkflowEventPayload(
+                        id=workflow_id,
+                        status=status.get("status"),
+                        progress=status.get("progress_percentage"),
+                        current_node=status.get("current_node"),
+                        normalized_progress=normalize_workflow_progress(
                             status=status,
                             message=f"Workflow status: {status.get('status')}",
                         ).model_dump(),
-                    },
+                    ).model_dump(),
                 )
 
                 yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
@@ -751,7 +791,11 @@ async def get_workflow_events(
                     event_type="workflow_complete",
                     timestamp=datetime.now(UTC).isoformat(),
                     message=f"Workflow {status.get('status')}",
-                    payload={"workflow_id": workflow_id, "status": status.get("status")},
+                    payload=WorkflowEventPayload(
+                        id=workflow_id,
+                        status=status.get("status"),
+                        progress=status.get("progress_percentage", 100.0),
+                    ).model_dump(),
                 )
                 yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
                 break

@@ -46,6 +46,12 @@ from .dependencies import (
     require_super_admin,
 )
 from .vault_check import check_vault_health, resolve_vault_secret
+from .auth_mode import (
+    assert_safe_jwt_and_bypass_configuration,
+    is_dev_bypass_enabled,
+    log_auth_mode_report,
+    validate_dev_bypass_configuration,
+)
 __all__ = [
     # Dependencies (merged from root)
     "require_tenant_admin",
@@ -120,4 +126,9 @@ __all__ = [
     "Permission",
     "Role",
     "ROLE_PERMISSIONS",
+    # Auth mode
+    "assert_safe_jwt_and_bypass_configuration",
+    "is_dev_bypass_enabled",
+    "log_auth_mode_report",
+    "validate_dev_bypass_configuration",
 ]

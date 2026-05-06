@@ -14,7 +14,7 @@ This document maps Value Fabric platform controls to SOC 2 Type II and ISO 27001
 | **CC6.1.2** | Strong authentication | OIDC integration, MFA support in IdP |
 | **CC6.1.3** | Role-based access | RBAC in `shared/identity/rbac.py` |
 | **CC6.1.4** | Least privilege | Service accounts with minimal permissions |
-| **CC6.1.5** | Access reviews | Quarterly access audits via `scripts/access_review.py` |
+| **CC6.1.5** | Access reviews | Quarterly access audits via operations runbook checklist |
 
 ### CC6.2 - Access Removal
 
@@ -100,7 +100,7 @@ This document maps Value Fabric platform controls to SOC 2 Type II and ISO 27001
 
 | Control | Title | Implementation |
 |---------|-------|----------------|
-| **A.10.1** | Cryptographic controls | TLS 1.3, AES-256, HMAC-SHA256 |
+| **A.10.1** | Cryptographic controls | TLS 1.3 in transit; Fernet (AES-128-CBC + HMAC-SHA256) for Layer 4 credential encryption at rest |
 
 ### A.12 - Operations Security
 
@@ -162,6 +162,26 @@ This document maps Value Fabric platform controls to SOC 2 Type II and ISO 27001
 
 ## Control Evidence Collection
 
+### GDPR Controls Mapping
+
+| GDPR Control Area | Implementation | Concrete Artifact(s) |
+|-------------------|----------------|----------------------|
+| Lawful basis for processing (Art. 6) | Lawful-basis declaration required in tenant onboarding and data intake workflows; legal basis metadata captured in intake documentation templates. | `docs/operations/tenant-management-master-plan.md`, `docs/operations/data-intelligence-layer-scope.md` |
+| DSAR handling (Art. 12-23) | Standardized escalation/fulfillment flow for access, rectification, restriction, and objection requests using operations escalation runbooks. | `docs/operations/severity-escalation-policy.md`, `docs/operations/escalation-policy-and-drills.md` |
+| Deletion/export rights (Art. 17, Art. 20) | Tenant lifecycle remediation and provisioning procedures define deletion workflow and export-ready operational checkpoints. | `docs/operations/tenant-management-remediation-plan.md`, `docs/operations/tenant-management-phase-2-provisioning.md` |
+| Cross-border transfer controls (Art. 44-49) | Third-party/vendor and infrastructure controls tied to contractual and routing governance, with security validation gates in CI. | `.github/workflows/security-validation.yml`, `.github/workflows/supply-chain.yml` |
+| Retention schedules (Art. 5(1)(e)) | Audit trail retention policy and evidence retention configuration enforced in compliance workflows. | `docs/reference/compliance.md`, `.github/workflows/audit-evidence.yml` |
+
+### HIPAA Controls Mapping (When PHI Processing Applies)
+
+| HIPAA Control Area | Implementation | Concrete Artifact(s) |
+|--------------------|----------------|----------------------|
+| Minimum necessary access (45 CFR §164.502(b)) | RBAC and tenant-scoped authorization patterns enforce least-privilege access at middleware and policy layers. | `shared/identity/rbac.py`, `shared/identity/jwt_middleware.py` |
+| PHI audit logging (45 CFR §164.312(b)) | Append-only audit logging controls and evidence collection pipeline capture actor/action/resource context for regulated events. | `shared/audit/logger.py`, `.github/workflows/audit-evidence.yml` |
+| Encryption at rest/in transit (45 CFR §164.312(a)(2)(iv), (e)(2)(ii)) | Platform encryption requirements mandate AES-256 storage and TLS 1.3 transport protections. | `docs/reference/compliance.md`, `.github/workflows/security-gates.yml` |
+| Access termination (45 CFR §164.308(a)(3)(ii)(C)) | Offboarding and access removal are governed through access-removal controls and operational review procedures. | `docs/operations/runbook-overview.md`, `docs/operations/tenant-management-remediation-verification.md` |
+| Incident timing and breach escalation (45 CFR §164.308(a)(6), §164.404) | Defined incident escalation and reporting policies provide response timing expectations and reporting paths. | `docs/operations/severity-escalation-policy.md`, `docs/operations/postmortem-template.md` |
+
 ### Automated Evidence
 
 | Evidence Type | Collection Method | Storage Location |
@@ -182,6 +202,21 @@ This document maps Value Fabric platform controls to SOC 2 Type II and ISO 27001
 | Incident response drill | Semi-annual | Incident Commander |
 | Disaster recovery test | Annual | SRE Lead |
 
+### Evidence Pointers Registry
+
+| Control Area | Evidence Type | Repository Pointer | Collection Frequency | Freshness SLA | Control Owner |
+|--------------|---------------|--------------------|----------------------|---------------|---------------|
+| GDPR - Lawful Basis | Runbook | `docs/operations/tenant-management-master-plan.md` | Quarterly review | 400d | Compliance Engineering |
+| GDPR - DSAR Handling | Runbook | `docs/operations/escalation-policy-and-drills.md` | Monthly review | 400d | Privacy Officer |
+| GDPR - Deletion/Export | Runbook | `docs/operations/tenant-management-remediation-plan.md` | Monthly review | 400d | Data Platform Lead |
+| GDPR - Cross-Border Transfer | CI Workflow | `.github/workflows/supply-chain.yml` | Per PR + weekly scheduled | 400d | Security Engineering |
+| GDPR - Retention Schedule | CI Workflow | `.github/workflows/audit-evidence.yml` | Monthly scheduled | 400d | Compliance Engineering |
+| HIPAA - Minimum Necessary Access | Test Evidence | `tests/security/test_rbac.py` | Per PR | 400d | Identity Engineering |
+| HIPAA - PHI Audit Logging | Source Control | `value_fabric/shared/secrets/audit_logger.py` | Per PR | 400d | Security Engineering |
+| HIPAA - Encryption | CI Workflow | `.github/workflows/security-gates.yml` | Per PR + nightly | 400d | Security Engineering |
+| HIPAA - Access Termination | Runbook | `docs/operations/tenant-management-remediation-verification.md` | Quarterly | 400d | IT Operations |
+| HIPAA - Incident Timing | Runbook | `docs/operations/severity-escalation-policy.md` | Quarterly | 400d | Incident Response Lead |
+
 ## Audit Trail Requirements
 
 All audit logs must include:
@@ -196,7 +231,7 @@ All audit logs must include:
 Storage:
 - Retention: 7 years (compliance requirement)
 - Immutability: Append-only, trigger-enforced
-- Encryption: AES-256 at rest
+- Encryption: Database/storage encryption at rest plus application-layer Fernet (AES-128-CBC + HMAC-SHA256) for Layer 4 stored credentials
 - Access: Security team only
 
 ## Compliance Monitoring

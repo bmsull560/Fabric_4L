@@ -6,7 +6,7 @@ This directory contains non-production experiments, UI prototypes, research spik
 
 | Directory | Description | Status |
 |-----------|-------------|--------|
-| `ui-prototype/` | UI component prototypes and early design explorations. Some components have been migrated to `frontend/client/src/components/`. | Partially migrated |
+| `ui-prototype/` | UI component prototypes and early design explorations. Some components have been migrated to `apps/web/src/components/`. | Partially migrated |
 | `value-packs/` | Domain vertical extension research and value pack prototypes. | Research |
 
 ## Rules

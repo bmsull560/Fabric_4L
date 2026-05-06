@@ -1,7 +1,7 @@
 /**
  * useIntelligence — Intelligence Orchestration hooks (L4 Agents)
  *
- * Covers all /v1/intelligence endpoints from the Data Intelligence Layer.
+ * Covers all /v1/accounts and /v1/intelligence endpoints from the Data Intelligence Layer.
  * Follows Contract C (Hook Architecture) Tier 2 domain hook pattern.
  *
  * Backend: layer4-agents/src/api/routes/intelligence.py
@@ -120,12 +120,12 @@ export class IntelligenceApiError extends BaseApiError {
 // ── Fetch Functions ────────────────────────────────────────────────────────
 
 async function fetchAccountBriefing(accountId: string): Promise<AccountBriefing> {
-  const response = await apiClient.get('l4', `/v1/intelligence/account/${accountId}/briefing`);
+  const response = await apiClient.get('l4', `/v1/accounts/${accountId}/briefing`);
   return response.data as AccountBriefing;
 }
 
 async function fetchDealReadiness(accountId: string): Promise<DealReadiness> {
-  const response = await apiClient.get('l4', `/v1/intelligence/account/${accountId}/deal-readiness`);
+  const response = await apiClient.get('l4', `/v1/accounts/${accountId}/deal-readiness`);
   return response.data as DealReadiness;
 }
 

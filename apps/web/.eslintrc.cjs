@@ -116,6 +116,7 @@ module.exports = {
     // TypeScript
     "@typescript-eslint/no-explicit-any": "error", // Enforced — use specific types
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    "@typescript-eslint/no-deprecated": "error", // Enforced — no deprecated API usage
 
     // Logging — use createFeatureLogger from @/lib/telemetry instead
     "no-console": "error",

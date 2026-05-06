@@ -77,42 +77,6 @@ export interface EntityListResponse {
 }
 
 // ============================================================================
-// Layer 4: Agents/Workflow Types
-// ============================================================================
-
-/**
- * @deprecated Use `Workflow` from `@/hooks/useWorkflows` instead.
- * This legacy type does not align with the L4 API. Status values
- * (`active`) and fields (`last_run`, `configuration`) do not exist
- * in the backend schema.
- */
-export interface Workflow {
-  id: string;
-  name: string;
-  status: 'active' | 'paused' | 'completed' | 'failed';
-  last_run?: string;
-  configuration?: Record<string, unknown>;
-}
-
-/**
- * @deprecated Use types from `@/api/workflows` instead.
- * This legacy type predates the OpenAPI-aligned workflow API.
- */
-export interface WorkflowExecution {
-  id: string;
-  workflow_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  started_at: string;
-  completed_at?: string;
-  results?: Record<string, unknown>;
-  logs: Array<{
-    timestamp: string;
-    level: 'info' | 'warning' | 'error';
-    message: string;
-  }>;
-}
-
-// ============================================================================
 // Value Trees & Formulas
 // ============================================================================
 
