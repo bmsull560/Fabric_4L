@@ -40,7 +40,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
         hosts:
             -
                 hostname: 'frontend-{{ env.base_domain }}'
@@ -59,7 +59,7 @@ components:
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
             environment:
-                JWT_SECRET: ${JWT_SECRET}
+                JWT_SECRET: dev-secret-key-change-in-production
                 LAYER1_API_PORT: '8000'
                 LAYER1_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/ingestion'
                 LAYER1_DEBUG: 'true'
@@ -84,7 +84,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
     -
         kind: Application
         name: layer1-worker
@@ -116,7 +116,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
     -
         kind: Application
         name: layer2
@@ -137,7 +137,7 @@ components:
                 NEO4J_PASSWORD: devpassword
                 NEO4J_URI: 'bolt://neo4j:7687'
                 NEO4J_USER: neo4j
-                OPENAI_API_KEY: ${OPENAI_API_KEY}
+                OPENAI_API_KEY: sk-placeholder-change-in-production
                 POSTGRES_DB: layer2_extraction
                 POSTGRES_HOST: postgres
                 POSTGRES_PASSWORD: postgres
@@ -158,7 +158,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
     -
         kind: Application
         name: layer3
@@ -169,6 +169,8 @@ components:
             build:
                 context: ./services/layer3-knowledge
                 dockerfile: ./Dockerfile
+                args:
+                    CACHEBUST: ${CACHEBUST}
             environment:
                 LOG_LEVEL: info
                 NEO4J_PASSWORD: devpassword
@@ -190,7 +192,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
     -
         kind: Application
         name: layer4
@@ -202,11 +204,11 @@ components:
                 context: ./services/layer4-agents
                 dockerfile: ./Dockerfile
             environment:
-                ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+                ANTHROPIC_API_KEY: sk-ant-placeholder-change-in-production
                 CHECKPOINT_DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
                 DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents'
                 DEV_AUTH_BYPASS: 'true'
-                JWT_SECRET: ${JWT_SECRET}
+                JWT_SECRET: dev-secret-key-change-in-production
                 LAYER1_API_URL: 'http://layer1:8000'
                 LAYER1_URL: 'http://layer1:8000'
                 LAYER2_API_URL: 'http://layer2:8000'
@@ -220,10 +222,10 @@ components:
                 NEO4J_PASSWORD: devpassword
                 NEO4J_URI: 'bolt://neo4j:7687'
                 NEO4J_USER: neo4j
-                OPENAI_API_KEY: ${OPENAI_API_KEY}
+                OPENAI_API_KEY: sk-placeholder-change-in-production
                 PYTHONPATH: /app
                 REDIS_URL: 'redis://redis:6379/0'
-                SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
+                SERVICE_AUTH_SECRET: dev-service-secret-change-in-production
             healthcheck:
                 test:
                     - CMD
@@ -239,7 +241,7 @@ components:
             deploy:
                 resources:
                     limits:
-                        cpus: '0.5'
+                        cpus: '0.25'
                         memory: '512MiB'
         hosts:
             -
@@ -262,12 +264,12 @@ components:
                 DATABASE_URL_SYNC: 'postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth'
                 ENVIRONMENT: development
                 JWT_ALGORITHM: HS256
-                JWT_SECRET: ${JWT_SECRET}
+                JWT_SECRET: dev-secret-key-change-in-production
                 LAYER3_BASE_URL: 'http://layer3:8001'
                 LAYER3_SYNC_ENABLED: 'true'
                 LOG_LEVEL: info
                 REDIS_URL: 'redis://redis:6379/0'
-                SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
+                SERVICE_AUTH_SECRET: dev-service-secret-change-in-production
             healthcheck:
                 test:
                     - CMD
@@ -282,7 +284,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
     -
         kind: Application
         name: layer5-migrate
@@ -315,7 +317,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
     -
         kind: Application
         name: layer6
@@ -348,7 +350,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
     -
         kind: Service
         name: minio
@@ -375,7 +377,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
         volumes:
             -
                 name: live-minio-data
@@ -397,8 +399,8 @@ components:
             deploy:
                 resources:
                     limits:
-                        cpus: '0.25'
-                        memory: '128MiB'
+                        cpus: '0.5'
+                        memory: '256MiB'
     -
         kind: Service
         name: neo4j
@@ -420,7 +422,7 @@ components:
             deploy:
                 resources:
                     limits:
-                        cpus: '0.5'
+                        cpus: '0.25'
                         memory: '512MiB'
         volumes:
             -
@@ -475,7 +477,7 @@ components:
                 resources:
                     limits:
                         cpus: '0.25'
-                        memory: '256MiB'
+                        memory: '512MiB'
         volumes:
             -
                 name: live-redis-data
