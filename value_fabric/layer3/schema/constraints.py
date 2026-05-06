@@ -252,6 +252,13 @@ CONSTRAINTS: list[Constraint] = [
     # Phase 3: Signal extraction constraints
     Constraint("painsignal_id_tenant", "PainSignal", ["id", "tenant_id"], "unique"),
     Constraint("evidence_id_tenant", "Evidence", ["id", "tenant_id"], "unique"),
+    # Phase 2 (L3 Tenant Standardization): Missing constraints for unscoped route modules
+    Constraint("formula_id_tenant", "Formula", ["id", "tenant_id"], "unique"),
+    Constraint("benchmark_id_tenant", "Benchmark", ["id", "tenant_id"], "unique"),
+    Constraint("valuemodel_id_tenant", "ValueModel", ["model_id", "tenant_id"], "unique"),
+    Constraint("benchmarkpolicy_id_tenant", "BenchmarkPolicy", ["id", "tenant_id"], "unique"),
+    Constraint("formulaversion_id_tenant", "FormulaVersion", ["id", "tenant_id"], "unique"),
+    Constraint("sourcebinding_id_tenant", "SourceBinding", ["id", "tenant_id"], "unique"),
     # NOTE: Property existence constraints require Neo4j Enterprise Edition.
     # For Community Edition compatibility, we use composite unique constraints
     # and rely on application-level validation for tenant_id presence.
@@ -278,6 +285,12 @@ TENANT_CONSTRAINTS: list[Constraint] = [
     Constraint("valuepack_tenant_id", "ValuePack", "tenant_id", "exists"),
     Constraint("variable_tenant_id", "Variable", "tenant_id", "exists"),
     Constraint("formula_tenant_id", "Formula", "tenant_id", "exists"),
+    # Phase 2 (L3 Tenant Standardization): Missing existence constraints for unscoped route modules
+    Constraint("benchmark_tenant_id", "Benchmark", "tenant_id", "exists"),
+    Constraint("valuemodel_tenant_id", "ValueModel", "tenant_id", "exists"),
+    Constraint("benchmarkpolicy_tenant_id", "BenchmarkPolicy", "tenant_id", "exists"),
+    Constraint("formulaversion_tenant_id", "FormulaVersion", "tenant_id", "exists"),
+    Constraint("sourcebinding_tenant_id", "SourceBinding", "tenant_id", "exists"),
     # Phase 3: Signal extraction tenant constraints (Enterprise only)
     Constraint("painsignal_tenant_id", "PainSignal", "tenant_id", "exists"),
     Constraint("evidence_tenant_id", "Evidence", "tenant_id", "exists"),
@@ -303,6 +316,15 @@ INDEXES: list[Index] = [
     Index("valuepack_tenant_idx", "ValuePack", ["tenant_id"], "btree"),
     Index("variable_tenant_idx", "Variable", ["tenant_id"], "btree"),
     Index("benchmarkdataset_tenant_idx", "BenchmarkDataset", ["tenant_id"], "btree"),
+    # Phase 2 (L3 Tenant Standardization): Missing indexes for unscoped route modules
+    Index("formula_tenant_idx", "Formula", ["tenant_id"], "btree"),
+    Index("formula_tenant_id_idx", "Formula", ["tenant_id", "id"], "btree"),
+    Index("benchmark_tenant_idx", "Benchmark", ["tenant_id"], "btree"),
+    Index("valuemodel_tenant_idx", "ValueModel", ["tenant_id"], "btree"),
+    Index("valuemodel_tenant_modelid_idx", "ValueModel", ["tenant_id", "model_id"], "btree"),
+    Index("benchmarkpolicy_tenant_idx", "BenchmarkPolicy", ["tenant_id"], "btree"),
+    Index("formulaversion_tenant_idx", "FormulaVersion", ["tenant_id"], "btree"),
+    Index("sourcebinding_tenant_idx", "SourceBinding", ["tenant_id"], "btree"),
     # Composite index for common query pattern: tenant_id + id lookup
     Index("capability_tenant_id_idx", "Capability", ["tenant_id", "id"], "btree"),
     Index("usecase_tenant_id_idx", "UseCase", ["tenant_id", "id"], "btree"),

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo.spec"
+  },
+  "exclude": [],
+  "include": ["src/**/*", "shared/**/*", "server/**/*", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+}

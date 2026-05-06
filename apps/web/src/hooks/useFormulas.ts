@@ -310,7 +310,7 @@ export function useUpdateFormula() {
     },
     onSuccess: (data, { formulaId }) => {
       // Invalidate to get fresh data from server
-      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.list({}) });
       queryClient.invalidateQueries({ queryKey: QK.formulas.detail(formulaId) });
     },
   });

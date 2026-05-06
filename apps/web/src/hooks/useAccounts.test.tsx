@@ -371,8 +371,6 @@ describe('useAccounts', () => {
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false } },
       });
-      const cancelSpy = vi.spyOn(queryClient, 'cancelQueries');
-      const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData');
 
       function Wrapper({ children }: { children: React.ReactNode }) {
         return (
@@ -389,6 +387,10 @@ describe('useAccounts', () => {
       (apiClient.post as Mock).mockImplementation(() =>
         new Promise((resolve) => setTimeout(() => resolve(createMockResponse(sampleAccount)), 100))
       );
+
+      // Set up spies AFTER cache population to only catch mutation calls
+      const cancelSpy = vi.spyOn(queryClient, 'cancelQueries');
+      const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData');
 
       const { result } = renderHook(() => useRefreshAccount(), {
         wrapper: Wrapper,

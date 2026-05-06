@@ -23,14 +23,28 @@ const ExtractionStatusResponseSchema = z.object({
 });
 
 const ExtractedEntitySchema = z.object({
+  entity_id: z.string(),
+  type: z.string(),
   name: z.string(),
-  type: z.enum(['Capability', 'UseCase', 'Persona', 'ValueDriver']),
   confidence: z.number().min(0).max(1),
-  source: z.string(),
-  status: z.enum(['extracted', 'pending', 'failed']),
+  source_span: z.object({
+    document_id: z.string(),
+    start: z.number(),
+    end: z.number(),
+  }).optional(),
+  provenance: z.object({
+    extraction_job_id: z.string(),
+    source_url: z.string().nullable(),
+    trace_id: z.string().nullable(),
+  }).optional(),
+  attributes: z.record(z.string(), z.any()).optional(),
 });
 
-const ExtractedEntityListSchema = z.array(ExtractedEntitySchema);
+const ExtractionEntitiesResponseSchema = z.object({
+  job_id: z.string(),
+  entities: z.array(ExtractedEntitySchema),
+  total: z.number(),
+});
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,23 +72,14 @@ export async function fetchExtractionStatus(jobId: string): Promise<ExtractionSt
  * Fetch extracted entities for a job.
  * Tier 1: HTTP mechanics + Zod validation only.
  *
- * NOTE: Backend endpoint is pending (ticket L2-42).
- * When available, this will call GET /v1/extract/{job_id}/entities.
- * Until then, it returns an empty array to prevent mock data in production.
+ * Backend endpoint implemented (ticket L2-42).
+ * Calls GET /v1/extract/{job_id}/entities.
  */
 export async function fetchExtractedEntities(jobId: string): Promise<ExtractedEntity[]> {
-  // NOTE: Real endpoint is pending backend implementation (ticket L2-42).
-  // To enable: Uncomment the commented code below and remove the console.warn.
-  // const response = await apiClient.get(LAYER, `/v1/extract/${jobId}/entities`);
-  // const parsed = ExtractedEntityListSchema.safeParse(response.data);
-  // if (!parsed.success) {
-  //   throw new Error(`Invalid extracted entities response: ${parsed.error.message}`);
-  // }
-  // return parsed.data;
-
-  console.warn(
-    `[protocol/extraction] fetchExtractedEntities called for job ${jobId} ` +
-    `but backend endpoint is not yet available (ticket L2-42). Returning empty array.`
-  );
-  return [];
+  const response = await apiClient.get(LAYER, `/v1/extract/${jobId}/entities`);
+  const parsed = ExtractionEntitiesResponseSchema.safeParse(response.data);
+  if (!parsed.success) {
+    throw new Error(`Invalid extracted entities response: ${parsed.error.message}`);
+  }
+  return parsed.data.entities;
 }

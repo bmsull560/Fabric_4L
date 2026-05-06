@@ -111,11 +111,12 @@ schema_migration_plan:
         - This production-readiness gate file
     - phase: 1
       name: "Schema Audit & Constraint Inventory"
-      status: NOT_STARTED
+      status: COMPLETE
       deliverables:
         - Comprehensive audit of all :Formula, :ValueModel, :Variable, :Benchmark nodes
         - Property presence/absence report for tenant_id / tenantId
         - Constraint compatibility analysis
+      artifact: docs/audit/l3-neo4j-label-tenant-classification.md
     - phase: 2
       name: "Canonical Property Migration"
       status: NOT_STARTED
@@ -188,3 +189,13 @@ audit_trail:
   - date: "2026-05-05"
     action: "Phase 0 complete"
     note: "Added SECURITY-TODO markers and created this gate file."
+  - date: "2026-05-05"
+    action: "Phase 1 complete"
+    note: |
+      Completed schema audit. Key findings:
+      - 4 route modules completely unscoped (benchmarks, variables, models, formula_governance)
+      - formulas.py uses tenantId (camelCase) instead of canonical tenant_id
+      - 6 labels missing composite (id, tenant_id) constraints
+      - 6 labels missing tenant_id indexes
+      - Cross-module data flow risks identified (Variable created via formulas.py vs variables.py)
+      - Full audit artifact: docs/audit/l3-neo4j-label-tenant-classification.md

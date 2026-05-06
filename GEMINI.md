@@ -5,6 +5,7 @@
 This repository should be treated as production-grade software.
 
 Before editing:
+
 - Read the relevant files.
 - Identify existing conventions.
 - Search for tests.
@@ -38,6 +39,7 @@ Before editing:
 ## Execution Style
 
 For each task:
+
 1. Inspect.
 2. Plan briefly.
 3. Patch narrowly.

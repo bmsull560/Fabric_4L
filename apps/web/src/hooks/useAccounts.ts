@@ -304,7 +304,7 @@ export function useSyncAccounts() {
     },
     onSuccess: () => {
       // Invalidate all account queries to refresh data
-      queryClient.invalidateQueries({ queryKey: QK.accounts.all });
+      queryClient.invalidateQueries({ queryKey: QK.accounts.list({}) });
     },
     onError: (error) => {
       log.error('SyncAccounts failed', { error: error.message });

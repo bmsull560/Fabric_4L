@@ -3,30 +3,47 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
+import { BrowserRouter } from "react-router-dom";
 import { useRoutePrefetch, usePrefetchHandlers } from "./useRoutePrefetch";
 
 // Mock window.matchMedia
+const matchMediaMock = vi.fn().mockImplementation((query) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+}));
+
 Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
+  value: matchMediaMock,
 });
 
-// Mock window.setTimeout and clearTimeout using vi.spyOn for proper cleanup
-const setTimeoutSpy = vi.spyOn(global, "setTimeout");
-const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
-
 describe("useRoutePrefetch", () => {
+  let setTimeoutSpy: any;
+  let clearTimeoutSpy: any;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset matchMedia mock to default implementation
+    matchMediaMock.mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    // Create fresh spies for each test
+    setTimeoutSpy = vi.spyOn(global, "setTimeout");
+    clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
   });
 
   afterEach(() => {
@@ -39,8 +56,9 @@ describe("useRoutePrefetch", () => {
       return 1 as unknown as NodeJS.Timeout;
     });
 
-    const { result } = renderHook(() =>
-      useRoutePrefetch({ path: "/intelligence", debounceMs: 150 })
+    const { result } = renderHook(
+      () => useRoutePrefetch({ path: "/intelligence", debounceMs: 150 }),
+      { wrapper: BrowserRouter }
     );
 
     result.current.prefetch();
@@ -49,8 +67,9 @@ describe("useRoutePrefetch", () => {
   });
 
   it("should cancel prefetch on mouse leave", () => {
-    const { result } = renderHook(() =>
-      useRoutePrefetch({ path: "/intelligence", debounceMs: 150 })
+    const { result } = renderHook(
+      () => useRoutePrefetch({ path: "/intelligence", debounceMs: 150 }),
+      { wrapper: BrowserRouter }
     );
 
     result.current.prefetch();
@@ -62,8 +81,9 @@ describe("useRoutePrefetch", () => {
   it("should skip prefetch on mobile devices", () => {
     (window.matchMedia as any).mockReturnValue({ matches: true });
 
-    const { result } = renderHook(() =>
-      useRoutePrefetch({ path: "/intelligence", skipMobile: true })
+    const { result } = renderHook(
+      () => useRoutePrefetch({ path: "/intelligence", skipMobile: true }),
+      { wrapper: BrowserRouter }
     );
 
     result.current.prefetch();
@@ -78,8 +98,9 @@ describe("useRoutePrefetch", () => {
       return 1 as unknown as NodeJS.Timeout;
     });
 
-    const { result } = renderHook(() =>
-      useRoutePrefetch({ path: "/intelligence", debounceMs: 150 })
+    const { result } = renderHook(
+      () => useRoutePrefetch({ path: "/intelligence", debounceMs: 150 }),
+      { wrapper: BrowserRouter }
     );
 
     result.current.prefetch();
@@ -89,9 +110,13 @@ describe("useRoutePrefetch", () => {
   });
 
   it("should cleanup timeout on unmount", () => {
-    const { unmount } = renderHook(() =>
-      useRoutePrefetch({ path: "/intelligence", debounceMs: 150 })
+    const { unmount, result } = renderHook(
+      () => useRoutePrefetch({ path: "/intelligence", debounceMs: 150 }),
+      { wrapper: BrowserRouter }
     );
+
+    // Create a timeout by calling prefetch
+    result.current.prefetch();
 
     unmount();
 
@@ -100,12 +125,42 @@ describe("useRoutePrefetch", () => {
 });
 
 describe("usePrefetchHandlers", () => {
-  it("should return event handler props", () => {
-    const { result } = renderHook(() => usePrefetchHandlers("/intelligence"));
+  let setTimeoutSpy: any;
+  let clearTimeoutSpy: any;
 
-    expect(result.current).toHaveProperty("onMouseEnter");
-    expect(result.current).toHaveProperty("onFocus");
-    expect(result.current).toHaveProperty("onMouseLeave");
-    expect(result.current).toHaveProperty("onBlur");
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset matchMedia mock to default implementation
+    matchMediaMock.mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    // Create fresh spies for each test
+    setTimeoutSpy = vi.spyOn(global, "setTimeout");
+    clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should return event handler props", () => {
+    const { result } = renderHook(
+      () => usePrefetchHandlers("/intelligence"),
+      { wrapper: BrowserRouter }
+    );
+
+    expect(result.current).toBeDefined();
+    expect(typeof result.current.onMouseEnter).toBe("function");
+    expect(typeof result.current.onFocus).toBe("function");
+    expect(typeof result.current.onMouseLeave).toBe("function");
+    expect(typeof result.current.onBlur).toBe("function");
   });
 });
