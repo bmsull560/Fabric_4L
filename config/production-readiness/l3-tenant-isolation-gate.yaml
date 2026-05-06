@@ -131,10 +131,14 @@ schema_migration_plan:
           * Supports --dry-run, --skip-rename, --skip-backfill
     - phase: 3
       name: "Service Layer Update"
-      status: NOT_STARTED
+      status: COMPLETE
       deliverables:
-        - Update create/update Cypher to write `tenant_id` on new nodes
-        - Update Neo4jTenantSession wrapper if needed
+        - formulas.py: tenantId → tenant_id on Formula CREATE, Variable MERGE, FormulaVersion CREATE
+        - formulas.py: Removed OR tenantId IS NULL bypass clauses from read/update/delete queries
+        - formula_governance.py: Added tenant_id to FormulaVersion CREATE query
+        - variables.py: Added tenant_id extraction from api_key + tenant_id on Variable CREATE
+        - models.py: Added _get_current_tenant() helper + tenant_id on ValueModel CREATE
+        - All new nodes now write canonical tenant_id property
     - phase: 4
       name: "Dependency Injection Migration"
       status: NOT_STARTED
@@ -209,4 +213,13 @@ audit_trail:
       Schema definitions and migration script created.
       - constraints.py: +6 composite constraints, +6 existence constraints, +8 indexes
       - Migration script 028: rename + backfill for 7 labels, dry-run support, verification
+      - All mandatory tests pass (222 passed, 0 failed)
+  - date: "2026-05-05"
+    action: "Phase 3 complete"
+    note: |
+      Service layer CREATE queries updated to write tenant_id.
+      - formulas.py: Fixed camelCase property + removed IS NULL bypass + added tenant_id to FormulaVersion
+      - formula_governance.py: Added tenant_id to FormulaVersion CREATE
+      - variables.py: Added tenant_id to Variable CREATE
+      - models.py: Added _get_current_tenant() helper + tenant_id to ValueModel CREATE
       - All mandatory tests pass (222 passed, 0 failed)

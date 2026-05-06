@@ -932,7 +932,7 @@ async def create_formula(
         check_result = await session.run(
             """
             MATCH (f:Formula {name: $name})
-            WHERE f.tenantId = $tenant_id OR f.tenantId IS NULL
+            WHERE f.tenant_id = $tenant_id
             RETURN f.id as existing_id
             """,
             name=request.name,
@@ -960,7 +960,7 @@ async def create_formula(
                 createdAt: $created_at,
                 updatedAt: $created_at,
                 owner: $owner,
-                tenantId: $tenant_id
+                tenant_id: $tenant_id
             })
             CREATE (fv:FormulaVersion {
                 id: $version_id,
@@ -969,7 +969,8 @@ async def create_formula(
                 status: $status,
                 createdAt: $created_at,
                 createdBy: $owner,
-                changeSummary: 'Initial version'
+                changeSummary: 'Initial version',
+                tenant_id: $tenant_id
             })
             CREATE (f)-[:HAS_VERSION]->(fv)
             """,
@@ -992,7 +993,7 @@ async def create_formula(
                 """
                 MATCH (f:Formula {id: $formula_id})
                 UNWIND $variables as var
-                MERGE (v:Variable {name: var.name, tenantId: $tenant_id})
+                MERGE (v:Variable {name: var.name, tenant_id: $tenant_id})
                 ON CREATE SET
                     v.displayName = var.display_name,
                     v.description = var.description,
@@ -1069,7 +1070,7 @@ async def update_formula(
         check_result = await session.run(
             """
             MATCH (f:Formula {id: $formula_id})
-            WHERE f.tenantId = $tenant_id OR f.tenantId IS NULL
+            WHERE f.tenant_id = $tenant_id
             RETURN f.status as status, f.version as version, f.expression as current_expr
             """,
             formula_id=formula_id,
@@ -1123,7 +1124,7 @@ async def update_formula(
             await session.run(
                 f"""
                 MATCH (f:Formula {{id: $formula_id}})
-                WHERE f.tenantId = $tenant_id OR f.tenantId IS NULL
+                WHERE f.tenant_id = $tenant_id
                 SET {', '.join(update_fields)}
                 """,
                 **params,
@@ -1143,7 +1144,8 @@ async def update_formula(
                     status: $status,
                     createdAt: $created_at,
                     createdBy: $owner,
-                    changeSummary: 'Expression updated'
+                    changeSummary: 'Expression updated',
+                    tenant_id: $tenant_id
                 })
                 CREATE (f)-[:HAS_VERSION]->(fv)
                 SET f.version = $new_version
@@ -1171,7 +1173,7 @@ async def update_formula(
                 """
                 MATCH (f:Formula {id: $formula_id})
                 UNWIND $variables as var
-                MERGE (v:Variable {name: var.name, tenantId: $tenant_id})
+                MERGE (v:Variable {name: var.name, tenant_id: $tenant_id})
                 ON CREATE SET
                     v.displayName = var.display_name,
                     v.description = var.description,
@@ -1244,7 +1246,7 @@ async def delete_formula(
         check_result = await session.run(
             """
             MATCH (f:Formula {id: $formula_id})
-            WHERE f.tenantId = $tenant_id OR f.tenantId IS NULL
+            WHERE f.tenant_id = $tenant_id
             OPTIONAL MATCH (vp:ValuePack)-[:USES_FORMULA]->(f)
             RETURN f.status as status, count(vp) as ref_count
             """,
@@ -1269,7 +1271,7 @@ async def delete_formula(
         await session.run(
             """
             MATCH (f:Formula {id: $formula_id})
-            WHERE f.tenantId = $tenant_id OR f.tenantId IS NULL
+            WHERE f.tenant_id = $tenant_id
             OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion)
             OPTIONAL MATCH (f)-[r:REQUIRES]->(v:Variable)
             DELETE fv, r, f

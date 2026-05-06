@@ -240,3 +240,4 @@ Every PR that adds or modifies a hook MUST be reviewed against:
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-04-26 | Initial ratification |
+| 1.0.1 | 2026-05-06 | Directory structure clarification: Tier 1 (src/api/protocol/) exists; Tier 3 (src/hooks/pages/) not yet implemented - page hooks currently inline in feature directories |

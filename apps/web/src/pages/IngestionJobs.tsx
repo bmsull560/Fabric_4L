@@ -12,9 +12,10 @@
  */
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, Plus, Play, Pause, ChevronLeft, ChevronRight, AlertCircle, Info } from 'lucide-react';
+import { RefreshCw, Plus, Play, Pause, AlertCircle, Info } from 'lucide-react';
 import { PageHeader, Btn } from '@/components/WfPrimitives';
-import { useNavigation } from '@/hooks';
+import { PaginationBar } from '@/components/ui/fabric/PaginationBar';
+import { useNavigation, usePaginatedList } from '@/hooks';
 import { DataTable, type DataTableColumn } from '@/components/ui/fabric/DataTable';
 import { StatusBadge } from '@/components/ui/fabric/StatusBadge';
 import { useIngestionJobsStore, type JobStatusFilter } from '@/stores/ingestionJobsStore';
@@ -45,8 +46,6 @@ const STATUS_OPTIONS: { value: JobStatusFilter; label: string }[] = [
   { value: 'failed', label: 'Failed' },
 ];
 
-const PAGE_SIZE = 15;
-
 const STAGE_STATUS_COLORS = {
   COMPLETED: 'text-emerald-600',
   FAILED: 'text-destructive',
@@ -76,10 +75,11 @@ export default function IngestionJobs() {
   const { selectedJobId, setSelectedJobId, filters, setStatusFilter, setDateFrom, setDateTo, resetFilters } =
     useIngestionJobsStore();
 
-  // Local pagination state initialized from URL
-  const [page, setPage] = useState(() => {
-    const p = searchParams.get('page');
-    return p ? Math.max(1, parseInt(p, 10)) : 1;
+  // Pagination state using usePaginatedList hook
+  const paginationState = usePaginatedList({
+    initialPage: searchParams.get('page') ? Math.max(1, parseInt(searchParams.get('page')!, 10)) : 1,
+    initialPageSize: 15,
+    mode: 'server',
   });
 
   // Initialize selected job from URL on mount (only once)
@@ -92,10 +92,10 @@ export default function IngestionJobs() {
   // Sync page and selected job to URL
   useEffect(() => {
     const params = new URLSearchParams();
-    if (page > 1) params.set('page', String(page));
+    if (paginationState.page > 1) params.set('page', String(paginationState.page));
     if (selectedJobId) params.set('job', selectedJobId);
     setSearchParams(params, { replace: true });
-  }, [page, selectedJobId, setSearchParams]);
+  }, [paginationState.page, selectedJobId, setSearchParams]);
 
   // Build API filters
   const apiFilters: JobListFilters = useMemo(
@@ -105,10 +105,10 @@ export default function IngestionJobs() {
       dateTo: filters.dateTo || undefined,
       sortBy: 'created_at',
       sortOrder: 'desc',
-      page,
-      limit: PAGE_SIZE,
+      page: paginationState.page,
+      limit: paginationState.limit,
     }),
-    [filters, page]
+    [filters, paginationState.page, paginationState.limit]
   );
 
   // Data fetching
@@ -122,7 +122,7 @@ export default function IngestionJobs() {
   const batchOperation = useBatchOperation();
 
   const jobs = listData?.jobs ?? [];
-  const pagination = listData?.pagination ?? { page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 };
+  const apiPagination = listData?.pagination ?? { page: 1, limit: paginationState.limit, total: 0, totalPages: 1 };
 
   const { navigateTo } = useNavigation();
 
@@ -241,7 +241,7 @@ export default function IngestionJobs() {
                 value={filters.status}
                 onChange={(e) => {
                   setStatusFilter(e.target.value as JobStatusFilter);
-                  setPage(1);
+                  paginationState.setPage(1);
                 }}
                 className="text-[12px] border border-border rounded px-2 py-1 bg-background"
               >
@@ -259,7 +259,7 @@ export default function IngestionJobs() {
                 value={filters.dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value);
-                  setPage(1);
+                  paginationState.setPage(1);
                 }}
                 className="text-[12px] border border-border rounded px-2 py-1 bg-background"
               />
@@ -271,7 +271,7 @@ export default function IngestionJobs() {
                 value={filters.dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value);
-                  setPage(1);
+                  paginationState.setPage(1);
                 }}
                 className="text-[12px] border border-border rounded px-2 py-1 bg-background"
               />
@@ -280,7 +280,7 @@ export default function IngestionJobs() {
               <button
                 onClick={() => {
                   resetFilters();
-                  setPage(1);
+                  paginationState.setPage(1);
                 }}
                 className="text-[11px] text-primary hover:underline ml-auto"
               >
@@ -294,7 +294,7 @@ export default function IngestionJobs() {
             <div className="px-4 pt-3 pb-2 border-b border-border flex items-center justify-between">
               <span className="text-[13px] font-bold text-foreground">Job Queue</span>
               <span className="text-[11px] text-muted-foreground">
-                {pagination.total} total jobs
+                {apiPagination.total} total jobs
               </span>
             </div>
             <div className="flex-1 overflow-auto">
@@ -331,27 +331,17 @@ export default function IngestionJobs() {
               )}
             </div>
             {/* Pagination */}
-            <div className="px-4 py-2 border-t border-border flex items-center justify-between">
-              <span className="text-[11px] text-muted-foreground">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1 || listLoading}
-                  className="p-1 rounded hover:bg-muted disabled:opacity-50"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                  disabled={page >= pagination.totalPages || listLoading}
-                  className="p-1 rounded hover:bg-muted disabled:opacity-50"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
+            <PaginationBar
+              page={paginationState.page}
+              pageSize={PAGE_SIZE}
+              totalPages={apiPagination.totalPages}
+              canPrevious={paginationState.page > 1}
+              canNext={paginationState.page < apiPagination.totalPages}
+              onPrevious={() => paginationState.setPage(paginationState.page - 1)}
+              onNext={() => paginationState.setPage(paginationState.page + 1)}
+              onPageChange={(newPage) => paginationState.setPage(newPage)}
+              summaryVariant="page"
+            />
           </div>
         </div>
 

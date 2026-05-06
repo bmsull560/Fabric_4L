@@ -10,7 +10,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
-import { useNavigation } from "@/hooks";
+import { PaginationBar } from "@/components/ui/fabric/PaginationBar";
+import { useNavigation, useRoutePrefetch } from "@/hooks";
 import AccountIntakeModal from "@/components/workspace/AccountIntakeModal";
 import {
   Table,
@@ -22,6 +23,7 @@ import {
   Skeleton,
   ErrorBoundary,
 } from "@/components";
+import { EmptyState } from "@/components/states";
 import {
   useAccounts,
   useAccount,
@@ -592,15 +594,25 @@ function Accounts() {
                   <p className="text-[12px] text-muted-foreground">{error.message}</p>
                 </div>
               ) : accounts.length === 0 ? (
-                <div className="p-12 text-center">
-                  <Building2 size={48} className="mx-auto mb-4 text-muted-foreground/30" />
-                  <h3 className="text-[16px] font-semibold mb-2">No accounts found</h3>
-                  <p className="text-[13px] text-muted-foreground">
-                    {filters.search || hasActiveFilter(filters)
+                <EmptyState
+                  title="No accounts found"
+                  description={
+                    filters.search || hasActiveFilter(filters)
                       ? "Try adjusting your filters"
-                      : "Add accounts or sync from your CRM to get started"}
-                  </p>
-                </div>
+                      : "Add accounts or sync from your CRM to get started"
+                  }
+                  icon={Building2}
+                  action={
+                    !filters.search && !hasActiveFilter(filters) ? (
+                      <button
+                        onClick={() => {/* TODO: Trigger account creation modal */}}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        Add account
+                      </button>
+                    ) : undefined
+                  }
+                />
               ) : (
                 <>
                   <Table>
@@ -659,28 +671,18 @@ function Accounts() {
 
                   {/* Pagination */}
                   {total > filters.page_size && (
-                    <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-                      <p className="text-[12px] text-muted-foreground">
-                        Showing {(filters.page - 1) * filters.page_size + 1} to{" "}
-                        {Math.min(filters.page * filters.page_size, total)} of {total} accounts
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}
-                          disabled={filters.page <= 1}
-                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        <button
-                          onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
-                          disabled={filters.page * filters.page_size >= total}
-                          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                    </div>
+                    <PaginationBar
+                      page={filters.page}
+                      pageSize={filters.page_size}
+                      totalItems={total}
+                      canPrevious={filters.page > 1}
+                      canNext={filters.page * filters.page_size < total}
+                      onPrevious={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}
+                      onNext={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
+                      onPageChange={(newPage) => setFilters((f) => ({ ...f, page: newPage }))}
+                      itemLabel="accounts"
+                      summaryVariant="range"
+                    />
                   )}
                 </>
               )}

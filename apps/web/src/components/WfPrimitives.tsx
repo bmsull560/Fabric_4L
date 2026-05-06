@@ -84,7 +84,9 @@ export function DataTable({
 }
 export { FabricDialog as Dialog } from "./ui/fabric/FabricDialog";
 export { SidePanel } from "./ui/fabric/SidePanel";
-export { LoadingSkeleton as Skeleton } from "./ui/fabric/LoadingSkeleton";
+// DEPRECATED: Use Skeleton from "@/components/ui/skeleton" (primitive) or
+// SkeletonViews from "@/components/ui/SkeletonViews" (page-level)
+// export { LoadingSkeleton as Skeleton } from "./ui/fabric/LoadingSkeleton";
 
 // Backward-compatible StatusBadge that accepts status prop
 import { StatusBadge as FabricStatusBadge } from "./ui/fabric/StatusBadge";

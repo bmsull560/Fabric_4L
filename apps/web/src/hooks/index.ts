@@ -89,6 +89,11 @@ export {
   useListKeyboardNavigation,
   useSkipLink,
 } from "./useAccessibility";
+export {
+  usePaginatedList,
+  type PaginatedListOptions,
+  type PaginatedListState,
+} from "./usePaginatedList";
 
 // ── Domain Hooks ─────────────────────────────────────────────────────────────
 

@@ -187,6 +187,36 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // TanStack Query
+          if (id.includes('@tanstack/react-query')) {
+            return 'vendor-react-query';
+          }
+          // Radix UI components
+          if (id.includes('@radix-ui')) {
+            return 'vendor-radix';
+          }
+          // Charting libraries
+          if (id.includes('recharts') || id.includes('chart.js') || id.includes('d3')) {
+            return 'vendor-charts';
+          }
+          // HTTP client
+          if (id.includes('axios')) {
+            return 'vendor-axios';
+          }
+          // Schema validation
+          if (id.includes('zod')) {
+            return 'vendor-zod';
+          }
+          // React core
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'vendor-react';
+          }
+        },
+      },
+    },
   },
   server: {
     port: 3001,

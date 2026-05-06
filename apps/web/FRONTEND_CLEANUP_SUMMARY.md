@@ -72,18 +72,16 @@ The following was already completed per `DEAD_CODE_SWEEP_REPORT.md`:
 
 The following deprecated patterns remain and can be addressed in future clean-up:
 
-### 1. Imperative Navigation (82 instances across 46 files)
+### 1. Imperative Navigation (2 instances in 2 wrapper files)
 
 **Pattern:** `useNavigate()` from react-router-dom  
 **Contract:** §2.6 - should use `navigate()` from navigation service with state IDs
 
-**Top Files by Instance Count:**
-- `workflow/pages/ProspectSetup.tsx` (11 instances)
-- `components/workspace/ProspectPromptBuilder.tsx` (10 instances)
-- `pages/formulaBuilderLogic.ts` (7 instances)
-- `pages/FormulaList.tsx` (2 instances)
-- `pages/Login.tsx` (7 instances)
-- Plus 41 additional files
+**Current Status:**
+- `src/hooks/useNavigation.ts` - Wrapper that encapsulates useNavigate for state-based navigation
+- `src/hooks/useRoutePrefetch.ts` - Uses useNavigate internally for route prefetching
+
+**Note:** Both are wrapper/helper files that encapsulate the imperative useNavigate pattern. Page components should use `useNavigation()` hook or `getStatePath()` from navigationService instead.
 
 ### 2. Inline Tool Definitions (19 instances)
 
@@ -120,6 +118,7 @@ pnpm tsc --noEmit
 |-----------------|--------|-------|--------|
 | §2.6 UI State (URL concatenation) | ~34 instances | ~7 instances | -79% |
 | §2.6 UI State (in navigation layer) | ~20 lines | 0 lines | -100% |
+| §2.6 UI State (imperative useNavigate) | 82 instances | 2 instances (wrappers) | -98% |
 
 ---
 

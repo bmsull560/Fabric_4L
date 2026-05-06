@@ -427,7 +427,12 @@ export default function InteractiveBusinessCase() {
 
       {/* Error display */}
       {c1State.error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-700 text-sm">
+        <div
+          className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-700 text-sm"
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
+        >
           <AlertCircle className="w-4 h-4" />
           <span>{c1State.error}</span>
         </div>
@@ -468,6 +473,14 @@ export default function InteractiveBusinessCase() {
           {/* Streamed C1 components */}
           {c1State.components.length > 0 && (
             <SectionCard title="Interactive Controls">
+              <div
+                aria-live="polite"
+                aria-atomic="true"
+                className="sr-only"
+                role="status"
+              >
+                {c1State.components.length} interactive control{c1State.components.length !== 1 ? 's' : ''} generated{c1State.isComplete ? '. Generation complete.' : '. More controls may appear.'}
+              </div>
               <C1ComponentRenderer
                 components={c1State.components}
                 onSliderChange={handleSliderUpdate}
@@ -480,8 +493,10 @@ export default function InteractiveBusinessCase() {
 
           {c1State.isStreaming && c1State.components.length === 0 && (
             <div className="flex items-center justify-center py-12 text-neutral-500">
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              Generating interactive controls...
+              <Loader2 className="w-6 h-6 animate-spin mr-2" aria-hidden="true" />
+              <span aria-live="polite" aria-atomic="true">
+                Generating interactive controls...
+              </span>
             </div>
           )}
         </div>

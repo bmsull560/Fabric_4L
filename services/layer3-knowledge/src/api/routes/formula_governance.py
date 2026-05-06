@@ -325,6 +325,8 @@ async def create_formula_version(
     api_key: APIKey = Depends(get_current_api_key),
 ):
     """Create a new formula version. Requires authentication."""
+    tenant_id = getattr(api_key, "tenant_id", None)
+
     # Check formula exists
     check_query = "MATCH (f:Formula {id: $formula_id}) RETURN f"
     async with driver.session() as session:
@@ -356,7 +358,8 @@ async def create_formula_version(
         createdAt: $created_at,
         createdBy: $created_by,
         changeSummary: $change_summary,
-        previousVersion: $previous_version
+        previousVersion: $previous_version,
+        tenant_id: $tenant_id
     })
     CREATE (f)-[:HAS_VERSION]->(fv)
     SET f.version = $version,
@@ -375,6 +378,7 @@ async def create_formula_version(
             created_by=request.created_by,
             change_summary=request.change_summary,
             previous_version=previous_version,
+            tenant_id=tenant_id,
         )
         record = await result.single()
 

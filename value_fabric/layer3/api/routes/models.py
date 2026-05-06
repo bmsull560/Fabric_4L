@@ -197,6 +197,26 @@ def _get_current_user(request: Request) -> str:
         )
 
 
+def _get_current_tenant(request: Request) -> str:
+    """Extract tenant ID from JWT Bearer token.
+    
+    Returns the 'tenant_id' claim from the JWT payload, or 'default'
+    if not present. This is a Phase 3 interim helper; Phase 4 will
+    migrate this module to Neo4jTenantSession with proper context.
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return "default"
+    
+    token = auth_header[7:]
+    
+    try:
+        payload = _decode_jwt_payload(token)
+        return payload.get("tenant_id") or "default"
+    except Exception:
+        return "default"
+
+
 def _model_node_to_summary(record: dict[str, Any]) -> ModelSummary:
     """Transform Neo4j node record to ModelSummary."""
     node = record.get("m", {})
@@ -493,6 +513,7 @@ async def create_model(
     await _ensure_constraints(driver)
     
     current_user = _get_current_user(request)
+    current_tenant = _get_current_tenant(request)
     model_id = f"mdl_{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')[:-3]}"
     
     now = datetime.now(UTC).isoformat()
@@ -512,7 +533,8 @@ async def create_model(
         created_at: $created_at,
         updated_at: $updated_at,
         owner: $owner,
-        is_shared: false
+        is_shared: false,
+        tenant_id: $tenant_id
     })
     RETURN m.model_id as model_id
     """
@@ -528,6 +550,7 @@ async def create_model(
         "created_at": now,
         "updated_at": now,
         "owner": current_user,
+        "tenant_id": current_tenant,
     }
     
     try:

@@ -345,6 +345,7 @@ async def create_variable(
 
     variable_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
+    tenant_id = getattr(api_key, "tenant_id", None)
 
     # Build validation rules
     validation_rules = []
@@ -369,7 +370,8 @@ async def create_variable(
         validationRules: $validation_rules,
         createdAt: $created_at,
         version: "1.0.0",
-        isActive: true
+        isActive: true,
+        tenant_id: $tenant_id
     })
     SET v.sourceType = $source_type,
         v.sourceLocation = $source_location,
@@ -392,6 +394,7 @@ async def create_variable(
             applicable_packs=request.applicable_packs,
             validation_rules=validation_rules,
             created_at=now,
+            tenant_id=tenant_id,
             source_type=request.source_binding.source_type
             if request.source_binding
             else None,

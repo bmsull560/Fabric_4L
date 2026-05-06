@@ -1,3 +1,8 @@
+/**
+ * @deprecated Use Skeleton from "@/components/ui/skeleton" (primitive) or
+ * SkeletonViews from "@/components/ui/SkeletonViews" (page-level skeletons).
+ * This component is maintained for backward compatibility only.
+ */
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
