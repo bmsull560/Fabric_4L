@@ -59,7 +59,7 @@ def _sort_primitive_list(values: list[Any]) -> list[Any]:
 
 def _normalize_source_pointer(pointer: Any) -> dict[str, Any]:
     if isinstance(pointer, str):
-        return _normalize_source_pointerResult.model_validate({"pointer": pointer})
+        return _normalize_source_pointerResult.model_validate({"pointer": pointer}).model_dump()
     if isinstance(pointer, dict):
         return _normalize_source_pointerResult.model_validate({
             "pointer": pointer.get("pointer")
@@ -69,10 +69,10 @@ def _normalize_source_pointer(pointer: Any) -> dict[str, Any]:
             or "unknown",
             "type": pointer.get("type") or pointer.get("source_type"),
             "locator": pointer.get("locator") or pointer.get("path") or pointer.get("offset"),
-        })
+        }).model_dump()
 
 
-    return _normalize_source_pointerResult.model_validate({"pointer": str(pointer)})
+    return _normalize_source_pointerResult.model_validate({"pointer": str(pointer)}).model_dump()
 
 
 def _collect_truth_ids(output: dict[str, Any], metadata: dict[str, Any], case_snapshot: dict[str, Any]) -> list[str]:

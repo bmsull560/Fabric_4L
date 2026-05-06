@@ -182,7 +182,7 @@ def test_immutable_governance_objects_reject_duplicate_ids() -> None:
 
     duplicate = client.post("/v1/governance/reviews", json={**payload, "status": "approved"})
     assert duplicate.status_code == 409
-    assert "immutable" in str(duplicate.json())
+    assert "immutable" in duplicate.json()["detail"]
 
 
 def test_export_fails_closed_when_correlation_id_does_not_match_review() -> None:
@@ -205,4 +205,4 @@ def test_export_fails_closed_when_correlation_id_does_not_match_review() -> None
     )
 
     assert export.status_code == 400
-    assert "export lineage mismatch" in str(export.json())
+    assert export.json()["detail"] == "export lineage mismatch"
