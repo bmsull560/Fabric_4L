@@ -233,8 +233,8 @@ async def lifespan(app: FastAPI):
     try:
         checkpoint_saver = await CheckpointConfig.create_saver()
         logger.info("L4: Checkpoint saver initialized successfully")
-    except Exception as e:
-        logger.error(f"L4: Checkpoint saver initialization failed: {e}")
+    except (RuntimeError, ConnectionError, OSError) as e:
+        logger.error("L4: Checkpoint saver initialization failed", extra={"error_type": type(e).__name__}, exc_info=True)
         raise RuntimeError(f"Checkpoint saver failed - cannot start without workflow resumption: {e}") from e
 
     workflow_executor = OrchestrationController(
@@ -252,8 +252,8 @@ async def lifespan(app: FastAPI):
             logger.info(f"L4: Recovery complete - {len(recovered)} workflows marked as INTERRUPTED")
         else:
             logger.info("L4: No orphaned workflows to recover")
-    except Exception as e:
-        logger.error(f"L4: Workflow recovery failed: {e}")
+    except (RuntimeError, ValueError) as e:
+        logger.error("L4: Workflow recovery failed", extra={"error_type": type(e).__name__}, exc_info=True)
         raise RuntimeError(f"Workflow recovery failed - cannot start with unknown workflow state: {e}") from e
 
     # Start WebSocket manager for real-time streaming

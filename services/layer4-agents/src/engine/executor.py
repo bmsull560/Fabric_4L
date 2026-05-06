@@ -238,7 +238,7 @@ class OrchestrationController:
             context = RequestContext(tenant_id=tenant_id)
             async with db_session_for_context(context) as db:
                 return await resolve_llm_model(db, tenant_id, provider)
-        except Exception:
+        except (RuntimeError, ValueError, OSError):
             logger.exception("Failed to resolve LLM model for tenant %s, using fallback", tenant_id)
             return os.getenv("LLM_MODEL", "gpt-4o")
 
@@ -917,8 +917,8 @@ class OrchestrationController:
                     f"(was at node: {state.current_node})"
                 )
                 
-            except Exception as e:
-                logger.error(f"Failed to recover workflow {workflow_id}: {e}")
+            except (ValueError, RuntimeError) as e:
+                logger.error("Failed to recover workflow", extra={"workflow_id": workflow_id, "error_type": type(e).__name__}, exc_info=True)
                 recovered.append({
                     "workflow_id": workflow_id,
                     "status": "ERROR",
@@ -972,7 +972,7 @@ class OrchestrationController:
                         recipient_id=message.sender_id,
                         correlation_id=message.correlation_id,
                     )
-                except Exception as e:
+                except (ValueError, RuntimeError, TimeoutError) as e:
                     # Send error
                     await self.message_bus.publish(
                         agent_id=agent.agent_id,
@@ -1018,7 +1018,7 @@ class OrchestrationController:
                 paused.completed_at = datetime.now(UTC)
                 await self.state_manager.save_state(workflow_id, paused)
             raise
-        except Exception as exc:
+        except (RuntimeError, ValueError, TimeoutError) as exc:
             failed = await self.state_manager.load_state(workflow_id) or initial_state
             failed.status = WorkflowStatus.FAILED
             failed.completed_at = datetime.now(UTC)

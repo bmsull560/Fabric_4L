@@ -130,3 +130,7 @@ audit-output/
 *.key
 *.crt
 *.cer
+
+# Archived frontend snapshots/backups (non-runtime)
+/archive/
+apps/web/src/*.backup.*

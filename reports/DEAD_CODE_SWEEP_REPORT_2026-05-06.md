@@ -53,7 +53,7 @@
 
 **Finding:**
 
-- ℹ️ `frontend/` directory is marked OBSOLETE with contents archived to `archive/2026-05-02-frontend-root/` - **NOT DEAD** (already migrated)
+- ℹ️ `frontend/` directory is marked OBSOLETE with contents archived to `docs/archive/frontend-root-2026-05-02/source-snapshot/` - **NOT DEAD** (already migrated)
 
 ---
 

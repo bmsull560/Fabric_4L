@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
@@ -143,8 +143,8 @@ class UsageService:
         except StripeMeterEventError as e:
             logger.warning(f"Failed to report meter event: {e}")
             return UsageService__report_to_stripeResult.model_validate({"error": str(e)})
-        except Exception as e:
-            logger.error(f"Unexpected error reporting to Stripe: {e}")
+        except (ConnectionError, TimeoutError, RuntimeError) as e:
+            logger.error("Stripe reporting infrastructure failure", extra={"customer_id": customer_id, "metric_name": metric_name, "event_id": event_id, "error_type": type(e).__name__}, exc_info=True)
             return None
 
     async def ingest_event(
@@ -246,9 +246,10 @@ class UsageService:
                 existing._stripe_response = {"skipped": True, "reason": "duplicate"}
                 return existing
             raise
-        except Exception:
-            # Rollback any other database errors to prevent partial writes
+        except SQLAlchemyError as exc:
+            # Rollback database errors to prevent partial writes
             await self.db.rollback()
+            logger.error("Usage ingest database failure", extra={"tenant_id": self.tenant_id, "event_id": event_id, "error_type": type(exc).__name__}, exc_info=True)
             raise
 
     async def ingest_batch(

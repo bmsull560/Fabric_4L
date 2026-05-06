@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -131,8 +131,9 @@ class BillingService:
                     continue
                 # Last attempt failed, re-raise
                 raise
-            except Exception as e:
+            except SQLAlchemyError as e:
                 await self.db.rollback()
+                logger.error("Billing customer creation failed", extra={"customer_id": customer_id, "tenant_id": tenant_id, "error_type": type(e).__name__}, exc_info=True)
                 # Compensation: Log potential Stripe orphan for cleanup
                 # If stripe_customer_id was created but DB failed, we have an orphan
                 if stripe_customer_id:
@@ -265,10 +266,10 @@ class BillingService:
             event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
         except ValueError as e:
             raise ValueError(f"Invalid payload: {e}") from e
-        except Exception as e:
+        except (TypeError, KeyError) as e:
             if "signature" in str(e).lower():
                 raise ValueError(f"Invalid signature: {e}") from e
-            raise
+            raise ValueError(f"Malformed webhook payload: {e}") from e
 
         event_id = event["id"]
         event_type = event["type"]
@@ -311,9 +312,10 @@ class BillingService:
             await self.db.rollback()
             logger.info(f"Webhook {event_id} processed concurrently (idempotent)")
             return True
-        except Exception:
-            # Any other error - rollback to maintain consistency
+        except SQLAlchemyError as exc:
+            # Database error - rollback to maintain consistency
             await self.db.rollback()
+            logger.error("Webhook persistence failure", extra={"event_id": event_id, "event_type": event_type, "error_type": type(exc).__name__}, exc_info=True)
             raise
 
     async def _handle_checkout_completed(self, session: dict[str, Any]) -> None:

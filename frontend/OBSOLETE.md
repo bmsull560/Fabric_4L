@@ -7,7 +7,7 @@
 **Migration Date:** 2026-05-02
 
 **Archive:**
-Contents have been archived to `archive/2026-05-02-frontend-root/`.
+Contents have been archived to `docs/archive/frontend-root-2026-05-02/source-snapshot/`.
 
 **Reason:**
 Frontend moved from `frontend/client` to `apps/web` as part of Phase 5 cleanup.
