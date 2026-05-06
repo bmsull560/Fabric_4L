@@ -4,10 +4,10 @@ WORKDIR /app
 
 RUN corepack enable
 
-COPY apps/web/package.json apps/web/pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-COPY apps/web/ .
+COPY . .
 RUN pnpm build
 
 FROM node:22-alpine AS runtime
@@ -19,7 +19,7 @@ ENV PORT=3000
 # corepack enable requires root to create symlinks in /usr/local/bin
 RUN corepack enable
 
-COPY apps/web/package.json apps/web/pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
 # Security: Run as non-root user (node is built-in to node:alpine images)

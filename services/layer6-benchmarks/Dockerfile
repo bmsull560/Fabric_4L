@@ -23,8 +23,8 @@ RUN uv sync --frozen --no-install-project
 RUN uv pip install "sqlalchemy>=2.0" "pyjwt>=2.8.0"
 
 # Copy source code
-COPY services/layer6-benchmarks/src/ ./src/
-COPY value_fabric/ ./value_fabric/
+COPY src/ ./src/
+COPY ../../value_fabric/ ./value_fabric/
 
 # Set PATH to use uv virtual environment and PYTHONPATH for imports
 ENV PATH="/app/.venv/bin:$PATH"

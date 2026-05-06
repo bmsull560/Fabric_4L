@@ -17,15 +17,15 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 WORKDIR /app
 
 # Copy dependency files first (for better layer caching)
-COPY services/layer5-ground-truth/pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock ./
 
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project
 
 # Copy source (selective to avoid tests/cache bloat)
-COPY services/layer5-ground-truth/src/ ./src/
-COPY value_fabric/ ./value_fabric/
-COPY services/layer5-ground-truth/alembic.ini .
+COPY src/ ./src/
+COPY ../../value_fabric/ ./value_fabric/
+COPY alembic.ini .
 
 # Set PATH to use uv virtual environment and PYTHONPATH for imports
 ENV PATH="/app/.venv/bin:$PATH"

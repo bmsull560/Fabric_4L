@@ -10,8 +10,8 @@ components:
         gitApplicationPath: apps/web
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./apps/web/Dockerfile
+                context: ./apps/web
+                dockerfile: ./Dockerfile
             environment:
                 PLAYWRIGHT_LIVE_MODE: 'true'
                 VITE_API_BASE: /api/v1
@@ -54,11 +54,10 @@ components:
         gitApplicationPath: services/layer1-ingestion
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer1-ingestion/Dockerfile
+                context: ./services/layer1-ingestion
+                dockerfile: ./Dockerfile
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
-                    CACHEBUST: ${CACHEBUST}
             environment:
                 JWT_SECRET: dev-secret-key-change-in-production
                 LAYER1_API_PORT: '8000'
@@ -94,11 +93,10 @@ components:
         gitApplicationPath: services/layer1-ingestion
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer1-ingestion/Dockerfile
+                context: ./services/layer1-ingestion
+                dockerfile: ./Dockerfile
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
-                    CACHEBUST: ${CACHEBUST}
             command:
                 - celery
                 - '-A'
@@ -127,10 +125,8 @@ components:
         gitApplicationPath: services/layer2-extraction
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer2-extraction/Dockerfile
-                args:
-                    CACHEBUST: ${CACHEBUST}
+                context: ./services/layer2-extraction
+                dockerfile: ./Dockerfile
             environment:
                 ENVIRONMENT: development
                 LAYER2_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/layer2_extraction'
@@ -171,8 +167,8 @@ components:
         gitApplicationPath: services/layer3-knowledge
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer3-knowledge/Dockerfile
+                context: ./services/layer3-knowledge
+                dockerfile: ./Dockerfile
                 args:
                     CACHEBUST: ${CACHEBUST}
             environment:
@@ -205,10 +201,8 @@ components:
         gitApplicationPath: services/layer4-agents
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer4-agents/Dockerfile
-                args:
-                    CACHEBUST: ${CACHEBUST}
+                context: ./services/layer4-agents
+                dockerfile: ./Dockerfile
             environment:
                 ANTHROPIC_API_KEY: sk-ant-placeholder-change-in-production
                 CHECKPOINT_DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
@@ -262,10 +256,8 @@ components:
         gitApplicationPath: services/layer5-ground-truth
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer5-ground-truth/Dockerfile
-                args:
-                    CACHEBUST: ${CACHEBUST}
+                context: ./services/layer5-ground-truth
+                dockerfile: ./Dockerfile
             environment:
                 API_PORT: '8005'
                 DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
@@ -301,8 +293,8 @@ components:
         gitApplicationPath: services/layer5-ground-truth
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer5-ground-truth/Dockerfile
+                context: ./services/layer5-ground-truth
+                dockerfile: ./Dockerfile
             command:
                 - sh
                 - '-lc'
@@ -334,10 +326,8 @@ components:
         gitApplicationPath: services/layer6-benchmarks
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer6-benchmarks/Dockerfile
-                args:
-                    CACHEBUST: ${CACHEBUST}
+                context: ./services/layer6-benchmarks
+                dockerfile: ./Dockerfile
             environment:
                 ENVIRONMENT: development
                 LOG_LEVEL: info
