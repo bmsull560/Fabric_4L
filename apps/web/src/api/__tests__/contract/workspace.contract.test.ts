@@ -161,7 +161,7 @@ describe('Contract: Workspace Tab API', () => {
         ApiErrorSchema,
         {
           message: 'Authentication required',
-          code: 'unauthorized',
+          code: 'AUTHENTICATION_ERROR',
           trace_id: 'trace-workspace-401',
         },
         'workspace auth failure response'
@@ -228,7 +228,7 @@ describe('Contract: Workspace Tab API', () => {
     it('401 matches ApiError shape', () => {
       assertSchema(
         ApiErrorSchema,
-        { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-ws-401' },
+        { message: 'Authentication required', code: 'AUTHENTICATION_ERROR', trace_id: 'trace-ws-401' },
         'ApiError (401 workspace)'
       );
     });
@@ -236,10 +236,10 @@ describe('Contract: Workspace Tab API', () => {
     it('403 cross-tenant workspace access matches ApiError shape', () => {
       const err = assertSchema(
         ApiErrorSchema,
-        { message: 'Case does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-ws-403' },
+        { message: 'Case does not belong to your tenant', code: 'AUTHORIZATION_ERROR', trace_id: 'trace-ws-403' },
         'ApiError (403 workspace)'
       );
-      expect(err.code).toBe('FORBIDDEN');
+      expect(err.code).toBe('AUTHORIZATION_ERROR');
       expect(err.trace_id).toBeTruthy();
     });
 

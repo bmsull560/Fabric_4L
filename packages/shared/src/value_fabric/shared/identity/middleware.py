@@ -426,7 +426,11 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     return JSONResponse(
                         status_code=429,
                         headers=headers,
-                        content={"detail": "Rate limit exceeded"},
+                        content={
+                            "detail": "Rate limit exceeded",
+                            "error": "Too many requests",
+                            "retry_after": rate_limit_result.retry_after,
+                        },
                     )
 
             response = await call_next(request)

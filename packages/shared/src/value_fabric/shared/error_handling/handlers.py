@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException, RequestValidationError
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -16,6 +17,86 @@ from .exceptions import ValueFabricException
 from .models import ErrorCode, ErrorResponse
 
 logger = logging.getLogger(__name__)
+
+
+def canonical_error_response_schema() -> dict[str, Any]:
+    """Return the canonical API error schema used by every layer service."""
+    return {
+        "type": "object",
+        "title": "ErrorResponse",
+        "required": ["message", "code", "trace_id"],
+        "additionalProperties": False,
+        "properties": {
+            "message": {
+                "type": "string",
+                "description": "Human-readable error message",
+            },
+            "code": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Machine-readable error code",
+            },
+            "trace_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Request trace ID for support correlation",
+            },
+            "details": {
+                "anyOf": [
+                    {"type": "object", "additionalProperties": True},
+                    {"type": "null"},
+                ],
+                "description": "Optional sanitized error details",
+            },
+        },
+    }
+
+
+def install_error_response_openapi(app: FastAPI) -> None:
+    """Ensure generated OpenAPI exposes the canonical error envelope.
+
+    FastAPI defaults validation failures to ``HTTPValidationError`` with a
+    ``detail`` array. Runtime handlers return ``ErrorResponse`` instead, so we
+    publish ``HTTPValidationError`` as a deprecated alias to prevent generated
+    clients from learning the wrong shape while old references are migrated.
+    """
+
+    if getattr(app.state, "_canonical_error_openapi_installed", False):
+        return
+
+    original_openapi = app.openapi
+
+    def custom_openapi() -> dict[str, Any]:
+        if app.openapi_schema:
+            return app.openapi_schema
+
+        try:
+            schema = original_openapi()
+        except Exception:
+            schema = get_openapi(
+                title=app.title,
+                version=app.version,
+                description=app.description,
+                routes=app.routes,
+            )
+
+        components = schema.setdefault("components", {})
+        schemas = components.setdefault("schemas", {})
+        error_schema = canonical_error_response_schema()
+        schemas["ErrorResponse"] = error_schema
+        schemas["HTTPValidationError"] = {
+            **error_schema,
+            "title": "HTTPValidationError",
+            "description": (
+                "Deprecated compatibility alias for ErrorResponse. "
+                "Use ErrorResponse for new clients."
+            ),
+        }
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = custom_openapi
+    app.state._canonical_error_openapi_installed = True
 
 
 def is_production() -> bool:
@@ -307,3 +388,4 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     # Catch-all must be last
     app.add_exception_handler(Exception, global_exception_handler)
+    install_error_response_openapi(app)

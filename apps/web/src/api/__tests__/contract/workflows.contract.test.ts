@@ -387,7 +387,7 @@ describe('Contract: auth failure responses', () => {
   it('401 response matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-wf-401' },
+      { message: 'Authentication required', code: 'AUTHENTICATION_ERROR', trace_id: 'trace-wf-401' },
       'ApiError (401)'
     );
     expect(err.message).toBeTruthy();
@@ -397,10 +397,10 @@ describe('Contract: auth failure responses', () => {
   it('403 cross-tenant workflow access matches ApiError shape', () => {
     const err = assertSchema(
       ApiErrorSchema,
-      { message: 'Workflow does not belong to your tenant', code: 'FORBIDDEN', trace_id: 'trace-wf-403' },
+      { message: 'Workflow does not belong to your tenant', code: 'AUTHORIZATION_ERROR', trace_id: 'trace-wf-403' },
       'ApiError (403 cross-tenant)'
     );
-    expect(err.code).toBe('FORBIDDEN');
+    expect(err.code).toBe('AUTHORIZATION_ERROR');
     expect(err.trace_id).toBeTruthy();
   });
 

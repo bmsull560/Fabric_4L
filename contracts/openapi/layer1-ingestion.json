@@ -3426,7 +3426,7 @@
           "crawl_delay_seconds": {
             "type": "number",
             "title": "Crawl Delay Seconds",
-            "default": 1.0
+            "default": 1
           },
           "domain_allowlist": {
             "items": {
@@ -3824,8 +3824,8 @@
         "properties": {
           "priority": {
             "type": "integer",
-            "maximum": 10.0,
-            "minimum": 1.0,
+            "maximum": 10,
+            "minimum": 1,
             "title": "Priority",
             "default": 5
           },
@@ -4024,8 +4024,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 10.0,
-                "minimum": 0.0
+                "maximum": 10,
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -4067,17 +4067,43 @@
         "title": "ExtractionMethod"
       },
       "HTTPValidationError": {
+        "type": "object",
+        "title": "HTTPValidationError",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
           }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
+        "description": "Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients."
       },
       "HealthCheckResponse": {
         "properties": {
@@ -4626,7 +4652,7 @@
           "requests_per_second": {
             "type": "number",
             "title": "Requests Per Second",
-            "default": 1.0
+            "default": 1
           },
           "requests_per_minute": {
             "type": "integer",
@@ -5124,8 +5150,8 @@
           },
           "max_concurrent_jobs": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 1.0,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Max Concurrent Jobs",
             "default": 1
           }
@@ -5981,6 +6007,44 @@
         ],
         "title": "ValidationWarning",
         "description": "Validation warning detail."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "title": "ErrorResponse",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
+          }
+        }
       }
     }
   }

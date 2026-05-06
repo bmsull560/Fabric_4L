@@ -31,6 +31,7 @@ import {
   TruthObjectListResponseSchema,
   ApiErrorSchema,
   fixtures,
+  assertCanonicalSchema,
   assertSchema,
   assertSchemaRejects,
 } from './_helpers';
@@ -261,27 +262,19 @@ describe('OpenAPI drift: negative-path consistency', () => {
 
 describe('Contract: drift-detection auth failures', () => {
   it('401 matches ApiError shape', () => {
-    assertSchema(ApiErrorSchema, { message: 'Authentication required', code: 'UNAUTHORIZED', trace_id: 'trace-drift-401' }, 'ApiError (401)');
+    assertSchema(ApiErrorSchema, { message: 'Authentication required', code: 'AUTHENTICATION_ERROR', trace_id: 'trace-drift-401' }, 'ApiError (401)');
   });
 
   it('403 forbidden matches ApiError shape', () => {
-    assertSchema(ApiErrorSchema, { message: 'Access denied', code: 'FORBIDDEN', trace_id: 'trace-drift-403' }, 'ApiError (403)');
+    assertSchema(ApiErrorSchema, { message: 'Access denied', code: 'AUTHORIZATION_ERROR', trace_id: 'trace-drift-403' }, 'ApiError (403)');
   });
 });
 
 // ── Common error shapes ───────────────────────────────────────────────────────
 
 describe('OpenAPI drift: common error shapes', () => {
-  it('ApiError fixture is compatible with HTTPValidationError', () => {
-    // The OpenAPI HTTPValidationError has { detail: [...] } which is not
-    // the same as our frontend ApiErrorSchema. Document this divergence
-    // so future refactors can align them.
+  it('ApiError fixture is compatible with canonical ErrorResponse', () => {
     const frontendError = { message: 'Bad request', code: 'VALIDATION_ERROR', trace_id: 'abc' };
-    assertSchema(ApiErrorSchema, frontendError, 'frontend ApiError');
-
-    // Intentionally *not* asserting OpenAPI compatibility here because
-    // the backend HTTPValidationError shape (Pydantic v2) differs from
-    // the frontend ApiErrorSchema. This test documents the gap.
-    expect(frontendError).toBeDefined();
+    assertCanonicalSchema(ApiErrorSchema, 'layer4-agents.json', '#/components/schemas/ErrorResponse', frontendError, 'frontend ApiError');
   });
 });

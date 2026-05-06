@@ -25,6 +25,7 @@ class RateLimitMiddleware_get_statsResult(TypedDictModel):
     endpoint_limits: Any
     total_requests: Any
 
+
 class RateLimiter:
     """Rate limiter adapter that delegates counting to canonical state math."""
 
@@ -129,10 +130,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not is_allowed:
             logger.warning(
                 "Rate limit exceeded",
-                client_ip=self.rate_limiter._get_client_key(request),
-                path=request.url.path,
-                limit=rate_limit_info["limit"],
-                retry_after=rate_limit_info["retry_after"],
+                extra={
+                    "client_ip": self.rate_limiter._get_client_key(request),
+                    "path": request.url.path,
+                    "limit": rate_limit_info["limit"],
+                    "retry_after": rate_limit_info["retry_after"],
+                },
             )
             response = JSONResponse(
                 status_code=429,

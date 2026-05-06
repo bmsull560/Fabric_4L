@@ -12,9 +12,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections import deque
 from dataclasses import dataclass
-from threading import Lock
 from typing import Any
 
 from .rate_limiting import RateLimitConfig, RateLimitFailMode, get_rate_limit_fail_mode
@@ -36,50 +34,32 @@ class RateLimitResult:
     retry_after: int | None
 
 
-class _InMemoryFallbackLimiter:
-    """Strict bounded fallback limiter for Redis outage conditions."""
+class _LocalFallbackRateLimiter:
+    """Strict bounded fallback adapter for Redis outage conditions."""
 
     def __init__(self) -> None:
-        self._lock = Lock()
-        self._events: dict[str, deque[float]] = {}
+        self._adapter = SlidingWindowAdapter(redis_client=None)
 
-    def check(self, key: str, window_seconds: int) -> RateLimitResult:
-        now = time.time()
-        cutoff = now - window_seconds
-        with self._lock:
-            entries = self._events.get(key)
-            if entries is None:
-                entries = deque()
-                self._events[key] = entries
-
-            while entries and entries[0] <= cutoff:
-                entries.popleft()
-
-            if len(entries) >= _LOCAL_FALLBACK_LIMIT:
-                reset_at = entries[0] + window_seconds if entries else now + window_seconds
-                retry_after = max(1, int(reset_at - now))
-                return RateLimitResult(
-                    allowed=False,
-                    remaining=0,
-                    reset_at=reset_at,
-                    retry_after=retry_after,
-                )
-
-            entries.append(now)
-            return RateLimitResult(
-                allowed=True,
-                remaining=max(0, _LOCAL_FALLBACK_LIMIT - len(entries)),
-                reset_at=now + window_seconds,
-                retry_after=None,
-            )
+    async def check(self, key: str, window_seconds: int) -> RateLimitResult:
+        decision = await self._adapter.check(
+            key=key,
+            limit=_LOCAL_FALLBACK_LIMIT,
+            window_seconds=window_seconds,
+        )
+        return RateLimitResult(
+            allowed=decision.allowed,
+            remaining=decision.remaining,
+            reset_at=float(decision.reset_epoch),
+            retry_after=decision.retry_after,
+        )
 
 
 class RedisRateLimiter:
-    """Sliding-window rate limiter backed by Redis sorted sets."""
+    """Identity adapter that delegates sliding-window math to the canonical module."""
 
     def __init__(self, redis_client: Any | None = None, *, fail_open: bool | None = None) -> None:
         self._adapter = SlidingWindowAdapter(redis_client)
-        self._fallback_limiter = _InMemoryFallbackLimiter()
+        self._fallback_limiter = _LocalFallbackRateLimiter()
         self._legacy_fail_open = fail_open
 
     async def check(self, key: str, config: RateLimitConfig) -> RateLimitResult:
@@ -120,7 +100,7 @@ class RedisRateLimiter:
             fail_mode = get_rate_limit_fail_mode()
             self._record_fallback_activation(key=key, mode=fail_mode, error=exc)
             if fail_mode is RateLimitFailMode.LOCAL_FALLBACK:
-                return self._fallback_limiter.check(key=key, window_seconds=window)
+                return await self._fallback_limiter.check(key=key, window_seconds=window)
 
             now = time.time()
             retry_after = max(1, min(window, 60))

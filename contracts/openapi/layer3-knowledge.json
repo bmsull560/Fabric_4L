@@ -588,7 +588,7 @@
                   "scenario_id": "scenario_abc123",
                   "original_value": 500000,
                   "adjusted_value": 600000,
-                  "delta_percentage": 20.0,
+                  "delta_percentage": 20,
                   "new_roi": 2.5,
                   "new_payback_months": 8.5,
                   "formula_used": "(total_value - implementation_cost) / implementation_cost",
@@ -2791,9 +2791,6 @@
           "400": {
             "description": "Invalid filter or sort parameters"
           },
-          "500": {
-            "description": "Database error"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2803,6 +2800,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Database error"
           }
         }
       },
@@ -2837,9 +2837,6 @@
           "400": {
             "description": "Invalid request data"
           },
-          "500": {
-            "description": "Database error"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2849,6 +2846,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Database error"
           }
         }
       }
@@ -2952,9 +2952,6 @@
           "404": {
             "description": "Model not found"
           },
-          "500": {
-            "description": "Database error"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2964,6 +2961,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Database error"
           }
         }
       },
@@ -3013,14 +3013,11 @@
               }
             }
           },
-          "404": {
-            "description": "Model not found"
-          },
           "403": {
             "description": "Not authorized to delete this model"
           },
-          "500": {
-            "description": "Database error"
+          "404": {
+            "description": "Model not found"
           },
           "422": {
             "description": "Validation Error",
@@ -3031,6 +3028,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Database error"
           }
         }
       }
@@ -3090,10 +3090,10 @@
             "required": false,
             "schema": {
               "type": "number",
-              "maximum": 1.0,
-              "minimum": 0.0,
+              "maximum": 1,
+              "minimum": 0,
               "description": "Minimum confidence score",
-              "default": 0.0,
+              "default": 0,
               "title": "Confidence Min"
             },
             "description": "Minimum confidence score"
@@ -3817,8 +3817,8 @@
             "required": false,
             "schema": {
               "type": "number",
-              "maximum": 1.0,
-              "minimum": 0.0,
+              "maximum": 1,
+              "minimum": 0,
               "default": 0.5,
               "title": "Min Confidence"
             }
@@ -5577,7 +5577,7 @@
                   "status": "healthy",
                   "version": "1.0.0",
                   "timestamp": "2024-01-01T12:00:00.000Z",
-                  "uptime_seconds": 3600.0,
+                  "uptime_seconds": 3600,
                   "dependencies": [
                     {
                       "name": "neo4j",
@@ -5590,9 +5590,9 @@
                     }
                   ],
                   "metrics": {
-                    "uptime_seconds": 3600.0,
+                    "uptime_seconds": 3600,
                     "memory_usage_mb": 1024.5,
-                    "cpu_percent": 25.0,
+                    "cpu_percent": 25,
                     "active_connections": 10,
                     "total_requests": 1500,
                     "error_rate_percent": 0.1
@@ -5627,7 +5627,7 @@
                   "status": "unhealthy",
                   "version": "1.0.0",
                   "timestamp": "2024-01-01T12:00:00.000Z",
-                  "uptime_seconds": 3600.0,
+                  "uptime_seconds": 3600,
                   "dependencies": [
                     {
                       "name": "neo4j",
@@ -5640,9 +5640,9 @@
                     }
                   ],
                   "metrics": {
-                    "uptime_seconds": 3600.0,
+                    "uptime_seconds": 3600,
                     "memory_usage_mb": 1024.5,
-                    "cpu_percent": 25.0,
+                    "cpu_percent": 25,
                     "active_connections": 0,
                     "total_requests": 1500,
                     "error_rate_percent": 5.2
@@ -5696,7 +5696,7 @@
                   "status": "healthy",
                   "version": "1.0.0",
                   "timestamp": "2024-01-01T12:00:00.000Z",
-                  "uptime_seconds": 3600.0,
+                  "uptime_seconds": 3600,
                   "dependencies": [
                     {
                       "name": "neo4j",
@@ -5717,9 +5717,9 @@
                     }
                   ],
                   "metrics": {
-                    "uptime_seconds": 3600.0,
+                    "uptime_seconds": 3600,
                     "memory_usage_mb": 1024.5,
-                    "cpu_percent": 25.0,
+                    "cpu_percent": 25,
                     "active_connections": 10,
                     "total_requests": 1500,
                     "error_rate_percent": 0.1
@@ -5746,7 +5746,7 @@
                     "platform": "Windows-10-10.0.19041-SP0",
                     "python_version": "3.11.0",
                     "cpu_count": 8,
-                    "memory_total_gb": 16.0,
+                    "memory_total_gb": 16,
                     "disk_usage_gb": 250.5
                   },
                   "configuration": {
@@ -6389,7 +6389,7 @@
     "/v1/entities": {
       "get": {
         "summary": "List Entities",
-        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence\u2014eliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
+        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence—eliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
         "operationId": "list_entities_v1_entities_get",
         "parameters": [
           {
@@ -6482,8 +6482,8 @@
               "anyOf": [
                 {
                   "type": "number",
-                  "maximum": 1.0,
-                  "minimum": 0.0
+                  "maximum": 1,
+                  "minimum": 0
                 },
                 {
                   "type": "null"
@@ -6502,8 +6502,8 @@
               "anyOf": [
                 {
                   "type": "number",
-                  "maximum": 1.0,
-                  "minimum": 0.0
+                  "maximum": 1,
+                  "minimum": 0
                 },
                 {
                   "type": "null"
@@ -7475,7 +7475,7 @@
                       "source": "cap-1",
                       "target": "uc-1",
                       "type": "ENABLES",
-                      "weight": 1.0
+                      "weight": 1
                     }
                   ],
                   "stats": {
@@ -7492,9 +7492,6 @@
               }
             }
           },
-          "503": {
-            "description": "Database unavailable"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -7504,6 +7501,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Database unavailable"
           }
         }
       }
@@ -7582,9 +7582,6 @@
           "404": {
             "description": "Entity not found"
           },
-          "503": {
-            "description": "Database unavailable"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -7594,6 +7591,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Database unavailable"
           }
         }
       }
@@ -7751,9 +7751,6 @@
           "400": {
             "description": "Invalid parameters - query or center_entity_id required"
           },
-          "500": {
-            "description": "Internal server error"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -7763,6 +7760,9 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
@@ -8022,8 +8022,8 @@
           },
           "max_hops": {
             "type": "integer",
-            "maximum": 3.0,
-            "minimum": 1.0,
+            "maximum": 3,
+            "minimum": 1,
             "title": "Max Hops",
             "description": "Context size for each analysis",
             "default": 2
@@ -8976,10 +8976,10 @@
           },
           "strength": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Strength",
-            "default": 1.0
+            "default": 1
           }
         },
         "type": "object",
@@ -9013,8 +9013,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 1.0,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Top K",
             "default": 20
           }
@@ -9162,7 +9162,7 @@
           },
           "min_community_size": {
             "type": "integer",
-            "minimum": 2.0,
+            "minimum": 2,
             "title": "Min Community Size",
             "default": 3
           },
@@ -9262,8 +9262,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 2030.0,
-                "minimum": 1900.0
+                "maximum": 2030,
+                "minimum": 1900
               },
               {
                 "type": "null"
@@ -9674,7 +9674,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -9687,7 +9687,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -9916,7 +9916,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -10016,7 +10016,7 @@
           },
           "uptime_seconds": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Uptime Seconds",
             "description": "Service uptime in seconds"
           },
@@ -10184,7 +10184,7 @@
           "formula_shape": {
             "type": "string",
             "title": "Formula Shape",
-            "description": "Input \u2192 Calculation \u2192 Output structure"
+            "description": "Input → Calculation → Output structure"
           },
           "inputs": {
             "items": {
@@ -10561,8 +10561,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence",
             "description": "Confidence 0-1"
           },
@@ -10766,8 +10766,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
+                "maximum": 1,
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -10780,8 +10780,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
+                "maximum": 1,
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -10850,15 +10850,15 @@
           },
           "limit": {
             "type": "integer",
-            "maximum": 100.0,
-            "minimum": 1.0,
+            "maximum": 100,
+            "minimum": 1,
             "title": "Limit",
             "description": "Max results to return",
             "default": 25
           },
           "offset": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Offset",
             "description": "Results to skip (for pagination)",
             "default": 0
@@ -10903,25 +10903,25 @@
           },
           "total_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Count",
             "description": "Total entities in database"
           },
           "filtered_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Filtered Count",
             "description": "Entities matching filters (before pagination)"
           },
           "limit": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Limit",
             "description": "Limit applied to this query"
           },
           "offset": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Offset",
             "description": "Offset applied to this query"
           },
@@ -10963,7 +10963,7 @@
         "properties": {
           "total_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Count",
             "description": "Total relationships (in + out)",
             "default": 0
@@ -11037,8 +11037,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence",
             "description": "Extraction confidence score (0.0 to 1.0)"
           },
@@ -11355,8 +11355,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence",
             "description": "Confidence in result",
             "default": 0.92
@@ -11784,10 +11784,10 @@
           },
           "weight": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Weight",
             "description": "Edge weight/strength",
-            "default": 1.0
+            "default": 1
           },
           "properties": {
             "additionalProperties": true,
@@ -11824,8 +11824,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence",
             "description": "Confidence score (legacy: use 'confidence_score')",
             "default": 0.8
@@ -11865,8 +11865,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence",
             "description": "Confidence score (legacy: use 'confidence_score')",
             "default": 0.8
@@ -11948,24 +11948,24 @@
           },
           "max_hops": {
             "type": "integer",
-            "maximum": 5.0,
-            "minimum": 1.0,
+            "maximum": 5,
+            "minimum": 1,
             "title": "Max Hops",
             "description": "Maximum graph traversal hops",
             "default": 3
           },
           "max_results": {
             "type": "integer",
-            "maximum": 50.0,
-            "minimum": 1.0,
+            "maximum": 50,
+            "minimum": 1,
             "title": "Max Results",
             "description": "Maximum number of results",
             "default": 10
           },
           "confidence_threshold": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence Threshold",
             "description": "Minimum confidence score for results",
             "default": 0.7
@@ -12025,8 +12025,8 @@
           },
           "confidence_score": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence Score",
             "description": "Overall confidence score"
           },
@@ -12043,7 +12043,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -12114,13 +12114,13 @@
         "properties": {
           "total_nodes": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Nodes",
             "description": "Total number of nodes"
           },
           "total_edges": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Edges",
             "description": "Total number of edges"
           },
@@ -12134,17 +12134,17 @@
           },
           "communities": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Communities",
             "description": "Number of detected communities",
             "default": 0
           },
           "density": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Density",
             "description": "Graph density",
-            "default": 0.0
+            "default": 0
           }
         },
         "type": "object",
@@ -12156,17 +12156,43 @@
         "description": "Statistics for the knowledge graph."
       },
       "HTTPValidationError": {
+        "type": "object",
+        "title": "HTTPValidationError",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
           }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
+        "description": "Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients."
       },
       "HealthResponse": {
         "properties": {
@@ -12195,7 +12221,7 @@
           },
           "uptime_seconds": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Uptime Seconds",
             "description": "Service uptime in seconds"
           },
@@ -12333,19 +12359,19 @@
           },
           "entities_loaded": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Entities Loaded",
             "description": "Number of entities loaded"
           },
           "relationships_loaded": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Relationships Loaded",
             "description": "Number of relationships loaded"
           },
           "triples_processed": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Triples Processed",
             "description": "Total RDF triples processed"
           },
@@ -12353,7 +12379,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -12479,21 +12505,21 @@
           },
           "formula_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Formula Count",
             "description": "Number of formulas",
             "default": 0
           },
           "entity_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Entity Count",
             "description": "Number of entities",
             "default": 0
           },
           "driver_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Driver Count",
             "description": "Number of value drivers",
             "default": 0
@@ -12571,7 +12597,7 @@
           },
           "count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Count",
             "description": "Model count in folder"
           }
@@ -12597,19 +12623,19 @@
           },
           "total": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total",
             "description": "Total matching models"
           },
           "offset": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Offset",
             "description": "Current offset"
           },
           "limit": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Limit",
             "description": "Page size"
           },
@@ -12683,21 +12709,21 @@
           },
           "formula_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Formula Count",
             "description": "Number of formulas",
             "default": 0
           },
           "entity_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Entity Count",
             "description": "Number of entities",
             "default": 0
           },
           "driver_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Driver Count",
             "description": "Number of value drivers",
             "default": 0
@@ -14106,70 +14132,70 @@
         "properties": {
           "annual_revenue": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Annual Revenue",
-            "default": 0.0
+            "default": 0
           },
           "num_employees": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Num Employees",
             "default": 0
           },
           "avg_salary": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Avg Salary",
-            "default": 75000.0
+            "default": 75000
           },
           "current_cost_annual": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Current Cost Annual",
-            "default": 0.0
+            "default": 0
           },
           "implementation_cost": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Implementation Cost",
-            "default": 0.0
+            "default": 0
           },
           "annual_license_cost": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Annual License Cost",
-            "default": 0.0
+            "default": 0
           },
           "training_cost": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Training Cost",
-            "default": 0.0
+            "default": 0
           },
           "productivity_gain_pct": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Productivity Gain Pct",
             "default": 0.1
           },
           "error_reduction_pct": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Error Reduction Pct",
             "default": 0.2
           },
           "time_savings_hours_per_week": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Time Savings Hours Per Week",
-            "default": 5.0
+            "default": 5
           },
           "affected_employees_pct": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Affected Employees Pct",
             "default": 0.25
           },
@@ -14182,15 +14208,15 @@
           },
           "time_horizon_months": {
             "type": "integer",
-            "maximum": 120.0,
-            "minimum": 1.0,
+            "maximum": 120,
+            "minimum": 1,
             "title": "Time Horizon Months",
             "default": 36
           },
           "discount_rate": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Discount Rate",
             "default": 0.1
           },
@@ -14382,70 +14408,70 @@
         "properties": {
           "annual_revenue": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Annual Revenue",
-            "default": 0.0
+            "default": 0
           },
           "num_employees": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Num Employees",
             "default": 0
           },
           "avg_salary": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Avg Salary",
-            "default": 75000.0
+            "default": 75000
           },
           "current_cost_annual": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Current Cost Annual",
-            "default": 0.0
+            "default": 0
           },
           "implementation_cost": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Implementation Cost",
-            "default": 0.0
+            "default": 0
           },
           "annual_license_cost": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Annual License Cost",
-            "default": 0.0
+            "default": 0
           },
           "training_cost": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Training Cost",
-            "default": 0.0
+            "default": 0
           },
           "productivity_gain_pct": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Productivity Gain Pct",
             "default": 0.1
           },
           "error_reduction_pct": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Error Reduction Pct",
             "default": 0.2
           },
           "time_savings_hours_per_week": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Time Savings Hours Per Week",
-            "default": 5.0
+            "default": 5
           },
           "affected_employees_pct": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Affected Employees Pct",
             "default": 0.25
           },
@@ -14458,15 +14484,15 @@
           },
           "time_horizon_months": {
             "type": "integer",
-            "maximum": 120.0,
-            "minimum": 1.0,
+            "maximum": 120,
+            "minimum": 1,
             "title": "Time Horizon Months",
             "default": 36
           },
           "discount_rate": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Discount Rate",
             "default": 0.1
           },
@@ -14669,8 +14695,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 50.0,
-            "minimum": 1.0,
+            "maximum": 50,
+            "minimum": 1,
             "title": "Top K",
             "description": "Number of results to return",
             "default": 10
@@ -14680,8 +14706,8 @@
               {
                 "additionalProperties": {
                   "type": "number",
-                  "maximum": 1.0,
-                  "minimum": 0.0
+                  "maximum": 1,
+                  "minimum": 0
                 },
                 "type": "object"
               },
@@ -14731,7 +14757,7 @@
           },
           "total_results": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Results",
             "description": "Total results found"
           },
@@ -14743,7 +14769,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -14785,26 +14811,26 @@
           },
           "bm25_score": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Bm25 Score",
             "description": "BM25 keyword similarity score"
           },
           "vector_score": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Vector Score",
             "description": "Vector similarity score"
           },
           "graph_score": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Graph Score",
             "description": "Graph traversal score"
           },
           "combined_score": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Combined Score",
             "description": "Combined relevance score"
           },
@@ -14816,8 +14842,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence",
             "description": "Result confidence"
           }
@@ -14872,8 +14898,8 @@
           },
           "limit": {
             "type": "integer",
-            "maximum": 50.0,
-            "minimum": 1.0,
+            "maximum": 50,
+            "minimum": 1,
             "title": "Limit",
             "description": "Max results",
             "default": 10
@@ -14889,7 +14915,7 @@
         "properties": {
           "uptime_seconds": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Uptime Seconds",
             "description": "Service uptime in seconds"
           },
@@ -14897,7 +14923,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -14910,8 +14936,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 100.0,
-                "minimum": 0.0
+                "maximum": 100,
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -14922,20 +14948,20 @@
           },
           "active_connections": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Active Connections",
             "description": "Number of active connections"
           },
           "total_requests": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Requests",
             "description": "Total requests processed"
           },
           "error_rate_percent": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0,
+            "maximum": 100,
+            "minimum": 0,
             "title": "Error Rate Percent",
             "description": "Error rate percentage"
           }
@@ -15263,8 +15289,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 50.0,
-            "minimum": 1.0,
+            "maximum": 50,
+            "minimum": 1,
             "title": "Top K",
             "default": 10
           },
@@ -15552,8 +15578,8 @@
           },
           "depth": {
             "type": "integer",
-            "maximum": 5.0,
-            "minimum": 1.0,
+            "maximum": 5,
+            "minimum": 1,
             "title": "Depth",
             "description": "Traversal depth used"
           },
@@ -16214,7 +16240,7 @@
           "weight": {
             "type": "number",
             "title": "Weight",
-            "default": 1.0
+            "default": 1
           }
         },
         "type": "object",
@@ -16929,9 +16955,9 @@
           },
           "weight": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Weight",
-            "default": 1.0
+            "default": 1
           }
         },
         "type": "object",
@@ -16962,15 +16988,15 @@
           },
           "layer": {
             "type": "integer",
-            "maximum": 4.0,
-            "minimum": 1.0,
+            "maximum": 4,
+            "minimum": 1,
             "title": "Layer",
             "description": "Layer in value tree (1=Capability, 4=ValueDriver)"
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence",
             "default": 0.8
           },
@@ -16994,12 +17020,12 @@
         "properties": {
           "total_nodes": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Nodes"
           },
           "total_edges": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Total Edges"
           },
           "by_layer": {
@@ -17376,7 +17402,7 @@
           "avg_usage": {
             "type": "number",
             "title": "Avg Usage",
-            "default": 0.0
+            "default": 0
           }
         },
         "type": "object",
@@ -17609,9 +17635,9 @@
           },
           "deal_size_usd": {
             "type": "number",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Deal Size Usd",
-            "default": 0.0
+            "default": 0
           },
           "reason": {
             "type": "string",
@@ -17894,6 +17920,44 @@
         ],
         "title": "ValueTreeResponse",
         "description": "Complete value tree response."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "title": "ErrorResponse",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
+          }
+        }
       }
     },
     "securitySchemes": {

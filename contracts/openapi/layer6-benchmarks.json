@@ -463,17 +463,43 @@
         "description": "Summary of benchmark dataset."
       },
       "HTTPValidationError": {
+        "type": "object",
+        "title": "HTTPValidationError",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
           }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
+        "description": "Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients."
       },
       "ValidationError": {
         "properties": {
@@ -600,6 +626,44 @@
         ],
         "title": "ValidationResponse",
         "description": "Response from validation."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "title": "ErrorResponse",
+        "required": [
+          "message",
+          "code",
+          "trace_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Machine-readable error code"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Request trace ID for support correlation"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional sanitized error details"
+          }
+        }
       }
     }
   }

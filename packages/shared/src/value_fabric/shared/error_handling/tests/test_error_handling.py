@@ -1,6 +1,7 @@
 """Tests for error handling exceptions, models, handlers and middleware."""
 
 import os
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,6 +19,7 @@ from ..exceptions import (
 )
 from ..handlers import (
     _sanitize_trace_id,
+    canonical_error_response_schema,
     is_production,
     register_exception_handlers,
     sanitize_error_details,
@@ -315,6 +317,10 @@ class TestRegisteredHandlers:
         async def unhandled():
             raise RuntimeError("boom")
 
+        @app.get("/needs-int")
+        async def needs_int(limit: int):
+            return {"limit": limit}
+
         return app
 
     @pytest.fixture
@@ -340,3 +346,20 @@ class TestRegisteredHandlers:
         assert resp.status_code == 500
         body = resp.json()
         assert body["code"] == "INTERNAL_ERROR"
+
+    def test_openapi_uses_canonical_error_response(self, app):
+        schema = app.openapi()
+        error_schema = schema["components"]["schemas"]["ErrorResponse"]
+        assert error_schema == canonical_error_response_schema()
+        assert error_schema["required"] == ["message", "code", "trace_id"]
+        assert error_schema["properties"]["details"]["anyOf"][1]["type"] == "null"
+        assert schema["components"]["schemas"]["HTTPValidationError"]["description"].startswith(
+            "Deprecated compatibility alias"
+        )
+
+    def test_request_validation_error_uses_canonical_envelope(self, client):
+        resp = client.get("/needs-int", params={"limit": "not-int"})
+        assert resp.status_code == 422
+        body = resp.json()
+        assert set(body).issuperset({"message", "code", "trace_id"})
+        assert "detail" not in body
