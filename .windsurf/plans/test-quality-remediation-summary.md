@@ -1,6 +1,6 @@
 # Test Quality Remediation - Implementation Summary
 
-**Completed**: 2026-04-15  
+**Completed**: 2026-04-15
 **Workflow**: `/test-quality-remediation`
 **Phase 4 Rewrites**: 4 P1 issues resolved
 
@@ -34,7 +34,7 @@ The audit report (based on static analysis) showed 8 P0 blocking issues. Runtime
 - `useAccounts.test.tsx` - Migrated to shared helper (15 tests)
 - `useBilling.test.tsx` - Migrated to shared helper (10 tests)
 
-**Impact**: 
+**Impact**:
 - Reduced duplication across 4 test files
 - Consistent mock response structure
 - ~40 lines of duplicate code removed
@@ -44,9 +44,9 @@ The audit report (based on static analysis) showed 8 P0 blocking issues. Runtime
 ## Phase 4 Rewrites (2026-04-15)
 
 ### P1 Fix 1: E2E Test Reliability - test_e2e_pipeline.py
-**Location**: `value-fabric/layer3-knowledge/tests/test_e2e_pipeline.py`
+**Location**: `services/layer3-knowledge/tests/test_e2e_pipeline.py`
 
-**Problem**: 
+**Problem**:
 - Missing `@pytest.mark.integration` marker for selective test running
 - Hardcoded retry loop with `asyncio.sleep(1)` causing timing flakiness
 
@@ -78,7 +78,7 @@ container.start()
 wait_for_logs(container, "Started.", timeout=60)
 ```
 
-**Impact**: 
+**Impact**:
 - More reliable container startup detection
 - Faster test execution when container starts quickly
 - Clear marker for selective test running (`pytest -m "not integration"`)
@@ -100,7 +100,7 @@ wait_for_logs(container, "Started.", timeout=60)
 ---
 
 ### P1 Fix 3: E2E Test Reliability - test_neo4j_integration.py
-**Location**: `value-fabric/layer3-knowledge/tests/test_neo4j_integration.py`
+**Location**: `services/layer3-knowledge/tests/test_neo4j_integration.py`
 
 **Problem**: Used context manager pattern without explicit wait strategy for container readiness
 
@@ -114,7 +114,7 @@ wait_for_logs(container, "Started.", timeout=60)
 ---
 
 ### P1 Fix 4: Test Length & Duplication - test_checkpoint_resume.py
-**Location**: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`
+**Location**: `services/layer4-agents/tests/test_checkpoint_resume.py`
 
 **Problem**: Tests in `TestResumeWorkflow` class had 15-30 lines of repeated setup code
 
@@ -155,14 +155,14 @@ mock_workflow = mock_workflow_factory(...)
 ## Previous Fixes (2026-04-10)
 
 ### Issue: Logger.error kwargs misuse (P0)
-**Location**: `value-fabric/layer3-knowledge/src/api/main.py:149-151`
+**Location**: `services/layer3-knowledge/src/api/main.py:149-151`
 
 **Problem**: Standard Python `logging.Logger` methods don't accept arbitrary keyword arguments like `component` and `version`. These must be passed via the `extra` dict.
 
 **Before**:
 ```python
-logger.info("Starting Value Fabric Knowledge Graph API", 
-            component="layer3-knowledge", 
+logger.info("Starting Value Fabric Knowledge Graph API",
+            component="layer3-knowledge",
             version="1.0.0")
 ```
 
@@ -196,33 +196,33 @@ TypeError: Logger._log() got an unexpected keyword argument 'component'
 ## Layer-by-Layer Details
 
 ### Layer 1: Ingestion ✅
-- **Location**: `value-fabric/layer1-ingestion/tests/unit/`
+- **Location**: `services/layer1-ingestion/tests/unit/`
 - **Files**: 3 test files
 - **Results**: 23 passed, 1 failed
 - **Issue**: `test_adapters.py::test_search_filings` - assertion failure (not blocking)
 
 ### Layer 2: Extraction ✅
-- **Location**: `value-fabric/layer2-extraction/tests/`
+- **Location**: `services/layer2-extraction/tests/`
 - **Files**: 3 test files
 - **Results**: 5+ passed in pipeline tests, 4 failed in extraction tests
 - **Issue**: Some tests skipped due to missing OPENAI_API_KEY
 - **Reference Quality**: `test_extract_and_ingest_pipeline.py` is excellent (score 32/35)
 
 ### Layer 3: Knowledge ⚠️
-- **Location**: `value-fabric/layer3-knowledge/tests/`
+- **Location**: `services/layer3-knowledge/tests/`
 - **Files**: 13+ test files
 - **Results**: 72+ passed, 22+ failed
 - **Fixed**: Logger kwargs misuse (53 errors → 0)
 - **Remaining**: Lifespan initialization, dependency injection, config validation issues
 
 ### Layer 4: Agents ✅
-- **Location**: `value-fabric/layer4-agents/tests/`
+- **Location**: `services/layer4-agents/tests/`
 - **Files**: 4 test files
 - **Results**: 39 passed, 2 failed
 - **Status**: Previously blocked by import errors, now operational
 
 ### Layer 5: Ground Truth ✅
-- **Location**: `value-fabric/layer5-ground-truth/tests/`
+- **Location**: `services/layer5-ground-truth/tests/`
 - **Files**: 3 test files
 - **Results**: 51 passed, 3 failed
 - **Quality**: High-quality test patterns, well-organized
@@ -255,12 +255,12 @@ TypeError: Logger._log() got an unexpected keyword argument 'component'
 
 ## Files Modified
 
-1. `value-fabric/layer3-knowledge/src/api/main.py:149-151` - Fixed logger kwargs misuse (already applied)
-2. `value-fabric/layer3-knowledge/src/config/settings.py:76-77` - Added missing `pinecone_cloud` and `pinecone_region` fields
-3. `value-fabric/layer3-knowledge/pytest.ini:26-29` - Removed environment variable overrides that caused Settings default tests to fail
-4. `value-fabric/layer3-knowledge/conftest.py:12-17` - Removed `os.environ.setdefault()` calls for cache/metrics/rate_limit that interfered with unit tests
-5. `value-fabric/layer1-ingestion/conftest.py` - Created root conftest.py to fix `ModuleNotFoundError: No module named 'src'`
-6. `value-fabric/layer1-ingestion/tests/conftest.py` - Updated to include PYTHONPATH for subprocesses
+1. `services/layer3-knowledge/src/api/main.py:149-151` - Fixed logger kwargs misuse (already applied)
+2. `services/layer3-knowledge/src/config/settings.py:76-77` - Added missing `pinecone_cloud` and `pinecone_region` fields
+3. `services/layer3-knowledge/pytest.ini:26-29` - Removed environment variable overrides that caused Settings default tests to fail
+4. `services/layer3-knowledge/conftest.py:12-17` - Removed `os.environ.setdefault()` calls for cache/metrics/rate_limit that interfered with unit tests
+5. `services/layer1-ingestion/conftest.py` - Created root conftest.py to fix `ModuleNotFoundError: No module named 'src'`
+6. `services/layer1-ingestion/tests/conftest.py` - Updated to include PYTHONPATH for subprocesses
 
 ---
 

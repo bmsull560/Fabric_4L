@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: value-fabric/layer6-benchmarks:latest
+          image: services/layer6-benchmarks:latest
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

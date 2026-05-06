@@ -29,7 +29,7 @@ Before starting, ensure you have:
 | Make | 3.81+ | `make --version` |
 | OpenAI API Key | — | [Get one here](https://platform.openai.com/api-keys) |
 
-**Estimated Time:** 15 minutes  
+**Estimated Time:** 15 minutes
 **Complexity:** Beginner
 
 ---
@@ -52,7 +52,7 @@ graph TB
     end
     J[OpenAI API] -.-> C
     J -.-> E
-    
+
     style A fill:#4a90d9,color:white
     style F fill:#4a90d9,color:white
     style J fill:#95a5a6,color:white
@@ -70,7 +70,7 @@ git clone https://github.com/bmsull560/Fabric_4L.git
 cd Fabric_4L
 
 # Copy the local-only environment contract
-cp value-fabric/.env.example value-fabric/.env
+cp .env.example .env
 ```
 
 For team development, prefer secret injection so credentials never live in a
@@ -81,7 +81,7 @@ infisical run --env=dev --path=/fabric-4l/value-fabric/dev -- \
   docker compose up -d
 ```
 
-For solo local work, edit `value-fabric/.env` and add your credentials. Do not
+For solo local work, edit `.env` and add your credentials. Do not
 copy these values into Kubernetes `Secret` manifests; use `ExternalSecret` or
 Infisical mappings for cluster deployments.
 

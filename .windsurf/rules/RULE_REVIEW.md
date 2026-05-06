@@ -22,18 +22,18 @@
 
 ## Critical Issues (Fix Immediately)
 
-### 1. Path Prefix Error — Layers are under `value-fabric/`
+### 1. Path Prefix Error — Layers are under `services/`
 
-**Impact:** 6 rules use `layer*/**/*.py` globs that will **never match** because layers live at `value-fabric/layer*/`.
+**Impact:** 6 rules use `layer*/**/*.py` globs that will **never match** because layers live at `services/layer*/`.
 
 **Affected rules:**
-- `HC-003` — `layer4-agents/migrations/*.py` → `value-fabric/layer4-agents/migrations/*.py`
-- `DR-002` — `layer*/**/*.py` → `value-fabric/layer*/**/*.py`
-- `SR-001` — `layer*/**/*.py` → `value-fabric/layer*/**/*.py`
-- `SR-003` — `layer*/src/api/**/*.py` → `value-fabric/layer*/src/api/**/*.py`
-- `SR-006` — `layer*/src/api/**/*.py` → `value-fabric/layer*/src/api/**/*.py`
+- `HC-003` — `layer4-agents/migrations/*.py` → `services/layer4-agents/migrations/*.py`
+- `DR-002` — `layer*/**/*.py` → `services/layer*/**/*.py`
+- `SR-001` — `layer*/**/*.py` → `services/layer*/**/*.py`
+- `SR-003` — `layer*/src/api/**/*.py` → `services/layer*/src/api/**/*.py`
+- `SR-006` — `layer*/src/api/**/*.py` → `services/layer*/src/api/**/*.py`
 
-**Fix:** Prepend `value-fabric/` to all layer-related file globs.
+**Fix:** Prepend `services/` to all layer-related file globs.
 
 ---
 
@@ -68,7 +68,7 @@ async def get_items(context: RequestContext = Depends(require_authenticated)):
 
 ### 4. SOQL Injection in CRM Tools (Missing Rule)
 
-**File:** `value-fabric/layer4-agents/src/tools/crm_tools.py:132` and `:153`
+**File:** `services/layer4-agents/src/tools/crm_tools.py:132` and `:153`
 
 ```python
 opp_query = f"SELECT ... WHERE AccountId = '{prospect_id}'"
@@ -85,7 +85,7 @@ task_query = f"SELECT ... WHERE WhatId = '{prospect_id}'"
 
 ### 5. Layer 4 Test Imports Layer 5
 
-**File:** `value-fabric/layer4-agents/tests/test_tenant_lifecycle.py:392`
+**File:** `services/layer4-agents/tests/test_tenant_lifecycle.py:392`
 
 ```python
 from layer5_ground_truth.models.truth_object import (TruthObject, TruthSource, ...)

@@ -20,17 +20,17 @@ cd ..
 
 # Install Python dependencies for all layers
 echo "🐍 Installing Python dependencies for all layers..."
-for layer_dir in value-fabric/layer*/; do
+for layer_dir in services/layer*/; do
     if [ -f "$layer_dir/pyproject.toml" ]; then
         layer_name=$(basename "$layer_dir")
         echo "  → Installing $layer_name..."
         cd "$layer_dir"
-        
+
         # Create virtual environment if it doesn't exist
         if [ ! -d ".venv" ]; then
             python3 -m venv .venv
         fi
-        
+
         # Activate and install
         source .venv/bin/activate
         if [ -f "requirements-dev.lock" ]; then
@@ -39,7 +39,7 @@ for layer_dir in value-fabric/layer*/; do
             pip install -e ".[dev]"
         fi
         deactivate
-        
+
         cd /workspace
     fi
 done

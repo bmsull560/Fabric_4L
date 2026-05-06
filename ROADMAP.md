@@ -1,9 +1,9 @@
 # Value Fabric Platform - Completion Roadmap
 
-**Repository:** https://github.com/bmsull560/Fabric_4L  
-**Audit Date:** 2026-04-09  
-**Total Files:** 338  
-**Frontend Files:** 96  
+**Repository:** https://github.com/bmsull560/Fabric_4L
+**Audit Date:** 2026-04-09
+**Total Files:** 338
+**Frontend Files:** 96
 **Python Files:** 100+
 
 ---
@@ -58,10 +58,10 @@ The Value Fabric platform has substantial implementation across all 4 original l
 
 **Key Files:**
 ```
-value-fabric/layer1-ingestion/src/api/main.py          # FastAPI routes
-value-fabric/layer1-ingestion/src/shared/models.py     # Database models
-value-fabric/layer1-ingestion/src/crawler/playwright_crawler.py
-value-fabric/layer1-ingestion/src/compliance/pii_scanner.py
+services/layer1-ingestion/src/api/main.py          # FastAPI routes
+services/layer1-ingestion/src/shared/models.py     # Database models
+services/layer1-ingestion/src/crawler/playwright_crawler.py
+services/layer1-ingestion/src/compliance/pii_scanner.py
 ```
 
 ---
@@ -91,10 +91,10 @@ value-fabric/layer1-ingestion/src/compliance/pii_scanner.py
 
 **Key Files:**
 ```
-value-fabric/layer2-extraction/src/models/ontology.py
-value-fabric/layer2-extraction/src/extraction/llm_extractor.py    # Stub
-value-fabric/layer2-extraction/src/output/rdf_generator.py
-value-fabric/layer2-extraction/src/alignment/semantic_aligner.py
+services/layer2-extraction/src/models/ontology.py
+services/layer2-extraction/src/extraction/llm_extractor.py    # Stub
+services/layer2-extraction/src/output/rdf_generator.py
+services/layer2-extraction/src/alignment/semantic_aligner.py
 ```
 
 ---
@@ -126,11 +126,11 @@ value-fabric/layer2-extraction/src/alignment/semantic_aligner.py
 
 **Key Files:**
 ```
-value-fabric/layer3-knowledge/src/api/main.py
-value-fabric/layer3-knowledge/src/retrieval/graph_rag.py
-value-fabric/layer3-knowledge/src/retrieval/hybrid_search.py
-value-fabric/layer3-knowledge/src/agents/whitespace_analysis.py
-value-fabric/layer3-knowledge/src/schema/initializer.py
+services/layer3-knowledge/src/api/main.py
+services/layer3-knowledge/src/retrieval/graph_rag.py
+services/layer3-knowledge/src/retrieval/hybrid_search.py
+services/layer3-knowledge/src/agents/whitespace_analysis.py
+services/layer3-knowledge/src/schema/initializer.py
 ```
 
 ---
@@ -159,12 +159,12 @@ value-fabric/layer3-knowledge/src/schema/initializer.py
 
 **Key Files:**
 ```
-value-fabric/layer4-agents/src/tools/registry.py
-value-fabric/layer4-agents/src/workflows/business_case.py
-value-fabric/layer4-agents/src/workflows/roi_calculator.py
-value-fabric/layer4-agents/src/workflows/whitespace.py
-value-fabric/layer4-agents/src/models/agent_state.py
-value-fabric/layer4-agents/src/engine/executor.py    # Stub
+services/layer4-agents/src/tools/registry.py
+services/layer4-agents/src/workflows/business_case.py
+services/layer4-agents/src/workflows/roi_calculator.py
+services/layer4-agents/src/workflows/whitespace.py
+services/layer4-agents/src/models/agent_state.py
+services/layer4-agents/src/engine/executor.py    # Stub
 ```
 
 ---
@@ -300,7 +300,7 @@ frontend/client/src/components/ui/    # shadcn components
 - Required for production: automatically marks expired truths as stale
 
 **Delivered:**
-- `value-fabric/layer5-ground-truth/src/services/freshness_monitor.py` (112 lines)
+- `services/layer5-ground-truth/src/services/freshness_monitor.py` (112 lines)
 - `POST /truths/check-stale` endpoint
 - `GET /truths/stale` query endpoint
 - `GET /truths/freshness-summary` analytics endpoint
@@ -413,12 +413,12 @@ frontend/client/src/components/ui/    # shadcn components
 | `layer3-knowledge/tests/test_e2e_pipeline.py` | ⚠️ 7 passed, 5 failed | Schema/GraphRAG/HybridSearch pass; Ingestion tests require Docker Neo4j |
 
 **Key Deliverables:**
-- ✅ `value-fabric/layer3-knowledge/src/schema/constraints.py` - Community Edition compatibility docs
-- ✅ `value-fabric/layer3-knowledge/src/ingestion/validators.py` - RequiredFieldValidator with entity-type coverage
-- ✅ `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py` - Validation before entity loading
-- ✅ `value-fabric/layer3-knowledge/src/api/main.py` - Standard logger formatting, status endpoint alias
-- ✅ `value-fabric/layer2-extraction/src/layer2_extraction/integration/layer3_client.py` - Canonical endpoint route
-- ✅ `value-fabric/layer2-extraction/tests/test_extract_and_ingest_pipeline.py` - Cross-layer ASGI integration test
+- ✅ `services/layer3-knowledge/src/schema/constraints.py` - Community Edition compatibility docs
+- ✅ `services/layer3-knowledge/src/ingestion/validators.py` - RequiredFieldValidator with entity-type coverage
+- ✅ `services/layer3-knowledge/src/ingestion/neo4j_loader.py` - Validation before entity loading
+- ✅ `services/layer3-knowledge/src/api/main.py` - Standard logger formatting, status endpoint alias
+- ✅ `services/layer2-extraction/src/layer2_extraction/integration/layer3_client.py` - Canonical endpoint route
+- ✅ `services/layer2-extraction/tests/test_extract_and_ingest_pipeline.py` - Cross-layer ASGI integration test
 
 ---
 
@@ -656,8 +656,8 @@ frontend/client/src/components/ui/    # shadcn components
 - [ ] `/workflows/active` and `/workflows/{id}/events` examples added to API docs
 
 **Implementation:**
-- Modify: `value-fabric/layer4-agents/src/api/routes/workflows.py`
-- Create: `value-fabric/layer4-agents/tests/test_workflow_controls.py`
+- Modify: `services/layer4-agents/src/api/routes/workflows.py`
+- Create: `services/layer4-agents/tests/test_workflow_controls.py`
 
 ---
 
@@ -672,9 +672,9 @@ frontend/client/src/components/ui/    # shadcn components
 - [ ] `GET /v1/value-trees/{id}` returns resolved value tree payload
 
 **Implementation:**
-- Create: `value-fabric/layer3-knowledge/src/api/routes/formulas.py`
-- Create: `value-fabric/layer3-knowledge/src/api/routes/value_trees.py`
-- Modify: `value-fabric/layer3-knowledge/src/api/main.py`
+- Create: `services/layer3-knowledge/src/api/routes/formulas.py`
+- Create: `services/layer3-knowledge/src/api/routes/value_trees.py`
+- Modify: `services/layer3-knowledge/src/api/main.py`
 
 ---
 
@@ -704,7 +704,7 @@ frontend/client/src/components/ui/    # shadcn components
 - Tests fail due to container startup issues, not code issues
 
 **Phase 2: Create test_vector_e2e.py** ✅ COMPLETE
-- **Created:** `value-fabric/layer3-knowledge/tests/test_vector_e2e.py` (5 focused tests, 320 lines)
+- **Created:** `services/layer3-knowledge/tests/test_vector_e2e.py` (5 focused tests, 320 lines)
 - **Tests:** Vector index creation, real embedding generation, ingestion with embeddings, hybrid search ranking, complete pipeline
 - **Verified:** `pytest --collect-only` finds 5 tests; imports work correctly
 - **Dependencies:** `sentence-transformers` installed and generating real 384-dim embeddings
@@ -718,10 +718,10 @@ frontend/client/src/components/ui/    # shadcn components
 - [ ] `POST /v1/search/hybrid` returns results ranked by vector+graph score
 
 **Implementation:**
-- ✅ `value-fabric/layer3-knowledge/tests/test_vector_e2e.py` - NEW focused test file
-- Modify: `value-fabric/layer3-knowledge/tests/test_e2e_pipeline.py` - Fix 5 failing tests (needs Docker)
-- ✅ `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py` - Embedding generation verified working
-- ✅ `value-fabric/layer3-knowledge/src/schema/initializer.py` - Vector index setup verified in code
+- ✅ `services/layer3-knowledge/tests/test_vector_e2e.py` - NEW focused test file
+- Modify: `services/layer3-knowledge/tests/test_e2e_pipeline.py` - Fix 5 failing tests (needs Docker)
+- ✅ `services/layer3-knowledge/src/ingestion/neo4j_loader.py` - Embedding generation verified working
+- ✅ `services/layer3-knowledge/src/schema/initializer.py` - Vector index setup verified in code
 
 ---
 
@@ -742,7 +742,7 @@ frontend/client/src/components/ui/    # shadcn components
 **Implementation:** ✅ COMPLETE
 - ✅ `.github/workflows/smoke-gate.yml` - CI workflow with Docker Compose
 - ✅ `scripts/smoke/production_smoke.py` - Python script (cross-platform, 436 lines, 6 stages)
-- ✅ `value-fabric/README.md` - Smoke gate usage documented (lines 165-230)
+- ✅ `docs/archive/legacy-docs/archive/legacy-services/README.md` - Smoke gate usage documented (lines 165-230)
 
 ---
 
@@ -780,8 +780,8 @@ frontend/client/src/components/ui/    # shadcn components
 - [x] `tests/test_workflow_controls.py` validates API contract (11 tests passing)
 
 **Implementation:** ✅ COMPLETE
-- ✅ `value-fabric/layer4-agents/src/api/routes/workflows.py:406-470` - pause endpoint
-- ✅ `value-fabric/layer4-agents/tests/test_workflow_controls.py` - 11 tests passing
+- ✅ `services/layer4-agents/src/api/routes/workflows.py:406-470` - pause endpoint
+- ✅ `services/layer4-agents/tests/test_workflow_controls.py` - 11 tests passing
 - [ ] `docs/api/workflow_controls.md` - deferred (inline docstrings sufficient)
 
 ---
@@ -798,10 +798,10 @@ frontend/client/src/components/ui/    # shadcn components
 - [x] Error responses include validation details for malformed formulas
 
 **Implementation:** ✅ COMPLETE
-- ✅ `value-fabric/layer3-knowledge/src/api/routes/formulas.py` (4 routes: evaluate, variables, list, get by ID)
-- ✅ `value-fabric/layer3-knowledge/src/api/routes/value_trees.py` (2 routes: get tree, get paths)
-- ✅ `value-fabric/layer3-knowledge/src/api/routes/variables.py` (variable registry)
-- ✅ `value-fabric/layer3-knowledge/src/api/main.py` (routers wired lines 327-333)
+- ✅ `services/layer3-knowledge/src/api/routes/formulas.py` (4 routes: evaluate, variables, list, get by ID)
+- ✅ `services/layer3-knowledge/src/api/routes/value_trees.py` (2 routes: get tree, get paths)
+- ✅ `services/layer3-knowledge/src/api/routes/variables.py` (variable registry)
+- ✅ `services/layer3-knowledge/src/api/main.py` (routers wired lines 327-333)
 - ✅ OpenAPI tags: "Formulas", "Value Trees" configured
 
 **Runtime Verification:**
@@ -934,12 +934,12 @@ run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
 - [ ] Route `/accounts` renders real Accounts page (after Task 36)
 
 **Implementation:**
-- ✅ `value-fabric/layer4-agents/src/database.py` - SQLAlchemy setup
-- ✅ `value-fabric/layer4-agents/src/models/account.py` - Account and AccountSyncStatus models
-- ✅ `value-fabric/layer4-agents/src/services/account_service.py` - Business logic
-- ✅ `value-fabric/layer4-agents/src/api/routes/accounts.py` - 6 API endpoints
-- ✅ `value-fabric/layer4-agents/src/api/schemas/accounts.py` - Pydantic schemas
-- ✅ `value-fabric/layer4-agents/src/api/main.py` - Router wired
+- ✅ `services/layer4-agents/src/database.py` - SQLAlchemy setup
+- ✅ `services/layer4-agents/src/models/account.py` - Account and AccountSyncStatus models
+- ✅ `services/layer4-agents/src/services/account_service.py` - Business logic
+- ✅ `services/layer4-agents/src/api/routes/accounts.py` - 6 API endpoints
+- ✅ `services/layer4-agents/src/api/schemas/accounts.py` - Pydantic schemas
+- ✅ `services/layer4-agents/src/api/main.py` - Router wired
 - ⏳ Database migration (pending)
 - ⏳ Frontend pages (after Task 36)
 
@@ -957,7 +957,7 @@ run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
 - [ ] Architecture decision records (ADRs) for major design choices
 
 **Implementation:**
-- Modify: `value-fabric/layer*/src/api/main.py` (OpenAPI metadata)
+- Modify: `services/layer*/src/api/main.py` (OpenAPI metadata)
 - Create: `docs/postman_collection.json`
 - Create: `docs/adr/`
 
@@ -1062,7 +1062,7 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 ```
 
 **Implementation:**
-- Modify: `value-fabric/layer3-knowledge/src/api/main.py:195-196`
+- Modify: `services/layer3-knowledge/src/api/main.py:195-196`
 - Change: `register_migration_handler("v1", "v2", handler)` (3 args)
 
 ---
@@ -1214,8 +1214,8 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 **Gap:** Celery task execution, LangGraph workflows, token/cost tracking, SSE streaming are untested in CI.
 
 **Completed:**
-- ✅ Fixed `func` import in `value-fabric/layer1-ingestion/src/shared/models.py`
-- ✅ Fixed dataclass field order in `value-fabric/layer1-ingestion/src/crawler/decision_store.py`
+- ✅ Fixed `func` import in `services/layer1-ingestion/src/shared/models.py`
+- ✅ Fixed dataclass field order in `services/layer1-ingestion/src/crawler/decision_store.py`
 - ✅ Celery tests: 29 tests passing (25 original + 4 new retry/idempotency tests)
 - ✅ LangGraph tests: 36 tests passing
 - ✅ Token/cost tracking tests: 8 tests created
@@ -1298,13 +1298,13 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 - [x] Semantic contract tests: 23 tests passing in `tests/test_ontology_alignment.py`
 
 **Files Modified:**
-- `value-fabric/layer2-extraction/src/models/ontology.py` (SeniorityLevel, ValueCategory expansion)
-- `value-fabric/layer2-extraction/src/models/relationships.py` (new enums, raw/canonical predicates)
-- `value-fabric/layer2-extraction/src/extraction/llm_extractor.py` (schema updates, property extraction)
-- `value-fabric/layer2-extraction/src/extraction/prompts/*.txt` (vocabulary alignment)
-- `value-fabric/layer2-extraction/src/output/rdf_generator.py` (new field RDF output)
-- `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py` (persist new properties)
-- `value-fabric/layer2-extraction/tests/test_ontology_alignment.py` (23 semantic contract tests)
+- `services/layer2-extraction/src/models/ontology.py` (SeniorityLevel, ValueCategory expansion)
+- `services/layer2-extraction/src/models/relationships.py` (new enums, raw/canonical predicates)
+- `services/layer2-extraction/src/extraction/llm_extractor.py` (schema updates, property extraction)
+- `services/layer2-extraction/src/extraction/prompts/*.txt` (vocabulary alignment)
+- `services/layer2-extraction/src/output/rdf_generator.py` (new field RDF output)
+- `services/layer3-knowledge/src/ingestion/neo4j_loader.py` (persist new properties)
+- `services/layer2-extraction/tests/test_ontology_alignment.py` (23 semantic contract tests)
 - `docs/semantic_contract.md` (complete mapping documentation)
 
 ---
@@ -1385,10 +1385,10 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 ---
 
 **Implementation:**
-- Modify: `value-fabric/.env.example` — Add CRM env vars
-- Create: `value-fabric/layer4-agents/src/services/crm_sync_service.py` — NEW sync orchestration
-- Modify: `value-fabric/layer4-agents/src/tools/crm_tools.py` — Complete HubSpot GetProspectDataTool
-- Modify: `value-fabric/layer4-agents/src/services/account_service.py` — Wire sync triggers
+- Modify: `.env.example` — Add CRM env vars
+- Create: `services/layer4-agents/src/services/crm_sync_service.py` — NEW sync orchestration
+- Modify: `services/layer4-agents/src/tools/crm_tools.py` — Complete HubSpot GetProspectDataTool
+- Modify: `services/layer4-agents/src/services/account_service.py` — Wire sync triggers
 - Create: `frontend/client/src/pages/Accounts.tsx` — NEW accounts list page
 - Create: `frontend/client/src/pages/Integrations.tsx` — NEW CRM config page
 - Modify: `frontend/client/src/pages/AdminScreens.tsx` — Replace static VARIABLES
@@ -1496,8 +1496,8 @@ If you have resources to work in parallel:
 Implement the Freshness Monitoring service for Layer 5 Ground Truth at:
 https://github.com/bmsull560/Fabric_4L
 
-Create: value-fabric/layer5-ground-truth/src/services/freshness_monitor.py
-Add endpoint: value-fabric/layer5-ground-truth/src/api/router.py
+Create: services/layer5-ground-truth/src/services/freshness_monitor.py
+Add endpoint: services/layer5-ground-truth/src/api/router.py
 
 Requirements:
 - Periodic job that queries for truths where expires_at < now() AND is_stale = false
@@ -1580,9 +1580,9 @@ Requirements:
 - [x] Docker Compose includes benchmark service
 
 **Implementation:** ✅ COMPLETED
-- Create: `value-fabric/layer6-benchmarks/` (new directory) ✅
-- Create: `value-fabric/layer6-benchmarks/src/api/main.py` ✅
-- Create: `value-fabric/layer6-benchmarks/src/models/benchmark_dataset.py` ✅
+- Create: `services/layer6-benchmarks/` (new directory) ✅
+- Create: `services/layer6-benchmarks/src/api/main.py` ✅
+- Create: `services/layer6-benchmarks/src/models/benchmark_dataset.py` ✅
 - Modify: `docker-compose.yml` (add benchmark service) ✅
 - Create: `specs/benchmark_service_spec.md` (README.md created)
 
@@ -1596,19 +1596,19 @@ Requirements:
 **Concept:** Reusable, industry-specific packages combining ontology slice, value drivers, formulas, benchmarks, and workflow templates.
 
 **Acceptance Criteria:**
-- [x] `:ValuePack` node schema in Neo4j with relationships to `:Industry`, `:ValueDriver`, `:Formula`, `:Benchmark` 
+- [x] `:ValuePack` node schema in Neo4j with relationships to `:Industry`, `:ValueDriver`, `:Formula`, `:Benchmark`
 - [x] `/packs` skill family in Layer 4:
   - [x] `pack_list` - List available packs
   - [x] `pack_load` - Load pack into workspace
   - [x] `pack_execute` - Run pack workflow
   - [x] `pack_customize` - Fork pack for account
-- [x] API endpoints: `GET /v1/packs`, `POST /v1/packs/{id}/execute` 
+- [x] API endpoints: `GET /v1/packs`, `POST /v1/packs/{id}/execute`
 - [x] Frontend Value Models page (Tier 1 UX) - API binding complete
 
 **Implementation:** ✅ COMPLETED
-- Create: `value-fabric/layer4-agents/src/skills/pack_skills.py` ✅
-- Create: `value-fabric/layer4-agents/src/services/value_pack_service.py` ✅
-- Create: `value-fabric/layer3-knowledge/src/api/routes/value_packs.py` ✅
+- Create: `services/layer4-agents/src/skills/pack_skills.py` ✅
+- Create: `services/layer4-agents/src/services/value_pack_service.py` ✅
+- Create: `services/layer3-knowledge/src/api/routes/value_packs.py` ✅
 - Modify: `layer3-knowledge/src/schema/constraints.py` (ValuePack/Variable/BenchmarkDataset) ✅
 - Modify: `frontend/client/src/pages/ValuePacks.tsx` (API binding with fallback) ✅
 
@@ -1629,9 +1629,9 @@ Requirements:
 - [x] Dependency tracking (`GET /v1/formulas/{id}/dependencies`)
 
 **Implementation:** ✅ COMPLETED
-- Create: `value-fabric/layer4-agents/src/interfaces/formula_governance.py` ✅
-- Create: `value-fabric/layer4-agents/src/services/formula_governance_service.py` ✅
-- Create: `value-fabric/layer3-knowledge/src/api/routes/formula_governance.py` ✅
+- Create: `services/layer4-agents/src/interfaces/formula_governance.py` ✅
+- Create: `services/layer4-agents/src/services/formula_governance_service.py` ✅
+- Create: `services/layer3-knowledge/src/api/routes/formula_governance.py` ✅
 
 **Status:** Sprint 3 Complete - Formula Governance APIs operational
 
@@ -1650,9 +1650,9 @@ Requirements:
 - [x] Variable search by context (interface defined)
 
 **Implementation:** ✅ COMPLETED
-- Create: `value-fabric/layer4-agents/src/interfaces/variable_registry.py` ✅
-- Create: `value-fabric/layer4-agents/src/services/variable_registry_service.py` ✅
-- Create: `value-fabric/layer3-knowledge/src/api/routes/variables.py` ✅
+- Create: `services/layer4-agents/src/interfaces/variable_registry.py` ✅
+- Create: `services/layer4-agents/src/services/variable_registry_service.py` ✅
+- Create: `services/layer3-knowledge/src/api/routes/variables.py` ✅
 - Modify: `layer3-knowledge/src/schema/constraints.py` (Variable entity added) ✅
 - Modify: `layer5-ground-truth/src/models/truth_object.py` (VARIABLE_VALUE claim_type) ✅
 
@@ -1799,7 +1799,7 @@ Requirements:
 
 ## Sprint Plan — 12 Weeks to Launch (from AI Assessment 2026-04-13)
 
-**Source:** `AI (3).md` — Unified Launch Readiness Assessment & Sprint Plan  
+**Source:** `AI (3).md` — Unified Launch Readiness Assessment & Sprint Plan
 **Current Readiness Level:** ~65% → Target: 98% Production Ready
 
 ### Top 10 Risks Blocking Launch
@@ -1838,8 +1838,8 @@ Requirements:
   - [ ] Create tenant isolation integration test
   - [ ] Run migration against staging Neo4j instance
 - **Implementation:**
-  - Modify: `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py`
-  - Modify: `value-fabric/layer3-knowledge/src/agents/*.py`
+  - Modify: `services/layer3-knowledge/src/ingestion/neo4j_loader.py`
+  - Modify: `services/layer3-knowledge/src/agents/*.py`
 
 #### Task 54: PostgreSQL Row-Level Security (P0)
 - **Layer:** L1/L4/L5
@@ -1854,7 +1854,7 @@ Requirements:
   - [ ] Audit all L4 route handlers to use `get_db_with_tenant` — 🔄 Pending route updates
 - **Implementation:**
   - Create: Alembic migrations per layer
-  - Modify: `value-fabric/layer4-agents/src/database.py`
+  - Modify: `services/layer4-agents/src/database.py`
 
 #### Task 55: Frontend Auth & OIDC (P0)
 - **Layer:** Frontend/Shared
@@ -1869,8 +1869,8 @@ Requirements:
   - [x] Wire `apiClient` interceptors to read from `AuthProvider` — ✅ `client.ts` with auth headers + 401 handler
   - [x] Fix 401 infinite redirect loop — ✅ Interceptor clears auth and redirects once
 - **Implementation:**
-  - ✅ `value-fabric/shared/identity/oidc.py` — OIDC client with JWKS caching
-  - ✅ `value-fabric/layer4-agents/src/tenants/api/routes/oidc.py` — PKCE login/callback endpoints
+  - ✅ `packages/shared/src/value_fabric/shared/identity/oidc.py` — OIDC client with JWKS caching
+  - ✅ `services/layer4-agents/src/tenants/api/routes/oidc.py` — PKCE login/callback endpoints
   - ✅ `frontend/client/src/contexts/AuthContext.tsx` — Auth state management
   - ✅ `frontend/client/src/pages/Login.tsx` — Login UI with tenant input
   - ✅ `frontend/client/src/api/client.ts` — API client with auth interceptors
@@ -1885,11 +1885,11 @@ Requirements:
   - [x] Fail startup if `CORS_ORIGINS` unset in production — ✅ RuntimeError raised in all layers
   - [x] Set `allow_credentials=False` when using wildcard origins — ✅ Security compliance
 - **Implementation:**
-  - ✅ L1: `value-fabric/layer1-ingestion/src/api/main.py`
-  - ✅ L2: `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py`
-  - ✅ L3: `value-fabric/layer3-knowledge/src/api/main.py`
-  - ✅ L5: `value-fabric/layer5-ground-truth/src/api/main.py`
-  - ✅ L6: `value-fabric/layer6-benchmarks/src/api/main.py`
+  - ✅ L1: `services/layer1-ingestion/src/api/main.py`
+  - ✅ L2: `services/layer2-extraction/src/layer2_extraction/api/main.py`
+  - ✅ L3: `services/layer3-knowledge/src/api/main.py`
+  - ✅ L5: `services/layer5-ground-truth/src/api/main.py`
+  - ✅ L6: `services/layer6-benchmarks/src/api/main.py`
 
 #### Task 66: Memory Safety (P0)
 - **Layer:** L4
@@ -1901,9 +1901,9 @@ Requirements:
   - [x] Fix `TaskScheduler._task_history` — ✅ `max_history=1000` with pruning
   - [x] Fix `NotificationService._event_queue` — ✅ `asyncio.Queue(maxsize=10_000)` with priority-aware dropping
 - **Implementation:**
-  - ✅ `value-fabric/layer4-agents/src/engine/state_manager.py` — LRU eviction on save + refresh on access
-  - ✅ `value-fabric/layer4-agents/src/engine/scheduler.py` — Bounded history with FIFO pruning
-  - ✅ `value-fabric/layer4-agents/src/services/notification.py` — Bounded queue with priority eviction
+  - ✅ `services/layer4-agents/src/engine/state_manager.py` — LRU eviction on save + refresh on access
+  - ✅ `services/layer4-agents/src/engine/scheduler.py` — Bounded history with FIFO pruning
+  - ✅ `services/layer4-agents/src/services/notification.py` — Bounded queue with priority eviction
 
 ---
 
@@ -2095,8 +2095,8 @@ Requirements:
 | 67 | L5 | P1 | ✅ COMPLETE | Task 70 (consolidated) |
 | 68 | All | P0 | 🔴 New | — |
 
-**Net New P0 Tasks:** 9 (53, 54, 55, 56, 59, 60, 63, 65, 66, 68)  
-**Already Complete:** 2 (57, 58)  
+**Net New P0 Tasks:** 9 (53, 54, 55, 56, 59, 60, 63, 65, 66, 68)
+**Already Complete:** 2 (57, 58)
 **Enhanced Existing:** 4 (55, 63, 64)
 
 ---
@@ -2182,9 +2182,9 @@ Task 40 (30min) → Task 41 (15min) → Task 42 (2hrs) → Tasks 46-47 (4 days) 
 
 ## 6-Week Build Environment Migration Plan
 
-**Audit Date:** 2026-04-12  
-**Status:** Critical Infrastructure Hardening  
-**Scope:** Dependency locking, Dockerfile standardization, Compose consolidation, CI hardening, secrets management, monitoring completion  
+**Audit Date:** 2026-04-12
+**Status:** Critical Infrastructure Hardening
+**Scope:** Dependency locking, Dockerfile standardization, Compose consolidation, CI hardening, secrets management, monitoring completion
 
 ### Executive Summary
 
@@ -2219,16 +2219,16 @@ This build environment is in the "dangerous middle" zone: components look mature
 
 | Day | Task | File(s) | Change |
 |-----|------|---------|--------|
-| 1 | Remove --reload from L2 | `value-fabric/layer2-extraction/Dockerfile` | Remove `--reload` from CMD |
-| 1 | Fix L3 Dockerfile | `value-fabric/layer3-knowledge/Dockerfile` | `pip install -e "."` not `.[dev]` |
-| 2 | Fix L6 Dockerfile | `value-fabric/layer6-benchmarks/Dockerfile` | `pip install -e "."` from pyproject.toml |
-| 2 | Align Neo4j passwords | `value-fabric/*/docker-compose.yml` | Consistent `NEO4J_PASSWORD=${NEO4J_PASSWORD:-valuefabric}` |
+| 1 | Remove --reload from L2 | `services/layer2-extraction/Dockerfile` | Remove `--reload` from CMD |
+| 1 | Fix L3 Dockerfile | `services/layer3-knowledge/Dockerfile` | `pip install -e "."` not `.[dev]` |
+| 2 | Fix L6 Dockerfile | `services/layer6-benchmarks/Dockerfile` | `pip install -e "."` from pyproject.toml |
+| 2 | Align Neo4j passwords | `services/*/docker-compose.yml` | Consistent `NEO4J_PASSWORD=${NEO4J_PASSWORD:-valuefabric}` |
 | 3 | Fix frontend CI path | `.github/workflows/pr-checks.yml` | `frontend/` not `frontend/client/` |
-| 3 | Fix integration compose path | `.github/workflows/integration-tests.yml` | `value-fabric/docker-compose.full.yml` |
+| 3 | Fix integration compose path | `.github/workflows/integration-tests.yml` | `docker-compose.full.yml` |
 | 4 | Remove failure suppression | `.github/workflows/integration-tests.yml` | Remove `\|\| echo "...completed with issues"` |
 | 4 | Fix Prometheus hostnames | `monitoring/prometheus/prometheus.yml` | `layer1-ingestion` not `layer1` |
-| 5 | Add HEALTHCHECK L3 | `value-fabric/layer3-knowledge/Dockerfile` | Add HEALTHCHECK |
-| 5 | Add HEALTHCHECK L6 | `value-fabric/layer6-benchmarks/Dockerfile` | Add HEALTHCHECK |
+| 5 | Add HEALTHCHECK L3 | `services/layer3-knowledge/Dockerfile` | Add HEALTHCHECK |
+| 5 | Add HEALTHCHECK L6 | `services/layer6-benchmarks/Dockerfile` | Add HEALTHCHECK |
 | 5 | Cleanup orphaned files | Root directory | Remove or relocate `app.py`, `layer4-agents/` duplicate, root `package.json` stub |
 
 **Week 1 Exit Criteria:**
@@ -2250,12 +2250,12 @@ This build environment is in the "dangerous middle" zone: components look mature
 
 | Day | Task | File(s) | Change |
 |-----|------|---------|--------|
-| 1-2 | Add uv to L1 | `value-fabric/layer1-ingestion/` | `uv init`, consolidate requirements.txt → pyproject.toml |
-| 2-3 | Add uv to L2 | `value-fabric/layer2-extraction/` | `uv init`, generate `uv.lock` |
-| 3-4 | Add uv to L3 | `value-fabric/layer3-knowledge/` | `uv init`, generate `uv.lock` |
-| 4-5 | Add uv to L4 | `value-fabric/layer4-agents/` | `uv init`, generate `uv.lock` |
-| 5 | Add uv to L5 | `value-fabric/layer5-ground-truth/` | `uv init`, generate `uv.lock` |
-| 5 | Add uv to L6 | `value-fabric/layer6-benchmarks/` | `uv init`, generate `uv.lock` |
+| 1-2 | Add uv to L1 | `services/layer1-ingestion/` | `uv init`, consolidate requirements.txt → pyproject.toml |
+| 2-3 | Add uv to L2 | `services/layer2-extraction/` | `uv init`, generate `uv.lock` |
+| 3-4 | Add uv to L3 | `services/layer3-knowledge/` | `uv init`, generate `uv.lock` |
+| 4-5 | Add uv to L4 | `services/layer4-agents/` | `uv init`, generate `uv.lock` |
+| 5 | Add uv to L5 | `services/layer5-ground-truth/` | `uv init`, generate `uv.lock` |
+| 5 | Add uv to L6 | `services/layer6-benchmarks/` | `uv init`, generate `uv.lock` |
 
 **Dockerfile Updates (all layers):**
 ```dockerfile
@@ -2286,14 +2286,14 @@ COPY src/ ./src/
 
 | Day | Task | File(s) | Change |
 |-----|------|---------|--------|
-| 1 | Merge compose files | `value-fabric/docker-compose.yml` | Add L5, L6 services from other files |
+| 1 | Merge compose files | `docker-compose.full.yml` | Add L5, L6 services from other files |
 | 2 | Delete stale compose | Root | Delete `docker-compose.full.yml` |
-| 2 | Delete L1 standalone | `value-fabric/layer1-ingestion/` | Delete `docker-compose.yml` (MinIO variant) |
-| 3 | Fix port mappings | `value-fabric/docker-compose.yml` | Consistent: L1:8001, L2:8002, L3:8003, L4:8004, L5:8005, L6:8006 |
-| 4 | Add profiles | `value-fabric/docker-compose.yml` | `profiles: ["monitoring"]` for Prometheus/Grafana |
-| 4 | Create override example | `value-fabric/docker-compose.override.yml.example` | Source mounts for dev (gitignored) |
-| 5 | Commit .env.example | `value-fabric/.env.example` | All required variables documented |
-| 5 | Remove dangerous defaults | `value-fabric/docker-compose.yml` | JWT_SECRET must be set (no default) |
+| 2 | Delete L1 standalone | `services/layer1-ingestion/` | Delete `docker-compose.yml` (MinIO variant) |
+| 3 | Fix port mappings | `docker-compose.full.yml` | Consistent: L1:8001, L2:8002, L3:8003, L4:8004, L5:8005, L6:8006 |
+| 4 | Add profiles | `docker-compose.full.yml` | `profiles: ["monitoring"]` for Prometheus/Grafana |
+| 4 | Create override example | `docker-compose.override.yml.example` | Source mounts for dev (gitignored) |
+| 5 | Commit .env.example | `.env.example` | All required variables documented |
+| 5 | Remove dangerous defaults | `docker-compose.full.yml` | JWT_SECRET must be set (no default) |
 
 **Port Mapping Final State:**
 | Service | Host Port | Container Port |
@@ -2331,7 +2331,7 @@ COPY src/ ./src/
 | 2 | Add hadolint | `.github/workflows/pr-checks.yml` | Dockerfile linting step |
 | 3 | Add SBOM generation | `.github/workflows/build-deploy.yml` | `--sbom --provenance` flags |
 | 3 | Remove latest tag | `.github/workflows/build-deploy.yml` | Only `sha` and `branch` tags |
-| 4 | Add .env.ci | `value-fabric/.env.ci` | Template for CI secrets |
+| 4 | Add .env.ci | `.env.ci` | Template for CI secrets |
 | 4 | Document GH secrets | `docs/github-secrets.md` | Required secrets inventory |
 | 5 | Add caching | `.github/workflows/*.yml` | uv cache, Docker layer cache |
 | 5 | Concurrency groups | `.github/workflows/smoke-gate.yml` | Prevent PR storms from queuing |
@@ -2354,10 +2354,10 @@ COPY src/ ./src/
 
 | Day | Task | File(s) | Change |
 |-----|------|---------|--------|
-| 1 | Multi-stage L1 | `value-fabric/layer1-ingestion/Dockerfile` | builder + runtime stages |
-| 2 | Multi-stage L4 | `value-fabric/layer4-agents/Dockerfile` | builder + runtime (compiler deps) |
+| 1 | Multi-stage L1 | `services/layer1-ingestion/Dockerfile` | builder + runtime stages |
+| 2 | Multi-stage L4 | `services/layer4-agents/Dockerfile` | builder + runtime (compiler deps) |
 | 3 | Non-root all layers | All Dockerfiles | `USER appuser` in runtime stage |
-| 4 | L1 Playwright optimization | `value-fabric/layer1-ingestion/Dockerfile` | Single apt-get layer or Playwright image |
+| 4 | L1 Playwright optimization | `services/layer1-ingestion/Dockerfile` | Single apt-get layer or Playwright image |
 | 5 | Renovate/Dependabot | `.github/renovate.json` | Auto-PR for base image and dependency updates |
 
 **Multi-stage Pattern:**
@@ -2393,7 +2393,7 @@ CMD ["uvicorn", "src.api.main:app"]
 | Day | Task | File(s) | Change |
 |-----|------|---------|--------|
 | 1 | Fix Prometheus config | `monitoring/prometheus/prometheus.yml` | Correct hostnames, add alertmanager |
-| 1 | Add Alertmanager | `value-fabric/docker-compose.yml` | Alertmanager service |
+| 1 | Add Alertmanager | `docker-compose.full.yml` | Alertmanager service |
 | 2 | Grafana provisioning | `monitoring/grafana/provisioning/` | Datasource and dashboard auto-provision |
 | 3 | Dashboard JSON | `monitoring/grafana/dashboards/` | At least one working dashboard |
 | 4 | Remove or fix dark config | `monitoring/` | Either make it work or delete half-baked configs |
@@ -2481,11 +2481,11 @@ After 6 weeks, the build environment will be:
 
 ## Component Spec Audit — Prioritized Checklist Gap Analysis
 
-**Audit Date:** 2026-04-13  
-**Spec:** Prioritized Component Checklist (P0 / P1 / P2)  
+**Audit Date:** 2026-04-13
+**Spec:** Prioritized Component Checklist (P0 / P1 / P2)
 **Auditor:** Copilot Task Agent (automated code scan)
 
-This section records the gap analysis performed against the enterprise platform component spec.  
+This section records the gap analysis performed against the enterprise platform component spec.
 Findings drive the tasks in **Phase 3** below.
 
 ---
@@ -2568,8 +2568,8 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 69: SSO / OIDC Integration (Phase 3)** 🔴 NOT STARTED
 
-**Priority:** P0  
-**Effort:** ~3 weeks  
+**Priority:** P0
+**Effort:** ~3 weeks
 **Layer:** Shared/Frontend
 
 **Objective:** Enable federated identity so enterprise users can log in via their corporate IdP (Okta, Azure AD, Google Workspace).
@@ -2593,9 +2593,9 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 70: Model Registry & Governance (Consolidated with Task 67)** ✅ COMPLETE 2026-04-19
 
-**Priority:** P0  
-**Effort:** 2 days  
-**Layer:** L5  
+**Priority:** P0
+**Effort:** 2 days
+**Layer:** L5
 **Status:** ✅ COMPLETE
 
 **Delivered:**
@@ -2647,22 +2647,22 @@ The following tasks are derived directly from the gap analysis above and should 
 - [x] Multi-tenancy enforcement — **COMPLETE** (RLS policies + org filtering)
 
 **Files Created:**
-- ✅ `value-fabric/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py`
-- ✅ `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/model_registry_routes.py`
-- ✅ `value-fabric/layer5-ground-truth/src/layer5_ground_truth/migrations/versions/003_add_model_registry.py`
-- ✅ `value-fabric/layer5-ground-truth/tests/test_model_registry.py`
+- ✅ `services/layer5-ground-truth/src/layer5_ground_truth/models/model_registry.py`
+- ✅ `services/layer5-ground-truth/src/layer5_ground_truth/api/model_registry_routes.py`
+- ✅ `services/layer5-ground-truth/src/layer5_ground_truth/migrations/versions/003_add_model_registry.py`
+- ✅ `services/layer5-ground-truth/tests/test_model_registry.py`
 
 **Files Modified:**
-- ✅ `value-fabric/layer5-ground-truth/src/layer5_ground_truth/models/__init__.py` — Export new models
-- ✅ `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/schemas.py` — Add registry schemas
-- ✅ `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/main.py` — Wire router, add OpenAPI tag
+- ✅ `services/layer5-ground-truth/src/layer5_ground_truth/models/__init__.py` — Export new models
+- ✅ `services/layer5-ground-truth/src/layer5_ground_truth/api/schemas.py` — Add registry schemas
+- ✅ `services/layer5-ground-truth/src/layer5_ground_truth/api/main.py` — Wire router, add OpenAPI tag
 
 ---
 
 ### **Task 71: Wire HashiCorp Vault (Ephemeral Credentials)** ✅ COMPLETE
 
-**Priority:** P0  
-**Effort:** ~1 week  
+**Priority:** P0
+**Effort:** ~1 week
 **Status:** ✅ COMPLETE 2026-04-19
 
 **Completed:**
@@ -2686,11 +2686,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 72: Incident Runbooks** ✅ COMPLETE
 
-**Priority:** P0  
-**Effort:** 3 days  
-**Layer:** Ops  
-**Status:** ✅ COMPLETE 2026-04-19  
-**Unblocks:** Production operational readiness, on-call response  
+**Priority:** P0
+**Effort:** 3 days
+**Layer:** Ops
+**Status:** ✅ COMPLETE 2026-04-19
+**Unblocks:** Production operational readiness, on-call response
 **Depends on:** Task 46 (Alert Rules - COMPLETE)
 
 **Gap:** No runbook files exist despite being referenced in AGENTS.md and docs. Operations blind spot for agent failure scenarios.
@@ -2746,11 +2746,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 73: Alertmanager Configuration & Notifications** ✅ COMPLETE 2026-04-19
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** Monitoring  
-**Status:** ✅ COMPLETE  
-**Unblocks:** Production alerting, on-call response  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** Monitoring
+**Status:** ✅ COMPLETE
+**Unblocks:** Production alerting, on-call response
 **Depends on:** Task 46 (Prometheus metrics), Task 72 (Runbooks)
 
 **Gap:** Alertmanager was referenced but not properly deployed. Secret key mismatch prevented notifications.
@@ -2787,11 +2787,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 74: Feature Flags** ✅ COMPLETE 2026-04-19
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** L4/Shared  
-**Status:** ✅ COMPLETE (Discovered during execution sync)  
-**Unblocks:** Safe rollout of new features  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** L4/Shared
+**Status:** ✅ COMPLETE (Discovered during execution sync)
+**Unblocks:** Safe rollout of new features
 **Depends on:** Task 54 (PostgreSQL RLS - COMPLETE)
 
 **Gap:** ~~No feature flag library or implementation.~~ **COMPLETE** - Feature flags fully implemented.
@@ -2831,20 +2831,20 @@ The following tasks are derived directly from the gap analysis above and should 
 - [ ] Unit tests for flag evaluation logic
 
 **Implementation:**
-- Create: `value-fabric/layer4-agents/src/models/feature_flags.py`
-- Create: `value-fabric/layer4-agents/src/api/routes/feature_flags.py`
+- Create: `services/layer4-agents/src/models/feature_flags.py`
+- Create: `services/layer4-agents/src/api/routes/feature_flags.py`
 - Create: `shared/feature_flags/helpers.py`
-- Create: `value-fabric/layer4-agents/tests/test_feature_flags.py`
+- Create: `services/layer4-agents/tests/test_feature_flags.py`
 
 ---
 
 ### **Task 75: Per-Tenant Rate Limiting** ✅ COMPLETE 2026-04-19
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** L1/L3/L4  
-**Status:** ✅ COMPLETE (Discovered during execution sync)  
-**Unblocks:** Noisy-tenant protection, billing control  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** L1/L3/L4
+**Status:** ✅ COMPLETE (Discovered during execution sync)
+**Unblocks:** Noisy-tenant protection, billing control
 **Depends on:** Task 53 (Neo4j Tenant Scoping - COMPLETE), Task 54 (PostgreSQL RLS - COMPLETE)
 
 **Gap:** ~~L3 rate limiter has no TENANT scope; L1/L4 have none.~~ **COMPLETE** - `TENANT` scope exists in rate limiting manager.
@@ -2880,19 +2880,19 @@ The following tasks are derived directly from the gap analysis above and should 
 - [ ] Unit tests cover tenant isolation of counters
 
 **Implementation:**
-- Modify: `value-fabric/layer3-knowledge/src/rate_limiting/manager.py`
-- Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
-- Modify: `value-fabric/layer1-ingestion/src/api/main.py` (add rate limiting)
-- Create: `value-fabric/layer4-agents/tests/test_tenant_rate_limits.py`
+- Modify: `services/layer3-knowledge/src/rate_limiting/manager.py`
+- Modify: `services/layer4-agents/src/middleware/governance.py`
+- Modify: `services/layer1-ingestion/src/api/main.py` (add rate limiting)
+- Create: `services/layer4-agents/tests/test_tenant_rate_limits.py`
 
 ---
 
 ### **Task 76: LLM Cost Prometheus Metrics** 🔴 NOT STARTED
 
-**Priority:** P1  
-**Effort:** 2 days  
-**Layer:** L2  
-**Unblocks:** Cost observability, budget alerts  
+**Priority:** P1
+**Effort:** 2 days
+**Layer:** L2
+**Unblocks:** Cost observability, budget alerts
 **Depends on:** Task 46 (Prometheus metrics), Task 70 (Model Registry)
 
 **Gap:** `ExtractionCost` model tracks LLM costs in DB but no Prometheus gauge for cumulative cost; no alert rule for budget thresholds.
@@ -2913,8 +2913,8 @@ The following tasks are derived directly from the gap analysis above and should 
 - [ ] Alert fires when cost exceeds threshold
 
 **Implementation:**
-- Modify: `value-fabric/layer2-extraction/src/metrics/prometheus_metrics.py`
-- Modify: `value-fabric/layer2-extraction/src/extraction/llm_extractor.py` (increment metrics)
+- Modify: `services/layer2-extraction/src/metrics/prometheus_metrics.py`
+- Modify: `services/layer2-extraction/src/extraction/llm_extractor.py` (increment metrics)
 - Modify: `monitoring/grafana/dashboards/value-fabric-overview.json`
 - Modify: `monitoring/alerting/rules.yml` (add cost alert)
 
@@ -2922,10 +2922,10 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 77: SDK & CLI** 🔴 NOT STARTED
 
-**Priority:** P1  
-**Effort:** 2 weeks  
-**Layer:** DevTools  
-**Unblocks:** Developer adoption, integration friction reduction  
+**Priority:** P1
+**Effort:** 2 weeks
+**Layer:** DevTools
+**Unblocks:** Developer adoption, integration friction reduction
 **Depends on:** Task 75 (Per-tenant rate limiting) - SDK needs rate limit handling
 
 **Gap:** No SDK, client library, or CLI. Developers must craft raw HTTP.
@@ -2954,11 +2954,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 78: SSO/OIDC Frontend Integration** 🔴 NOT STARTED
 
-**Priority:** P0  
-**Effort:** 1 week  
-**Layer:** Frontend/Shared  
-**Unblocks:** Enterprise adoption, Task 69 completion  
-**Depends on:** Task 69 (SSO/OIDC Backend)  
+**Priority:** P0
+**Effort:** 1 week
+**Layer:** Frontend/Shared
+**Unblocks:** Enterprise adoption, Task 69 completion
+**Depends on:** Task 69 (SSO/OIDC Backend)
 
 **Gap:** Frontend Login page lacks OIDC provider integration; manual username/password only.
 
@@ -2978,11 +2978,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 79: OpenAPI Contract Regeneration** 🔴 NOT STARTED
 
-**Priority:** P0  
-**Effort:** 2 days  
-**Layer:** DEVOPS/Contracts  
-**Unblocks:** API contract validation, SDK generation (Task 86)  
-**Depends on:** None  
+**Priority:** P0
+**Effort:** 2 days
+**Layer:** DEVOPS/Contracts
+**Unblocks:** API contract validation, SDK generation (Task 86)
+**Depends on:** None
 
 **Gap:** Layer 3 OpenAPI contains Layer 1 specs; export script fails with module import errors.
 
@@ -3001,11 +3001,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 80: Dependency Locking with uv** 🔴 NOT STARTED
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** DEVOPS  
-**Unblocks:** Deterministic builds, supply chain security  
-**Depends on:** None  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** DEVOPS
+**Unblocks:** Deterministic builds, supply chain security
+**Depends on:** None
 
 **Gap:** No lock files means PyPI releases can break builds.
 
@@ -3016,19 +3016,19 @@ The following tasks are derived directly from the gap analysis above and should 
 - [ ] Python base images pinned to SHA digests
 
 **Implementation:**
-- Modify: All `value-fabric/layer*/Dockerfile`
+- Modify: All `services/layer*/Dockerfile`
 - Modify: `.github/workflows/pr-checks.yml`
-- Create: `value-fabric/*/uv.lock` (6 files)
+- Create: `services/*/uv.lock` (6 files)
 
 ---
 
 ### **Task 81: Incident Runbook Library** 🔴 NOT STARTED
 
-**Priority:** P0  
-**Effort:** 3 days  
-**Layer:** Ops  
-**Unblocks:** Production on-call response  
-**Depends on:** Task 46 (Alert Rules - COMPLETE)  
+**Priority:** P0
+**Effort:** 3 days
+**Layer:** Ops
+**Unblocks:** Production on-call response
+**Depends on:** Task 46 (Alert Rules - COMPLETE)
 
 **Gap:** No runbook files exist despite being referenced in AGENTS.md.
 
@@ -3052,11 +3052,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 82: Alertmanager Deployment & Routing** ✅ COMPLETE 2026-04-19
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** Monitoring  
-**Status:** ✅ COMPLETE  
-**Unblocks:** Production alerting, Task 81 completion  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** Monitoring
+**Status:** ✅ COMPLETE
+**Unblocks:** Production alerting, Task 81 completion
 **Depends on:** Task 81 (Runbooks), Task 46 (Prometheus metrics)
 
 **Delivered:**
@@ -3084,11 +3084,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 83: Feature Flag System** 🔴 NOT STARTED
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** L4/Shared  
-**Unblocks:** Safe rollout of new features  
-**Depends on:** Task 54 (PostgreSQL RLS - COMPLETE)  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** L4/Shared
+**Unblocks:** Safe rollout of new features
+**Depends on:** Task 54 (PostgreSQL RLS - COMPLETE)
 
 **Gap:** No feature flag library; all changes require full deployment.
 
@@ -3101,21 +3101,21 @@ The following tasks are derived directly from the gap analysis above and should 
 - [ ] Flag changes audited via `AuditAction`
 
 **Implementation:**
-- Create: `value-fabric/layer4-agents/src/models/feature_flags.py`
-- Create: `value-fabric/layer4-agents/src/api/routes/feature_flags.py`
+- Create: `services/layer4-agents/src/models/feature_flags.py`
+- Create: `services/layer4-agents/src/api/routes/feature_flags.py`
 - Create: `shared/feature_flags/helpers.py`
-- Create: `value-fabric/layer4-agents/tests/test_feature_flags.py`
+- Create: `services/layer4-agents/tests/test_feature_flags.py`
 
 ---
 
 ### **Task 84: Per-Tenant Rate Limiting** ✅ CONSOLIDATED INTO TASK 75
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** L1/L3/L4  
-**Status:** ✅ COMPLETE (Consolidated with Task 75 - same implementation)  
-**Unblocks:** Noisy-tenant protection, billing control  
-**Depends on:** Task 53 (Neo4j Tenant Scoping ✅), Task 54 (PostgreSQL RLS ✅)  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** L1/L3/L4
+**Status:** ✅ COMPLETE (Consolidated with Task 75 - same implementation)
+**Unblocks:** Noisy-tenant protection, billing control
+**Depends on:** Task 53 (Neo4j Tenant Scoping ✅), Task 54 (PostgreSQL RLS ✅)
 
 **Gap:** ~~L3 rate limiter has no TENANT scope; L1/L4 have none.~~ **COMPLETE** via Task 75.
 
@@ -3130,20 +3130,20 @@ The following tasks are derived directly from the gap analysis above and should 
 - [ ] Rate limit events logged (not audited)
 
 **Implementation:**
-- Modify: `value-fabric/layer3-knowledge/src/rate_limiting/manager.py`
-- Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
-- Modify: `value-fabric/layer1-ingestion/src/api/main.py`
-- Create: `value-fabric/layer4-agents/tests/test_tenant_rate_limits.py`
+- Modify: `services/layer3-knowledge/src/rate_limiting/manager.py`
+- Modify: `services/layer4-agents/src/middleware/governance.py`
+- Modify: `services/layer1-ingestion/src/api/main.py`
+- Create: `services/layer4-agents/tests/test_tenant_rate_limits.py`
 
 ---
 
 ### **Task 85: LLM Cost Prometheus Metrics** 🔴 NOT STARTED
 
-**Priority:** P1  
-**Effort:** 2 days  
-**Layer:** L2  
-**Unblocks:** Cost observability, budget alerts  
-**Depends on:** Task 70 (Model Registry - COMPLETE)  
+**Priority:** P1
+**Effort:** 2 days
+**Layer:** L2
+**Unblocks:** Cost observability, budget alerts
+**Depends on:** Task 70 (Model Registry - COMPLETE)
 
 **Gap:** Cost tracked in DB but no Prometheus metrics; no budget alerts.
 
@@ -3155,8 +3155,8 @@ The following tasks are derived directly from the gap analysis above and should 
 - [ ] Metrics appear in `/metrics` after extraction
 
 **Implementation:**
-- Modify: `value-fabric/layer2-extraction/src/metrics/prometheus_metrics.py`
-- Modify: `value-fabric/layer2-extraction/src/extraction/llm_extractor.py`
+- Modify: `services/layer2-extraction/src/metrics/prometheus_metrics.py`
+- Modify: `services/layer2-extraction/src/extraction/llm_extractor.py`
 - Modify: `monitoring/grafana/dashboards/value-fabric-overview.json`
 - Modify: `monitoring/alerting/rules.yml`
 
@@ -3164,11 +3164,11 @@ The following tasks are derived directly from the gap analysis above and should 
 
 ### **Task 86: Python SDK & CLI** 🔴 NOT STARTED
 
-**Priority:** P1  
-**Effort:** 2 weeks  
-**Layer:** DevTools  
-**Unblocks:** Developer adoption, integration friction reduction  
-**Depends on:** Task 79 (OpenAPI Contracts), Task 84 (Rate Limiting)  
+**Priority:** P1
+**Effort:** 2 weeks
+**Layer:** DevTools
+**Unblocks:** Developer adoption, integration friction reduction
+**Depends on:** Task 79 (OpenAPI Contracts), Task 84 (Rate Limiting)
 
 **Gap:** No SDK; developers must craft raw HTTP.
 
@@ -3248,17 +3248,17 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 **Total estimated Phase 3 effort: ~15 weeks (parallelizable across 2-3 engineers)**
 
-**New P0 tasks added:** 6 (Tasks 70, 71 ✅, 72 ✅, 78, 79, 81 → 87, 88)  
-**New P1 tasks added:** 11 (Tasks 69, 73, 74, 75, 76, 77, 80, 82-86 → 73, 74, 75, 76, 77, 80, 89, 90, 91)  
+**New P0 tasks added:** 6 (Tasks 70, 71 ✅, 72 ✅, 78, 79, 81 → 87, 88)
+**New P1 tasks added:** 11 (Tasks 69, 73, 74, 75, 76, 77, 80, 82-86 → 73, 74, 75, 76, 77, 80, 89, 90, 91)
 **Already complete:** 4 (Task 70 - Model Registry, Task 71 - Vault Wiring, Task 72 - Runbooks, **Task 87 - SSO/OIDC Backend**)
 
 ---
 
 ### **Task 87: SSO/OIDC Backend Integration** ✅ COMPLETE 2026-04-19
 
-**Priority:** P0  
-**Effort:** 2 weeks → **Completed in 1 day**  
-**Layer:** Shared/L4  
+**Priority:** P0
+**Effort:** 2 weeks → **Completed in 1 day**
+**Layer:** Shared/L4
 **Unblocks:** Enterprise adoption, federated identity, Task 78 (SSO Frontend)
 
 **Objective:** Enable federated identity so enterprise users can log in via their corporate IdP (Okta, Azure AD, Google Workspace).
@@ -3283,7 +3283,7 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 |-----------|------|-------|---------|
 | OIDC Client | `shared/identity/oidc.py` | 275 | PKCE, discovery, token exchange, ID token verification |
 | OIDC Config | `shared/identity/oidc_config.py` | 70 | Provider config with `from_settings()` factory |
-| OIDC Routes | `value-fabric/layer4-agents/src/tenants/api/routes/oidc.py` | 385 | `/auth/oidc/{tenant}/login`, `/auth/oidc/callback`, metadata |
+| OIDC Routes | `services/layer4-agents/src/tenants/api/routes/oidc.py` | 385 | `/auth/oidc/{tenant}/login`, `/auth/oidc/callback`, metadata |
 | Vault Resolver | `shared/identity/vault_check.py` | 60 | `resolve_vault_secret()` for OIDC client secrets |
 | Audit Actions | `shared/audit/models.py` | 34 | `OIDC_LOGIN`, `OIDC_LOGIN_FAILED` actions |
 | Tests | `tests/security/test_oidc.py` | 260+ | PKCE, discovery, role mapping, config tests |
@@ -3301,17 +3301,17 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 **Implementation:**
 - Create: `shared/identity/oidc.py`
-- Create: `value-fabric/layer4-agents/src/api/routes/oidc.py`
-- Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
+- Create: `services/layer4-agents/src/api/routes/oidc.py`
+- Modify: `services/layer4-agents/src/middleware/governance.py`
 
 ---
 
 ### **Task 88: OpenAPI Contract Regeneration** 🟡 PARTIAL 2026-04-19
 
-**Priority:** P0  
-**Effort:** 2 days  
-**Layer:** DEVOPS/Contracts  
-**Status:** 🟡 PARTIAL (Export works, needs script fix + L3 regeneration)  
+**Priority:** P0
+**Effort:** 2 days
+**Layer:** DEVOPS/Contracts
+**Status:** 🟡 PARTIAL (Export works, needs script fix + L3 regeneration)
 **Unblocks:** SDK generation, API contract validation, Task 86 (SDK)
 
 **Gap:** Layer 3 OpenAPI contains Layer 1 specs; export script needs PYTHONPATH fix.
@@ -3339,10 +3339,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### **Task 89: Alertmanager Deployment & Routing** 🔴 NOT STARTED
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** DEVOPS/Monitoring  
-**Unblocks:** Production alerting, on-call response  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** DEVOPS/Monitoring
+**Unblocks:** Production alerting, on-call response
 **Depends on:** Task 72 (Runbooks - COMPLETE)
 
 **Gap:** Alertmanager referenced but not deployed; alerts fire into void.
@@ -3365,10 +3365,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### **Task 90: Dependency Locking with uv** ✅ COMPLETE 2026-04-19
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** DEVOPS  
-**Status:** ✅ COMPLETE (Discovered during execution sync)  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** DEVOPS
+**Status:** ✅ COMPLETE (Discovered during execution sync)
 **Unblocks:** Deterministic builds, supply chain security
 
 **Gap:** ~~No lock files means PyPI releases can break builds.~~ **COMPLETE** - All layers have `uv.lock` files.
@@ -3376,12 +3376,12 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 **Implementation Evidence:**
 | Layer | File | Size |
 |-------|------|------|
-| L1 | `value-fabric/layer1-ingestion/uv.lock` | 451 KB |
-| L2 | `value-fabric/layer2-extraction/uv.lock` | 534 KB |
-| L3 | `value-fabric/layer3-knowledge/uv.lock` | 470 KB |
-| L4 | `value-fabric/layer4-agents/uv.lock` | 925 KB |
-| L5 | `value-fabric/layer5-ground-truth/uv.lock` | 347 KB |
-| L6 | `value-fabric/layer6-benchmarks/uv.lock` | 162 KB |
+| L1 | `services/layer1-ingestion/uv.lock` | 451 KB |
+| L2 | `services/layer2-extraction/uv.lock` | 534 KB |
+| L3 | `services/layer3-knowledge/uv.lock` | 470 KB |
+| L4 | `services/layer4-agents/uv.lock` | 925 KB |
+| L5 | `services/layer5-ground-truth/uv.lock` | 347 KB |
+| L6 | `services/layer6-benchmarks/uv.lock` | 162 KB |
 
 **Acceptance Criteria:**
 - [x] All 6 layers have `uv.lock` files
@@ -3397,19 +3397,19 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 - [ ] `hadolint` passes on all Dockerfiles
 
 **Implementation:**
-- Create: `value-fabric/*/uv.lock` (6 files)
-- Modify: All `value-fabric/layer*/Dockerfile`
+- Create: `services/*/uv.lock` (6 files)
+- Modify: All `services/layer*/Dockerfile`
 - Modify: `.github/workflows/pr-checks.yml`
 
 ---
 
 ### **Task 91: Feature Flag System** ✅ CONSOLIDATED INTO TASK 74
 
-**Priority:** P1  
-**Effort:** 1 week  
-**Layer:** L4/Shared  
-**Status:** ✅ COMPLETE (Consolidated with Task 74 - same implementation)  
-**Unblocks:** Safe rollout of new features  
+**Priority:** P1
+**Effort:** 1 week
+**Layer:** L4/Shared
+**Status:** ✅ COMPLETE (Consolidated with Task 74 - same implementation)
+**Unblocks:** Safe rollout of new features
 **Depends on:** Task 54 (PostgreSQL RLS - COMPLETE)
 
 **Gap:** ~~No feature flag library; all changes require full deployment.~~ **COMPLETE** via Task 74.
@@ -3425,25 +3425,25 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 - [ ] Flag changes audited via `AuditAction`
 
 **Implementation:**
-- Create: `value-fabric/layer4-agents/src/models/feature_flags.py`
-- Create: `value-fabric/layer4-agents/src/api/routes/feature_flags.py`
+- Create: `services/layer4-agents/src/models/feature_flags.py`
+- Create: `services/layer4-agents/src/api/routes/feature_flags.py`
 - Create: `shared/feature_flags/helpers.py`
-- Create: `value-fabric/layer4-agents/tests/test_feature_flags.py`
+- Create: `services/layer4-agents/tests/test_feature_flags.py`
 
 ---
 
 ## Phase 4: Final Sprint to Production (Tasks 92-108)
 
-**Consolidated from:** Execution status sync analysis and merged sprint planning  
+**Consolidated from:** Execution status sync analysis and merged sprint planning
 **Total Tasks:** 17 (6 P0, 11 P1) | **Timeline:** 6 weeks | **Target:** 97% production readiness
 
 ---
 
 ### Task 92: Fix Test Import Errors (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** L2/L4 Tests  
-**Effort:** 2 hours  
-**Status:** ✅ COMPLETE 2026-04-19  
+**Layer:** L2/L4 Tests
+**Effort:** 2 hours
+**Status:** ✅ COMPLETE 2026-04-19
 **Unblocks:** CI green status, test reliability
 
 **Gap:** `ModuleNotFoundError` importing 'src' in L4 tests; `SecurityValidator` class missing from `shared.security`.
@@ -3469,16 +3469,16 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 - [x] L4 agent tests collection: 451 tests (no import errors)
 
 **Implementation:**
-- Modify: `value-fabric/layer4-agents/tests/test_llm_cost_tracking.py`
-- Modify: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`
+- Modify: `services/layer4-agents/tests/test_llm_cost_tracking.py`
+- Modify: `services/layer4-agents/tests/test_checkpoint_resume.py`
 
 ---
 
 ### Task 93: OpenAPI Export Script Fix (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** DEVOPS/Contracts  
-**Effort:** 1 day  
-**Status:** ✅ COMPLETE 2026-04-19  
+**Layer:** DEVOPS/Contracts
+**Effort:** 1 day
+**Status:** ✅ COMPLETE 2026-04-19
 **Unblocks:** SDK generation, contract validation, Task 94
 
 **Gap:** No CI workflow for OpenAPI validation; need automated drift detection.
@@ -3486,7 +3486,7 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 **Delivered:**
 - ✅ Verified `scripts/export_openapi.py` works correctly (all 5 layers export successfully)
 - ✅ Layer 1: 109KB spec with ingestion endpoints
-- ✅ Layer 2: 59KB spec with extraction endpoints  
+- ✅ Layer 2: 59KB spec with extraction endpoints
 - ✅ Layer 3: 345KB spec with value-trees, formulas, packs, graph API
 - ✅ Layer 4: 246KB spec with agent workflows
 - ✅ Layer 5: 72KB spec with ground truth endpoints
@@ -3509,10 +3509,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 94: Layer 3 OpenAPI Regeneration (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** L3/DEVOPS  
-**Effort:** 1 day  
-**Status:** ✅ COMPLETE 2026-04-19  
-**Unblocks:** Frontend contract alignment, Task 98  
+**Layer:** L3/DEVOPS
+**Effort:** 1 day
+**Status:** ✅ COMPLETE 2026-04-19
+**Unblocks:** Frontend contract alignment, Task 98
 **Depends on:** Task 93
 
 **Gap:** Layer 3 OpenAPI was suspected to contain Layer 1 routes; needed verification of schema completeness.
@@ -3543,15 +3543,15 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 95: Docker Deployment Validation (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** DEVOPS  
-**Effort:** 2 days  
-**Status:** ✅ COMPLETE 2026-04-19  
+**Layer:** DEVOPS
+**Effort:** 2 days
+**Status:** ✅ COMPLETE 2026-04-19
 **Unblocks:** Production deployment confidence
 
 **Gap:** Docker Compose stack and K8s manifests needed validation for configuration completeness.
 
 **Delivered:**
-- ✅ Verified `value-fabric/docker-compose.yml` structure:
+- ✅ Verified `docker-compose.full.yml` structure:
   - Layer 1 (ingestion): health check on port 8001
   - Layer 2 (extraction): health check on port 8002
   - Layer 3 (knowledge): health check on port 8000
@@ -3588,7 +3588,7 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 **Note:** Actual runtime validation requires Docker environment. Configuration validation complete.
 
 **Implementation:**
-- Verified: `value-fabric/docker-compose.yml`
+- Verified: `docker-compose.full.yml`
 - Verified: `k8s/base/kustomization.yaml`
 - Verified: `scripts/smoke/production_smoke.py`
 
@@ -3596,9 +3596,9 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 96: Vector E2E Verification (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** L3  
-**Effort:** 2 days  
-**Status:** ✅ COMPLETE 2026-04-19  
+**Layer:** L3
+**Effort:** 2 days
+**Status:** ✅ COMPLETE 2026-04-19
 **From:** User assessment Sprint 4
 
 **Gap:** `test_e2e_pipeline.py` had Docker-dependent tests; Neo4j Community compatibility needed verification.
@@ -3623,9 +3623,9 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 97: Security Middleware Integration (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** Shared Security  
-**Effort:** 1 day  
-**Status:** ✅ COMPLETE 2026-04-19  
+**Layer:** Shared Security
+**Effort:** 1 day
+**Status:** ✅ COMPLETE 2026-04-19
 **Unblocks:** Secure API endpoints across all layers
 
 **Gap:** Security validation utilities needed for production hardening.
@@ -3652,10 +3652,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 98: Frontend-Backend Contract Alignment (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** Frontend/L3  
-**Effort:** 2 days  
-**Status:** ✅ COMPLETE 2026-04-19  
-**Unblocks:** Silent API regression prevention  
+**Layer:** Frontend/L3
+**Effort:** 2 days
+**Status:** ✅ COMPLETE 2026-04-19
+**Unblocks:** Silent API regression prevention
 **Depends on:** Task 94 (✅ Complete)
 
 **Gap:** TypeScript interfaces were missing fields from OpenAPI specs.
@@ -3691,10 +3691,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 99: SSO/OIDC Backend Completion (P0) ✅ COMPLETE 2026-04-19
 
-**Layer:** Shared/L4  
-**Effort:** 1 week  
-**Unblocks:** Enterprise adoption, federated identity  
-**Depends on:** Task 54 (RLS - ✅ Complete)  
+**Layer:** Shared/L4
+**Effort:** 1 week
+**Unblocks:** Enterprise adoption, federated identity
+**Depends on:** Task 54 (RLS - ✅ Complete)
 **Status:** ✅ COMPLETE 2026-04-19
 
 **Gap:** SSO/OIDC support needed for enterprise authentication.
@@ -3753,9 +3753,9 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 102: Alertmanager Deployment & Routing (P1) ✅ COMPLETE
 
-**Layer:** DEVOPS/Monitoring  
-**Effort:** 1 week  
-**Completed:** 2026-04-19  
+**Layer:** DEVOPS/Monitoring
+**Effort:** 1 week
+**Completed:** 2026-04-19
 **Depends on:** Task 72 (Runbooks - ✅ Complete)
 
 **Gap:** Alertmanager referenced but not fully validated for production deployment.
@@ -3791,9 +3791,9 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 103: Dependency Locking with uv (P1) ✅ CONSOLIDATED INTO TASK 90
 
-**Layer:** DEVOPS  
-**Effort:** 1 week  
-**Status:** ✅ COMPLETE (Consolidated with Task 90 - same implementation)  
+**Layer:** DEVOPS
+**Effort:** 1 week
+**Status:** ✅ COMPLETE (Consolidated with Task 90 - same implementation)
 **Unblocks:** Deterministic builds, supply chain security
 
 **Gap:** ~~No lock files means PyPI releases can break builds.~~ **COMPLETE** via Task 90.
@@ -3807,18 +3807,18 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 - [ ] Python base images pinned to SHA digests
 
 **Implementation:**
-- ✅ `value-fabric/*/uv.lock` (6 files) - All exist
-- Modify: All `value-fabric/layer*/Dockerfile`
+- ✅ `services/*/uv.lock` (6 files) - All exist
+- Modify: All `services/layer*/Dockerfile`
 - Modify: `.github/workflows/pr-checks.yml`
 
 ---
 
 ### Task 104: LLM Cost Prometheus Metrics (P1) ✅ COMPLETE
 
-**Layer:** L2  
-**Effort:** 2 days  
-**Completed:** 2026-04-19  
-**Unblocks:** Cost observability, budget alerts  
+**Layer:** L2
+**Effort:** 2 days
+**Completed:** 2026-04-19
+**Unblocks:** Cost observability, budget alerts
 **Depends on:** Task 70 (Model Registry - ✅ Complete)
 
 **Gap:** `ExtractionCost` model tracks LLM costs in DB but no Prometheus metrics; no budget alerts.
@@ -3831,8 +3831,8 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 - [x] Metrics appear in `/metrics` after extraction - `llm_client.py` calls `record_llm_cost()` and `record_llm_tokens()` in `_calculate_cost()` lines 476-501
 
 **Implementation:**
-- ✅ `value-fabric/layer2-extraction/src/metrics/prometheus_metrics.py` - Metrics defined with labels [provider, model, tenant_id] and [provider, model, type]
-- ✅ `value-fabric/layer2-extraction/src/shared/llm_client.py` - Automatic Prometheus recording on every LLM API call via `_calculate_cost()`
+- ✅ `services/layer2-extraction/src/metrics/prometheus_metrics.py` - Metrics defined with labels [provider, model, tenant_id] and [provider, model, type]
+- ✅ `services/layer2-extraction/src/shared/llm_client.py` - Automatic Prometheus recording on every LLM API call via `_calculate_cost()`
 - ✅ `monitoring/grafana/dashboards/llm-costs.json` - Dedicated LLM cost dashboard with 6 panels (Total Cost, Cost by Provider, Cost by Model, Cost by Tenant, Token Usage, Cost Rate)
 - ✅ `monitoring/grafana/dashboards/value-fabric-overview.json` - "LLM Cost by Tenant (24h)" panel in LLM Cost Observability row
 - ✅ `monitoring/alerting/rules.yml` - Budget threshold alerts at $50/hr (warning), $100/hr (critical), $100/24h per tenant, $1000 monthly
@@ -3841,9 +3841,9 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 105: Grafana Alert Tuning (P1) ✅ COMPLETE
 
-**Layer:** Monitoring  
-**Effort:** 2 days  
-**Completed:** 2026-04-19  
+**Layer:** Monitoring
+**Effort:** 2 days
+**Completed:** 2026-04-19
 **From:** User assessment Sprint 3
 
 **Gap:** Alert thresholds needed calibration for production based on observed metric patterns.
@@ -3875,10 +3875,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 106: Python SDK & CLI (P1) ✅ COMPLETE
 
-**Layer:** DevTools  
-**Effort:** 2 weeks  
-**Completed:** 2026-04-19  
-**From:** Proposed additions  
+**Layer:** DevTools
+**Effort:** 2 weeks
+**Completed:** 2026-04-19
+**From:** Proposed additions
 **Depends on:** Task 98 (Contract Alignment - ✅ Complete)
 
 **Gap:** No SDK; developers must craft raw HTTP.
@@ -3903,10 +3903,10 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ### Task 107: Feature Flag System (P1) ✅ CONSOLIDATED INTO TASK 74
 
-**Layer:** L4/Shared  
-**Effort:** 1 week  
-**Status:** ✅ COMPLETE (Consolidated with Task 74 - same implementation)  
-**From:** Proposed additions + Phase 3  
+**Layer:** L4/Shared
+**Effort:** 1 week
+**Status:** ✅ COMPLETE (Consolidated with Task 74 - same implementation)
+**From:** Proposed additions + Phase 3
 **Depends on:** Task 54 (RLS - ✅ Complete)
 
 **Gap:** ~~No feature flag library; all changes require full deployment.~~ **COMPLETE** via Task 74.
@@ -3922,18 +3922,18 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 - [ ] Flag changes audited via `AuditAction`
 
 **Implementation:**
-- Create: `value-fabric/layer4-agents/src/models/feature_flags.py`
-- Create: `value-fabric/layer4-agents/src/api/routes/feature_flags.py`
+- Create: `services/layer4-agents/src/models/feature_flags.py`
+- Create: `services/layer4-agents/src/api/routes/feature_flags.py`
 - Create: `shared/feature_flags/helpers.py`
 
 ---
 
 ### Task 108: Per-Tenant Rate Limiting (P1) ✅ COMPLETE 2026-04-19
 
-**Layer:** L1/L3/L4  
-**Effort:** 1 week  
-**Completed:** 2026-04-19  
-**From:** Proposed additions + Phase 3  
+**Layer:** L1/L3/L4
+**Effort:** 1 week
+**Completed:** 2026-04-19
+**From:** Proposed additions + Phase 3
 **Depends on:** Task 53 (Neo4j Tenant - ✅ Complete), Task 54 (RLS - ✅ Complete)
 
 **Gap:** ~~L3 rate limiter has no TENANT scope; L1/L4 have none.~~ **COMPLETE** via shared `GovernanceMiddleware`.
@@ -4048,7 +4048,7 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] `pytest tests/test_llm_cost_tracking.py -v` passes
   - [ ] All L4 agent tests pass (44/44)
 - **Implementation:**
-  - Modify: `value-fabric/layer4-agents/tests/test_llm_cost_tracking.py`
+  - Modify: `services/layer4-agents/tests/test_llm_cost_tracking.py`
 
 **Task 93: OpenAPI Export Script Fix (P0)**
 - **Layer:** DEVOPS/Contracts
@@ -4087,7 +4087,7 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] `python scripts/smoke/production_smoke.py` passes 6/6 stages
   - [ ] K8s manifests render: `kubectl kustomize k8s/deployments/dev-nginx`
 - **Implementation:**
-  - Verify: `value-fabric/docker-compose.yml`
+  - Verify: `docker-compose.full.yml`
   - Test: `k8s/base/` deployments
 
 **Task 96: Vector E2E Verification (P0)**
@@ -4100,7 +4100,7 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] Vector index creation verified with real embeddings
   - [ ] `POST /v1/search/hybrid` returns ranked results
 - **Implementation:**
-  - Run: `pytest value-fabric/layer3-knowledge/tests/test_vector_e2e.py`
+  - Run: `pytest services/layer3-knowledge/tests/test_vector_e2e.py`
   - Fix: Any failing ingestion/query tests
 
 #### Week 2: Type Safety & Contracts
@@ -4155,13 +4155,13 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] Unit tests for token exchange and claim mapping
 - **Implementation:**
   - Create: `shared/identity/oidc.py`
-  - Create: `value-fabric/layer4-agents/src/api/routes/oidc.py`
-  - Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
+  - Create: `services/layer4-agents/src/api/routes/oidc.py`
+  - Modify: `services/layer4-agents/src/middleware/governance.py`
 
-### Task 100: Secrets Management Production Wiring (P0) 
-**Layer:** DEVOPS  
-**Effort:** 3 days  
-**Status:** 
+### Task 100: Secrets Management Production Wiring (P0)
+**Layer:** DEVOPS
+**Effort:** 3 days
+**Status:**
 **Unblocks:** Production security, credential rotation
 
 **Gap:** Secrets needed external management for production security.
@@ -4189,10 +4189,10 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
 
 #### Week 4: Frontend Auth & Alertmanager
 
-### Task 101: SSO/OIDC Frontend Integration (P0) 
-**Layer:** Frontend  
-**Effort:** 1 week  
-**Status:** 
+### Task 101: SSO/OIDC Frontend Integration (P0)
+**Layer:** Frontend
+**Effort:** 1 week
+**Status:**
 **Unblocks:** Enterprise user login
 **Depends on:** Task 99 (SSO Backend - )
 
@@ -4274,8 +4274,8 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] Python base images pinned to SHA digests
   - [ ] `hadolint` passes on all Dockerfiles
 - **Implementation:**
-  - Create: `value-fabric/*/uv.lock` (6 files)
-  - Modify: All `value-fabric/layer*/Dockerfile`
+  - Create: `services/*/uv.lock` (6 files)
+  - Modify: All `services/layer*/Dockerfile`
   - Modify: `.github/workflows/pr-checks.yml`
 
 **Task 104: LLM Cost Prometheus Metrics (P1)**
@@ -4290,8 +4290,8 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] Alert rule: `vf_llm_cost_usd_total > budget_threshold`
   - [ ] Metrics appear in `/metrics` after extraction
 - **Implementation:**
-  - Modify: `value-fabric/layer2-extraction/src/metrics/prometheus_metrics.py`
-  - Modify: `value-fabric/layer2-extraction/src/extraction/llm_extractor.py`
+  - Modify: `services/layer2-extraction/src/metrics/prometheus_metrics.py`
+  - Modify: `services/layer2-extraction/src/extraction/llm_extractor.py`
   - Modify: `monitoring/grafana/dashboards/value-fabric-overview.json`
   - Modify: `monitoring/alerting/rules.yml`
 
@@ -4340,8 +4340,8 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] `is_enabled()` used in at least one L4 agent path
   - [ ] Flag changes audited via `AuditAction`
 - **Implementation:**
-  - Create: `value-fabric/layer4-agents/src/models/feature_flags.py`
-  - Create: `value-fabric/layer4-agents/src/api/routes/feature_flags.py`
+  - Create: `services/layer4-agents/src/models/feature_flags.py`
+  - Create: `services/layer4-agents/src/api/routes/feature_flags.py`
   - Create: `shared/feature_flags/helpers.py`
 
 **Task 108: Per-Tenant Rate Limiting (P1)**
@@ -4357,10 +4357,10 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] Tenant A cannot consume Tenant B's quota
   - [ ] Rate limit events logged (not audited)
 - **Implementation:**
-  - Modify: `value-fabric/layer3-knowledge/src/rate_limiting/manager.py`
-  - Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
-  - Modify: `value-fabric/layer1-ingestion/src/api/main.py`
-  - Create: `value-fabric/layer4-agents/tests/test_tenant_rate_limits.py`
+  - Modify: `services/layer3-knowledge/src/rate_limiting/manager.py`
+  - Modify: `services/layer4-agents/src/middleware/governance.py`
+  - Modify: `services/layer1-ingestion/src/api/main.py`
+  - Create: `services/layer4-agents/tests/test_tenant_rate_limits.py`
 
 ---
 

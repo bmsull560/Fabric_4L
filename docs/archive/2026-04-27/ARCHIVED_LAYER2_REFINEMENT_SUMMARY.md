@@ -50,7 +50,7 @@ Status: Historical reference only
 
 ```bash
 # Verify syntax
-python -m py_compile value-fabric/layer2-extraction/src/layer2_extraction/api/main.py
+python -m py_compile services/layer2-extraction/src/layer2_extraction/api/main.py
 
 # Expected: Syntax OK
 ```

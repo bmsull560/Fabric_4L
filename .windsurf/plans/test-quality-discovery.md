@@ -7,7 +7,7 @@ Generated: 2026-04-18
 ### Repository Structure
 ```
 Fabric_4L/
-├── value-fabric/          # Backend (Python)
+├── services/          # Backend (Python)
 │   ├── layer1-ingestion/
 │   ├── layer2-extraction/
 │   ├── layer3-knowledge/

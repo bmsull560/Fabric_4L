@@ -7,7 +7,7 @@
 # private package, or install it via: pip install infisical-sdk>=2.0.0
 #
 # Run the following to regenerate this lockfile:
-#   cd value-fabric/layer1-ingestion
+#   cd services/layer1-ingestion
 #   pip install pip-tools
 #   pip-compile pyproject.toml -o requirements.lock --generate-hashes
 #

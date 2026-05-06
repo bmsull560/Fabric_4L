@@ -1,4 +1,6 @@
-# ADR-001: Multi-Layer Architecture vs Monolith
+<!-- Migrated from services/ADRs/ during legacy path cleanup. -->
+
+# ADR-013: Multi-Layer Architecture vs Monolith
 
 **Status:** Accepted  
 **Date:** April 2026  

@@ -28,7 +28,7 @@ Before starting:
    - VS Code (recommended) or PyCharm
    - Git with SSH key configured
 
-**Estimated Time:** 45 minutes  
+**Estimated Time:** 45 minutes
 **Complexity:** Intermediate
 
 ---
@@ -39,7 +39,7 @@ Before starting:
 graph TB
     subgraph "Development Mode"
         IDE[IDE with<br/>Debugger]
-        
+
         subgraph "Local Services (Hot Reload)"
             L1_DEV[L1 Dev Server<br/>Port 8001]
             L2_DEV[L2 Dev Server<br/>Port 8002]
@@ -47,7 +47,7 @@ graph TB
             L4_DEV[L4 Dev Server<br/>Port 8004]
             FE_DEV[Frontend Dev<br/>Port 5173]
         end
-        
+
         subgraph "Docker Services"
             PG[(PostgreSQL)]
             NEO[(Neo4j)]
@@ -55,36 +55,36 @@ graph TB
             S3[MinIO]
         end
     end
-    
+
     subgraph "External"
         OPENAI[OpenAI API]
         GIT[Git Remote]
     end
-    
+
     IDE -->|Debug| L1_DEV
     IDE -->|Debug| L2_DEV
     IDE -->|Debug| L3_DEV
     IDE -->|Debug| L4_DEV
     IDE -->|Debug| FE_DEV
-    
+
     L1_DEV -->|Store| PG
     L1_DEV -->|Queue| RED
     L1_DEV -->|Files| S3
-    
+
     L2_DEV -->|Cache| RED
     L2_DEV -->|LLM| OPENAI
-    
+
     L3_DEV -->|Graph| NEO
     L3_DEV -->|Vectors| PG
-    
+
     L4_DEV -->|State| RED
     L4_DEV -->|LLM| OPENAI
-    
+
     FE_DEV -->|API| L1_DEV
     FE_DEV -->|API| L2_DEV
     FE_DEV -->|API| L3_DEV
     FE_DEV -->|API| L4_DEV
-    
+
     style IDE fill:#4a90d9,color:white
     style L1_DEV fill:#2ecc71,color:white
     style L2_DEV fill:#2ecc71,color:white
@@ -133,7 +133,7 @@ docker compose up -d postgres neo4j redis minio
 ### Layer 1 (Ingestion)
 
 ```bash
-cd value-fabric/layer1-ingestion
+cd services/layer1-ingestion
 source .venv/bin/activate
 
 # Create dev config
@@ -152,7 +152,7 @@ uvicorn src.api.main:app --reload --port 8001 --log-level debug
 ### Layer 2 (Extraction)
 
 ```bash
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 source .venv/bin/activate
 
 # Run with hot reload
@@ -162,7 +162,7 @@ uvicorn src.api.main:app --reload --port 8002 --log-level debug
 ### Layer 3 (Knowledge)
 
 ```bash
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 source .venv/bin/bin/activate
 
 uvicorn src.api.main:app --reload --port 8003 --log-level debug
@@ -171,7 +171,7 @@ uvicorn src.api.main:app --reload --port 8003 --log-level debug
 ### Layer 4 (Agents)
 
 ```bash
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 source .venv/bin/activate
 
 uvicorn src.api.main:app --reload --port 8004 --log-level debug
@@ -203,7 +203,7 @@ Create `.vscode/launch.json`:
       "request": "launch",
       "module": "uvicorn",
       "args": ["src.api.main:app", "--reload", "--port", "8001"],
-      "cwd": "${workspaceFolder}/value-fabric/layer1-ingestion",
+      "cwd": "${workspaceFolder}/services/layer1-ingestion",
       "console": "integratedTerminal"
     },
     {
@@ -212,7 +212,7 @@ Create `.vscode/launch.json`:
       "request": "launch",
       "module": "uvicorn",
       "args": ["src.api.main:app", "--reload", "--port", "8002"],
-      "cwd": "${workspaceFolder}/value-fabric/layer2-extraction"
+      "cwd": "${workspaceFolder}/services/layer2-extraction"
     },
     {
       "name": "Layer 3: Knowledge",
@@ -220,7 +220,7 @@ Create `.vscode/launch.json`:
       "request": "launch",
       "module": "uvicorn",
       "args": ["src.api.main:app", "--reload", "--port", "8003"],
-      "cwd": "${workspaceFolder}/value-fabric/layer3-knowledge"
+      "cwd": "${workspaceFolder}/services/layer3-knowledge"
     },
     {
       "name": "Layer 4: Agents",
@@ -228,7 +228,7 @@ Create `.vscode/launch.json`:
       "request": "launch",
       "module": "uvicorn",
       "args": ["src.api.main:app", "--reload", "--port", "8004"],
-      "cwd": "${workspaceFolder}/value-fabric/layer4-agents"
+      "cwd": "${workspaceFolder}/services/layer4-agents"
     }
   ],
   "compounds": [
@@ -257,17 +257,17 @@ sequenceDiagram
     participant IDE as IDE
     participant S as Service
     participant T as Tests
-    
+
     D->>IDE: Edit code
     IDE->>S: Hot reload triggers
     S->>S: Restart with changes
     S-->>IDE: Ready
-    
+
     D->>T: Run tests
     T->>T: Unit tests
     T->>T: Integration tests
     T-->>D: Results
-    
+
     D->>IDE: Commit changes
 ```
 
@@ -275,7 +275,7 @@ sequenceDiagram
 
 ```bash
 # Run tests for specific layer
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 pytest -xvs tests/
 
 # Run with coverage
@@ -309,7 +309,7 @@ docker compose down -v postgres
 docker compose up -d postgres
 
 # Re-run migrations
-cd value-fabric/layer1-ingestion
+cd services/layer1-ingestion
 alembic upgrade head
 ```
 

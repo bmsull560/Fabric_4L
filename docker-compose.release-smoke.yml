@@ -50,7 +50,7 @@ services:
       POSTGRES_DB: valuefabric
       POSTGRES_MULTIPLE_DATABASES: ingestion,extraction,layer4_agents,ground_truth,benchmarks
     volumes:
-      - ./value-fabric/scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+      - ./scripts/db/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
     ports:
       - "15432:5432"
     networks:

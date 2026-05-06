@@ -23,9 +23,6 @@ jobs:
     # Skip on forks - requires repository secrets
     if: github.event_name != 'pull_request' || github.repository_owner == 'bmsull560'
 
-    defaults:
-      run:
-        working-directory: value-fabric
 
     steps:
       - uses: actions/checkout@v4
@@ -45,14 +42,14 @@ jobs:
           NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          docker compose up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
+          docker compose -f docker-compose.full.yml up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
 
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to be healthy..."
           for i in $(seq 1 $HEALTH_CHECK_MAX_RETRIES); do
             sleep $HEALTH_CHECK_INTERVAL_SECONDS
-            healthy=$(docker compose ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
+            healthy=$(docker compose -f docker-compose.full.yml ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
             echo "Check $i/$HEALTH_CHECK_MAX_RETRIES: $healthy services healthy"
             if [ "$healthy" -ge "$EXPECTED_SERVICES" ]; then
               echo "✅ All $EXPECTED_SERVICES services healthy!"
@@ -60,18 +57,18 @@ jobs:
             fi
           done
           echo "❌ Services failed to become healthy within timeout"
-          docker compose ps
+          docker compose -f docker-compose.full.yml ps
           exit 1
         timeout-minutes: 6
 
       - name: Run smoke tests
         run: |
           pip install httpx
-          python ../scripts/smoke/production_smoke.py \
+          python scripts/smoke/production_smoke.py \
             --l2-url http://localhost:8002 \
             --l3-url http://localhost:8003 \
             --l4-url http://localhost:8004 \
-            --output-dir ../artifacts
+            --output-dir artifacts
 
       - name: Run L2 extraction pipeline tests
         working-directory: services/layer2-extraction
@@ -104,8 +101,8 @@ jobs:
       - name: Capture logs on failure
         if: failure()
         run: |
-          mkdir -p ../artifacts/logs
-          docker compose logs > ../artifacts/logs/docker-compose.log
+          mkdir -p artifacts/logs
+          docker compose -f docker-compose.full.yml logs > artifacts/logs/docker-compose.log
 
       - name: Upload smoke report
         if: always()
@@ -125,7 +122,7 @@ jobs:
 
       - name: Tear down
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.full.yml down -v
 
   frontend-e2e-backend-integrated:
     name: Frontend E2E Backend-Integrated

@@ -1,3 +1,5 @@
+# Migrated from tests/security/test_week3_isolation_audit.py during legacy path cleanup.
+
 """Week 3 Tenant Isolation & Audit Hardening — Regression Tests.
 
 Tests for:

@@ -19,7 +19,7 @@ class TestImportTopology:
         import value_fabric
 
         assert value_fabric.__file__ is not None
-        # Should resolve to either value_fabric/ or value-fabric/ via compatibility
+        # Should resolve to either value_fabric/ or services/ via compatibility
         assert "value" in str(value_fabric.__file__).lower()
 
     def test_shared_namespace_resolution(self):
@@ -27,10 +27,10 @@ class TestImportTopology:
         import value_fabric.shared
 
         shared_path = Path(value_fabric.shared.__file__)
-        # Should resolve to value-fabric/shared/ or value_fabric/shared/
+        # Should resolve to packages/shared/src/value_fabric/shared/ or value_fabric/shared/
         # NOT root shared/ which causes shadowing
         assert "value" in str(shared_path).lower(), (
-            f"shared resolved to {shared_path}, expected value-fabric/shared/ "
+            f"shared resolved to {shared_path}, expected packages/shared/src/value_fabric/shared/ "
             "or value_fabric/shared/"
         )
 
@@ -111,7 +111,7 @@ class TestImportTopology:
         )
 
     def test_no_root_shared_shadowing(self):
-        """Root shared/ should not shadow services/shared/."""
+        """Root shared/ should not shadow packages/shared/src/value_fabric/shared/."""
         import value_fabric.shared
 
         shared_file = Path(value_fabric.shared.__file__)
@@ -125,6 +125,6 @@ class TestImportTopology:
 
         assert not is_root_shared, (
             f"shared module resolves to {shared_file} which appears to be "
-            "root shared/. This shadows value-fabric/shared/. "
+            "root shared/. This shadows packages/shared/src/value_fabric/shared/. "
             "Consider removing root shared/ or adjusting pythonpath."
         )

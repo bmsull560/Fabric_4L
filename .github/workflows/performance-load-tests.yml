@@ -43,7 +43,6 @@ jobs:
         run: docker compose version
 
       - name: Start ephemeral stack
-        working-directory: value-fabric
         run: |
           cat > .env <<'EOF'
           OPENAI_API_KEY=sk-ci-test-key
@@ -57,22 +56,21 @@ jobs:
           FLOWER_PASSWORD=valuefabric
           GRAFANA_ADMIN_PASSWORD=valuefabric
           EOF
-          docker compose up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
+          docker compose -f docker-compose.full.yml up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
 
       - name: Wait for services to become healthy
-        working-directory: value-fabric
         run: |
           echo "Waiting for service health checks..."
           for i in {1..30}; do
             sleep 10
-            healthy=$(docker compose ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
+            healthy=$(docker compose -f docker-compose.full.yml ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
             echo "Check $i/30: $healthy healthy containers"
             if [ "$healthy" -ge "6" ]; then
               echo "Core stack is healthy"
               break
             fi
           done
-          docker compose ps
+          docker compose -f docker-compose.full.yml ps
 
       - name: Run k6 critical-path performance suite
         run: |
@@ -122,10 +120,9 @@ jobs:
 
       - name: Capture logs on failure
         if: failure()
-        working-directory: value-fabric
         run: |
-          mkdir -p ../artifacts/performance/logs
-          docker compose logs > ../artifacts/performance/logs/docker-compose.log
+          mkdir -p artifacts/performance/logs
+          docker compose -f docker-compose.full.yml logs > artifacts/performance/logs/docker-compose.log
 
       - name: Upload failure logs
         if: failure()
@@ -137,5 +134,4 @@ jobs:
 
       - name: Tear down ephemeral stack
         if: always()
-        working-directory: value-fabric
-        run: docker compose down -v
+        run: docker compose -f docker-compose.full.yml down -v

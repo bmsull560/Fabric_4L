@@ -1,6 +1,6 @@
 # Fabric 4L Tenant Management — Phase 1: RLS Hardening & Contract Alignment
 
-**Status:** Ready for Implementation  
+**Status:** Ready for Implementation
 **Replaces:** `docs/archive/tenant-management-phase-1-original-schema-per-tenant.md`
 
 ---
@@ -46,15 +46,15 @@ The goals of this phase are:
 **Estimated Effort:** 4 hours | **Priority:** P1
 
 Create Alembic migration to rename `organization_id` to `tenant_id` in Layer 1 tables (`scraping_targets`, `scraping_jobs`, `raw_content`, `extracted_data`).
-- Update `value-fabric/layer1-ingestion/src/models.py`
-- Update `value-fabric/layer1-ingestion/src/shared/tasks.py`
+- Update `services/layer1-ingestion/src/models.py`
+- Update `services/layer1-ingestion/src/shared/tasks.py`
 - Update Layer 1 RLS migration (`004_add_rls_policies.py`) to reference the new column name.
 
 ### Task 1.3: Layer 5 Column Rename & RLS Enforcement
 **Estimated Effort:** 5 hours | **Priority:** P1
 
 1. Create Alembic migration to rename `organization_id` to `tenant_id` in Layer 5 tables.
-2. Update `value-fabric/layer5-ground-truth/src/layer5_ground_truth/models.py`.
+2. Update `services/layer5-ground-truth/src/layer5_ground_truth/models.py`.
 3. **Fix Enforcement Gap:** Update `layer5_ground_truth/database.py` `db_session()` to execute `SET LOCAL app.tenant_id = :tenant_id` using the context, matching the Layer 4 pattern.
 
 ### Task 1.4: Tenant Status Lifecycle Implementation

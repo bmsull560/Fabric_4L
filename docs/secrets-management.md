@@ -230,11 +230,11 @@ kubectl get secrets -n value-fabric
 
 ### "OPENAI_API_KEY not set" error
 
-**Symptom:** Service fails to start with key error  
+**Symptom:** Service fails to start with key error
 **Fix:**
 ```bash
 # Check .env file exists and has key
-cat value-fabric/.env | grep OPENAI
+cat .env | grep OPENAI
 
 # For K8s, check secret exists
 kubectl get secret openai-secret -n value-fabric -o jsonpath='{.data.api-key}' | base64 -d
@@ -242,14 +242,14 @@ kubectl get secret openai-secret -n value-fabric -o jsonpath='{.data.api-key}' |
 
 ### "authentication failed" for Neo4j/Postgres
 
-**Symptom:** Services fail to connect to database  
+**Symptom:** Services fail to connect to database
 **Fix:**
 - Verify secret matches actual database password
 - Check network connectivity: `kubectl exec -it <pod> -n value-fabric -- nc -zv neo4j 7687`
 
 ### External Secrets not populating
 
-**Symptom:** `ExternalSecret` shows `SecretSyncedError`  
+**Symptom:** `ExternalSecret` shows `SecretSyncedError`
 **Fix:**
 ```bash
 # Check ExternalSecret status
@@ -267,7 +267,7 @@ kubectl exec -it vault-0 -n vault -- vault status
 
 | File | Purpose |
 |------|---------|
-| `value-fabric/.env.example` | Template for local dev |
+| `.env.example` | Template for local dev |
 | `k8s/secrets.yml` | Dev secrets (base64 encoded) |
 | `k8s/external-secrets/vault-integration.yml` | Production Vault integration |
 

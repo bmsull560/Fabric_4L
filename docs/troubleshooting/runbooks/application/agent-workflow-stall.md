@@ -111,13 +111,13 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    STALLED_WORKFLOWS=$(kubectl exec -n value-fabric -it deployment/layer4-agents -- \
      curl -s http://localhost:8000/api/v1/workflows?status=running | \
      jq -r '.workflows[] | select(.last_update > "30m") | .id')
-   
+
    # Cancel specific workflow
    kubectl exec -n value-fabric -it deployment/layer4-agents -- \
      curl -X POST "http://localhost:8000/api/v1/workflows/{workflow_id}/cancel" \
      -H "Content-Type: application/json" \
      -d '{"reason": "stalled_manual_cancel"}'
-   
+
    # Or cancel all stalled workflows (be careful!)
    for wf_id in $STALLED_WORKFLOWS; do
      kubectl exec -n value-fabric -it deployment/layer4-agents -- \
@@ -134,7 +134,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
      curl -X POST "http://localhost:8000/api/v1/workflows/{workflow_id}/restart" \
      -H "Content-Type: application/json" \
      -d '{"from_checkpoint": true, "reason": "stalled_restart"}'
-   
+
    # Restart with fresh state (ignore checkpoint)
    kubectl exec -n value-fabric -it deployment/layer4-agents -- \
      curl -X POST "http://localhost:8000/api/v1/workflows/{workflow_id}/restart" \
@@ -146,10 +146,10 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    ```bash
    # Check current replica count
    kubectl get deployment layer4-agents -n value-fabric -o jsonpath='{.spec.replicas}'
-   
+
    # Scale up executors
    kubectl scale deployment/layer4-agents -n value-fabric --replicas=5
-   
+
    # Or enable HPA if configured
    kubectl autoscale deployment/layer4-agents -n value-fabric \
      --min=2 --max=10 --cpu-percent=70
@@ -168,7 +168,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
      AND query_start < NOW() - INTERVAL '10 minutes'
      AND query LIKE '%checkpoint%';
      "
-   
+
    # Terminate blocking query (use with caution)
    kubectl exec -n value-fabric -it deployment/postgres -- \
      psql -U postgres -d layer4 -c \
@@ -186,7 +186,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
        "exclude_critical": true,
        "reason": "dependency_outage"
      }'
-   
+
    # Resume after recovery
    kubectl exec -n value-fabric -it deployment/layer4-agents -- \
      curl -X POST http://localhost:8000/api/v1/workflows/resume \
@@ -202,7 +202,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    kubectl set env deployment/layer4-agents \
      LANGGRAPH_NODE_TIMEOUT_SECONDS=300 \
      LANGGRAPH_MAX_RETRIES=3
-   
+
    # Restart to apply
    kubectl rollout restart deployment/layer4-agents -n value-fabric
    ```
@@ -213,7 +213,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    kubectl set env deployment/layer4-agents \
      CHECKPOINT_SAVE_TIMEOUT_MS=10000 \
      CHECKPOINT_ASYNC=true
-   
+
    # Restart to apply
    kubectl rollout restart deployment/layer4-agents -n value-fabric
    ```
@@ -273,8 +273,8 @@ kubectl logs -n value-fabric -l app=layer4-agents --tail=50 | grep -c "checkpoin
 ## References
 
 - LangGraph Documentation: https://langchain-ai.github.io/langgraph/
-- Layer 4 Workflow API: `value-fabric/layer4-agents/src/api/workflows.py`
-- Checkpoint Implementation: `value-fabric/layer4-agents/src/checkpoint/`
+- Layer 4 Workflow API: `services/layer4-agents/src/api/workflows.py`
+- Checkpoint Implementation: `services/layer4-agents/src/checkpoint/`
 
 ---
 

@@ -1,8 +1,8 @@
 # Test Quality Remediation Report
 
-**Repository**: Value Fabric Monorepo  
-**Remediation Dates**: 2026-04-09, 2026-04-10, 2026-04-13  
-**Agent**: Test Quality Remediation Agent  
+**Repository**: Value Fabric Monorepo
+**Remediation Dates**: 2026-04-09, 2026-04-10, 2026-04-13
+**Agent**: Test Quality Remediation Agent
 **Scope**: Python backend layers (1-6) and TypeScript frontend testing infrastructure
 
 ---
@@ -42,7 +42,7 @@
 | Deprecated event_loop fixture | P1 | `layer3-knowledge/tests/conftest.py` | Removed deprecated `event_loop` fixture (pytest-asyncio now handles this automatically) |
 | Unused asyncio import | P2 | `layer3-knowledge/tests/conftest.py` | Removed unused `asyncio` import |
 
-**Verification**: 
+**Verification**:
 - L3 conftest.py imports successfully after fix
 - No deprecation warnings from pytest-asyncio
 
@@ -414,23 +414,23 @@ Recommendation: Create component and integration tests
 
 ```bash
 # Layer 5 (Ground Truth) - Most mature
-cd value-fabric/layer5-ground-truth
+cd services/layer5-ground-truth
 pytest tests/ -v
 
 # Layer 1 (Ingestion) - Now working
-cd value-fabric/layer1-ingestion
+cd services/layer1-ingestion
 pytest tests/unit -v
 
 # Layer 2 (Extraction) - BLOCKED
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 # Needs import fixes first
 
 # Layer 3 (Knowledge) - BLOCKED
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 # Needs import fixes first
 
 # Layer 4 (Agents) - NO TESTS
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 # Create tests directory first
 ```
 

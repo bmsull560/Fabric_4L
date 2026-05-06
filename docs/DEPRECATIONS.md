@@ -1,7 +1,7 @@
 # Fabric 4L Deprecation Map
 
-**Status:** 🔄 IN PROGRESS  
-**Last Updated:** 2026-04-28  
+**Status:** 🔄 IN PROGRESS
+**Last Updated:** 2026-04-28
 **Auto-Update Schedule:** Weekly (Mondays 00:00 UTC)
 
 This document tracks all non-canonical patterns in the codebase and their migration paths to the canonical patterns defined in [CONTRACT.md](./contract.md).
@@ -33,9 +33,9 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | Platform Engineering |
 
 **Locations:**
-- `value-fabric/layer2-extraction/src/services/*.py` - 12 instances
-- `value-fabric/layer3-knowledge/src/api/routes.py` - 18 instances
-- `value-fabric/layer4-agents/src/tools/*.py` - 8 instances
+- `services/layer2-extraction/src/services/*.py` - 12 instances
+- `services/layer3-knowledge/src/api/routes.py` - 18 instances
+- `services/layer4-agents/src/tools/*.py` - 8 instances
 - `frontend/client/src/hooks/*.ts` - 9 instances
 
 **Migration Steps:**
@@ -60,9 +60,9 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | Platform Engineering |
 
 **Locations:**
-- `value-fabric/layer1-ingestion/src/middleware/*.py` - 5 instances
-- `value-fabric/layer3-knowledge/src/api/main.py` - 11 instances
-- `value-fabric/layer4-agents/src/agents/*.py` - 7 instances
+- `services/layer1-ingestion/src/middleware/*.py` - 5 instances
+- `services/layer3-knowledge/src/api/main.py` - 11 instances
+- `services/layer4-agents/src/agents/*.py` - 7 instances
 
 **Migration Steps:**
 1. Consolidate all header reading into auth middleware
@@ -84,8 +84,8 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | Data Engineering |
 
 **Locations:**
-- `value-fabric/layer3-knowledge/src/retrieval/*.py` - 8 instances
-- `value-fabric/layer5-ground-truth/src/eval/*.py` - 4 instances
+- `services/layer3-knowledge/src/retrieval/*.py` - 8 instances
+- `services/layer5-ground-truth/src/eval/*.py` - 4 instances
 - `scripts/analytics/*.py` - 3 instances (whitelisted)
 
 **Migration Steps:**
@@ -109,9 +109,9 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | Platform Engineering |
 
 **Locations:**
-- `value-fabric/layer2-extraction/src/db/*.py` - 12 instances
-- `value-fabric/layer3-knowledge/src/db/*.py` - 14 instances
-- `value-fabric/layer4-agents/src/db/*.py` - 5 instances
+- `services/layer2-extraction/src/db/*.py` - 12 instances
+- `services/layer3-knowledge/src/db/*.py` - 14 instances
+- `services/layer4-agents/src/db/*.py` - 5 instances
 
 **Migration Steps:**
 1. Create adapter that delegates `db.connect(tenantId)` to `db.getSession()`
@@ -134,8 +134,8 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | API Team |
 
 **Locations:**
-- `value-fabric/layer3-knowledge/src/api/routes/*.py` - 28 instances
-- `value-fabric/layer4-agents/src/api/*.py` - 14 instances
+- `services/layer3-knowledge/src/api/routes/*.py` - 28 instances
+- `services/layer4-agents/src/api/*.py` - 14 instances
 
 **Migration Steps:**
 1. Define route manifest structure
@@ -158,8 +158,8 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | Agent Team |
 
 **Locations:**
-- `value-fabric/layer4-agents/src/agents/*.py` - 15 instances
-- `value-fabric/layer4-agents/workflows/*.py` - 4 instances
+- `services/layer4-agents/src/agents/*.py` - 15 instances
+- `services/layer4-agents/workflows/*.py` - 4 instances
 
 **Migration Steps:**
 1. Extract tool implementation to standalone function
@@ -183,8 +183,8 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | Agent Team |
 
 **Locations:**
-- `value-fabric/layer4-agents/src/tools/*.py` - 18 instances
-- `value-fabric/layer4-agents/src/agents/*.py` - 9 instances
+- `services/layer4-agents/src/tools/*.py` - 18 instances
+- `services/layer4-agents/src/agents/*.py` - 9 instances
 
 **Migration Steps:**
 1. Wrap tool body in try/catch
@@ -207,8 +207,8 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Owning Team** | Agent Team |
 
 **Locations:**
-- `value-fabric/layer4-agents/src/agents/*.py` - 10 instances
-- `value-fabric/layer4-agents/src/orchestrator.py` - 3 instances
+- `services/layer4-agents/src/agents/*.py` - 10 instances
+- `services/layer4-agents/src/orchestrator.py` - 3 instances
 
 **Migration Steps:**
 1. Define Pydantic output schema

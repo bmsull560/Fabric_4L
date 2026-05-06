@@ -347,7 +347,7 @@ This document catalogs every external service, API, database, and infrastructure
 |----------|-------|
 | **Used by** | All layers (local development and CI) |
 | **Purpose** | Container orchestration for local development and testing |
-| **Files** | `value-fabric/docker-compose.yml`, `value-fabric/docker-compose.full.yml`, per-layer `docker-compose.yml` |
+| **Files** | `docker-compose.full.yml`, `docker-compose.full.yml`, per-layer `docker-compose.yml` |
 
 ### Kubernetes
 
@@ -405,5 +405,5 @@ This document catalogs every external service, API, database, and infrastructure
 
 ---
 
-*Document Version: 1.0*  
+*Document Version: 1.0*
 *Last Updated: April 2026*

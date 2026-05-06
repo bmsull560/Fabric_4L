@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: migrate
-          image: value-fabric/layer5-ground-truth:latest
+          image: services/layer5-ground-truth:latest
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -57,7 +57,7 @@ spec:
               mountPath: /tmp
       containers:
         - name: api
-          image: value-fabric/layer5-ground-truth:latest
+          image: services/layer5-ground-truth:latest
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

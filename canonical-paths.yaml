@@ -11,7 +11,7 @@ metadata:
   description: |
     Canonical layout after the 2026-05-02 frontend migration and
     service-layer consolidation. Legacy roots like frontend/ (obsolete)
-    and value-fabric/ (partially archived) must not be referenced by
+    and value-fabric/ (removed after archive migration) must not be referenced by
     active CI workflows for build, test, or lint operations.
 
 canonical:
@@ -137,13 +137,12 @@ obsolete:
       - "Historical migration docs"
   - path: value-fabric/
     reason: |
-      Legacy Python package tree. Partially retained for docker-compose.yml
-      and ADR archives, but service source code has migrated to services/.
-    severity: warn
+      Removed legacy Python package tree. Unique ADRs and operational archives
+      have been migrated into canonical docs/, scripts/, and root compose paths.
+    severity: error
     allowed_references:
-      - "docker-compose.yml execution (temporary)"
-      - "ADR/doc archives inside value-fabric/ADRs/"
-      - "Legacy test references that are being migrated"
+      - "Historical archive documentation under docs/archive/legacy-value-fabric/"
+      - "Legacy migration reports that explicitly discuss the removed path"
     disallowed_in:
       - docker_build_contexts
       - path_filters_for_service_code

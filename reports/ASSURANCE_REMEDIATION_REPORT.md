@@ -1,7 +1,7 @@
 # Test Assurance Remediation Report
 
-**Generated:** 2026-04-30  
-**Agent:** Level 4 Autonomous Test Assurance Agent  
+**Generated:** 2026-04-30
+**Agent:** Level 4 Autonomous Test Assurance Agent
 **Status:** PR-Ready with Critical Finding
 
 ---
@@ -35,7 +35,7 @@
 | `tests/integration/` | 8+ files | 100+ tests | ✅ Integration coverage |
 | `tests/k8s/` | 6+ files | 120+ tests | ✅ Infrastructure tests |
 | `tests/e2e/` | 4+ files | 56+ tests | ✅ E2E smoke tests |
-| `value-fabric/*/tests/` | 40+ files | 500+ tests | ✅ Layer-specific tests |
+| `services/*/tests/` | 40+ files | 500+ tests | ✅ Layer-specific tests |
 | `tests/tools/` | 3+ files | 60+ tests | ✅ Tool boundary tests |
 | `tests/agents/` | 2+ files | 60+ tests | ✅ Agent tests |
 
@@ -104,7 +104,7 @@
 ### Invariant 6: RLS Policy Enforcement
 - **Rule:** Database queries filtered by tenant_id
 - **Enforcement:** PostgreSQL RLS policies with `current_setting('app.tenant_id')`
-- **Code Path:** Migration files in `value-fabric/layer4-agents/migrations/versions/`
+- **Code Path:** Migration files in `services/layer4-agents/migrations/versions/`
 - **Test Coverage:** ✅ `test_rls_enforcement.py` (static analysis)
 - **Status:** ❌ VULNERABILITY FOUND
 
@@ -162,8 +162,8 @@ tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_rls_force_e
 ```
 tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_rls_null_tenant_id_policy_is_safe FAILED
 
-Failed: 018_add_rls_to_billing_tables.py: RLS policy allows rows with NULL 
-tenant_id to be visible to all tenants. This means any row inserted without 
+Failed: 018_add_rls_to_billing_tables.py: RLS policy allows rows with NULL
+tenant_id to be visible to all tenants. This means any row inserted without
 a tenant_id is a global data leak.
 ```
 
@@ -183,7 +183,7 @@ tests/security/test_auth_boundaries.py::TestValidAuthentication::test_valid_toke
 
 ### Critical Fix Required
 
-**File:** `value-fabric/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py`
+**File:** `services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py`
 
 **Vulnerability:** Lines 45-46 and 49-50 allow NULL tenant_id to be visible:
 ```sql
@@ -276,7 +276,7 @@ CREATE POLICY admin_null_tenant_policy ON {table}
 pytest tests/security/test_rls_enforcement.py -v
 # Result: 11 passed, 1 failed (critical vulnerability found)
 
-pytest tests/security/test_auth_boundaries.py -v  
+pytest tests/security/test_auth_boundaries.py -v
 # Result: 21 skipped (need fixtures)
 ```
 

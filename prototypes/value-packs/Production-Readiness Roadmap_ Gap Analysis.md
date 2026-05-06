@@ -1,6 +1,6 @@
 # Production-Readiness Roadmap: Gap Analysis
 
-This document provides a comprehensive gap analysis of the proposed "Production-Readiness Audit & Remediation Roadmap Plan" against the actual state of the `Fabric_4L` repository. 
+This document provides a comprehensive gap analysis of the proposed "Production-Readiness Audit & Remediation Roadmap Plan" against the actual state of the `Fabric_4L` repository.
 
 While the proposed roadmap is highly structured and covers the majority of standard CI/CD, testing, and deployment gates, it misses several critical, domain-specific production requirements that are currently absent from the codebase. If the roadmap is executed exactly as written, the resulting system will pass all CI gates but will still fail in a real-world production environment.
 
@@ -34,14 +34,14 @@ The roadmap checks `.infisical.json` and `vault-integration.yml` (Phase 4.2).
 
 ### 2.1 Missing Kubernetes Scaling & Resilience Primitives
 The roadmap claims to check for HPAs and PDBs (Phase 4.11).
-* **The Gap:** 
+* **The Gap:**
   * **Missing HPAs:** Layer 1, Layer 3, Layer 5, and Layer 6 have no HorizontalPodAutoscaler manifests [4].
   * **Missing PDBs:** Layer 1, Layer 5, and Layer 6 have no PodDisruptionBudget manifests [5].
 * **Why it matters:** During node upgrades or traffic spikes, these layers will either drop traffic (no PDB) or fall over from load (no HPA).
 
 ### 2.2 Unfiltered Neo4j Read Paths
 The roadmap mentions checking Neo4j read paths (Phase 4.1), but underestimates the scope.
-* **The Gap:** A scan of `value-fabric/layer3-knowledge/src/api/main.py` reveals at least 10 `MATCH` queries that do not include a `tenant_id` filter (e.g., lines 1964, 1977, 2040, 3343) [6].
+* **The Gap:** A scan of `services/layer3-knowledge/src/api/main.py` reveals at least 10 `MATCH` queries that do not include a `tenant_id` filter (e.g., lines 1964, 1977, 2040, 3343) [6].
 * **Why it matters:** This is a direct cross-tenant data exposure vulnerability.
 * **Recommendation:** Elevate this from a "check" to a mandatory remediation item.
 
@@ -81,15 +81,15 @@ The proposed roadmap is an excellent framework for a CI/CD and static analysis a
 4. **Observability Parity:** Ensure OTel/Prometheus instrumentation exists across all 6 layers, not just Layer 1.
 
 ## References
-[1] `value-fabric/layer5-ground-truth/src/layer5_ground_truth/database.py`
+[1] `services/layer5-ground-truth/src/layer5_ground_truth/database.py`
 [2] `find k8s/ -name "*ingress*"` (Returns empty)
 [3] `ls k8s/external-secrets/`
 [4] `ls k8s/base/hpa/`
 [5] `ls k8s/base/pdb/`
-[6] `value-fabric/layer3-knowledge/src/api/main.py`
+[6] `services/layer3-knowledge/src/api/main.py`
 [7] `.github/workflows/`
-[8] `grep -rn "rate.limit" value-fabric/` (Returns empty)
-[9] `grep -rn "CORSMiddleware" value-fabric/` (Returns empty)
-[10] `value-fabric/layer1-ingestion/src/shared/database.py`
-[11] `value-fabric/layer1-ingestion/src/metrics/prometheus_metrics.py`
-[12] `grep -rn "retention\|purge" value-fabric/` (Returns empty)
+[8] `grep -rn "rate.limit" services/` (Returns empty)
+[9] `grep -rn "CORSMiddleware" services/` (Returns empty)
+[10] `services/layer1-ingestion/src/shared/database.py`
+[11] `services/layer1-ingestion/src/metrics/prometheus_metrics.py`
+[12] `grep -rn "retention\|purge" services/` (Returns empty)

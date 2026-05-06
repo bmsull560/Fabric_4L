@@ -1,6 +1,6 @@
 # Test Gap Matrix — Fabric 4L Production Assurance
 
-**Generated:** 2026-04-28  
+**Generated:** 2026-04-28
 **Auditor:** Autonomous Test Assurance Agent
 
 ---
@@ -51,7 +51,7 @@
 | Tenant pending | Pending tenant access | None found | Activated tenant works | Pending tenant denied with message | Integration | **P1** | **TO ADD** | 🔴 GAP |
 | **Agent/LLM Safety** |
 | Tool output validation | Malformed tool output | `test_tool_manifests.py` | Valid tool output accepted | Invalid output schema rejected | Unit | P1 | test_tool_manifests.py | ✅ EXISTS |
-| Agent provenance | Action traceability | `test_provenance.py` | Action with provenance | Missing provenance rejected | Unit | P1 | `value-fabric/layer4-agents/tests/test_provenance.py` | ✅ EXISTS |
+| Agent provenance | Action traceability | `test_provenance.py` | Action with provenance | Missing provenance rejected | Unit | P1 | `services/layer4-agents/tests/test_provenance.py` | ✅ EXISTS |
 | **Frontend** |
 | Protected route guard | Unauthenticated page access | `AgentWorkflows.test.tsx` | Authenticated sees page | Unauthenticated redirected | E2E | **P1** | **TO ADD** | 🔴 GAP |
 | Tenant switch clear | Stale tenant data | None found | Switch shows new data | Old tenant data cleared | E2E | **P2** | **TO ADD** | 🔴 GAP |

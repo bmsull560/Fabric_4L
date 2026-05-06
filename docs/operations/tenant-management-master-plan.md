@@ -52,9 +52,9 @@ Stabilize and enhance the existing RLS-based tenant isolation. Normalize column 
 Create migration to rename `organization_id` to `tenant_id` in Layer 1 tables. Update ORM models and Celery task references.
 
 **Modified Files:**
-- `value-fabric/layer1-ingestion/migrations/versions/006_rename_org_to_tenant.py` (new)
-- `value-fabric/layer1-ingestion/src/models.py` (update column references)
-- `value-fabric/layer1-ingestion/src/shared/tasks.py` (update queries)
+- `services/layer1-ingestion/migrations/versions/006_rename_org_to_tenant.py` (new)
+- `services/layer1-ingestion/src/models.py` (update column references)
+- `services/layer1-ingestion/src/shared/tasks.py` (update queries)
 
 #### Task 1.2: Normalize Column Names (Layer 5)
 **Estimated Effort:** 3 hours
@@ -62,8 +62,8 @@ Create migration to rename `organization_id` to `tenant_id` in Layer 1 tables. U
 Create migration to rename `organization_id` to `tenant_id` in Layer 5 tables. Update ORM models.
 
 **Modified Files:**
-- `value-fabric/layer5-ground-truth/.../migrations/versions/004_rename_org_to_tenant.py` (new)
-- `value-fabric/layer5-ground-truth/.../models.py` (update column references)
+- `services/layer5-ground-truth/.../migrations/versions/004_rename_org_to_tenant.py` (new)
+- `services/layer5-ground-truth/.../models.py` (update column references)
 
 #### Task 1.3: Implement Tenant Status Lifecycle
 **Estimated Effort:** 4 hours
@@ -71,9 +71,9 @@ Create migration to rename `organization_id` to `tenant_id` in Layer 5 tables. U
 Add proper tenant status management: `pending` → `active` → `suspended` → `deleted`. Add suspension checks to middleware.
 
 **Modified Files:**
-- `value-fabric/layer4-agents/src/tenants/models/tenant.py` (add status transitions)
-- `value-fabric/shared/identity/middleware.py` (add suspended tenant check)
-- `value-fabric/layer4-agents/src/tenants/service.py` (add lifecycle methods)
+- `services/layer4-agents/src/tenants/models/tenant.py` (add status transitions)
+- `packages/shared/src/value_fabric/shared/identity/middleware.py` (add suspended tenant check)
+- `services/layer4-agents/src/tenants/service.py` (add lifecycle methods)
 
 #### Task 1.4: Enhance RLS Policies
 **Estimated Effort:** 6 hours
@@ -86,7 +86,7 @@ Review and harden existing RLS policies. Add missing tables. Ensure admin bypass
 - Layer 5: 7 tables covered (`002_add_rls_policies.py`, `003_add_model_registry.py`)
 
 **New Migration:**
-- `value-fabric/layer4-agents/migrations/versions/012_add_missing_rls.py` (cover any uncovered tables)
+- `services/layer4-agents/migrations/versions/012_add_missing_rls.py` (cover any uncovered tables)
 
 #### Task 1.5: Tenant Context Validation
 **Estimated Effort:** 3 hours
@@ -94,8 +94,8 @@ Review and harden existing RLS policies. Add missing tables. Ensure admin bypass
 Strengthen the existing tenant context validation. Add metrics for tenant context violations.
 
 **Modified Files:**
-- `value-fabric/layer4-agents/src/database.py` (enhance validate_tenant_id)
-- `value-fabric/shared/identity/middleware.py` (add validation metrics)
+- `services/layer4-agents/src/database.py` (enhance validate_tenant_id)
+- `packages/shared/src/value_fabric/shared/identity/middleware.py` (add validation metrics)
 
 #### Task 1.6: Create Tenant Provisioning Skeleton
 **Estimated Effort:** 2 hours
@@ -103,8 +103,8 @@ Strengthen the existing tenant context validation. Add metrics for tenant contex
 Create the service structure for tenant provisioning (without full automation yet).
 
 **New Files:**
-- `value-fabric/layer4-agents/src/tenants/provisioning.py` (skeleton service)
-- `value-fabric/layer4-agents/src/tenants/constants.py` (status enums, defaults)
+- `services/layer4-agents/src/tenants/provisioning.py` (skeleton service)
+- `services/layer4-agents/src/tenants/constants.py` (status enums, defaults)
 
 ### 1.3 Acceptance Criteria
 
@@ -154,17 +154,17 @@ Build automated tenant onboarding using existing infrastructure: Infisical for s
 
 Create service to programmatically create tenant secret paths in Infisical.
 
-**New File:** `value-fabric/shared/secrets/tenant_secrets.py`
+**New File:** `packages/shared/src/value_fabric/shared/secrets/tenant_secrets.py`
 
 ```python
 """Tenant-scoped secrets management via Infisical."""
 
 class TenantSecretsService:
     """Manages secret paths for tenant provisioning."""
-    
+
     async def create_tenant_path(self, tenant_slug: str) -> str:
         """Create /tenants/{tenant_slug} path in Infisical."""
-        
+
     async def seed_default_secrets(self, tenant_slug: str) -> None:
         """Seed default configuration values."""
 ```
@@ -189,7 +189,7 @@ Contents:
 
 Implement the provisioning orchestration endpoint.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/api/routes/tenants.py`
+**Modified File:** `services/layer4-agents/src/tenants/api/routes/tenants.py`
 
 New endpoints:
 - `POST /tenants` — Create tenant (super_admin only)
@@ -208,7 +208,7 @@ New endpoints:
 
 Create endpoint for external systems to trigger tenant provisioning.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/api/routes/provisioning_webhook.py`
+**New File:** `services/layer4-agents/src/tenants/api/routes/provisioning_webhook.py`
 
 ```python
 @router.post("/webhooks/provision-tenant")
@@ -279,7 +279,7 @@ Deliver user-facing APIs for tenant management: registration, admin dashboard, u
 
 Create tier definitions without billing integration.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/tiers.py`
+**New File:** `services/layer4-agents/src/tenants/tiers.py`
 
 ```python
 TIERS = {
@@ -307,7 +307,7 @@ Add checks for:
 
 Implement usage tracking for billing preparation.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/usage.py`
+**New File:** `services/layer4-agents/src/tenants/usage.py`
 
 Track:
 - Agent executions per tenant
@@ -320,7 +320,7 @@ Track:
 
 Create endpoints for tenant admin dashboard.
 
-**New File:** `value-fabric/layer4-agents/src/tenants/api/routes/admin.py`
+**New File:** `services/layer4-agents/src/tenants/api/routes/admin.py`
 
 Endpoints:
 - `GET /tenants/{id}/users` — List tenant users
@@ -334,7 +334,7 @@ Endpoints:
 
 Public endpoint for tenant self-registration.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/api/routes/registration.py`
+**Modified File:** `services/layer4-agents/src/tenants/api/routes/registration.py`
 
 Endpoints:
 - `POST /tenants/register` — Submit registration
@@ -352,7 +352,7 @@ Endpoints:
 
 Enhance existing API key system for tenant self-service.
 
-**Modified File:** `value-fabric/layer4-agents/src/tenants/api/routes/api_keys.py`
+**Modified File:** `services/layer4-agents/src/tenants/api/routes/api_keys.py`
 
 Add:
 - Tenant admin can create/revoke keys

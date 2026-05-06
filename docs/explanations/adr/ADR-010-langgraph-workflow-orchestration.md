@@ -1,4 +1,6 @@
-# ADR-004: LangGraph for Workflow Orchestration
+<!-- Migrated from services/ADRs/ during legacy path cleanup. -->
+
+# ADR-010: LangGraph for Workflow Orchestration
 
 **Status:** Accepted  
 **Date:** April 2026  

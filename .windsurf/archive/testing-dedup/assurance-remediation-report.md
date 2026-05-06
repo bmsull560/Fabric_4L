@@ -1,8 +1,8 @@
 # Test Assurance Remediation Report
 
-**Project:** Fabric 4L (Value Fabric)  
-**Date:** 2026-04-28  
-**Auditor:** Autonomous Test Assurance Agent (Level 3)  
+**Project:** Fabric 4L (Value Fabric)
+**Date:** 2026-04-28
+**Auditor:** Autonomous Test Assurance Agent (Level 3)
 **Scope:** Full repository test suite transformation from functional confirmation to production assurance
 
 ---
@@ -67,8 +67,8 @@
 
 | Boundary | Severity | Status | Evidence |
 |----------|----------|--------|----------|
-| Tenant suspension enforcement | P0 | ✅ EXISTING | `@/value-fabric/layer4-agents/tests/test_tenant_lifecycle.py:143-247` |
-| Tenant pending enforcement | P0 | ✅ EXISTING | `@/value-fabric/layer4-agents/tests/test_tenant_lifecycle.py:215-229` |
+| Tenant suspension enforcement | P0 | ✅ EXISTING | `@/services/layer4-agents/tests/test_tenant_lifecycle.py:143-247` |
+| Tenant pending enforcement | P0 | ✅ EXISTING | `@/services/layer4-agents/tests/test_tenant_lifecycle.py:215-229` |
 | Secrets in logs | P1 | ✅ CLOSED | NEW: `@/tests/security/test_secrets_protection.py` |
 | Oversized payload rejection | P1 | ✅ CLOSED | NEW: `@/tests/security/test_input_validation.py` |
 | Unknown field handling | P2 | 🔶 PARTIAL | Documented, needs production fix |
@@ -195,8 +195,8 @@ python -m py_compile tests/security/test_input_validation.py  # PASS
 - name: Secrets Protection Tests
   run: |
     pytest tests/security/test_secrets_protection.py -v
-    
-- name: Input Validation Tests  
+
+- name: Input Validation Tests
   run: |
     pytest tests/security/test_input_validation.py -v
 

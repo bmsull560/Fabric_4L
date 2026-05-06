@@ -25,7 +25,7 @@
         "type": "array",
         "items": { "type": "string" },
         "default": [
-          "value-fabric/layer2-extraction/src/layer2_extraction/extraction/prompts/"
+          "services/layer2-extraction/src/layer2_extraction/extraction/prompts/"
         ],
         "description": "Paths to prompt files for injection vulnerability scanning"
       },

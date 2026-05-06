@@ -33,22 +33,22 @@ Implemented **Tasks 88 + 90** (OpenAPI Contracts + uv Locking) with major discov
 | L6 Benchmarks | 162 KB | ✅ NEW | infisicalsdk>=1.0.0 |
 
 **Files Created:**
-- `value-fabric/layer1-ingestion/uv.lock`
-- `value-fabric/layer1-ingestion/Dockerfile.uv` (multi-stage, uv-based)
-- `value-fabric/layer2-extraction/uv.lock`
-- `value-fabric/layer2-extraction/Dockerfile.uv` (multi-stage, uv-based)
-- `value-fabric/layer4-agents/uv.lock`
-- `value-fabric/layer4-agents/Dockerfile.uv` (multi-stage, uv-based)
-- `value-fabric/layer5-ground-truth/uv.lock`
-- `value-fabric/layer5-ground-truth/Dockerfile.uv` (multi-stage, uv-based)
-- `value-fabric/layer6-benchmarks/uv.lock`
-- `value-fabric/layer6-benchmarks/Dockerfile.uv` (multi-stage, uv-based)
+- `services/layer1-ingestion/uv.lock`
+- `services/layer1-ingestion/Dockerfile.uv` (multi-stage, uv-based)
+- `services/layer2-extraction/uv.lock`
+- `services/layer2-extraction/Dockerfile.uv` (multi-stage, uv-based)
+- `services/layer4-agents/uv.lock`
+- `services/layer4-agents/Dockerfile.uv` (multi-stage, uv-based)
+- `services/layer5-ground-truth/uv.lock`
+- `services/layer5-ground-truth/Dockerfile.uv` (multi-stage, uv-based)
+- `services/layer6-benchmarks/uv.lock`
+- `services/layer6-benchmarks/Dockerfile.uv` (multi-stage, uv-based)
 
 **Files Modified:**
-- `value-fabric/layer1-ingestion/pyproject.toml` (infisicalsdk version fix)
-- `value-fabric/layer2-extraction/pyproject.toml` (infisicalsdk version fix)
-- `value-fabric/layer5-ground-truth/pyproject.toml` (infisicalsdk version fix)
-- `value-fabric/layer6-benchmarks/pyproject.toml` (infisicalsdk version fix)
+- `services/layer1-ingestion/pyproject.toml` (infisicalsdk version fix)
+- `services/layer2-extraction/pyproject.toml` (infisicalsdk version fix)
+- `services/layer5-ground-truth/pyproject.toml` (infisicalsdk version fix)
+- `services/layer6-benchmarks/pyproject.toml` (infisicalsdk version fix)
 
 **Dependency Fix Applied:**
 All layers had `infisicalsdk>=2.0.0` but PyPI only has up to 1.0.16. Fixed to `>=1.0.0`.
@@ -103,7 +103,7 @@ $ pytest tests/contract/ -v
 
 **Evidence:**
 ```python
-# value-fabric/layer3-knowledge/src/rate_limiting/manager.py
+# services/layer3-knowledge/src/rate_limiting/manager.py
 class RateLimitScope(str, Enum):
     GLOBAL = "global"
     USER = "user"
@@ -115,7 +115,7 @@ class RateLimitScope(str, Enum):
 ```
 
 ```python
-# value-fabric/shared/identity/rate_limiting.py
+# packages/shared/src/value_fabric/shared/identity/rate_limiting.py
 class RateLimitScope(str, Enum):
     TENANT = "tenant"  # Default scope for all roles
     USER = "user"
@@ -165,23 +165,23 @@ ROLE_DEFAULT_RATE_LIMITS = {
 ## Files Created in This Implementation
 
 ```
-value-fabric/layer1-ingestion/
+services/layer1-ingestion/
   uv.lock                              (NEW - 451 KB)
   Dockerfile.uv                        (NEW - 87 lines)
 
-value-fabric/layer2-extraction/
+services/layer2-extraction/
   uv.lock                              (NEW - 534 KB)
   Dockerfile.uv                        (NEW - 55 lines)
 
-value-fabric/layer4-agents/
+services/layer4-agents/
   uv.lock                              (NEW - 925 KB)
   Dockerfile.uv                        (NEW - 63 lines)
 
-value-fabric/layer5-ground-truth/
+services/layer5-ground-truth/
   uv.lock                              (NEW - 347 KB)
   Dockerfile.uv                        (NEW - 52 lines)
 
-value-fabric/layer6-benchmarks/
+services/layer6-benchmarks/
   uv.lock                              (NEW - 162 KB)
   Dockerfile.uv                        (NEW - 44 lines)
 ```
@@ -189,10 +189,10 @@ value-fabric/layer6-benchmarks/
 ## Files Modified
 
 ```
-value-fabric/layer1-ingestion/pyproject.toml     (infisicalsdk>=2.0.0 -> >=1.0.0)
-value-fabric/layer2-extraction/pyproject.toml    (infisicalsdk>=2.0.0 -> >=1.0.0)
-value-fabric/layer5-ground-truth/pyproject.toml   (infisicalsdk>=2.0.0 -> >=1.0.0)
-value-fabric/layer6-benchmarks/pyproject.toml    (infisicalsdk>=2.0.0 -> >=1.0.0)
+services/layer1-ingestion/pyproject.toml     (infisicalsdk>=2.0.0 -> >=1.0.0)
+services/layer2-extraction/pyproject.toml    (infisicalsdk>=2.0.0 -> >=1.0.0)
+services/layer5-ground-truth/pyproject.toml   (infisicalsdk>=2.0.0 -> >=1.0.0)
+services/layer6-benchmarks/pyproject.toml    (infisicalsdk>=2.0.0 -> >=1.0.0)
 ```
 
 ---

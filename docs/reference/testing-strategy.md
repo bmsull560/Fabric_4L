@@ -1,8 +1,8 @@
 # Value Fabric Test Strategy
 ## Silicon Valley Production Testing Standard
 
-**Version:** 1.0  
-**Date:** April 19, 2026  
+**Version:** 1.0
+**Date:** April 19, 2026
 **Scope:** Fabric_4L Platform (Layers 1-6 + Frontend)
 
 ---
@@ -44,12 +44,12 @@ This document defines the comprehensive testing strategy for the Value Fabric pl
 
 | Layer | Location | Focus | Coverage Target |
 |-------|----------|-------|-----------------|
-| L1 Ingestion | `value-fabric/layer1-ingestion/tests/unit/` | Crawler, adapters, models | 80% |
-| L2 Extraction | `value-fabric/layer2-extraction/tests/` | Chunker, LLM extractor | 80% |
-| L3 Knowledge | `value-fabric/layer3-knowledge/tests/` | Entity CRUD, search, graph | 80% |
-| L4 Agents | `value-fabric/layer4-agents/tests/unit/` | Workflow state machine | 80% |
-| L5 Ground Truth | `value-fabric/layer5-ground-truth/tests/unit/` | Evidence, audit log | 80% |
-| L6 Benchmarks | `value-fabric/layer6-benchmarks/tests/` | Calculations, metrics | 80% |
+| L1 Ingestion | `services/layer1-ingestion/tests/unit/` | Crawler, adapters, models | 80% |
+| L2 Extraction | `services/layer2-extraction/tests/` | Chunker, LLM extractor | 80% |
+| L3 Knowledge | `services/layer3-knowledge/tests/` | Entity CRUD, search, graph | 80% |
+| L4 Agents | `services/layer4-agents/tests/unit/` | Workflow state machine | 80% |
+| L5 Ground Truth | `services/layer5-ground-truth/tests/unit/` | Evidence, audit log | 80% |
+| L6 Benchmarks | `services/layer6-benchmarks/tests/` | Calculations, metrics | 80% |
 | Frontend | `frontend/client/src/**/*.test.tsx` | Components, hooks, utils | 70% |
 
 ### 2. Integration Tests (20%)
@@ -58,9 +58,9 @@ This document defines the comprehensive testing strategy for the Value Fabric pl
 |----------|----------|--------------|---------|
 | API Integration | `tests/integration/` | PostgreSQL, Neo4j, Redis | `integration` |
 | Cross-Layer Flow | `tests/integration/` | Full stack | `integration` |
-| Database Tests | `value-fabric/layer*/tests/` | PostgreSQL | `requires_postgres` |
-| Graph DB Tests | `value-fabric/layer3-knowledge/tests/` | Neo4j | `requires_neo4j` |
-| Cache Tests | `value-fabric/layer*/tests/` | Redis | `requires_redis` |
+| Database Tests | `services/layer*/tests/` | PostgreSQL | `requires_postgres` |
+| Graph DB Tests | `services/layer3-knowledge/tests/` | Neo4j | `requires_neo4j` |
+| Cache Tests | `services/layer*/tests/` | Redis | `requires_redis` |
 
 ### 3. Contract Tests (10% of Integration)
 
@@ -261,10 +261,10 @@ pytest -m security
 pytest -m contract
 
 # Single layer
-pytest value-fabric/layer3-knowledge/tests/ -m unit
+pytest services/layer3-knowledge/tests/ -m unit
 
 # Single test file
-pytest value-fabric/layer4-agents/tests/unit/test_workflow_state_machine.py -v
+pytest services/layer4-agents/tests/unit/test_workflow_state_machine.py -v
 ```
 
 ---
@@ -439,6 +439,6 @@ omit =
 
 ---
 
-**Document Owner:** Value Fabric Engineering  
-**Review Cycle:** Quarterly  
+**Document Owner:** Value Fabric Engineering
+**Review Cycle:** Quarterly
 **Next Review:** July 19, 2026

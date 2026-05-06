@@ -1,6 +1,6 @@
 # Test Quality Audit - Discovery Output
 
-**Date**: 2026-04-19  
+**Date**: 2026-04-19
 **Repository**: Fabric_4L (Value Fabric)
 
 ---
@@ -84,7 +84,7 @@ Based on roadmap critical path and runtime evidence:
 ### P0 - Critical
 1. **L2 extract-and-ingest pipeline tests** (`tests/test_extract_and_ingest_pipeline.py`)
    - Status: Need validation
-2. **L4 checkpoint/resume tests** 
+2. **L4 checkpoint/resume tests**
    - Status: Failing during collection (import errors)
 3. **L3 e2e pipeline tests**
    - Status: Failing on Neo4j Community edition
@@ -107,6 +107,6 @@ Proceed to **Phase 2: Audit** - evaluate specific test files against quality pri
 
 Target files for immediate audit:
 1. `tests/test_extract_and_ingest_pipeline.py` (L2-L3 orchestration)
-2. `value-fabric/layer4-agents/tests/test_checkpoints.py` (failing)
-3. `value-fabric/layer3-knowledge/tests/test_e2e_pipeline.py` (failing)
+2. `services/layer4-agents/tests/test_checkpoints.py` (failing)
+3. `services/layer3-knowledge/tests/test_e2e_pipeline.py` (failing)
 4. `frontend/client/src/hooks/useGraphQuery.test.ts` (API contract)

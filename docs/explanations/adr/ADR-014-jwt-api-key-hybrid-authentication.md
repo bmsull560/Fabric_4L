@@ -1,4 +1,6 @@
-# ADR-008: JWT + API Key Hybrid Authentication
+<!-- Migrated from services/ADRs/ during legacy path cleanup. -->
+
+# ADR-014: JWT + API Key Hybrid Authentication
 
 **Status:** Accepted  
 **Date:** April 2026  

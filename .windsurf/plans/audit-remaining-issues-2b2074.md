@@ -14,13 +14,13 @@ Audit of three remaining issues from Slice A implementation: L4 LangGraph test f
 - `test_business_case_rejects_empty_sections` - DID NOT RAISE expected exception
 - `test_get_workflow_status_after_execute` - Assert None is not None
 
-**Current State:** 
+**Current State:**
 - `cancel_workflow()` signature already includes `reason: str | None = None` parameter at line 469
 - Test may be using outdated mock or the controller class under test is different
 
 **Files to Examine:**
-- `value-fabric/layer4-agents/src/engine/executor.py:469` - cancel_workflow method
-- `value-fabric/layer4-agents/tests/test_langgraph_execution.py` - failing tests
+- `services/layer4-agents/src/engine/executor.py:469` - cancel_workflow method
+- `services/layer4-agents/tests/test_langgraph_execution.py` - failing tests
 
 **Root Cause:** Test likely mocks `cancel_workflow` without `reason` parameter or uses different controller class.
 
@@ -44,7 +44,7 @@ Audit of three remaining issues from Slice A implementation: L4 LangGraph test f
 - ❌ Alert rule for budget threshold not added
 
 **Files Affected:**
-- `value-fabric/layer2-extraction/src/extraction/llm_extractor.py` - needs to call token metrics
+- `services/layer2-extraction/src/extraction/llm_extractor.py` - needs to call token metrics
 - `monitoring/grafana/dashboards/value-fabric-overview.json` - needs panel
 - `monitoring/alerting/rules.yml` - needs cost alert rule
 
@@ -85,10 +85,10 @@ Audit of three remaining issues from Slice A implementation: L4 LangGraph test f
 
 ```bash
 # Check L4 LangGraph tests
-cd value-fabric/layer4-agents && python -m pytest tests/test_langgraph_execution.py -v
+cd services/layer4-agents && python -m pytest tests/test_langgraph_execution.py -v
 
 # Check LLM cost tracking tests
-cd value-fabric/layer4-agents && python -m pytest tests/test_llm_cost_tracking.py -v
+cd services/layer4-agents && python -m pytest tests/test_llm_cost_tracking.py -v
 
 # Run OpenAPI export
 python scripts/export_openapi.py

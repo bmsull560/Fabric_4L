@@ -24,8 +24,8 @@ List skills from `registry/skills.json` that this agent may invoke:
 
 Files or directories this agent must NOT touch:
 
-- `value-fabric/shared/identity/` (security-sensitive)
-- `value-fabric/layer4-agents/migrations/` (Alembic-managed)
+- `packages/shared/src/value_fabric/shared/identity/` (security-sensitive)
+- `services/layer4-agents/migrations/` (Alembic-managed)
 
 ## Context Requirements
 

@@ -1,9 +1,9 @@
 # GATE Framework Integration — Implementation Plan: Phases 1-3
 
-**Status:** Draft  
-**Author:** AI Agent (Fabric 4L Alignment Analysis)  
-**Date:** 2026-04-27  
-**Scope:** `shared/audit/`, `value-fabric/layer4-agents/`, `value-fabric/layer3-knowledge/`, `contracts/`, `packages/platform-contract/`  
+**Status:** Draft
+**Author:** AI Agent (Fabric 4L Alignment Analysis)
+**Date:** 2026-04-27
+**Scope:** `shared/audit/`, `services/layer4-agents/`, `services/layer3-knowledge/`, `contracts/`, `packages/platform-contract/`
 
 ---
 
@@ -19,12 +19,12 @@ This plan implements the Governed Agent Trust Environment (GATE) framework acros
 
 **Goal:** Implement RFC 8785 Canonical JSON hashing and hash-chained ledger commits across the audit emitter. Establish a verifiable evidence chain without altering agent runtime behavior.
 
-**Timeline:** 2-3 weeks  
-**Risk:** Low (additive-only changes to audit infrastructure)  
+**Timeline:** 2-3 weeks
+**Risk:** Low (additive-only changes to audit infrastructure)
 
 ### 1.1 Canonical JSON Hashing Utility
 
-**Gap:** `value-fabric/layer4-agents/src/services/export_provenance.py` has an ad-hoc `_hash_canonical()` using `json.dumps(sort_keys=True, separators=(",", ":"))`. This is *close* to RFC 8785 but not fully compliant (no explicit float normalization, no guaranteed encoding rules).
+**Gap:** `services/layer4-agents/src/services/export_provenance.py` has an ad-hoc `_hash_canonical()` using `json.dumps(sort_keys=True, separators=(",", ":"))`. This is *close* to RFC 8785 but not fully compliant (no explicit float normalization, no guaranteed encoding rules).
 
 **Action:**
 - Create `shared/crypto/canonical.py` with a strict, tested implementation.
@@ -238,13 +238,13 @@ async def emit_audit_event(
 
 ### 1.4 Tool Invocation Records in ToolRegistry
 
-**Gap:** `value-fabric/layer4-agents/src/tools/registry.py` `ToolRegistry.execute()` logs tenant context but emits no structured audit event.
+**Gap:** `services/layer4-agents/src/tools/registry.py` `ToolRegistry.execute()` logs tenant context but emits no structured audit event.
 
 **Action:**
 Instrument `ToolRegistry.execute()` to emit `TOOL_INVOCATION` audit events with request/response hashing.
 
 ```python
-# value-fabric/layer4-agents/src/tools/registry.py (execute method refactor)
+# services/layer4-agents/src/tools/registry.py (execute method refactor)
 
 async def execute(self, tool_name: str, input_dict: dict[str, Any]) -> dict[str, Any]:
     tool = self.get(tool_name)
@@ -342,8 +342,8 @@ LEDGER_COMMIT = "ledger_commit"
 
 **Goal:** Introduce the Agent Bill of Materials (ABOM) and externalize policy/invariant evaluation via a Tool Gateway. Policy and invariant evaluation occurs *before* tool logic is invoked.
 
-**Timeline:** 3-4 weeks  
-**Risk:** Medium (changes `ToolRegistry.execute()` control flow; requires new infrastructure)  
+**Timeline:** 3-4 weeks
+**Risk:** Medium (changes `ToolRegistry.execute()` control flow; requires new infrastructure)
 
 ### 2.1 ABOM Schema & Manifests
 
@@ -417,7 +417,7 @@ Define a machine-readable ABOM JSON Schema and create manifests for each existin
 
 **Python model:**
 ```python
-# value-fabric/layer4-agents/src/governance/abom.py
+# services/layer4-agents/src/governance/abom.py
 from __future__ import annotations
 
 import json
@@ -479,7 +479,7 @@ class AgentBillOfMaterials(BaseModel):
 Implement a Policy Engine client that can call OPA (or a local Rego evaluator) and a Policy Bundle loader.
 
 ```python
-# value-fabric/layer4-agents/src/governance/policy_engine.py
+# services/layer4-agents/src/governance/policy_engine.py
 from __future__ import annotations
 
 import os
@@ -528,13 +528,13 @@ class PolicyEngineClient:
         tenant_id = input_data.get("tenant_id")
         if not tenant_id:
             return PolicyDecision(allowed=False, reason="No tenant context in policy input")
-            
+
         # Deny-all for high-privilege agents during OPA unavailability
         abom = input_data.get("abom", {})
         controls = abom.get("controls", {})
         if controls.get("autonomy_tier") == "high_privilege":
             return PolicyDecision(allowed=False, reason="OPA unavailable: high_privilege tier requires explicit OPA allow")
-            
+
         return PolicyDecision(allowed=True, reason="Local fallback: tenant present and tier is not high_privilege")
 ```
 
@@ -577,7 +577,7 @@ obligations contains "audit_tool_invocation" if {
 Implement an `InvariantEvaluator` that checks non-overridable limits *after* policy allows but *before* tool execution.
 
 ```python
-# value-fabric/layer4-agents/src/governance/invariant_bundle.py
+# services/layer4-agents/src/governance/invariant_bundle.py
 from __future__ import annotations
 
 import os
@@ -646,7 +646,7 @@ class InvariantEvaluator:
 Introduce a `ToolGateway` class that wraps the registry and enforces the two-stage pipeline.
 
 ```python
-# value-fabric/layer4-agents/src/gateway/tool_gateway.py
+# services/layer4-agents/src/gateway/tool_gateway.py
 from __future__ import annotations
 
 from typing import Any
@@ -741,7 +741,7 @@ class ToolGateway:
 
 ### 2.5 ToolRegistry Refactoring
 
-**Changes to `value-fabric/layer4-agents/src/tools/registry.py`:**
+**Changes to `services/layer4-agents/src/tools/registry.py`:**
 1. Add `manifest_hash` class attribute to `BaseTool` (populated from `contracts/tool-manifests/<name>.json` hash at build time).
 2. Update `create_default_registry()` to load manifest hashes.
 3. Keep `ToolRegistry.execute()` as the low-level dispatcher; high-level enforcement moves to `ToolGateway`.
@@ -749,14 +749,14 @@ class ToolGateway:
 
 ### 2.6 Agent Lifecycle Integration
 
-**Changes to `value-fabric/layer4-agents/src/agents/base.py`:**
+**Changes to `services/layer4-agents/src/agents/base.py`:**
 - Add `abom: AgentBillOfMaterials | None` to `BaseAgent.__init__`.
 - Load ABOM in `initialize()` via `AgentBillOfMaterials.load_for_agent(self.agent_type)`.
 - Store `abom` in `AgentState.metadata`.
 - Agents execute tools through `ToolGateway` instead of raw `ToolRegistry`.
 
 ```python
-# value-fabric/layer4-agents/src/agents/base.py (additions)
+# services/layer4-agents/src/agents/base.py (additions)
 class BaseAgent(ABC):
     # ... existing attributes ...
     abom: AgentBillOfMaterials | None = None
@@ -792,8 +792,8 @@ class BaseAgent(ABC):
 
 **Goal:** Enhance Layer 3 retrieval with provenance tracking and implement deterministic replay recording for post-incident analysis.
 
-**Timeline:** 3-4 weeks  
-**Risk:** Medium (touches graph traversal hot paths; adds write load to audit log)  
+**Timeline:** 3-4 weeks
+**Risk:** Medium (touches graph traversal hot paths; adds write load to audit log)
 
 ### 3.1 Memory Gateway Architecture
 
@@ -803,7 +803,7 @@ class BaseAgent(ABC):
 Create a `MemoryGateway` that wraps retrieval engines and enforces ACLs, provenance tracking, and poisoning controls.
 
 ```python
-# value-fabric/layer3-knowledge/src/governance/memory_gateway.py
+# services/layer3-knowledge/src/governance/memory_gateway.py
 from __future__ import annotations
 
 import asyncio
@@ -908,7 +908,7 @@ class MemoryGateway:
 
 ### 3.2 Retrieval-Time ACLs & Provenance
 
-**Changes to `value-fabric/layer3-knowledge/src/retrieval/graph_rag.py`:**
+**Changes to `services/layer3-knowledge/src/retrieval/graph_rag.py`:**
 - `get_entity_context()` already enforces `tenant_id`. Keep this as the primary isolation boundary.
 - Add optional `agent_id` parameter to all public retrieval methods.
 - In `GraphRAGEngine.query()`, inject a post-filter step that drops entities whose `source_id` is in a tenant-specific blocklist (poisoning control).
@@ -973,7 +973,7 @@ class AuditAction(str, Enum):
 Implement a `ReplayRecorder` that captures snapshots at key lifecycle points.
 
 ```python
-# value-fabric/layer4-agents/src/governance/replay_recorder.py
+# services/layer4-agents/src/governance/replay_recorder.py
 from __future__ import annotations
 
 import asyncio
@@ -1083,7 +1083,7 @@ class ReplayRecorder:
 
 **Integration into `BaseAgent`:**
 ```python
-# value-fabric/layer4-agents/src/agents/base.py (run method additions)
+# services/layer4-agents/src/agents/base.py (run method additions)
 
 async def run(self, task: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
     ctx = context or {}
@@ -1102,10 +1102,10 @@ async def run(self, task: dict[str, Any], context: dict[str, Any] | None = None)
     # ... existing run logic ...
     # Store recorder in context so gateways can access it
     ctx["replay_recorder"] = recorder
-    
+
     # Gateways (ToolGateway, MemoryGateway) will append snapshots to the recorder
     # found in the context, avoiding the need for hooks in all 8 agent implementations.
-    
+
     # At completion:
     await recorder.commit()
     return result
@@ -1184,25 +1184,25 @@ shared/crypto/canonical.py
 shared/crypto/__init__.py
 shared/audit/ledger.py
 shared/audit/ledger_handler.py
-value-fabric/layer4-agents/src/governance/__init__.py
-value-fabric/layer4-agents/src/governance/abom.py
-value-fabric/layer4-agents/src/governance/policy_engine.py
-value-fabric/layer4-agents/src/governance/invariant_bundle.py
-value-fabric/layer4-agents/src/governance/replay_recorder.py
-value-fabric/layer4-agents/src/governance/replay_models.py
-value-fabric/layer4-agents/src/gateway/__init__.py
-value-fabric/layer4-agents/src/gateway/tool_gateway.py
-value-fabric/layer3-knowledge/src/governance/__init__.py
-value-fabric/layer3-knowledge/src/governance/memory_gateway.py
+services/layer4-agents/src/governance/__init__.py
+services/layer4-agents/src/governance/abom.py
+services/layer4-agents/src/governance/policy_engine.py
+services/layer4-agents/src/governance/invariant_bundle.py
+services/layer4-agents/src/governance/replay_recorder.py
+services/layer4-agents/src/governance/replay_models.py
+services/layer4-agents/src/gateway/__init__.py
+services/layer4-agents/src/gateway/tool_gateway.py
+services/layer3-knowledge/src/governance/__init__.py
+services/layer3-knowledge/src/governance/memory_gateway.py
 contracts/jsonschema/audit-ledger-commit.json
 contracts/jsonschema/tool-invocation-record.json
 contracts/jsonschema/abom.json
 contracts/jsonschema/memory-access-record.json
 contracts/jsonschema/replay-snapshot-record.json
 contracts/jsonschema/policy-decision-record.json
-value-fabric/layer4-agents/aboms/signal_detection.json
-value-fabric/layer4-agents/aboms/taxonomy.json
-value-fabric/layer4-agents/aboms/orchestration_controller.json
+services/layer4-agents/aboms/signal_detection.json
+services/layer4-agents/aboms/taxonomy.json
+services/layer4-agents/aboms/orchestration_controller.json
 k8s/policy/agent-runtime-policies.rego
 tests/shared/crypto/test_canonical.py
 tests/shared/audit/test_ledger_chain.py
@@ -1219,10 +1219,10 @@ tests/layer3/governance/test_memory_gateway.py
 ```
 shared/audit/models.py
 shared/audit/emitter.py
-value-fabric/layer4-agents/src/tools/registry.py
-value-fabric/layer4-agents/src/agents/base.py
-value-fabric/layer3-knowledge/src/retrieval/graph_rag.py
-value-fabric/layer4-agents/src/services/export_provenance.py
+services/layer4-agents/src/tools/registry.py
+services/layer4-agents/src/agents/base.py
+services/layer3-knowledge/src/retrieval/graph_rag.py
+services/layer4-agents/src/services/export_provenance.py
 packages/platform-contract/CONTRACT.md
 docs/platform-contract/DEPRECATION_MAP.md
 ```

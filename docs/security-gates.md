@@ -7,7 +7,7 @@ This document explains the CI security gates enforced by `.github/workflows/secu
 The `Security Gates` workflow now includes:
 
 1. **DAST against an ephemeral stack**
-   - Starts `value-fabric/docker-compose.yml` with local CI-safe environment values.
+   - Starts `docker-compose.full.yml` with local CI-safe environment values.
    - Waits for public health endpoints.
    - Runs OWASP ZAP baseline scans against:
      - `http://127.0.0.1:8001` (Layer 1 API)
@@ -130,7 +130,7 @@ for layer in \
   layer4-agents \
   layer5-ground-truth \
   layer6-benchmarks; do
-  docker build -t "${layer}:local" "value-fabric/${layer}"
+  docker build -t "${layer}:local" "services/${layer}"
 
   trivy image --format cyclonedx --output "sbom-reports/${layer}-sbom.cdx.json" "${layer}:local"
 

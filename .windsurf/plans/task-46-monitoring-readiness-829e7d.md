@@ -4,7 +4,7 @@ This plan completes production monitoring and alert wiring across Docker Compose
 
 ## Scope and Success Criteria
 
-- Cover both deployment paths: `value-fabric/docker-compose.yml` (P0) and `k8s/*.yml` (parity/hardening).
+- Cover both deployment paths: `docker-compose.full.yml` (P0) and `k8s/*.yml` (parity/hardening).
 - Resolve Prometheus target correctness so monitored jobs map to real service DNS/ports.
 - Ensure Alertmanager dependency is either fully wired end-to-end or explicitly removed/disabled with rationale.
 - Validate alert rules load successfully and queries reference real metrics.
@@ -13,7 +13,7 @@ This plan completes production monitoring and alert wiring across Docker Compose
 ## Phase 1: Static Monitoring Audit and Wiring Corrections
 
 1. Compose wiring audit
-   - Validate `monitoring/prometheus/prometheus.yml` against service names/ports in `value-fabric/docker-compose.yml`.
+   - Validate `monitoring/prometheus/prometheus.yml` against service names/ports in `docker-compose.full.yml`.
    - Confirm `rule_files` path resolves inside Prometheus container.
    - Confirm Grafana datasource/provider files align with Compose service DNS and mounted paths:
      - `monitoring/grafana/provisioning/datasources/prometheus.yml`
@@ -69,7 +69,7 @@ This plan completes production monitoring and alert wiring across Docker Compose
 - `monitoring/grafana/provisioning/datasources/prometheus.yml` (if needed)
 - `monitoring/grafana/provisioning/dashboards/value-fabric.yml` (if needed)
 - `monitoring/grafana/dashboards/*.json` (only if metric/query mismatches are confirmed)
-- `value-fabric/docker-compose.yml`
+- `docker-compose.full.yml`
 - `k8s/` monitoring-related manifest files (new and/or existing)
 - CI workflow file(s) under `.github/workflows/` for dry-run enforcement
 - Monitoring/K8s runbook documentation file(s)

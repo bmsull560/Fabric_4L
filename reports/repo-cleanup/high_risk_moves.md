@@ -1,7 +1,7 @@
 # High-Risk Moves Requiring Review
 
-**Generated:** 2026-05-02  
-**Repository:** Fabric_4L  
+**Generated:** 2026-05-02
+**Repository:** Fabric_4L
 **Phase:** 1 Inventory
 
 ## Overview
@@ -14,23 +14,23 @@ The following moves are classified as **HIGH RISK** due to:
 
 ## Critical Risk Moves
 
-### 1. Backend Service Migration (`value-fabric/` → `services/`)
+### 1. Backend Service Migration (`services/` → `services/`)
 
-**Risk Level:** CRITICAL  
+**Risk Level:** CRITICAL
 **Impact:** All 6 backend services
 
 ```
-value-fabric/layer1-ingestion/     → services/layer1-ingestion/
-value-fabric/layer2-extraction/    → services/layer2-extraction/
-value-fabric/layer3-knowledge/     → services/layer3-knowledge/
-value-fabric/layer4-agents/        → services/layer4-agents/
-value-fabric/layer5-ground-truth/  → services/layer5-ground-truth/
-value-fabric/layer6-benchmarks/    → services/layer6-benchmarks/
+services/layer1-ingestion/     → services/layer1-ingestion/
+services/layer2-extraction/    → services/layer2-extraction/
+services/layer3-knowledge/     → services/layer3-knowledge/
+services/layer4-agents/        → services/layer4-agents/
+services/layer5-ground-truth/  → services/layer5-ground-truth/
+services/layer6-benchmarks/    → services/layer6-benchmarks/
 ```
 
 **Specific Concerns:**
-- **Environment files**: `value-fabric/.env`, `.env.staging`, `.env.test`, `.env.production.example` must remain with services
-- **Docker Compose**: `value-fabric/docker-compose.yml` references service paths
+- **Environment files**: `.env`, `.env.staging`, `.env.test`, `.env.production.example` must remain with services
+- **Docker Compose**: `docker-compose.full.yml` references service paths
 - **Migrations**: Database migration files must move with services
 - **Import chains**: All `from value_fabric.layerX...` imports must be updated
 - **Tests**: Internal service tests reference relative imports
@@ -53,7 +53,7 @@ python -c "from value_fabric.layer1 import ..."  # Test imports
 
 ### 2. `value_fabric/` Junction Deletion
 
-**Risk Level:** HIGH  
+**Risk Level:** HIGH
 **Impact:** Python import resolution
 
 ```
@@ -78,7 +78,7 @@ If deletion breaks imports, recreate as proper Python package with `__init__.py`
 
 ### 3. Root `shared/` → `packages/shared/`
 
-**Risk Level:** HIGH  
+**Risk Level:** HIGH
 **Impact:** Cross-layer shared modules
 
 ```
@@ -117,7 +117,7 @@ shared/tracing/       → packages/shared/src/value_fabric/shared/tracing/
 
 ### 4. Frontend Move (`frontend/client/` → `apps/web/`)
 
-**Risk Level:** MEDIUM-HIGH  
+**Risk Level:** MEDIUM-HIGH
 **Impact:** React application build system
 
 ```
@@ -153,7 +153,7 @@ pnpm test
 
 ### 5. UI Prototype Separation (`_ui-prototype/` → `prototypes/ui/`)
 
-**Risk Level:** MEDIUM  
+**Risk Level:** MEDIUM
 **Impact:** Prototype isolation
 
 ```
@@ -177,7 +177,7 @@ _ui-prototype/ → prototypes/ui/
 
 ### 6. Script Reorganization (`scripts/` → categorized)
 
-**Risk Level:** MEDIUM  
+**Risk Level:** MEDIUM
 **Impact:** Makefile and CI references
 
 ```
@@ -195,7 +195,7 @@ scripts/*security*.py      → scripts/security/
 
 ### 7. Infrastructure Consolidation (`k8s/` → `infra/k8s/`)
 
-**Risk Level:** MEDIUM  
+**Risk Level:** MEDIUM
 **Impact:** Deployment manifests
 
 ```
@@ -215,12 +215,12 @@ docker-compose.*.yml → infra/docker/
 
 ### 8. Documentation Consolidation
 
-**Risk Level:** LOW  
+**Risk Level:** LOW
 **Impact:** Documentation links
 
 ```
-value-fabric/ADRs/ → docs/adr/
-value-fabric/docs/ → docs/layer-docs/
+docs/explanations/adr/ → docs/adr/
+docs/ → docs/layer-docs/
 ```
 
 **Required Actions:**

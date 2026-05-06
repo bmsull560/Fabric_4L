@@ -89,9 +89,9 @@ JSON
 # ----------------------
 # ZT-2 Tenant isolation checks
 # ----------------------
-isolation_file="${ROOT_DIR}/value-fabric/shared/identity/isolation.py"
-jwt_tests="${ROOT_DIR}/value-fabric/shared/identity/tests/test_jwt.py"
-middleware_file="${ROOT_DIR}/value-fabric/shared/identity/middleware.py"
+isolation_file="${ROOT_DIR}/packages/shared/src/value_fabric/shared/identity/isolation.py"
+jwt_tests="${ROOT_DIR}/packages/shared/src/value_fabric/shared/identity/tests/test_jwt.py"
+middleware_file="${ROOT_DIR}/packages/shared/src/value_fabric/shared/identity/middleware.py"
 
 if check_file_contains "$isolation_file" "class TenantScopedMixin" && check_file_contains "$isolation_file" "class TenantScopedCypher" && check_file_contains "$isolation_file" "def tenant_cache_key"; then
   record "ZT-2.1 tenant isolation primitives" "pass" "TenantScopedMixin/TenantScopedCypher/tenant_cache_key found"
@@ -128,7 +128,7 @@ JSON
 # ----------------------
 # ZT-3 Service auth checks
 # ----------------------
-deps_file="${ROOT_DIR}/value-fabric/shared/identity/dependencies.py"
+deps_file="${ROOT_DIR}/packages/shared/src/value_fabric/shared/identity/dependencies.py"
 l4_settings_file="${ROOT_DIR}/services/layer4-agents/src/config/settings.py"
 
 if check_file_contains "$middleware_file" "Bearer" && check_file_contains "$middleware_file" "X-API-Key"; then

@@ -1,7 +1,7 @@
 # Test Quality Fixes Applied
 
-**Date:** 2026-04-19  
-**Workflow:** /test-quality-remediation  
+**Date:** 2026-04-19
+**Workflow:** /test-quality-remediation
 **Phase:** Phase 4 (Rewrite) - P0 Fixes
 
 ---
@@ -46,14 +46,14 @@ This caused:
 """Pytest configuration for Layer 4 Agents tests.
 
 Requires package to be installed in editable mode:
-    pip install -e value-fabric/layer4-agents
+    pip install -e services/layer4-agents
 """
 
 import pytest
 ```
 
 **Files Modified:**
-- `value-fabric/layer4-agents/tests/conftest.py` (removed 11 lines of path manipulation)
+- `services/layer4-agents/tests/conftest.py` (removed 11 lines of path manipulation)
 
 ---
 
@@ -74,11 +74,11 @@ pythonpath = ["src"]  # Clean, simple
 
 This ensures imports work correctly when running:
 - From layer directory: `pytest tests/`
-- From repo root: `pytest value-fabric/layer4-agents/tests/`
+- From repo root: `pytest services/layer4-agents/tests/`
 - In CI with different working directories
 
 **Files Modified:**
-- `value-fabric/layer4-agents/pyproject.toml` (line 121)
+- `services/layer4-agents/pyproject.toml` (line 121)
 
 ---
 
@@ -133,7 +133,7 @@ if not self._is_enterprise() and TENANT_CONSTRAINTS:
 
 ```bash
 # Test L4 checkpoint/resume tests (previously failing)
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 pip install -e .  # Required: editable install
 pytest tests/test_checkpoint_resume.py -v --collect-only
 
@@ -141,7 +141,7 @@ pytest tests/test_checkpoint_resume.py -v --collect-only
 pytest tests/test_checkpoint_resume.py::TestCheckpointResume::test_simple_workflow_runs_to_completion -v
 
 # Test L3 E2E (should work with Community Edition)
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 pytest tests/test_e2e_pipeline.py::TestE2EPipeline::test_schema_initialization_detects_community_edition -v
 ```
 

@@ -8,14 +8,14 @@ This runbook covers incidents where LLM providers (OpenAI, Anthropic, Azure Open
 
 - **Alert:** `LLMProviderOutage` (if configured) or `HighErrorRate` from extraction layer
 - **Dashboard:** [LLM Costs & Performance](../../monitoring/grafana/dashboards/llm-costs.json)
-- **Log Query:** 
+- **Log Query:**
   ```
-  {layer="layer2"} |= "LLM request failed" 
+  {layer="layer2"} |= "LLM request failed"
   or
   {layer="layer4"} |= "completion failed"
   ```
 - **User Impact:** Extraction jobs failing, agent responses delayed or failing
-- **Metrics:** 
+- **Metrics:**
   - `layer2_llm_requests_failed_total` rising
   - `layer4_llm_latency_seconds` > 30s
   - `vf_llm_cost_usd_total` dropping (indicating failed requests)
@@ -28,7 +28,7 @@ This runbook covers incidents where LLM providers (OpenAI, Anthropic, Azure Open
 # Check OpenAI status
 curl https://status.openai.com/api/v2/status.json
 
-# Check Anthropic status  
+# Check Anthropic status
 curl https://status.anthropic.com/api/v2/status.json
 ```
 
@@ -73,7 +73,7 @@ kubectl logs -l app=layer2-extraction | grep -i "rate limit\|429\|too many reque
    kubectl set env deployment/layer2-extraction \
      LLM_PRIMARY_PROVIDER=anthropic \
      LLM_FALLBACK_ENABLED=true
-   
+
    # Rollout restart to apply
    kubectl rollout restart deployment/layer2-extraction
    ```
@@ -91,7 +91,7 @@ kubectl logs -l app=layer2-extraction | grep -i "rate limit\|429\|too many reque
    # List running extraction jobs
    kubectl exec -it deployment/layer2-extraction -- \
      curl -s http://localhost:8000/api/v1/jobs?status=running | jq '.jobs[].id'
-   
+
    # Pause batch jobs (preserve queue position)
    kubectl exec -it deployment/layer2-extraction -- \
      curl -X POST http://localhost:8000/api/v1/jobs/pause \
@@ -106,7 +106,7 @@ kubectl logs -l app=layer2-extraction | grep -i "rate limit\|429\|too many reque
    # Increase semantic cache TTL
    kubectl set env deployment/layer2-extraction \
      EXTRACTION_CACHE_TTL_SECONDS=3600
-   
+
    # Enable aggressive caching mode
    kubectl set env deployment/layer4-agents \
      LLM_RESPONSE_CACHE_MODE=aggressive
@@ -186,7 +186,7 @@ watch -n 30 'kubectl logs -l app=layer2-extraction --tail=50 | grep -c "extracti
 
 ## References
 
-- LLM Client Configuration: `value-fabric/layer2-extraction/.env.example`
+- LLM Client Configuration: `services/layer2-extraction/.env.example`
 - Provider Status Pages:
   - OpenAI: https://status.openai.com
   - Anthropic: https://status.anthropic.com

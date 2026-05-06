@@ -65,9 +65,9 @@ def some_helper():
 
 **Rules:**
 - GovernanceMiddleware is the **outermost** middleware in every layer (after CORS).
-- 
-equest.state.governance_context is the canonical attribute name. No 
-equest.state.context, no 
+-
+equest.state.governance_context is the canonical attribute name. No
+equest.state.context, no
 equest.state.tenant.
 - Service-to-service calls propagate tenant via X-Tenant-ID header AND forward the X-Request-ID header.
 - Layer 1 sync code uses _thread_local (set by middleware_sync.py), NOT a separate TenantContext class.
@@ -104,10 +104,10 @@ async def background_task(ctx: RequestContext):
 **Rules:**
 - get_db_from_context() is the ONLY FastAPI dependency for DB sessions in new code.
 - get_db(), get_db_with_tenant(), db_session(), get_tiered_db_session(), get_db_with_optional_tenant() are **DEPRECATED** (see section 6).
-- Session lifecycle is managed by the dependency/context manager. Route handlers MUST NOT call commit() or 
+- Session lifecycle is managed by the dependency/context manager. Route handlers MUST NOT call commit() or
 ollback().
 - RLS is set via SET LOCAL app.tenant_id = :tenant_id on every session.
-- Super-admin bypass requires get_db_with_optional_tenant() ONLY in admin routes protected by 
+- Super-admin bypass requires get_db_with_optional_tenant() ONLY in admin routes protected by
 equire_super_admin().
 
 ---
@@ -176,7 +176,8 @@ class CalculateROITool(BaseTool):
 - Every tool extends BaseTool and declares input_schema and output_schema as Pydantic models.
 - Tool output crossing an API boundary MUST be .model_dump() — no raw dict construction in tool execute methods.
 - JSON Schema manifests in contracts/tool-manifests/ are authoritative. Code schemas must stay in sync.
-- Tools are registered in alue-fabric/layer4-agents/src/tools/__init__.py.
+- Tools are registered in
+alue-fabric/layer4-agents/src/tools/__init__.py.
 - No inline tool definitions inside workflow nodes. Nodes reference tools by name.
 
 ---
@@ -341,7 +342,7 @@ async def execute(self, task, context):
 
 ### 3.9 Agent Bill of Materials (ABOM)
 
-**Canonical:** shared.governance.abom.AgentBillOfMaterials + JSON manifests in `value-fabric/layer4-agents/manifests/`
+**Canonical:** shared.governance.abom.AgentBillOfMaterials + JSON manifests in `services/layer4-agents/manifests/`
 
 **Every deployed agent MUST have a matching ABOM manifest.** The manifest declares the agent's identity, privilege tier, allowed tools, invariant constraints (call limits, budget caps), and data scope.
 
@@ -441,7 +442,7 @@ These files are not copied into layers. They are the contract spec. Each layer i
 
 ### 5.1 Python Enforcement (scripts/ci/platform_contract_lint.py)
 
-Scans value-fabric/ and shared/ for violations.
+Scans services/ and packages/shared/src/value_fabric/shared/ for violations.
 
 ### 5.2 TypeScript/Frontend Enforcement
 
@@ -460,7 +461,7 @@ These patterns exist in the codebase but are forbidden in new code. Migration de
 | Deprecated Pattern | Canonical Replacement | Migration Deadline | Notes |
 |-------------------|----------------------|-------------------|-------|
 | request.state.context | request.state.governance_context | 2026-05-15 | Layer 3 still uses old name |
-| TenantContext (L4) | shared.identity.RequestContext | 2026-05-15 | value-fabric/layer4-agents/src/tenant/context.py |
+| TenantContext (L4) | shared.identity.RequestContext | 2026-05-15 | services/layer4-agents/src/tenant/context.py |
 | get_db() | get_db_from_context() | 2026-06-01 | Health checks excepted |
 | get_db_with_tenant() | get_db_from_context() | 2026-06-01 | Header-based session creation |
 | db_session() context manager | db_session_for_context() | 2026-06-01 | Background tasks |

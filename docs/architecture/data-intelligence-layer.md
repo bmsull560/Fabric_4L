@@ -1,3 +1,5 @@
+<!-- Migrated from docs/data-intelligence-layer.md during legacy path cleanup. -->
+
 # Data Intelligence Layer (DIL) — Architecture & API Reference
 
 The Data Intelligence Layer extends the Value Fabric with structured intelligence services that transform raw signals and account data into actionable sales intelligence. It spans Layer 3 (Knowledge Graph) and Layer 4 (Agent Services), providing a unified pipeline from data ingestion through narrative delivery.
@@ -256,10 +258,10 @@ All tests use mock Neo4j drivers and do not require external services. Run with:
 
 ```bash
 # L3 tests
-cd value-fabric/layer3-knowledge
+cd services/layer3-knowledge
 python3 -m pytest tests/test_dil_phase1.py tests/test_dil_phase2.py --noconftest -v
 
 # L4 tests
-cd value-fabric/layer4-agents
+cd services/layer4-agents
 python3 -m pytest tests/test_enrichment.py tests/test_value_hypothesis.py tests/test_dil_phase3.py --noconftest -v
 ```

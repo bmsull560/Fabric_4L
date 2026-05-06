@@ -1,4 +1,6 @@
-# ADR-007: OpenTelemetry for Observability
+<!-- Migrated from services/ADRs/ during legacy path cleanup. -->
+
+# ADR-013: OpenTelemetry for Observability
 
 **Status:** Accepted  
 **Date:** April 2026  

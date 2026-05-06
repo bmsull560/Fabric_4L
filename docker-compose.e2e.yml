@@ -33,7 +33,7 @@ services:
       POSTGRES_MULTIPLE_DATABASES: ingestion,ground_truth,layer4_agents
     volumes:
       # No persistent volume — fresh database every run
-      - ./value-fabric/scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - ./scripts/db/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
     ports:
       - "5432:5432"
     networks:

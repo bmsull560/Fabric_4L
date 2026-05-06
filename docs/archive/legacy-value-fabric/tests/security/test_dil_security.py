@@ -1,3 +1,5 @@
+# Migrated from tests/security/test_dil_security.py during legacy path cleanup.
+
 """
 DIL Security Test Suite — Comprehensive tests for all 21 audit violations.
 
@@ -138,7 +140,7 @@ class TestV007_StatusEndpointAuth:
         import sys
 
         # The route should use get_verified_tenant_id, not a query parameter
-        route_path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/enrichment.py"
+        route_path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/enrichment.py"
         with open(route_path) as f:
             source = f.read()
 
@@ -180,7 +182,7 @@ class TestV003_TenantScopedAccountLookup:
 
     def test_enrichment_route_has_tenant_scoped_lookup(self):
         """Verify enrichment.py uses _get_tenant_scoped_account."""
-        route_path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/enrichment.py"
+        route_path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/enrichment.py"
         with open(route_path) as f:
             source = f.read()
 
@@ -192,7 +194,7 @@ class TestV003_TenantScopedAccountLookup:
     def test_tenant_scoped_query_returns_404_for_wrong_tenant(self):
         """If account belongs to Tenant B, Tenant A should get 404."""
         # This tests the SQL query pattern
-        route_path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/enrichment.py"
+        route_path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/enrichment.py"
         with open(route_path) as f:
             source = f.read()
 
@@ -206,7 +208,7 @@ class TestV013_ROICalculationHistory:
 
     def test_roi_routes_use_verified_tenant(self):
         """All ROI routes must use get_verified_tenant_id."""
-        route_path = "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/roi_calculator.py"
+        route_path = "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/roi_calculator.py"
         with open(route_path) as f:
             source = f.read()
 
@@ -220,7 +222,7 @@ class TestV019_IntelligenceEndpointAuth:
 
     def test_intelligence_routes_use_verified_tenant(self):
         """All intelligence routes must use get_verified_tenant_id."""
-        route_path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/intelligence.py"
+        route_path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/intelligence.py"
         with open(route_path) as f:
             source = f.read()
 
@@ -270,7 +272,7 @@ class TestV005_SSRFProtection:
 
     def test_enrichment_orchestrator_uses_ssrf_protection(self):
         """Verify enrichment_orchestrator.py imports and uses validate_url_safe."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/services/enrichment_orchestrator.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/services/enrichment_orchestrator.py"
         with open(path) as f:
             source = f.read()
 
@@ -322,7 +324,7 @@ class TestV006_CypherInjection:
 
     def test_competitive_intel_route_uses_allowlist(self):
         """Verify competitive_intel.py uses AllowlistedFieldUpdate."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/competitive_intel.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/competitive_intel.py"
         with open(path) as f:
             source = f.read()
 
@@ -351,7 +353,7 @@ class TestV011_WinLossValidation:
 
     def test_competitive_intel_route_validates_outcome(self):
         """Verify competitive_intel.py validates win/loss outcome."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/competitive_intel.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/competitive_intel.py"
         with open(path) as f:
             source = f.read()
 
@@ -406,7 +408,7 @@ class TestV009_DataPoisoning:
 
     def test_narrative_route_flags_prefetched_data(self):
         """Verify narratives.py flags caller-supplied data."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/narratives.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/narratives.py"
         with open(path) as f:
             source = f.read()
 
@@ -469,7 +471,7 @@ class TestV014_NarrativeToneAudienceValidation:
 
     def test_narrative_route_validates_tone_audience(self):
         """Verify narratives.py validates tone and audience."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/narratives.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/narratives.py"
         with open(path) as f:
             source = f.read()
 
@@ -482,7 +484,7 @@ class TestV016_SilentFailures:
 
     def test_enrichment_orchestrator_logs_ssrf_blocks(self):
         """Verify SSRF blocks are logged, not silently dropped."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/services/enrichment_orchestrator.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/services/enrichment_orchestrator.py"
         with open(path) as f:
             source = f.read()
 
@@ -516,7 +518,7 @@ class TestV018_RankHypothesesBounds:
 
     def test_rank_request_has_max_length(self):
         """RankHypothesesRequest.hypothesis_ids should have max_length."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/value_hypotheses.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/value_hypotheses.py"
         with open(path) as f:
             source = f.read()
 
@@ -534,7 +536,7 @@ class TestV012_BulkImportLimits:
 
     def test_bulk_import_has_max_items(self):
         """BulkImportRequest must limit case_studies list."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/evidence.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/evidence.py"
         with open(path) as f:
             source = f.read()
 
@@ -543,7 +545,7 @@ class TestV012_BulkImportLimits:
 
     def test_batch_enrich_has_limit(self):
         """BatchEnrichRequest must cap the limit field."""
-        path = "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/enrichment.py"
+        path = "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/enrichment.py"
         with open(path) as f:
             source = f.read()
 
@@ -555,15 +557,15 @@ class TestV020_NoHardcodedSecrets:
     """V-020: No hardcoded API keys, tokens, or credentials in source."""
 
     @pytest.mark.parametrize("path", [
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/services/product_service.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/services/case_study_service.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/services/competitive_intel_service.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/services/roi_calculator_service.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/services/enrichment_orchestrator.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/services/value_hypothesis_engine.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/services/narrative_builder_service.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/services/intelligence_orchestrator.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/shared/security/dil_auth.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/services/product_service.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/services/case_study_service.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/services/competitive_intel_service.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/services/roi_calculator_service.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/services/enrichment_orchestrator.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/services/value_hypothesis_engine.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/services/narrative_builder_service.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/services/intelligence_orchestrator.py",
+        "/home/ubuntu/Fabric_4L/services/shared/security/dil_auth.py",
     ])
     def test_no_hardcoded_secrets(self, path):
         """Source files must not contain hardcoded secrets."""
@@ -606,14 +608,14 @@ class TestAllRoutesUseVerifiedAuth:
     """Verify no route module still uses _extract_tenant_id."""
 
     @pytest.mark.parametrize("path", [
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/products.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/evidence.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/competitive_intel.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/roi_calculator.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/enrichment.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/value_hypotheses.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/narratives.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/intelligence.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/products.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/evidence.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/competitive_intel.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/roi_calculator.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/enrichment.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/value_hypotheses.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/narratives.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/intelligence.py",
     ])
     def test_no_extract_tenant_id(self, path):
         """Route must not define or use _extract_tenant_id."""
@@ -624,14 +626,14 @@ class TestAllRoutesUseVerifiedAuth:
             f"{path} still defines _extract_tenant_id"
 
     @pytest.mark.parametrize("path", [
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/products.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/evidence.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/competitive_intel.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer3-knowledge/src/api/routes/roi_calculator.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/enrichment.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/value_hypotheses.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/narratives.py",
-        "/home/ubuntu/Fabric_4L/value-fabric/layer4-agents/src/api/routes/intelligence.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/products.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/evidence.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/competitive_intel.py",
+        "/home/ubuntu/Fabric_4L/services/layer3-knowledge/src/api/routes/roi_calculator.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/enrichment.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/value_hypotheses.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/narratives.py",
+        "/home/ubuntu/Fabric_4L/services/layer4-agents/src/api/routes/intelligence.py",
     ])
     def test_uses_get_verified_tenant_id(self, path):
         """Route must import and use get_verified_tenant_id."""

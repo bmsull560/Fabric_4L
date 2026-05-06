@@ -16,7 +16,7 @@ try:
 except ImportError as e:
     raise RuntimeError(
         "shared.audit and shared.identity packages are required for feature flag functionality. "
-        "Install the shared package or set PYTHONPATH to include services/shared"
+        "Install the shared package or set PYTHONPATH to include packages/shared/src/value_fabric/shared"
     ) from e
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession

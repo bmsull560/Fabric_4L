@@ -17,5 +17,5 @@ spec:
     - "scripts/"
     - "*.md"
     - "frontend/"
-    - "value-fabric/*/src/"
-    - "value-fabric/*/tests/"
+    - "services/*/src/"
+    - "services/*/tests/"

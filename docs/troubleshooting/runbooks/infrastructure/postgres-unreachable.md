@@ -91,7 +91,7 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    ```bash
    # Graceful restart
    kubectl rollout restart deployment/postgres -n value-fabric
-   
+
    # Wait for readiness
    kubectl wait --for=condition=ready pod -l app=postgres -n value-fabric --timeout=120s
    ```
@@ -101,15 +101,15 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    # Check current connections
    kubectl exec -n value-fabric -it deployment/postgres -- \
      psql -U postgres -c "SELECT count(*) FROM pg_stat_activity;"
-   
+
    # Temporarily increase max_connections
    kubectl exec -n value-fabric -it deployment/postgres -- \
      psql -U postgres -c "ALTER SYSTEM SET max_connections = 200;"
-   
+
    # Reload configuration
    kubectl exec -n value-fabric -it deployment/postgres -- \
      psql -U postgres -c "SELECT pg_reload_conf();"
-   
+
    # Permanent fix via ConfigMap
    kubectl edit configmap postgres-config -n value-fabric
    # Add: max_connections = 200
@@ -120,9 +120,9 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    # Identify and terminate idle connections (be careful!)
    kubectl exec -n value-fabric -it deployment/postgres -- \
      psql -U postgres -c "
-     SELECT pg_terminate_backend(pid) 
-     FROM pg_stat_activity 
-     WHERE state = 'idle' 
+     SELECT pg_terminate_backend(pid)
+     FROM pg_stat_activity
+     WHERE state = 'idle'
      AND state_change < NOW() - INTERVAL '10 minutes';
      "
    ```
@@ -133,11 +133,11 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    ```bash
    # Check if standby exists
    kubectl get pods -n value-fabric -l app=postgres-replica
-   
+
    # Promote standby to primary (if using Patroni or repmgr)
    kubectl exec -n value-fabric -it deployment/postgres-replica -- \
      patronictl failover postgres
-   
+
    # Update service selector to point to new primary
    kubectl patch service postgres -n value-fabric -p \
      '{"spec":{"selector":{"role":"primary"}}}'
@@ -147,13 +147,13 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    ```bash
    # Check if PgBouncer exists
    kubectl get pods -n value-fabric -l app=pgbouncer
-   
+
    # Enable PgBouncer in Layer 4 config
    kubectl set env deployment/layer4-agents \
      DB_USE_POOLER=true \
      DB_POOLER_HOST=pgbouncer \
      DB_POOLER_PORT=5432
-   
+
    # Restart Layer 4 to apply
    kubectl rollout restart deployment/layer4-agents -n value-fabric
    ```
@@ -165,11 +165,11 @@ kubectl exec -n value-fabric -it deployment/postgres -- \
    # List available backups
    kubectl exec -n value-fabric -it deployment/postgres-backup -- \
      ls -la /backups/
-   
+
    # Restore from latest backup (destructive - confirm first!)
    kubectl exec -n value-fabric -it deployment/postgres -- \
      pg_restore --clean --if-exists /backups/postgres-$(date +%Y%m%d).dump
-   
+
    # Or use WAL-E/WAL-G for point-in-time recovery
    kubectl exec -n value-fabric -it deployment/postgres -- \
      envdir /etc/wal-e.d/env wal-e backup-fetch /var/lib/postgresql/data LATEST
@@ -229,7 +229,7 @@ kubectl exec -n value-fabric -it deployment/layer4-agents -- \
 ## References
 
 - PostgreSQL Documentation: https://www.postgresql.org/docs/current/
-- Layer 4 Database Client: `value-fabric/layer4-agents/src/db/`
+- Layer 4 Database Client: `services/layer4-agents/src/db/`
 - Kubernetes Postgres Config: `k8s/base/postgres.yaml`
 
 ---

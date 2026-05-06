@@ -11,7 +11,7 @@
       "description": "Do not change a tool manifest without updating the corresponding skill definition",
       "source_file": "rules/hard-constraints.yaml",
       "pattern": {
-        "files_glob": ["contracts/tool-manifests/*.json", "value-fabric/layer4-agents/skills/*.md"],
+        "files_glob": ["contracts/tool-manifests/*.json", "services/layer4-agents/skills/*.md"],
         "trigger": "any_change"
       },
       "action": {
@@ -46,11 +46,11 @@
       "source_file": "rules/hard-constraints.yaml",
       "pattern": {
         "files_glob": [
-          "value-fabric/layer4-agents/migrations/*.py",
-          "value-fabric/layer4-agents/migrations/versions/*.py",
-          "value-fabric/layer1-ingestion/migrations/**/*.py",
-          "value-fabric/layer2-extraction/migrations/**/*.py",
-          "value-fabric/layer5-ground-truth/migrations/**/*.py"
+          "services/layer4-agents/migrations/*.py",
+          "services/layer4-agents/migrations/versions/*.py",
+          "services/layer1-ingestion/migrations/**/*.py",
+          "services/layer2-extraction/migrations/**/*.py",
+          "services/layer5-ground-truth/migrations/**/*.py"
         ],
         "trigger": "any_change"
       },
@@ -85,7 +85,7 @@
       "description": "No PII in prompts — pre-process with detector",
       "source_file": "rules/safety-rules.yaml",
       "pattern": {
-        "files_glob": ["value-fabric/layer*/**/*.py", "frontend/**/*.ts", "frontend/**/*.tsx"],
+        "files_glob": ["services/layer*/**/*.py", "frontend/**/*.ts", "frontend/**/*.tsx"],
         "trigger": "llm_prompt_content"
       },
       "action": {
@@ -119,7 +119,7 @@
       "description": "All API routes must have auth middleware unless explicitly exempted",
       "source_file": "rules/safety-rules.yaml",
       "pattern": {
-        "files_glob": ["value-fabric/layer*/src/api/**/*.py"],
+        "files_glob": ["services/layer*/src/api/**/*.py"],
         "trigger": "missing_auth_dependency"
       },
       "action": {
@@ -170,8 +170,8 @@
       "description": "Layers can only import from lower layers or shared/",
       "source_file": "rules/dependency-rules.yaml",
       "pattern": {
-        "files_glob": ["value-fabric/layer*/**/*.py"],
-        "exemptions": ["tests/**/*.py", "value-fabric/layer*/tests/**/*.py"],
+        "files_glob": ["services/layer*/**/*.py"],
+        "exemptions": ["tests/**/*.py", "services/layer*/tests/**/*.py"],
         "trigger": "upstream_import"
       },
       "action": {
@@ -273,7 +273,7 @@
       "description": "DevAuthBypassMiddleware must never be enabled in production",
       "source_file": "rules/safety-rules.yaml",
       "pattern": {
-        "files_glob": ["value-fabric/layer*/src/**/*.py", "shared/**/*.py", "k8s/**/*.yaml", "k8s/**/*.yml"],
+        "files_glob": ["services/layer*/src/**/*.py", "shared/**/*.py", "k8s/**/*.yaml", "k8s/**/*.yml"],
         "trigger": "dev_auth_bypass_in_production"
       },
       "action": {

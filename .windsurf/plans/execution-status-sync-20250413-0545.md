@@ -64,10 +64,10 @@
 - ❌ **Live data**: AdminScreens.tsx has hardcoded static VARIABLES array referencing `salesforce.churn_rate` and `salesforce.account_count`
 
 **Evidence Paths:**
-- `value-fabric/layer4-agents/src/tools/crm_tools.py:137-161` (HubSpot gap)
-- `value-fabric/layer4-agents/src/models/account.py` (models complete)
-- `value-fabric/layer4-agents/src/api/routes/accounts.py` (8 endpoints)
-- `value-fabric/.env.example` (no CRM vars)
+- `services/layer4-agents/src/tools/crm_tools.py:137-161` (HubSpot gap)
+- `services/layer4-agents/src/models/account.py` (models complete)
+- `services/layer4-agents/src/api/routes/accounts.py` (8 endpoints)
+- `.env.example` (no CRM vars)
 - `frontend/client/src/pages/AdminScreens.tsx:246-252` (static VARIABLES array)
 - `frontend/client/src/components/navigation/TieredNav.tsx:88-89` (placeholder route)
 
@@ -118,11 +118,11 @@ Implement background CRM sync service for Salesforce/HubSpot with proper environ
 5. **Add sync webhook handler** — Handle Salesforce/HHubSpot real-time update webhooks (optional but recommended)
 
 ### Affected Files/Modules
-- `value-fabric/.env.example` — Add CRM environment variables
-- `value-fabric/layer4-agents/src/services/crm_sync_service.py` — NEW sync orchestration service
-- `value-fabric/layer4-agents/src/services/account_service.py` — Wire sync triggers
-- `value-fabric/layer4-agents/src/api/routes/accounts.py` — Ensure /sync endpoint activates sync
-- `value-fabric/layer4-agents/src/tools/crm_tools.py` — Optional: Add polling methods for incremental sync
+- `.env.example` — Add CRM environment variables
+- `services/layer4-agents/src/services/crm_sync_service.py` — NEW sync orchestration service
+- `services/layer4-agents/src/services/account_service.py` — Wire sync triggers
+- `services/layer4-agents/src/api/routes/accounts.py` — Ensure /sync endpoint activates sync
+- `services/layer4-agents/src/tools/crm_tools.py` — Optional: Add polling methods for incremental sync
 
 ### Dependencies
 - Task 39 backend API must be functional (✅ verified)

@@ -1,3 +1,5 @@
+<!-- Migrated from docs/architecture/legacy-value-fabric-architecture.md during legacy path cleanup. -->
+
 # Value Fabric — Production-Grade Architecture Documentation
 
 **Version:** 2.0  

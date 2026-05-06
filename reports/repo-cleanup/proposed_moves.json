@@ -229,49 +229,49 @@
       "actions": [
         {
           "action": "move",
-          "source": "value-fabric/layer1-ingestion",
+          "source": "services/layer1-ingestion",
           "target": "services/layer1-ingestion",
           "type": "service",
           "reason": "Layer 1 ingestion service"
         },
         {
           "action": "move",
-          "source": "value-fabric/layer2-extraction",
+          "source": "services/layer2-extraction",
           "target": "services/layer2-extraction",
           "type": "service",
           "reason": "Layer 2 extraction service"
         },
         {
           "action": "move",
-          "source": "value-fabric/layer3-knowledge",
+          "source": "services/layer3-knowledge",
           "target": "services/layer3-knowledge",
           "type": "service",
           "reason": "Layer 3 knowledge service"
         },
         {
           "action": "move",
-          "source": "value-fabric/layer4-agents",
+          "source": "services/layer4-agents",
           "target": "services/layer4-agents",
           "type": "service",
           "reason": "Layer 4 agents service"
         },
         {
           "action": "move",
-          "source": "value-fabric/layer5-ground-truth",
+          "source": "services/layer5-ground-truth",
           "target": "services/layer5-ground-truth",
           "type": "service",
           "reason": "Layer 5 ground truth service"
         },
         {
           "action": "move",
-          "source": "value-fabric/layer6-benchmarks",
+          "source": "services/layer6-benchmarks",
           "target": "services/layer6-benchmarks",
           "type": "service",
           "reason": "Layer 6 benchmarks service"
         },
         {
           "action": "move",
-          "source": "value-fabric/shared",
+          "source": "packages/shared/src/value_fabric/shared",
           "target": "packages/shared/src/value_fabric/layer_shared",
           "type": "shared",
           "reason": "Layer-specific shared code"
@@ -284,14 +284,14 @@
         },
         {
           "action": "move",
-          "source": "value-fabric/ADRs",
+          "source": "docs/explanations/adr",
           "target": "docs/adr",
           "type": "doc",
           "reason": "Consolidate ADRs"
         },
         {
           "action": "move",
-          "source": "value-fabric/docs",
+          "source": "services/docs",
           "target": "docs/layer-docs",
           "type": "doc",
           "reason": "Layer-specific docs"

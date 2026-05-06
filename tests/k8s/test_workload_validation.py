@@ -20,12 +20,12 @@ import yaml
 
 
 APP_IMAGE_NAMES = [
-    "value-fabric/layer1-ingestion",
-    "value-fabric/layer2-extraction",
-    "value-fabric/layer3-knowledge",
-    "value-fabric/layer4-agents",
-    "value-fabric/layer5-ground-truth",
-    "value-fabric/layer6-benchmarks",
+    "services/layer1-ingestion",
+    "services/layer2-extraction",
+    "services/layer3-knowledge",
+    "services/layer4-agents",
+    "services/layer5-ground-truth",
+    "services/layer6-benchmarks",
     "value-fabric/frontend",
 ]
 
@@ -71,18 +71,18 @@ class TestRolloutStrategy:
     ) -> None:
         """Verify all Deployments use RollingUpdate strategy."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             if doc.get("kind") != "Deployment":
                 continue
-            
+
             spec = doc.get("spec", {})
             strategy = spec.get("strategy", {})
-            
+
             if strategy.get("type") != "RollingUpdate":
                 name = doc.get("metadata", {}).get("name", "unknown")
                 failures.append(f"{file_path}/{name}: missing or invalid RollingUpdate strategy")
-        
+
         if failures:
             pytest.fail("Rollout strategy violations:\n" + "\n".join(failures))
 
@@ -91,18 +91,18 @@ class TestRolloutStrategy:
     ) -> None:
         """Verify all StatefulSets use RollingUpdate strategy."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             if doc.get("kind") != "StatefulSet":
                 continue
-            
+
             spec = doc.get("spec", {})
             update_strategy = spec.get("updateStrategy", {})
-            
+
             if update_strategy.get("type") != "RollingUpdate":
                 name = doc.get("metadata", {}).get("name", "unknown")
                 failures.append(f"{file_path}/{name}: missing or invalid RollingUpdate strategy")
-        
+
         if failures:
             pytest.fail("StatefulSet rollout strategy violations:\n" + "\n".join(failures))
 
@@ -113,11 +113,11 @@ class TestRolloutStrategy:
         for file_path, doc in workload_documents:
             if doc.get("kind") != "Deployment":
                 continue
-            
+
             spec = doc.get("spec", {})
             strategy = spec.get("strategy", {})
             rolling_update = strategy.get("rollingUpdate", {})
-            
+
             # Either maxUnavailable or maxSurge should be set (soft check)
             # This is informational only
             if not rolling_update.get("maxUnavailable") and not rolling_update.get("maxSurge"):
@@ -134,22 +134,22 @@ class TestHealthProbes:
     ) -> None:
         """Verify all containers have liveness probes configured."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet"):
                 continue
-            
+
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             containers = spec.get("containers", [])
-            
+
             for container in containers:
                 # Skip sidecar containers like Istio/Envoy if needed
                 name = container.get("name", "unknown")
-                
+
                 if "livenessProbe" not in container:
                     failures.append(f"{file_path}/{name}: missing livenessProbe")
-        
+
         if failures:
             pytest.fail("Liveness probe violations:\n" + "\n".join(failures))
 
@@ -158,21 +158,21 @@ class TestHealthProbes:
     ) -> None:
         """Verify all containers have readiness probes configured."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet"):
                 continue
-            
+
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             containers = spec.get("containers", [])
-            
+
             for container in containers:
                 name = container.get("name", "unknown")
-                
+
                 if "readinessProbe" not in container:
                     failures.append(f"{file_path}/{name}: missing readinessProbe")
-        
+
         if failures:
             pytest.fail("Readiness probe violations:\n" + "\n".join(failures))
 
@@ -181,45 +181,45 @@ class TestHealthProbes:
     ) -> None:
         """Verify probes use either httpGet, tcpSocket, or exec."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet"):
                 continue
-            
+
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             containers = spec.get("containers", [])
-            
+
             for container in containers:
                 name = container.get("name", "unknown")
-                
+
                 for probe_type in ["livenessProbe", "readinessProbe"]:
                     probe = container.get(probe_type)
                     if not probe:
                         continue
-                    
+
                     if not any(k in probe for k in ["httpGet", "tcpSocket", "exec", "grpc"]):
                         failures.append(f"{file_path}/{name}/{probe_type}: no handler configured")
-        
+
         if failures:
             pytest.fail("Probe handler violations:\n" + "\n".join(failures))
 
     def test_probe_paths_are_valid(self, workload_documents: list[tuple[str, dict]]) -> None:
         """Verify HTTP probe paths are valid (start with /)."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             containers = spec.get("containers", [])
-            
+
             for container in containers:
                 name = container.get("name", "unknown")
-                
+
                 for probe_type in ["livenessProbe", "readinessProbe"]:
                     probe = container.get(probe_type)
                     if not probe:
                         continue
-                    
+
                     http_get = probe.get("httpGet", {})
                     if http_get:
                         path = http_get.get("path", "")
@@ -227,7 +227,7 @@ class TestHealthProbes:
                             failures.append(
                                 f"{file_path}/{name}/{probe_type}: path '{path}' must start with /"
                             )
-        
+
         if failures:
             pytest.fail("Probe path violations:\n" + "\n".join(failures))
 
@@ -240,27 +240,27 @@ class TestResourceConstraints:
     ) -> None:
         """Verify all containers have resource requests for cpu and memory."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet", "Job"):
                 continue
-            
+
             template = doc.get("spec", {}).get("template", {})
             spec = template.get("spec", {})
             containers = spec.get("containers", [])
-            
+
             for container in containers:
                 name = container.get("name", "unknown")
                 resources = container.get("resources", {})
                 requests = resources.get("requests", {})
-                
+
                 if "cpu" not in requests:
                     failures.append(f"{file_path}/{name}: missing requests.cpu")
-                
+
                 if "memory" not in requests:
                     failures.append(f"{file_path}/{name}: missing requests.memory")
-        
+
         if failures:
             pytest.fail("Resource request violations:\n" + "\n".join(failures))
 
@@ -269,27 +269,27 @@ class TestResourceConstraints:
     ) -> None:
         """Verify all containers have resource limits for cpu and memory."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet", "Job"):
                 continue
-            
+
             template = doc.get("spec", {}).get("template", {})
             spec = template.get("spec", {})
             containers = spec.get("containers", [])
-            
+
             for container in containers:
                 name = container.get("name", "unknown")
                 resources = container.get("resources", {})
                 limits = resources.get("limits", {})
-                
+
                 if "cpu" not in limits:
                     failures.append(f"{file_path}/{name}: missing limits.cpu")
-                
+
                 if "memory" not in limits:
                     failures.append(f"{file_path}/{name}: missing limits.memory")
-        
+
         if failures:
             pytest.fail("Resource limit violations:\n" + "\n".join(failures))
 
@@ -298,17 +298,17 @@ class TestResourceConstraints:
     ) -> None:
         """Verify limits are >= requests for each resource."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             containers = spec.get("containers", [])
-            
+
             for container in containers:
                 name = container.get("name", "unknown")
                 resources = container.get("resources", {})
                 requests = resources.get("requests", {})
                 limits = resources.get("limits", {})
-                
+
                 for resource_name in ["memory", "cpu"]:
                     if resource_name in requests and resource_name in limits:
                         request = requests[resource_name]
@@ -324,7 +324,7 @@ class TestResourceConstraints:
                             failures.append(
                                 f"{file_path}/{name}: {resource_name} limits ({limit}) < requests ({request})"
                             )
-        
+
         if failures:
             pytest.fail("Resource limit < request violations:\n" + "\n".join(failures))
 
@@ -337,36 +337,36 @@ class TestImagePinning:
     ) -> None:
         """Verify no containers use :latest tag."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob"):
                 continue
-            
+
             spec = doc.get("spec", {})
             template = spec.get("template", {})
             pod_spec = template.get("spec", {})
-            
+
             if kind == "CronJob":
                 job_template = spec.get("jobTemplate", {})
                 job_spec = job_template.get("spec", {})
                 template = job_spec.get("template", {})
                 pod_spec = template.get("spec", {})
-            
+
             containers = pod_spec.get("containers", [])
             init_containers = pod_spec.get("initContainers", [])
-            
+
             for container in containers + init_containers:
                 name = container.get("name", "unknown")
                 image = container.get("image", "")
-                
+
                 if ":latest" in image:
                     failures.append(f"{file_path}/{name}: uses :latest tag ({image})")
-                
+
                 if ":" not in image:
                     # No tag at all - implies :latest
                     failures.append(f"{file_path}/{name}: no tag specified ({image})")
-        
+
         if failures:
             pytest.fail("Unpinned image violations:\n" + "\n".join(failures))
 
@@ -375,10 +375,10 @@ class TestImagePinning:
     ) -> None:
         """Verify production images use SHA256 digests, not tags."""
         kustomization = k8s_overlays_dir / "prod" / "kustomization.yaml"
-        
+
         with open(kustomization) as f:
             content = yaml.safe_load(f)
-        
+
         images = content.get("images", [])
         image_by_name = {img.get("name"): img for img in images}
         failures = []
@@ -410,17 +410,17 @@ class TestLayer5MigrationGuardrails:
         """Verify Layer 5 workloads have init containers for migration sequencing."""
         for file_path, doc in workload_documents:
             name = doc.get("metadata", {}).get("name", "").lower()
-            
+
             if "layer5" not in name and "ground-truth" not in name:
                 continue
-            
+
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet"):
                 continue
-            
+
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             init_containers = spec.get("initContainers", [])
-            
+
             assert init_containers, f"{file_path}/{name}: must define an init container for migrations"
 
     def test_migration_init_uses_alembic(
@@ -429,29 +429,29 @@ class TestLayer5MigrationGuardrails:
         """Verify Layer 5 init containers use Alembic for migrations."""
         for file_path, doc in workload_documents:
             name = doc.get("metadata", {}).get("name", "").lower()
-            
+
             if "layer5" not in name and "ground-truth" not in name:
                 continue
-            
+
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet"):
                 continue
-            
+
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             init_containers = spec.get("initContainers", [])
-            
+
             migration_init = None
             for init in init_containers:
                 init_name = init.get("name", "").lower()
                 if "migrate" in init_name:
                     migration_init = init
                     break
-            
+
             if migration_init:
                 # Check for alembic reference
                 args = " ".join(migration_init.get("args", []))
                 command = " ".join(migration_init.get("command", []))
-                
+
                 if "alembic" not in args and "alembic" not in command:
                     # Soft check - migrations might use other tools
                     print(f"INFO: {file_path}/{name} migration init doesn't use alembic")
@@ -465,19 +465,19 @@ class TestServiceAccounts:
     ) -> None:
         """Verify workloads use explicit serviceAccountName (not default)."""
         warnings = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet"):
                 continue
-            
+
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             service_account = spec.get("serviceAccountName")
-            
+
             if not service_account:
                 name = doc.get("metadata", {}).get("name", "unknown")
                 warnings.append(f"{file_path}/{name}: no explicit serviceAccountName")
-        
+
         # This is a warning, not a failure
         if warnings:
             print("ServiceAccount warnings:\n" + "\n".join(warnings))
@@ -487,18 +487,18 @@ class TestServiceAccounts:
     ) -> None:
         """Verify workloads don't use the 'default' service account."""
         failures = []
-        
+
         for file_path, doc in workload_documents:
             kind = doc.get("kind")
             if kind not in ("Deployment", "StatefulSet", "DaemonSet"):
                 continue
-            
+
             spec = doc.get("spec", {}).get("template", {}).get("spec", {})
             service_account = spec.get("serviceAccountName", "")
-            
+
             if service_account == "default":
                 name = doc.get("metadata", {}).get("name", "unknown")
                 failures.append(f"{file_path}/{name}: uses 'default' service account")
-        
+
         if failures:
             pytest.fail("Using default service account:\n" + "\n".join(failures))

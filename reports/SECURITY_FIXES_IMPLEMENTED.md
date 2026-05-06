@@ -19,10 +19,10 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 
 **Files Modified:**
 - `shared/identity/api_key_stub.py` (new)
-- `value-fabric/layer1-ingestion/src/api/main.py`
-- `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py`
-- `value-fabric/layer3-knowledge/src/api/main.py`
-- `value-fabric/layer6-benchmarks/src/api/main.py`
+- `services/layer1-ingestion/src/api/main.py`
+- `services/layer2-extraction/src/layer2_extraction/api/main.py`
+- `services/layer3-knowledge/src/api/main.py`
+- `services/layer6-benchmarks/src/api/main.py`
 
 ---
 
@@ -37,10 +37,10 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 - L4: Removed `/agents/v1/workflows`, `/agents/v1/skills`, `/agents/v1/analyze`
 
 **Files Modified:**
-- `value-fabric/layer1-ingestion/src/api/main.py`
-- `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py`
-- `value-fabric/layer3-knowledge/src/api/main.py`
-- `value-fabric/layer4-agents/src/api/main.py`
+- `services/layer1-ingestion/src/api/main.py`
+- `services/layer2-extraction/src/layer2_extraction/api/main.py`
+- `services/layer3-knowledge/src/api/main.py`
+- `services/layer4-agents/src/api/main.py`
 
 ---
 
@@ -49,7 +49,7 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 
 **Verification:**
 - Template already uses `autoescape=select_autoescape(['html', 'xml'])`
-- Located at `value-fabric/layer4-agents/src/tools/document_export.py:324`
+- Located at `services/layer4-agents/src/tools/document_export.py:324`
 
 ---
 
@@ -61,7 +61,7 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 - Prevents external entity resolution in XML parsing
 
 **Files Modified:**
-- `value-fabric/layer1-ingestion/src/post_processor/content_extractor.py`
+- `services/layer1-ingestion/src/post_processor/content_extractor.py`
 
 ---
 
@@ -76,7 +76,7 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 - Strengthened JWT validation with type checking and detailed error messages
 
 **Files Modified:**
-- `value-fabric/layer4-agents/src/api/websocket/routes.py`
+- `services/layer4-agents/src/api/websocket/routes.py`
 
 ---
 
@@ -90,9 +90,9 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 - Added tone parameter allowlist validation in generation_tools.py
 
 **Files Modified:**
-- `value-fabric/layer4-agents/src/workflows/whitespace.py`
-- `value-fabric/layer4-agents/src/tools/generation_tools.py`
-- `value-fabric/layer2-extraction/src/layer2_extraction/api/routes/extraction.py`
+- `services/layer4-agents/src/workflows/whitespace.py`
+- `services/layer4-agents/src/tools/generation_tools.py`
+- `services/layer2-extraction/src/layer2_extraction/api/routes/extraction.py`
 
 ---
 

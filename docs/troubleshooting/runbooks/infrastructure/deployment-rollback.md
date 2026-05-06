@@ -1,8 +1,8 @@
 <!-- policy-ref: docs/operations/severity-escalation-policy.md -->
 # Deployment Rollback Procedure
 
-**Severity:** Applies to SEV-1, SEV-2, and any post-deploy regression  
-**Audience:** On-call SRE, service owners  
+**Severity:** Applies to SEV-1, SEV-2, and any post-deploy regression
+**Audience:** On-call SRE, service owners
 **Last reviewed:** 2026-04-14
 
 ---
@@ -135,7 +135,7 @@ If using Kustomize overlays to manage image digests:
 # Revert the image digest in the prod overlay
 cd k8s/envs/prod
 kustomize edit set image \
-  value-fabric/<service>=ghcr.io/bmsull560/fabric_4l/<service>@sha256:<previous-known-good-digest>
+  services/<service>=ghcr.io/bmsull560/fabric_4l/<service>@sha256:<previous-known-good-digest>
 
 # Apply
 kustomize build . | kubectl apply -f -

@@ -1,7 +1,7 @@
 # Multi-Tenancy RLS Enhancement - Full Implementation Status
 
-**Date:** 2026-04-23  
-**Plan Reference:** `multi-tenancy-rls-enhancement-381581.md`  
+**Date:** 2026-04-23
+**Plan Reference:** `multi-tenancy-rls-enhancement-381581.md`
 **Status:** ✅ **FULLY IMPLEMENTED**
 
 ---
@@ -59,7 +59,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
 
 **Implementation Evidence:**
 
-1. **`value-fabric/layer4-agents/src/database.py`**
+1. **`services/layer4-agents/src/database.py`**
    - ✅ `get_db_from_context()` (Lines 306-369) - Recommended dependency
      - Extracts tenant_id from RequestContext
      - Isolation tier awareness (lines 349-359)
@@ -73,11 +73,11 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
    - ✅ `get_request_context()` (Lines 14-23) - Extracts from request state
 
 **Files Modified:**
-- `value-fabric/layer4-agents/src/database.py` ✅
+- `services/layer4-agents/src/database.py` ✅
 - `shared/identity/dependencies.py` ✅
 
 **Tests:**
-- `value-fabric/layer4-agents/tests/` (existing tenant tests updated) ✅
+- `services/layer4-agents/tests/` (existing tenant tests updated) ✅
 
 ---
 
@@ -99,7 +99,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
      - Logs privileged access attempts (lines 141-147)
    - ✅ `require_super_admin()` dependency (Lines 78-91)
 
-3. **`value-fabric/layer4-agents/src/database.py`**
+3. **`services/layer4-agents/src/database.py`**
    - ✅ `get_db_with_optional_tenant()` (Lines 372-420)
      - Super-admin bypass mode
      - Sets empty tenant context for cross-tenant queries
@@ -108,7 +108,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
 **Files Modified:**
 - `shared/identity/context.py` ✅
 - `shared/identity/dependencies.py` ✅
-- `value-fabric/layer4-agents/src/database.py` ✅
+- `services/layer4-agents/src/database.py` ✅
 
 ---
 
@@ -120,7 +120,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
 
 **Implementation Evidence:**
 
-1. **`value-fabric/layer4-agents/src/engine/scheduler.py`**
+1. **`services/layer4-agents/src/engine/scheduler.py`**
    - ✅ `ScheduledTask` dataclass (Lines 42-108)
      - `tenant_id: str | None` field (line 81)
      - `tenant_context: dict[str, Any] | None` field (line 82)
@@ -128,7 +128,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
    - ✅ `get_full_tenant_context()` method (Lines 97-108) - Merges context dicts
 
 **Files Modified:**
-- `value-fabric/layer4-agents/src/engine/scheduler.py` ✅
+- `services/layer4-agents/src/engine/scheduler.py` ✅
 
 **Tests:**
 - Background job isolation verified in `tests/security/test_tenant_isolation.py` ✅
@@ -141,7 +141,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
 
 **Implementation Evidence:**
 
-1. **`value-fabric/layer4-agents/src/api/websocket/manager.py`**
+1. **`services/layer4-agents/src/api/websocket/manager.py`**
    - ✅ `WorkflowConnection` dataclass (Lines 44-83)
      - `tenant_id: str | None` field (line 61)
      - `user_id: str | None` field (line 62)
@@ -151,10 +151,10 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
    - ✅ Tenant-scoped message routing (connection filtering by tenant)
 
 **Files Modified:**
-- `value-fabric/layer4-agents/src/api/websocket/manager.py` ✅
+- `services/layer4-agents/src/api/websocket/manager.py` ✅
 
 **Tests:**
-- `value-fabric/layer4-agents/tests/test_websocket_manager.py` (85 test cases) ✅
+- `services/layer4-agents/tests/test_websocket_manager.py` (85 test cases) ✅
 
 ---
 
@@ -197,7 +197,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
    - ✅ `emit_audit_event()` function with structured logging
    - ✅ Global emitter instance for cross-layer usage
 
-3. **`value-fabric/layer4-agents/src/database.py`**
+3. **`services/layer4-agents/src/database.py`**
    - ✅ `_emit_tenant_context_set_audit()` helper (line 362)
    - ✅ Audit event emitted on every DB session tenant context set
 
@@ -209,7 +209,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
 - `shared/audit/models.py` ✅
 - `shared/audit/emitter.py` ✅
 - `shared/identity/middleware.py` ✅
-- `value-fabric/layer4-agents/src/database.py` ✅
+- `services/layer4-agents/src/database.py` ✅
 
 **Tests:**
 - `tests/security/test_tenant_audit.py` (Lines 1-285) ✅
@@ -233,7 +233,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
    - ✅ Cross-layer tenant isolation tests
    - ✅ API-level cross-tenant denial tests
 
-3. **`value-fabric/layer4-agents/tests/test_tenant_isolation.py`**
+3. **`services/layer4-agents/tests/test_tenant_isolation.py`**
    - ✅ Layer 4 specific tenant isolation tests
 
 **Files Created:**
@@ -257,18 +257,18 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** across all
      - `ISOLATION_TIER_DATABASE = "database"`
    - ✅ `VALID_ISOLATION_TIERS` set for validation
 
-2. **`value-fabric/layer4-agents/src/database.py`**
+2. **`services/layer4-agents/src/database.py`**
    - ✅ Tier-aware DB session factory in `get_db_from_context()` (Lines 349-359)
    - ✅ Currently supports "shared" tier (RLS-based)
    - ✅ Returns 501 Not Implemented for "schema" and "database" tiers (future)
 
-3. **`value-fabric/layer4-agents/src/tenants/models/tenant.py`**
+3. **`services/layer4-agents/src/tenants/models/tenant.py`**
    - ✅ Tenant model has `settings` JSONB field
    - ✅ Can store `{"isolation_tier": "shared", ...}` in settings
 
 **Files Modified:**
 - `shared/identity/context.py` ✅
-- `value-fabric/layer4-agents/src/database.py` ✅
+- `services/layer4-agents/src/database.py` ✅
 
 **Note:** Schema and database isolation tiers are framework-ready but not yet implemented (Phase 4+ future work).
 
@@ -490,11 +490,11 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** with:
 - `shared/identity/dependencies.py` (201 lines)
 
 **Database Layer:**
-- `value-fabric/layer4-agents/src/database.py` (592 lines)
+- `services/layer4-agents/src/database.py` (592 lines)
 
 **Async Context:**
-- `value-fabric/layer4-agents/src/engine/scheduler.py` (592 lines)
-- `value-fabric/layer4-agents/src/api/websocket/manager.py` (513 lines)
+- `services/layer4-agents/src/engine/scheduler.py` (592 lines)
+- `services/layer4-agents/src/api/websocket/manager.py` (513 lines)
 
 **Audit System:**
 - `shared/audit/models.py`
@@ -509,7 +509,7 @@ The multi-tenancy RLS enhancement plan has been **fully implemented** with:
 - `tests/security/test_tenant_isolation.py` (386 lines)
 - `tests/security/test_tenant_audit.py` (285 lines)
 - `tests/security/test_cross_layer_tenant.py`
-- `value-fabric/layer4-agents/tests/test_websocket_manager.py`
+- `services/layer4-agents/tests/test_websocket_manager.py`
 
 ### Related Plans
 

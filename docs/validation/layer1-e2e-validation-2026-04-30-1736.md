@@ -1,9 +1,9 @@
 # Layer 1 End-to-End Validation Report
 
-**Date:** 2026-04-30  
-**Validation ID:** layer1-e2e-validation-2026-04-30-1736  
-**Executor:** Fabric_4L Validation Agent  
-**Environment:** Windows, Python 3.13.13, Docker Desktop UNAVAILABLE  
+**Date:** 2026-04-30
+**Validation ID:** layer1-e2e-validation-2026-04-30-1736
+**Executor:** Fabric_4L Validation Agent
+**Environment:** Windows, Python 3.13.13, Docker Desktop UNAVAILABLE
 
 ---
 
@@ -42,7 +42,7 @@ Layer 1 validation was conducted under significant infrastructure constraints. *
 
 ### 1.1 Environment Files
 - **Result:** FAIL
-- **Finding:** No `.env` or `.env.example` files exist in `value-fabric/layer1-ingestion/`
+- **Finding:** No `.env` or `.env.example` files exist in `services/layer1-ingestion/`
 - **Action Required:** Create `.env.example` with all `LAYER1_*` variables
 
 ### 1.2 Docker Availability
@@ -126,8 +126,8 @@ Layer 1 validation was conducted under significant infrastructure constraints. *
 ### Fixes Applied to Enable Unit Tests
 
 1. **Import Shadowing (CRITICAL)**
-   - **Root Cause:** `layer1-ingestion/src/shared` package shadows `value-fabric/shared` when `src` is on `sys.path`. The editable install `.pth` file and `tests/conftest.py` both add `src` to the path.
-   - **Fix:** Temporarily modified `tests/conftest.py` to disable `src_path` insertion, allowing `value-fabric/shared` to resolve correctly.
+   - **Root Cause:** `layer1-ingestion/src/shared` package shadows `packages/shared/src/value_fabric/shared` when `src` is on `sys.path`. The editable install `.pth` file and `tests/conftest.py` both add `src` to the path.
+   - **Fix:** Temporarily modified `tests/conftest.py` to disable `src_path` insertion, allowing `packages/shared/src/value_fabric/shared` to resolve correctly.
 
 2. **Missing Dependencies**
    - Installed: `defusedxml`, `respx`, `selectolax`, `pyjwt`
@@ -213,7 +213,7 @@ Layer 1 validation was conducted under significant infrastructure constraints. *
 - [x] **Missing Python packages** — `defusedxml`, `respx`, `selectolax`, `pyjwt` not in venv
 
 ### Code Issues
-- [x] **Import shadowing** — `src/shared` shadows `value-fabric/shared` on PYTHONPATH
+- [x] **Import shadowing** — `src/shared` shadows `packages/shared/src/value_fabric/shared` on PYTHONPATH
 - [x] **TypedDictModel missing imports** — `Any` not imported in 5+ files
 - [x] **Invalid Python identifiers** — Dotted names used as class attributes (e.g., `crawl.avg_duration_ms`)
 - [x] **Dataclass field order** — `execution_logger.py` has non-default after default
@@ -288,7 +288,7 @@ Layer 1 validation was conducted under significant infrastructure constraints. *
 4. **Implement or permanently stub `middleware_sync`**
 5. **Re-run full validation** on a host with working Docker:
    ```powershell
-   cd value-fabric/layer1-ingestion
+   cd services/layer1-ingestion
    docker compose up -d
    docker compose exec api alembic upgrade head
    pytest tests/ -v --tb=short

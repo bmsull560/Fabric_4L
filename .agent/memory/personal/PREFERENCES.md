@@ -30,9 +30,10 @@
   - Never bypass PostgreSQL RLS for tenant isolation
   - Never hardcode tenant IDs - use context from JWT/headers
   - Never access secrets directly - use environment variables
-  - Never modify legacy paths (frontend/, value-fabric/) unless for compatibility fixes
+  - Never modify archived legacy paths (frontend/, docs/archive/legacy-value-fabric/) unless for compatibility fixes
   - Never deploy to production without running the full test suite and smoke tests
   - Never force push to main, production, or staging branches
 - **Canonical paths**: Always use value_fabric/ for runtime Python packages, services/ for deployment, apps/web/ for frontend
+- **Frontend governance**: Read root `DESIGN.md` before modifying `apps/web/`; reuse existing components/hooks, avoid broad redesigns, and verify typecheck/lint/tests for changed UI
 - **Testing**: TDD approach - write failing test before fix, run pytest for Python, Playwright for E2E
 - **Documentation**: Follow Diátaxis framework (tutorials, how-to guides, reference, explanations)

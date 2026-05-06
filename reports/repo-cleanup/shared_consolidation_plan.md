@@ -1,7 +1,7 @@
 # Shared Package Consolidation Plan
 
-**Date:** 2026-05-02  
-**Status:** Phase 1 Complete → Execution Ready  
+**Date:** 2026-05-02
+**Status:** Phase 1 Complete → Execution Ready
 **Target:** `packages/shared/src/value_fabric/shared/`
 
 ---
@@ -10,14 +10,14 @@
 
 The repository currently has two `shared/` packages that shadow each other at runtime:
 - `shared/` (root) — 57 tracked files, 11 modules
-- `value-fabric/shared/` — 72 tracked files, 14 modules
+- `packages/shared/src/value_fabric/shared/` — 72 tracked files, 14 modules
 
 Pytest collection is **already broken** due to this shadowing:
 ```
 ModuleNotFoundError: No module named 'shared.error_handling'
 ```
 
-`shared.error_handling` exists only in `value-fabric/shared/`, but `import shared` resolves to root `shared/` in some contexts.
+`shared.error_handling` exists only in `packages/shared/src/value_fabric/shared/`, but `import shared` resolves to root `shared/` in some contexts.
 
 All 500+ imports use the bare `from shared.X` pattern; none use `from value_fabric.shared.X`.
 
@@ -25,7 +25,7 @@ All 500+ imports use the bare `from shared.X` pattern; none use `from value_fabr
 
 ## Inventory
 
-### Root-only Modules (not in value-fabric/shared/)
+### Root-only Modules (not in packages/shared/src/value_fabric/shared/)
 
 | Module | Files | Import Refs | Notes |
 |--------|-------|-------------|-------|
@@ -36,7 +36,7 @@ All 500+ imports use the bare `from shared.X` pattern; none use `from value_fabr
 | `rate_limiting` | 4 | 2 | Tenant rate limiter |
 | `tracing` | 2 | 0 | Config only (non-Python) |
 
-### value-fabric/shared/-only Modules (not in root shared/)
+### packages/shared/src/value_fabric/shared/-only Modules (not in root shared/)
 
 | Module | Files | Import Refs | Notes |
 |--------|-------|-------------|-------|
@@ -89,20 +89,20 @@ Take the **union** of all files from both locations. For files that exist in bot
 ### Module-by-Module Decisions
 
 #### audit
-- **Base:** value-fabric/shared/audit/ (has tests)
+- **Base:** packages/shared/src/value_fabric/shared/audit/ (has tests)
 - **Merge in:** `shared/audit/ledger.py` (root-only, imported)
 - **Merge `__init__.py`:** Export symbols from both versions (`AuditAction`, `AuditOutcome`, `AuditEvent`, `AuditEmitter`, `emit_audit_event`, `TenantResolvedDetails`, `TenantContextSetDetails`)
 - **Merge `emitter.py`:** Combine implementations preserving all public functions
 - **Merge `models.py`:** Combine model definitions
 
 #### identity
-- **Base:** value-fabric/shared/identity/ (comprehensive, has tests)
+- **Base:** packages/shared/src/value_fabric/shared/identity/ (comprehensive, has tests)
 - **Merge in:** `api_key_cache.py`, `dev_bypass.py`, `governance_core.py`, `session_cache.py`, `tool_contract.py` (root-only)
 - **Merge `__init__.py`:** Export superset of both versions
 - **Individual file merges:** Most files are DIFF; prefer VF version where it is a clear superset. For files with unique root-only exports, ensure they remain importable.
 
 #### models
-- **Base:** value-fabric/shared/models/ (has `__init__.py`)
+- **Base:** packages/shared/src/value_fabric/shared/models/ (has `__init__.py`)
 - **Merge `typed_dict.py`:** Combine both implementations:
   - Use `extra="allow"` (root) — callers may rely on permissive behavior
   - Add `__len__`, `KeyError` handling (VF)
@@ -115,7 +115,7 @@ Take the **union** of all files from both locations. For files that exist in bot
 - Copy all files from both locations
 
 #### security
-- **Base:** value-fabric/shared/security/ (authoritative per inline comments)
+- **Base:** packages/shared/src/value_fabric/shared/security/ (authoritative per inline comments)
 - **Merge in:** `shared/security/config.py` (root-only)
 - **Keep:** `dil_auth.py` (VF-only)
 - **Use VF `middleware.py`** (516-line authoritative version)
@@ -124,7 +124,7 @@ Take the **union** of all files from both locations. For files that exist in bot
 - **Copy as-is** from root shared/
 
 #### boundaries, error_handling, mcp_gateway, testability
-- **Copy as-is** from value-fabric/shared/
+- **Copy as-is** from packages/shared/src/value_fabric/shared/
 
 ---
 
@@ -176,7 +176,7 @@ packages/shared/
 
 ### Step 6: Remove Old Packages (after stability)
 - `git rm -r shared/`
-- `git rm -r value-fabric/shared/`
+- `git rm -r packages/shared/src/value_fabric/shared/`
 - Remove NTFS junction `value_fabric/shared`
 
 ---
@@ -200,4 +200,4 @@ packages/shared/
 - [ ] `pytest --collect-only -q` shows zero import errors (baseline: 2 errors)
 - [ ] `python scripts/ci/structural_preflight.py --strict` passes
 - [ ] All 568 `from shared.X` imports are replaced with `from value_fabric.shared.X`
-- [ ] Zero tracked files remain in `shared/` (root) or `value-fabric/shared/`
+- [ ] Zero tracked files remain in `shared/` (root) or `packages/shared/src/value_fabric/shared/`

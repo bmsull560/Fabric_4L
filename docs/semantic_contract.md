@@ -190,7 +190,7 @@ ValueCategory.CAPITAL  # Legacy, still valid
 Run semantic contract tests:
 
 ```bash
-cd value-fabric/layer2-extraction
+cd services/layer2-extraction
 pytest tests/test_ontology_alignment.py -v
 ```
 
@@ -206,9 +206,9 @@ Test coverage:
 When modifying this contract:
 
 1. **Pack Ontology Changes**: Update `packs/*/ontology.json` first
-2. **L2 Model Changes**: Update `value-fabric/layer2-extraction/src/models/`
-3. **Prompt Changes**: Update `value-fabric/layer2-extraction/src/extraction/prompts/`
-4. **L3 Schema Changes**: Update `value-fabric/layer3-knowledge/src/`
+2. **L2 Model Changes**: Update `services/layer2-extraction/src/models/`
+3. **Prompt Changes**: Update `services/layer2-extraction/src/extraction/prompts/`
+4. **L3 Schema Changes**: Update `services/layer3-knowledge/src/`
 5. **Test Updates**: Update `tests/test_ontology_alignment.py`
 6. **Documentation**: Update this file
 

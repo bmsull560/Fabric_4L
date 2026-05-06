@@ -1,3 +1,5 @@
+# Migrated from tests/security/test_sprint5_hardening.py during legacy path cleanup.
+
 """
 Sprint 5 Security Hardening — Regression Tests.
 
@@ -59,8 +61,8 @@ class TestGovernanceContextAttribute:
         )
 
     def test_dil_auth_reads_governance_context(self):
-        """value-fabric/shared/security/dil_auth.py must read governance_context."""
-        src = _read_file("value-fabric/shared/security/dil_auth.py")
+        """services/shared/security/dil_auth.py must read governance_context."""
+        src = _read_file("services/shared/security/dil_auth.py")
         assert 'getattr(request.state, "governance_context"' in src, (
             "dil_auth.py must read governance_context"
         )
@@ -68,8 +70,8 @@ class TestGovernanceContextAttribute:
     def test_l3_tests_use_governance_context(self):
         """L3 test files must reference governance_context, not the old attribute."""
         for rel in (
-            "value-fabric/layer3-knowledge/tests/test_tenant_context_extraction.py",
-            "value-fabric/layer3-knowledge/tests/test_tenant_isolation.py",
+            "services/layer3-knowledge/tests/test_tenant_context_extraction.py",
+            "services/layer3-knowledge/tests/test_tenant_isolation.py",
         ):
             src = _read_file(rel)
             occurrences = _OLD_REGEX.findall(src)
@@ -162,8 +164,8 @@ class TestPlatformContractCompliance:
     @pytest.mark.parametrize("rel_path", [
         "shared/identity/middleware.py",
         "shared/identity/dependencies.py",
-        "value-fabric/layer3-knowledge/tests/test_tenant_context_extraction.py",
-        "value-fabric/layer3-knowledge/tests/test_tenant_isolation.py",
+        "services/layer3-knowledge/tests/test_tenant_context_extraction.py",
+        "services/layer3-knowledge/tests/test_tenant_isolation.py",
     ])
     def test_no_old_request_state_pattern(self, rel_path):
         src = _read_file(rel_path)

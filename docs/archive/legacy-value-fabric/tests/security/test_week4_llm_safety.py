@@ -1,3 +1,5 @@
+# Migrated from tests/security/test_week4_llm_safety.py during legacy path cleanup.
+
 """Week 4 LLM Safety & Observability Hardening — Regression Tests.
 
 Tests for:

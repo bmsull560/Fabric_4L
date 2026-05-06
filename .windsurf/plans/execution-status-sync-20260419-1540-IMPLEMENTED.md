@@ -1,7 +1,7 @@
 # Execution Status Sync - IMPLEMENTATION COMPLETE - 2026-04-19 15:52
 
-**Generated:** 2026-04-19 15:52 UTC  
-**Scope:** Tasks 88 + 90 (L1, L2) - OpenAPI Contracts + uv Locking  
+**Generated:** 2026-04-19 15:52 UTC
+**Scope:** Tasks 88 + 90 (L1, L2) - OpenAPI Contracts + uv Locking
 **Status:** ✅ COMPLETE
 
 ---
@@ -49,12 +49,12 @@ $ pytest tests/contract/ -v
 
 **Files Modified:**
 ```
-value-fabric/layer1-ingestion/pyproject.toml          (infisicalsdk version fix)
-value-fabric/layer1-ingestion/uv.lock                 (NEW - 451KB)
-value-fabric/layer1-ingestion/Dockerfile.uv         (NEW - uv-based multi-stage)
-value-fabric/layer2-extraction/pyproject.toml        (infisicalsdk version fix)
-value-fabric/layer2-extraction/uv.lock               (NEW - 534KB)
-value-fabric/layer2-extraction/Dockerfile.uv        (NEW - uv-based multi-stage)
+services/layer1-ingestion/pyproject.toml          (infisicalsdk version fix)
+services/layer1-ingestion/uv.lock                 (NEW - 451KB)
+services/layer1-ingestion/Dockerfile.uv         (NEW - uv-based multi-stage)
+services/layer2-extraction/pyproject.toml        (infisicalsdk version fix)
+services/layer2-extraction/uv.lock               (NEW - 534KB)
+services/layer2-extraction/Dockerfile.uv        (NEW - uv-based multi-stage)
 ```
 
 **Dockerfile Pattern (uv-based):**
@@ -127,7 +127,7 @@ Available versions: 1.0.16, 1.0.15, 1.0.14...
 
 To complete Task 90 fully:
 1. Generate uv.lock for L4 Agents
-2. Generate uv.lock for L5 Ground Truth  
+2. Generate uv.lock for L5 Ground Truth
 3. Generate uv.lock for L6 Benchmarks
 4. Update remaining Dockerfiles to use uv
 5. Update CI to use `uv sync --frozen`
@@ -137,14 +137,14 @@ To complete Task 90 fully:
 ## Files Created/Modified
 
 **Created:**
-- `value-fabric/layer1-ingestion/uv.lock` (451KB)
-- `value-fabric/layer1-ingestion/Dockerfile.uv` (87 lines)
-- `value-fabric/layer2-extraction/uv.lock` (534KB)
-- `value-fabric/layer2-extraction/Dockerfile.uv` (55 lines)
+- `services/layer1-ingestion/uv.lock` (451KB)
+- `services/layer1-ingestion/Dockerfile.uv` (87 lines)
+- `services/layer2-extraction/uv.lock` (534KB)
+- `services/layer2-extraction/Dockerfile.uv` (55 lines)
 
 **Modified:**
-- `value-fabric/layer1-ingestion/pyproject.toml` (line 47: infisicalsdk version)
-- `value-fabric/layer2-extraction/pyproject.toml` (line 22: infisicalsdk version)
+- `services/layer1-ingestion/pyproject.toml` (line 47: infisicalsdk version)
+- `services/layer2-extraction/pyproject.toml` (line 22: infisicalsdk version)
 
 ---
 

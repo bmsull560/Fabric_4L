@@ -1,7 +1,7 @@
 """Re-export from top-level shared.security.dil_auth.
 
 This module exists because layer4-agents/src/shared/ shadows the top-level
-services/shared/ package when 'src' is on sys.path.
+packages/shared/src/value_fabric/shared/ package when 'src' is on sys.path.
 """
 import importlib.util
 from pathlib import Path

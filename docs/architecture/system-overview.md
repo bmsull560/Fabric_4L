@@ -92,14 +92,14 @@ Value Fabric implements **PostgreSQL Row-Level Security (RLS)** for multi-tenanc
 - Same `id` allowed across different tenants
 - Community Edition compatible (no enterprise-only features required)
 
-See [ADR-003](value-fabric/ADRs/ADR-003-postgresql-rls-multi-tenancy.md) for detailed design.
+See [ADR-003](docs/explanations/adr/ADR-009-postgresql-rls-multi-tenancy.md) for detailed design.
 
 ---
 
 ## Layer 1 — Intelligent Data Ingestion Service
 
-**Build order:** Phase 4  
-**Status:** ✅ Complete  
+**Build order:** Phase 4
+**Status:** ✅ Complete
 **Port:** 8001 (host-mapped from container port 8000)
 
 ### Purpose
@@ -155,8 +155,8 @@ Convert unstructured source materials (web pages, SEC filings, PDFs, APIs) into 
 
 ## Layer 2 — Ontology-Guided Extraction Pipeline
 
-**Build order:** Phase 1 (built first)  
-**Status:** ✅ Complete  
+**Build order:** Phase 1 (built first)
+**Status:** ✅ Complete
 **Port:** 8002
 
 ### Purpose
@@ -226,8 +226,8 @@ The `extract-and-ingest` endpoint uses `Layer3KnowledgeClient` to push RDF data 
 
 ## Layer 3 — Knowledge Graph & Semantic Layer
 
-**Build order:** Phase 2 (after Layer 2)  
-**Status:** ✅ Complete  
+**Build order:** Phase 2 (after Layer 2)
+**Status:** ✅ Complete
 **Port:** 8003
 
 ### Purpose
@@ -313,8 +313,8 @@ The `/v1/graph/subgraph` endpoint returns coherent node+edge sets for frontend v
 
 ## Layer 4 — Agentic Workflow Engine
 
-**Build order:** Phase 3 (after Layer 3)  
-**Status:** ✅ Complete  
+**Build order:** Phase 3 (after Layer 3)
+**Status:** ✅ Complete
 **Port:** 8004 (host-mapped from container port 8000)
 
 ### Purpose
@@ -324,15 +324,15 @@ Execute composable AI workflows for whitespace analysis, ROI calculation, busine
 ### Agent Workflows
 
 #### Workflow 1: Whitespace Analysis
-`IngestProspect → ExtractInsights → MapToCapabilities → IdentifyWhitespace → GeneratePlan`  
+`IngestProspect → ExtractInsights → MapToCapabilities → IdentifyWhitespace → GeneratePlan`
 **Output:** JSON account plan with whitespace opportunities, stakeholder map, entry strategy
 
 #### Workflow 2: Dynamic ROI Calculator
-Retrieves Value Tree from graph → safely evaluates formula strings (numexpr) → Monte Carlo sensitivity analysis  
+Retrieves Value Tree from graph → safely evaluates formula strings (numexpr) → Monte Carlo sensitivity analysis
 **Output:** Deterministic ROI projection + risk assessment (best/worst/expected cases)
 
 #### Workflow 3: Business Case Generator
-Auto-generates Executive Summary, Current State, Proposed Solution, Financial Analysis, Risk Mitigation, Next Steps  
+Auto-generates Executive Summary, Current State, Proposed Solution, Financial Analysis, Risk Mitigation, Next Steps
 **Formats:** Markdown, DOCX, PDF, PPTX (10–15 slides)
 
 #### Workflow 4: Provenance Audit Agent
@@ -374,7 +374,7 @@ LangGraph provides checkpointed state for long-running workflows:
 # Human-in-the-loop pause points
 ```
 
-See [ADR-004](value-fabric/ADRs/ADR-004-langgraph-workflow-orchestration.md) for workflow design.
+See [ADR-004](docs/explanations/adr/ADR-010-langgraph-workflow-orchestration.md) for workflow design.
 
 ### Acceptance Criteria
 
@@ -388,7 +388,7 @@ See [ADR-004](value-fabric/ADRs/ADR-004-langgraph-workflow-orchestration.md) for
 
 ## Layer 5 — Ground Truth
 
-**Status:** ✅ Complete  
+**Status:** ✅ Complete
 **Port:** 8005
 
 ### Purpose
@@ -455,7 +455,7 @@ Sync is best-effort — Layer 5 remains operational if Layer 3 is unavailable.
 
 ## Layer 6 — Benchmark Service
 
-**Status:** ✅ Complete  
+**Status:** ✅ Complete
 **Port:** 8006
 
 ### Purpose
@@ -677,7 +677,7 @@ Each link records: timestamp, processing version, confidence, evidence quotes.
 
 ```
 Fabric_4L/
-├── value-fabric/                    # Core platform (Layers 1–6)
+├── services/                    # Core platform (Layers 1–6)
 │   ├── layer1-ingestion/            # ✅ Intelligent Data Ingestion
 │   ├── layer2-extraction/           # ✅ Ontology-Guided Extraction
 │   ├── layer3-knowledge/            # ✅ Knowledge Graph & Semantic Layer
@@ -719,14 +719,14 @@ Fabric_4L/
 
 | ADR | Title | Status |
 |-----|-------|--------|
-| [ADR-001](value-fabric/ADRs/ADR-001-multi-layer-architecture.md) | Multi-Layer Architecture vs Monolith | Accepted |
-| [ADR-002](value-fabric/ADRs/ADR-002-neo4j-knowledge-graph.md) | Neo4j for Knowledge Graph Storage | Accepted |
-| [ADR-003](value-fabric/ADRs/ADR-003-postgresql-rls-multi-tenancy.md) | PostgreSQL RLS Multi-Tenancy | Accepted |
-| [ADR-004](value-fabric/ADRs/ADR-004-langgraph-workflow-orchestration.md) | LangGraph Workflow Orchestration | Accepted |
-| [ADR-005](value-fabric/ADRs/ADR-005-circuit-breaker-pattern.md) | Circuit Breaker Pattern | Accepted |
-| [ADR-006](value-fabric/ADRs/ADR-006-repository-pattern.md) | Repository Pattern | Accepted |
-| [ADR-007](value-fabric/ADRs/ADR-007-opentelemetry-observability.md) | OpenTelemetry Observability | Accepted |
-| [ADR-008](value-fabric/ADRs/ADR-008-jwt-api-key-authentication.md) | JWT + API Key Authentication | Accepted |
+| [ADR-001](docs/explanations/adr/ADR-007-multi-layer-architecture-vs-monolith.md) | Multi-Layer Architecture vs Monolith | Accepted |
+| [ADR-002](docs/explanations/adr/ADR-008-neo4j-knowledge-graph-storage.md) | Neo4j for Knowledge Graph Storage | Accepted |
+| [ADR-003](docs/explanations/adr/ADR-009-postgresql-rls-multi-tenancy.md) | PostgreSQL RLS Multi-Tenancy | Accepted |
+| [ADR-004](docs/explanations/adr/ADR-010-langgraph-workflow-orchestration.md) | LangGraph Workflow Orchestration | Accepted |
+| [ADR-005](docs/explanations/adr/ADR-011-circuit-breaker-pattern.md) | Circuit Breaker Pattern | Accepted |
+| [ADR-006](docs/explanations/adr/ADR-012-repository-pattern.md) | Repository Pattern | Accepted |
+| [ADR-007](docs/explanations/adr/ADR-013-opentelemetry-observability.md) | OpenTelemetry Observability | Accepted |
+| [ADR-008](docs/explanations/adr/ADR-014-jwt-api-key-hybrid-authentication.md) | JWT + API Key Authentication | Accepted |
 
 ---
 
@@ -740,5 +740,5 @@ Fabric_4L/
 
 ---
 
-*Document Version: 2.0*  
+*Document Version: 2.0*
 *Last Updated: April 26, 2026*

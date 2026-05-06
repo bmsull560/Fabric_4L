@@ -1,10 +1,10 @@
 # Task 42 Implementation Verification Report
 
-> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)
 > This document records completed verification. See [ROADMAP.md](../../ROADMAP.md) for current status and the [Archive Registry](../archive-registry.md).
 
-**Date:** 2026-04-19  
-**Plan:** task-42-vault-integration-d7ddc3.md  
+**Date:** 2026-04-19
+**Plan:** task-42-vault-integration-d7ddc3.md
 **Status:** ✅ ALL ACCEPTANCE CRITERIA MET
 
 ---
@@ -90,12 +90,12 @@ TASK_42_VERIFICATION_REPORT.md (this file)
 
 ### Modified Files (8)
 ```
-value-fabric/layer1-ingestion/src/api/main.py
-value-fabric/layer2-extraction/src/layer2_extraction/api/main.py
-value-fabric/layer3-knowledge/src/api/main.py
-value-fabric/layer4-agents/src/api/main.py
-value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/main.py
-value-fabric/shared/identity/vault_check.py (added is_vault_healthy alias)
+services/layer1-ingestion/src/api/main.py
+services/layer2-extraction/src/layer2_extraction/api/main.py
+services/layer3-knowledge/src/api/main.py
+services/layer4-agents/src/api/main.py
+services/layer5-ground-truth/src/layer5_ground_truth/api/main.py
+packages/shared/src/value_fabric/shared/identity/vault_check.py (added is_vault_healthy alias)
 k8s/external-secrets/cluster-secret-store.yaml
 docs/secrets-management.md
 ```
@@ -106,7 +106,7 @@ docs/secrets-management.md
 
 ```bash
 # 1. Verify no vault.example.com placeholder
-grep -r "vault\.example\.com" k8s/ value-fabric/ --include="*.yaml" --include="*.yml" --include="*.py" 2>/dev/null || echo "No vault.example.com found ✅"
+grep -r "vault\.example\.com" k8s/ services/ --include="*.yaml" --include="*.yml" --include="*.py" 2>/dev/null || echo "No vault.example.com found ✅"
 
 # 2. Check Vault health function exists
 python -c "from shared.identity.vault_check import is_vault_healthy, check_vault_health; print('Both imports work ✅')"

@@ -3,6 +3,6 @@
 #    pip-compile pyproject.toml --extra dev -o requirements-dev.lock
 #
 # Run the following to regenerate:
-#   cd value-fabric/layer6-benchmarks
+#   cd services/layer6-benchmarks
 #   pip install pip-tools
 #   pip-compile pyproject.toml --extra dev -o requirements-dev.lock --generate-hashes

@@ -1,7 +1,7 @@
 # Phase 1 Checkpoint Report: Inventory Complete
 
-**Date:** 2026-05-02  
-**Status:** ✅ COMPLETE - Ready for Phase 2 Review  
+**Date:** 2026-05-02
+**Status:** ✅ COMPLETE - Ready for Phase 2 Review
 
 ## Summary
 
@@ -44,7 +44,7 @@ Fabric_4L/
 ├── _ui-prototype/            [EXISTS - 133 items] → prototypes/ui/
 ├── shared/                   [EXISTS - 134 items] → packages/shared/
 ├── sdk/                      [EXISTS - 77 items] → packages/sdk/
-├── value-fabric/             [EXISTS - 95,416 items] → services/
+├── services/             [EXISTS - 95,416 items] → services/
 ├── value_fabric/             [EXISTS - 2 items] → DELETE (junctions)
 ├── eslint-plugin-fabric-contracts/ → packages/eslint-plugin/
 ├── _value-packs/             [EXISTS - 129 items]
@@ -92,14 +92,14 @@ Fabric_4L/
 ├── apps/
 │   └── web/                    # From frontend/client/
 ├── services/
-│   ├── layer1-ingestion/       # From value-fabric/layer1-ingestion/
-│   ├── layer2-extraction/      # From value-fabric/layer2-extraction/
-│   ├── layer3-knowledge/       # From value-fabric/layer3-knowledge/
-│   ├── layer4-agents/          # From value-fabric/layer4-agents/
-│   ├── layer5-ground-truth/    # From value-fabric/layer5-ground-truth/
-│   └── layer6-benchmarks/      # From value-fabric/layer6-benchmarks/
+│   ├── layer1-ingestion/       # From services/layer1-ingestion/
+│   ├── layer2-extraction/      # From services/layer2-extraction/
+│   ├── layer3-knowledge/       # From services/layer3-knowledge/
+│   ├── layer4-agents/          # From services/layer4-agents/
+│   ├── layer5-ground-truth/    # From services/layer5-ground-truth/
+│   └── layer6-benchmarks/      # From services/layer6-benchmarks/
 ├── packages/
-│   ├── shared/                 # From shared/ + value-fabric/shared/
+│   ├── shared/                 # From shared/ + packages/shared/src/value_fabric/shared/
 │   ├── config/                 # Keep existing
 │   ├── platform-contract/      # Keep existing
 │   ├── eslint-plugin/          # From eslint-plugin-fabric-contracts/
@@ -132,7 +132,7 @@ Fabric_4L/
 
 | Risk | Move | Concerns |
 |------|------|----------|
-| **CRITICAL** | `value-fabric/` → `services/` | .env files, imports, migrations, Docker |
+| **CRITICAL** | `services/` → `services/` | .env files, imports, migrations, Docker |
 | **HIGH** | `value_fabric/` deletion | Junction removal may break imports |
 | **HIGH** | `shared/` → `packages/shared/` | Identity, auth, security modules critical |
 | **MEDIUM-HIGH** | `frontend/client/` → `apps/web/` | Build config, imports, workspace refs |
