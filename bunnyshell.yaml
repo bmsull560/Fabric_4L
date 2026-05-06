@@ -11,7 +11,7 @@ components:
         dockerCompose:
             build:
                 context: .
-                dockerfile: ./apps/web/Dockerfile.dev
+                dockerfile: ./apps/web/Dockerfile
             environment:
                 PLAYWRIGHT_LIVE_MODE: 'true'
                 VITE_API_BASE: /api/v1
@@ -29,13 +29,13 @@ components:
                     - CMD
                     - node
                     - '-e'
-                    - 'require(''http'').get(''http://127.0.0.1:3001'', (res) => process.exit(res.statusCode < 500 ? 0 : 1)).on(''error'', () => process.exit(1))'
+                    - 'require(''http'').get(''http://127.0.0.1:3000'', (res) => process.exit(res.statusCode < 500 ? 0 : 1)).on(''error'', () => process.exit(1))'
                 timeout: 5s
                 interval: 15s
                 retries: 10
                 start_period: 20s
             ports:
-                - '3001:3001'
+                - '3000:3000'
             deploy:
                 resources:
                     limits:
@@ -45,7 +45,7 @@ components:
             -
                 hostname: 'frontend-{{ env.base_domain }}'
                 path: /
-                servicePort: 3001
+                servicePort: 3000
     -
         kind: Application
         name: layer1
@@ -167,8 +167,8 @@ components:
         gitApplicationPath: services/layer3-knowledge
         dockerCompose:
             build:
-                context: ./services/layer3-knowledge
-                dockerfile: ./Dockerfile
+                context: .
+                dockerfile: ./services/layer3-knowledge/Dockerfile
                 args:
                     CACHEBUST: ${CACHEBUST}
             environment:
@@ -328,6 +328,8 @@ components:
             build:
                 context: .
                 dockerfile: ./services/layer6-benchmarks/Dockerfile
+                args:
+                    CACHEBUST: ${CACHEBUST}
             environment:
                 ENVIRONMENT: development
                 LOG_LEVEL: info
