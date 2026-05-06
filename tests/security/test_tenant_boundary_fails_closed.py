@@ -30,7 +30,7 @@ USER_TEST = "test-user"
 
 # The deprecated root `shared/` package may already be cached in
 # `sys.modules` (imported by earlier-collected tests).  Evict it
-# temporarily so the canonical `value-fabric/shared/` package is found.
+# temporarily so the canonical `services/shared/` package is found.
 _existing_shared_modules = {
     name: mod for name, mod in sys.modules.items()
     if name == "shared" or name.startswith("shared.")

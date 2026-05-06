@@ -35,16 +35,16 @@ import pytest
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _L4_ROUTES_DIR = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "api" / "routes"
 )
 _L4_TENANT_ROUTES_DIR = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tenants" / "api" / "routes"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "tenants" / "api" / "routes"
 )
 _L4_FEATURE_FLAGS_DIR = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "feature_flags" / "api"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "feature_flags" / "api"
 )
 _L4_REGISTRY_DIR = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "registry" / "api"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "registry" / "api"
 )
 
 _ALL_ROUTE_DIRS = [
@@ -173,7 +173,7 @@ def _load_context_module():
     import importlib.util
     import types
 
-    identity_dir = _PROJECT_ROOT / "value-fabric" / "shared" / "identity"
+    identity_dir = _PROJECT_ROOT / "services" / "shared" / "identity"
 
     # Create a minimal package so relative imports work
     pkg = types.ModuleType("identity")
@@ -261,7 +261,7 @@ class TestNoDeprecatedGetDb:
         This is a unit test of the dependency function itself.
         """
         # Read the source to verify the guard clause exists
-        db_module = _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "database.py"
+        db_module = _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "database.py"
         source = db_module.read_text()
 
         # The function must check for missing context/tenant_id
@@ -323,7 +323,7 @@ class TestGovernanceMiddlewareContextReset:
     def test_dispatch_resets_context_at_start(self):
         """Verify the dispatch method sets context to None before resolution."""
         middleware_file = (
-            _PROJECT_ROOT / "value-fabric" / "shared" / "identity" / "middleware.py"
+            _PROJECT_ROOT / "services" / "shared" / "identity" / "middleware.py"
         )
         source = middleware_file.read_text()
 
@@ -348,7 +348,7 @@ class TestGovernanceMiddlewareContextReset:
         cleaned up to prevent leakage to the next request.
         """
         middleware_file = (
-            _PROJECT_ROOT / "value-fabric" / "shared" / "identity" / "middleware.py"
+            _PROJECT_ROOT / "services" / "shared" / "identity" / "middleware.py"
         )
         source = middleware_file.read_text()
 

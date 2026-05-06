@@ -16,7 +16,7 @@ import pytest
 import respx
 
 # Add layer2-extraction to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "value-fabric", "layer2-extraction", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "services", "layer2-extraction", "src"))
 
 from layer2_extraction.integration.model_registry_client import (
     CachedModel,

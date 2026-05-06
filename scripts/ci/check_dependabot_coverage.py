@@ -25,7 +25,7 @@ except ImportError:
 # Directories to exclude from discovery.
 #
 # Add a directory here when it intentionally has no Dependabot entry:
-#   - Legacy/obsolete roots (value-fabric, frontend) — moved to services/ and apps/
+#   - Legacy/obsolete roots (services, frontend) — canonical structure
 #   - Test fixture files (tests/) — requirements.txt there is a test helper,
 #     not a deployable package; its deps are covered by the service entries
 #   - Generated/tooling dirs — devcontainer, prototypes, archive
@@ -39,7 +39,7 @@ EXCLUDE_DIRS = frozenset(
         "__pycache__",
         ".mypy_cache",
         ".pytest_cache",
-        # Legacy / obsolete roots — moved to services/ and apps/
+        # Legacy / obsolete roots — canonical structure
         "value-fabric",
         "frontend",
         "archive",

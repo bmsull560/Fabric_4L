@@ -118,7 +118,7 @@ def _get_conversation_service():
         from ..agents.taxonomy import ConversationAgent
 
         conversation_agent = ConversationAgent(
-            config={"manifest_path": "value-fabric/layer4-agents/manifests/conversation_agent.abom.json"},
+            config={"manifest_path": "services/layer4-agents/manifests/conversation_agent.abom.json"},
         )
     except Exception:
         logger.info("ConversationAgent not available — using heuristic mode")
@@ -127,7 +127,7 @@ def _get_conversation_service():
         from ..agents.taxonomy import OrchestrationController
 
         orchestration_controller = OrchestrationController(
-            config={"manifest_path": "value-fabric/layer4-agents/manifests/orchestration_controller.abom.json"},
+            config={"manifest_path": "services/layer4-agents/manifests/orchestration_controller.abom.json"},
         )
     except Exception:
         logger.info("OrchestrationController not available — no workflow delegation")

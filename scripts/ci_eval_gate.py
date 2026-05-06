@@ -44,7 +44,7 @@ async def main() -> int:
     import os
 
     # Ensure layer4-agents src is on path
-    layer4_src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "value-fabric", "layer4-agents")
+    layer4_src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "services", "layer4-agents")
     if layer4_src not in sys.path:
         sys.path.insert(0, layer4_src)
 

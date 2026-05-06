@@ -8,7 +8,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 # Add paths so imports match Docker layout:
-# - shared.* -> value-fabric/shared
+# - shared.* -> services/shared
 # - src.*    -> layer1-ingestion/src (when layer1-ingestion is on path)
 layer1_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 value_fabric_root = os.path.abspath(os.path.join(layer1_root, '..'))

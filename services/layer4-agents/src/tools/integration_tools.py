@@ -541,7 +541,7 @@ class ExportToCRMTool(BaseTool):
             url = "https://api.hubapi.com/files/v3/files"
             payload = {
                 "fileName": input_data.entity_data.get("filename", "document.pdf"),
-                "folderPath": "/value-fabric-exports",
+                "folderPath": "/services-exports",
             }
 
         response = await client.post(url, json=payload)

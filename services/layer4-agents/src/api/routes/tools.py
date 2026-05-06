@@ -205,7 +205,7 @@ async def invoke_tool(
         assert AgentBillOfMaterials is not None
         assert ToolGateway is not None
         abom = AgentBillOfMaterials.from_manifest_dir(
-            manifest_dir="value-fabric/layer4-agents/manifests",
+            manifest_dir="services/layer4-agents/manifests",
             agent_type="ConversationAgent",  # API routes act on behalf of ValuePilot
         )
         gateway = ToolGateway(
@@ -352,7 +352,7 @@ async def export_document_tool(
         assert AgentBillOfMaterials is not None
         assert ToolGateway is not None
         abom = AgentBillOfMaterials.from_manifest_dir(
-            manifest_dir="value-fabric/layer4-agents/manifests",
+            manifest_dir="services/layer4-agents/manifests",
             agent_type="NarrativeAgent",  # Export is owned by NarrativeAgent
         )
         gateway = ToolGateway(

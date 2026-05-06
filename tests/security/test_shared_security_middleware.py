@@ -62,18 +62,18 @@ class TestMiddlewareImportPath:
     """Guard against importing the wrong shared/security/middleware.py."""
 
     def test_authoritative_middleware_is_imported(self):
-        """Layer 2+ tests must resolve to value-fabric/shared/security/middleware.py.
+        """Layer 2+ tests must resolve to services/shared/security/middleware.py.
 
-        There are two 'shared' packages in this repo (root and value-fabric/).
+        There are two 'shared' packages in this repo (root and services/).
         This test fails if pytest resolves the root one, preventing silent
         regression when the wrong file is patched.
         """
         import value_fabric.shared.security.middleware as _middleware
 
-        assert "value-fabric/shared/security/middleware.py" in _middleware.__file__.replace(
+        assert "services/shared/security/middleware.py" in _middleware.__file__.replace(
             "\\", "/"
         ), (
-            f"Expected value-fabric/shared/security/middleware.py, got {_middleware.__file__}"
+            f"Expected services/shared/security/middleware.py, got {_middleware.__file__}"
         )
 
 

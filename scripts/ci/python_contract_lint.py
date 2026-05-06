@@ -121,7 +121,7 @@ REGEX_CHECKS: tuple[RegexCheck, ...] = tuple(
 )
 
 SCAN_GLOBS = (
-    "value-fabric/**/*.py",
+    "services/**/*.py",
     "shared/**/*.py",
     "tests/**/*.py",
 )
@@ -258,7 +258,7 @@ def _within_scan_scope(path: Path, repo_root: Path) -> bool:
         rel = path.relative_to(repo_root).as_posix()
     except ValueError:
         return False
-    return rel.startswith(("value-fabric/", "shared/", "tests/"))
+    return rel.startswith(("services/", "shared/", "tests/"))
 
 
 def _changed_python_files(repo_root: Path) -> list[Path]:

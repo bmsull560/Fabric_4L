@@ -113,11 +113,12 @@ def check_secret_file_risk(repo_root: Path, include_ignored: bool) -> list[Findi
 
 
 def check_import_namespace_mismatch(repo_root: Path) -> list[Finding]:
-    """Detect value_fabric vs value-fabric divergence."""
+    """Detect value_fabric vs services divergence."""
     findings = []
 
     hyphen_dir = repo_root / "value-fabric"
     underscore_dir = repo_root / "value_fabric"
+    services_dir = repo_root / "services"
 
     # Check what tests expect
     test_imports = []
@@ -153,7 +154,7 @@ def check_import_namespace_mismatch(repo_root: Path) -> list[Finding]:
                     path="value_fabric/__init__.py",
                     finding_type="empty_compatibility_package",
                     message="value_fabric/__init__.py is empty - needs forwarding imports",
-                    recommendation="Add explicit imports to forward to value-fabric modules",
+                    recommendation="Add explicit imports to forward to services modules",
                 ))
 
     # Test actual import
@@ -175,20 +176,20 @@ def check_import_namespace_mismatch(repo_root: Path) -> list[Finding]:
 
 
 def check_namespace_shadowing(repo_root: Path) -> list[Finding]:
-    """Detect root shared/ shadowing value-fabric/shared/."""
+    """Detect root shared/ shadowing services/shared/."""
     findings = []
 
     root_shared = repo_root / "shared"
-    vf_shared = repo_root / "value-fabric" / "shared"
+    services_shared = repo_root / "services" / "shared"
 
-    if root_shared.exists() and vf_shared.exists():
+    if root_shared.exists() and services_shared.exists():
         findings.append(Finding(
             check_id="namespace_shadowing",
             severity="high",
             path="shared/",
             finding_type="duplicate_shared_packages",
-            message="Both root shared/ and value-fabric/shared/ exist",
-            recommendation="Merge root shared/ into value-fabric/shared/ or remove root shared/",
+            message="Both root shared/ and services/shared/ exist",
+            recommendation="Merge root shared/ into services/shared/ or remove root shared/",
         ))
 
     # Test where 'import shared' resolves
@@ -198,14 +199,14 @@ def check_namespace_shadowing(repo_root: Path) -> list[Finding]:
     )
     if exit_code == 0:
         resolved_path = stdout.strip()
-        if "value-fabric" not in resolved_path and "value_fabric" not in resolved_path:
+        if "services" not in resolved_path and "value_fabric" not in resolved_path:
             findings.append(Finding(
                 check_id="namespace_shadowing",
                 severity="medium",
                 path="shared/",
                 finding_type="shared_resolves_to_root",
                 message=f"import shared resolves to: {resolved_path}",
-                recommendation="Ensure shared resolves to canonical location in value-fabric/",
+                recommendation="Ensure shared resolves to canonical location in services/",
             ))
 
     return findings

@@ -27,19 +27,19 @@ import pytest
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _ANALYSIS_ROUTES = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes" / "analysis.py"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "api" / "routes" / "analysis.py"
 )
 
 _EXPORT_PROVENANCE = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "services" / "export_provenance.py"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "services" / "export_provenance.py"
 )
 
 _EXPORT_STORAGE = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "services" / "export_storage.py"
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "services" / "export_storage.py"
 )
 
-_DOCUMENT_EXPORT_TOOL = (
-    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tools" / "document_export.py"
+_DOCUMENT_EXPORT = (
+    _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "tools" / "document_export.py"
 )
 
 

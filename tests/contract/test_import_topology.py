@@ -111,7 +111,7 @@ class TestImportTopology:
         )
 
     def test_no_root_shared_shadowing(self):
-        """Root shared/ should not shadow value-fabric/shared/."""
+        """Root shared/ should not shadow services/shared/."""
         import value_fabric.shared
 
         shared_file = Path(value_fabric.shared.__file__)

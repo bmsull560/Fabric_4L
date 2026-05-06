@@ -13,7 +13,7 @@ rules:
     trigger:
       type: content_scan
       files:
-        - "value-fabric/layer*/**/*.py"
+        - "services/layer*/**/*.py"
         - "frontend/**/*.ts"
         - "frontend/**/*.tsx"
       patterns:
@@ -55,7 +55,7 @@ rules:
     trigger:
       type: missing_dependency
       files:
-        - "value-fabric/layer*/src/api/**/*.py"
+        - "services/layer*/src/api/**/*.py"
       required_dependency: "require_authenticated"
       required_import: "shared.identity.dependencies"
       exemptions:
@@ -144,7 +144,7 @@ rules:
     trigger:
       type: content_scan
       files:
-        - "value-fabric/layer*/src/**/*.py"
+        - "services/layer*/src/**/*.py"
         - "shared/**/*.py"
         - "k8s/**/*.yaml"
         - "k8s/**/*.yml"
@@ -168,7 +168,7 @@ rules:
     trigger:
       type: missing_middleware
       files:
-        - "value-fabric/layer*/src/api/**/*.py"
+        - "services/layer*/src/api/**/*.py"
       required_middleware:
         - "TenantRateLimitMiddleware"
         - "RedisRateLimiter"

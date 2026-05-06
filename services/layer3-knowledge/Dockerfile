@@ -14,7 +14,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH=/app \
     UVICORN_CMD="uvicorn src.api.main:app --host 0.0.0.0 --port 8001"
 COPY src/ ./src/
-# COPY ../../value_fabric/ ./value_fabric/  # Disabled: value_fabric mounted via compose volume
+COPY value_fabric/ ./value_fabric/
 RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 USER appuser
 EXPOSE 8001

@@ -46,7 +46,7 @@ jobs:
       - name: Verify SecurityMiddleware is configured
         run: |
           # Check that all main.py files have SecurityConfig
-          for f in value-fabric/*/src/api/main.py value-fabric/*/src/*/api/main.py; do
+          for f in services/*/src/api/main.py services/*/src/*/api/main.py; do
             if [ -f "$f" ]; then
               if ! grep -q "SecurityConfig" "$f"; then
                 echo "WARNING: $f may be missing SecurityConfig"

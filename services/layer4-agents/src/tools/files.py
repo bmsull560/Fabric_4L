@@ -10,7 +10,7 @@ from value_fabric.shared.identity.context import RequestContext, require_context
 logger = logging.getLogger(__name__)
 
 # Base directory for tenant file storage (configured via env var)
-TENANT_STORAGE_ROOT = Path(os.getenv("TENANT_STORAGE_PATH", "/var/lib/value-fabric/tenant-files"))
+TENANT_STORAGE_ROOT = Path(os.getenv("TENANT_STORAGE_PATH", "/var/lib/services/tenant-files"))
 
 
 def _get_tenant_id() -> str:

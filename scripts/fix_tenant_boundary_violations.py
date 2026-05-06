@@ -171,7 +171,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fix tenant boundary violations")
     parser.add_argument("--dry-run", action="store_true", help="Show what would change without applying")
     parser.add_argument("--apply", action="store_true", help="Apply fixes to files")
-    parser.add_argument("--root", default="value-fabric", help="Root directory to scan")
+    parser.add_argument("--root", default="services", help="Root directory to scan")
     args = parser.parse_args()
     
     root_path = Path(args.root)

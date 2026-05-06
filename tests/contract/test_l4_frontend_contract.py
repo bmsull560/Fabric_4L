@@ -48,8 +48,8 @@ from .schema_assertions import SchemaValidationError, assert_matches_schema
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OPENAPI_L3_PATH = REPO_ROOT / "contracts" / "openapi" / "layer3-knowledge.json"
 OPENAPI_L4_PATH = REPO_ROOT / "contracts" / "openapi" / "layer4-agents.json"
-L3_MAIN_PATH = REPO_ROOT / "value-fabric" / "layer3-knowledge" / "src" / "api" / "main.py"
-L4_WORKFLOWS_PATH = REPO_ROOT / "value-fabric" / "layer4-agents" / "src" / "api" / "routes" / "workflows.py"
+L3_MAIN_PATH = REPO_ROOT / "services" / "layer3-knowledge" / "src" / "api" / "main.py"
+L4_WORKFLOWS_PATH = REPO_ROOT / "services" / "layer4-agents" / "src" / "api" / "routes" / "workflows.py"
 
 HTTP_DECORATORS = {"get", "post", "put", "delete", "patch"}
 

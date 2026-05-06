@@ -142,8 +142,8 @@ services:
       - LAYER1_API_URL=http://layer4:8000
       - LAYER2_API_URL=http://layer4:8000
       - LAYER3_API_URL=http://layer4:8000
-      - LAYER5_GROUND_TRUTH_URL=http://layer4:8000
-      - LAYER6_BENCHMARKS_URL=http://layer4:8000
+      - LAYER5_API_URL=http://layer4:8000
+      - LAYER6_API_URL=http://layer4:8000
       # Logging
       - LOG_LEVEL=debug
       - PYTHONPATH=/app

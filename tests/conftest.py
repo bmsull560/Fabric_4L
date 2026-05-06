@@ -124,7 +124,7 @@ JWT_ROLES_CLAIM = os.getenv("JWT_ROLES_CLAIM", "roles")
 
 
 # ---------------------------------------------------------------------------
-# Ensure value-fabric packages are importable
+# Ensure services packages are importable
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _PATHS_TO_ADD = [

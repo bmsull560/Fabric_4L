@@ -12,7 +12,7 @@ try:
 except ImportError as e:
     raise RuntimeError(
         "shared.audit package is required for audit functionality. "
-        "Install the shared package or set PYTHONPATH to include value-fabric/shared"
+        "Install the shared package or set PYTHONPATH to include services/shared"
     ) from e
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

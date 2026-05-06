@@ -172,11 +172,11 @@ def main():
         print(f"   Output: {output_path}")
         
         try:
-            # Change to value-fabric directory for proper imports
+            # Change to services directory for proper imports
             import os
             original_dir = os.getcwd()
             
-            layer_dir = Path(f"value-fabric/{layer}")
+            layer_dir = Path(f"services/layer{layer.replace('layer', '')}")
             if layer_dir.exists():
                 os.chdir(layer_dir)
                 sys.path.insert(0, str(Path("src").absolute()))

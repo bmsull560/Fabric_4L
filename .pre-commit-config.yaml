@@ -84,7 +84,7 @@ repos:
           - types-PyYAML
           - types-python-dateutil
           - pydantic
-        files: ^value-fabric/.+\.py$
+        files: ^services/.+\.py$
         exclude: ^(migrations/|tests/|\.venv/|venv/|__pycache__/)
         args:
           - --strict
@@ -192,7 +192,7 @@ repos:
         name: Check for OpenAPI/Schema drift
         entry: python scripts/check_contract_drift.py
         language: system
-        files: ^(contracts/|value-fabric/.+/api/)
+        files: ^(contracts/|services/.+/api/)
         pass_filenames: false
         always_run: true
 

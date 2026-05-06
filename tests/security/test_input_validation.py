@@ -31,9 +31,9 @@ except ImportError:
 
 
 _repo_root = Path(__file__).resolve().parents[2]
-_value_fabric_path = str(_repo_root / "value-fabric")
-if _value_fabric_path not in sys.path:
-    sys.path.insert(0, _value_fabric_path)
+_services_path = str(_repo_root / "services")
+if _services_path not in sys.path:
+    sys.path.insert(0, _services_path)
     _PATH_ADDED = True
 else:
     _PATH_ADDED = False
@@ -41,8 +41,8 @@ else:
 try:
     from value_fabric.shared.security import SecurityConfig, add_security_middleware
 finally:
-    if _PATH_ADDED and _value_fabric_path in sys.path:
-        sys.path.remove(_value_fabric_path)
+    if _PATH_ADDED and _services_path in sys.path:
+        sys.path.remove(_services_path)
 
 
 class TestPayloadSizeLimits:

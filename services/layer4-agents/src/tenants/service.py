@@ -38,7 +38,7 @@ try:
 except ImportError as e:
     raise RuntimeError(
         "shared.identity package is required for tenant management. "
-        "Install the shared package or set PYTHONPATH to include value-fabric/shared"
+        "Install the shared package or set PYTHONPATH to include services/shared"
     ) from e
 from typing import Any
 

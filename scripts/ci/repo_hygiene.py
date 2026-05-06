@@ -182,24 +182,12 @@ def scan_workflows(repo_root: Path, manifest: dict[str, Any]) -> list[Violation]
                     if is_allowed_reference(line, obs_item):
                         continue
 
-                    # Match literal prefix (e.g., "frontend/" or "value-fabric/")
+                    # Match literal prefix (e.g., "frontend/" or "services/")
                     if candidate.startswith(obs_prefix) or candidate == obs_name:
                         severity = obs_item.get("severity", "error")
-                        # Warnings for value-fabric in specific allowed contexts
+                        # value-fabric is now legacy - all references should be errors
                         if obs_name == "value-fabric":
-                            # Allow docker-compose.yml references temporarily
-                            if "docker-compose" in candidate or "docker compose" in line:
-                                continue
-                            # Allow ADR/doc references
-                            if "/ADRs/" in candidate or "/docs/" in candidate:
-                                continue
-                            # Allow test references inside value-fabric/tests (temporary)
-                            if "/tests/" in candidate:
-                                continue
-                            # Allow scripts references
-                            if "/scripts/" in candidate:
-                                continue
-                            # Disallow docker build contexts, eslint working dirs, etc.
+                            # No exceptions - value-fabric is being deleted
                             disallowed = obs_item.get("disallowed_in", [])
                             if "docker_build_contexts" in disallowed:
                                 if "context" in line.lower() or "dockerfile" in line.lower():

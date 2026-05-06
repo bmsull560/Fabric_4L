@@ -9,7 +9,7 @@ Usage:
     python scripts/push_secrets_to_infisical.py [OPTIONS]
 
 Options:
-    --env-file PATH          Path to .env file  [default: value-fabric/.env]
+    --env-file PATH          Path to .env file  [default: services/layer4-agents/.env]
     --environment NAME       Infisical environment slug  [default: Development]
     --dry-run                Print what would be pushed; make no API calls
     --include-empty          Also push secrets whose value is blank
@@ -41,7 +41,7 @@ from typing import NamedTuple
 # ---------------------------------------------------------------------------
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_ENV_FILE = REPO_ROOT / "value-fabric" / ".env"
+DEFAULT_ENV_FILE = REPO_ROOT / "services" / "layer4-agents" / ".env"
 INFISICAL_HOST_DEFAULT = "https://app.infisical.com"
 
 # Placeholder values that should not be pushed

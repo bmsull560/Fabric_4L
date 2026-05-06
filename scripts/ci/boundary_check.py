@@ -101,9 +101,9 @@ def find_violations_in_file(filepath: Path) -> list[dict]:
 
 def main():
     """Run boundary check and exit with appropriate code."""
-    root = Path("value-fabric")
+    root = Path("services")
     if not root.exists():
-        print("Error: value-fabric directory not found")
+        print("Error: services directory not found")
         sys.exit(1)
     
     print("=" * 60)

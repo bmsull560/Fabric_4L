@@ -19,8 +19,8 @@ rules:
         - "frontend/**/*.ts"
         - "frontend/**/*.tsx"
       forbidden_imports:
-        - "value-fabric/layer*"
-        - "value-fabric/shared/**"
+        - "services/layer*"
+        - "services/shared/**"
         - "shared/**"
       # Allow frontend's local shared/ alias
       allowed_imports:
@@ -45,10 +45,10 @@ rules:
     trigger:
       type: import_violation
       files:
-        - "value-fabric/layer*/**/*.py"
+        - "services/layer*/**/*.py"
       exemptions:
         - "tests/**/*.py"
-        - "value-fabric/layer*/tests/**/*.py"
+        - "services/layer*/tests/**/*.py"
       allowed_patterns:
         - "layer1": ["shared"]
         - "layer2": ["layer1", "shared"]
@@ -74,7 +74,7 @@ rules:
       type: import_violation
       files:
         - "shared/identity/**/*.py"
-        - "value-fabric/shared/identity/**/*.py"
+        - "services/shared/identity/**/*.py"
       forbidden_imports:
         - "layer*"
         - "value_fabric.layer*"

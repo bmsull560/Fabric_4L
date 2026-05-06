@@ -14,8 +14,8 @@ from .schema_assertions import assert_matches_schema
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OPENAPI_L3_PATH = REPO_ROOT / "contracts" / "openapi" / "layer3-knowledge.json"
 ENTITY_SCHEMA_PATH = REPO_ROOT / "contracts" / "jsonschema" / "entity.json"
-L2_CLIENT_PATH = REPO_ROOT / "value-fabric" / "layer2-extraction" / "src" / "layer2_extraction" / "integration" / "layer3_client.py"
-L3_API_MAIN_PATH = REPO_ROOT / "value-fabric" / "layer3-knowledge" / "src" / "api" / "main.py"
+L2_CLIENT_PATH = REPO_ROOT / "services" / "layer2-extraction" / "src" / "layer2_extraction" / "integration" / "layer3_client.py"
+L3_API_MAIN_PATH = REPO_ROOT / "services" / "layer3-knowledge" / "src" / "api" / "main.py"
 
 HTTP_DECORATORS = {"get", "post", "put", "delete", "patch"}
 
