@@ -400,3 +400,101 @@ class TestTaskSchedulerCallbacks:
         scheduler.set_callbacks(on_complete=None, on_fail=None)
         assert scheduler._on_task_complete is None
         assert scheduler._on_task_fail is None
+
+
+# ============================================================================
+# OSS-0 Characterization
+# ============================================================================
+
+class TestOSS0SchedulerCharacterization:
+    """Behavior that future TaskExecutionPort adapters must preserve."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_retry_preserves_tenant_context_and_parameters(self):
+        """Retry scheduling keeps tenant metadata and handler parameters intact."""
+
+        scheduler = TaskScheduler()
+        task = ScheduledTask(
+            priority=TaskPriority.HIGH.value,
+            scheduled_time=datetime.now(UTC),
+            task_id="retry-source",
+            workflow_instance_id="wf-retry",
+            capability="capability",
+            agent_type="Agent",
+            context={"request_id": "req-1", "tenant_id": "tenant-context"},
+            parameters={"payload": "same"},
+            retry_count=0,
+            max_retries=2,
+            tenant_id="tenant-explicit",
+            tenant_context={"role": "analyst"},
+        )
+
+        await scheduler._handle_retry(task)
+        pending = await scheduler.list_pending_tasks()
+
+        assert len(pending) == 1
+        retry = pending[0]
+        assert retry["task_id"] == "retry-source_retry_1"
+        assert retry["workflow_instance_id"] == "wf-retry"
+        assert retry["tenant_id"] == "tenant-explicit"
+        assert retry["retry_count"] == 1
+        assert retry["max_retries"] == 2
+
+        queued_task = scheduler._task_queue[0][2]
+        assert queued_task.context == {"request_id": "req-1", "tenant_id": "tenant-context"}
+        assert queued_task.parameters == {"payload": "same"}
+        assert queued_task.tenant_context == {"role": "analyst"}
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_handler_result_wrapper_shape_is_stable(self):
+        """Handlers return the canonical task/capability/status/result wrapper."""
+
+        scheduler = TaskScheduler()
+        task = _make_task(task_id="handler-result", capability="analysis")
+
+        async def handler(received_task: ScheduledTask) -> dict[str, str]:
+            assert received_task is task
+            return {"value": "ok"}
+
+        scheduler.register_handler("analysis", handler)
+
+        result = await scheduler._run_task_handler(task)
+        assert result.model_dump() == {
+            "task_id": "handler-result",
+            "capability": "analysis",
+            "status": "completed",
+            "result": {"value": "ok"},
+        }
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_task_to_dict_preserves_operational_schema(self):
+        """Task status dictionaries expose stable keys for routes and diagnostics."""
+
+        scheduler = TaskScheduler(max_concurrent_tasks=3)
+        task = _make_task(task_id="schema-task", capability="schema_cap")
+        task.result = {"done": True}
+        task.error = None
+
+        serialized = scheduler._task_to_dict(task)
+
+        assert set(serialized) == {
+            "task_id",
+            "workflow_instance_id",
+            "capability",
+            "agent_type",
+            "priority",
+            "status",
+            "scheduled_time",
+            "started_at",
+            "completed_at",
+            "retry_count",
+            "max_retries",
+            "result",
+            "error",
+            "tenant_id",
+        }
+        assert serialized["tenant_id"] == "tenant-abc"
+        assert serialized["result"] == {"done": True}

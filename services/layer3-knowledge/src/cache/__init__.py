@@ -1,5 +1,6 @@
 """Cache package initialization."""
 
+from .ports import CachePort, LegacyCacheAdapter, as_cache_port
 from .redis_cache import (
     CacheConfig,
     CacheKey,
@@ -15,9 +16,12 @@ from .redis_cache import (
 __all__ = [
     "CacheConfig",
     "CacheKey",
+    "CachePort",
     "RedisCache",
     "CacheManager",
+    "LegacyCacheAdapter",
     "RequestDeduplicator",
+    "as_cache_port",
     "get_cache_manager",
     "get_request_deduplicator",
     "initialize_cache",
