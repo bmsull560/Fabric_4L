@@ -25,7 +25,7 @@ RUN uv pip install "email-validator>=2.1.0"
 
 # Copy source code (separate layer for better caching)
 COPY src/ ./src/
-COPY value_fabric/ ./value_fabric/
+COPY ../../value_fabric/ ./value_fabric/
 
 # Stage 2: Runtime - minimal image with only runtime libraries
 FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
