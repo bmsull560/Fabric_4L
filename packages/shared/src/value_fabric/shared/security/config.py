@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 from pydantic import BaseModel, Field
 
@@ -37,6 +37,8 @@ _DEFAULT_DATABASE_NAMES = frozenset({"postgres", "admin", "test", "db", "databas
 
 # Localhost hostnames that must not be used in production
 _LOCALHOST_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
+_APPROVED_DATABASE_SSL_MODES = frozenset({"require", "verify-ca", "verify-full"})
+_PREFERRED_DATABASE_SSL_MODE = "verify-full"
 
 
 class SecurityConfig(BaseModel):
@@ -506,14 +508,30 @@ def validate_database_config() -> None:
                 "SQLite is not supported in production. "
                 "Use PostgreSQL with RLS for multi-tenant isolation."
             )
-        
-        # Warn if connection is not encrypted
-        if "sslmode" not in database_url.lower():
-            logger.warning(
-                "DATABASE_URL does not specify sslmode. "
-                "Unencrypted database connections expose tenant data in transit. "
-                "Add ?sslmode=require to the connection string."
-            )
+        _validate_database_tls_mode(database_url, source_variable="DATABASE_URL")
+
+        sync_database_url = os.getenv("DATABASE_URL_SYNC", "")
+        if sync_database_url:
+            _validate_database_tls_mode(sync_database_url, source_variable="DATABASE_URL_SYNC")
+
+
+def _validate_database_tls_mode(database_url: str, *, source_variable: str) -> None:
+    parsed = urlparse(database_url)
+    query_params = {key.lower(): value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
+    sslmode = (query_params.get("sslmode", "") or "").strip().lower()
+
+    if sslmode not in _APPROVED_DATABASE_SSL_MODES:
+        raise ValueError(
+            f"Production {source_variable} must include sslmode=require or stronger "
+            "(verify-ca/verify-full); verify-full is preferred."
+        )
+    if sslmode != _PREFERRED_DATABASE_SSL_MODE:
+        logger.info(
+            "%s uses sslmode=%s; sslmode=%s is preferred.",
+            source_variable,
+            sslmode,
+            _PREFERRED_DATABASE_SSL_MODE,
+        )
 
 
 def validate_jwt_secret_strength() -> None:

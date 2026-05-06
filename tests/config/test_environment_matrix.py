@@ -332,7 +332,7 @@ class TestCanonicalEntryPoint:
         with patch.dict(os.environ, {
             "ENVIRONMENT": "production",
             "JWT_SECRET": "a" * 48,
-            "DATABASE_URL": "postgresql://app_user:pass@db.internal:5432/fabric_prod",
+            "DATABASE_URL": "postgresql://app_user:pass@db.internal:5432/fabric_prod?sslmode=require",
             "CREDENTIALS_MASTER_KEY": "d2ViYXBwLWFwaS1rZXktZm9yLXRlc3Rpbmctb25seS0xMjM0NTY3OA==",
             "API_KEY_HMAC_SECRET": "api-key-hmac-secret-for-testing-only-12345678",
             "CORS_ORIGINS": "https://app.example.com",

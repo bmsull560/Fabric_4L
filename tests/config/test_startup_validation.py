@@ -389,10 +389,10 @@ class TestProductionDatabaseConfiguration:
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
     
-    def test_prod_boot_warns_with_unencrypted_database_connection(self):
-        """Production boot should warn if database connection is not encrypted.
+    def test_prod_boot_fails_with_missing_sslmode(self):
+        """Production boot must fail if DATABASE_URL omits sslmode.
         
-        Rationale: Unencrypted connections expose tenant data in transit.
+        Rationale: TLS mode must be explicit to fail closed on transport security.
         """
         with patch.dict(os.environ, {
             "ENVIRONMENT": "production",
@@ -400,14 +400,42 @@ class TestProductionDatabaseConfiguration:
             "JWT_SECRET": "a" * 32,
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
-            with patch("logging.Logger.warning") as mock_warning:
+            with pytest.raises(ValueError, match="sslmode=require or stronger"):
                 from value_fabric.shared.security.config import validate_database_config
                 validate_database_config()
-                
-                # Verify warning was logged
-                assert mock_warning.called
-                warning_msg = str(mock_warning.call_args)
-                assert "SSL" in warning_msg or "encrypt" in warning_msg.lower()
+
+    @pytest.mark.parametrize("sslmode", ["require", "verify-ca", "verify-full"])
+    def test_prod_boot_accepts_approved_sslmodes(self, sslmode: str):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": f"postgresql://user:pass@db.internal:5432/db?sslmode={sslmode}",
+            "JWT_SECRET": "a" * 32,
+            "REDIS_URL": "redis://localhost:6379",
+        }, clear=True):
+            from value_fabric.shared.security.config import validate_database_config
+            validate_database_config()
+
+    def test_prod_boot_fails_if_database_url_sync_missing_sslmode(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "postgresql://user:pass@db.internal:5432/db?sslmode=require",
+            "DATABASE_URL_SYNC": "postgresql://user:pass@db.internal:5432/db_sync",
+            "JWT_SECRET": "a" * 32,
+            "REDIS_URL": "redis://localhost:6379",
+        }, clear=True):
+            with pytest.raises(ValueError, match="DATABASE_URL_SYNC.*sslmode=require or stronger"):
+                from value_fabric.shared.security.config import validate_database_config
+                validate_database_config()
+
+    def test_prod_boot_accepts_sslmode_query_key_case_insensitive(self):
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "postgresql://user:pass@db.internal:5432/db?SSLMODE=verify-full",
+            "JWT_SECRET": "a" * 32,
+            "REDIS_URL": "redis://localhost:6379",
+        }, clear=True):
+            from value_fabric.shared.security.config import validate_database_config
+            validate_database_config()
 
 
 # ═══════════════════════════════════════════════════════════════════════════

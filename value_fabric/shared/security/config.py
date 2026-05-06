@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +107,23 @@ def _database_role(parsed) -> str:
     return (parsed.username or "").lower()
 
 
+def _validate_database_tls_mode(database_url: str, *, source_variable: str) -> None:
+    parsed = urlparse(database_url)
+    query_params = {key.lower(): value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
+    sslmode = (query_params.get("sslmode", "") or "").strip().lower()
+    approved_modes = {"require", "verify-ca", "verify-full"}
+    preferred_mode = "verify-full"
+
+    if sslmode not in approved_modes:
+        raise ValueError(
+            f"Production {source_variable} must include sslmode=require or stronger "
+            "(verify-ca/verify-full); verify-full is preferred"
+        )
+
+    if sslmode != preferred_mode:
+        logger.info("Production %s uses sslmode=%s; sslmode=%s is preferred", source_variable, sslmode, preferred_mode)
+
+
 def validate_database_config() -> None:
     database_url = _env("DATABASE_URL")
     if not database_url:
@@ -127,8 +144,11 @@ def validate_database_config() -> None:
         # use an application role validated against pg_roles.rolsuper=false.
         if _database_role(parsed) in SUPERUSER_NAMES:
             raise ValueError("PostgreSQL superuser connections bypass RLS")
-        if "sslmode=require" not in database_url and "sslmode=verify" not in database_url:
-            logger.warning("Production DATABASE_URL should require SSL/TLS encryption with sslmode=require")
+        _validate_database_tls_mode(database_url, source_variable="DATABASE_URL")
+
+    sync_database_url = _env("DATABASE_URL_SYNC")
+    if is_production() and sync_database_url:
+        _validate_database_tls_mode(sync_database_url, source_variable="DATABASE_URL_SYNC")
 
 
 def validate_rls_prerequisites() -> None:
