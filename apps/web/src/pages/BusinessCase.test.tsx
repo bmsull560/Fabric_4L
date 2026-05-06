@@ -134,6 +134,34 @@ describe('BusinessCase', () => {
     }, { timeout: 3000 });
   });
 
+  it('disables export button when document_url is absent', async () => {
+    server.use(
+      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+        return HttpResponse.json({
+          case_id: 'test-case-123',
+          title: 'Test',
+          summary: 'Summary',
+          total_value: 100000,
+          implementation_cost: 25000,
+          roi_ratio: 4.0,
+          payback_months: 6,
+          confidence_score: 0.85,
+          recommendations: [],
+          status: 'completed',
+          created_at: '2024-01-15T10:00:00Z',
+          page_count: 10,
+          file_size_bytes: 51200,
+        });
+      })
+    );
+
+    renderWithRouter(<BusinessCase />, { path: '/business-case?id=test-case-123' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /export pdf/i })).toBeDisabled();
+    }, { timeout: 3000 });
+  });
+
   it('renders page header with breadcrumbs', async () => {
     server.use(
       http.get('/api/v1/agents/analysis/cases/:caseId', () => {

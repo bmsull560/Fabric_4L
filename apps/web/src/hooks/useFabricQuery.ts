@@ -50,7 +50,7 @@ export function useFabricQuery<TData, TError extends BaseApiError>(
   return useQuery<TData, TError>({
     ...rest,
     queryKey: [...queryKey],
-    queryFn: () => withApiError(queryFn(), errorClass),
+    queryFn: async () => withApiError(queryFn(), errorClass),
     staleTime: staleTime ?? STALE_TIME.list,
     retry: retry ?? RETRY_CONFIG.maxRetries,
     retryDelay: retryDelay ?? RETRY_CONFIG.retryDelay,

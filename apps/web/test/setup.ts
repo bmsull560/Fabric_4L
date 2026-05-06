@@ -4,9 +4,12 @@
  */
 
 import '@testing-library/jest-dom/vitest';
+import { toHaveNoViolations } from 'jest-axe';
 import { server } from '../src/test/mocks/server';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
+
+expect.extend(toHaveNoViolations);
 
 // Start MSW server before all tests
 beforeAll(() => {

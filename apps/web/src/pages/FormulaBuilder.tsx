@@ -23,6 +23,13 @@ import {
 } from "lucide-react";
 import { Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useVariables, type Variable, type VariableType, type SourceType } from "@/hooks/useVariables";
 import {
   useFormula,
@@ -35,6 +42,7 @@ import { useFormulaVersions, useFormulaGovernance, type FormulaVersion } from "@
 import { useFormulaDependents, useFormulaDependencies, type DependentAsset } from "@/hooks/useFormulaDependents";
 import { useFormulaScenario, type VariableAdjustment, type ScenarioResponse } from "@/hooks/useFormulaScenario";
 import { formatRelativeTime } from "@/lib/formatters";
+import { VersionHistoryPanel, DependencyPanel, ScenarioPanel } from "./components";
 import { createFeatureLogger } from "@/lib/telemetry";
 
 const log = createFeatureLogger('FormulaBuilder');
@@ -80,14 +88,7 @@ const DEFAULT_TEST_INPUTS: TestInput[] = [
   { label: "Implementation_Cost", value: "$100,000" },
 ];
 
-const VERSION_STATUS_COLOR: Record<string, string> = {
-  active: "bg-emerald-50 text-emerald-700",
-  approved: "bg-blue-50 text-blue-700",
-  draft: "bg-muted/30 text-muted-foreground",
-  under_review: "bg-amber-50 text-amber-700",
-  deprecated: "bg-red-50 text-red-600",
-  retired: "bg-neutral-100 text-neutral-500",
-};
+
 
 /** Map API Variable to FormulaVariable format */
 function mapVariableToFormulaVariable(variable: Variable): FormulaVariable {
@@ -104,264 +105,6 @@ function mapVariableToFormulaVariable(variable: Variable): FormulaVariable {
     type: typeMap[variable.type] || "integer",
     source: sourceMap[variable.source] || "Manual",
   };
-}
-
-// ============================================================================
-// Sub-components
-// ============================================================================
-
-/** Version History Panel */
-function VersionHistoryPanel({ formulaId }: { formulaId: string }) {
-  const { data: versions, isLoading } = useFormulaVersions(formulaId);
-  const { data: governance } = useFormulaGovernance(formulaId);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {governance && (
-        <div className="p-3 bg-secondary/30 rounded-lg text-[12px] space-y-1">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Owner</span>
-            <span className="font-medium">{governance.owner || "Unassigned"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Review Cycle</span>
-            <span className="font-medium">{governance.review_cycle_days} days</span>
-          </div>
-          {governance.next_review_at && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Next Review</span>
-              <span className="font-medium">{formatRelativeTime(governance.next_review_at)}</span>
-            </div>
-          )}
-        </div>
-      )}
-      <div className="space-y-1.5">
-        {(versions || []).map((v: FormulaVersion) => (
-          <div
-            key={v.version}
-            className="flex items-center gap-3 p-2.5 rounded-md hover:bg-secondary/30 transition-colors"
-          >
-            <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-mono font-semibold">v{v.version}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${VERSION_STATUS_COLOR[v.status] || "bg-muted/30 text-muted-foreground"}`}>
-                  {v.status}
-                </span>
-              </div>
-              <div className="text-[11px] text-muted-foreground truncate">{v.change_summary}</div>
-              <div className="text-[10px] text-muted-foreground/60">
-                {v.created_by} &middot; {formatRelativeTime(v.created_at)}
-              </div>
-            </div>
-          </div>
-        ))}
-        {(!versions || versions.length === 0) && (
-          <div className="text-[12px] text-muted-foreground text-center py-4">No version history</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Dependency Graph Panel */
-function DependencyPanel({ formulaId }: { formulaId: string }) {
-  const { data: dependents, isLoading: loadingDeps } = useFormulaDependents(formulaId);
-  const { data: dependencies, isLoading: loadingDependencies } = useFormulaDependencies(formulaId);
-
-  if (loadingDeps || loadingDependencies) {
-    return (
-      <div className="space-y-2">
-        {[1, 2].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
-      </div>
-    );
-  }
-
-  const renderList = (items: DependentAsset[] | undefined, label: string) => (
-    <div>
-      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">{label}</div>
-      {(items || []).length === 0 ? (
-        <div className="text-[12px] text-muted-foreground py-2">None</div>
-      ) : (
-        <div className="space-y-1">
-          {(items || []).map((item) => (
-            <div key={item.id} className="flex items-center gap-2 p-2 bg-secondary/30 rounded-md text-[12px]">
-              <span className="font-medium truncate">{item.name}</span>
-              <span className="ml-auto text-[10px] text-muted-foreground">{item.type}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <div className="space-y-4">
-      {renderList(dependencies, "This formula depends on")}
-      {renderList(dependents, "Used by")}
-    </div>
-  );
-}
-
-/** What-If Scenario Panel */
-function ScenarioPanel({ formulaId }: { formulaId: string }) {
-  const [baseCaseId, setBaseCaseId] = useState("");
-  const [adjustments, setAdjustments] = useState<VariableAdjustment[]>([
-    { name: "", value: 0, original_value: 0 },
-  ]);
-  const { mutate: runScenario, data: result, isPending, error } = useFormulaScenario();
-
-  const addAdjustment = () => {
-    setAdjustments([...adjustments, { name: "", value: 0, original_value: 0 }]);
-  };
-
-  const updateAdjustment = (idx: number, field: keyof VariableAdjustment, val: string | number) => {
-    const updated = [...adjustments];
-    if (field === "name") {
-      updated[idx] = { ...updated[idx], name: val as string };
-    } else {
-      updated[idx] = { ...updated[idx], [field]: Number(val) };
-    }
-    setAdjustments(updated);
-  };
-
-  const removeAdjustment = (idx: number) => {
-    if (adjustments.length > 1) {
-      setAdjustments(adjustments.filter((_, i) => i !== idx));
-    }
-  };
-
-  const handleRun = () => {
-    if (!baseCaseId.trim()) return;
-    runScenario({
-      base_case_id: baseCaseId,
-      adjustments: adjustments.filter((a) => a.name.trim()),
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1">
-          Base Case ID
-        </label>
-        <input
-          value={baseCaseId}
-          onChange={(e) => setBaseCaseId(e.target.value)}
-          placeholder="e.g. case-abc123"
-          className="w-full border border-border rounded-md px-3 py-1.5 text-[12px] bg-white outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-        />
-      </div>
-
-      <div>
-        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1">
-          Variable Adjustments
-        </label>
-        <div className="space-y-2">
-          {adjustments.map((adj, idx) => (
-            <div key={idx} className="flex gap-1.5 items-center">
-              <input
-                value={adj.name}
-                onChange={(e) => updateAdjustment(idx, "name", e.target.value)}
-                placeholder="Variable"
-                className="flex-1 border border-border rounded-md px-2 py-1 text-[11px] bg-white outline-none focus:ring-1 focus:ring-primary/20"
-              />
-              <input
-                type="number"
-                value={adj.original_value || ""}
-                onChange={(e) => updateAdjustment(idx, "original_value", e.target.value)}
-                placeholder="Original"
-                className="w-20 border border-border rounded-md px-2 py-1 text-[11px] bg-white outline-none focus:ring-1 focus:ring-primary/20"
-              />
-              <input
-                type="number"
-                value={adj.value || ""}
-                onChange={(e) => updateAdjustment(idx, "value", e.target.value)}
-                placeholder="New"
-                className="w-20 border border-border rounded-md px-2 py-1 text-[11px] bg-white outline-none focus:ring-1 focus:ring-primary/20"
-              />
-              {adjustments.length > 1 && (
-                <button
-                  onClick={() => removeAdjustment(idx)}
-                  className="text-red-400 hover:text-red-600 text-[14px]"
-                >
-                  &times;
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={addAdjustment}
-          className="mt-2 text-[11px] text-primary hover:text-primary/80"
-        >
-          + Add adjustment
-        </button>
-      </div>
-
-      <Btn
-        variant="primary"
-        onClick={handleRun}
-        disabled={isPending || !baseCaseId.trim()}
-        className="w-full"
-      >
-        {isPending ? (
-          <><Loader2 size={11} className="animate-spin mr-1" /> Calculating...</>
-        ) : (
-          <><Beaker size={11} className="mr-1" /> Run Scenario</>
-        )}
-      </Btn>
-
-      {error && (
-        <div className="p-2 bg-red-50 border border-red-200 rounded text-[11px] text-red-700 flex items-center gap-1.5">
-          <AlertCircle size={12} /> {error.message}
-        </div>
-      )}
-
-      {result && (
-        <div className="p-3 bg-secondary/30 rounded-lg space-y-2 text-[12px]">
-          <div className="font-semibold text-[13px]">Scenario Results</div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <span className="text-muted-foreground">Original</span>
-              <div className="font-bold">${result.original_value.toLocaleString()}</div>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Adjusted</span>
-              <div className="font-bold text-primary">${result.adjusted_value.toLocaleString()}</div>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Delta</span>
-              <div className={`font-bold ${result.delta_percentage >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-                {result.delta_percentage >= 0 ? "+" : ""}{result.delta_percentage.toFixed(1)}%
-              </div>
-            </div>
-            <div>
-              <span className="text-muted-foreground">New ROI</span>
-              <div className="font-bold">{result.new_roi.toFixed(2)}x</div>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Payback</span>
-              <div className="font-bold">{result.new_payback_months} mo</div>
-            </div>
-          </div>
-          {result.warnings && result.warnings.length > 0 && (
-            <div className="mt-2 text-[11px] text-amber-700 bg-amber-50 p-2 rounded">
-              {result.warnings.map((w, i) => <div key={i}>{w}</div>)}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ============================================================================
@@ -389,6 +132,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
     confidence: number;
   } | null>(null);
   const [rightTab, setRightTab] = useState("Variables");
+  const [valueDriver, setValueDriver] = useState("");
 
   // Fetch existing formula if editing
   const { data: existingFormula, isLoading: isLoadingFormula } = useFormula(
@@ -422,7 +166,8 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   }, [apiVariables]);
 
   const isSaving = isCreating || isUpdating;
-  const saveError = createError || updateError;
+  // Derive error from whichever mutation was last called
+  const saveError = isNew ? createError : updateError;
 
   const handleSave = () => {
     if (isNew) {
@@ -435,6 +180,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         },
         {
           onSuccess: (data) => {
+            // Navigate to edit mode with the new formula ID
             navigateTo('formula-builder', { formulaId: data.formula_id });
           },
         }
@@ -447,6 +193,11 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           description: formulaDescription,
           expression: formulaExpression,
           variables: availableVariables.map((v) => v.name),
+        },
+        {
+          onSuccess: () => {
+            // Show brief success feedback via mutation state
+          },
         }
       );
     }
@@ -528,10 +279,13 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-6 border-b border-border mb-6">
+      <div className="flex items-center gap-6 border-b border-border mb-6" role="tablist" aria-label="Formula builder navigation">
         {["Tree Explorer", "Normalization", "Formulas"].map((tab) => (
           <button
             key={tab}
+            role="tab"
+            aria-selected={tab === "Formulas"}
+            aria-label={`Navigate to ${tab}`}
             onClick={() => {
               if (tab === "Tree Explorer") navigateTo('value-trees');
               if (tab === "Normalization") navigateTo('normalization');
@@ -557,10 +311,11 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           <SectionCard title="Formula Definition">
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
+                <label htmlFor="formula-name" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
                   Name
                 </label>
                 <input
+                  id="formula-name"
                   value={formulaName}
                   onChange={(e) => setFormulaName(e.target.value)}
                   placeholder="Enter formula name..."
@@ -568,10 +323,11 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
+                <label htmlFor="formula-description" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
                   Description
                 </label>
                 <textarea
+                  id="formula-description"
                   value={formulaDescription}
                   onChange={(e) => setFormulaDescription(e.target.value)}
                   placeholder="Describe what this formula calculates..."
@@ -580,25 +336,20 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
+                <label htmlFor="value-driver" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1.5">
                   Associated Value Driver
                 </label>
-                <div className="relative">
-                  <select
-                    className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground bg-white outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none"
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Select a value driver...</option>
-                    <option value="revenue_retention">Revenue Retention</option>
-                    <option value="cost_reduction">Cost Reduction</option>
-                    <option value="efficiency_gain">Efficiency Gain</option>
-                    <option value="risk_mitigation">Risk Mitigation</option>
-                  </select>
-                  <ChevronRight
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground rotate-90 pointer-events-none"
-                  />
-                </div>
+                <Select value={valueDriver} onValueChange={setValueDriver}>
+                  <SelectTrigger id="value-driver" className="w-full text-[13px] h-9">
+                    <SelectValue placeholder="Select a value driver..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="revenue_retention">Revenue Retention</SelectItem>
+                    <SelectItem value="cost_reduction">Cost Reduction</SelectItem>
+                    <SelectItem value="efficiency_gain">Efficiency Gain</SelectItem>
+                    <SelectItem value="risk_mitigation">Risk Mitigation</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </SectionCard>
@@ -607,11 +358,13 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           <SectionCard title="Formula Expression">
             <div className="relative">
               <textarea
+                id="formula-expression"
                 value={formulaExpression}
                 onChange={(e) => setFormulaExpression(e.target.value)}
                 placeholder="Enter formula expression using {variable_name} syntax..."
                 className="w-full h-40 bg-slate-900 rounded-lg p-4 font-mono text-[13px] text-slate-100 leading-relaxed outline-none resize-none focus:ring-2 focus:ring-primary/20"
                 spellCheck={false}
+                aria-label="Formula expression"
               />
               <div className="absolute bottom-3 left-4 flex gap-2">
                 <Btn
@@ -724,21 +477,27 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           {/* Versions tab */}
           {rightTab === "Versions" && formulaId && (
             <SectionCard title="Version History">
-              <VersionHistoryPanel formulaId={formulaId} />
+              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+                <VersionHistoryPanel formulaId={formulaId} />
+              </Suspense>
             </SectionCard>
           )}
 
           {/* Dependencies tab */}
           {rightTab === "Dependencies" && formulaId && (
             <SectionCard title="Dependencies">
-              <DependencyPanel formulaId={formulaId} />
+              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+                <DependencyPanel formulaId={formulaId} />
+              </Suspense>
             </SectionCard>
           )}
 
           {/* Scenario tab */}
           {rightTab === "Scenario" && formulaId && (
             <SectionCard title="What-If Scenario">
-              <ScenarioPanel formulaId={formulaId} />
+              <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+                <ScenarioPanel formulaId={formulaId} />
+              </Suspense>
             </SectionCard>
           )}
 

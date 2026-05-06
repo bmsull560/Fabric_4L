@@ -5,7 +5,7 @@ import {
   Target, Globe, Briefcase, BarChart3, CheckCircle2, Shield
 } from "lucide-react";
 import { StatCard, ProgressBar } from "@/components/blocks";
-import { SectionCard } from "@/value-pilot/components";
+import { SectionCard } from "@/components/blocks";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";

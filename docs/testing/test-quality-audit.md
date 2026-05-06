@@ -715,11 +715,11 @@ All 4 P0 issues from the audit have been successfully resolved:
 
 | File | Score | P0 Issues | P1 Issues | P2 Issues | Action |
 |------|-------|-----------|-----------|-----------|--------|
-| test_middleware_rate_limiter_init.py | 33/35 | 0 | 0 | 1 | Leave as-is |
-| test_tenant_rate_limiting.py | 31/35 | 0 | 6 empty tests | 1 | Rewrite empty tests |
-| test_neo4j_tenant_query_enforcement.py | 27/35 | 0 | 2 (duplication) | 1 | Extract fixtures |
+| test_middleware_rate_limiter_init.py | 33/35 | 0 | 0 | 1 | ✅ Complete |
+| test_tenant_rate_limiting.py | 31/35 | 0 | 6 empty tests | 1 | ✅ Complete |
+| test_neo4j_tenant_query_enforcement.py | 27/35 | 0 | 2 (duplication) | 1 | ✅ Complete |
 
-**Total Issues:** 0 P0, 8 P1, 3 P2
+**Total Issues:** 0 P0, 8 P1 (resolved), 3 P2 (resolved)
 
 ---
 
@@ -729,19 +729,21 @@ All 4 P0 issues from the audit have been successfully resolved:
 | Priority | File | Issue | Effort | Status |
 |----------|------|-------|--------|--------|
 | 1 | `test_tenant_rate_limiting.py` | Remove 6 empty test methods (lines 260-279, 388-406) | 30 min | ✅ Complete |
-| 2 | `test_neo4j_tenant_query_enforcement.py` | Extract mock driver/session fixture | 1 hour | ⏸️ Deferred (P2) |
+| 2 | `test_neo4j_tenant_query_enforcement.py` | Extract mock driver/session fixture | 1 hour | ✅ Complete |
 
-#### P2 - Polish (Opportunistic)
+#### P2 - Polish (This Sprint)
 | Priority | Task | Effort | Status |
 |----------|------|--------|--------|
-| 3 | Add docstrings to middleware tests | 30 min | ⏸️ Deferred |
-| 4 | Extract shared Redis mock fixture | 1 hour | ⏸️ Deferred |
+| 3 | Add docstrings to middleware tests | 30 min | ✅ Complete |
+| 4 | Extract shared Redis mock fixture | 1 hour | Skipped (not reused) |
 
 ---
 
 ### Phase 5: Validation Summary (2026-05-06)
 
 **Completed Rewrites:**
+
+**P1 Fixes:**
 - Removed 6 empty test methods from `test_tenant_rate_limiting.py`:
   - `TestRateLimitMiddleware.test_adds_rate_limit_headers`
   - `TestRateLimitMiddleware.test_returns_429_when_limit_exceeded`
@@ -750,11 +752,28 @@ All 4 P0 issues from the audit have been successfully resolved:
   - `TestRateLimitAdminAPI.test_reset_tenant_limits_requires_super_admin`
   - `TestRateLimitAdminAPI.test_list_rate_limit_tiers`
 
-**Rationale:** These methods were misleading placeholders with only `pass` statements. They appeared to provide test coverage but executed no assertions, creating false confidence. Removing them improves test accuracy and clarity.
+**P2 Fixes:**
+- Added docstrings to 4 test methods in `test_middleware_rate_limiter_init.py`:
+  - `test_prod_like_env_requires_redis` - "Production-like environments require Redis backend for rate limiting."
+  - `test_local_env_allows_memory_fallback` - "Development environments allow memory backend fallback for rate limiting."
+  - `test_unknown_env_without_redis_fails_closed` - "Unknown environments fail closed without Redis backend for security."
+  - `test_startup_logs_selected_backend` - "Startup logging records which rate limiter backend was selected."
+- Extracted Neo4j mock driver/session fixture to `tests/security/conftest.py`:
+  - Created `mock_neo4j_driver` fixture returning tuple of (driver, session, result)
+  - Updated 3 tests in `test_neo4j_tenant_query_enforcement.py` to use fixture
+  - Removed ~20 lines of duplicate mock setup code
 
-**Test Count Impact:** Reduced from 24 to 18 tests in `test_tenant_rate_limiting.py` (all 18 remaining tests are functional and meaningful).
+**Rationale:**
+- Empty test methods were misleading placeholders creating false confidence
+- Docstrings improve test clarity and maintainability
+- Fixture extraction reduces duplication and improves maintainability
 
-**Status:** ✅ P1 rewrite complete. Remaining P2 items deferred to opportunistic maintenance.
+**Impact:**
+- Test count: Reduced from 24 to 18 in `test_tenant_rate_limiting.py` (all remaining tests functional)
+- Lines of code: ~20 lines removed (duplicate mock setup)
+- Maintainability: Improved (better documentation, less duplication)
+
+**Status:** ✅ All P1 and P2 fixes complete. No remaining issues from focused audit.
 
 ---
 

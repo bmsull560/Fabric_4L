@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { STALE_TIME, BusinessCaseApiError } from './useApiShared';
+import { STALE_TIME, BusinessCaseApiError, withApiError } from './useApiShared';
 import { formatCompactCurrency } from '@/lib/formatters';
 import {
   parseBusinessCaseNarrativeOutput,
@@ -129,6 +129,45 @@ function generateSummary(useCases: UseCase[], totalValue: number): string {
   return `${topCase.name} presents the most significant opportunity with an estimated ${topCase.roi} in value. Combined with other identified use cases, the total addressable value is estimated at ${formatCompactCurrency(totalValue)} annually with an average payback period of ${useCases.length > 1 ? 'several months' : '6-9 months'}.`;
 }
 
+async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<BusinessCaseListItem[]> {
+  const params = new URLSearchParams();
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+  if (filters.search) params.set('search', filters.search);
+  if (filters.company) params.set('company', filters.company);
+
+  // Query L4 for business case workflows
+  const response = await apiClient.get('l4', `/workflows?type=business_case&${params.toString()}`);
+  
+  // Transform workflow data to BusinessCaseListItem format
+  interface WorkflowItem {
+    workflow_id: string;
+    name?: string;
+    status?: string;
+    company_name?: string;
+    total_value?: number;
+    use_case_count?: number;
+    confidence?: number;
+    created_at?: string;
+    updated_at?: string;
+    owner?: string;
+  }
+  const rawData = (response as { data: { items?: WorkflowItem[] } }).data;
+  const items = (rawData?.items || []).map((workflow) => ({
+    id: workflow.workflow_id,
+    name: workflow.name || `Case ${workflow.workflow_id}`,
+    company: workflow.company_name || 'Unknown Company',
+    status: (workflow.status === 'completed' ? 'active' : workflow.status || 'draft') as BusinessCaseListItem['status'],
+    totalValue: formatCompactCurrency(workflow.total_value ?? 0),
+    useCaseCount: workflow.use_case_count ?? 0,
+    confidence: Math.round((workflow.confidence ?? 0.8) * 100),
+    createdAt: workflow.created_at || new Date().toISOString(),
+    updatedAt: workflow.updated_at || workflow.created_at || new Date().toISOString(),
+    owner: workflow.owner || 'System',
+  }));
+
+  return items as BusinessCaseListItem[];
+}
+
 /**
  * Fetch list of business cases with filtering support
  * 
@@ -141,46 +180,9 @@ function generateSummary(useCases: UseCase[], totalValue: number): string {
  * ```
  */
 export function useBusinessCases(filters: BusinessCaseFilters = {}) {
-  return useQuery({
+  return useQuery<BusinessCaseListItem[], BusinessCaseApiError>({
     queryKey: QK.businessCases.list(filters),
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filters.status && filters.status !== 'all') params.set('status', filters.status);
-      if (filters.search) params.set('search', filters.search);
-      if (filters.company) params.set('company', filters.company);
-
-      // Query L4 for business case workflows
-      const response = await apiClient.get('l4', `/workflows?type=business_case&${params.toString()}`);
-      
-      // Transform workflow data to BusinessCaseListItem format
-      interface WorkflowItem {
-        workflow_id: string;
-        name?: string;
-        status?: string;
-        company_name?: string;
-        total_value?: number;
-        use_case_count?: number;
-        confidence?: number;
-        created_at?: string;
-        updated_at?: string;
-        owner?: string;
-      }
-      const rawData = (response as { data: { items?: WorkflowItem[] } }).data;
-      const items = (rawData?.items || []).map((workflow) => ({
-        id: workflow.workflow_id,
-        name: workflow.name || `Case ${workflow.workflow_id}`,
-        company: workflow.company_name || 'Unknown Company',
-        status: (workflow.status === 'completed' ? 'active' : workflow.status || 'draft') as BusinessCaseListItem['status'],
-        totalValue: formatCompactCurrency(workflow.total_value ?? 0),
-        useCaseCount: workflow.use_case_count ?? 0,
-        confidence: Math.round((workflow.confidence ?? 0.8) * 100),
-        createdAt: workflow.created_at || new Date().toISOString(),
-        updatedAt: workflow.updated_at || workflow.created_at || new Date().toISOString(),
-        owner: workflow.owner || 'System',
-      }));
-
-      return items as BusinessCaseListItem[];
-    },
+    queryFn: () => withApiError(fetchBusinessCases(filters), BusinessCaseApiError),
     staleTime: STALE_TIME.list,
   });
 }

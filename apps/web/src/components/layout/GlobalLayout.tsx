@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useState } from "react";
 import { Outlet, useMatch } from "react-router-dom";
 import { Spinner } from "@/components/ui/spinner";
+import { SkipLink } from "@/components/ui/skip-link";
 import { LeftNavigation } from "./LeftNavigation";
 import { AppHeader } from "./AppHeader";
 import { AgentChat } from "./AgentChat";
@@ -113,6 +114,8 @@ export function GlobalLayout() {
           : "grid-cols-[auto_minmax(0,1fr)]",
       ].join(" ")}
     >
+      <SkipLink targetId="main-content" />
+
       <LeftNavigation
         collapsed={leftNavCollapsed}
         onToggle={toggleLeftNav}
@@ -132,7 +135,7 @@ export function GlobalLayout() {
           leftNavCollapsed={leftNavCollapsed}
         />
 
-        <main className="min-h-0 flex-1 overflow-auto">
+        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-auto outline-none">
           <WorkspaceLayoutWrapper>
             <Outlet />
           </WorkspaceLayoutWrapper>

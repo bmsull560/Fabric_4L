@@ -52,24 +52,43 @@
 
 ---
 
+## Fixes Applied Today (2026-05-05) — P0 Security Gaps
+
+### 5. L3 Neo4j tenant scoping in `entities.py`
+**Root cause:** Canonical entity browser endpoint queried `:Entity` nodes without `tenant_id` filtering, allowing cross-tenant data access.  
+**Fix:**
+- Added `execute_query()` to `Neo4jTenantSession` wrapper for driver-compatible record returns
+- Replaced `get_neo4j_driver` with `get_neo4j_with_tenant` dependency in `entities.py`
+- Added `e.tenant_id = $tenant_id` WHERE clause to all `:Entity` Cypher queries (list, detail, query)
+- Scoped relationship queries to require `other:Entity {tenant_id: $tenant_id}`
+
+### 6. L4 `business_case_records` missing `tenant_id` + RLS
+**Root cause:** Table had no tenant column and no RLS policies, bypassing tenant isolation.  
+**Fix:**
+- Added `tenant_id: Mapped[str]` to `BusinessCaseRecord` model
+- Created migration `027_add_tenant_id_to_business_case_records.py` with column, index, ENABLE RLS, FORCE RLS, strict tenant isolation policy, and admin bypass policy
+- Updated `BusinessCaseService.upsert_case_record()` to accept and persist `tenant_id`
+- Updated `analysis.py::create_case` to pass `context.tenant_id` on record creation
+
+---
+
 ## Remaining Work (Verified as Actually Open)
 
 Based on ROADMAP audit + code inspection, the following gaps are genuinely incomplete:
 
 ### Security / Tenant Isolation
-- **L3 Neo4j tenant scoping** — Cypher queries lack `tenant_id` filtering (ROADMAP Task 53, #1 launch risk)
-- **PostgreSQL RLS** — L1/L4/L5 tables rely on app-level filtering only (ROADMAP Task 54)
-- **Accounts routes** — `accounts.py` still uses `get_db` instead of `get_db_from_context` (test docstring confirms intentional red tests)
+- **L3 Neo4j tenant scoping (other route modules)** — `benchmarks.py`, `variables.py`, `models.py`, `formula_governance.py` use node labels (`:Benchmark`, `:Variable`, `:ValueModel`, `:Formula`) that do not consistently have `tenant_id` in the current schema. Schema migrations needed before query scoping can be added safely.
+- **PostgreSQL RLS** — L1/L4/L5 tables have RLS. L4 `accounts.py` confirmed to use `get_db_from_context`.
 
 ### Infra / Production Hardening
-- **Alertmanager** — Prometheus alerts not wired to notification channels (Task 63)
-- **Vault secrets** — Plaintext credentials in `k8s/secrets.yml` (Task 65)
-- **L1 Celery/Redis wiring** — Stubs exist but not integrated into crawler pipeline
-- **Feature flags** — Task 107 not started
-- **Per-tenant rate limiting** — Task 108 not started
+- **Alertmanager** — Routing config is production-ready; deploy-time secret injection (ESO) is the remaining gap
+- **Vault secrets** — ESO + Vault configured for all layers; dev placeholders are inert
+- **L1 Celery/Redis wiring** — Fully implemented; only scheduler priority queue is in-memory stub
+- **Feature flags** — Fully implemented (Task 107 ✅)
+- **Per-tenant rate limiting** — Fully implemented (Task 108 ✅)
 
 ### Frontend
-- **Auth UI** — SSO/OIDC backend complete (Task 99 ✅); `/login` route and `AuthContext` wiring may still need verification
+- **Auth UI** — SSO/OIDC frontend fully wired (`/login`, `/login/callback`, `AuthContext`, `ProtectedRoute`, httpOnly cookies). Backend OIDC endpoint verification + provider config alignment is the remaining gap.
 - **L5 approval queue UI** — Human approval workflow frontend integration unclear
 
 ---

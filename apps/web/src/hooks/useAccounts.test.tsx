@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { createWrapper, createMockResponse } from '../test-utils';
+import { QK } from './queryKeys';
 import {
   useAccounts,
   useAccount,
@@ -362,8 +363,8 @@ describe('useAccounts', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['accounts', 'detail', 'acc-001'] });
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['accounts', 'list', {}] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: QK.accounts.detail('acc-001') });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: QK.accounts.list({}) });
     });
   });
 

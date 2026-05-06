@@ -13,14 +13,24 @@
  * Integrates with: useBusinessCases, useCreateBusinessCase, useArchiveBusinessCase
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Plus, Search, Filter, Archive, ArrowUpRight, Clock,
   CheckCircle2, TrendingUp, Users, Building2, Loader2, AlertCircle
 } from "lucide-react";
 import { useNavigation } from "@/hooks";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
+import { EmptyState } from "@/components/states";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
@@ -179,13 +189,50 @@ function CaseListSkeleton() {
 
 function BusinessCaseListContent() {
   const { navigateTo } = useNavigation();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<BusinessCaseFilters['status']>('all');
-  const [sortField, setSortField] = useState<SortField>('updatedAt');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Validation helpers for URL params
+  const validateStatus = (val: string | null): BusinessCaseFilters['status'] => {
+    if (!val) return 'all';
+    const validStatuses: BusinessCaseFilters['status'][] = ['all', 'active', 'draft', 'archived'];
+    return validStatuses.includes(val as BusinessCaseFilters['status']) ? val as BusinessCaseFilters['status'] : 'all';
+  };
+
+  const validateSortField = (val: string | null): SortField => {
+    if (!val) return 'updatedAt';
+    const validFields: SortField[] = ['name', 'company', 'totalValue', 'confidence', 'updatedAt'];
+    return validFields.includes(val as SortField) ? val as SortField : 'updatedAt';
+  };
+
+  const validateSortDirection = (val: string | null): SortDirection => {
+    if (!val) return 'desc';
+    return val === 'asc' || val === 'desc' ? val : 'desc';
+  };
+
+  // Initialize state from URL search params with validation
+  const [search, setSearch] = useState(searchParams.get('search') || "");
+  const [statusFilter, setStatusFilter] = useState<BusinessCaseFilters['status']>(
+    validateStatus(searchParams.get('status'))
+  );
+  const [sortField, setSortField] = useState<SortField>(
+    validateSortField(searchParams.get('sort'))
+  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    validateSortDirection(searchParams.get('dir'))
+  );
   const [showNewCaseModal, setShowNewCaseModal] = useState(false);
   const [newCaseName, setNewCaseName] = useState("");
   const [newCaseCompany, setNewCaseCompany] = useState("");
+
+  // Sync filter state to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+    if (sortField && sortField !== 'updatedAt') params.set('sort', sortField);
+    if (sortDirection && sortDirection !== 'desc') params.set('dir', sortDirection);
+    setSearchParams(params, { replace: true });
+  }, [search, statusFilter, sortField, sortDirection, setSearchParams]);
 
   const { data: cases = [], isLoading, error, refetch } = useBusinessCases({
     status: statusFilter,
@@ -383,6 +430,7 @@ function BusinessCaseListContent() {
           <button
             onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
             className="text-[12px] px-2 py-2 border border-border rounded-lg hover:bg-muted/20"
+            aria-label={`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`}
           >
             {sortDirection === 'asc' ? '↑' : '↓'}
           </button>
@@ -402,71 +450,82 @@ function BusinessCaseListContent() {
       </div>
 
       {sortedCases.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground/60">
-          <Building2 size={48} className="mx-auto mb-4 text-neutral-300" />
-          <p className="text-[14px] font-medium">No business cases found</p>
-          <p className="text-[12px] mt-1">Create your first case to get started</p>
-          <Btn variant="primary" className="mt-4" onClick={() => setShowNewCaseModal(true)}>
-            <Plus size={14} className="mr-1" />
-            Create Case
-          </Btn>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="No business cases found"
+          description="Create your first case to get started"
+          action={
+            <Btn variant="primary" onClick={() => setShowNewCaseModal(true)}>
+              <Plus size={14} className="mr-1" />
+              Create Case
+            </Btn>
+          }
+        />
       )}
 
-      {/* New Case Modal (simplified) */}
-      {showNewCaseModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-[16px] font-semibold text-foreground mb-4">Create New Business Case</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[12px] font-medium text-muted-foreground mb-1">Case Name</label>
-                <input
-                  type="text"
-                  value={newCaseName}
-                  onChange={(e) => setNewCaseName(e.target.value)}
-                  placeholder="e.g., Q2 Expansion Analysis"
-                  className="w-full px-3 py-2 border border-border rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-muted-foreground mb-1">Company</label>
-                <input
-                  type="text"
-                  value={newCaseCompany}
-                  onChange={(e) => setNewCaseCompany(e.target.value)}
-                  placeholder="e.g., Acme Corporation"
-                  className="w-full px-3 py-2 border border-border rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
+      {/* New Case Modal */}
+      <Dialog open={showNewCaseModal} onOpenChange={setShowNewCaseModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Business Case</DialogTitle>
+            <DialogDescription>
+              Enter the case name and company to create a new business case.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label htmlFor="new-case-name" className="block text-[12px] font-medium text-muted-foreground mb-1">
+                Case Name
+              </label>
+              <input
+                id="new-case-name"
+                type="text"
+                value={newCaseName}
+                onChange={(e) => setNewCaseName(e.target.value)}
+                placeholder="e.g., Q2 Expansion Analysis"
+                className="w-full px-3 py-2 border border-border rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
+              />
             </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <Btn 
-                variant="ghost" 
-                onClick={() => {
-                  setShowNewCaseModal(false);
-                  setNewCaseName("");
-                  setNewCaseCompany("");
-                }}
-              >
-                Cancel
-              </Btn>
-              <Btn
-                variant="primary"
-                disabled={createMutation.isPending || !newCaseName.trim() || !newCaseCompany.trim()}
-                onClick={handleCreateCase}
-              >
-                {createMutation.isPending ? (
-                  <Loader2 size={14} className="animate-spin mr-1" />
-                ) : (
-                  <Plus size={14} className="mr-1" />
-                )}
-                Create
-              </Btn>
-              </div>
+            <div>
+              <label htmlFor="new-case-company" className="block text-[12px] font-medium text-muted-foreground mb-1">
+                Company
+              </label>
+              <input
+                id="new-case-company"
+                type="text"
+                value={newCaseCompany}
+                onChange={(e) => setNewCaseCompany(e.target.value)}
+                placeholder="e.g., Acme Corporation"
+                className="w-full px-3 py-2 border border-border rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Btn
+              variant="ghost"
+              onClick={() => {
+                setShowNewCaseModal(false);
+                setNewCaseName("");
+                setNewCaseCompany("");
+              }}
+            >
+              Cancel
+            </Btn>
+            <Btn
+              variant="primary"
+              disabled={createMutation.isPending || !newCaseName.trim() || !newCaseCompany.trim()}
+              onClick={handleCreateCase}
+            >
+              {createMutation.isPending ? (
+                <Loader2 size={14} className="animate-spin mr-1" />
+              ) : (
+                <Plus size={14} className="mr-1" />
+              )}
+              Create
+            </Btn>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

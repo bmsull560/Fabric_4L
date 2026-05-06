@@ -5,6 +5,7 @@ from typing import Callable, Generator
 
 import pytest
 import jwt
+from unittest.mock import MagicMock, AsyncMock
 
 # Lazy imports for optional dependencies
 def _get_psycopg2():
@@ -316,3 +317,22 @@ def websocket_client():
         return TestClient(app)
     except ImportError:
         pytest.skip("Layer 4 FastAPI app not available for WebSocket testing")
+
+
+@pytest.fixture
+def mock_neo4j_driver():
+    """Create a mock Neo4j driver with async session support for tenant query tests.
+    
+    Returns a tuple of (mock_driver, mock_session, mock_result) to allow
+    test-specific customization of the result behavior.
+    """
+    mock_session = AsyncMock()
+    mock_result = AsyncMock()
+    mock_result.single.return_value = None
+    mock_session.run.return_value = mock_result
+    
+    mock_driver = MagicMock()
+    mock_driver.session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_driver.session.return_value.__aexit__ = AsyncMock(return_value=False)
+    
+    return mock_driver, mock_session, mock_result

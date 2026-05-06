@@ -385,6 +385,7 @@ function TierSwitcher({ currentTier, onTierChange, isCollapsed }: TierSwitcherPr
             onTierChange(tiers[(idx + 1) % tiers.length]);
           }}
           className="w-8 h-8 mx-auto rounded-lg flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          aria-label={`Current tier: ${TIER_LABELS[currentTier].label}. Click to cycle tier.`}
         >
           <TierIcon className="w-4 h-4" />
         </button>
@@ -655,6 +656,7 @@ const Layout = memo(function Layout({
               <button
                 onClick={() => setUserOpen(!userOpen)}
                 className="w-8 h-8 mx-auto rounded-full bg-sidebar-primary/20 flex items-center justify-center hover:bg-sidebar-accent transition-colors"
+                aria-label="Open user menu"
               >
                 <span className="text-[10px] font-bold text-sidebar-primary">{userInitials}</span>
               </button>
@@ -711,6 +713,7 @@ const Layout = memo(function Layout({
               onClick={() => setCollapsed(!collapsed)}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <PanelLeft className={cn("w-4 h-4 text-muted-foreground transition-transform duration-300", collapsed && "rotate-180")} />
             </button>
@@ -740,6 +743,7 @@ const Layout = memo(function Layout({
               onClick={handleToggleTheme}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
               title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
             </button>
@@ -753,7 +757,7 @@ const Layout = memo(function Layout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main id="main-content" className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>

@@ -136,17 +136,52 @@ export interface ApplyValuePackParams {
 export function useApplyValuePack() {
   const queryClient = useQueryClient();
 
-  return useMutation<ApplyValuePackResponse, ValuePackApiError, ApplyValuePackParams>({
+  return useMutation<ApplyValuePackResponse, ValuePackApiError, ApplyValuePackParams, { previousPack?: ValuePack; previousPacks?: ValuePack[] }>({
     mutationFn: async ({ packId }) => {
       if (!packId) throw new ValuePackApiError('Pack ID is required');
       return applyValuePack(packId);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.valuePacks.all });
+    onMutate: async ({ packId }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QK.valuePacks.detail(packId) });
+      await queryClient.cancelQueries({ queryKey: QK.valuePacks.all });
+      
+      // Snapshot previous values
+      const previousPack = queryClient.getQueryData<ValuePack>(QK.valuePacks.detail(packId));
+      const previousPacks = queryClient.getQueryData<ValuePack[]>(QK.valuePacks.list({}));
+      
+      // Optimistically update pack detail to show deploying status
+      // Note: Using 'active' as the final state since deployment is quick
+      queryClient.setQueryData<ValuePack>(QK.valuePacks.detail(packId), (old) => {
+        if (!old) return old;
+        return { ...old, status: 'active' as PackStatus, scope: 'tenant' };
+      });
+      
+      // Optimistically update pack in list
+      queryClient.setQueryData<ValuePack[]>(QK.valuePacks.list({}), (old) => {
+        return (old || []).map(p => 
+          p.pack_id === packId 
+            ? { ...p, status: 'active' as PackStatus, scope: 'tenant' }
+            : p
+        );
+      });
+      
+      return { previousPack, previousPacks };
     },
-    onError: (error) => {
+    onError: (error, { packId }, context) => {
+      // Rollback to previous values
+      if (context?.previousPack) {
+        queryClient.setQueryData(QK.valuePacks.detail(packId), context.previousPack);
+      }
+      if (context?.previousPacks) {
+        queryClient.setQueryData(QK.valuePacks.list({}), context.previousPacks);
+      }
       // Log error for monitoring/debugging; UI handles display via error state
       log.error('Deployment failed', { error: error.message });
+    },
+    onSuccess: () => {
+      // Invalidate to get fresh data from server
+      queryClient.invalidateQueries({ queryKey: QK.valuePacks.all });
     },
   });
 }

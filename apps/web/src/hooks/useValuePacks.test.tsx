@@ -3,6 +3,9 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { createWrapper, createWrapperWithRetry, createMockResponse } from "../test-utils";
 import { useValuePacks, useValuePack, useApplyValuePack, ValuePackApiError } from "./useValuePacks";
 import { apiClient } from "@/api/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
+import { QK } from "./queryKeys";
 
 // Mock the API client
 vi.mock("@/api/client", () => ({

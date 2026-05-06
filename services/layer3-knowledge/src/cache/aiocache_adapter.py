@@ -160,10 +160,16 @@ class AiocacheCacheAdapter:
                 logger.warning("aiocache atomic increment failed for key %s, falling back to read-modify-write: %s", key, exc)
         
         # Fallback: read-modify-write (NOT atomic - has race condition)
-        logger.debug("Using non-atomic increment fallback for key %s", key)
+        # WARNING: This fallback is NOT safe for production use in multi-worker deployments.
+        # Concurrent increments will lose updates. Use Redis backend with atomic increment for production.
+        logger.warning("Using non-atomic increment fallback for key %s - this is NOT safe for production", key)
         raw_current = await self._cache.get(prefixed_key)
         current = self._deserialize(raw_current) if raw_current is not None else 0
-        next_value = int(current or 0) + amount
+        try:
+            next_value = int(current or 0) + amount
+        except (ValueError, TypeError) as exc:
+            logger.warning("Cannot increment non-numeric cached value %r for key %s: %s. Resetting to %d.", current, key, exc, amount)
+            next_value = amount
         await self._cache.set(prefixed_key, self._serialize(next_value), ttl=self._ttl(ttl))
         self._known_keys.add(prefixed_key)
         return next_value

@@ -198,16 +198,53 @@ export interface CreateFormulaInput {
 export function useCreateFormula() {
   const queryClient = useQueryClient();
 
-  return useMutation<Formula, FormulaApiError, CreateFormulaInput>({
+  return useMutation<Formula, FormulaApiError, CreateFormulaInput, { previousFormulas?: Formula[] }>({
     mutationFn: async (input) => {
       const response = await apiClient.post('l3', '/formulas', input);
       return response.data as Formula;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+    onMutate: async (newFormula) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QK.formulas.all });
+      
+      // Snapshot previous value
+      const previousFormulas = queryClient.getQueryData<Formula[]>(QK.formulas.list({}));
+      
+      // Optimistically add new formula to list with required fields
+      // Note: Using a temporary ID that will be replaced by server response
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const optimisticFormula: Formula = {
+        id: tempId,
+        formula_id: tempId,
+        name: newFormula.name,
+        description: newFormula.description,
+        expression: newFormula.expression,
+        variables: newFormula.variables,
+        status: 'draft' as FormulaStatus,
+        version: '1.0.0',
+        used_in_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        formula_type: 'simple',
+        domain: 'general',
+      };
+      
+      queryClient.setQueryData<Formula[]>(QK.formulas.list({}), (old) => {
+        return [...(old || []), optimisticFormula];
+      });
+      
+      return { previousFormulas };
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // Rollback to previous value
+      if (context?.previousFormulas) {
+        queryClient.setQueryData(QK.formulas.list({}), context.previousFormulas);
+      }
       log.error('Formula creation failed', { error: error.message });
+    },
+    onSuccess: (data) => {
+      // Invalidate to get fresh data from server
+      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
   });
 }
@@ -229,17 +266,52 @@ export interface UpdateFormulaInput {
 export function useUpdateFormula() {
   const queryClient = useQueryClient();
 
-  return useMutation<Formula, FormulaApiError, UpdateFormulaInput>({
+  return useMutation<Formula, FormulaApiError, UpdateFormulaInput, { previousFormula?: Formula; previousFormulas?: Formula[] }>({
     mutationFn: async ({ formulaId, ...updates }) => {
       const response = await apiClient.patch('l3', `/formulas/${formulaId}`, updates);
       return response.data as Formula;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
-      queryClient.invalidateQueries({ queryKey: QK.formulas.detail(variables.formulaId) });
+    onMutate: async ({ formulaId, ...updates }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: QK.formulas.detail(formulaId) });
+      await queryClient.cancelQueries({ queryKey: QK.formulas.all });
+      
+      // Snapshot previous values
+      const previousFormula = queryClient.getQueryData<Formula>(QK.formulas.detail(formulaId));
+      const previousFormulas = queryClient.getQueryData<Formula[]>(QK.formulas.list({}));
+      
+      // Optimistically update formula detail
+      queryClient.setQueryData<Formula>(QK.formulas.detail(formulaId), (old) => {
+        if (!old) return old;
+        return { ...old, ...updates, updated_at: new Date().toISOString() };
+      });
+      
+      // Optimistically update formula in list
+      // Note: Formula objects may use either 'id' or 'formula_id' as the primary key
+      queryClient.setQueryData<Formula[]>(QK.formulas.list({}), (old) => {
+        return (old || []).map(f => 
+          f.id === formulaId || f.formula_id === formulaId 
+            ? { ...f, ...updates, updated_at: new Date().toISOString() }
+            : f
+        );
+      });
+      
+      return { previousFormula, previousFormulas };
     },
-    onError: (error) => {
+    onError: (error, { formulaId }, context) => {
+      // Rollback to previous values
+      if (context?.previousFormula) {
+        queryClient.setQueryData(QK.formulas.detail(formulaId), context.previousFormula);
+      }
+      if (context?.previousFormulas) {
+        queryClient.setQueryData(QK.formulas.list({}), context.previousFormulas);
+      }
       log.error('Formula update failed', { error: error.message });
+    },
+    onSuccess: (data, { formulaId }) => {
+      // Invalidate to get fresh data from server
+      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.detail(formulaId) });
     },
   });
 }

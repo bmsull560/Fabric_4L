@@ -19,7 +19,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
-import { STALE_TIME } from './useApiShared';
+import { STALE_TIME, withApiError, BaseApiError } from './useApiShared';
 import {
   GraphQueryResponseSchema,
   EntityContextResponseSchema,
@@ -69,10 +69,11 @@ export interface SubgraphRequest {
 
 // ── Error Type ───────────────────────────────────────────────────────────────
 
-export interface GraphApiError {
-  message: string;
-  code?: string;
-  statusCode?: number;
+export class GraphApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'GraphApiError';
+  }
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
@@ -95,7 +96,7 @@ export function useGraphQuery() {
 
       const validated = safeParseResponse(GraphQueryResponseSchema, response.data, 'POST /query/graph');
       if (!validated) {
-        throw new Error('Invalid graph query response format');
+        throw new GraphApiError('Invalid graph query response format');
       }
       return mapGraphQueryResponseDtoToDomain(validated);
     },
@@ -174,7 +175,7 @@ export function useEntityTraversal() {
         'POST /entity/traverse'
       );
       if (!validated) {
-        throw new Error('Invalid entity traversal response format');
+        throw new GraphApiError('Invalid entity traversal response format');
       }
 
       // Map to domain model

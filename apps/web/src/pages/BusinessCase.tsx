@@ -30,7 +30,7 @@ export default function BusinessCase() {
   }
 
   const handleExportPDF = () => {
-    if (!businessCase) return;
+    if (!businessCase || !businessCaseId) return;
     exportMutation.mutate({
       caseId: businessCaseId,
       format: "pdf",

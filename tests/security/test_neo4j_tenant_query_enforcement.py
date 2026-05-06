@@ -14,7 +14,7 @@ class TestNeo4jTenantQueryEnforcement:
     """Verify tenant_id is included in Cypher queries when context available."""
 
     @pytest.mark.asyncio
-    async def test_entity_detail_query_includes_tenant_id(self):
+    async def test_entity_detail_query_includes_tenant_id(self, mock_neo4j_driver):
         """P0: Entity detail query must include tenant_id when context available."""
         # Import here to handle optional dependencies
         try:
@@ -38,15 +38,9 @@ class TestNeo4jTenantQueryEnforcement:
         mock_request = MagicMock()
         mock_request.state.context = mock_context
         
-        # Mock Neo4j driver to capture the query
-        mock_session = AsyncMock()
-        mock_result = AsyncMock()
+        # Use fixture for mock driver
+        mock_driver, mock_session, mock_result = mock_neo4j_driver
         mock_result.single.return_value = None  # Entity not found is fine
-        mock_session.run.return_value = mock_result
-        
-        mock_driver = MagicMock()
-        mock_driver.session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_driver.session.return_value.__aexit__ = AsyncMock(return_value=False)
         
         # Act: Call the endpoint
         with pytest.raises(Exception):  # Will raise 404, but query should be captured
@@ -67,7 +61,7 @@ class TestNeo4jTenantQueryEnforcement:
         assert "$tenant_id" in query, f"Query missing tenant_id parameter: {query}"
 
     @pytest.mark.asyncio
-    async def test_batch_operations_pass_tenant_id_to_helpers(self):
+    async def test_batch_operations_pass_tenant_id_to_helpers(self, mock_neo4j_driver):
         """P0: Batch operations must pass tenant_id to helper functions."""
         try:
             from value_fabric.layer3.api.main import (
@@ -104,15 +98,9 @@ class TestNeo4jTenantQueryEnforcement:
             atomic=False
         )
         
-        # Mock Neo4j driver
-        mock_session = AsyncMock()
-        mock_result = AsyncMock()
+        # Use fixture for mock driver
+        mock_driver, mock_session, mock_result = mock_neo4j_driver
         mock_result.single.return_value = {"entity_id": entity_id}
-        mock_session.run.return_value = mock_result
-        
-        mock_driver = MagicMock()
-        mock_driver.session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_driver.session.return_value.__aexit__ = AsyncMock(return_value=False)
         
         # Act
         response = await batch_entity_operations(
@@ -157,7 +145,7 @@ class TestNeo4jTenantQueryEnforcement:
         )
 
     @pytest.mark.asyncio
-    async def test_fallback_query_used_when_no_tenant_context(self):
+    async def test_fallback_query_used_when_no_tenant_context(self, mock_neo4j_driver):
         """Query without tenant_id should be used when no context available."""
         try:
             from value_fabric.layer3.api.main import (
@@ -173,14 +161,9 @@ class TestNeo4jTenantQueryEnforcement:
         # Arrange: No tenant context (backward compatibility)
         entity_id = "test-entity-789"
         
-        mock_session = AsyncMock()
-        mock_result = AsyncMock()
+        # Use fixture for mock driver
+        mock_driver, mock_session, mock_result = mock_neo4j_driver
         mock_result.single.return_value = None
-        mock_session.run.return_value = mock_result
-        
-        mock_driver = MagicMock()
-        mock_driver.session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_driver.session.return_value.__aexit__ = AsyncMock(return_value=False)
         
         # Act: Call with no request (or request without context)
         with pytest.raises(Exception):

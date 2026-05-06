@@ -8,7 +8,8 @@
  *   Main:    Filter bar → 3-col pack grid → My Packs row
  *   Sidebar: Preview panel → Pack actions
  */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import {
   Skeleton,
@@ -534,12 +535,26 @@ function SuggestionPanel() {
 // ── Main Content ─────────────────────────────────────────────────────────────
 
 function ValuePacksContent() {
-  const [industry, setIndustry] = useState("All");
-  const [status, setStatus] = useState<"all" | PackStatus>("all");
-  const [category, setCategory] = useState("All");
-  const [search, setSearch] = useState("");
-  const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Initialize state from URL search params
+  const [industry, setIndustry] = useState(searchParams.get('industry') || "All");
+  const [status, setStatus] = useState<"all" | PackStatus>((searchParams.get('status') as "all" | PackStatus) || "all");
+  const [category, setCategory] = useState(searchParams.get('category') || "All");
+  const [search, setSearch] = useState(searchParams.get('search') || "");
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(searchParams.get('pack') || null);
   const [deployError, setDeployError] = useState<string | null>(null);
+
+  // Sync filter state to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (industry && industry !== "All") params.set('industry', industry);
+    if (status && status !== "all") params.set('status', status);
+    if (category && category !== "All") params.set('category', category);
+    if (search) params.set('search', search);
+    if (selectedPackId) params.set('pack', selectedPackId);
+    setSearchParams(params, { replace: true });
+  }, [industry, status, category, search, selectedPackId, setSearchParams]);
 
   // Memoize filter config to prevent unnecessary query re-fetches
   const filters = useMemo(() => ({

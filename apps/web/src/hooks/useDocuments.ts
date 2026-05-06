@@ -1,9 +1,16 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { STALE_TIME } from './useApiShared';
+import { STALE_TIME, withApiError, BaseApiError } from './useApiShared';
 import { L4_ANALYSIS_PREFIX } from '@/lib/apiConfig';
 import { POLL_INTERVALS } from './usePolling';
+
+export class DocumentApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'DocumentApiError';
+  }
+}
 
 export interface DocumentExportRequest {
   document_type: 'business_case' | 'audit_report';
@@ -50,8 +57,8 @@ const ALLOWED_SCHEMES = ['http:', 'https:', 'blob:', 'data:'];
  * For business case exports, use useBusinessCaseExport instead.
  */
 export function useDocumentExport() {
-  return useMutation({
-    mutationFn: async (request: DocumentExportRequest) => {
+  return useMutation<DocumentExportResponse, DocumentApiError, DocumentExportRequest>({
+    mutationFn: async (request) => {
       const response = await apiClient.post('l3', '/documents/export', request);
       return response.data as DocumentExportResponse;
     },
@@ -63,8 +70,21 @@ export function useDocumentExport() {
  * Uses L4 analysis export endpoint.
  */
 export function useBusinessCaseExport() {
-  return useMutation({
-    mutationFn: async ({ caseId, format = 'pdf' }: { caseId: string; format?: string }) => {
+  return useMutation<
+    {
+      case_id: string;
+      format: string;
+      document_url?: string;
+      download_ready: boolean;
+      blocked?: boolean;
+      remediation_items?: Array<Record<string, unknown>>;
+      truth_references?: Array<Record<string, unknown>>;
+      manifest?: Record<string, unknown>;
+    },
+    DocumentApiError,
+    { caseId: string; format?: string }
+  >({
+    mutationFn: async ({ caseId, format = 'pdf' }) => {
       const response = await apiClient.get('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/export?format=${format}`);
       return response.data as {
         case_id: string;
@@ -85,7 +105,7 @@ export function useBusinessCaseExport() {
  * Cached for 5 minutes.
  */
 export function useBusinessCase(businessCaseId: string | null) {
-  return useQuery({
+  return useQuery<BusinessCase, DocumentApiError>({
     queryKey: QK.documents.businessCase(businessCaseId || ''),
     queryFn: async () => {
       if (!businessCaseId) throw new Error('No business case ID provided');

@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { Save, RotateCcw, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import { ProgressBar } from "@/components/blocks";
-import { SectionCard } from "@/value-pilot/components";
+import { SectionCard } from "@/components/blocks";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";

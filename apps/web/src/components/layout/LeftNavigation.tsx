@@ -74,6 +74,7 @@ export function LeftNavigation({
             <NavLink
               key={item.path}
               to={item.path}
+              prefetch="intent"
               className={({ isActive }) =>
                 [
                   "flex h-10 items-center rounded-md px-3 text-sm transition-colors hover:bg-accent",

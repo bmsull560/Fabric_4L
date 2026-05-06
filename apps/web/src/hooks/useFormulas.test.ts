@@ -13,6 +13,9 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/mocks/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+import { QK } from './queryKeys';
 import {
   useFormulas,
   useFormula,
@@ -20,6 +23,7 @@ import {
   useApproveFormula,
   useSubmitFormula,
   useUpdateFormula,
+  useCreateFormula,
 } from './useFormulas';
 
 describe('useFormulas', () => {
@@ -260,6 +264,61 @@ describe('useUpdateFormula', () => {
     await expect(result.current.mutateAsync({
       formulaId: 'non-existent',
       name: 'Will Fail',
+    })).rejects.toThrow();
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe('useCreateFormula', () => {
+  it('creates formula with POST method', async () => {
+    server.use(
+      http.post('/api/v1/graph/formulas', () => {
+        return HttpResponse.json({
+          id: 'formula-new',
+          formula_id: 'formula-new',
+          name: 'New Formula',
+          version: '1.0.0',
+          status: 'draft',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+        });
+      })
+    );
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useCreateFormula(), { wrapper });
+
+    result.current.mutate({
+      name: 'New Formula',
+      description: 'Test formula',
+      expression: 'x + y',
+      variables: ['x', 'y'],
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data).toMatchObject({
+      formula_id: 'formula-new',
+      name: 'New Formula',
+      status: 'draft',
+    });
+  });
+
+  it('handles creation error', async () => {
+    server.use(
+      http.post('/api/v1/graph/formulas', () => {
+        return HttpResponse.json({ error: 'Invalid formula' }, { status: 400 });
+      })
+    );
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useCreateFormula(), { wrapper });
+
+    await expect(result.current.mutateAsync({
+      name: 'Invalid',
+      expression: 'bad',
+      variables: [],
     })).rejects.toThrow();
 
     await waitFor(() => expect(result.current.isError).toBe(true));
