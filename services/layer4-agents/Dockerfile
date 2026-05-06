@@ -47,7 +47,7 @@ ENV PYTHONPATH=/app:/app/src
 
 # Copy source code from builder (separate layer for better caching)
 COPY --from=builder /app/src ./src/
-COPY --from=builder /app/value_fabric ./value_fabric/
+# COPY --from=builder /app/value_fabric ./value_fabric/  # Disabled: value_fabric mounted via compose volume
 
 # Change ownership
 RUN chown -R appuser:appgroup /app /home/appuser
