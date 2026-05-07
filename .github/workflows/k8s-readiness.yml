@@ -100,6 +100,12 @@ jobs:
             conftest test "$manifest" -p k8s/policy
           done
 
+      - name: Policy validate source manifests and production compose files
+        run: |
+          mapfile -t manifests < <(find k8s -type f \( -name '*.yml' -o -name '*.yaml' \) | sort)
+          conftest test -p k8s/policy "${manifests[@]}"
+          conftest test -p k8s/policy docker-compose.live.yml docker-compose.release-smoke.yml
+
       - name: Security checks - placeholder secret values
         run: |
           pip install pyyaml
