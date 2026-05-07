@@ -93,6 +93,25 @@ class SignalStreamEvent(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict, description="Event payload")
 
 
+class SignalReviewRequest(BaseModel):
+    """Request payload for reviewing a signal."""
+
+    account_id: str = Field(..., description="Account identifier for scope validation")
+    review_status: str = Field(..., description="Review decision status: approved|rejected")
+    decision_note: str | None = Field(default=None, description="Optional reviewer rationale")
+
+
+class SignalReviewResponse(BaseModel):
+    """Response payload for signal review mutations."""
+
+    signal_id: str
+    account_id: str
+    review_status: str
+    reviewed_by: str
+    reviewed_at: str
+    decision_note: str | None = None
+
+
 # ============================================================================
 # API Endpoints
 # ============================================================================
@@ -279,6 +298,38 @@ async def get_signal_by_id(
     raise HTTPException(
         status_code=501,
         detail="Signal retrieval by ID - implement in Layer 3 integration",
+    )
+
+
+@router.patch("/signals/{signal_id}/review", response_model=SignalReviewResponse)
+async def review_signal(
+    signal_id: str,
+    request: SignalReviewRequest,
+    ctx: RequestContext = Depends(require_authenticated),
+) -> SignalReviewResponse:
+    """Review a signal and persist reviewer metadata/timestamp."""
+    if request.review_status not in {"approved", "rejected"}:
+        raise HTTPException(status_code=400, detail="review_status must be approved or rejected")
+
+    from ...integration.layer3_client import Layer3Client
+
+    reviewed_at = datetime.now(UTC).isoformat()
+    async with Layer3Client() as client:
+        response = await client.review_signal(
+            signal_id=signal_id,
+            account_id=request.account_id,
+            review_status=request.review_status,
+            reviewer_id=ctx.user_id,
+            decision_note=request.decision_note,
+            tenant_id=ctx.tenant_id,
+        )
+    return SignalReviewResponse(
+        signal_id=signal_id,
+        account_id=request.account_id,
+        review_status=response.get("review_status", request.review_status),
+        reviewed_by=response.get("reviewed_by", ctx.user_id),
+        reviewed_at=response.get("reviewed_at", reviewed_at),
+        decision_note=response.get("decision_note", request.decision_note),
     )
 
 

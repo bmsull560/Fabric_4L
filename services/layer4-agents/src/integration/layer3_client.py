@@ -405,6 +405,27 @@ class Layer3Client:
         result = await self._make_request("GET", url, effective_tenant, params=params)
         return result.get("signals", [])
 
+    async def review_signal(
+        self,
+        signal_id: str,
+        account_id: str,
+        review_status: str,
+        reviewer_id: str,
+        decision_note: str | None = None,
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Review a signal (approve/reject) with tenant/account scoping."""
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/signals/{signal_id}/review"
+        payload: dict[str, Any] = {
+            "account_id": account_id,
+            "review_status": review_status,
+            "reviewer_id": reviewer_id,
+        }
+        if decision_note:
+            payload["decision_note"] = decision_note
+        return await self._make_request("PATCH", url, effective_tenant, json=payload) or {}
+
     async def close(self) -> None:
         """Close HTTP client and release resources."""
         if self._client:

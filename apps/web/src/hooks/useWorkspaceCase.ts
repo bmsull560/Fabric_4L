@@ -1,5 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
 
 const CASE_STORAGE_PREFIX = 'vf.workspace.case';
 
@@ -120,6 +121,38 @@ export function useGenerateWorkspaceIntelligence() {
           stakeholders: number;
         };
       };
+    },
+  });
+}
+
+export function useReviewSignalMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      signalId,
+      accountId,
+      reviewStatus,
+      decisionNote,
+    }: {
+      signalId: string;
+      accountId: string;
+      reviewStatus: 'approved' | 'rejected';
+      decisionNote?: string;
+    }) => {
+      const response = await apiClient.patch('l4', `/v1/signals/${signalId}/review`, {
+        account_id: accountId,
+        review_status: reviewStatus,
+        decision_note: decisionNote,
+      });
+      return response.data;
+    },
+    onSuccess: async (_result, vars) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workspace', 'tab'] }),
+        queryClient.invalidateQueries({ queryKey: QK.accounts.detail(vars.accountId) }),
+        queryClient.invalidateQueries({ queryKey: QK.hypotheses.all }),
+        queryClient.invalidateQueries({ queryKey: QK.evidence.all }),
+      ]);
     },
   });
 }

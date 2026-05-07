@@ -9,7 +9,7 @@ import { usePromoteSignal } from "@/hooks/useHypotheses";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence, useReviewSignalMutation } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,6 +23,9 @@ interface Signal {
   confidence: number;
   impact: string;
   trend?: string;
+  review_status?: 'approved' | 'rejected' | 'pending_review';
+  reviewed_at?: string;
+  reviewed_by?: string;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -83,6 +86,7 @@ export default function SignalsTab() {
   }
 
   const promoteMutation = usePromoteSignal();
+  const reviewMutation = useReviewSignalMutation();
   const { navigateTo } = useNavigation();
   const [selectedValuePath, setSelectedValuePath] = useState<ValuePathCategory | ''>('');
 
@@ -103,6 +107,35 @@ export default function SignalsTab() {
         <div className="text-center p-2 bg-muted/50 rounded-md"><div className="text-[10px]">Impact</div><div className="text-[14px] font-bold">{selectedSignal.impact}</div></div>
         <div className="text-center p-2 bg-muted/50 rounded-md"><div className="text-[10px]">Trend</div><div className="text-[14px] font-bold">{selectedSignal.trend ?? "—"}</div></div>
       </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Btn
+          variant="outline"
+          disabled={reviewMutation.isPending || !accountId}
+          onClick={async () => {
+            if (!accountId) return;
+            await reviewMutation.mutateAsync({ signalId: selectedSignal.id, accountId, reviewStatus: 'rejected' });
+            refetchSignals();
+          }}
+        >
+          Reject
+        </Btn>
+        <Btn
+          variant="primary"
+          disabled={reviewMutation.isPending || !accountId}
+          onClick={async () => {
+            if (!accountId) return;
+            await reviewMutation.mutateAsync({ signalId: selectedSignal.id, accountId, reviewStatus: 'approved' });
+            refetchSignals();
+          }}
+        >
+          Approve
+        </Btn>
+      </div>
+      {selectedSignal.review_status && (
+        <div className="text-[11px] text-muted-foreground">
+          Review: {selectedSignal.review_status}{selectedSignal.reviewed_by ? ` by ${selectedSignal.reviewed_by}` : ''}{selectedSignal.reviewed_at ? ` at ${new Date(selectedSignal.reviewed_at).toLocaleString()}` : ''}
+        </div>
+      )}
       {/* Value Path Classification */}
       <div className="space-y-2 pt-2">
         <label className="text-[11px] font-medium text-muted-foreground">Value Path</label>
