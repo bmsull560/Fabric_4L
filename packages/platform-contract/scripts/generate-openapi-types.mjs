@@ -33,7 +33,7 @@ for (const spec of SPECS) {
   });
   const content = readFileSync(out, 'utf8');
   writeFileSync(out, `// @generated from contracts/openapi/${spec}\n` + content);
-  exports.push(`export * as ${key} from './${key}';`);
+  exports.push(`export * as ${key} from './${key}.js';`);
 }
 
 writeFileSync(join(OUTPUT_DIR, 'index.ts'), `// @generated\n${exports.join('\n')}\n`);

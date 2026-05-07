@@ -3,9 +3,40 @@
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
-const GENERATED_ROOT = 'apps/web/src/api/generated';
+const GENERATED_ROOTS = [
+  'packages/platform-contract/src/typescript/generated',
+  'apps/web/src/api/generated',
+];
 
 const OUTPUT_TO_SPEC = new Map([
+  [
+    'packages/platform-contract/src/typescript/generated/layer1_ingestion.ts',
+    'contracts/openapi/layer1-ingestion.json',
+  ],
+  [
+    'packages/platform-contract/src/typescript/generated/layer2_extraction.ts',
+    'contracts/openapi/layer2-extraction.json',
+  ],
+  [
+    'packages/platform-contract/src/typescript/generated/layer3_knowledge.ts',
+    'contracts/openapi/layer3-knowledge.json',
+  ],
+  [
+    'packages/platform-contract/src/typescript/generated/layer4_agents.ts',
+    'contracts/openapi/layer4-agents.json',
+  ],
+  [
+    'packages/platform-contract/src/typescript/generated/layer5_ground_truth.ts',
+    'contracts/openapi/layer5-ground-truth.json',
+  ],
+  [
+    'packages/platform-contract/src/typescript/generated/layer6_benchmarks.ts',
+    'contracts/openapi/layer6-benchmarks.json',
+  ],
+  [
+    'packages/platform-contract/src/typescript/generated/signals.ts',
+    'contracts/openapi/signals.json',
+  ],
   ['apps/web/src/api/generated/l1/index.ts', 'contracts/openapi/layer1-ingestion.json'],
   ['apps/web/src/api/generated/l2/index.ts', 'contracts/openapi/layer2-extraction.json'],
   ['apps/web/src/api/generated/l3/index.ts', 'contracts/openapi/layer3-knowledge.json'],
@@ -19,7 +50,7 @@ function run(cmd) {
 }
 
 const repoRoot = run('git rev-parse --show-toplevel');
-const changedFilesRaw = run(`git diff --name-only -- ${GENERATED_ROOT}`);
+const changedFilesRaw = run(`git diff --name-only -- ${GENERATED_ROOTS.join(' ')}`);
 const changedFiles = changedFilesRaw
   .split('\n')
   .map((file) => file.trim())
@@ -55,5 +86,5 @@ for (const file of changedFiles) {
 
 console.error(`\nTo fix locally from ${repoRoot}:`);
 console.error('  pnpm run generate:api');
-console.error('  git add apps/web/src/api/generated');
+console.error('  git add packages/platform-contract/src/typescript/generated apps/web/src/api/generated');
 console.error('  git commit');

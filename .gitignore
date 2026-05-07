@@ -120,6 +120,8 @@ test-results/
 generated/
 !apps/web/src/api/generated/
 !apps/web/src/api/generated/*.ts
+!packages/platform-contract/src/typescript/generated/
+!packages/platform-contract/src/typescript/generated/*.ts
 
 # Root-level generated outputs (conservative cleanup)
 valuepacks_output.txt
