@@ -20,7 +20,7 @@ vi.mock('@/hooks/useEntities', () => ({
   useEntity: vi.fn(),
   useEntitySearch: vi.fn().mockReturnValue({ data: null, isLoading: false, error: null }),
   useEntityFilterOptions: vi.fn().mockReturnValue({ data: null, isLoading: false, error: null }),
-  useCreateEntity: vi.fn().mockReturnValue({ mutate: vi.fn(), isLoading: false }),
+  useCreateEntity: vi.fn().mockReturnValue({ mutate: vi.fn(), isPending: false, error: null }),
 }));
 
 vi.mock('@/stores', () => ({
