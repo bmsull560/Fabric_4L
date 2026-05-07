@@ -1,0 +1,33 @@
+groups:
+  - name: journey_slo_alerts
+    interval: 30s
+    rules:
+      - alert: JourneySuccessRateSLOViolation
+        expr: avg_over_time(journey:sli_success_rate_5m{journey="account_signals_evidence_driver_calculator_business_case"}[15m]) < 0.99
+        for: 10m
+        labels:
+          severity: critical
+          owner: frontend-platform
+        annotations:
+          summary: "Journey success rate below launch SLO"
+          description: "Key clickpath success rate dropped below 99% for 10m. Release gate must remain blocked."
+
+      - alert: JourneyP95LatencySLOViolation
+        expr: max_over_time(journey:sli_p95_latency_seconds_5m{journey="account_signals_evidence_driver_calculator_business_case"}[15m]) > 12
+        for: 10m
+        labels:
+          severity: warning
+          owner: frontend-platform
+        annotations:
+          summary: "Journey p95 latency above launch SLO"
+          description: "Key clickpath p95 latency exceeded 12 seconds for 10m."
+
+      - alert: JourneyNonEmptyResponseSLOViolation
+        expr: avg_over_time(journey:sli_non_empty_ratio_5m{journey="account_signals_evidence_driver_calculator_business_case"}[15m]) < 1
+        for: 5m
+        labels:
+          severity: critical
+          owner: frontend-platform
+        annotations:
+          summary: "Journey non-empty response guarantee violated"
+          description: "One or more required journey responses became empty."

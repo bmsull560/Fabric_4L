@@ -253,3 +253,24 @@ groups:
         expr: avg(value_fabric_search_result_relevance_score)
         labels:
           metric_type: quality
+
+  - name: journey_slo_metrics
+    interval: 30s
+    rules:
+      - record: journey:sli_success_rate_5m
+        expr: |
+          sum(rate(value_fabric_journey_checks_total{status="success"}[5m])) by (journey)
+          /
+          sum(rate(value_fabric_journey_checks_total[5m])) by (journey)
+
+      - record: journey:sli_p95_latency_seconds_5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(value_fabric_journey_check_duration_seconds_bucket[5m])) by (journey, le)
+          )
+
+      - record: journey:sli_non_empty_ratio_5m
+        expr: |
+          sum(rate(value_fabric_journey_response_non_empty_total[5m])) by (journey)
+          /
+          sum(rate(value_fabric_journey_checks_total[5m])) by (journey)
