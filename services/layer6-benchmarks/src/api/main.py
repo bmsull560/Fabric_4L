@@ -115,7 +115,7 @@ async def lifespan(app: FastAPI):
         driver = await get_driver()
         _benchmark_repo = BenchmarkRepository(driver)
         await _init_seed_data()
-        datasets = await _benchmark_repo.list_datasets()
+        datasets = await _benchmark_repo.list_datasets(tenant_id="system")
         dataset_count = len(datasets)
         _neo4j_startup_error = None
         logger.info("Layer 6 Benchmark Service started with %d datasets", dataset_count)
@@ -246,6 +246,13 @@ class list_industriesResult(TypedDictModel):
     industries: Any
 
 
+def _require_tenant_id(ctx: RequestContext | None) -> str:
+    """Fail closed when a benchmark handler is invoked without tenant context."""
+    if ctx is None or not getattr(ctx, "tenant_id", None):
+        raise HTTPException(status_code=401, detail="Tenant context required")
+    return str(ctx.tenant_id)
+
+
 async def health_check(request: Request):
     """Health check endpoint with dependency and system status."""
     import psutil  # type: ignore[import-untyped]
@@ -264,7 +271,7 @@ async def health_check(request: Request):
     dataset_count = 0
     if _benchmark_repo is not None:
         try:
-            datasets = await _benchmark_repo.list_datasets()
+            datasets = await _benchmark_repo.list_datasets(tenant_id="system")
             dataset_count = len(datasets)
         except Exception as exc:
             logger.warning("Health check: failed to list datasets: %s", exc)
@@ -320,7 +327,7 @@ async def list_datasets(
     """List available benchmark datasets."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    tenant_id = _require_tenant_id(ctx)
     datasets = await _benchmark_repo.list_datasets(industry=industry, segment=segment, tenant_id=tenant_id)
     return [
         DatasetSummary(
@@ -339,7 +346,7 @@ async def get_dataset(dataset_id: str, ctx: RequestContext = Depends(get_request
     """Get benchmark dataset by ID."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    tenant_id = _require_tenant_id(ctx)
     dataset = await _benchmark_repo.get_dataset(dataset_id, tenant_id=tenant_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -369,7 +376,7 @@ async def compare(payload: ComparisonRequestPayload, ctx: RequestContext = Depen
     """Execute peer comparison."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    tenant_id = _require_tenant_id(ctx)
     dataset = await _benchmark_repo.get_dataset(payload.dataset_id, tenant_id=tenant_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -433,7 +440,7 @@ async def validate(payload: ValidationRequestPayload, ctx: RequestContext = Depe
     """Validate value against benchmark range."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    tenant_id = _require_tenant_id(ctx)
     dataset = await _benchmark_repo.get_dataset(payload.dataset_id, tenant_id=tenant_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
@@ -494,7 +501,7 @@ async def list_industries(ctx: RequestContext = Depends(get_request_context)):
     """List available industries."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    tenant_id = _require_tenant_id(ctx)
     datasets = await _benchmark_repo.list_datasets(tenant_id=tenant_id)
     industries = {d.industry for d in datasets}
     return list_industriesResult.model_validate({"industries": sorted(industries)})

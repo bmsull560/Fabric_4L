@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-from fastapi import Query, Request
+from fastapi import HTTPException, Query, Request, status
 
 if TYPE_CHECKING:
     from value_fabric.shared.identity.context import RequestContext
@@ -16,12 +16,12 @@ def segment_filter(segment: str | None = Query(None, description="Filter by segm
     return segment
 
 
-# Sprint 5: RequestContext extraction for audit logging
-def get_request_context(request: Request) -> "RequestContext | None":
-    """Extract request context from GovernanceMiddleware if available.
-    
-    Used for audit logging and request identity tracking.
-    Layer 6 uses minimal tenant support - identity only, no enforcement.
-    """
-    ctx = getattr(request.state, "context", None)
+def get_request_context(request: Request) -> "RequestContext":
+    """Return the canonical tenant context set by GovernanceMiddleware."""
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx is None or not getattr(ctx, "tenant_id", None):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tenant context required",
+        )
     return ctx

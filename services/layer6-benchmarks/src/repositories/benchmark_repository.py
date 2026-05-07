@@ -78,7 +78,7 @@ class BenchmarkRepository:
             metrics=[_metric_to_dict(m) for m in dataset.metrics.values()],
         )
 
-    async def get_dataset(self, dataset_id: str, tenant_id: str = "system") -> BenchmarkDataset | None:
+    async def get_dataset(self, dataset_id: str, tenant_id: str) -> BenchmarkDataset | None:
         """Retrieve a dataset by ID with all metrics."""
         async with self._driver.session() as session:
             result = await session.execute_read(self._tx_get_dataset, dataset_id, tenant_id)
@@ -101,7 +101,7 @@ class BenchmarkRepository:
         return _node_to_dataset(record["d"], record["metrics"])
 
     async def list_datasets(
-        self, industry: str | None = None, segment: str | None = None, tenant_id: str = "system"
+        self, industry: str | None = None, segment: str | None = None, *, tenant_id: str
     ) -> list[BenchmarkDataset]:
         """List datasets with optional filters."""
         async with self._driver.session() as session:
@@ -136,7 +136,7 @@ class BenchmarkRepository:
             datasets.append(_node_to_dataset(record["d"], record["metrics"]))
         return datasets
 
-    async def delete_dataset(self, dataset_id: str, tenant_id: str = "system") -> None:
+    async def delete_dataset(self, dataset_id: str, tenant_id: str) -> None:
         """Delete a dataset and its metrics."""
         async with self._driver.session() as session:
             await session.execute_write(self._tx_delete_dataset, dataset_id, tenant_id)

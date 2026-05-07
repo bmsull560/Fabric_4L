@@ -15,6 +15,7 @@ IMPORTANT_SHARED_SUBMODULES = (
     "value_fabric.shared.boundaries.tenant_boundary",
     "value_fabric.shared.identity",
     "value_fabric.shared.identity.tool_contract",
+    "value_fabric.shared.rate_limiting.middleware",
     "value_fabric.shared.audit",
     "value_fabric.shared.error_handling",
     "value_fabric.shared.secrets",

@@ -107,3 +107,56 @@ async def test_repository_list_datasets_isolation(
     assert "d.industry = $industry" in query
     assert call_kwargs["tenant_id"] == "tenant-isolated"
     assert call_kwargs["industry"] == "Retail"
+
+
+@pytest.mark.asyncio
+async def test_repository_delete_dataset_isolation(
+    repo: BenchmarkRepository,
+    mock_driver: AsyncMock,
+    sample_dataset: BenchmarkDataset
+):
+    """Verify delete_dataset executes with the provided tenant_id."""
+    session = mock_driver.session.return_value
+
+    await repo.delete_dataset(sample_dataset.dataset_id, tenant_id="hostile-tenant-2")
+
+    session.execute_write.assert_called_once()
+    args, kwargs = session.execute_write.call_args
+    assert args[0] == repo._tx_delete_dataset
+    assert args[1] == sample_dataset.dataset_id
+    assert args[2] == "hostile-tenant-2"
+
+
+@pytest.mark.asyncio
+async def test_repository_get_dataset_cypher_requires_tenant_id(repo: BenchmarkRepository):
+    """Verify get_dataset's raw Cypher filters by tenant_id."""
+    mock_records = AsyncMock()
+    mock_records.single = AsyncMock(return_value=None)
+    mock_tx = AsyncMock()
+    mock_tx.run = AsyncMock(return_value=mock_records)
+
+    result = await repo._tx_get_dataset(mock_tx, "secret-dataset", "hostile-tenant")
+
+    assert result is None
+    mock_tx.run.assert_called_once()
+    call_args, call_kwargs = mock_tx.run.call_args
+    query = call_args[0]
+    assert "tenant_id: $tenant_id" in query
+    assert call_kwargs["dataset_id"] == "secret-dataset"
+    assert call_kwargs["tenant_id"] == "hostile-tenant"
+
+
+@pytest.mark.asyncio
+async def test_repository_delete_dataset_cypher_requires_tenant_id(repo: BenchmarkRepository):
+    """Verify delete_dataset's raw Cypher filters by tenant_id."""
+    mock_tx = AsyncMock()
+    mock_tx.run = AsyncMock()
+
+    await repo._tx_delete_dataset(mock_tx, "secret-dataset", "hostile-tenant")
+
+    mock_tx.run.assert_called_once()
+    call_args, call_kwargs = mock_tx.run.call_args
+    query = call_args[0]
+    assert "tenant_id: $tenant_id" in query
+    assert call_kwargs["dataset_id"] == "secret-dataset"
+    assert call_kwargs["tenant_id"] == "hostile-tenant"

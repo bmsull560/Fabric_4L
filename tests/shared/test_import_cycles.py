@@ -1,7 +1,16 @@
 import pytest
 import importlib
-import sys
 import pkgutil
+import subprocess
+import sys
+from itertools import permutations
+
+
+BOUNDARY_IMPORT_CLUSTER = (
+    "value_fabric.shared.boundaries.tenant_boundary",
+    "value_fabric.shared.rate_limiting.middleware",
+    "value_fabric.shared.identity",
+)
 
 def test_no_shared_import_cycles():
     """Regression test for circular imports in the shared package."""
@@ -35,3 +44,25 @@ def test_recursive_import_shared_package():
                 pytest.fail(f"Failed to import {info.name}: {e}")
 
     walk_packages(value_fabric.shared.__path__, value_fabric.shared.__name__ + '.')
+
+
+@pytest.mark.parametrize("import_order", permutations(BOUNDARY_IMPORT_CLUSTER))
+def test_tenant_boundary_import_cluster_is_order_independent(import_order):
+    """Boundary, identity, and rate limiting modules must not form cycles."""
+    script = "\n".join(
+        [
+            "import importlib",
+            *[f"importlib.import_module({module_name!r})" for module_name in import_order],
+        ]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"Import order failed: {import_order}\n"
+        f"stdout:\n{result.stdout}\n"
+        f"stderr:\n{result.stderr}"
+    )
