@@ -134,6 +134,25 @@ data:
             annotations:
               summary: "Disk queue depth saturation"
               description: "Node disk queue depth is elevated for 10 minutes"
+
+      - name: value-fabric-llm-costs
+        rules:
+          - alert: HighLLMCostRate
+            expr: sum(rate(vf_llm_cost_usd_total[1h])) > 50
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High LLM cost rate detected"
+              description: "Aggregated LLM spend is above $50/hr for more than 15 minutes"
+
+          - alert: HighLLMCostPerTenant
+            expr: sum by (tenant_tier) (increase(vf_llm_cost_usd_total[24h])) > 100
+            labels:
+              severity: warning
+            annotations:
+              summary: "High LLM cost for tenant tier {{ $labels.tenant_tier }}"
+              description: "LLM cost exceeded $100 in 24h window for tenant tier {{ $labels.tenant_tier }} (current: {{ $value }} USD)"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
