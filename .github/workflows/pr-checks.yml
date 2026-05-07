@@ -42,8 +42,20 @@ jobs:
 
       - name: Run import topology tests
         run: |
-          pip install pytest
+          pip install pytest pyyaml
           pytest tests/contract/test_import_topology.py -v --tb=short
+
+      - name: Enforce pytest skip governance
+        run: |
+          mkdir -p artifacts
+          set +e
+          python -m pytest --collect-only -q -ra tests > artifacts/pytest-collection.txt 2>&1
+          collect_status=$?
+          set -e
+          python scripts/ci/check_pytest_skip_governance.py             artifacts/pytest-collection.txt             --allowlist config/ci/pytest_skip_allowlist.yaml             --baseline config/ci/pytest_skip_baseline.json             --write-report artifacts/pytest-skip-governance.json
+          if [ "$collect_status" -ne 0 ]; then
+            echo "pytest collection exited non-zero (${collect_status}); structural-preflight should catch import errors separately."
+          fi
 
       - name: Run Layer 3 source mirror drift gate
         run: |
@@ -97,6 +109,8 @@ jobs:
             artifacts/layer3-source-mirror.txt
             artifacts/duplicate-source-trees.json
             artifacts/shared-imports-runtime.json
+            artifacts/pytest-collection.txt
+            artifacts/pytest-skip-governance.json
             artifacts/violation-diff-summary.json
             artifacts/violation-diff-summary.md
           retention-days: 14
