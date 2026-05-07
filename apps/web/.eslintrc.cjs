@@ -128,6 +128,8 @@ module.exports = {
     "fabric-contracts/no-inline-middleware": "error",
     "fabric-contracts/no-inline-tool-definition": "error",
     "fabric-contracts/no-json-parse-agent-output": "error",
+    // Semantic agent contracts start in warning mode until runtime enforcement is promoted.
+    "fabric-contracts/require-semantic-contract-metadata": "warn",
     // Phase 2: Already enforced
     "fabric-contracts/no-imperative-navigation": "error",
     "fabric-contracts/no-url-concatenation": "error",

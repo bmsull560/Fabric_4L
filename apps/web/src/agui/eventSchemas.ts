@@ -2,6 +2,35 @@ import { z } from "zod";
 
 import { AgentEventType, type AgentEvent } from "./events";
 
+const ContractViolationSchema = z.object({
+  code: z.string().min(1),
+  message: z.string().min(1),
+  severity: z.enum(["warning", "error"]),
+  path: z.string().min(1),
+});
+
+const ContractVersionsSchema = z
+  .object({
+    semanticContract: z.string().optional(),
+    agentRegistry: z.string().optional(),
+    prompt: z.string().optional(),
+    tool: z.string().optional(),
+    workflow: z.string().optional(),
+    memory: z.string().optional(),
+  })
+  .passthrough();
+
+const ProvenanceSchema = z
+  .object({
+    tenantId: z.string().optional(),
+    traceId: z.string().optional(),
+    workflowId: z.string().optional(),
+    auditEventId: z.string().optional(),
+    sourceNode: z.string().optional(),
+    sourceLayer: z.string().optional(),
+  })
+  .passthrough();
+
 const RunMetadataSchema = z
   .object({
     traceId: z.string().optional(),
@@ -9,6 +38,14 @@ const RunMetadataSchema = z
     tenantId: z.string().optional(),
     auditEventId: z.string().optional(),
     sourceNode: z.string().optional(),
+    intent: z.string().optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    semanticContractVersion: z.string().optional(),
+    semanticContractValid: z.boolean().optional(),
+    semanticContractMode: z.enum(["warn", "strict"]).optional(),
+    semanticContractViolations: z.array(ContractViolationSchema).optional(),
+    contractVersions: ContractVersionsSchema.optional(),
+    provenance: ProvenanceSchema.optional(),
   })
   .passthrough();
 

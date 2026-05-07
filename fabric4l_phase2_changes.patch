@@ -1,0 +1,2133 @@
+diff --git a/.github/workflows/contract-compliance.yml b/.github/workflows/contract-compliance.yml
+index c739ea18..ff4d3d9b 100644
+--- a/.github/workflows/contract-compliance.yml
++++ b/.github/workflows/contract-compliance.yml
+@@ -127,12 +127,12 @@ jobs:
+           cd ../../apps/web
+           npm link eslint-plugin-fabric-contracts
+ 
+-      - name: Run contract linting (all contract rules as errors)
++      - name: Run contract linting with Phase 2 semantic-contract warnings
+         working-directory: apps/web
+         run: |
+-          # Uses .eslintrc.cjs which now enforces all contract rules as "error"
+-          # CONTRACT.md §3.3 - All 6 canonical contracts enforced
+-          npx eslint src/ server/ --ext .ts,.tsx --max-warnings 0
++          # Uses .eslintrc.cjs to enforce blocking contract rules while surfacing
++          # Phase 2 semantic-contract metadata findings in warning mode.
++          npx eslint src/ server/ --ext .ts,.tsx
+ 
+       - name: Upload lint results
+         uses: actions/upload-artifact@v4
+@@ -235,9 +235,9 @@ jobs:
+       - name: Run Platform Contract Lint
+         run: python scripts/ci/platform_contract_lint.py
+ 
+-      - name: Run Agent Registry Contract Validation
++      - name: Run Agent Registry and Semantic Compatibility Validation
+         run: python scripts/ci/check_agent_registry.py
+-        # Phase 1 registry coverage starts in warning mode; malformed contracts still fail.
++        # Phase 2 semantic compatibility starts in warning mode; malformed contracts still fail.
+ 
+       - name: Run Strict Shared-Import Enforcement
+         run: python scripts/ci/check_shared_imports.py --strict --scope runtime
+diff --git a/apps/web/.eslintrc.cjs b/apps/web/.eslintrc.cjs
+index 033f3011..e23f0d96 100644
+--- a/apps/web/.eslintrc.cjs
++++ b/apps/web/.eslintrc.cjs
+@@ -128,6 +128,8 @@ module.exports = {
+     "fabric-contracts/no-inline-middleware": "error",
+     "fabric-contracts/no-inline-tool-definition": "error",
+     "fabric-contracts/no-json-parse-agent-output": "error",
++    // Semantic agent contracts start in warning mode until runtime enforcement is promoted.
++    "fabric-contracts/require-semantic-contract-metadata": "warn",
+     // Phase 2: Already enforced
+     "fabric-contracts/no-imperative-navigation": "error",
+     "fabric-contracts/no-url-concatenation": "error",
+diff --git a/apps/web/src/agui/AgentEventClient.ts b/apps/web/src/agui/AgentEventClient.ts
+index dc99e8fd..e3c0bd1f 100644
+--- a/apps/web/src/agui/AgentEventClient.ts
++++ b/apps/web/src/agui/AgentEventClient.ts
+@@ -90,6 +90,71 @@ const DEFAULT_STEPS = [
+   { id: "synthesize", label: "Synthesizing response" },
+ ];
+ 
++type BackendRunMetadata = Record<string, unknown> & {
++  run_id?: string;
++  trace_id?: string;
++  workflow_id?: string;
++  tenant_id?: string;
++  audit_event_id?: string;
++  source_node?: string;
++  semantic_contract_version?: string;
++  semantic_contract_valid?: boolean;
++  semantic_contract_mode?: "warn" | "strict";
++  semantic_contract_violations?: unknown[];
++};
++
++function asRecord(value: unknown): Record<string, unknown> | undefined {
++  return typeof value === "object" && value !== null && !Array.isArray(value)
++    ? (value as Record<string, unknown>)
++    : undefined;
++}
++
++function stringField(source: Record<string, unknown>, camel: string, snake?: string): string | undefined {
++  const camelValue = source[camel];
++  const snakeValue = snake ? source[snake] : undefined;
++  return typeof camelValue === "string"
++    ? camelValue
++    : typeof snakeValue === "string"
++      ? snakeValue
++      : undefined;
++}
++
++function normalizeRunMetadata(raw: BackendRunMetadata | undefined, fallbackRunId: string): RunMetadata {
++  const source = raw ?? {};
++  const contractVersions = asRecord(source.contractVersions ?? source.contract_versions);
++  const provenance = asRecord(source.provenance);
++
++  return {
++    ...source,
++    runId: stringField(source, "runId", "run_id") ?? fallbackRunId,
++    traceId: stringField(source, "traceId", "trace_id") ?? fallbackRunId,
++    workflowId: stringField(source, "workflowId", "workflow_id"),
++    tenantId: stringField(source, "tenantId", "tenant_id"),
++    auditEventId: stringField(source, "auditEventId", "audit_event_id") ?? `audit-${fallbackRunId}`,
++    sourceNode: stringField(source, "sourceNode", "source_node"),
++    semanticContractVersion: stringField(source, "semanticContractVersion", "semantic_contract_version"),
++    semanticContractValid:
++      typeof source.semanticContractValid === "boolean"
++        ? source.semanticContractValid
++        : typeof source.semantic_contract_valid === "boolean"
++          ? source.semantic_contract_valid
++          : undefined,
++    semanticContractMode:
++      source.semanticContractMode === "strict" || source.semanticContractMode === "warn"
++        ? source.semanticContractMode
++        : source.semantic_contract_mode === "strict" || source.semantic_contract_mode === "warn"
++          ? source.semantic_contract_mode
++          : undefined,
++    semanticContractViolations: Array.isArray(source.semanticContractViolations)
++      ? (source.semanticContractViolations as RunMetadata["semanticContractViolations"])
++      : Array.isArray(source.semantic_contract_violations)
++        ? (source.semantic_contract_violations as RunMetadata["semanticContractViolations"])
++        : undefined,
++    contractVersions: contractVersions as RunMetadata["contractVersions"],
++    provenance: provenance as RunMetadata["provenance"],
++  };
++}
++
+ // ── Client ──────────────────────────────────────────────────────────────────
+ 
+ export interface AgentEventClientOptions {
+@@ -233,13 +298,7 @@ export async function* sendAgentMessage(
+     const response = (await apiClient.post("l4", "/agent-stream/chat", body)) as {
+       data?: {
+         content?: string;
+-        metadata?: {
+-          run_id?: string;
+-          trace_id?: string;
+-          workflow_id?: string;
+-          tenant_id?: string;
+-          audit_event_id?: string;
+-        };
++        metadata?: BackendRunMetadata;
+         actions?: Array<{
+           label: string;
+           page_action: {
+@@ -261,13 +320,7 @@ export async function* sendAgentMessage(
+     const content =
+       data?.content ??
+       "I received your message but couldn't generate a response.";
+-    const metadata: RunMetadata = {
+-      runId: data?.metadata?.run_id ?? runId,
+-      traceId: data?.metadata?.trace_id ?? runId,
+-      workflowId: data?.metadata?.workflow_id,
+-      tenantId: data?.metadata?.tenant_id,
+-      auditEventId: data?.metadata?.audit_event_id ?? `audit-${runId}`,
+-    };
++    const metadata = normalizeRunMetadata(data?.metadata, runId);
+ 
+     const lastStep = steps[steps.length - 1];
+     yield {
+diff --git a/apps/web/src/agui/eventSchemas.ts b/apps/web/src/agui/eventSchemas.ts
+index a085bcb4..70f5e011 100644
+--- a/apps/web/src/agui/eventSchemas.ts
++++ b/apps/web/src/agui/eventSchemas.ts
+@@ -2,6 +2,35 @@ import { z } from "zod";
+ 
+ import { AgentEventType, type AgentEvent } from "./events";
+ 
++const ContractViolationSchema = z.object({
++  code: z.string().min(1),
++  message: z.string().min(1),
++  severity: z.enum(["warning", "error"]),
++  path: z.string().min(1),
++});
++
++const ContractVersionsSchema = z
++  .object({
++    semanticContract: z.string().optional(),
++    agentRegistry: z.string().optional(),
++    prompt: z.string().optional(),
++    tool: z.string().optional(),
++    workflow: z.string().optional(),
++    memory: z.string().optional(),
++  })
++  .passthrough();
++
++const ProvenanceSchema = z
++  .object({
++    tenantId: z.string().optional(),
++    traceId: z.string().optional(),
++    workflowId: z.string().optional(),
++    auditEventId: z.string().optional(),
++    sourceNode: z.string().optional(),
++    sourceLayer: z.string().optional(),
++  })
++  .passthrough();
++
+ const RunMetadataSchema = z
+   .object({
+     traceId: z.string().optional(),
+@@ -9,6 +38,14 @@ const RunMetadataSchema = z
+     tenantId: z.string().optional(),
+     auditEventId: z.string().optional(),
+     sourceNode: z.string().optional(),
++    intent: z.string().optional(),
++    confidence: z.number().min(0).max(1).optional(),
++    semanticContractVersion: z.string().optional(),
++    semanticContractValid: z.boolean().optional(),
++    semanticContractMode: z.enum(["warn", "strict"]).optional(),
++    semanticContractViolations: z.array(ContractViolationSchema).optional(),
++    contractVersions: ContractVersionsSchema.optional(),
++    provenance: ProvenanceSchema.optional(),
+   })
+   .passthrough();
+ 
+diff --git a/apps/web/src/agui/events.ts b/apps/web/src/agui/events.ts
+index 78ba7672..97769a52 100644
+--- a/apps/web/src/agui/events.ts
++++ b/apps/web/src/agui/events.ts
+@@ -224,14 +224,53 @@ export type AgentEvent =
+ 
+ // ── Run Metadata ────────────────────────────────────────────────────────────
+ 
++export type SemanticContractMode = "warn" | "strict";
++export type SemanticContractSeverity = "warning" | "error";
++
++export interface SemanticContractViolation {
++  code: string;
++  message: string;
++  severity: SemanticContractSeverity;
++  path: string;
++}
++
++export interface SemanticContractVersions {
++  semanticContract?: string;
++  agentRegistry?: string;
++  prompt?: string;
++  tool?: string;
++  workflow?: string;
++  memory?: string;
++  [key: string]: string | undefined;
++}
++
++export interface SemanticProvenance {
++  tenantId?: string;
++  traceId?: string;
++  workflowId?: string;
++  auditEventId?: string;
++  sourceNode?: string;
++  sourceLayer?: string;
++  [key: string]: string | undefined;
++}
++
+ export interface RunMetadata {
+-  runId: string;
+-  traceId: string;
++  runId?: string;
++  traceId?: string;
+   workflowId?: string;
+   tenantId?: string;
+-  auditEventId: string;
++  auditEventId?: string;
+   /** Workflow node that produced this event */
+   sourceNode?: string;
++  intent?: string;
++  confidence?: number;
++  semanticContractVersion?: string;
++  semanticContractValid?: boolean;
++  semanticContractMode?: SemanticContractMode;
++  semanticContractViolations?: SemanticContractViolation[];
++  contractVersions?: SemanticContractVersions;
++  provenance?: SemanticProvenance;
++  [key: string]: unknown;
+ }
+ 
+ // ── Step Snapshot (derived state for UI rendering) ──────────────────────────
+diff --git a/apps/web/src/agui/useAgentEvents.ts b/apps/web/src/agui/useAgentEvents.ts
+index 51beadac..f4af4c42 100644
+--- a/apps/web/src/agui/useAgentEvents.ts
++++ b/apps/web/src/agui/useAgentEvents.ts
+@@ -267,19 +267,28 @@ export function useAgentEvents({
+         const output = event.output as {
+           actions?: Array<{ label: string; page_action: WorkspacePageActionContract }>;
+         } | undefined;
+-        if (event.metadata && output?.actions?.length) {
++        const metadata = event.metadata;
++        if (
++          metadata &&
++          output?.actions?.length &&
++          typeof metadata.runId === "string" &&
++          typeof metadata.traceId === "string" &&
++          typeof metadata.workflowId === "string" &&
++          typeof metadata.auditEventId === "string"
++        ) {
++          const runMetadataIds = {
++            runId: metadata.runId,
++            traceId: metadata.traceId,
++            workflowId: metadata.workflowId,
++            auditEventId: metadata.auditEventId,
++          };
+           setStructuredActions(
+             output.actions.map((action) => ({
+               label: action.label,
+               onClick: () =>
+                 applyWorkspacePageAction.mutate({
+                   ...action.page_action,
+-                  runMetadataIds: {
+-                    runId: event.metadata!.runId,
+-                    traceId: event.metadata!.traceId,
+-                    workflowId: event.metadata!.workflowId,
+-                    auditEventId: event.metadata!.auditEventId,
+-                  },
++                  runMetadataIds,
+                 }),
+             })),
+           );
+diff --git a/contracts/agent-registry/README.md b/contracts/agent-registry/README.md
+index e858245a..5b65ee58 100644
+--- a/contracts/agent-registry/README.md
++++ b/contracts/agent-registry/README.md
+@@ -1,10 +1,6 @@
+ # Agent Registry Contracts
+ 
+-This directory is the **Phase 1 semantic source of truth** for Layer 4
+-agent behavior. It extends the existing `contracts/` governance model
+-without changing runtime behavior. The registry records the minimum
+-contract metadata needed to detect architectural drift in agents,
+-prompts, reasoning policies, tools, and workflows.
++This directory is the **semantic source of truth** for Layer 4 agent behavior. Phase 1 established the registry without changing runtime behavior; **Phase 2** adds a compatibility matrix consumed by runtime, AG-UI, lint, and CI validation in warning mode. The registry records the minimum contract metadata needed to detect architectural drift in agents, prompts, reasoning policies, tools, workflows, memory references, and semantic event envelopes.
+ 
+ ## Directory Structure
+ 
+@@ -12,11 +8,14 @@ prompts, reasoning policies, tools, and workflows.
+ |---|---|
+ | `schemas/` | JSON Schema contracts for registry documents. |
+ | `agents/manifest.json` | Canonical production Layer 4 agent roster and expected decision envelopes. |
++| `compatibility-matrix.json` | Phase 2 semantic-contract compatibility matrix covering agent, prompt, tool, workflow, memory, and AG-UI event envelope versions. |
+ | `tools/manifest.json` | Centralized tool interface registry mapped to `contracts/tool-manifests/*.json`. |
+ | `prompts/` | Versioned prompt metadata and changelog evidence. |
+ | `reasoning-policies/` | Confidence, evidence, escalation, and allowed-tool policy contracts. |
+ | `workflows/` | Workflow state-machine entries with states, transitions, and invariants. |
+ 
++The compatibility matrix intentionally starts with `enforcement_default: "warn"`. Runtime validators and frontend event schemas surface semantic-contract gaps without blocking execution until strict enforcement is explicitly promoted through the governance process.
++
+ ## Change Discipline
+ 
+ Registry changes are governed by `contracts/GOVERNANCE.md`. Prompt,
+@@ -28,7 +27,7 @@ promoted to blocking.
+ 
+ ## Validation
+ 
+-Run the registry contract validator from the repository root:
++Run the registry contract validator from the repository root. The same command validates the Phase 2 `compatibility-matrix.json` and emits warnings when registered agents and compatibility entries drift:
+ 
+ ```bash
+ python scripts/ci/check_agent_registry.py
+diff --git a/packages/eslint-plugin-fabric-contracts/README.md b/packages/eslint-plugin-fabric-contracts/README.md
+index a0fb08e6..27224459 100644
+--- a/packages/eslint-plugin-fabric-contracts/README.md
++++ b/packages/eslint-plugin-fabric-contracts/README.md
+@@ -21,7 +21,7 @@ module.exports = {
+ 
+ ## Rules
+ 
+-This plugin enforces 6 canonical contracts through 12 ESLint rules:
++This plugin enforces 7 canonical contract areas through 13 ESLint rules. **Phase 2 semantic-contract metadata** starts in warning mode so teams can observe gaps before promotion to blocking enforcement.
+ 
+ ### 1. Tenant Isolation Boundary (§2.1)
+ 
+@@ -51,14 +51,20 @@ This plugin enforces 6 canonical contracts through 12 ESLint rules:
+ |------|-------------|
+ | `no-json-parse-agent-output` | Disallow JSON.parse() on LLM outputs |
+ 
+-### 5. UI State Management (§2.6)
++### 5. Agent Semantic Contracts (§2.5 / Phase 2)
++
++| Rule | Description |
++|------|-------------|
++| `require-semantic-contract-metadata` | Require AG-UI `RUN_FINISHED` event literals to include semantic contract metadata, including contract version, validation result, and provenance identifiers. This rule is enabled as a warning during Phase 2 rollout. |
++
++### 6. UI State Management (§2.6)
+ 
+ | Rule | Description |
+ |------|-------------|
+ | `no-imperative-navigation` | Disallow router.push(), history.push() |
+ | `no-url-concatenation` | Disallow URL string concatenation |
+ 
+-### 6. Public API Surface (§2.7)
++### 7. Public API Surface (§2.7)
+ 
+ | Rule | Description |
+ |------|-------------|
+diff --git a/packages/eslint-plugin-fabric-contracts/src/__tests__/index.test.ts b/packages/eslint-plugin-fabric-contracts/src/__tests__/index.test.ts
+index 297c9e62..221565e0 100644
+--- a/packages/eslint-plugin-fabric-contracts/src/__tests__/index.test.ts
++++ b/packages/eslint-plugin-fabric-contracts/src/__tests__/index.test.ts
+@@ -9,6 +9,7 @@ const expectedRules = [
+   "no-inline-tool-definition",
+   "no-throw-in-tool",
+   "no-json-parse-agent-output",
++  "require-semantic-contract-metadata",
+   "no-imperative-navigation",
+   "no-url-concatenation",
+   "no-private-imports",
+@@ -29,8 +30,9 @@ describe("eslint-plugin-fabric-contracts", () => {
+     expect(plugin.configs.recommended.plugins).toEqual(["fabric-contracts"]);
+ 
+     for (const ruleName of expectedRules) {
++      const expectedSeverity = ruleName === "require-semantic-contract-metadata" ? "warn" : "error";
+       expect(plugin.configs.recommended.rules?.[`fabric-contracts/${ruleName}`]).toBe(
+-        "error"
++        expectedSeverity
+       );
+     }
+   });
+diff --git a/packages/eslint-plugin-fabric-contracts/src/index.ts b/packages/eslint-plugin-fabric-contracts/src/index.ts
+index d8f4ece1..f167b144 100644
+--- a/packages/eslint-plugin-fabric-contracts/src/index.ts
++++ b/packages/eslint-plugin-fabric-contracts/src/index.ts
+@@ -32,6 +32,7 @@ import noInlineMiddleware from "./rules/no-inline-middleware";
+ import noInlineToolDefinition from "./rules/no-inline-tool-definition";
+ import noThrowInTool from "./rules/no-throw-in-tool";
+ import noJsonParseAgentOutput from "./rules/no-json-parse-agent-output";
++import requireSemanticContractMetadata from "./rules/require-semantic-contract-metadata";
+ import noImperativeNavigation from "./rules/no-imperative-navigation";
+ import noUrlConcatenation from "./rules/no-url-concatenation";
+ import noPrivateImports from "./rules/no-private-imports";
+@@ -47,6 +48,7 @@ const rules: Record<string, Rule.RuleModule> = {
+   "no-inline-tool-definition": noInlineToolDefinition,
+   "no-throw-in-tool": noThrowInTool,
+   "no-json-parse-agent-output": noJsonParseAgentOutput,
++  "require-semantic-contract-metadata": requireSemanticContractMetadata,
+   "no-imperative-navigation": noImperativeNavigation,
+   "no-url-concatenation": noUrlConcatenation,
+   "no-private-imports": noPrivateImports,
+@@ -73,6 +75,9 @@ const recommended: Linter.BaseConfig = {
+     // LLM Output Handling (§2.5)
+     "fabric-contracts/no-json-parse-agent-output": "error",
+ 
++    // Semantic Agent Contracts (Phase 2)
++    "fabric-contracts/require-semantic-contract-metadata": "warn",
++
+     // UI State Management (§2.6)
+     "fabric-contracts/no-imperative-navigation": "error",
+     "fabric-contracts/no-url-concatenation": "error",
+diff --git a/packages/platform-contract/package.json b/packages/platform-contract/package.json
+index 9e1864a6..ea383526 100644
+--- a/packages/platform-contract/package.json
++++ b/packages/platform-contract/package.json
+@@ -8,6 +8,7 @@
+     "./agent-result": "./src/typescript/agent-result.ts",
+     "./stores": "./src/typescript/stores.ts",
+     "./routing": "./src/typescript/routing.ts",
++    "./agent-contracts": "./src/typescript/agent-contracts/index.ts",
+     "./generated": "./src/typescript/generated/index.ts"
+   },
+   "scripts": {
+diff --git a/packages/platform-contract/src/typescript/exports.contract-tests.ts b/packages/platform-contract/src/typescript/exports.contract-tests.ts
+index 3d23447b..9e74307e 100644
+--- a/packages/platform-contract/src/typescript/exports.contract-tests.ts
++++ b/packages/platform-contract/src/typescript/exports.contract-tests.ts
+@@ -2,6 +2,7 @@ import type { AgentResultEnvelope } from "@fabric/platform-contract";
+ import type { AgentResultMetadata } from "@fabric/platform-contract/agent-result";
+ import type { RouteTier } from "@fabric/platform-contract/routing";
+ import { useAccountContextStore } from "@fabric/platform-contract/stores";
++import { SEMANTIC_CONTRACT_VERSION, validateAgentOutputEnvelope } from "@fabric/platform-contract/agent-contracts";
+ 
+ const metadata: AgentResultMetadata = {
+   trace_id: "trace-2",
+@@ -28,3 +29,5 @@ const selectedAccountId: string | null =
+ void envelope;
+ void tier;
+ void selectedAccountId;
++void SEMANTIC_CONTRACT_VERSION;
++void validateAgentOutputEnvelope;
+diff --git a/packages/platform-contract/tsconfig.json b/packages/platform-contract/tsconfig.json
+index dea42927..d12cabaa 100644
+--- a/packages/platform-contract/tsconfig.json
++++ b/packages/platform-contract/tsconfig.json
+@@ -8,7 +8,8 @@
+       "@fabric/platform-contract": ["./src/typescript/index.ts"],
+       "@fabric/platform-contract/agent-result": ["./src/typescript/agent-result.ts"],
+       "@fabric/platform-contract/routing": ["./src/typescript/routing.ts"],
+-      "@fabric/platform-contract/stores": ["./src/typescript/stores.ts"]
++      "@fabric/platform-contract/stores": ["./src/typescript/stores.ts"],
++      "@fabric/platform-contract/agent-contracts": ["./src/typescript/agent-contracts/index.ts"]
+     },
+     "strict": true,
+     "skipLibCheck": true,
+diff --git a/scripts/ci/check_agent_registry.py b/scripts/ci/check_agent_registry.py
+index 5822d08d..5ad2417a 100755
+--- a/scripts/ci/check_agent_registry.py
++++ b/scripts/ci/check_agent_registry.py
+@@ -53,6 +53,7 @@ ALLOWED_KINDS = {
+     "workflow",
+     "memory_object",
+     "reasoning_policy",
++    "semantic_compatibility",
+ }
+ ALLOWED_RISK_CLASSES = {"low", "medium", "high", "regulated"}
+ SEMVER_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
+@@ -92,6 +93,7 @@ class RegistryValidator:
+         self._validate_workflows()
+         self._validate_prompts()
+         self._validate_reasoning_policies()
++        self._validate_semantic_compatibility_matrix()
+         return self._report()
+ 
+     def _load_json_documents(self) -> None:
+@@ -113,6 +115,8 @@ class RegistryValidator:
+             "schemas/tool-error.schema.json",
+             "schemas/tool-registry.schema.json",
+             "schemas/workflow.schema.json",
++            "schemas/semantic-compatibility.schema.json",
++            "compatibility-matrix.json",
+         ]
+         for relative_path in required_files:
+             path = self.registry_root / relative_path
+@@ -361,6 +365,82 @@ class RegistryValidator:
+                 if not isinstance(document.get(field), list) or not document.get(field):
+                     self._error(path, "reasoning-policy-list-missing", f"Reasoning policy must declare non-empty {field}")
+ 
++    def _validate_semantic_compatibility_matrix(self) -> None:
++        """Validate the Phase 2 semantic-contract compatibility matrix."""
++
++        path = self.registry_root / "compatibility-matrix.json"
++        document = self.documents.get(path)
++        if document is None:
++            return
++
++        required_fields = {
++            "id",
++            "version",
++            "agent_registry_version",
++            "min_runtime_version",
++            "enforcement_default",
++            "compatible_event_versions",
++            "agent_contracts",
++            "prompt_contracts",
++            "tool_contracts",
++            "workflow_contracts",
++            "memory_contracts",
++            "deprecated_contracts",
++        }
++        missing = sorted(required_fields - set(document))
++        if missing:
++            self._error(path, "semantic-compatibility-field-missing", f"Compatibility matrix missing fields: {', '.join(missing)}")
++
++        for field in ("version", "agent_registry_version"):
++            value = document.get(field)
++            if not isinstance(value, str) or not SEMVER_RE.match(value):
++                self._error(path, "semantic-compatibility-version-invalid", f"{field} must use semver MAJOR.MINOR.PATCH: {value!r}")
++
++        if document.get("enforcement_default") not in {"warn", "strict"}:
++            self._error(path, "semantic-compatibility-enforcement-invalid", "enforcement_default must be warn or strict")
++
++        for section in (
++            "compatible_event_versions",
++            "agent_contracts",
++            "prompt_contracts",
++            "tool_contracts",
++            "workflow_contracts",
++            "memory_contracts",
++        ):
++            contracts = document.get(section)
++            if not isinstance(contracts, dict) or not contracts:
++                self._error(path, "semantic-compatibility-section-invalid", f"{section} must be a non-empty object")
++                continue
++            for key, version in contracts.items():
++                if not isinstance(key, str) or not key:
++                    self._error(path, "semantic-compatibility-contract-invalid", f"{section} contains an empty contract key")
++                if not isinstance(version, str) or not SEMVER_RE.match(version):
++                    self._error(path, "semantic-compatibility-contract-version-invalid", f"{section}.{key} must use semver: {version!r}")
++
++        deprecated = document.get("deprecated_contracts")
++        if not isinstance(deprecated, list) or not all(isinstance(item, str) and item for item in deprecated):
++            self._error(path, "semantic-compatibility-deprecated-invalid", "deprecated_contracts must be a list of strings")
++
++        registered_agent_types = self._registered_agent_types()
++        matrix_agent_types = set(document.get("agent_contracts", {})) if isinstance(document.get("agent_contracts"), dict) else set()
++        missing_agents = sorted(registered_agent_types - matrix_agent_types)
++        extra_agents = sorted(matrix_agent_types - registered_agent_types)
++        if missing_agents:
++            self._warning(path, "semantic-compatibility-agent-missing", f"Registered agents missing from compatibility matrix: {', '.join(missing_agents)}")
++        if extra_agents:
++            self._warning(path, "semantic-compatibility-agent-extra", f"Compatibility matrix agents not present in registry manifest: {', '.join(extra_agents)}")
++
++    def _registered_agent_types(self) -> set[str]:
++        path = self.registry_root / "agents" / "manifest.json"
++        document = self.documents.get(path)
++        if not isinstance(document, dict) or not isinstance(document.get("agents"), list):
++            return set()
++        return {
++            agent["agent_type"]
++            for agent in document["agents"]
++            if isinstance(agent, dict) and isinstance(agent.get("agent_type"), str) and agent.get("agent_type")
++        }
++
+     def _validate_relative_file_reference(self, path: Path, document: dict[str, Any], field: str) -> None:
+         reference = document.get(field)
+         if not isinstance(reference, str) or not reference:
+diff --git a/services/layer4-agents/src/agents/base.py b/services/layer4-agents/src/agents/base.py
+index f23ad944..194e19f4 100644
+--- a/services/layer4-agents/src/agents/base.py
++++ b/services/layer4-agents/src/agents/base.py
+@@ -5,14 +5,34 @@ Layer 4 system.  See taxonomy.py for the full roster.
+ """
+ 
+ import asyncio
++import logging
++import os
++import sys
+ from abc import ABC, abstractmethod
+ from dataclasses import dataclass, field
+ from datetime import datetime
+ from enum import Enum, auto
++from pathlib import Path
+ from typing import Any
+ 
+ from value_fabric.shared.models.typed_dict import TypedDictModel
+ 
++_PLATFORM_CONTRACT_PYTHON = next(
++    (parent / "packages" / "platform-contract" / "src" / "python" for parent in Path(__file__).resolve().parents if (parent / "packages" / "platform-contract" / "src" / "python").exists()),
++    None,
++)
++if _PLATFORM_CONTRACT_PYTHON and str(_PLATFORM_CONTRACT_PYTHON) not in sys.path:
++    sys.path.append(str(_PLATFORM_CONTRACT_PYTHON))
++
++try:  # pragma: no cover - contract tests configure this path explicitly
++    from agent_contracts import build_agent_output_envelope, validate_agent_output
++except Exception:  # pragma: no cover - runtime remains warning-only if package import fails
++    build_agent_output_envelope = None  # type: ignore[assignment]
++    validate_agent_output = None  # type: ignore[assignment]
++
++logger = logging.getLogger(__name__)
++SEMANTIC_CONTRACT_VERSION = "2.0.0"
++
+ 
+ class AgentState_to_dictResult(TypedDictModel):
+     agent_id: Any
+@@ -208,6 +228,83 @@ class BaseAgent(ABC):
+         """
+         pass
+ 
++    def _semantic_contract_mode(self) -> str:
++        """Resolve Phase 2 semantic-contract enforcement mode."""
++
++        mode = os.getenv("AGENT_SEMANTIC_CONTRACT_MODE", "warn").strip().lower()
++        return "strict" if mode == "strict" else "warn"
++
++    def _validate_agent_output_contract(
++        self,
++        result: dict[str, Any],
++        task: dict[str, Any],
++        context: dict[str, Any],
++    ) -> dict[str, Any]:
++        """Validate an agent result against the shared semantic output envelope."""
++
++        mode = self._semantic_contract_mode()
++        if build_agent_output_envelope is None or validate_agent_output is None:
++            validation_metadata = {
++                "version": SEMANTIC_CONTRACT_VERSION,
++                "mode": mode,
++                "valid": False,
++                "violations": [
++                    {
++                        "code": "semantic_contract_validator_unavailable",
++                        "message": "agent_contracts package is unavailable in this runtime",
++                        "severity": "warning",
++                        "path": "$",
++                    }
++                ],
++            }
++            self.state.metadata["semantic_contract"] = validation_metadata
++            return validation_metadata
++
++        tenant_id = str(context.get("tenant_id") or context.get("tenantId") or "unknown")
++        trace_id = str(context.get("trace_id") or context.get("traceId") or self.agent_id)
++        workflow_id = context.get("workflow_id") or context.get("workflowId")
++        audit_event_id = context.get("audit_event_id") or context.get("auditEventId")
++        capability = str(task.get("capability", "unknown"))
++
++        envelope = build_agent_output_envelope(
++            agent_type=self.agent_type,
++            output=result,
++            tenant_id=tenant_id,
++            trace_id=trace_id,
++            workflow_id=str(workflow_id) if workflow_id else None,
++            audit_event_id=str(audit_event_id) if audit_event_id else None,
++            source_node=f"{self.agent_type}.{capability}",
++            confidence=result.get("confidence") if isinstance(result.get("confidence"), (int, float)) else None,
++            explainability={"capability": capability},
++            contract_versions={
++                "semantic_contract": SEMANTIC_CONTRACT_VERSION,
++                "agent_registry": "1.0.0",
++            },
++        )
++        validation = validate_agent_output(envelope, mode=mode)
++        violations = [
++            violation.dict() if hasattr(violation, "dict") else violation
++            for violation in validation.violations
++        ]
++        validation_metadata = {
++            "version": SEMANTIC_CONTRACT_VERSION,
++            "mode": validation.mode.value if hasattr(validation.mode, "value") else str(validation.mode),
++            "valid": validation.valid,
++            "violations": violations,
++        }
++        self.state.metadata["semantic_contract"] = validation_metadata
++        if validation.blocking:
++            raise AgentExecutionError(
++                f"Agent {self.agent_id} produced output that violates semantic contract: {violations}"
++            )
++        if violations:
++            logger.warning(
++                "Agent %s semantic-contract warnings: %s",
++                self.agent_id,
++                violations,
++            )
++        return validation_metadata
++
+     async def run(
+         self,
+         task: dict[str, Any],
+@@ -282,6 +379,8 @@ class BaseAgent(ABC):
+             async with self._execution_lock:
+                 result = await self.execute(task, ctx)
+ 
++            semantic_contract = self._validate_agent_output_contract(result, task, ctx)
++
+             # Mark completion
+             self.state.status = AgentStatus.COMPLETED
+             self.state.completed_at = self._clock.now()
+@@ -296,7 +395,7 @@ class BaseAgent(ABC):
+                 await self.message_bus.publish(
+                     agent_id=self.agent_id,
+                     event_type="AGENT_COMPLETED",
+-                    payload={"result": result},
++                    payload={"result": result, "semantic_contract": semantic_contract},
+                 )
+ 
+             return result
+diff --git a/services/layer4-agents/src/services/conversation.py b/services/layer4-agents/src/services/conversation.py
+index 0b869aef..af1ef918 100644
+--- a/services/layer4-agents/src/services/conversation.py
++++ b/services/layer4-agents/src/services/conversation.py
+@@ -21,8 +21,10 @@ from __future__ import annotations
+ import json
+ import logging
+ import os
++import sys
+ import uuid
+ from datetime import UTC, datetime
++from pathlib import Path
+ from typing import Any
+ 
+ from value_fabric.shared.audit import AuditAction, AuditOutcome
+@@ -50,6 +52,26 @@ class ConversationService__guardrailResult(TypedDictModel):
+ 
+ logger = logging.getLogger(__name__)
+ 
++# Semantic-contract validators are provided by packages/platform-contract.
++# Layer 4 services can run in isolation during local development, so the
++# import is intentionally best-effort and remains warning-only unless
++# AGENT_SEMANTIC_CONTRACT_MODE=strict is configured.
++_PLATFORM_CONTRACT_PYTHON = next(
++    (parent / "packages" / "platform-contract" / "src" / "python" for parent in Path(__file__).resolve().parents if (parent / "packages" / "platform-contract" / "src" / "python").exists()),
++    None,
++)
++if _PLATFORM_CONTRACT_PYTHON and str(_PLATFORM_CONTRACT_PYTHON) not in sys.path:
++    sys.path.append(str(_PLATFORM_CONTRACT_PYTHON))
++
++try:  # pragma: no cover - exercised by contract tests with PYTHONPATH configured
++    from agent_contracts import build_agent_output_envelope, validate_agent_output
++except Exception:  # pragma: no cover - service remains available if package import is unavailable
++    build_agent_output_envelope = None  # type: ignore[assignment]
++    validate_agent_output = None  # type: ignore[assignment]
++
++SEMANTIC_CONTRACT_VERSION = "2.0.0"
++
++
+ # Tab-specific system prompts that provide workspace context to the LLM
+ TAB_SYSTEM_PROMPTS: dict[str, str] = {
+     "signals": (
+@@ -153,6 +175,98 @@ class ConversationService:
+         self.intent_classifier = intent_classifier
+         self.tool_registry = tool_registry
+ 
++    def _semantic_contract_mode(self) -> str:
++        """Resolve semantic-contract mode for Phase 2 rollout."""
++
++        mode = os.getenv("AGENT_SEMANTIC_CONTRACT_MODE", "warn").strip().lower()
++        return "strict" if mode == "strict" else "warn"
++
++    def _semantic_agent_metadata(
++        self,
++        *,
++        agent_type: str,
++        output: Any,
++        tenant_id: str,
++        trace_id: str,
++        workflow_id: str | None,
++        audit_event_id: str | None,
++        active_tab: str,
++        intent: str,
++        confidence: float | None,
++        source_node: str = "conversation.generate",
++    ) -> dict[str, Any]:
++        """Build and validate the semantic metadata envelope for AG-UI events."""
++
++        contract_versions = {
++            "semantic_contract": SEMANTIC_CONTRACT_VERSION,
++            "agent_registry": "1.0.0",
++            "prompt": "1.0.0",
++            "workflow": "1.0.0",
++        }
++        if build_agent_output_envelope is None or validate_agent_output is None:
++            return {
++                "semanticContractVersion": SEMANTIC_CONTRACT_VERSION,
++                "semanticContractValid": False,
++                "semanticContractMode": self._semantic_contract_mode(),
++                "semanticContractViolations": [
++                    {
++                        "code": "semantic_contract_validator_unavailable",
++                        "message": "agent_contracts package is unavailable in this runtime",
++                        "severity": "warning",
++                        "path": "$",
++                    }
++                ],
++                "contractVersions": {
++                    "semanticContract": SEMANTIC_CONTRACT_VERSION,
++                    "agentRegistry": "1.0.0",
++                    "prompt": "1.0.0",
++                    "workflow": "1.0.0",
++                },
++            }
++
++        envelope = build_agent_output_envelope(
++            agent_type=agent_type,
++            output=output,
++            tenant_id=tenant_id,
++            trace_id=trace_id,
++            workflow_id=workflow_id,
++            audit_event_id=audit_event_id,
++            source_node=source_node,
++            prompt_id="conversation-system-prompts",
++            prompt_version="1.0.0",
++            reasoning_policy_id=f"valuepilot-{active_tab}",
++            confidence=confidence,
++            explainability={"intent": intent, "active_tab": active_tab},
++            contract_versions=contract_versions,
++        )
++        validation = validate_agent_output(envelope, mode=self._semantic_contract_mode())
++        normalized = validation.normalized or envelope
++        provenance = normalized.get("provenance", {}) if isinstance(normalized, dict) else {}
++
++        return {
++            "semanticContractVersion": SEMANTIC_CONTRACT_VERSION,
++            "semanticContractValid": validation.valid,
++            "semanticContractMode": validation.mode.value if hasattr(validation.mode, "value") else str(validation.mode),
++            "semanticContractViolations": [
++                violation.dict() if hasattr(violation, "dict") else violation
++                for violation in validation.violations
++            ],
++            "contractVersions": {
++                "semanticContract": SEMANTIC_CONTRACT_VERSION,
++                "agentRegistry": "1.0.0",
++                "prompt": "1.0.0",
++                "workflow": "1.0.0",
++            },
++            "provenance": {
++                "tenantId": provenance.get("tenant_id") or provenance.get("tenantId") or tenant_id,
++                "traceId": provenance.get("trace_id") or provenance.get("traceId") or trace_id,
++                "workflowId": provenance.get("workflow_id") or provenance.get("workflowId") or workflow_id,
++                "auditEventId": provenance.get("audit_event_id") or provenance.get("auditEventId") or audit_event_id,
++                "sourceNode": provenance.get("source_node") or provenance.get("sourceNode") or source_node,
++                "sourceLayer": provenance.get("source_layer") or provenance.get("sourceLayer") or "layer4-agents",
++            },
++        }
++
+     # Expected steps for streaming mode
+     STREAMING_STEPS = [
+         {"id": "guardrails", "label": "Checking safety guardrails"},
+@@ -198,6 +312,18 @@ class ConversationService:
+             "runId": run_id,
+             "description": f"Processing request for {account_name}",
+             "expectedSteps": self.STREAMING_STEPS,
++            "metadata": self._semantic_agent_metadata(
++                agent_type="ConversationAgent",
++                output={"status": "started"},
++                tenant_id=tenant_id,
++                trace_id=trace_id,
++                workflow_id=workflow_id,
++                audit_event_id=None,
++                active_tab=active_tab,
++                intent="pending",
++                confidence=None,
++                source_node="conversation.start",
++            ),
+         }
+ 
+         try:
+@@ -214,7 +340,25 @@ class ConversationService:
+                     "type": "RUN_FINISHED",
+                     "timestamp": now(),
+                     "runId": run_id,
+-                    "metadata": {"traceId": trace_id, "workflowId": workflow_id, "tenantId": tenant_id, "intent": "refusal", "confidence": 1.0},
++                    "metadata": {
++                            "traceId": trace_id,
++                            "workflowId": workflow_id,
++                            "tenantId": tenant_id,
++                            "intent": "refusal",
++                            "confidence": 1.0,
++                            **self._semantic_agent_metadata(
++                                agent_type="ConversationAgent",
++                                output={"content": guardrail["message"], "intent": "refusal"},
++                                tenant_id=tenant_id,
++                                trace_id=trace_id,
++                                workflow_id=workflow_id,
++                                audit_event_id=None,
++                                active_tab=active_tab,
++                                intent="refusal",
++                                confidence=1.0,
++                                source_node="conversation.guardrail",
++                            ),
++                        },
+                 }
+                 return
+ 
+@@ -272,6 +416,17 @@ class ConversationService:
+                     "tenantId": tenant_id,
+                     "intent": intent,
+                     "confidence": confidence,
++                    **self._semantic_agent_metadata(
++                        agent_type="ConversationAgent",
++                        output={"content": response_content, "intent": intent},
++                        tenant_id=tenant_id,
++                        trace_id=trace_id,
++                        workflow_id=workflow_id,
++                        audit_event_id=None,
++                        active_tab=active_tab,
++                        intent=intent,
++                        confidence=confidence,
++                    ),
+                 },
+             }
+ 
+@@ -325,6 +480,18 @@ class ConversationService:
+                     "confidence": 1.0,
+                     "workflow_triggered": False,
+                     "refusal_reason": guardrail["reason"],
++                    **self._semantic_agent_metadata(
++                        agent_type="ConversationAgent",
++                        output={"content": guardrail["message"], "intent": "refusal"},
++                        tenant_id=tenant_id,
++                        trace_id=trace_id,
++                        workflow_id=workflow_id,
++                        audit_event_id=audit_event_id,
++                        active_tab=active_tab,
++                        intent="refusal",
++                        confidence=1.0,
++                        source_node="conversation.guardrail",
++                    ),
+                 },
+             })
+ 
+@@ -404,6 +571,17 @@ class ConversationService:
+                 "confidence": confidence,
+                 "workflow_triggered": workflow_result is not None,
+                 "entity_context": entity_context or {},
++                **self._semantic_agent_metadata(
++                    agent_type="ConversationAgent",
++                    output={"content": response_content, "intent": intent},
++                    tenant_id=tenant_id,
++                    trace_id=trace_id,
++                    workflow_id=workflow_id,
++                    audit_event_id=audit_event_id,
++                    active_tab=active_tab,
++                    intent=intent,
++                    confidence=confidence,
++                ),
+             },
+         })
+ 
+diff --git a/contracts/agent-registry/compatibility-matrix.json b/contracts/agent-registry/compatibility-matrix.json
+new file mode 100644
+index 00000000..872a831c
+--- /dev/null
++++ b/contracts/agent-registry/compatibility-matrix.json
+@@ -0,0 +1,60 @@
++{
++  "$schema": "./schemas/semantic-compatibility.schema.json",
++  "id": "fabric4l-agent-semantic-compatibility",
++  "version": "2.0.0",
++  "kind": "semantic_compatibility",
++  "owner": "platform-architecture",
++  "risk_class": "medium",
++  "description": "Phase 2 semantic-contract compatibility matrix for Layer 4 agent event, output, tool, workflow, and memory envelopes.",
++  "compatibility": {
++    "breaking_change_policy": "strict promotion requires Contract Council approval",
++    "default_rollout": "warn"
++  },
++  "observability": {
++    "signals": ["semantic_contract_valid", "semantic_contract_violations", "semantic_contract_version"]
++  },
++  "governance": {
++    "review_body": "Contract Council",
++    "promotion_path": "warning-mode validation before strict enforcement"
++  },
++  "agent_registry_version": "1.0.0",
++  "min_runtime_version": "0.1.0",
++  "enforcement_default": "warn",
++  "compatible_event_versions": {
++    "agui_agent_event": "2.0.0",
++    "agent_output_envelope": "2.0.0",
++    "tool_invocation_envelope": "2.0.0",
++    "workflow_transition_envelope": "2.0.0",
++    "memory_reference": "2.0.0"
++  },
++  "agent_contracts": {
++    "ContextExtractionAgent": "1.0.0",
++    "ValueModelAgent": "1.0.0",
++    "IntegrityAgent": "1.0.0",
++    "NarrativeAgent": "1.0.0",
++    "CompetitiveIntelAgent": "1.0.0",
++    "SignalDetectionAgent": "1.0.0",
++    "CRMSyncAgent": "1.0.0",
++    "ConversationAgent": "1.0.0",
++    "OrchestrationController": "1.0.0"
++  },
++  "prompt_contracts": {
++    "conversation-system-prompts": "1.0.0",
++    "workflow-delegation-prompts": "1.0.0"
++  },
++  "tool_contracts": {
++    "platform-tools": "1.0.0",
++    "agent-mutation-tools": "1.0.0"
++  },
++  "workflow_contracts": {
++    "roi_analysis": "1.0.0",
++    "whitespace_detection": "1.0.0",
++    "business_case_generation": "1.0.0"
++  },
++  "memory_contracts": {
++    "account_context": "1.0.0",
++    "conversation_context": "1.0.0"
++  },
++  "deprecated_contracts": [],
++  "notes": "Phase 2 starts in warning mode. Runtime validators normalize semantic metadata and report violations without blocking until strict mode is explicitly enabled."
++}
+diff --git a/contracts/agent-registry/schemas/semantic-compatibility.schema.json b/contracts/agent-registry/schemas/semantic-compatibility.schema.json
+new file mode 100644
+index 00000000..f5b0c6c9
+--- /dev/null
++++ b/contracts/agent-registry/schemas/semantic-compatibility.schema.json
+@@ -0,0 +1,56 @@
++{
++  "$schema": "https://json-schema.org/draft/2020-12/schema",
++  "$id": "https://valuefabric.ai/contracts/agent-registry/schemas/semantic-compatibility.schema.json",
++  "title": "Fabric 4L Agent Semantic Compatibility Matrix",
++  "type": "object",
++  "properties": {
++    "id": { "type": "string", "minLength": 1 },
++    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
++    "agent_registry_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
++    "min_runtime_version": { "type": "string", "minLength": 1 },
++    "enforcement_default": { "type": "string", "enum": ["warn", "strict"] },
++    "compatible_event_versions": {
++      "type": "object",
++      "additionalProperties": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
++    },
++    "agent_contracts": {
++      "type": "object",
++      "additionalProperties": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
++    },
++    "prompt_contracts": {
++      "type": "object",
++      "additionalProperties": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
++    },
++    "tool_contracts": {
++      "type": "object",
++      "additionalProperties": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
++    },
++    "workflow_contracts": {
++      "type": "object",
++      "additionalProperties": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
++    },
++    "memory_contracts": {
++      "type": "object",
++      "additionalProperties": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" }
++    },
++    "deprecated_contracts": {
++      "type": "array",
++      "items": { "type": "string" }
++    },
++    "notes": { "type": "string" }
++  },
++  "required": [
++    "id",
++    "version",
++    "agent_registry_version",
++    "min_runtime_version",
++    "enforcement_default",
++    "compatible_event_versions",
++    "agent_contracts",
++    "prompt_contracts",
++    "tool_contracts",
++    "workflow_contracts",
++    "memory_contracts",
++    "deprecated_contracts"
++  ]
++}
+diff --git a/packages/eslint-plugin-fabric-contracts/src/rules/__tests__/require-semantic-contract-metadata.test.ts b/packages/eslint-plugin-fabric-contracts/src/rules/__tests__/require-semantic-contract-metadata.test.ts
+new file mode 100644
+index 00000000..a0fd6682
+--- /dev/null
++++ b/packages/eslint-plugin-fabric-contracts/src/rules/__tests__/require-semantic-contract-metadata.test.ts
+@@ -0,0 +1,44 @@
++import { RuleTester } from "eslint";
++import rule from "../require-semantic-contract-metadata";
++
++const ruleTester = new RuleTester({
++  parser: require.resolve("@typescript-eslint/parser"),
++  parserOptions: {
++    ecmaVersion: 2022,
++    sourceType: "module",
++  },
++});
++
++ruleTester.run("require-semantic-contract-metadata", rule, {
++  valid: [
++    {
++      code: `function* stream() { yield { type: AgentEventType.RUN_FINISHED, timestamp: now(), metadata: { semanticContractVersion: "2.0.0" } }; }`,
++    },
++    {
++      code: `const event = { type: "RUN_FINISHED", metadata: { semanticContractValid: true } };`,
++    },
++    {
++      code: `const event = { type: "RUN_FINISHED", metadata: { contractVersions: { semanticContract: "2.0.0" } } };`,
++    },
++    {
++      code: `const event = { type: "RUN_FINISHED", metadata: { ...semanticMetadata } };`,
++    },
++    {
++      code: `const event = { type: AgentEventType.RUN_STARTED, metadata: {} };`,
++    },
++  ],
++  invalid: [
++    {
++      code: `const event = { type: AgentEventType.RUN_FINISHED, metadata: { traceId } };`,
++      errors: [{ messageId: "requireSemanticContractMetadata" }],
++    },
++    {
++      code: `const event = { type: "RUN_FINISHED", metadata: { traceId: "trace-1" } };`,
++      errors: [{ messageId: "requireSemanticContractMetadata" }],
++    },
++    {
++      code: `const event = { type: AgentEventType.RUN_FINISHED };`,
++      errors: [{ messageId: "requireSemanticContractMetadata" }],
++    },
++  ],
++});
+diff --git a/packages/eslint-plugin-fabric-contracts/src/rules/require-semantic-contract-metadata.ts b/packages/eslint-plugin-fabric-contracts/src/rules/require-semantic-contract-metadata.ts
+new file mode 100644
+index 00000000..4ab87e0c
+--- /dev/null
++++ b/packages/eslint-plugin-fabric-contracts/src/rules/require-semantic-contract-metadata.ts
+@@ -0,0 +1,67 @@
++import { Rule } from "eslint";
++import { asTSNode, RuleContext, TSESTree } from "../astTypes";
++
++function propertyName(prop: TSESTree.Property): string | undefined {
++  if (prop.key.type === "Identifier") return prop.key.name;
++  if (prop.key.type === "Literal" && typeof prop.key.value === "string") return prop.key.value;
++  return undefined;
++}
++
++function literalString(node: TSESTree.Node | null | undefined): string | undefined {
++  if (!node) return undefined;
++  if (node.type === "Literal" && typeof node.value === "string") return node.value;
++  if (node.type === "MemberExpression" && node.property.type === "Identifier") return node.property.name;
++  return undefined;
++}
++
++function objectProperty(node: TSESTree.ObjectExpression, name: string): TSESTree.Property | undefined {
++  return node.properties.find((prop): prop is TSESTree.Property => {
++    return prop.type === "Property" && propertyName(prop) === name;
++  });
++}
++
++function hasSemanticContractMetadata(metadata: TSESTree.Node): boolean {
++  if (metadata.type === "SpreadElement") return true;
++  if (metadata.type !== "ObjectExpression") return false;
++  return metadata.properties.some((prop) => {
++    if (prop.type === "SpreadElement") return true;
++    const name = propertyName(prop);
++    return name === "semanticContractVersion" || name === "semanticContractValid" || name === "contractVersions";
++  });
++}
++
++const rule: Rule.RuleModule = {
++  meta: {
++    type: "problem",
++    docs: {
++      description: "Require semantic-contract metadata on AG-UI run completion events",
++      category: "Canonical Contracts",
++      recommended: true,
++      url: "https://github.com/bmsull560/Fabric_4L/blob/main/contracts/agent-registry/compatibility-matrix.json",
++    },
++    schema: [],
++    messages: {
++      requireSemanticContractMetadata:
++        "AG-UI RUN_FINISHED events must include semantic-contract metadata. " +
++        "Add semanticContractVersion, semanticContractValid, or contractVersions to metadata.",
++    },
++  },
++
++  create(context: RuleContext): Rule.RuleListener {
++    return {
++      ObjectExpression(node): void {
++        const object = asTSNode<TSESTree.ObjectExpression>(node);
++        const typeProp = objectProperty(object, "type");
++        const eventType = typeProp ? literalString(typeProp.value) : undefined;
++        if (eventType !== "RUN_FINISHED") return;
++
++        const metadataProp = objectProperty(object, "metadata");
++        if (!metadataProp || !hasSemanticContractMetadata(metadataProp.value)) {
++          context.report({ node, messageId: "requireSemanticContractMetadata" });
++        }
++      },
++    };
++  },
++};
++
++export = rule;
+diff --git a/packages/platform-contract/src/python/agent_contracts/__init__.py b/packages/platform-contract/src/python/agent_contracts/__init__.py
+new file mode 100644
+index 00000000..2b762d9d
+--- /dev/null
++++ b/packages/platform-contract/src/python/agent_contracts/__init__.py
+@@ -0,0 +1,45 @@
++"""Semantic-contract validators for Fabric 4L Layer 4 agents."""
++
++from .models import (
++    SEMANTIC_CONTRACT_VERSION,
++    AgentOutputEnvelope,
++    CompatibilityMatrix,
++    ContractValidationResult,
++    ContractVersionRef,
++    ContractViolation,
++    ContractViolationSeverity,
++    MemoryReference,
++    PromptRef,
++    ProvenanceRef,
++    ToolInvocationEnvelope,
++    ValidationMode,
++    WorkflowTransitionEnvelope,
++    build_agent_output_envelope,
++    validate_agent_output,
++    validate_envelope,
++    validate_memory_reference,
++    validate_tool_invocation,
++    validate_workflow_transition,
++)
++
++__all__ = [
++    "SEMANTIC_CONTRACT_VERSION",
++    "AgentOutputEnvelope",
++    "CompatibilityMatrix",
++    "ContractValidationResult",
++    "ContractVersionRef",
++    "ContractViolation",
++    "ContractViolationSeverity",
++    "MemoryReference",
++    "PromptRef",
++    "ProvenanceRef",
++    "ToolInvocationEnvelope",
++    "ValidationMode",
++    "WorkflowTransitionEnvelope",
++    "build_agent_output_envelope",
++    "validate_agent_output",
++    "validate_envelope",
++    "validate_memory_reference",
++    "validate_tool_invocation",
++    "validate_workflow_transition",
++]
+diff --git a/packages/platform-contract/src/python/agent_contracts/models.py b/packages/platform-contract/src/python/agent_contracts/models.py
+new file mode 100644
+index 00000000..78b2a9c3
+--- /dev/null
++++ b/packages/platform-contract/src/python/agent_contracts/models.py
+@@ -0,0 +1,322 @@
++"""Executable semantic-contract models for Layer 4 agents.
++
++These models intentionally live in ``packages/platform-contract`` so Layer 4
++runtime code, CI checks, and contract tests validate the same semantic envelope.
++The first rollout is warning-oriented: callers may collect findings without
++blocking production execution, then opt into strict enforcement when the registry
++coverage is complete.
++"""
++
++from __future__ import annotations
++
++from datetime import datetime, timezone
++from enum import Enum
++from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
++
++from pydantic import BaseModel, Field, ValidationError, root_validator, validator
++
++
++SEMANTIC_CONTRACT_VERSION = "2.0.0"
++
++
++class ContractViolationSeverity(str, Enum):
++    """Severity emitted by semantic-contract validators."""
++
++    ERROR = "error"
++    WARNING = "warning"
++
++
++class ContractViolation(BaseModel):
++    """A single semantic-contract validation finding."""
++
++    code: str
++    message: str
++    severity: ContractViolationSeverity = ContractViolationSeverity.WARNING
++    path: str = "$"
++
++
++class ValidationMode(str, Enum):
++    """Validation mode used by runtime and CI integrations."""
++
++    WARN = "warn"
++    STRICT = "strict"
++
++
++class ContractValidationResult(BaseModel):
++    """Structured result returned by all semantic-contract validators."""
++
++    valid: bool
++    mode: ValidationMode = ValidationMode.WARN
++    violations: List[ContractViolation] = Field(default_factory=list)
++    normalized: Optional[Dict[str, Any]] = None
++
++    @property
++    def blocking(self) -> bool:
++        """Return true when the result should block execution."""
++
++        return self.mode == ValidationMode.STRICT and any(
++            violation.severity == ContractViolationSeverity.ERROR
++            for violation in self.violations
++        )
++
++
++class ContractVersionRef(BaseModel):
++    """Version identifiers for the semantic contract surfaces used by an event."""
++
++    semantic_contract: str = SEMANTIC_CONTRACT_VERSION
++    agent_registry: Optional[str] = None
++    prompt: Optional[str] = None
++    tool: Optional[str] = None
++    workflow: Optional[str] = None
++    memory: Optional[str] = None
++
++
++class ProvenanceRef(BaseModel):
++    """Traceability fields required for auditable agent outputs."""
++
++    tenant_id: str
++    trace_id: str
++    workflow_id: Optional[str] = None
++    audit_event_id: Optional[str] = None
++    source_node: Optional[str] = None
++    source_layer: str = "layer4-agents"
++
++
++class PromptRef(BaseModel):
++    """Reference to the prompt contract that shaped an agent decision."""
++
++    prompt_id: str
++    version: str
++    reasoning_policy_id: Optional[str] = None
++
++
++class AgentOutputEnvelope(BaseModel):
++    """Canonical semantic envelope for Layer 4 agent decision outputs."""
++
++    agent_type: str
++    output: Any = None
++    provenance: ProvenanceRef
++    contract_versions: ContractVersionRef = Field(default_factory=ContractVersionRef)
++    prompt: Optional[PromptRef] = None
++    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
++    explainability: Dict[str, Any] = Field(default_factory=dict)
++    evidence: List[Dict[str, Any]] = Field(default_factory=list)
++    emitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
++
++    @validator("agent_type")
++    def agent_type_must_be_present(cls, value: str) -> str:
++        if not value:
++            raise ValueError("agent_type is required")
++        return value
++
++
++class ToolInvocationEnvelope(BaseModel):
++    """Canonical semantic envelope for tool invocations and tool results."""
++
++    tool_name: str
++    tool_version: str
++    caller_agent_type: str
++    input: Dict[str, Any] = Field(default_factory=dict)
++    output: Optional[Any] = None
++    provenance: ProvenanceRef
++    contract_versions: ContractVersionRef = Field(default_factory=ContractVersionRef)
++    success: bool = True
++    error: Optional[Dict[str, Any]] = None
++
++    @root_validator(skip_on_failure=True)
++    def error_required_when_failed(cls, values: Dict[str, Any]) -> Dict[str, Any]:
++        if values.get("success") is False and not values.get("error"):
++            raise ValueError("failed tool invocations must include an error envelope")
++        return values
++
++
++class WorkflowTransitionEnvelope(BaseModel):
++    """Canonical semantic envelope for workflow state transitions."""
++
++    workflow_type: str
++    workflow_id: str
++    source_state: str
++    target_state: str
++    triggering_agent_type: str
++    provenance: ProvenanceRef
++    contract_versions: ContractVersionRef = Field(default_factory=ContractVersionRef)
++    transition_reason: Optional[str] = None
++
++
++class MemoryReference(BaseModel):
++    """Canonical semantic reference to persisted memory used by an agent."""
++
++    memory_id: str
++    memory_type: str
++    tenant_id: str
++    trace_id: str
++    contract_versions: ContractVersionRef = Field(default_factory=ContractVersionRef)
++    provenance: Optional[ProvenanceRef] = None
++
++
++class CompatibilityMatrix(BaseModel):
++    """Version compatibility matrix for Phase 2 semantic contracts."""
++
++    id: str = "fabric4l-agent-semantic-compatibility"
++    version: str = SEMANTIC_CONTRACT_VERSION
++    agent_registry_version: str
++    min_runtime_version: str = "0.1.0"
++    enforcement_default: ValidationMode = ValidationMode.WARN
++    compatible_event_versions: Dict[str, str] = Field(default_factory=dict)
++    agent_contracts: Dict[str, str] = Field(default_factory=dict)
++    prompt_contracts: Dict[str, str] = Field(default_factory=dict)
++    tool_contracts: Dict[str, str] = Field(default_factory=dict)
++    workflow_contracts: Dict[str, str] = Field(default_factory=dict)
++    memory_contracts: Dict[str, str] = Field(default_factory=dict)
++    deprecated_contracts: List[str] = Field(default_factory=list)
++
++
++def _model_validate(model_cls: type[BaseModel], value: Mapping[str, Any]) -> BaseModel:
++    """Call the Pydantic v2 API when available, otherwise fall back to v1."""
++
++    model_validate = getattr(model_cls, "model_validate", None)
++    if callable(model_validate):
++        return model_validate(value)  # type: ignore[no-any-return]
++    return model_cls.parse_obj(value)
++
++
++def _model_dump(model: BaseModel) -> Dict[str, Any]:
++    """Call the Pydantic v2 dump API when available, otherwise fall back to v1."""
++
++    model_dump = getattr(model, "model_dump", None)
++    if callable(model_dump):
++        return model_dump(mode="json")  # type: ignore[no-any-return]
++    return model.dict()
++
++
++def _validation_errors(exc: ValidationError) -> List[ContractViolation]:
++    violations: List[ContractViolation] = []
++    for error in exc.errors():
++        location = ".".join(str(part) for part in error.get("loc", ())) or "$"
++        violations.append(
++            ContractViolation(
++                code="semantic_contract_validation_error",
++                message=str(error.get("msg", "validation error")),
++                severity=ContractViolationSeverity.ERROR,
++                path=location,
++            )
++        )
++    return violations
++
++
++def validate_envelope(
++    payload: Mapping[str, Any],
++    model_cls: type[BaseModel],
++    *,
++    mode: ValidationMode | str = ValidationMode.WARN,
++) -> ContractValidationResult:
++    """Validate a payload against a semantic-contract model."""
++
++    resolved_mode = ValidationMode(mode)
++    try:
++        model = _model_validate(model_cls, payload)
++    except ValidationError as exc:
++        return ContractValidationResult(
++            valid=False,
++            mode=resolved_mode,
++            violations=_validation_errors(exc),
++            normalized=None,
++        )
++    except Exception as exc:
++        return ContractValidationResult(
++            valid=False,
++            mode=resolved_mode,
++            violations=[
++                ContractViolation(
++                    code="semantic_contract_validation_error",
++                    message=str(exc),
++                    severity=ContractViolationSeverity.ERROR,
++                )
++            ],
++            normalized=None,
++        )
++
++    return ContractValidationResult(
++        valid=True,
++        mode=resolved_mode,
++        violations=[],
++        normalized=_model_dump(model),
++    )
++
++
++def validate_agent_output(
++    payload: Mapping[str, Any], *, mode: ValidationMode | str = ValidationMode.WARN
++) -> ContractValidationResult:
++    """Validate an agent output semantic envelope."""
++
++    return validate_envelope(payload, AgentOutputEnvelope, mode=mode)
++
++
++def validate_tool_invocation(
++    payload: Mapping[str, Any], *, mode: ValidationMode | str = ValidationMode.WARN
++) -> ContractValidationResult:
++    """Validate a tool invocation semantic envelope."""
++
++    return validate_envelope(payload, ToolInvocationEnvelope, mode=mode)
++
++
++def validate_workflow_transition(
++    payload: Mapping[str, Any], *, mode: ValidationMode | str = ValidationMode.WARN
++) -> ContractValidationResult:
++    """Validate a workflow transition semantic envelope."""
++
++    return validate_envelope(payload, WorkflowTransitionEnvelope, mode=mode)
++
++
++def validate_memory_reference(
++    payload: Mapping[str, Any], *, mode: ValidationMode | str = ValidationMode.WARN
++) -> ContractValidationResult:
++    """Validate a memory reference semantic envelope."""
++
++    return validate_envelope(payload, MemoryReference, mode=mode)
++
++
++def build_agent_output_envelope(
++    *,
++    agent_type: str,
++    output: Any,
++    tenant_id: str,
++    trace_id: str,
++    workflow_id: Optional[str] = None,
++    audit_event_id: Optional[str] = None,
++    source_node: Optional[str] = None,
++    prompt_id: Optional[str] = None,
++    prompt_version: Optional[str] = None,
++    reasoning_policy_id: Optional[str] = None,
++    confidence: Optional[float] = None,
++    explainability: Optional[Mapping[str, Any]] = None,
++    evidence: Optional[Sequence[Mapping[str, Any]]] = None,
++    contract_versions: Optional[Mapping[str, Any]] = None,
++) -> Dict[str, Any]:
++    """Construct a normalized agent-output envelope from runtime metadata."""
++
++    prompt = None
++    if prompt_id and prompt_version:
++        prompt = PromptRef(
++            prompt_id=prompt_id,
++            version=prompt_version,
++            reasoning_policy_id=reasoning_policy_id,
++        )
++
++    envelope = AgentOutputEnvelope(
++        agent_type=agent_type,
++        output=output,
++        provenance=ProvenanceRef(
++            tenant_id=tenant_id,
++            trace_id=trace_id,
++            workflow_id=workflow_id,
++            audit_event_id=audit_event_id,
++            source_node=source_node,
++        ),
++        prompt=prompt,
++        confidence=confidence,
++        explainability=dict(explainability or {}),
++        evidence=[dict(item) for item in (evidence or [])],
++        contract_versions=ContractVersionRef(**dict(contract_versions or {})),
++    )
++    return _model_dump(envelope)
+diff --git a/packages/platform-contract/src/python/canonical/test_agent_semantic_contracts.py b/packages/platform-contract/src/python/canonical/test_agent_semantic_contracts.py
+new file mode 100644
+index 00000000..e19db549
+--- /dev/null
++++ b/packages/platform-contract/src/python/canonical/test_agent_semantic_contracts.py
+@@ -0,0 +1,65 @@
++from agent_contracts import (
++    SEMANTIC_CONTRACT_VERSION,
++    ValidationMode,
++    build_agent_output_envelope,
++    validate_agent_output,
++    validate_tool_invocation,
++)
++
++
++def test_agent_output_envelope_builder_normalizes_required_semantic_metadata():
++    envelope = build_agent_output_envelope(
++        agent_type="ConversationAgent",
++        output={"answer": "Phase 2 semantic metadata is present."},
++        tenant_id="tenant-123",
++        trace_id="trace-123",
++        workflow_id="workflow-123",
++        prompt_id="conversation-system-prompts",
++        prompt_version="1.0.0",
++        confidence=0.91,
++        evidence=[{"source": "agent-registry"}],
++    )
++
++    result = validate_agent_output(envelope)
++
++    assert result.valid is True
++    assert result.mode == ValidationMode.WARN
++    assert result.violations == []
++    assert result.normalized is not None
++    assert result.normalized["agent_type"] == "ConversationAgent"
++    assert result.normalized["provenance"]["tenant_id"] == "tenant-123"
++    assert result.normalized["provenance"]["trace_id"] == "trace-123"
++    assert result.normalized["contract_versions"]["semantic_contract"] == SEMANTIC_CONTRACT_VERSION
++    assert result.normalized["prompt"]["prompt_id"] == "conversation-system-prompts"
++
++
++def test_agent_output_validation_reports_blocking_errors_only_in_strict_mode():
++    payload = {
++        "agent_type": "ConversationAgent",
++        "output": {"answer": "missing provenance"},
++    }
++
++    warning_result = validate_agent_output(payload, mode="warn")
++    strict_result = validate_agent_output(payload, mode="strict")
++
++    assert warning_result.valid is False
++    assert warning_result.blocking is False
++    assert strict_result.valid is False
++    assert strict_result.blocking is True
++    assert any(violation.path == "provenance" for violation in strict_result.violations)
++
++
++def test_tool_invocation_validation_requires_error_envelope_for_failures():
++    payload = {
++        "tool_name": "platform-tools.search",
++        "tool_version": "1.0.0",
++        "caller_agent_type": "ConversationAgent",
++        "success": False,
++        "provenance": {"tenant_id": "tenant-123", "trace_id": "trace-123"},
++    }
++
++    result = validate_tool_invocation(payload, mode="strict")
++
++    assert result.valid is False
++    assert result.blocking is True
++    assert any("failed tool invocations" in violation.message for violation in result.violations)
+diff --git a/packages/platform-contract/src/typescript/agent-contracts.contract-tests.ts b/packages/platform-contract/src/typescript/agent-contracts.contract-tests.ts
+new file mode 100644
+index 00000000..56202f86
+--- /dev/null
++++ b/packages/platform-contract/src/typescript/agent-contracts.contract-tests.ts
+@@ -0,0 +1,66 @@
++import type { AgentOutputEnvelope, ContractValidationResult } from "@fabric/platform-contract/agent-contracts";
++import {
++  SEMANTIC_CONTRACT_VERSION,
++  isBlockingContractViolation,
++  validateAgentOutputEnvelope,
++  validateMemoryReference,
++  validateToolInvocationEnvelope,
++  validateWorkflowTransitionEnvelope,
++} from "@fabric/platform-contract/agent-contracts";
++
++const envelope: AgentOutputEnvelope<{ answer: string }> = {
++  agentType: "ConversationAgent",
++  output: { answer: "Phase 2 semantic metadata is present." },
++  provenance: {
++    tenantId: "tenant-123",
++    traceId: "trace-123",
++    workflowId: "workflow-123",
++    sourceLayer: "layer4-agents",
++  },
++  contractVersions: {
++    semanticContract: SEMANTIC_CONTRACT_VERSION,
++    agentRegistry: "1.0.0",
++  },
++  prompt: {
++    promptId: "conversation-system-prompts",
++    version: "1.0.0",
++  },
++  confidence: 0.91,
++  explainability: { summary: "validated" },
++  evidence: [{ source: "agent-registry" }],
++  emittedAt: new Date().toISOString(),
++};
++
++const validResult: ContractValidationResult<AgentOutputEnvelope> = validateAgentOutputEnvelope(envelope);
++const missingProvenanceResult = validateAgentOutputEnvelope({ agentType: "ConversationAgent" }, "strict");
++const failedToolResult = validateToolInvocationEnvelope(
++  {
++    toolName: "platform-tools.search",
++    toolVersion: "1.0.0",
++    callerAgentType: "ConversationAgent",
++    success: false,
++    provenance: { tenantId: "tenant-123", traceId: "trace-123" },
++  },
++  "strict"
++);
++const workflowResult = validateWorkflowTransitionEnvelope({
++  workflowType: "roi_analysis",
++  workflowId: "workflow-123",
++  sourceState: "started",
++  targetState: "completed",
++  triggeringAgentType: "ConversationAgent",
++  tenantId: "tenant-123",
++  traceId: "trace-123",
++});
++const memoryResult = validateMemoryReference({
++  memoryId: "memory-123",
++  memoryType: "conversation_context",
++  tenantId: "tenant-123",
++  traceId: "trace-123",
++});
++const blocks: boolean = isBlockingContractViolation(missingProvenanceResult) || isBlockingContractViolation(failedToolResult);
++
++void validResult;
++void workflowResult;
++void memoryResult;
++void blocks;
+diff --git a/packages/platform-contract/src/typescript/agent-contracts/index.ts b/packages/platform-contract/src/typescript/agent-contracts/index.ts
+new file mode 100644
+index 00000000..ff3f1c31
+--- /dev/null
++++ b/packages/platform-contract/src/typescript/agent-contracts/index.ts
+@@ -0,0 +1,378 @@
++export const SEMANTIC_CONTRACT_VERSION = "2.0.0" as const;
++
++export type ValidationMode = "warn" | "strict";
++export type ContractViolationSeverity = "warning" | "error";
++
++export interface ContractViolation {
++  code: string;
++  message: string;
++  severity: ContractViolationSeverity;
++  path: string;
++}
++
++export interface ContractValidationResult<T = unknown> {
++  valid: boolean;
++  mode: ValidationMode;
++  violations: ContractViolation[];
++  normalized?: T;
++}
++
++export interface ContractVersionRef {
++  semanticContract: string;
++  agentRegistry?: string;
++  prompt?: string;
++  tool?: string;
++  workflow?: string;
++  memory?: string;
++}
++
++export interface ProvenanceRef {
++  tenantId: string;
++  traceId: string;
++  workflowId?: string;
++  auditEventId?: string;
++  sourceNode?: string;
++  sourceLayer: string;
++}
++
++export interface PromptRef {
++  promptId: string;
++  version: string;
++  reasoningPolicyId?: string;
++}
++
++export interface AgentOutputEnvelope<TOutput = unknown> {
++  agentType: string;
++  output?: TOutput;
++  provenance: ProvenanceRef;
++  contractVersions: ContractVersionRef;
++  prompt?: PromptRef;
++  confidence?: number;
++  explainability: Record<string, unknown>;
++  evidence: Array<Record<string, unknown>>;
++  emittedAt: string;
++}
++
++export interface ToolInvocationEnvelope<TInput = Record<string, unknown>, TOutput = unknown> {
++  toolName: string;
++  toolVersion: string;
++  callerAgentType: string;
++  input: TInput;
++  output?: TOutput;
++  provenance: ProvenanceRef;
++  contractVersions: ContractVersionRef;
++  success: boolean;
++  error?: Record<string, unknown>;
++}
++
++export interface WorkflowTransitionEnvelope {
++  workflowType: string;
++  workflowId: string;
++  sourceState: string;
++  targetState: string;
++  triggeringAgentType: string;
++  provenance: ProvenanceRef;
++  contractVersions: ContractVersionRef;
++  transitionReason?: string;
++}
++
++export interface MemoryReference {
++  memoryId: string;
++  memoryType: string;
++  tenantId: string;
++  traceId: string;
++  contractVersions: ContractVersionRef;
++  provenance?: ProvenanceRef;
++}
++
++export interface CompatibilityMatrix {
++  id: string;
++  version: string;
++  agentRegistryVersion: string;
++  minRuntimeVersion: string;
++  enforcementDefault: ValidationMode;
++  compatibleEventVersions: Record<string, string>;
++  agentContracts: Record<string, string>;
++  promptContracts: Record<string, string>;
++  toolContracts: Record<string, string>;
++  workflowContracts: Record<string, string>;
++  memoryContracts: Record<string, string>;
++  deprecatedContracts: string[];
++}
++
++interface MutableValidation<T> {
++  valid: boolean;
++  mode: ValidationMode;
++  violations: ContractViolation[];
++  normalized?: T;
++}
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === "object" && value !== null && !Array.isArray(value);
++}
++
++function addViolation(
++  result: MutableValidation<unknown>,
++  path: string,
++  message: string,
++  code = "semantic_contract_validation_error"
++): void {
++  result.valid = false;
++  result.violations.push({ code, message, severity: "error", path });
++}
++
++function requireString(
++  result: MutableValidation<unknown>,
++  value: Record<string, unknown>,
++  field: string,
++  path = field
++): string | undefined {
++  const candidate = value[field];
++  if (typeof candidate !== "string" || candidate.length === 0) {
++    addViolation(result, path, `${field} must be a non-empty string`);
++    return undefined;
++  }
++  return candidate;
++}
++
++function optionalString(value: Record<string, unknown>, field: string): string | undefined {
++  const candidate = value[field];
++  return typeof candidate === "string" && candidate.length > 0 ? candidate : undefined;
++}
++
++function normalizeContractVersions(value: unknown): ContractVersionRef {
++  if (!isRecord(value)) {
++    return { semanticContract: SEMANTIC_CONTRACT_VERSION };
++  }
++  return {
++    semanticContract:
++      typeof value.semanticContract === "string"
++        ? value.semanticContract
++        : typeof value.semantic_contract === "string"
++          ? value.semantic_contract
++          : SEMANTIC_CONTRACT_VERSION,
++    agentRegistry:
++      typeof value.agentRegistry === "string"
++        ? value.agentRegistry
++        : typeof value.agent_registry === "string"
++          ? value.agent_registry
++          : undefined,
++    prompt: optionalString(value, "prompt"),
++    tool: optionalString(value, "tool"),
++    workflow: optionalString(value, "workflow"),
++    memory: optionalString(value, "memory"),
++  };
++}
++
++function normalizeProvenance(
++  result: MutableValidation<unknown>,
++  value: unknown,
++  fallback?: Partial<ProvenanceRef>
++): ProvenanceRef | undefined {
++  const source = isRecord(value) ? value : {};
++  const tenantId =
++    (typeof source.tenantId === "string" && source.tenantId) ||
++    (typeof source.tenant_id === "string" && source.tenant_id) ||
++    fallback?.tenantId;
++  const traceId =
++    (typeof source.traceId === "string" && source.traceId) ||
++    (typeof source.trace_id === "string" && source.trace_id) ||
++    fallback?.traceId;
++
++  if (!tenantId) {
++    addViolation(result, "provenance.tenantId", "tenantId is required for agent semantic provenance");
++  }
++  if (!traceId) {
++    addViolation(result, "provenance.traceId", "traceId is required for agent semantic provenance");
++  }
++  if (!tenantId || !traceId) return undefined;
++
++  const workflowId =
++    (typeof source.workflowId === "string" && source.workflowId) ||
++    (typeof source.workflow_id === "string" && source.workflow_id) ||
++    fallback?.workflowId;
++  const auditEventId =
++    (typeof source.auditEventId === "string" && source.auditEventId) ||
++    (typeof source.audit_event_id === "string" && source.audit_event_id) ||
++    fallback?.auditEventId;
++  const sourceNode =
++    (typeof source.sourceNode === "string" && source.sourceNode) ||
++    (typeof source.source_node === "string" && source.source_node) ||
++    fallback?.sourceNode;
++  const sourceLayer =
++    (typeof source.sourceLayer === "string" && source.sourceLayer) ||
++    (typeof source.source_layer === "string" && source.source_layer) ||
++    fallback?.sourceLayer ||
++    "layer4-agents";
++
++  return { tenantId, traceId, workflowId, auditEventId, sourceNode, sourceLayer };
++}
++
++function emptyResult<T>(mode: ValidationMode): MutableValidation<T> {
++  return { valid: true, mode, violations: [] };
++}
++
++export function validateAgentOutputEnvelope(
++  payload: unknown,
++  mode: ValidationMode = "warn"
++): ContractValidationResult<AgentOutputEnvelope> {
++  const result = emptyResult<AgentOutputEnvelope>(mode);
++  if (!isRecord(payload)) {
++    addViolation(result, "$", "agent output envelope must be an object");
++    return result;
++  }
++
++  const agentType =
++    (typeof payload.agentType === "string" && payload.agentType) ||
++    (typeof payload.agent_type === "string" && payload.agent_type) ||
++    undefined;
++  if (!agentType) addViolation(result, "agentType", "agentType must be a non-empty string");
++
++  const provenance = normalizeProvenance(result, payload.provenance, {
++    tenantId: typeof payload.tenantId === "string" ? payload.tenantId : undefined,
++    traceId: typeof payload.traceId === "string" ? payload.traceId : undefined,
++    workflowId: typeof payload.workflowId === "string" ? payload.workflowId : undefined,
++    auditEventId: typeof payload.auditEventId === "string" ? payload.auditEventId : undefined,
++  });
++
++  const confidence = payload.confidence;
++  if (confidence !== undefined && (typeof confidence !== "number" || confidence < 0 || confidence > 1)) {
++    addViolation(result, "confidence", "confidence must be a number between 0 and 1");
++  }
++
++  let prompt: PromptRef | undefined;
++  if (isRecord(payload.prompt)) {
++    const promptId = requireString(result, payload.prompt, "promptId", "prompt.promptId");
++    const version = requireString(result, payload.prompt, "version", "prompt.version");
++    if (promptId && version) {
++      prompt = {
++        promptId,
++        version,
++        reasoningPolicyId: optionalString(payload.prompt, "reasoningPolicyId"),
++      };
++    }
++  }
++
++  if (!agentType || !provenance || !result.valid) return result;
++
++  result.normalized = {
++    agentType,
++    output: payload.output,
++    provenance,
++    contractVersions: normalizeContractVersions(payload.contractVersions ?? payload.contract_versions),
++    prompt,
++    confidence: typeof confidence === "number" ? confidence : undefined,
++    explainability: isRecord(payload.explainability) ? payload.explainability : {},
++    evidence: Array.isArray(payload.evidence) ? payload.evidence.filter(isRecord) : [],
++    emittedAt:
++      typeof payload.emittedAt === "string"
++        ? payload.emittedAt
++        : typeof payload.emitted_at === "string"
++          ? payload.emitted_at
++          : new Date().toISOString(),
++  };
++  return result;
++}
++
++export function validateToolInvocationEnvelope(
++  payload: unknown,
++  mode: ValidationMode = "warn"
++): ContractValidationResult<ToolInvocationEnvelope> {
++  const result = emptyResult<ToolInvocationEnvelope>(mode);
++  if (!isRecord(payload)) {
++    addViolation(result, "$", "tool invocation envelope must be an object");
++    return result;
++  }
++
++  const toolName = requireString(result, payload, "toolName");
++  const toolVersion = requireString(result, payload, "toolVersion");
++  const callerAgentType = requireString(result, payload, "callerAgentType");
++  const provenance = normalizeProvenance(result, payload.provenance);
++  const success = payload.success !== false;
++  if (!success && !isRecord(payload.error)) {
++    addViolation(result, "error", "failed tool invocation envelopes must include error details");
++  }
++  if (!toolName || !toolVersion || !callerAgentType || !provenance || !result.valid) return result;
++
++  result.normalized = {
++    toolName,
++    toolVersion,
++    callerAgentType,
++    input: isRecord(payload.input) ? payload.input : {},
++    output: payload.output,
++    provenance,
++    contractVersions: normalizeContractVersions(payload.contractVersions ?? payload.contract_versions),
++    success,
++    error: isRecord(payload.error) ? payload.error : undefined,
++  };
++  return result;
++}
++
++export function validateWorkflowTransitionEnvelope(
++  payload: unknown,
++  mode: ValidationMode = "warn"
++): ContractValidationResult<WorkflowTransitionEnvelope> {
++  const result = emptyResult<WorkflowTransitionEnvelope>(mode);
++  if (!isRecord(payload)) {
++    addViolation(result, "$", "workflow transition envelope must be an object");
++    return result;
++  }
++
++  const workflowType = requireString(result, payload, "workflowType");
++  const workflowId = requireString(result, payload, "workflowId");
++  const sourceState = requireString(result, payload, "sourceState");
++  const targetState = requireString(result, payload, "targetState");
++  const triggeringAgentType = requireString(result, payload, "triggeringAgentType");
++  const provenance = normalizeProvenance(result, payload.provenance, {
++    workflowId,
++    tenantId: typeof payload.tenantId === "string" ? payload.tenantId : undefined,
++    traceId: typeof payload.traceId === "string" ? payload.traceId : undefined,
++  });
++  if (!workflowType || !workflowId || !sourceState || !targetState || !triggeringAgentType || !provenance || !result.valid) {
++    return result;
++  }
++
++  result.normalized = {
++    workflowType,
++    workflowId,
++    sourceState,
++    targetState,
++    triggeringAgentType,
++    provenance,
++    contractVersions: normalizeContractVersions(payload.contractVersions ?? payload.contract_versions),
++    transitionReason: optionalString(payload, "transitionReason"),
++  };
++  return result;
++}
++
++export function validateMemoryReference(
++  payload: unknown,
++  mode: ValidationMode = "warn"
++): ContractValidationResult<MemoryReference> {
++  const result = emptyResult<MemoryReference>(mode);
++  if (!isRecord(payload)) {
++    addViolation(result, "$", "memory reference must be an object");
++    return result;
++  }
++
++  const memoryId = requireString(result, payload, "memoryId");
++  const memoryType = requireString(result, payload, "memoryType");
++  const tenantId = requireString(result, payload, "tenantId");
++  const traceId = requireString(result, payload, "traceId");
++  const provenance = payload.provenance ? normalizeProvenance(result, payload.provenance, { tenantId, traceId }) : undefined;
++  if (!memoryId || !memoryType || !tenantId || !traceId || !result.valid) return result;
++
++  result.normalized = {
++    memoryId,
++    memoryType,
++    tenantId,
++    traceId,
++    contractVersions: normalizeContractVersions(payload.contractVersions ?? payload.contract_versions),
++    provenance,
++  };
++  return result;
++}
++
++export function isBlockingContractViolation(result: ContractValidationResult): boolean {
++  return result.mode === "strict" && result.violations.some((violation) => violation.severity === "error");
++}

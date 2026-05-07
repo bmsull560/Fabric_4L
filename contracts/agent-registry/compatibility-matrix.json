@@ -1,0 +1,60 @@
+{
+  "$schema": "./schemas/semantic-compatibility.schema.json",
+  "id": "fabric4l-agent-semantic-compatibility",
+  "version": "2.0.0",
+  "kind": "semantic_compatibility",
+  "owner": "platform-architecture",
+  "risk_class": "medium",
+  "description": "Phase 2 semantic-contract compatibility matrix for Layer 4 agent event, output, tool, workflow, and memory envelopes.",
+  "compatibility": {
+    "breaking_change_policy": "strict promotion requires Contract Council approval",
+    "default_rollout": "warn"
+  },
+  "observability": {
+    "signals": ["semantic_contract_valid", "semantic_contract_violations", "semantic_contract_version"]
+  },
+  "governance": {
+    "review_body": "Contract Council",
+    "promotion_path": "warning-mode validation before strict enforcement"
+  },
+  "agent_registry_version": "1.0.0",
+  "min_runtime_version": "0.1.0",
+  "enforcement_default": "warn",
+  "compatible_event_versions": {
+    "agui_agent_event": "2.0.0",
+    "agent_output_envelope": "2.0.0",
+    "tool_invocation_envelope": "2.0.0",
+    "workflow_transition_envelope": "2.0.0",
+    "memory_reference": "2.0.0"
+  },
+  "agent_contracts": {
+    "ContextExtractionAgent": "1.0.0",
+    "ValueModelAgent": "1.0.0",
+    "IntegrityAgent": "1.0.0",
+    "NarrativeAgent": "1.0.0",
+    "CompetitiveIntelAgent": "1.0.0",
+    "SignalDetectionAgent": "1.0.0",
+    "CRMSyncAgent": "1.0.0",
+    "ConversationAgent": "1.0.0",
+    "OrchestrationController": "1.0.0"
+  },
+  "prompt_contracts": {
+    "conversation-system-prompts": "1.0.0",
+    "workflow-delegation-prompts": "1.0.0"
+  },
+  "tool_contracts": {
+    "platform-tools": "1.0.0",
+    "agent-mutation-tools": "1.0.0"
+  },
+  "workflow_contracts": {
+    "roi_analysis": "1.0.0",
+    "whitespace_detection": "1.0.0",
+    "business_case_generation": "1.0.0"
+  },
+  "memory_contracts": {
+    "account_context": "1.0.0",
+    "conversation_context": "1.0.0"
+  },
+  "deprecated_contracts": [],
+  "notes": "Phase 2 starts in warning mode. Runtime validators normalize semantic metadata and report violations without blocking until strict mode is explicitly enabled."
+}

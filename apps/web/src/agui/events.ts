@@ -224,14 +224,53 @@ export type AgentEvent =
 
 // ── Run Metadata ────────────────────────────────────────────────────────────
 
+export type SemanticContractMode = "warn" | "strict";
+export type SemanticContractSeverity = "warning" | "error";
+
+export interface SemanticContractViolation {
+  code: string;
+  message: string;
+  severity: SemanticContractSeverity;
+  path: string;
+}
+
+export interface SemanticContractVersions {
+  semanticContract?: string;
+  agentRegistry?: string;
+  prompt?: string;
+  tool?: string;
+  workflow?: string;
+  memory?: string;
+  [key: string]: string | undefined;
+}
+
+export interface SemanticProvenance {
+  tenantId?: string;
+  traceId?: string;
+  workflowId?: string;
+  auditEventId?: string;
+  sourceNode?: string;
+  sourceLayer?: string;
+  [key: string]: string | undefined;
+}
+
 export interface RunMetadata {
-  runId: string;
-  traceId: string;
+  runId?: string;
+  traceId?: string;
   workflowId?: string;
   tenantId?: string;
-  auditEventId: string;
+  auditEventId?: string;
   /** Workflow node that produced this event */
   sourceNode?: string;
+  intent?: string;
+  confidence?: number;
+  semanticContractVersion?: string;
+  semanticContractValid?: boolean;
+  semanticContractMode?: SemanticContractMode;
+  semanticContractViolations?: SemanticContractViolation[];
+  contractVersions?: SemanticContractVersions;
+  provenance?: SemanticProvenance;
+  [key: string]: unknown;
 }
 
 // ── Step Snapshot (derived state for UI rendering) ──────────────────────────

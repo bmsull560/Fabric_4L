@@ -21,7 +21,7 @@ module.exports = {
 
 ## Rules
 
-This plugin enforces 6 canonical contracts through 12 ESLint rules:
+This plugin enforces 7 canonical contract areas through 13 ESLint rules. **Phase 2 semantic-contract metadata** starts in warning mode so teams can observe gaps before promotion to blocking enforcement.
 
 ### 1. Tenant Isolation Boundary (§2.1)
 
@@ -51,14 +51,20 @@ This plugin enforces 6 canonical contracts through 12 ESLint rules:
 |------|-------------|
 | `no-json-parse-agent-output` | Disallow JSON.parse() on LLM outputs |
 
-### 5. UI State Management (§2.6)
+### 5. Agent Semantic Contracts (§2.5 / Phase 2)
+
+| Rule | Description |
+|------|-------------|
+| `require-semantic-contract-metadata` | Require AG-UI `RUN_FINISHED` event literals to include semantic contract metadata, including contract version, validation result, and provenance identifiers. This rule is enabled as a warning during Phase 2 rollout. |
+
+### 6. UI State Management (§2.6)
 
 | Rule | Description |
 |------|-------------|
 | `no-imperative-navigation` | Disallow router.push(), history.push() |
 | `no-url-concatenation` | Disallow URL string concatenation |
 
-### 6. Public API Surface (§2.7)
+### 7. Public API Surface (§2.7)
 
 | Rule | Description |
 |------|-------------|

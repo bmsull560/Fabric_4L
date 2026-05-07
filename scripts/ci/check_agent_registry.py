@@ -53,6 +53,7 @@ ALLOWED_KINDS = {
     "workflow",
     "memory_object",
     "reasoning_policy",
+    "semantic_compatibility",
 }
 ALLOWED_RISK_CLASSES = {"low", "medium", "high", "regulated"}
 SEMVER_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
@@ -92,6 +93,7 @@ class RegistryValidator:
         self._validate_workflows()
         self._validate_prompts()
         self._validate_reasoning_policies()
+        self._validate_semantic_compatibility_matrix()
         return self._report()
 
     def _load_json_documents(self) -> None:
@@ -113,6 +115,8 @@ class RegistryValidator:
             "schemas/tool-error.schema.json",
             "schemas/tool-registry.schema.json",
             "schemas/workflow.schema.json",
+            "schemas/semantic-compatibility.schema.json",
+            "compatibility-matrix.json",
         ]
         for relative_path in required_files:
             path = self.registry_root / relative_path
@@ -360,6 +364,82 @@ class RegistryValidator:
             for field in ("evidence_requirements", "explanation_requirements", "escalation_rules", "allowed_tool_classes"):
                 if not isinstance(document.get(field), list) or not document.get(field):
                     self._error(path, "reasoning-policy-list-missing", f"Reasoning policy must declare non-empty {field}")
+
+    def _validate_semantic_compatibility_matrix(self) -> None:
+        """Validate the Phase 2 semantic-contract compatibility matrix."""
+
+        path = self.registry_root / "compatibility-matrix.json"
+        document = self.documents.get(path)
+        if document is None:
+            return
+
+        required_fields = {
+            "id",
+            "version",
+            "agent_registry_version",
+            "min_runtime_version",
+            "enforcement_default",
+            "compatible_event_versions",
+            "agent_contracts",
+            "prompt_contracts",
+            "tool_contracts",
+            "workflow_contracts",
+            "memory_contracts",
+            "deprecated_contracts",
+        }
+        missing = sorted(required_fields - set(document))
+        if missing:
+            self._error(path, "semantic-compatibility-field-missing", f"Compatibility matrix missing fields: {', '.join(missing)}")
+
+        for field in ("version", "agent_registry_version"):
+            value = document.get(field)
+            if not isinstance(value, str) or not SEMVER_RE.match(value):
+                self._error(path, "semantic-compatibility-version-invalid", f"{field} must use semver MAJOR.MINOR.PATCH: {value!r}")
+
+        if document.get("enforcement_default") not in {"warn", "strict"}:
+            self._error(path, "semantic-compatibility-enforcement-invalid", "enforcement_default must be warn or strict")
+
+        for section in (
+            "compatible_event_versions",
+            "agent_contracts",
+            "prompt_contracts",
+            "tool_contracts",
+            "workflow_contracts",
+            "memory_contracts",
+        ):
+            contracts = document.get(section)
+            if not isinstance(contracts, dict) or not contracts:
+                self._error(path, "semantic-compatibility-section-invalid", f"{section} must be a non-empty object")
+                continue
+            for key, version in contracts.items():
+                if not isinstance(key, str) or not key:
+                    self._error(path, "semantic-compatibility-contract-invalid", f"{section} contains an empty contract key")
+                if not isinstance(version, str) or not SEMVER_RE.match(version):
+                    self._error(path, "semantic-compatibility-contract-version-invalid", f"{section}.{key} must use semver: {version!r}")
+
+        deprecated = document.get("deprecated_contracts")
+        if not isinstance(deprecated, list) or not all(isinstance(item, str) and item for item in deprecated):
+            self._error(path, "semantic-compatibility-deprecated-invalid", "deprecated_contracts must be a list of strings")
+
+        registered_agent_types = self._registered_agent_types()
+        matrix_agent_types = set(document.get("agent_contracts", {})) if isinstance(document.get("agent_contracts"), dict) else set()
+        missing_agents = sorted(registered_agent_types - matrix_agent_types)
+        extra_agents = sorted(matrix_agent_types - registered_agent_types)
+        if missing_agents:
+            self._warning(path, "semantic-compatibility-agent-missing", f"Registered agents missing from compatibility matrix: {', '.join(missing_agents)}")
+        if extra_agents:
+            self._warning(path, "semantic-compatibility-agent-extra", f"Compatibility matrix agents not present in registry manifest: {', '.join(extra_agents)}")
+
+    def _registered_agent_types(self) -> set[str]:
+        path = self.registry_root / "agents" / "manifest.json"
+        document = self.documents.get(path)
+        if not isinstance(document, dict) or not isinstance(document.get("agents"), list):
+            return set()
+        return {
+            agent["agent_type"]
+            for agent in document["agents"]
+            if isinstance(agent, dict) and isinstance(agent.get("agent_type"), str) and agent.get("agent_type")
+        }
 
     def _validate_relative_file_reference(self, path: Path, document: dict[str, Any], field: str) -> None:
         reference = document.get(field)

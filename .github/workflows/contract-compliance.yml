@@ -127,12 +127,12 @@ jobs:
           cd ../../apps/web
           npm link eslint-plugin-fabric-contracts
 
-      - name: Run contract linting (all contract rules as errors)
+      - name: Run contract linting with Phase 2 semantic-contract warnings
         working-directory: apps/web
         run: |
-          # Uses .eslintrc.cjs which now enforces all contract rules as "error"
-          # CONTRACT.md §3.3 - All 6 canonical contracts enforced
-          npx eslint src/ server/ --ext .ts,.tsx --max-warnings 0
+          # Uses .eslintrc.cjs to enforce blocking contract rules while surfacing
+          # Phase 2 semantic-contract metadata findings in warning mode.
+          npx eslint src/ server/ --ext .ts,.tsx
 
       - name: Upload lint results
         uses: actions/upload-artifact@v4
@@ -235,9 +235,9 @@ jobs:
       - name: Run Platform Contract Lint
         run: python scripts/ci/platform_contract_lint.py
 
-      - name: Run Agent Registry Contract Validation
+      - name: Run Agent Registry and Semantic Compatibility Validation
         run: python scripts/ci/check_agent_registry.py
-        # Phase 1 registry coverage starts in warning mode; malformed contracts still fail.
+        # Phase 2 semantic compatibility starts in warning mode; malformed contracts still fail.
 
       - name: Run Strict Shared-Import Enforcement
         run: python scripts/ci/check_shared_imports.py --strict --scope runtime

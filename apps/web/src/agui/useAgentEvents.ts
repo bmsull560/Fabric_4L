@@ -278,19 +278,28 @@ export function useAgentEvents({
         const output = event.output as {
           actions?: Array<{ label: string; page_action: WorkspacePageActionContract }>;
         } | undefined;
-        if (event.metadata && output?.actions?.length) {
+        const metadata = event.metadata;
+        if (
+          metadata &&
+          output?.actions?.length &&
+          typeof metadata.runId === "string" &&
+          typeof metadata.traceId === "string" &&
+          typeof metadata.workflowId === "string" &&
+          typeof metadata.auditEventId === "string"
+        ) {
+          const runMetadataIds = {
+            runId: metadata.runId,
+            traceId: metadata.traceId,
+            workflowId: metadata.workflowId,
+            auditEventId: metadata.auditEventId,
+          };
           setStructuredActions(
             output.actions.map((action) => ({
               label: action.label,
               onClick: () =>
                 applyWorkspacePageAction.mutate({
                   ...action.page_action,
-                  runMetadataIds: {
-                    runId: event.metadata!.runId,
-                    traceId: event.metadata!.traceId,
-                    workflowId: event.metadata!.workflowId,
-                    auditEventId: event.metadata!.auditEventId,
-                  },
+                  runMetadataIds,
                 }),
             })),
           );

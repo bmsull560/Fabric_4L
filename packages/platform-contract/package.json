@@ -8,6 +8,7 @@
     "./agent-result": "./src/typescript/agent-result.ts",
     "./stores": "./src/typescript/stores.ts",
     "./routing": "./src/typescript/routing.ts",
+    "./agent-contracts": "./src/typescript/agent-contracts/index.ts",
     "./generated": "./src/typescript/generated/index.ts"
   },
   "scripts": {

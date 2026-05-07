@@ -90,6 +90,71 @@ const DEFAULT_STEPS = [
   { id: "synthesize", label: "Synthesizing response" },
 ];
 
+type BackendRunMetadata = Record<string, unknown> & {
+  run_id?: string;
+  trace_id?: string;
+  workflow_id?: string;
+  tenant_id?: string;
+  audit_event_id?: string;
+  source_node?: string;
+  semantic_contract_version?: string;
+  semantic_contract_valid?: boolean;
+  semantic_contract_mode?: "warn" | "strict";
+  semantic_contract_violations?: unknown[];
+};
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function stringField(source: Record<string, unknown>, camel: string, snake?: string): string | undefined {
+  const camelValue = source[camel];
+  const snakeValue = snake ? source[snake] : undefined;
+  return typeof camelValue === "string"
+    ? camelValue
+    : typeof snakeValue === "string"
+      ? snakeValue
+      : undefined;
+}
+
+function normalizeRunMetadata(raw: BackendRunMetadata | undefined, fallbackRunId: string): RunMetadata {
+  const source = raw ?? {};
+  const contractVersions = asRecord(source.contractVersions ?? source.contract_versions);
+  const provenance = asRecord(source.provenance);
+
+  return {
+    ...source,
+    runId: stringField(source, "runId", "run_id") ?? fallbackRunId,
+    traceId: stringField(source, "traceId", "trace_id") ?? fallbackRunId,
+    workflowId: stringField(source, "workflowId", "workflow_id"),
+    tenantId: stringField(source, "tenantId", "tenant_id"),
+    auditEventId: stringField(source, "auditEventId", "audit_event_id") ?? `audit-${fallbackRunId}`,
+    sourceNode: stringField(source, "sourceNode", "source_node"),
+    semanticContractVersion: stringField(source, "semanticContractVersion", "semantic_contract_version"),
+    semanticContractValid:
+      typeof source.semanticContractValid === "boolean"
+        ? source.semanticContractValid
+        : typeof source.semantic_contract_valid === "boolean"
+          ? source.semantic_contract_valid
+          : undefined,
+    semanticContractMode:
+      source.semanticContractMode === "strict" || source.semanticContractMode === "warn"
+        ? source.semanticContractMode
+        : source.semantic_contract_mode === "strict" || source.semantic_contract_mode === "warn"
+          ? source.semantic_contract_mode
+          : undefined,
+    semanticContractViolations: Array.isArray(source.semanticContractViolations)
+      ? (source.semanticContractViolations as RunMetadata["semanticContractViolations"])
+      : Array.isArray(source.semantic_contract_violations)
+        ? (source.semantic_contract_violations as RunMetadata["semanticContractViolations"])
+        : undefined,
+    contractVersions: contractVersions as RunMetadata["contractVersions"],
+    provenance: provenance as RunMetadata["provenance"],
+  };
+}
+
 // ── Client ──────────────────────────────────────────────────────────────────
 
 export interface AgentEventClientOptions {
@@ -255,13 +320,7 @@ export async function* sendAgentMessage(
     const response = (await apiClient.post("l4", "/agent-stream/chat", body)) as {
       data?: {
         content?: string;
-        metadata?: {
-          run_id?: string;
-          trace_id?: string;
-          workflow_id?: string;
-          tenant_id?: string;
-          audit_event_id?: string;
-        };
+        metadata?: BackendRunMetadata;
         actions?: Array<{
           label: string;
           page_action: {
@@ -283,13 +342,7 @@ export async function* sendAgentMessage(
     const content =
       data?.content ??
       "I received your message but couldn't generate a response.";
-    const metadata: RunMetadata = {
-      runId: data?.metadata?.run_id ?? runId,
-      traceId: data?.metadata?.trace_id ?? runId,
-      workflowId: data?.metadata?.workflow_id,
-      tenantId: data?.metadata?.tenant_id,
-      auditEventId: data?.metadata?.audit_event_id ?? `audit-${runId}`,
-    };
+    const metadata = normalizeRunMetadata(data?.metadata, runId);
 
     const lastStep = steps[steps.length - 1];
     yield {

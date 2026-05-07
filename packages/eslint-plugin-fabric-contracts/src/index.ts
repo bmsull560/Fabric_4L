@@ -32,6 +32,7 @@ import noInlineMiddleware from "./rules/no-inline-middleware";
 import noInlineToolDefinition from "./rules/no-inline-tool-definition";
 import noThrowInTool from "./rules/no-throw-in-tool";
 import noJsonParseAgentOutput from "./rules/no-json-parse-agent-output";
+import requireSemanticContractMetadata from "./rules/require-semantic-contract-metadata";
 import noImperativeNavigation from "./rules/no-imperative-navigation";
 import noUrlConcatenation from "./rules/no-url-concatenation";
 import noPrivateImports from "./rules/no-private-imports";
@@ -47,6 +48,7 @@ const rules: Record<string, Rule.RuleModule> = {
   "no-inline-tool-definition": noInlineToolDefinition,
   "no-throw-in-tool": noThrowInTool,
   "no-json-parse-agent-output": noJsonParseAgentOutput,
+  "require-semantic-contract-metadata": requireSemanticContractMetadata,
   "no-imperative-navigation": noImperativeNavigation,
   "no-url-concatenation": noUrlConcatenation,
   "no-private-imports": noPrivateImports,
@@ -72,6 +74,9 @@ const recommended: Linter.BaseConfig = {
 
     // LLM Output Handling (§2.5)
     "fabric-contracts/no-json-parse-agent-output": "error",
+
+    // Semantic Agent Contracts (Phase 2)
+    "fabric-contracts/require-semantic-contract-metadata": "warn",
 
     // UI State Management (§2.6)
     "fabric-contracts/no-imperative-navigation": "error",

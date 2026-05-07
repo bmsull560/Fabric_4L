@@ -21,8 +21,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from value_fabric.shared.audit import AuditAction, AuditOutcome
@@ -49,6 +51,26 @@ class ConversationService__guardrailResult(TypedDictModel):
     message: str
 
 logger = logging.getLogger(__name__)
+
+# Semantic-contract validators are provided by packages/platform-contract.
+# Layer 4 services can run in isolation during local development, so the
+# import is intentionally best-effort and remains warning-only unless
+# AGENT_SEMANTIC_CONTRACT_MODE=strict is configured.
+_PLATFORM_CONTRACT_PYTHON = next(
+    (parent / "packages" / "platform-contract" / "src" / "python" for parent in Path(__file__).resolve().parents if (parent / "packages" / "platform-contract" / "src" / "python").exists()),
+    None,
+)
+if _PLATFORM_CONTRACT_PYTHON and str(_PLATFORM_CONTRACT_PYTHON) not in sys.path:
+    sys.path.append(str(_PLATFORM_CONTRACT_PYTHON))
+
+try:  # pragma: no cover - exercised by contract tests with PYTHONPATH configured
+    from agent_contracts import build_agent_output_envelope, validate_agent_output
+except Exception:  # pragma: no cover - service remains available if package import is unavailable
+    build_agent_output_envelope = None  # type: ignore[assignment]
+    validate_agent_output = None  # type: ignore[assignment]
+
+SEMANTIC_CONTRACT_VERSION = "2.0.0"
+
 
 # Tab-specific system prompts that provide workspace context to the LLM
 TAB_SYSTEM_PROMPTS: dict[str, str] = {
@@ -153,6 +175,98 @@ class ConversationService:
         self.intent_classifier = intent_classifier
         self.tool_registry = tool_registry
 
+    def _semantic_contract_mode(self) -> str:
+        """Resolve semantic-contract mode for Phase 2 rollout."""
+
+        mode = os.getenv("AGENT_SEMANTIC_CONTRACT_MODE", "warn").strip().lower()
+        return "strict" if mode == "strict" else "warn"
+
+    def _semantic_agent_metadata(
+        self,
+        *,
+        agent_type: str,
+        output: Any,
+        tenant_id: str,
+        trace_id: str,
+        workflow_id: str | None,
+        audit_event_id: str | None,
+        active_tab: str,
+        intent: str,
+        confidence: float | None,
+        source_node: str = "conversation.generate",
+    ) -> dict[str, Any]:
+        """Build and validate the semantic metadata envelope for AG-UI events."""
+
+        contract_versions = {
+            "semantic_contract": SEMANTIC_CONTRACT_VERSION,
+            "agent_registry": "1.0.0",
+            "prompt": "1.0.0",
+            "workflow": "1.0.0",
+        }
+        if build_agent_output_envelope is None or validate_agent_output is None:
+            return {
+                "semanticContractVersion": SEMANTIC_CONTRACT_VERSION,
+                "semanticContractValid": False,
+                "semanticContractMode": self._semantic_contract_mode(),
+                "semanticContractViolations": [
+                    {
+                        "code": "semantic_contract_validator_unavailable",
+                        "message": "agent_contracts package is unavailable in this runtime",
+                        "severity": "warning",
+                        "path": "$",
+                    }
+                ],
+                "contractVersions": {
+                    "semanticContract": SEMANTIC_CONTRACT_VERSION,
+                    "agentRegistry": "1.0.0",
+                    "prompt": "1.0.0",
+                    "workflow": "1.0.0",
+                },
+            }
+
+        envelope = build_agent_output_envelope(
+            agent_type=agent_type,
+            output=output,
+            tenant_id=tenant_id,
+            trace_id=trace_id,
+            workflow_id=workflow_id,
+            audit_event_id=audit_event_id,
+            source_node=source_node,
+            prompt_id="conversation-system-prompts",
+            prompt_version="1.0.0",
+            reasoning_policy_id=f"valuepilot-{active_tab}",
+            confidence=confidence,
+            explainability={"intent": intent, "active_tab": active_tab},
+            contract_versions=contract_versions,
+        )
+        validation = validate_agent_output(envelope, mode=self._semantic_contract_mode())
+        normalized = validation.normalized or envelope
+        provenance = normalized.get("provenance", {}) if isinstance(normalized, dict) else {}
+
+        return {
+            "semanticContractVersion": SEMANTIC_CONTRACT_VERSION,
+            "semanticContractValid": validation.valid,
+            "semanticContractMode": validation.mode.value if hasattr(validation.mode, "value") else str(validation.mode),
+            "semanticContractViolations": [
+                violation.dict() if hasattr(violation, "dict") else violation
+                for violation in validation.violations
+            ],
+            "contractVersions": {
+                "semanticContract": SEMANTIC_CONTRACT_VERSION,
+                "agentRegistry": "1.0.0",
+                "prompt": "1.0.0",
+                "workflow": "1.0.0",
+            },
+            "provenance": {
+                "tenantId": provenance.get("tenant_id") or provenance.get("tenantId") or tenant_id,
+                "traceId": provenance.get("trace_id") or provenance.get("traceId") or trace_id,
+                "workflowId": provenance.get("workflow_id") or provenance.get("workflowId") or workflow_id,
+                "auditEventId": provenance.get("audit_event_id") or provenance.get("auditEventId") or audit_event_id,
+                "sourceNode": provenance.get("source_node") or provenance.get("sourceNode") or source_node,
+                "sourceLayer": provenance.get("source_layer") or provenance.get("sourceLayer") or "layer4-agents",
+            },
+        }
+
     # Expected steps for streaming mode
     STREAMING_STEPS = [
         {"id": "guardrails", "label": "Checking safety guardrails"},
@@ -198,6 +312,18 @@ class ConversationService:
             "runId": run_id,
             "description": f"Processing request for {account_name}",
             "expectedSteps": self.STREAMING_STEPS,
+            "metadata": self._semantic_agent_metadata(
+                agent_type="ConversationAgent",
+                output={"status": "started"},
+                tenant_id=tenant_id,
+                trace_id=trace_id,
+                workflow_id=workflow_id,
+                audit_event_id=None,
+                active_tab=active_tab,
+                intent="pending",
+                confidence=None,
+                source_node="conversation.start",
+            ),
         }
 
         try:
@@ -214,7 +340,25 @@ class ConversationService:
                     "type": "RUN_FINISHED",
                     "timestamp": now(),
                     "runId": run_id,
-                    "metadata": {"traceId": trace_id, "workflowId": workflow_id, "tenantId": tenant_id, "intent": "refusal", "confidence": 1.0},
+                    "metadata": {
+                            "traceId": trace_id,
+                            "workflowId": workflow_id,
+                            "tenantId": tenant_id,
+                            "intent": "refusal",
+                            "confidence": 1.0,
+                            **self._semantic_agent_metadata(
+                                agent_type="ConversationAgent",
+                                output={"content": guardrail["message"], "intent": "refusal"},
+                                tenant_id=tenant_id,
+                                trace_id=trace_id,
+                                workflow_id=workflow_id,
+                                audit_event_id=None,
+                                active_tab=active_tab,
+                                intent="refusal",
+                                confidence=1.0,
+                                source_node="conversation.guardrail",
+                            ),
+                        },
                 }
                 return
 
@@ -272,6 +416,17 @@ class ConversationService:
                     "tenantId": tenant_id,
                     "intent": intent,
                     "confidence": confidence,
+                    **self._semantic_agent_metadata(
+                        agent_type="ConversationAgent",
+                        output={"content": response_content, "intent": intent},
+                        tenant_id=tenant_id,
+                        trace_id=trace_id,
+                        workflow_id=workflow_id,
+                        audit_event_id=None,
+                        active_tab=active_tab,
+                        intent=intent,
+                        confidence=confidence,
+                    ),
                 },
             }
 
@@ -325,6 +480,18 @@ class ConversationService:
                     "confidence": 1.0,
                     "workflow_triggered": False,
                     "refusal_reason": guardrail["reason"],
+                    **self._semantic_agent_metadata(
+                        agent_type="ConversationAgent",
+                        output={"content": guardrail["message"], "intent": "refusal"},
+                        tenant_id=tenant_id,
+                        trace_id=trace_id,
+                        workflow_id=workflow_id,
+                        audit_event_id=audit_event_id,
+                        active_tab=active_tab,
+                        intent="refusal",
+                        confidence=1.0,
+                        source_node="conversation.guardrail",
+                    ),
                 },
             })
 
@@ -404,6 +571,17 @@ class ConversationService:
                 "confidence": confidence,
                 "workflow_triggered": workflow_result is not None,
                 "entity_context": entity_context or {},
+                **self._semantic_agent_metadata(
+                    agent_type="ConversationAgent",
+                    output={"content": response_content, "intent": intent},
+                    tenant_id=tenant_id,
+                    trace_id=trace_id,
+                    workflow_id=workflow_id,
+                    audit_event_id=audit_event_id,
+                    active_tab=active_tab,
+                    intent=intent,
+                    confidence=confidence,
+                ),
             },
         })
 

@@ -9,6 +9,7 @@ const expectedRules = [
   "no-inline-tool-definition",
   "no-throw-in-tool",
   "no-json-parse-agent-output",
+  "require-semantic-contract-metadata",
   "no-imperative-navigation",
   "no-url-concatenation",
   "no-private-imports",
@@ -29,8 +30,9 @@ describe("eslint-plugin-fabric-contracts", () => {
     expect(plugin.configs.recommended.plugins).toEqual(["fabric-contracts"]);
 
     for (const ruleName of expectedRules) {
+      const expectedSeverity = ruleName === "require-semantic-contract-metadata" ? "warn" : "error";
       expect(plugin.configs.recommended.rules?.[`fabric-contracts/${ruleName}`]).toBe(
-        "error"
+        expectedSeverity
       );
     }
   });
