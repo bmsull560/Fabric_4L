@@ -229,10 +229,10 @@ export interface WorkspacePageActionContract {
   intendedOperation: WorkspacePageActionOperation;
   payload?: Record<string, unknown>;
   runMetadataIds?: {
-    runId?: string;
-    traceId?: string;
+    runId: string;
+    traceId: string;
     workflowId?: string;
-    auditEventId?: string;
+    auditEventId: string;
     toolCallId?: string;
   };
 }
