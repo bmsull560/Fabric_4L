@@ -134,7 +134,6 @@ async def api_create_tenant(
     try:
         return await create_tenant(db, request)
     except IntegrityError as exc:
-        await db.rollback()
         message = str(exc.orig if getattr(exc, "orig", None) is not None else exc)
         if "uix_tenant_slug" in message or "duplicate key value" in message and "slug" in message:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Tenant slug already exists") from exc

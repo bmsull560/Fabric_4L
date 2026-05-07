@@ -430,7 +430,7 @@ async def start_prospect_analysis(
             )
             db.add(account)
 
-        await db.commit()
+        await db.flush()
         await db.refresh(account)
 
         # -------------------------------------------------------------------
