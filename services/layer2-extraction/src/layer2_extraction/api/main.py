@@ -15,8 +15,6 @@ import json
 import logging
 import os
 import time
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -28,12 +26,10 @@ try:
 except ImportError:
     psutil = None  # type: ignore[assignment]  # Health check will work without system metrics
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
+from fastapi import BackgroundTasks, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 
 from pydantic import BaseModel, Field
-from value_fabric.shared.identity.middleware import GovernanceMiddleware
-from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from value_fabric.shared.secrets import load_infisical_secrets
@@ -52,20 +48,12 @@ except Exception:
     if _secret_env in {"production", "prod", "staging", "stage"}:
         raise RuntimeError("Failed to load Infisical secrets in production-like Layer 2 runtime")
 
-from value_fabric.shared.identity.vault_check import is_vault_healthy
-
-from ..shared_bootstrap import (
-    SecurityConfig,
-    add_security_middleware,
-    create_fabric_app,
-    install_metrics_middleware,
-    resolve_cors_policy,
-    validate_production_safety,
-    verify_metrics_access,
-)
+from ..shared_bootstrap import verify_metrics_access
+from .app_factory import create_app
+from .lifespan import create_lifespan
 
 from layer2_extraction.alignment import SemanticAligner  # type: ignore
-from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router  # type: ignore
+from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager  # type: ignore
 from layer2_extraction.extraction.chunker import chunk_markdown  # type: ignore
 from layer2_extraction.extraction.deduplicator import deduplicate_entities  # type: ignore
 from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor  # type: ignore
@@ -77,7 +65,7 @@ from layer2_extraction.integration.pending_ingestion_store import (  # type: ign
     SqlitePendingIngestionStore,
     build_pending_ingestion_store,
 )
-from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics  # type: ignore
+from layer2_extraction.metrics import get_metrics  # type: ignore
 from layer2_extraction.models import (  # type: ignore
     ExtractionResult,
     Relationship,
@@ -115,115 +103,14 @@ _app_start_time = time.time()
 # WebSocket manager for real-time pipeline streaming
 _ws_manager = get_pipeline_ws_manager()
 
-# Redis rate limiter - initialized in startup event
-redis_rate_limiter: RedisRateLimiter | None = None
-
-# Background retry task for pending ingestion
-_retry_task: asyncio.Task | None = None
-
-
-async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
-    """Initialize Redis client for rate limiting."""
-    try:
-        import redis.asyncio as redis
-        from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
-
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        redis_client = redis.from_url(redis_url, decode_responses=True)
-        # Validate connection before using for rate limiting
-        await redis_client.ping()  # type: ignore[misc]
-        limiter = RedisRateLimiter(redis_client)
-        logger.info("L2: Redis rate limiter initialized")
-        return limiter
-    except Exception as e:
-        if _is_production_like():
-            logger.error("L2: Redis rate limiting is required in %s but unavailable: %s", _current_environment(), e)
-            raise RuntimeError(
-                f"Redis rate limiting is required in {_current_environment()} but unavailable: {e}"
-            ) from e
-        logger.warning(f"L2: Redis not available for rate limiting: {e}")
-        return None
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Manage Layer 2 startup and shutdown around the shared app factory."""
-    global redis_rate_limiter, _retry_task
-
-    validate_production_safety()
-
-    if getattr(app.state, "telemetry_provider", None) is not None:
-        logger.info("L2: OpenTelemetry tracing available (initialized by app factory)")
-
-    redis_rate_limiter = await _init_redis_rate_limiter()
-    app.state.redis_rate_limiter = redis_rate_limiter
-
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr:
-            logger.info("L2: Checking Vault connectivity at %s", vault_addr)
-            ok = await is_vault_healthy(vault_addr)
-            if not ok:
-                logger.error("L2: %s", _VAULT_UNREACHABLE_ERROR)
-                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
-            logger.info("L2: Vault connectivity verified")
-
-    if _retry_task is None:
-        _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
-
-    await _ws_manager.start()
-    yield
-
-    if _retry_task:
-        _retry_task.cancel()
-        try:
-            await _retry_task
-        except asyncio.CancelledError:
-            pass
-        _retry_task = None
-
-    await _ws_manager.stop()
-
-    if getattr(app.state, "telemetry_provider", None) is not None:
-        app.state.telemetry_provider.shutdown()
-        app.state.telemetry_provider = None
-
-
-# GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
-# Note: redis_rate_limiter is set during startup
-from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
-
-app = create_fabric_app(
-    service_name="layer2-extraction",
-    title="Value Fabric - Extraction Pipeline",
-    description="Ontology-guided extraction of entities from unstructured text to RDF/OWL",
-    version="1.0.0",
-    lifespan=lifespan,
-    cors_policy=resolve_cors_policy(),
-    telemetry_service_name="layer2-extraction",
-    instrument_telemetry=True,
+lifespan = create_lifespan(
+    is_production_like=_is_production_like,
+    current_environment=_current_environment,
+    pending_ingestion_retry_loop=lambda: _pending_ingestion_retry_loop(),
+    ws_manager=_ws_manager,
 )
 
-_security_config_l2 = SecurityConfig.from_env(
-    skip_validation_paths=frozenset({
-        "/health",
-        "/metrics",
-    }),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l2)
-
-app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=None)
-
-install_metrics_middleware(
-    app,
-    metrics=initialize_metrics(),
-    middleware_factory=MetricsMiddleware,
-    logger=logger,
-)
-
-# Include WebSocket router for real-time pipeline streaming
-app.include_router(websocket_router, prefix="/v1")
+app = create_app(lifespan=lifespan)
 
 # Extraction configuration constants
 DEFAULT_CHUNK_SIZE = 2000
@@ -1532,7 +1419,6 @@ async def stream_job_events(job_id: str):
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from .routes import audit, extraction, ontology, system
 
 
 class health_checkResult(TypedDictModel):
@@ -1550,11 +1436,6 @@ class extract_batchResult(TypedDictModel):
     job_ids: Any
     status: str
     total_jobs: Any
-
-app.include_router(system.router)
-app.include_router(extraction.router)
-app.include_router(ontology.router)
-app.include_router(audit.router)
 
 
 if __name__ == "__main__":
