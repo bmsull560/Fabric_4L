@@ -1120,14 +1120,12 @@ async def update_formula(
 
         # Update formula
         if update_fields:
-            await neo4j.run(
-                f"""
+            update_query = f"""
                 MATCH (f:Formula {{id: $formula_id}})
                 WHERE f.tenant_id = $tenant_id
                 SET {', '.join(update_fields)}
-                """,
-                **params,
-            )
+                """
+            await neo4j.run(update_query, **params)
 
         # Create new version if expression changed
         if expr_changed:

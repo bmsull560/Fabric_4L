@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, '..', '..', '..');
 const OPENAPI_DIR = resolve(ROOT, 'contracts', 'openapi');
 const OUTPUT_DIR = resolve(ROOT, 'packages', 'platform-contract', 'src', 'typescript', 'generated');
+const WEB_APP_DIR = resolve(ROOT, 'apps', 'web');
 
 const SPECS = [
   'layer1-ingestion.json',
@@ -26,7 +27,10 @@ const exports = [];
 for (const spec of SPECS) {
   const key = spec.replace('.json', '').replace(/-/g, '_');
   const out = join(OUTPUT_DIR, `${key}.ts`);
-  execSync(`pnpm --dir "/workspace/Fabric_4L/apps/web" exec openapi-typescript "${join(OPENAPI_DIR, spec)}" -o "${out}"`, { stdio: 'pipe' });
+  execSync(`pnpm exec openapi-typescript "${join(OPENAPI_DIR, spec)}" -o "${out}"`, {
+    cwd: WEB_APP_DIR,
+    stdio: 'pipe',
+  });
   const content = readFileSync(out, 'utf8');
   writeFileSync(out, `// @generated from contracts/openapi/${spec}\n` + content);
   exports.push(`export * as ${key} from './${key}';`);

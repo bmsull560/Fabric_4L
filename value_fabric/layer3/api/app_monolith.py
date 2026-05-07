@@ -57,6 +57,7 @@ from value_fabric.shared.fastapi_framework import (
     resolve_cors_policy,
 )
 from value_fabric.shared.security import validate_production_safety
+from value_fabric.shared.observability import configure_observability
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from .dependencies import (
@@ -108,14 +109,14 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     Returns None if tenant context is unavailable or NEO4J_TENANT_AVAILABLE is False.
     
     Args:
-        request: FastAPI Request object with optional state.context
+        request: FastAPI Request object with optional state.governance_context
         
     Returns:
         Normalized tenant_id string or None
     """
     if not request or not NEO4J_TENANT_AVAILABLE:
         return None
-    ctx = getattr(request.state, "context", None)
+    ctx = getattr(request.state, "governance_context", None)
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
@@ -612,6 +613,7 @@ app = FastAPI(
         },
     ],
 )
+configure_observability(app, service_name="layer3-knowledge", readiness_check=lambda: True)
 
 # P1-29: Instrument FastAPI with OpenTelemetry (after app creation)
 if OTEL_AVAILABLE and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):

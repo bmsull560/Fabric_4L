@@ -333,11 +333,12 @@ async def list_datasets(
     ]
 
 
-async def get_dataset(dataset_id: str):
+async def get_dataset(dataset_id: str, ctx: Any = None):
     """Get benchmark dataset by ID."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    dataset = await _benchmark_repo.get_dataset(dataset_id)
+    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    dataset = await _benchmark_repo.get_dataset(dataset_id, tenant_id=tenant_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
@@ -362,11 +363,12 @@ async def get_dataset(dataset_id: str):
     )
 
 
-async def compare(payload: ComparisonRequestPayload):
+async def compare(payload: ComparisonRequestPayload, ctx: Any = None):
     """Execute peer comparison."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    dataset = await _benchmark_repo.get_dataset(payload.dataset_id)
+    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    dataset = await _benchmark_repo.get_dataset(payload.dataset_id, tenant_id=tenant_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
@@ -425,11 +427,12 @@ async def compare(payload: ComparisonRequestPayload):
     )
 
 
-async def validate(payload: ValidationRequestPayload):
+async def validate(payload: ValidationRequestPayload, ctx: Any = None):
     """Validate value against benchmark range."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    dataset = await _benchmark_repo.get_dataset(payload.dataset_id)
+    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    dataset = await _benchmark_repo.get_dataset(payload.dataset_id, tenant_id=tenant_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
@@ -485,11 +488,12 @@ async def validate(payload: ValidationRequestPayload):
     )
 
 
-async def list_industries():
+async def list_industries(ctx: Any = None):
     """List available industries."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    datasets = await _benchmark_repo.list_datasets()
+    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    datasets = await _benchmark_repo.list_datasets(tenant_id=tenant_id)
     industries = {d.industry for d in datasets}
     return list_industriesResult.model_validate({"industries": sorted(industries)})
 

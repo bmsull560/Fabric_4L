@@ -6,6 +6,8 @@ and batch operations.
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 import respx
 from httpx import Response
@@ -406,21 +408,26 @@ class TestSSRFProtection:
     @respx.mock
     @pytest.mark.asyncio
     async def test_fetch_blocks_private_ip(self) -> None:
-        async with HttpxCrawler() as crawler:
-            result = await crawler.fetch("http://169.254.169.254/latest/meta-data/")
+        crawler = HttpxCrawler()
+        crawler._client = object()
+        crawler._semaphore = asyncio.Semaphore(1)
+
+        result = await crawler.fetch("http://169.254.169.254/latest/meta-data/")
 
         assert result.status_code == 400
         assert result.content_type == "ssrf_blocked"
 
-    @respx.mock
     @pytest.mark.asyncio
     async def test_redirect_to_private_ip_is_blocked(self) -> None:
-        respx.get("https://example.com/redirect").mock(
-            return_value=Response(302, headers={"location": "http://127.0.0.1/admin"})
-        )
+        class FakeClient:
+            async def get(self, *_args, **_kwargs):
+                return Response(302, headers={"location": "http://127.0.0.1/admin"})
 
-        async with HttpxCrawler() as crawler:
-            result = await crawler.fetch("https://example.com/redirect")
+        crawler = HttpxCrawler()
+        crawler._client = FakeClient()
+        crawler._semaphore = asyncio.Semaphore(1)
+
+        result = await crawler.fetch("https://example.com/redirect")
 
         assert result.status_code == 400
         assert result.content_type == "ssrf_blocked"

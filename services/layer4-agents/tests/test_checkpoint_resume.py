@@ -271,7 +271,7 @@ class TestCheckpointConfiguration:
         """
         # Must set env var to trigger DB connection attempt
         with patch.dict(os.environ, {"ENVIRONMENT": "development", "CHECKPOINT_DATABASE_URL": "postgresql://invalid:5432/test"}):
-            with patch("src.config.checkpoint.CheckpointConfig.create_saver") as mock_create:
+            with patch("value_fabric.layer4.config.checkpoint.CheckpointConfig.create_saver") as mock_create:
                 mock_create.side_effect = CheckpointConnectionError("Database unavailable")
                 
                 result = await get_checkpoint_saver()
@@ -287,10 +287,10 @@ class TestCheckpointConfiguration:
                 await get_checkpoint_saver()
 
     @pytest.mark.asyncio
-    async def test_production_workflow_requires_checkpoint_saver(self, mock_tool_registry, state_manager):
+    async def test_production_workflow_requires_checkpoint_saver(self, state_manager):
         """Runtime execution fails closed in production without a checkpointer."""
         controller = OrchestrationController(
-            tool_registry=mock_tool_registry,
+            tool_registry=ToolRegistry(),
             state_manager=state_manager,
             checkpoint_saver=None,
         )

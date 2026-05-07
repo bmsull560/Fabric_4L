@@ -326,3 +326,6 @@ async def invalidate_entity_cache(entity_id: str, tenant_id: UUID | None = None)
     except Exception as e:
         logger.warning(f"Cache invalidation failed for entity {entity_id}: {e}")
         return False
+
+def get_request_deduplicator() -> Any:
+    return None

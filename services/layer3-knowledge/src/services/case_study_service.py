@@ -421,16 +421,16 @@ class CaseStudyService:
 
         async with self.driver.session() as session:
             # Get total count
-            count_result = await session.run(
-                f"// strict-scoped-query-execution: where_str includes e.tenant_id = $tenant_id\nMATCH (e:Evidence) WHERE {where_str} RETURN count(e) AS total",
-                **params,
+            count_query = (
+                "// strict-scoped-query-execution: where_str includes e.tenant_id = $tenant_id\n"
+                f"MATCH (e:Evidence) WHERE {where_str} RETURN count(e) AS total"
             )
+            count_result = await session.run(count_query, **params)
             count_record = await count_result.single()
             total = count_record["total"] if count_record else 0
 
             # Get paginated results
-            result = await session.run(
-                f"""
+            search_query = f"""
                 // strict-scoped-query-execution: where_str includes e.tenant_id = $tenant_id
                 MATCH (e:Evidence) WHERE {where_str}
                 OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[:DEMONSTRATES]->(e)
@@ -438,9 +438,8 @@ class CaseStudyService:
                        collect(DISTINCT p.name) AS linked_products
                 ORDER BY e.published_date DESC
                 SKIP $offset LIMIT $limit
-                """,
-                **params,
-            )
+                """
+            result = await session.run(search_query, **params)
 
             records = [record async for record in result]
             items = []

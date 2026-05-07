@@ -7,7 +7,7 @@ and prevent cross-tenant data leakage.
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from db.tenant_queries import (
+from src.db.tenant_queries import (
     get_entity_by_id,
     get_relationships_for_entity,
     search_entities,
@@ -358,14 +358,14 @@ class TestGetEntityContext:
             mock_session,
             entity_id="entity-123",
             tenant_id="tenant-a",
-            relationship_types=["ENABLES", "DRIVES"]
+            relationship_types=["ENABLES", "AFFECTS"]
         )
         
         call_args = mock_session.run.call_args
         query = call_args[0][0]
         
         assert "'ENABLES'" in query
-        assert "'DRIVES'" in query
+        assert "'AFFECTS'" in query
 
 
 class TestCountEntityRelationships:
