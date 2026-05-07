@@ -33,6 +33,7 @@ logs/
 tmp/
 *.tmp
 /tmp/
+.pytest-tmp/
 
 # Test artifacts
 .pytest_cache/
@@ -135,3 +136,4 @@ audit-output/
 # Archived frontend snapshots/backups (non-runtime)
 /archive/
 apps/web/src/*.backup.*
+apps/web/coverage/

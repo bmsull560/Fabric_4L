@@ -38,6 +38,12 @@ export interface RunExtractionResult {
   message: string;
 }
 
+type RunExtractionApiResponse = {
+  extraction_job_id?: string;
+  status?: string;
+  message?: string;
+};
+
 /**
  * Start a new extraction job
  * 
@@ -58,12 +64,16 @@ export function useRunExtraction() {
         extraction_config: params.extractionConfig,
       };
 
-      const response = await apiClient.post('l2', '/v1/extract', request);
+      const response = await apiClient.post<RunExtractionApiResponse>('l2', '/v1/extract', request);
+      const jobId = response.data.extraction_job_id;
+      if (!jobId) {
+        throw new Error('Extraction response missing job id');
+      }
       
       return {
-        jobId: response.data.extraction_job_id,
-        status: response.data.status,
-        message: response.data.message,
+        jobId,
+        status: response.data.status ?? 'pending',
+        message: response.data.message ?? 'Extraction started',
       };
     },
     onSuccess: () => {

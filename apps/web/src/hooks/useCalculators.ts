@@ -69,6 +69,9 @@ export interface ValueCaseRequest {
   metadata: {
     generated_by: string;
     confidence_score: number;
+    hypothesis_id?: string;
+    evidence_link_count?: number;
+    [key: string]: unknown;
   };
 }
 

@@ -10,7 +10,7 @@ import { Clock, CheckCircle2, AlertCircle, Loader2, Zap } from "lucide-react";
 import { useRecentIngestionJobs, useIngestionStats, type IngestionJob } from "@/hooks/useIngestion";
 import { MetricCard, DataTable, StatusBadge } from "@/components/WfPrimitives";
 import { ProspectPromptBuilder } from "@/components/workspace/ProspectPromptBuilder";
-import type { ProspectSetupPromptPayload } from "@/components/workspace/ProspectPromptBuilder";
+import type { CreateSetupResult, ProspectSetupPromptPayload } from "@/components/workspace/ProspectPromptBuilder";
 import { useNavigation } from "@/hooks/useNavigation";
 import { apiClient } from "@/api/client";
 
@@ -21,8 +21,8 @@ export default function ValueNarrativeHome() {
   } = useIngestionStats();
   const { navigateTo } = useNavigation();
 
-  const handleCreateSetup = async (payload: ProspectSetupPromptPayload) => {
-    const response = await apiClient.post("l4", "/prospects/setup", {
+  const handleCreateSetup = async (payload: ProspectSetupPromptPayload): Promise<CreateSetupResult> => {
+    const response = await apiClient.post<CreateSetupResult>("l4", "/prospects/setup", {
       prospect_data: {
         account_id: payload.companyDomain || "new",
         company_name: payload.companyName,

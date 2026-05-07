@@ -81,7 +81,7 @@ export function useBusinessCase(caseId: string | null) {
 
       // Parse workflow output into business case format
       const output = result.output || {};
-      const steps = result.steps || [];
+      const steps: ApiWorkflowStepDto[] = result.steps || [];
 
       // Extract data from workflow steps
       const findAgentStep = (agentName: string): ApiWorkflowStepDto | undefined =>

@@ -76,8 +76,8 @@ REQUIRED_VECTOR_INDEXES = {
 async def neo4j_container() -> AsyncGenerator[Neo4jContainer, None]:
     """Start Neo4j container for testing with deterministic wait strategy.
     
-    P1 Fix: Replaced hardcoded retry loop with testcontainers' built-in wait
-    strategy for more reliable container startup detection.
+    Uses testcontainers' built-in wait strategy for reliable container
+    startup detection instead of a hardcoded retry loop.
     """
     from testcontainers.core.waiting_utils import wait_for_logs
     
@@ -86,8 +86,7 @@ async def neo4j_container() -> AsyncGenerator[Neo4jContainer, None]:
         password=TEST_NEO4J_PASSWORD,
     ).with_env("NEO4J_PLUGINS", '["apoc", "graph-data-science"]')
     
-    # P1 Fix: Use testcontainers' built-in wait strategy instead of manual retry loop
-    # This provides deterministic container readiness detection
+    # Use testcontainers' built-in wait strategy for deterministic readiness detection.
     container.start()
     wait_for_logs(container, "Started.", timeout=60)
     

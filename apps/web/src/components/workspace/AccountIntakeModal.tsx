@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Btn } from "@/components/WfPrimitives";
 import { useCreateAccount } from "@/hooks/useAccounts";
+import { getOrCreateCanonicalCaseId, persistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 
 interface ApiValidationDetail {
   msg?: string;
@@ -172,26 +173,33 @@ export default function AccountIntakeModal({
     setError(null);
 
     try {
+      const annualRevenue = parseAnnualRevenue(revenue);
+      const slug = companyName.trim().toLowerCase().replace(/\s+/g, '-');
       const payload = {
         name: companyName.trim(),
-        industry: industry.trim() || undefined,
-        company_size: parseAnnualRevenue(revenue) || undefined,
-        annual_revenue: parseAnnualRevenue(revenue),
-        owner_name: contactName.trim() || undefined,
         provider: 'manual' as const,
-        enrichment_input: JSON.stringify({
-          companyName: companyName.trim(),
-          industry: industry.trim() || null,
-          revenue: revenue.trim() || null,
-          contactName: contactName.trim() || null,
-          contactRole: contactRole.trim() || null,
-          painPoints: painPoints.trim() || null,
-          depth,
-        }),
+        provider_record_id: `manual-${slug}`,
+        domain: `${slug}.com`,
+        industry: industry.trim() || undefined,
+        owner_name: contactName.trim() || undefined,
+        stage: 'prospect' as const,
       };
 
       const result = await createAccount.mutateAsync(payload);
       const accountId = result.account.id;
+      const caseId = await getOrCreateCanonicalCaseId(accountId);
+      await persistWorkspaceTab(caseId, "intake", {
+        account_id: accountId,
+        company_name: companyName.trim(),
+        industry: industry.trim() || null,
+        revenue: revenue.trim() || null,
+        annual_revenue: annualRevenue ?? null,
+        contact_name: contactName.trim() || null,
+        contact_role: contactRole.trim() || null,
+        pain_points: painPoints.trim() || null,
+        depth,
+        created_at: new Date().toISOString(),
+      });
 
       setIsSubmitting(false);
       onClose();

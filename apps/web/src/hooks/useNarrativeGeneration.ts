@@ -36,6 +36,11 @@ export interface NarrativeGenerationResponse {
   message: string;
 }
 
+type WorkflowCreateResponse = {
+  workflow_instance_id?: string;
+  workflow_id?: string;
+};
+
 // ── Workflow type mapping ─────────────────────────────────────────────────────
 
 const OUTPUT_TYPE_TO_WORKFLOW: Record<OutputType, string> = {
@@ -77,7 +82,7 @@ export function useGenerateNarrative() {
     mutationFn: async ({ prompt, outputType, industry }) => {
       const workflowType = OUTPUT_TYPE_TO_WORKFLOW[outputType];
 
-      const response = await apiClient.post('l4', '/workflows', {
+      const response = await apiClient.post<WorkflowCreateResponse>('l4', '/workflows', {
         workflow_type: workflowType,
         inputs: {
           custom_data: {

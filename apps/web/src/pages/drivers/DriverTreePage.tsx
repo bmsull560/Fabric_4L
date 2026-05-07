@@ -11,6 +11,7 @@ import DriverTreeShell from "@/components/workspace/DriverTreeShell";
 import { useAccount } from "@/hooks/useAccounts";
 import { useAccountHypotheses } from "@/hooks/useHypotheses";
 import { useValueTreePaths } from "@/hooks/useValueTrees";
+import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState, EmptyState } from "@/components/states";
@@ -27,8 +28,11 @@ export default function DriverTreePage() {
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: hypothesesData, isLoading: hypothesesLoading } = useAccountHypotheses(
     accountId ?? null,
-    { status: 'draft' }
+    { status: 'validated' }
   );
+  const { data: caseId } = useCanonicalCaseId(accountId ?? null);
+  const { data: driverData } = useWorkspaceTabQuery<{ drivers?: Array<Record<string, unknown>> }>(caseId ?? null, "drivers");
+  const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: Array<{ evidence_id: string; driver_id: string }> }>(caseId ?? null, "evidence-links");
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
 
   if (!accountId) {
@@ -48,8 +52,25 @@ export default function DriverTreePage() {
   const revenue = account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A";
 
   const hypotheses = hypothesesData?.hypotheses ?? [];
-  const selectedHypothesis = hypotheses.find((h) => h.id === selectedTreeId);
-  const capabilityId = selectedHypothesis?.capability_id;
+  const promotedDrivers = driverData?.drivers ?? [];
+  const treeItems = promotedDrivers.length > 0
+    ? promotedDrivers.map((driver) => ({
+        id: String(driver.id ?? driver.hypothesis_id ?? ""),
+        title: String(driver.name ?? driver.hypothesis_text ?? "Promoted value driver"),
+        valuePath: String(driver.category ?? driver.value_path_category ?? "Unclassified"),
+        confidence: Number(driver.confidence ?? 0.5),
+        capabilityId: typeof driver.capability_id === "string" ? driver.capability_id : undefined,
+      }))
+    : hypotheses.map((h) => ({
+        id: h.id,
+        title: h.hypothesis_text,
+        valuePath: h.value_path_category ?? "Unclassified",
+        confidence: h.confidence ?? 0.5,
+        capabilityId: h.capability_id,
+      }));
+  const selectedTree = treeItems.find((item) => item.id === selectedTreeId);
+  const capabilityId = selectedTree?.capabilityId;
+  const evidenceLinks = linkData?.evidence_links ?? [];
 
   const { data: treePaths, isLoading: pathsLoading } = useValueTreePaths(
     capabilityId,
@@ -60,7 +81,7 @@ export default function DriverTreePage() {
     <div className="space-y-6">
       {hypothesesLoading ? (
         <LoadingState message="Loading driver tree suggestions…" />
-      ) : hypotheses.length === 0 ? (
+      ) : treeItems.length === 0 ? (
         <EmptyState
           title="No driver tree suggestions"
           description="Promote signals from the Intelligence workspace to generate value hypotheses and driver trees."
@@ -75,7 +96,9 @@ export default function DriverTreePage() {
         <>
           <SectionCard title="Suggested Driver Trees">
             <div className="space-y-3">
-              {hypotheses.map((h) => (
+              {treeItems.map((h) => {
+                const linkedEvidenceCount = evidenceLinks.filter((link) => link.driver_id === h.id).length;
+                return (
                 <div
                   key={h.id}
                   className={`border rounded-lg p-4 cursor-pointer transition-colors ${
@@ -87,26 +110,23 @@ export default function DriverTreePage() {
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h4 className="text-sm font-semibold text-foreground">{h.hypothesis_text}</h4>
+                      <h4 className="text-sm font-semibold text-foreground">{h.title}</h4>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Value Path: {h.value_path_category ?? 'Unclassified'} · Confidence: {Math.round((h.confidence ?? 0.5) * 100)}%
+                        Value Path: {h.valuePath} · Confidence: {Math.round(h.confidence * 100)}% · Evidence Links: {linkedEvidenceCount}
                       </p>
                     </div>
                     {selectedTreeId === h.id && (
                       <Btn
                         variant="primary"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigateTo('calculator-roi', { accountId });
-                        }}
+                        onClick={() => navigateTo('calculator', { accountId }, { query: { hypothesisId: h.id } })}
                       >
                         Model Impact <ArrowRight size={12} />
                       </Btn>
                     )}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </SectionCard>
 

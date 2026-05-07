@@ -43,14 +43,14 @@ export function useFabricMutation<TData, TError extends BaseApiError, TVariables
   return useMutation<TData, TError, TVariables>({
     ...rest,
     mutationFn: (variables) => withApiError(mutationFn(variables), errorClass),
-    onSuccess: (data, variables, context) => {
+    onSuccess: (data, variables, context, mutation) => {
       if (invalidateKeys && invalidateKeys.length > 0) {
         invalidateKeys.forEach((key) => {
           queryClient.invalidateQueries({ queryKey: [...key] });
         });
       }
       // Chain to any user-provided onSuccess
-      rest.onSuccess?.(data, variables, context);
+      rest.onSuccess?.(data, variables, context, mutation);
     },
   });
 }

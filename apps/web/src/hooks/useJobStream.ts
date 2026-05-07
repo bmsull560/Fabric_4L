@@ -21,7 +21,7 @@ import {
   SSEBuilders,
   SSE_TIMEOUT_MS as SHARED_SSE_TIMEOUT_MS,
 } from "./useSSEUtils";
-import { parseExtractionJob } from "@/types/api";
+import { parseExtractionJob, type ApiExtractedEntityDto, type ApiProgressLogDto } from "@/types/api";
 import { parseJsonValue } from "@/agui/eventSchemas";
 import { POLL_INTERVALS } from "./usePolling";
 
@@ -217,12 +217,12 @@ export function useJobStream(jobId: string | null) {
       setState(prev => ({
         progress: job.progress_percent_complete ?? prev.progress,
         status: mapJobStatus(job.status ?? ""),
-        logs: (job.progress_logs ?? []).map(log => ({
+        logs: (job.progress_logs ?? []).map((log: ApiProgressLogDto) => ({
           timestamp: log.timestamp ?? "",
           level: log.level ?? "INFO",
           message: log.message ?? "",
         })),
-        entities: (job.extracted_entities ?? []).map(entity => ({
+        entities: (job.extracted_entities ?? []).map((entity: ApiExtractedEntityDto) => ({
           type: entity.type ?? "unknown",
           name: entity.name ?? "Unknown",
         })),

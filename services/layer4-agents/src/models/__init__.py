@@ -33,6 +33,7 @@ from .billing import (
 )
 from .business_case_record import BusinessCaseRecord
 from .saved_scenario import SavedBusinessCaseScenario
+from .workspace_tab_data import WorkspaceTabData
 from .integration import (
     Integration,
     IntegrationStatus,

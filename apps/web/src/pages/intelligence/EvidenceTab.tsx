@@ -8,7 +8,8 @@ import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCaseStudies, type CaseStudy } from "@/hooks/useEvidence";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 type VerificationState = "verified" | "partial" | "unverified";
@@ -22,6 +23,19 @@ interface EvidenceItem {
   verification: VerificationState;
   linkedSignals: string[];
   excerpt: string;
+}
+
+interface DriverOption {
+  id: string;
+  name?: string;
+  hypothesis_text?: string;
+}
+
+interface EvidenceLink {
+  evidence_id: string;
+  evidence_title: string;
+  driver_id: string;
+  linked_at: string;
 }
 
 const VERIFICATION_CONFIG: Record<
@@ -70,6 +84,10 @@ function mapCaseStudyToEvidenceItem(cs: CaseStudy): EvidenceItem {
 function useEvidenceTabState() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
+  const { data: caseId } = useCanonicalCaseId(accountId ?? null);
+  const { data: driverData } = useWorkspaceTabQuery<{ drivers?: DriverOption[] }>(caseId ?? null, "drivers");
+  const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: EvidenceLink[] }>(caseId ?? null, "evidence-links");
+  const persistLinks = usePersistWorkspaceTab("evidence-links");
 
   // Load real case studies filtered by account industry
   const { data: caseStudiesData, isLoading, error } = useCaseStudies({
@@ -78,7 +96,10 @@ function useEvidenceTabState() {
   });
 
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState("");
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
+  const evidenceLinks = linkData?.evidence_links ?? [];
+  const driverOptions = driverData?.drivers ?? [];
 
   const evidence = useMemo(() => {
     const items = caseStudiesData?.items ?? [];
@@ -98,7 +119,36 @@ function useEvidenceTabState() {
       activeTab: "evidence",
       accountName: account?.name ?? "Account",
       accountId: accountId ?? undefined,
+      selectedEvidenceId: selectedEvidence?.id,
+      workspaceCaseId: caseId ?? undefined,
+      entityContext: { selectedEvidence: selectedEvidence ?? undefined },
     });
+
+  const attachEvidence = () => {
+    if (!caseId || !selectedEvidence || !selectedDriverId) return;
+    const nextLinks = [
+      ...evidenceLinks.filter((link) => !(link.evidence_id === selectedEvidence.id && link.driver_id === selectedDriverId)),
+      {
+        evidence_id: selectedEvidence.id,
+        evidence_title: selectedEvidence.title,
+        driver_id: selectedDriverId,
+        linked_at: new Date().toISOString(),
+      },
+    ];
+    persistLinks.mutate({ caseId, payload: { evidence_links: nextLinks } });
+  };
+
+  const unlinkEvidence = (link: EvidenceLink) => {
+    if (!caseId) return;
+    persistLinks.mutate({
+      caseId,
+      payload: {
+        evidence_links: evidenceLinks.filter((item) =>
+          !(item.evidence_id === link.evidence_id && item.driver_id === link.driver_id),
+        ),
+      },
+    });
+  };
 
   return {
     account,
@@ -110,6 +160,13 @@ function useEvidenceTabState() {
     avgMatch,
     selectedEvidence,
     setSelectedEvidence,
+    selectedDriverId,
+    setSelectedDriverId,
+    driverOptions,
+    evidenceLinks,
+    attachEvidence,
+    unlinkEvidence,
+    isAttachingEvidence: persistLinks.isPending,
     railMode,
     setRailMode,
     messages,
@@ -121,8 +178,11 @@ function useEvidenceTabState() {
   };
 }
 
-export function EvidenceTabContent() {
+type EvidenceTabState = ReturnType<typeof useEvidenceTabState>;
+
+export function EvidenceTabContent({ state: providedState }: { state?: EvidenceTabState } = {}) {
   const { accountId } = useParams<{ accountId: string }>();
+  const ownedState = useEvidenceTabState();
   const {
     evidence,
     isLoading,
@@ -131,7 +191,7 @@ export function EvidenceTabContent() {
     avgMatch,
     selectedEvidence,
     setSelectedEvidence,
-  } = useEvidenceTabState();
+  } = providedState ?? ownedState;
 
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;
@@ -196,9 +256,22 @@ export default function EvidenceTab() {
   const {
     account,
     accountLoading,
+    evidence,
+    isLoading,
+    error,
+    verified,
+    avgMatch,
     selectedEvidence,
+    setSelectedEvidence,
     railMode,
     setRailMode,
+    selectedDriverId,
+    setSelectedDriverId,
+    driverOptions,
+    evidenceLinks,
+    attachEvidence,
+    unlinkEvidence,
+    isAttachingEvidence,
     messages,
     sendMessage,
     suggestedActions,
@@ -235,9 +308,41 @@ export default function EvidenceTab() {
           activeTab="evidence"
           detailContent={
             selectedEvidence ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <h3 className="text-sm font-bold">{selectedEvidence.title}</h3>
                 <p className="text-xs text-muted-foreground">{selectedEvidence.excerpt}</p>
+                <div className="space-y-2 border-t pt-3">
+                  <label className="text-[11px] font-medium text-muted-foreground">Attach to driver or lever</label>
+                  <select
+                    className="w-full h-8 px-2 text-[12px] rounded-md border border-border bg-background text-foreground"
+                    value={selectedDriverId}
+                    onChange={(event) => setSelectedDriverId(event.target.value)}
+                  >
+                    <option value="">Select driver...</option>
+                    {driverOptions.map((driver) => (
+                      <option key={driver.id} value={driver.id}>
+                        {driver.name ?? driver.hypothesis_text ?? driver.id}
+                      </option>
+                    ))}
+                  </select>
+                  <Btn
+                    variant="primary"
+                    className="w-full"
+                    disabled={!selectedDriverId || isAttachingEvidence}
+                    onClick={attachEvidence}
+                  >
+                    {isAttachingEvidence ? "Attaching..." : "Attach Evidence"}
+                  </Btn>
+                  {evidenceLinks.filter((link) => link.evidence_id === selectedEvidence.id).map((link) => (
+                    <button
+                      key={`${link.evidence_id}-${link.driver_id}`}
+                      className="block w-full text-left text-[10px] text-muted-foreground hover:text-destructive"
+                      onClick={() => unlinkEvidence(link)}
+                    >
+                      Linked to {link.driver_id} - click to unlink
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null
           }
@@ -250,7 +355,32 @@ export default function EvidenceTab() {
         />
       }
     >
-      <EvidenceTabContent />
+      <EvidenceTabContent state={{
+        account,
+        accountLoading,
+        evidence,
+        isLoading,
+        error,
+        verified,
+        avgMatch,
+        selectedEvidence,
+        setSelectedEvidence,
+        selectedDriverId,
+        setSelectedDriverId,
+        driverOptions,
+        evidenceLinks,
+        attachEvidence,
+        unlinkEvidence,
+        isAttachingEvidence,
+        railMode,
+        setRailMode,
+        messages,
+        sendMessage,
+        suggestedActions,
+        steps,
+        isStreaming,
+        metadata,
+      }} />
     </IntelligenceShell>
   );
 }

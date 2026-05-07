@@ -160,7 +160,7 @@ class QualityGate:
 
     def _check_content_ratio(self, result: FastPathResult) -> bool:
         """Check if text-to-HTML ratio is sufficient."""
-        # P1 Fix: Use original_html_length to avoid inflated ratio from truncation
+        # Use original_html_length to avoid inflated ratios after HTML truncation.
         html_length = result.original_html_length if result.original_html_length > 0 else len(result.html)
         if not html_length:
             return False

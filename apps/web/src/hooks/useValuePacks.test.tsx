@@ -75,8 +75,8 @@ describe("useValuePacks", () => {
       // Clear previous mocks and set up persistent rejection
       vi.mocked(apiClient.get).mockReset().mockRejectedValue(error);
 
-      // P1 Fix: Use createWrapperWithRetry(false) to disable retries for faster error state testing
-      // This reduces test time from ~15s (with retries) to ~1s
+      // Disable retries to keep error-state testing fast and deterministic.
+      // This reduces test time from roughly 15s with retries to about 1s.
       const { result } = renderHook(() => useValuePacks(), {
         wrapper: createWrapperWithRetry(false),
       });

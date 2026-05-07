@@ -40,6 +40,15 @@ export interface C1Component {
   props: Record<string, unknown>;
 }
 
+interface WhatIfResult {
+  original_value: number;
+  adjusted_value: number;
+  delta_percentage: number;
+  new_roi: number;
+  new_payback_months: number;
+  formula_used: string;
+}
+
 /**
  * Check if C1 integration is enabled.
  * The API key lives server-side, so the frontend only checks the feature flag.
@@ -162,15 +171,8 @@ export async function* streamC1Response(
 export async function evaluateWhatIf(
   baseCaseId: string,
   adjustments: Array<{ name: string; value: number; original_value: number }>
-): Promise<{
-  original_value: number;
-  adjusted_value: number;
-  delta_percentage: number;
-  new_roi: number;
-  new_payback_months: number;
-  formula_used: string;
-}> {
-  const response = await apiClient.post('l3', '/formulas/scenario', {
+): Promise<WhatIfResult> {
+  const response = await apiClient.post<WhatIfResult>('l3', '/formulas/scenario', {
     base_case_id: baseCaseId,
     adjustments,
   });

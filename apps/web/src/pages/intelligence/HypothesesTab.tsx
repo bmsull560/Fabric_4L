@@ -34,7 +34,9 @@ import {
   useGenerateHypotheses,
   useValidateHypothesis,
   type ValueHypothesis,
+  type ValidateHypothesisResponse,
 } from "@/hooks/useHypotheses";
+import { useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,6 +64,10 @@ function confidenceBar(score: number) {
       <span className="text-[10px] font-semibold">{pct}%</span>
     </div>
   );
+}
+
+function hypothesisTitle(hypothesis: ValueHypothesis): string {
+  return hypothesis.value_path_category ?? hypothesis.capability_name ?? "Value hypothesis";
 }
 
 // ── Hypothesis Card ──────────────────────────────────────────────────────────
@@ -93,7 +99,7 @@ function HypothesisCard({
       <div className="flex items-start gap-3 w-full">
         <Icon size={14} className={cn("mt-0.5 shrink-0", cfg.color)} />
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold">{hypothesis.value_driver}</div>
+          <div className="text-xs font-semibold">{hypothesisTitle(hypothesis)}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
             {hypothesis.hypothesis_text}
           </div>
@@ -107,7 +113,7 @@ function HypothesisCard({
       {/* Signal → Product mapping */}
       <div className="flex items-center gap-1.5 ml-7 text-[10px] text-muted-foreground">
         <Target size={10} />
-        <span className="truncate">{hypothesis.signal_ids.length} signal(s)</span>
+        <span className="truncate">{hypothesis.signal_id ? 1 : 0} signal(s)</span>
         <ArrowRight size={8} />
         <span className="font-medium text-foreground truncate">Product {hypothesis.product_id}</span>
       </div>
@@ -149,6 +155,8 @@ export default function HypothesesTab() {
   } = useAccountHypotheses(accountId ?? null);
   const generateHypotheses = useGenerateHypotheses();
   const validateHypothesis = useValidateHypothesis();
+  const { data: caseId } = useCanonicalCaseId(accountId ?? null);
+  const persistDrivers = usePersistWorkspaceTab("drivers");
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -204,7 +212,7 @@ export default function HypothesesTab() {
           detailContent={
             selected ? (
               <div className="space-y-3">
-                <h3 className="text-sm font-bold">{selected.value_driver}</h3>
+                <h3 className="text-sm font-bold">{hypothesisTitle(selected)}</h3>
                 <p className="text-xs text-muted-foreground">{selected.hypothesis_text}</p>
                 <div className="space-y-2 text-[10px]">
                   <div className="flex justify-between">
@@ -225,9 +233,9 @@ export default function HypothesesTab() {
                     {selected.evidence_ids.length} evidence item(s) linked
                   </div>
                 )}
-                {selected.validation_notes && (
+                {selected.feedback && (
                   <div className="text-[10px] text-muted-foreground border-t pt-2">
-                    <span className="font-semibold">Notes:</span> {selected.validation_notes}
+                    <span className="font-semibold">Notes:</span> {selected.feedback}
                   </div>
                 )}
               </div>
@@ -388,7 +396,33 @@ export default function HypothesesTab() {
                 isSelected={selectedId === h.id}
                 onSelect={() => setSelectedId(h.id)}
                 onStatusChange={(status) => {
-                  validateHypothesis.mutate({ hypothesisId: h.id, data: { status } });
+                  validateHypothesis.mutate(
+                    {
+                      hypothesisId: h.id,
+                      data: {
+                        new_status: status,
+                        feedback: status === "validated" ? "Approved for driver tree promotion" : "Rejected in hypothesis review",
+                      },
+                    },
+                    {
+                      onSuccess: (result: ValidateHypothesisResponse) => {
+                        const promotedDrivers = result.promoted_artifacts?.drivers ?? [];
+                        if (caseId && promotedDrivers.length > 0) {
+                          persistDrivers.mutate({
+                            caseId,
+                            payload: {
+                              drivers: promotedDrivers.map((driver) => ({
+                                ...driver,
+                                id: String(driver.id ?? h.id),
+                                hypothesis_id: h.id,
+                                hypothesis_text: h.hypothesis_text,
+                              })),
+                            },
+                          });
+                        }
+                      },
+                    },
+                  );
                 }}
                 isUpdating={validateHypothesis.isPending}
               />

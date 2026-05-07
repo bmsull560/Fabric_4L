@@ -32,6 +32,7 @@ class generate_hypothesesResult(TypedDictModel):
 
 class validate_hypothesisResult(TypedDictModel):
     hypothesis: Any
+    promoted_artifacts: Any = None
     status: str
 
 class delete_hypothesisResult(TypedDictModel):
@@ -261,7 +262,15 @@ async def validate_hypothesis(
     if not result:
         raise HTTPException(status_code=404, detail="Hypothesis not found")
 
-    return validate_hypothesisResult.model_validate({"status": "updated", "hypothesis": result})
+    promoted_artifacts = None
+    if body.new_status == "validated":
+        promoted_artifacts = await engine.promote_validated_hypothesis(tenant_id, hypothesis_id)
+
+    return validate_hypothesisResult.model_validate({
+        "status": "updated",
+        "hypothesis": result,
+        "promoted_artifacts": promoted_artifacts,
+    })
 
 
 @router.delete("/{hypothesis_id}")
@@ -327,5 +336,4 @@ async def rank_hypotheses(
         "count": len(ranked),
         "hypotheses": ranked,
     })
-
 

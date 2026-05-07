@@ -133,11 +133,15 @@ function ProspectSetupWithNav() {
     stakeholders?: Record<string, string>;
   }) => {
     try {
+      const name = payload.companyName ?? 'Unknown Account';
+      const slug = name.toLowerCase().replace(/\s+/g, '-');
       const result = await createAccount.mutateAsync({
-        name: payload.companyName ?? 'Unknown Account',
+        name,
+        provider: 'manual',
+        provider_record_id: `manual-${slug}`,
+        domain: `${slug}.com`,
         industry: payload.industry,
         stage: 'prospect',
-        enrichment_input: payload.painPoints?.join('\n'),
       });
       return { accountId: result.account.id };
     } catch (error) {

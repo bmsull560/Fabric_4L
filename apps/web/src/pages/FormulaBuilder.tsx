@@ -642,7 +642,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           {/* Draft Indicator */}
           {draftSavedAt && (
             <p className="text-[10px] text-muted-foreground/70 text-center">
-              Draft saved {formatRelativeTime(new Date(draftSavedAt))}
+              Draft saved {formatRelativeTime(draftSavedAt)}
             </p>
           )}
 

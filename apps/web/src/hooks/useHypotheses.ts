@@ -65,9 +65,21 @@ export interface AccountHypothesesResponse {
 
 export interface ValidateHypothesisRequest {
   new_status: HypothesisStatus;
-  feedback?: string;
+  feedback: string;
   evidence_ids?: string[];
   confidence_adjustment?: number;
+}
+
+export interface PromotedArtifacts {
+  drivers?: Array<Record<string, unknown>>;
+  levers?: Array<Record<string, unknown>>;
+  created?: boolean;
+}
+
+export interface ValidateHypothesisResponse {
+  status: string;
+  hypothesis: ValueHypothesis;
+  promoted_artifacts?: PromotedArtifacts | null;
 }
 
 export interface RankHypothesesRequest {
@@ -208,17 +220,24 @@ export function useGenerateHypotheses() {
 export function useValidateHypothesis() {
   const queryClient = useQueryClient();
   return useMutation<
-    ValueHypothesis,
+    ValidateHypothesisResponse,
     HypothesisApiError,
     { hypothesisId: string; data: ValidateHypothesisRequest }
   >({
     mutationFn: async ({ hypothesisId, data }) => {
       const response = await apiClient.post('l4', `/v1/hypotheses/${hypothesisId}/validate`, data);
-      return response.data as ValueHypothesis;
+      const raw = response.data as ValidateHypothesisResponse | ValueHypothesis;
+      if ('hypothesis' in raw) return raw;
+      return { status: 'updated', hypothesis: raw };
     },
-    onSuccess: (_data, { hypothesisId }) => {
+    onSuccess: (data, { hypothesisId }) => {
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.detail(hypothesisId) });
+      queryClient.invalidateQueries({ queryKey: QK.calculators.all });
+      queryClient.invalidateQueries({ queryKey: ['workspace'] });
+      if (data.hypothesis?.account_id) {
+        queryClient.invalidateQueries({ queryKey: QK.hypotheses.byAccount(data.hypothesis.account_id) });
+      }
     },
   });
 }

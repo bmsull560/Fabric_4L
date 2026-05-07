@@ -8,12 +8,49 @@ interface CaseRecord {
   id?: string;
 }
 
+type CaseListResponse = CaseRecord[] | {
+  items?: CaseRecord[];
+};
+
 function getStoredCaseId(accountId: string): string | null {
   return window.localStorage.getItem(`${CASE_STORAGE_PREFIX}.${accountId}`);
 }
 
 function setStoredCaseId(accountId: string, caseId: string) {
   window.localStorage.setItem(`${CASE_STORAGE_PREFIX}.${accountId}`, caseId);
+}
+
+export async function getOrCreateCanonicalCaseId(accountId: string): Promise<string> {
+  const stored = getStoredCaseId(accountId);
+  if (stored) return stored;
+
+  const lookup = await apiClient.get<CaseListResponse>('l4', `/analysis/cases?account_id=${encodeURIComponent(accountId)}`);
+  const items = Array.isArray(lookup.data) ? lookup.data : (lookup.data?.items ?? []);
+  const existing = (items[0] ?? {}) as CaseRecord;
+  const existingCaseId = existing.case_id || existing.id;
+  if (existingCaseId) {
+    setStoredCaseId(accountId, existingCaseId);
+    return existingCaseId;
+  }
+
+  const created = await apiClient.post<CaseRecord>('l4', '/analysis/cases', {
+    account_id: accountId,
+    title: `Account ${accountId} workspace`,
+  });
+  const createdCaseId = String(created.data.case_id ?? created.data.id ?? '');
+  if (!createdCaseId) throw new Error('Unable to create case for account workspace');
+  setStoredCaseId(accountId, createdCaseId);
+  return createdCaseId;
+}
+
+export async function fetchWorkspaceTab<TData>(caseId: string, tabKey: string): Promise<TData> {
+  const response = await apiClient.get<TData>('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`);
+  return response.data;
+}
+
+export async function persistWorkspaceTab(caseId: string, tabKey: string, payload: unknown): Promise<unknown> {
+  const response = await apiClient.put<unknown>('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
+  return response.data;
 }
 
 export function useCanonicalCaseId(accountId: string | null) {
@@ -23,26 +60,7 @@ export function useCanonicalCaseId(accountId: string | null) {
     queryFn: async () => {
       if (!accountId) return null;
 
-      const stored = getStoredCaseId(accountId);
-      if (stored) return stored;
-
-      const lookup = await apiClient.get('l4', `/analysis/cases?account_id=${encodeURIComponent(accountId)}`);
-      const items = Array.isArray(lookup.data) ? lookup.data : (lookup.data?.items ?? []);
-      const existing = (items[0] ?? {}) as CaseRecord;
-      const existingCaseId = existing.case_id || existing.id;
-      if (existingCaseId) {
-        setStoredCaseId(accountId, existingCaseId);
-        return existingCaseId;
-      }
-
-      const created = await apiClient.post('l4', '/analysis/cases', {
-        account_id: accountId,
-        title: `Account ${accountId} workspace`,
-      });
-      const createdCaseId = String(created.data?.case_id ?? created.data?.id ?? '');
-      if (!createdCaseId) throw new Error('Unable to create case for account workspace');
-      setStoredCaseId(accountId, createdCaseId);
-      return createdCaseId;
+      return getOrCreateCanonicalCaseId(accountId);
     },
   });
 }
@@ -54,8 +72,7 @@ export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: strin
     queryFn: async () => {
       if (!caseId) throw new Error('Missing case_id');
       try {
-        const response = await apiClient.get('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`);
-        return response.data as TData;
+        return await fetchWorkspaceTab<TData>(caseId, tabKey);
       } catch (error: unknown) {
         // 501 = workspace tab persistence not yet implemented (H-01).
         // Return empty tab data so the UI renders empty states rather than errors.
@@ -73,8 +90,7 @@ export function usePersistWorkspaceTab(tabKey: string) {
   return useMutation({
     mutationFn: async ({ caseId, payload }: { caseId: string; payload: unknown }) => {
       try {
-        const response = await apiClient.put('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
-        return response.data;
+        return await persistWorkspaceTab(caseId, tabKey, payload);
       } catch (error: unknown) {
         // 501 = workspace tab persistence not yet implemented (H-01).
         // Surface as a soft warning so the UI does not crash.
@@ -91,7 +107,7 @@ export function usePersistWorkspaceTab(tabKey: string) {
 export function useValidateEvidenceClaim() {
   return useMutation({
     mutationFn: async ({ caseId, evidenceId, claim }: { caseId: string; evidenceId: string; claim: string }) => {
-      const response = await apiClient.post('l5', '/claims/validate', {
+      const response = await apiClient.post<unknown>('l5', '/claims/validate', {
         case_id: caseId,
         evidence_id: evidenceId,
         claim,

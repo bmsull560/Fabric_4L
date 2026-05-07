@@ -62,6 +62,7 @@ class QueryGraphOutput(BaseModel):
     columns: list[str] = Field(default_factory=list)
     row_count: int = 0
     execution_time_ms: int = 0
+    error: str | None = None
 
 
 class SemanticSearchInput(BaseModel):

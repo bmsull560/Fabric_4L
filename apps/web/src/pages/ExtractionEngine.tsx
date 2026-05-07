@@ -407,8 +407,8 @@ export default function ExtractionEngine() {
                 <span key={`conf-${entity.name}`} className="text-xs">
                   {(entity.confidence * 100).toFixed(0)}%
                 </span>,
-                <span key={`src-${entity.name}`} className="text-xs text-muted-foreground">{entity.source}</span>,
-                entity.status === 'extracted' 
+                <span key={`src-${entity.name}`} className="text-xs text-muted-foreground">{entity.provenance?.source_url ?? entity.source_span?.document_id ?? "N/A"}</span>,
+                entity.confidence >= 0.5 
                   ? <CheckCircle2 key={`status-${entity.name}`} size={14} className="text-emerald-500" />
                   : <Loader2 key={`status-${entity.name}`} size={14} className="animate-spin text-muted-foreground" />,
               ]) || []}

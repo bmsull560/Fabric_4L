@@ -67,6 +67,9 @@ class FakeScenarioDb:
         self.added.append(record)
         self.records.append(record)
 
+    async def commit(self) -> None:
+        return None
+
 
 @pytest.fixture
 def analysis_app() -> FastAPI:
@@ -237,14 +240,13 @@ async def test_delete_business_case_scenario_is_tenant_scoped(analysis_app: Fast
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # WORKSPACE TAB ENDPOINT TESTS
-# These endpoints fail closed with 501 until a real persisted storage
-# integration replaces the previous in-memory stub (H-01).
+# These endpoints persist tab JSON per tenant/case/tab.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_get_workspace_tab_returns_501(analysis_app: FastAPI) -> None:
-    """GET /cases/{case_id}/workspace/{tab_key} must fail closed with 501."""
+async def test_get_workspace_tab_returns_empty_shape_when_missing(analysis_app: FastAPI) -> None:
+    """GET /cases/{case_id}/workspace/{tab_key} returns the canonical empty shape."""
     async def mock_require_authenticated():
         from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
@@ -253,14 +255,14 @@ async def test_get_workspace_tab_returns_501(analysis_app: FastAPI) -> None:
         )
 
     analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: FakeScenarioDb()
 
     test_case_id = "test-case-456"
 
     async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
         response = await client.get(f"/v1/cases/{test_case_id}/workspace/signals")
-        assert response.status_code == 501, f"Expected 501, got {response.status_code}: {response.text}"
-        detail = response.json()["detail"]
-        assert "persisted storage integration" in detail
+        assert response.status_code == 200, response.text
+        assert response.json() == {"signals": []}
 
 
 @pytest.mark.asyncio
@@ -274,6 +276,7 @@ async def test_get_workspace_tab_invalid_tab_key(analysis_app: FastAPI) -> None:
         )
 
     analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: FakeScenarioDb()
 
     async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
         response = await client.get("/v1/cases/test-case/workspace/invalid-tab")
@@ -283,8 +286,8 @@ async def test_get_workspace_tab_invalid_tab_key(analysis_app: FastAPI) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_workspace_tab_all_valid_tabs_return_501(analysis_app: FastAPI) -> None:
-    """All valid workspace tab keys must return 501 until persistence is implemented."""
+async def test_get_workspace_tab_all_valid_tabs_return_empty_shape(analysis_app: FastAPI) -> None:
+    """All valid workspace tab keys return a stable empty shape when no data exists."""
     async def mock_require_authenticated():
         from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
@@ -293,19 +296,31 @@ async def test_get_workspace_tab_all_valid_tabs_return_501(analysis_app: FastAPI
         )
 
     analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: FakeScenarioDb()
 
     test_case_id = "test-case-tabs"
-    valid_tabs = ["signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative"]
+    valid_tabs = [
+        "signals",
+        "drivers",
+        "evidence",
+        "stakeholders",
+        "action-plan",
+        "value-model",
+        "narrative",
+        "intake",
+        "evidence-links",
+    ]
 
     async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
         for tab in valid_tabs:
             response = await client.get(f"/v1/cases/{test_case_id}/workspace/{tab}")
-            assert response.status_code == 501, f"Tab '{tab}' should return 501, got {response.status_code}"
+            assert response.status_code == 200, f"Tab '{tab}' should return 200, got {response.status_code}"
+            assert response.json() == {tab: []}
 
 
 @pytest.mark.asyncio
-async def test_update_workspace_tab_returns_501(analysis_app: FastAPI) -> None:
-    """PUT /cases/{case_id}/workspace/{tab_key} must fail closed with 501."""
+async def test_update_workspace_tab_persists_payload(analysis_app: FastAPI) -> None:
+    """PUT /cases/{case_id}/workspace/{tab_key} persists tab data."""
     async def mock_require_authenticated():
         from value_fabric.shared.identity.context import RequestContext
         return RequestContext(
@@ -314,6 +329,8 @@ async def test_update_workspace_tab_returns_501(analysis_app: FastAPI) -> None:
         )
 
     analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated
+    fake_db = FakeScenarioDb()
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: fake_db
 
     test_case_id = "test-case-update"
     test_signals = [
@@ -325,9 +342,13 @@ async def test_update_workspace_tab_returns_501(analysis_app: FastAPI) -> None:
             f"/v1/cases/{test_case_id}/workspace/signals",
             json={"signals": test_signals}
         )
-        assert response.status_code == 501, f"Expected 501, got {response.status_code}: {response.text}"
-        detail = response.json()["detail"]
-        assert "persisted storage integration" in detail
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["updated"] is True
+        assert payload["data"] == {"signals": test_signals}
+        assert fake_db.added[0].case_id == test_case_id
+        assert fake_db.added[0].tab_key == "signals"
+        assert fake_db.added[0].data == {"signals": test_signals}
 
 
 @pytest.mark.asyncio

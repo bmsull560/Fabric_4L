@@ -16,7 +16,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../test/mocks/server';
 import GraphExplorer from './GraphExplorer';
 
-// P0 Fix: Standard timeout configuration for flaky async tests
+// Standard timeout configuration for asynchronous test assertions.
 const WAIT_OPTIONS = { timeout: 3000 };
 
 describe('GraphExplorer', () => {
@@ -31,8 +31,8 @@ describe('GraphExplorer', () => {
     // Should show page header immediately (static content)
     expect(screen.getByRole('heading', { name: 'Graph Explorer' })).toBeInTheDocument();
 
-    // P0 Fix: Wait for loading state to appear first, then disappear
-    // This ensures the component is actually fetching before we wait for completion
+    // Wait for loading state to appear first, then disappear.
+    // This ensures the component is fetching before we wait for completion.
     await waitFor(() => {
       expect(screen.queryByText('Loading knowledge graph...')).toBeInTheDocument();
     }, WAIT_OPTIONS);
@@ -44,7 +44,7 @@ describe('GraphExplorer', () => {
   });
 
   it('handles empty graph state', async () => {
-    // P0 Fix: Override handler BEFORE rendering with no delay for deterministic response
+    // Override the handler before rendering so the response is deterministic.
     server.use(
       http.get('/api/v1/graph/subgraph', async () => {
         return HttpResponse.json({
@@ -107,7 +107,7 @@ describe('GraphExplorer', () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    // P0 Fix: Wait for loading to complete before checking stats
+    // Wait for loading to complete before checking stats.
     await waitFor(() => {
       expect(screen.queryByText('Loading knowledge graph...')).not.toBeInTheDocument();
     }, WAIT_OPTIONS);

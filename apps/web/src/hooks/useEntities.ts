@@ -199,9 +199,10 @@ export function useEntityFilterOptions() {
     queryKey: ['entityFilterOptions'],
     queryFn: async () => {
       const response = await apiClient.get('l3', '/entities?limit=1');
+      const data = validateOrThrow(EntityListResponseSchema, response.data, 'EntityFilterOptions');
       return {
-        availableDomains: response.data.available_domains as string[],
-        availableSources: response.data.available_sources as string[],
+        availableDomains: data.available_domains,
+        availableSources: data.available_sources,
       };
     },
     staleTime: STALE_TIME.activity,
@@ -249,13 +250,12 @@ export function useEntity(id: string | null) {
 /**
  * Create entity - uses Neo4j directly
  * Note: Entity creation is not supported in Layer 3 API.
- * Backend coordination required: L3-XXX (to be created)
- * This feature requires a new endpoint to create entities in the knowledge graph.
+ * This feature requires a dedicated Layer 3 endpoint to create entities in the knowledge graph.
  */
 export function useCreateEntity() {
   return useMutation({
     mutationFn: async (_entity: Omit<Entity, 'id' | 'createdAt'>) => {
-      throw new Error('Entity creation not supported - requires backend API endpoint (L3-XXX)');
+      throw new Error('Entity creation not supported - requires Layer 3 entity creation endpoint');
     },
   });
 }

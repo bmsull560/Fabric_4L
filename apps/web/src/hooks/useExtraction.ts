@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
-import { parseExtractionJob } from '@/types/api';
+import { parseExtractionJob, type ApiExtractedEntityDto, type ApiProgressLogDto } from '@/types/api';
 
 export interface ExtractionJob {
   id: string;
@@ -136,7 +136,7 @@ export function useExtractionJob(jobId: string | null) {
       ];
 
       // Parse logs from job progress
-      const logs: LogLine[] = (job.progress_logs || []).map((log) => ({
+      const logs: LogLine[] = (job.progress_logs || []).map((log: ApiProgressLogDto) => ({
         t: log.timestamp ? new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null,
         type: mapLogType(log.level || 'info'),
         text: log.message || '',
@@ -145,7 +145,7 @@ export function useExtractionJob(jobId: string | null) {
       }));
 
       // Build entity chips from extracted entities
-      const entitiesFound: EntityChip[] = (job.extracted_entities || []).map((entity) => {
+      const entitiesFound: EntityChip[] = (job.extracted_entities || []).map((entity: ApiExtractedEntityDto) => {
         const entityType = entity.type || 'unknown';
         return {
           label: `${entityType}: ${entity.name || 'Unknown'}`,

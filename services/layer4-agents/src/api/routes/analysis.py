@@ -20,6 +20,7 @@ from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
 from ...models.business_case_record import BusinessCaseRecord
 from ...models.saved_scenario import SavedBusinessCaseScenario
+from ...models.workspace_tab_data import WorkspaceTabData
 from ...services.account_service import AccountService
 from ...services.business_case_service import BusinessCaseService
 from ...services.export_provenance import build_export_provenance_manifest
@@ -46,6 +47,11 @@ class generate_workspace_intelligenceResult(TypedDictModel):
     stats: dict[str, Any]
 
 router = APIRouter()
+
+
+def _get_neo4j_driver(request: Request) -> Any:
+    """Return the app-scoped Neo4j driver for routes that read graph context."""
+    return request.app.state.neo4j_driver
 
 
 # ROI Analysis Models
@@ -937,22 +943,30 @@ async def delete_saved_scenario(
 async def get_workspace_tab(
     case_id: str,
     tab_key: str,
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
-    """Get workspace tab data.
-
-    Workspace tab persistence is not yet implemented. This endpoint fails closed
-    with 501 instead of returning misleading in-memory data that would be lost
-    on restart.
-    """
-    valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative"}
+    """Get persisted workspace tab data."""
+    valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative", "intake", "evidence-links"}
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Workspace tab retrieval requires a persisted storage integration and will not return ephemeral data.",
+    from sqlalchemy import select
+    from ...models.workspace_tab_data import WorkspaceTabData
+
+    tenant_id = str(context.tenant_id)
+    result = await db.execute(
+        select(WorkspaceTabData).where(
+            WorkspaceTabData.case_id == case_id,
+            WorkspaceTabData.tab_key == tab_key,
+            WorkspaceTabData.tenant_id == tenant_id,
+        )
     )
+    record = result.scalar_one_or_none()
+    if record is None:
+        return {tab_key: []}
+    data = record.data if isinstance(record.data, dict) else {"data": record.data}
+    return data or {tab_key: []}
 
 
 @router.put("/cases/{case_id}/workspace/{tab_key}")
@@ -960,55 +974,143 @@ async def update_workspace_tab(
     case_id: str,
     tab_key: str,
     payload: dict[str, Any],
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
-    """Update workspace tab data.
-
-    Workspace tab persistence is not yet implemented. This endpoint fails closed
-    with 501 instead of accepting updates that would be stored only in memory
-    and lost on restart.
-    """
-    valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative"}
+    """Update persisted workspace tab data."""
+    valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative", "intake", "evidence-links"}
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Workspace tab updates require a persisted storage integration and will not accept ephemeral data.",
+    from sqlalchemy import select
+    from ...models.workspace_tab_data import WorkspaceTabData
+
+    tenant_id = str(context.tenant_id)
+    result = await db.execute(
+        select(WorkspaceTabData).where(
+            WorkspaceTabData.case_id == case_id,
+            WorkspaceTabData.tab_key == tab_key,
+            WorkspaceTabData.tenant_id == tenant_id,
+        )
     )
+    record = result.scalar_one_or_none()
+    if record is None:
+        record = WorkspaceTabData(case_id=case_id, tab_key=tab_key, tenant_id=tenant_id, data=payload)
+        db.add(record)
+    else:
+        record.data = payload
+
+    await db.commit()
+    return {"case_id": case_id, "tab": tab_key, "updated": True, "data": payload}
 
 
 @router.post("/cases/{case_id}/workspace/generate")
 async def generate_workspace_intelligence(
     case_id: str,
-    executor: WorkflowExecutor = Depends(get_executor),
+    request: Request,
     db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Generate workspace intelligence data for a case.
 
-    The previous implementation returned fabricated sample signals, drivers,
-    evidence, stakeholders, recommendations, value models, and narratives. That
-    made the endpoint appear production-ready while no AI workflow or persisted
-    generation pipeline was actually being invoked. Until the production
-    workflow is wired here, the endpoint fails closed with an explicit 501 after
-    verifying that the requested case and account exist.
+    Lightweight generation that surfaces existing Neo4j data (signals,
+    hypotheses) for the account. No LLM call — just exposes graph data
+    the frontend currently can't see.
     """
     from ...models.business_case_record import BusinessCaseRecord
+    from ...models.workspace_tab_data import WorkspaceTabData as WorkspaceTabDataModel
 
     record = await db.get(BusinessCaseRecord, case_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")
 
-    account_service = AccountService(db)
-    account = await account_service.get_account(record.account_id, tenant_id=str(context.tenant_id))
-    if not account:
-        raise HTTPException(status_code=404, detail=f"Account for case {case_id} not found")
+    tenant_id = str(context.tenant_id) if context.tenant_id else "default"
+    account_id = str(record.account_id)
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=(
-            "Workspace intelligence generation requires the production AI workflow "
-            "integration and will not return sample data."
-        ),
-    )
+    driver = _get_neo4j_driver(request)
+
+    # Query existing signals for the account
+    signal_query = """
+    MATCH (ps:PainSignal {account_id: $account_id, tenant_id: $tenant_id})
+    RETURN ps {.id, .name, .category, .confidence_score, .impact_value, .trend} AS signal
+    LIMIT 50
+    """
+    signals = []
+    async with driver.session() as session:
+        result = await session.run(signal_query, {"account_id": account_id, "tenant_id": tenant_id})
+        async for record_row in result:
+            s = record_row["signal"]
+            if s:
+                signals.append({
+                    "id": s.get("id", ""),
+                    "name": s.get("name", ""),
+                    "category": s.get("category", "Unknown"),
+                    "confidence": int((s.get("confidence_score") or 0.5) * 100),
+                    "impact": s.get("impact_value", "medium"),
+                    "trend": s.get("trend", "stable"),
+                })
+
+    # Query existing hypotheses for the account
+    hypothesis_query = """
+    MATCH (vh:ValueHypothesis {account_id: $account_id, tenant_id: $tenant_id})
+    RETURN vh {.id, .hypothesis_text, .confidence_score, .value_path_category, .status, .capability_name} AS hypothesis
+    LIMIT 50
+    """
+    hypotheses = []
+    async with driver.session() as session:
+        result = await session.run(hypothesis_query, {"account_id": account_id, "tenant_id": tenant_id})
+        async for record_row in result:
+            h = record_row["hypothesis"]
+            if h:
+                hypotheses.append({
+                    "id": h.get("id", ""),
+                    "hypothesis_text": h.get("hypothesis_text", ""),
+                    "confidence": h.get("confidence_score", 0.5),
+                    "value_path_category": h.get("value_path_category"),
+                    "status": h.get("status", "draft"),
+                    "capability_name": h.get("capability_name", ""),
+                })
+
+    # Store in workspace tab persistence
+    tab_data = {
+        "signals": {"signals": signals},
+        "drivers": {"drivers": hypotheses},
+        "evidence": {"evidence": []},
+        "stakeholders": {"stakeholders": []},
+        "action-plan": {"recommendations": []},
+        "value-model": {"value_models": []},
+        "narrative": {"narratives": []},
+    }
+
+    for tab_key, data in tab_data.items():
+        result = await db.execute(
+            select(WorkspaceTabDataModel).where(
+                WorkspaceTabDataModel.case_id == case_id,
+                WorkspaceTabDataModel.tab_key == tab_key,
+                WorkspaceTabDataModel.tenant_id == tenant_id,
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            existing.data = data
+        else:
+            db.add(WorkspaceTabDataModel(
+                case_id=case_id,
+                tab_key=tab_key,
+                tenant_id=tenant_id,
+                data=data,
+            ))
+
+    await db.commit()
+
+    return {
+        "case_id": case_id,
+        "account_id": account_id,
+        "generated": True,
+        "stats": {
+            "signals": len(signals),
+            "drivers": len(hypotheses),
+            "evidence": 0,
+            "stakeholders": 0,
+        },
+    }

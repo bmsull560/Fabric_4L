@@ -3,7 +3,7 @@
  * 
  * Uses real API data from Layer 3 Calculator service for value lever configuration.
  */
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { useValueLevers, useCreateValueCase } from "@/hooks/useCalculators";
 import { Save, RotateCcw, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
@@ -27,10 +27,12 @@ export default function Calculator() {
   const createCase = useCreateValueCase();
 
   const [leverValues, setLeverValues] = useState<Record<string, { valA: number; valB: number }>>({});
+  const initializedConfigRef = useRef<string | null>(null);
 
   // Initialize lever values when config loads
   useEffect(() => {
-    if (leverConfig && Object.keys(leverValues).length === 0) {
+    if (leverConfig && initializedConfigRef.current !== leverConfig.metadata.version) {
+      initializedConfigRef.current = leverConfig.metadata.version;
       setLeverValues(
         leverConfig.levers.reduce((acc, l) => ({
           ...acc,
@@ -38,9 +40,9 @@ export default function Calculator() {
         }), {})
       );
     }
-  }, [leverConfig, leverValues]);
+  }, [leverConfig]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!prospect?.companyId || !leverConfig) return;
 
     const leversData = Object.entries(leverValues).map(([id, values]) => ({
@@ -88,7 +90,7 @@ export default function Calculator() {
       log.error('Failed to save value case', { error: err instanceof Error ? err.message : String(err) });
       toast.error('Failed to save value case. Please try again.');
     }
-  };
+  }, [prospect, leverConfig, leverValues, createCase, setGeneratedCaseId, setCurrentStep, navigateTo]);
 
   const handleReset = () => {
     if (!leverConfig) return;
@@ -107,10 +109,8 @@ export default function Calculator() {
   const current = totals.B;
 
   const handleContinue = useCallback(() => {
-    setGeneratedCaseId(`case_${Date.now()}`);
-    setCurrentStep(STEPS.VALUE_CASE);
-    navigateTo('workflow-value-case');
-  }, [setGeneratedCaseId, setCurrentStep, navigateTo]);
+    handleSave();
+  }, [handleSave]);
 
   return (
     <WorkflowLayout>

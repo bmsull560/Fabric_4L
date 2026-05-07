@@ -364,7 +364,7 @@ export default function ValueTreeExplorer() {
               variant="primary"
               disabled
               onClick={() => {
-                // New Tree flow pending backend API support (L3-XXX)
+                // New Tree flow remains disabled until the Layer 3 tree mutation API is available.
                 // Keep tree + path caches coherent after edits/imports.
                 invalidateTree(entityId ?? undefined);
               }}
@@ -375,7 +375,7 @@ export default function ValueTreeExplorer() {
               variant="ghost"
               disabled
               onClick={() => {
-                // Import flow pending backend API support (L3-XXX)
+                // Import flow remains disabled until the Layer 3 tree import API is available.
                 // Keep tree + path caches coherent after edits/imports.
                 invalidateTree(entityId ?? undefined);
               }}

@@ -169,7 +169,7 @@ export function useOntologySchema() {
     queryKey: QK.ontology.schema(),
     queryFn: async (): Promise<OntologySchema> => {
       const response = await apiClient.get(LAYER2, '/v1/ontology/schema');
-      return response.data;
+      return OntologySchemaSchema.parse(response.data);
     },
     staleTime: STALE_TIME.reference,
   });

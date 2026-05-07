@@ -101,10 +101,15 @@ export interface AgentEventClientOptions {
   accountTier?: string;
   /** Selected entity context for contextual co-pilot */
   selectedSignalId?: string;
+  selectedHypothesisId?: string;
+  selectedDriverId?: string;
+  selectedEvidenceId?: string;
   selectedValuePath?: string;
   selectedDriverTreeId?: string;
   selectedScenarioId?: string;
   selectedBusinessCaseId?: string;
+  workspaceCaseId?: string;
+  entityContext?: Record<string, unknown>;
 }
 
 /**
@@ -159,6 +164,21 @@ export async function* sendAgentMessage(
 
   // ── Call the backend ──────────────────────────────────────────────────
   try {
+    const entityContext = {
+      accountId: options.accountId,
+      activeTab: options.activeTab,
+      selectedSignalId: options.selectedSignalId,
+      selectedHypothesisId: options.selectedHypothesisId,
+      selectedDriverId: options.selectedDriverId,
+      selectedEvidenceId: options.selectedEvidenceId,
+      selectedValuePath: options.selectedValuePath,
+      selectedDriverTreeId: options.selectedDriverTreeId,
+      selectedScenarioId: options.selectedScenarioId,
+      selectedBusinessCaseId: options.selectedBusinessCaseId,
+      workspaceCaseId: options.workspaceCaseId,
+      ...(options.entityContext ?? {}),
+    };
+
     const response = (await apiClient.post("l4", "/agent-stream/chat", {
       messages,
       activeTab: options.activeTab,
@@ -167,6 +187,7 @@ export async function* sendAgentMessage(
         accountName: options.accountName,
         accountTier: options.accountTier,
       },
+      entityContext,
       selectedSignalId: options.selectedSignalId,
       selectedValuePath: options.selectedValuePath,
       selectedDriverTreeId: options.selectedDriverTreeId,

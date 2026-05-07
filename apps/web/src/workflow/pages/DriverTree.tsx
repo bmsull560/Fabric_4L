@@ -4,7 +4,7 @@ import {
   Plus, ChevronDown, ChevronRight, Trash2, GripVertical,
   CheckCircle2, Sparkles, ArrowRight
 } from "lucide-react";
-import { SectionCard } from "@/components/blocks";
+import { SectionCard } from "@/components/blocks/SectionCard";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";

@@ -1,0 +1,204 @@
+diff --git a/apps/web/src/hooks/useC1Stream.ts b/apps/web/src/hooks/useC1Stream.ts
+index af77bf20..c29b273c 100644
+--- a/apps/web/src/hooks/useC1Stream.ts
++++ b/apps/web/src/hooks/useC1Stream.ts
+@@ -40,7 +40,7 @@ interface UseC1StreamOptions {
+  * ```tsx
+  * const { state, sendQuery, handleSliderChange } = useC1Stream({
+  *   businessCaseId: 'bc-123',
+- *   businessCaseData: { /* fetched from business-case API; do not hardcode */ }
++ *   businessCaseData: fetchedBusinessCaseData
+  * });
+  * 
+  * // Send a natural language query
+diff --git a/apps/web/src/hooks/useEntities.ts b/apps/web/src/hooks/useEntities.ts
+index 93711cf3..fe30bc0c 100644
+--- a/apps/web/src/hooks/useEntities.ts
++++ b/apps/web/src/hooks/useEntities.ts
+@@ -249,13 +249,12 @@ export function useEntity(id: string | null) {
+ /**
+  * Create entity - uses Neo4j directly
+  * Note: Entity creation is not supported in Layer 3 API.
+- * Backend coordination required: L3-XXX (to be created)
+- * This feature requires a new endpoint to create entities in the knowledge graph.
++ * This feature requires a dedicated Layer 3 endpoint to create entities in the knowledge graph.
+  */
+ export function useCreateEntity() {
+   return useMutation({
+     mutationFn: async (_entity: Omit<Entity, 'id' | 'createdAt'>) => {
+-      throw new Error('Entity creation not supported - requires backend API endpoint (L3-XXX)');
++      throw new Error('Entity creation not supported - requires Layer 3 entity creation endpoint');
+     },
+   });
+ }
+diff --git a/apps/web/src/hooks/useValuePacks.test.tsx b/apps/web/src/hooks/useValuePacks.test.tsx
+index 3b41fa7d..c68eda27 100644
+--- a/apps/web/src/hooks/useValuePacks.test.tsx
++++ b/apps/web/src/hooks/useValuePacks.test.tsx
+@@ -75,8 +75,8 @@ describe("useValuePacks", () => {
+       // Clear previous mocks and set up persistent rejection
+       vi.mocked(apiClient.get).mockReset().mockRejectedValue(error);
+ 
+-      // P1 Fix: Use createWrapperWithRetry(false) to disable retries for faster error state testing
+-      // This reduces test time from ~15s (with retries) to ~1s
++      // Disable retries to keep error-state testing fast and deterministic.
++      // This reduces test time from roughly 15s with retries to about 1s.
+       const { result } = renderHook(() => useValuePacks(), {
+         wrapper: createWrapperWithRetry(false),
+       });
+diff --git a/apps/web/src/pages/GraphExplorer.test.tsx b/apps/web/src/pages/GraphExplorer.test.tsx
+index 45687834..75884d9b 100644
+--- a/apps/web/src/pages/GraphExplorer.test.tsx
++++ b/apps/web/src/pages/GraphExplorer.test.tsx
+@@ -16,7 +16,7 @@ import { http, HttpResponse } from 'msw';
+ import { server } from '../test/mocks/server';
+ import GraphExplorer from './GraphExplorer';
+ 
+-// P0 Fix: Standard timeout configuration for flaky async tests
++// Standard timeout configuration for asynchronous test assertions.
+ const WAIT_OPTIONS = { timeout: 3000 };
+ 
+ describe('GraphExplorer', () => {
+@@ -31,8 +31,8 @@ describe('GraphExplorer', () => {
+     // Should show page header immediately (static content)
+     expect(screen.getByRole('heading', { name: 'Graph Explorer' })).toBeInTheDocument();
+ 
+-    // P0 Fix: Wait for loading state to appear first, then disappear
+-    // This ensures the component is actually fetching before we wait for completion
++    // Wait for loading state to appear first, then disappear.
++    // This ensures the component is fetching before we wait for completion.
+     await waitFor(() => {
+       expect(screen.queryByText('Loading knowledge graph...')).toBeInTheDocument();
+     }, WAIT_OPTIONS);
+@@ -44,7 +44,7 @@ describe('GraphExplorer', () => {
+   });
+ 
+   it('handles empty graph state', async () => {
+-    // P0 Fix: Override handler BEFORE rendering with no delay for deterministic response
++    // Override the handler before rendering so the response is deterministic.
+     server.use(
+       http.get('/api/v1/graph/subgraph', async () => {
+         return HttpResponse.json({
+@@ -107,7 +107,7 @@ describe('GraphExplorer', () => {
+     const wrapper = createWrapper();
+     render(<GraphExplorer />, { wrapper });
+ 
+-    // P0 Fix: Wait for loading to complete before checking stats
++    // Wait for loading to complete before checking stats.
+     await waitFor(() => {
+       expect(screen.queryByText('Loading knowledge graph...')).not.toBeInTheDocument();
+     }, WAIT_OPTIONS);
+diff --git a/apps/web/src/pages/ValueTreeExplorer.tsx b/apps/web/src/pages/ValueTreeExplorer.tsx
+index 7f351d23..8c946b48 100644
+--- a/apps/web/src/pages/ValueTreeExplorer.tsx
++++ b/apps/web/src/pages/ValueTreeExplorer.tsx
+@@ -364,7 +364,7 @@ export default function ValueTreeExplorer() {
+               variant="primary"
+               disabled
+               onClick={() => {
+-                // New Tree flow pending backend API support (L3-XXX)
++                // New Tree flow remains disabled until the Layer 3 tree mutation API is available.
+                 // Keep tree + path caches coherent after edits/imports.
+                 invalidateTree(entityId ?? undefined);
+               }}
+@@ -375,7 +375,7 @@ export default function ValueTreeExplorer() {
+               variant="ghost"
+               disabled
+               onClick={() => {
+-                // Import flow pending backend API support (L3-XXX)
++                // Import flow remains disabled until the Layer 3 tree import API is available.
+                 // Keep tree + path caches coherent after edits/imports.
+                 invalidateTree(entityId ?? undefined);
+               }}
+diff --git a/apps/web/src/pages/admin/VariableRegistry.tsx b/apps/web/src/pages/admin/VariableRegistry.tsx
+index e41ea74c..4c8efd81 100644
+--- a/apps/web/src/pages/admin/VariableRegistry.tsx
++++ b/apps/web/src/pages/admin/VariableRegistry.tsx
+@@ -235,8 +235,7 @@ function VariableRegistryContent() {
+   const error = variablesError || bindingsError;
+ 
+   const handleTestBinding = (id: string) => {
+-    // Binding test functionality pending Layer 3 API implementation
+-    // Backend ticket: L3-XXX (to be created)
++    // Binding test functionality remains disabled until the Layer 3 binding-test API is available.
+     // This feature requires a new endpoint to test variable bindings
+     throw new Error('Binding test not yet implemented - requires backend API endpoint');
+   };
+diff --git a/services/layer1-ingestion/src/crawler/httpx_crawler.py b/services/layer1-ingestion/src/crawler/httpx_crawler.py
+index 46cd4c71..969b12b5 100644
+--- a/services/layer1-ingestion/src/crawler/httpx_crawler.py
++++ b/services/layer1-ingestion/src/crawler/httpx_crawler.py
+@@ -53,7 +53,7 @@ class FastPathResult:
+     fetch_time_ms: int = 0
+     content_type: str = ""
+     headers: dict[str, str] = field(default_factory=dict)
+-    original_html_length: int = 0  # P1 Fix: Store original size before truncation
++    original_html_length: int = 0  # Store original size before truncation
+ 
+ 
+ @dataclass
+@@ -244,7 +244,7 @@ class HttpxCrawler:
+                     headers=dict(response.headers),
+                 )
+ 
+-            # P1 Fix: Get full HTML first for link extraction
++            # Read the full HTML before truncating so link extraction remains complete.
+             full_html = response.text
+             original_length = len(full_html)
+ 
+@@ -268,7 +268,7 @@ class HttpxCrawler:
+                 no_fallback=False,
+             ) or ""
+ 
+-            # P1 Fix: Extract links from FULL HTML before truncation
++            # Extract links from the full HTML before truncation.
+             links = self._extract_links(full_html, url)
+ 
+             # Content hash for deduplication (truncated for efficiency)
+@@ -286,7 +286,7 @@ class HttpxCrawler:
+                 fetch_time_ms=fetch_time,
+                 content_type=content_type,
+                 headers=dict(response.headers),
+-                original_html_length=original_length,  # P1 Fix: Store original length
++                original_html_length=original_length,
+             )
+ 
+         except httpx.TimeoutException:
+diff --git a/services/layer1-ingestion/src/crawler/quality_gate.py b/services/layer1-ingestion/src/crawler/quality_gate.py
+index 65963e3b..d15b55bf 100644
+--- a/services/layer1-ingestion/src/crawler/quality_gate.py
++++ b/services/layer1-ingestion/src/crawler/quality_gate.py
+@@ -160,7 +160,7 @@ class QualityGate:
+ 
+     def _check_content_ratio(self, result: FastPathResult) -> bool:
+         """Check if text-to-HTML ratio is sufficient."""
+-        # P1 Fix: Use original_html_length to avoid inflated ratio from truncation
++        # Use original_html_length to avoid inflated ratios after HTML truncation.
+         html_length = result.original_html_length if result.original_html_length > 0 else len(result.html)
+         if not html_length:
+             return False
+diff --git a/services/layer3-knowledge/tests/test_e2e_pipeline.py b/services/layer3-knowledge/tests/test_e2e_pipeline.py
+index 3bcecbeb..3341395b 100644
+--- a/services/layer3-knowledge/tests/test_e2e_pipeline.py
++++ b/services/layer3-knowledge/tests/test_e2e_pipeline.py
+@@ -76,8 +76,8 @@ REQUIRED_VECTOR_INDEXES = {
+ async def neo4j_container() -> AsyncGenerator[Neo4jContainer, None]:
+     """Start Neo4j container for testing with deterministic wait strategy.
+     
+-    P1 Fix: Replaced hardcoded retry loop with testcontainers' built-in wait
+-    strategy for more reliable container startup detection.
++    Uses testcontainers' built-in wait strategy for reliable container
++    startup detection instead of a hardcoded retry loop.
+     """
+     from testcontainers.core.waiting_utils import wait_for_logs
+     
+@@ -86,8 +86,7 @@ async def neo4j_container() -> AsyncGenerator[Neo4jContainer, None]:
+         password=TEST_NEO4J_PASSWORD,
+     ).with_env("NEO4J_PLUGINS", '["apoc", "graph-data-science"]')
+     
+-    # P1 Fix: Use testcontainers' built-in wait strategy instead of manual retry loop
+-    # This provides deterministic container readiness detection
++    # Use testcontainers' built-in wait strategy for deterministic readiness detection.
+     container.start()
+     wait_for_logs(container, "Started.", timeout=60)
+     

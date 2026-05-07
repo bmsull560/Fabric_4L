@@ -239,24 +239,27 @@ export function useAccountFilterOptions() {
 }
 
 export interface CreateAccountParams {
+  id?: string;
+  provider: CRMProvider;
+  provider_record_id: string;
   name: string;
   domain?: string;
   industry?: string;
   stage?: string;
   region?: string;
+  segment?: string;
   company_size?: number;
-  annual_revenue?: number;
-  headquarters?: string;
-  website?: string;
+  owner_id?: string;
   owner_name?: string;
-  provider?: CRMProvider;
-  enrichment_input?: string;
+  owner_email?: string;
 }
 
 export interface CreateAccountResponse {
   account: Account;
   workflow_id?: string;
 }
+
+type CreateAccountApiResponse = CreateAccountResponse | Account;
 
 export interface SyncAccountsParams {
   provider?: CRMProvider;
@@ -270,20 +273,22 @@ export function useCreateAccount() {
   return useMutation<CreateAccountResponse, AccountApiError, CreateAccountParams>({
     mutationFn: async (params) => {
       const response = await apiClient.post('l4', '/accounts', {
+        id: params.id,
+        provider: params.provider,
+        provider_record_id: params.provider_record_id,
         name: params.name,
         domain: params.domain,
         industry: params.industry,
         stage: params.stage || 'prospect',
         region: params.region,
+        segment: params.segment,
         company_size: params.company_size,
-        annual_revenue: params.annual_revenue,
-        headquarters: params.headquarters,
-        website: params.website,
+        owner_id: params.owner_id,
         owner_name: params.owner_name,
-        provider: params.provider || 'manual',
-        enrichment_input: params.enrichment_input,
+        owner_email: params.owner_email,
       });
-      return response.data as CreateAccountResponse;
+      const data = response.data as CreateAccountApiResponse;
+      return 'account' in data ? data : { account: data };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.accounts.list({}) });

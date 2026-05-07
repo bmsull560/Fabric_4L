@@ -11,6 +11,13 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
+import os
+
+os.environ["LAYER1_API_URL"] = "https://layer1"
+os.environ["LAYER2_API_URL"] = "https://layer2"
+os.environ["LAYER3_API_URL"] = "https://layer3"
+os.environ["LAYER4_LAYER5_API_URL"] = "https://layer5"
+os.environ["ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT"] = "true"
 
 import pytest
 
@@ -59,7 +66,7 @@ class TestQueryGraphToolTenantEnforcement:
         mock_ctx.source = "jwt"
         
         # Patch get_current_tenant_context to return our mock
-        with patch("shared.domain.context.get_request_context") as mock_get_ctx:
+        with patch("value_fabric.layer4.shared.domain.context.get_current_tenant_context") as mock_get_ctx:
             mock_get_ctx.return_value = mock_ctx
             yield mock_ctx
 

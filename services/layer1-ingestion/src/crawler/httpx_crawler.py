@@ -53,7 +53,7 @@ class FastPathResult:
     fetch_time_ms: int = 0
     content_type: str = ""
     headers: dict[str, str] = field(default_factory=dict)
-    original_html_length: int = 0  # P1 Fix: Store original size before truncation
+    original_html_length: int = 0  # Store original size before truncation
 
 
 @dataclass
@@ -244,7 +244,7 @@ class HttpxCrawler:
                     headers=dict(response.headers),
                 )
 
-            # P1 Fix: Get full HTML first for link extraction
+            # Read the full HTML before truncating so link extraction remains complete.
             full_html = response.text
             original_length = len(full_html)
 
@@ -268,7 +268,7 @@ class HttpxCrawler:
                 no_fallback=False,
             ) or ""
 
-            # P1 Fix: Extract links from FULL HTML before truncation
+            # Extract links from the full HTML before truncation.
             links = self._extract_links(full_html, url)
 
             # Content hash for deduplication (truncated for efficiency)
@@ -286,7 +286,7 @@ class HttpxCrawler:
                 fetch_time_ms=fetch_time,
                 content_type=content_type,
                 headers=dict(response.headers),
-                original_html_length=original_length,  # P1 Fix: Store original length
+                original_html_length=original_length,
             )
 
         except httpx.TimeoutException:

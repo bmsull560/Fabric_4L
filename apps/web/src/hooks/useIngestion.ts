@@ -126,6 +126,27 @@ export interface JobListResponse {
   };
 }
 
+type IngestionJobsEnvelope = {
+  data?: unknown;
+  pagination?: JobListResponse['pagination'];
+  aggregation?: {
+    by_status?: Record<string, number>;
+    total_execution_time_ms?: number;
+    total_records_extracted?: number;
+  };
+};
+
+type TargetCreateResponse = {
+  id?: string;
+};
+
+type ExecuteTargetResponse = {
+  job_id?: string;
+};
+
+type ComplianceLogsResponse = {
+  items?: ApiComplianceLogDto[];
+};
 
 function mapIngestionJob(job: ApiIngestionJobDto): IngestionJob {
   return {
@@ -140,10 +161,10 @@ function mapIngestionJob(job: ApiIngestionJobDto): IngestionJob {
 }
 
 export function useIngestionJobs() {
-  return useQuery({
+  return useQuery<IngestionJob[], Error>({
     queryKey: QK.ingestion.jobs(),
     queryFn: async () => {
-      const response = await apiClient.get('l1', '/jobs');
+      const response = await apiClient.get<IngestionJobsEnvelope>('l1', '/jobs');
       const jobs = parseIngestionJobs(response.data?.data);
       return jobs.map(mapIngestionJob);
     },
@@ -152,10 +173,10 @@ export function useIngestionJobs() {
 }
 
 export function useRecentIngestionJobs(limit = 5) {
-  return useQuery({
+  return useQuery<IngestionJob[], Error>({
     queryKey: QK.ingestion.recent(),
     queryFn: async () => {
-      const response = await apiClient.get('l1', `/jobs?limit=${limit}&sort_by=created_at&sort_order=desc`);
+      const response = await apiClient.get<IngestionJobsEnvelope>('l1', `/jobs?limit=${limit}&sort_by=created_at&sort_order=desc`);
       const jobs = parseIngestionJobs(response.data?.data);
       return jobs.map(mapIngestionJob);
     },
@@ -184,10 +205,10 @@ function mapJobStatus(status: string): IngestionJob['status'] {
 }
 
 export function useIngestionStats() {
-  return useQuery({
+  return useQuery<IngestionStats, Error>({
     queryKey: QK.ingestion.stats(),
     queryFn: async () => {
-      const response = await apiClient.get('l1', '/jobs?limit=1');
+      const response = await apiClient.get<IngestionJobsEnvelope>('l1', '/jobs?limit=1');
       const agg = parseIngestionAggregation(response.data?.aggregation);
       const byStatus = agg.by_status || {};
       return {
@@ -221,11 +242,14 @@ export function useSubmitDomain() {
       const url = domain.startsWith('http') ? domain : `https://${domain}`;
 
       // Step 1: Create a scraping target with the domain URL
-      const targetResponse = await apiClient.post('l1', '/targets', {
+      const targetResponse = await apiClient.post<TargetCreateResponse>('l1', '/targets', {
         name: domain,
         url,
       });
-      const targetId = targetResponse.data.id as string;
+      const targetId = targetResponse.data.id;
+      if (!targetId) {
+        throw new Error('Target creation response missing target id');
+      }
 
       // Step 2: Execute the target to start the ingestion job
       // Pass advanced configuration through to the execution payload
@@ -234,8 +258,12 @@ export function useSubmitDomain() {
       if (ontology) executePayload.ontology_target = ontology;
       if (depth) executePayload.crawl_depth = parseInt(depth, 10);
 
-      const executeResponse = await apiClient.post('l1', `/targets/${targetId}/execute`, executePayload);
-      return executeResponse.data.job_id as string;
+      const executeResponse = await apiClient.post<ExecuteTargetResponse>('l1', `/targets/${targetId}/execute`, executePayload);
+      const jobId = executeResponse.data.job_id;
+      if (!jobId) {
+        throw new Error('Target execution response missing job id');
+      }
+      return jobId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ingestion.recent() });
@@ -260,7 +288,7 @@ export function useIngestionJobList(filters: JobListFilters = {}) {
       if (dateFrom) params.set('date_from', dateFrom);
       if (dateTo) params.set('date_to', dateTo);
 
-      const response = await apiClient.get('l1', `/jobs?${params.toString()}`);
+      const response = await apiClient.get<IngestionJobsEnvelope>('l1', `/jobs?${params.toString()}`);
       const data = response.data;
       const jobs = parseIngestionJobs(data?.data);
 
@@ -357,8 +385,8 @@ export function useJobComplianceLogs(jobId: string | null) {
     queryKey: jobId ? QK.ingestion.logs(jobId) : ['ingestion', 'logs', 'null'],
     queryFn: async () => {
       if (!jobId) throw new Error('Job ID is required');
-      const response = await apiClient.get('l1', `/compliance/logs?job_id=${jobId}`);
-      const items = (response.data?.items || []) as ApiComplianceLogDto[];
+      const response = await apiClient.get<ComplianceLogsResponse>('l1', `/compliance/logs?job_id=${jobId}`);
+      const items = response.data.items || [];
 
       return items.map(item => ({
         id: item.id,
@@ -436,8 +464,8 @@ export function useBatchOperation() {
 
   return useMutation<BatchOperationResponse, Error, BatchOperationRequest>({
     mutationFn: async (request: BatchOperationRequest) => {
-      const response = await apiClient.post('l1', '/jobs/batch', request);
-      return response.data as BatchOperationResponse;
+      const response = await apiClient.post<BatchOperationResponse>('l1', '/jobs/batch', request);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ingestion.all });

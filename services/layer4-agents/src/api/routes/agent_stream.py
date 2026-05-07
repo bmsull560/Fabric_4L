@@ -64,6 +64,12 @@ class AgentStreamRequest(BaseModel):
     messages: list[AgentStreamMessage] = Field(..., min_length=1)
     active_tab: str = Field(..., alias="activeTab", min_length=1, description="Active UI tab key")
     account: AgentStreamAccountContext | None = Field(default=None)
+    entity_context: dict[str, object] | None = Field(default=None, alias="entityContext")
+    selected_signal_id: str | None = Field(default=None, alias="selectedSignalId")
+    selected_value_path: str | None = Field(default=None, alias="selectedValuePath")
+    selected_driver_tree_id: str | None = Field(default=None, alias="selectedDriverTreeId")
+    selected_scenario_id: str | None = Field(default=None, alias="selectedScenarioId")
+    selected_business_case_id: str | None = Field(default=None, alias="selectedBusinessCaseId")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -197,6 +203,19 @@ async def agent_stream_chat(
         if payload.account and payload.account.account_tier
         else None
     )
+    entity_context = payload.entity_context or {}
+    entity_context.setdefault("accountId", account_id)
+    entity_context.setdefault("activeTab", payload.active_tab)
+    if payload.selected_signal_id:
+        entity_context.setdefault("selectedSignalId", payload.selected_signal_id)
+    if payload.selected_value_path:
+        entity_context.setdefault("selectedValuePath", payload.selected_value_path)
+    if payload.selected_driver_tree_id:
+        entity_context.setdefault("selectedDriverTreeId", payload.selected_driver_tree_id)
+    if payload.selected_scenario_id:
+        entity_context.setdefault("selectedScenarioId", payload.selected_scenario_id)
+    if payload.selected_business_case_id:
+        entity_context.setdefault("selectedBusinessCaseId", payload.selected_business_case_id)
 
     # Resolve trace ID
     request_trace_id = get_request_id(request)
@@ -222,6 +241,7 @@ async def agent_stream_chat(
         account_id=account_id,
         account_name=account_name,
         account_tier=account_tier,
+        entity_context=entity_context,
         tenant_id=tenant_id,
         trace_id=trace_id,
     )

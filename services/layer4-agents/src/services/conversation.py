@@ -36,6 +36,7 @@ class ConversationService_handle_messageResult(TypedDictModel):
 
 class ConversationService__gather_contextResult(TypedDictModel):
     entities: Any
+    entity_context: Any = None
     intent: Any
 
 class ConversationService__heuristic_classifyResult(TypedDictModel):
@@ -149,6 +150,7 @@ class ConversationService:
         account_id: str | None = None,
         account_name: str = "this account",
         account_tier: str | None = None,
+        entity_context: dict[str, Any] | None = None,
         tenant_id: str = "unknown",
         trace_id: str | None = None,
     ) -> dict[str, Any]:
@@ -209,6 +211,7 @@ class ConversationService:
             intent=intent,
             entities=entities,
             account_id=account_id,
+            entity_context=entity_context or {},
             gate_context=gate_context,
         )
 
@@ -259,6 +262,7 @@ class ConversationService:
                 "intent": intent,
                 "confidence": confidence,
                 "workflow_triggered": workflow_result is not None,
+                "entity_context": entity_context or {},
             },
         })
 
@@ -301,6 +305,7 @@ class ConversationService:
         intent: str,
         entities: dict[str, Any],
         account_id: str | None,
+        entity_context: dict[str, Any],
         gate_context: dict[str, Any],
     ) -> dict[str, Any]:
         """Gather relevant context using ConversationAgent or return minimal context."""
@@ -313,15 +318,23 @@ class ConversationService:
                             "intent": intent,
                             "entities": entities,
                             "account_id": account_id,
+                            "entity_context": entity_context,
                         },
                     },
                     gate_context,
                 )
-                return result.get("context_data", {})
+                context_data = result.get("context_data", {})
+                if isinstance(context_data, dict):
+                    context_data.setdefault("entity_context", entity_context)
+                return context_data
             except Exception:
                 logger.warning("ConversationAgent context gathering failed")
 
-        return ConversationService__gather_contextResult.model_validate({"intent": intent, "entities": entities})
+        return ConversationService__gather_contextResult.model_validate({
+            "intent": intent,
+            "entities": entities,
+            "entity_context": entity_context,
+        })
 
     async def _delegate_to_orchestrator(
         self,

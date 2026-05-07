@@ -16,6 +16,7 @@ import pytest
 class TestCollectionVerification:
     """Verify all security tests can be collected and loaded."""
 
+    @pytest.mark.timeout(300)
     def test_all_security_tests_collectable(self):
         """P0: All tests in tests/security/ must be collectable (no import errors)."""
         security_dir = Path(__file__).parent

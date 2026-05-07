@@ -91,10 +91,15 @@ export interface UseAgentEventsOptions {
   accountTier?: string;
   /** Selected entity context for contextual co-pilot */
   selectedSignalId?: string;
+  selectedHypothesisId?: string;
+  selectedDriverId?: string;
+  selectedEvidenceId?: string;
   selectedValuePath?: string;
   selectedDriverTreeId?: string;
   selectedScenarioId?: string;
   selectedBusinessCaseId?: string;
+  workspaceCaseId?: string;
+  entityContext?: Record<string, unknown>;
   /** Initial messages (e.g. restored from session) */
   initialMessages?: AgentMessage[];
 }
@@ -130,10 +135,15 @@ export function useAgentEvents({
   accountName = "this account",
   accountTier,
   selectedSignalId,
+  selectedHypothesisId,
+  selectedDriverId,
+  selectedEvidenceId,
   selectedValuePath,
   selectedDriverTreeId,
   selectedScenarioId,
   selectedBusinessCaseId,
+  workspaceCaseId,
+  entityContext,
   initialMessages,
 }: UseAgentEventsOptions): UseAgentEventsReturn {
   const [messages, setMessages] = useState<AgentMessage[]>(
@@ -351,10 +361,15 @@ export function useAgentEvents({
               accountName,
               accountTier,
               selectedSignalId,
+              selectedHypothesisId,
+              selectedDriverId,
+              selectedEvidenceId,
               selectedValuePath,
               selectedDriverTreeId,
               selectedScenarioId,
               selectedBusinessCaseId,
+              workspaceCaseId,
+              entityContext,
             },
             abortRef.current?.signal,
           );
@@ -370,7 +385,7 @@ export function useAgentEvents({
         }
       })();
     },
-    [activeTab, accountId, accountName, accountTier, selectedSignalId, selectedValuePath, selectedDriverTreeId, selectedScenarioId, selectedBusinessCaseId, messages, processEvent],
+    [activeTab, accountId, accountName, accountTier, selectedSignalId, selectedHypothesisId, selectedDriverId, selectedEvidenceId, selectedValuePath, selectedDriverTreeId, selectedScenarioId, selectedBusinessCaseId, workspaceCaseId, entityContext, messages, processEvent],
   );
 
   // ── Suggested Actions ─────────────────────────────────────────────────

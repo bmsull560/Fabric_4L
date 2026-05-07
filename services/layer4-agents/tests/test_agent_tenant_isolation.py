@@ -116,6 +116,46 @@ async def test_forged_tenant_header_cannot_override_validated_context(
 
 
 @pytest.mark.asyncio
+async def test_agent_stream_passes_entity_context_to_conversation_service(
+    app: FastAPI,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = CapturingService()
+    validated_tenant = UUID("12345678-1234-1234-1234-123456789abc")
+
+    async def valid_context() -> RequestContext:
+        return RequestContext(tenant_id=validated_tenant, user_id="user-a")
+
+    app.dependency_overrides[agent_stream.require_authenticated] = valid_context
+    monkeypatch.setattr(agent_stream, "_get_conversation_service", lambda: service)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/v1/agent-stream/chat",
+            json={
+                "messages": [{"role": "user", "content": "What changed?"}],
+                "activeTab": "roi",
+                "account": {"accountId": "account-a", "accountName": "Acme"},
+                "selectedSignalId": "signal-a",
+                "entityContext": {
+                    "workspaceCaseId": "case-a",
+                    "selectedDriverId": "driver-a",
+                    "valueCaseId": "value-case-a",
+                },
+            },
+        )
+
+    assert response.status_code == 200, response.text
+    entity_context = service.calls[0]["entity_context"]
+    assert entity_context["accountId"] == "account-a"
+    assert entity_context["activeTab"] == "roi"
+    assert entity_context["selectedSignalId"] == "signal-a"
+    assert entity_context["selectedDriverId"] == "driver-a"
+    assert entity_context["workspaceCaseId"] == "case-a"
+    assert entity_context["valueCaseId"] == "value-case-a"
+
+
+@pytest.mark.asyncio
 async def test_agent_tool_receives_validated_tenant_context() -> None:
     class Input(BaseModel):
         value: int

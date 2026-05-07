@@ -655,6 +655,76 @@ class ValueHypothesisEngine:
             )
             return record["hypothesis"]
 
+    async def promote_validated_hypothesis(
+        self,
+        tenant_id: str,
+        hypothesis_id: str,
+    ) -> dict[str, Any]:
+        """Create idempotent driver-tree artifacts for a validated hypothesis."""
+        driver_id = f"driver_{hypothesis_id}"
+        lever_id = f"lever_{hypothesis_id}"
+        now = datetime.now(UTC).isoformat()
+
+        query = """
+        MATCH (vh:ValueHypothesis {id: $hypothesis_id, tenant_id: $tenant_id})
+        OPTIONAL MATCH (vh)-[:ADDRESSES_SIGNAL]->(ps:PainSignal)
+        OPTIONAL MATCH (vh)-[:SUPPORTED_BY]->(e:Evidence)
+        WITH vh, ps, collect(DISTINCT e.id) AS evidence_ids
+        MERGE (d:ValueDriver {id: $driver_id, tenant_id: $tenant_id})
+        ON CREATE SET d.created_at = $now
+        SET d.updated_at = $now,
+            d.account_id = coalesce(vh.account_id, ps.account_id),
+            d.hypothesis_id = vh.id,
+            d.signal_id = coalesce(vh.signal_id, ps.id),
+            d.name = coalesce(vh.value_path_category, vh.capability_name, ps.category, 'Value driver'),
+            d.description = coalesce(vh.hypothesis_text, ps.description, ps.name, 'Validated value hypothesis'),
+            d.category = coalesce(vh.value_path_category, 'blended'),
+            d.confidence = coalesce(vh.confidence_score, vh.confidence, 0.5),
+            d.estimated_impact_usd = coalesce(vh.estimated_impact_usd, ps.impact_value, 0),
+            d.evidence_ids = evidence_ids,
+            d.source = 'hypothesis_validation'
+        MERGE (l:ValueLever {id: $lever_id, tenant_id: $tenant_id})
+        ON CREATE SET l.created_at = $now
+        SET l.updated_at = $now,
+            l.account_id = d.account_id,
+            l.driver_id = d.id,
+            l.hypothesis_id = vh.id,
+            l.name = d.name,
+            l.category = d.category,
+            l.base_value = coalesce(d.estimated_impact_usd, 0),
+            l.min_value = coalesce(d.estimated_impact_usd, 0) * 0.5,
+            l.max_value = coalesce(d.estimated_impact_usd, 0) * 1.5,
+            l.annual_impact = coalesce(d.estimated_impact_usd, 0),
+            l.unit = 'USD',
+            l.confidence = toInteger(round(coalesce(d.confidence, 0.5) * 100))
+        MERGE (vh)-[:PROMOTED_TO_DRIVER]->(d)
+        MERGE (d)-[:HAS_LEVER]->(l)
+        WITH vh, ps, d, l
+        FOREACH (_ IN CASE WHEN ps IS NULL THEN [] ELSE [1] END |
+          MERGE (d)-[:DERIVED_FROM_SIGNAL]->(ps)
+        )
+        RETURN d {.*} AS driver, l {.*} AS lever
+        """
+
+        async with self._driver.session() as session:
+            result = await session.run(query, {
+                "tenant_id": tenant_id,
+                "hypothesis_id": hypothesis_id,
+                "driver_id": driver_id,
+                "lever_id": lever_id,
+                "now": now,
+            })
+            record = await result.single()
+
+        if not record:
+            return {"drivers": [], "levers": [], "created": False}
+
+        return {
+            "drivers": [record["driver"]],
+            "levers": [record["lever"]],
+            "created": True,
+        }
+
     async def delete_hypothesis(
         self, tenant_id: str, hypothesis_id: str
     ) -> bool:
@@ -722,5 +792,4 @@ class ValueHypothesisEngine:
                 "unique_products": record["unique_products"],
                 "unique_accounts": record["unique_accounts"],
             })
-
 
