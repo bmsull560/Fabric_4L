@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ZodError } from 'zod';
+import { z, type ZodError } from 'zod';
 import { apiClient } from '@/api/client';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
@@ -35,6 +35,58 @@ export interface VariableFilters {
   status?: ValidationStatus | 'all';
   search?: string;
 }
+
+export type TestBindingFailureClass =
+  | 'missing_source_binding'
+  | 'invalid_variable_config'
+  | 'connector_unavailable'
+  | 'authorization'
+  | 'unknown';
+
+export interface TestVariableBindingRequest {
+  sample_input?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+}
+
+export interface TestVariableBindingDiagnostics {
+  code: string;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+  path?: string;
+}
+
+export interface TestVariableBindingSourceTrace {
+  source: string;
+  binding: string;
+  resolved_path?: string | null;
+  connector_status?: string | null;
+}
+
+export interface TestVariableBindingResponse {
+  pass: boolean;
+  evaluated_value: unknown;
+  failure_class?: TestBindingFailureClass;
+  diagnostics: TestVariableBindingDiagnostics[];
+  source_trace: TestVariableBindingSourceTrace;
+}
+
+const TestVariableBindingResponseSchema = z.object({
+  pass: z.boolean(),
+  evaluated_value: z.unknown().optional(),
+  failure_class: z.enum(['missing_source_binding', 'invalid_variable_config', 'connector_unavailable', 'authorization', 'unknown']).optional(),
+  diagnostics: z.array(z.object({
+    code: z.string(),
+    message: z.string(),
+    severity: z.enum(['error', 'warning', 'info']),
+    path: z.string().optional(),
+  })).default([]),
+  source_trace: z.object({
+    source: z.string(),
+    binding: z.string(),
+    resolved_path: z.string().nullable().optional(),
+    connector_status: z.string().nullable().optional(),
+  }),
+});
 
 // Re-export for backward compatibility
 export { VariableApiError } from './useApiShared';
@@ -148,6 +200,21 @@ export function useValidateVariable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.variables.all });
+    },
+  });
+}
+
+export function useTestVariableBinding() {
+  return useMutation<TestVariableBindingResponse, VariableApiError, { variableId: string; payload: TestVariableBindingRequest }>({
+    mutationFn: async ({ variableId, payload }) => {
+      if (!variableId) throw new VariableApiError('Variable ID is required');
+      const response = await apiClient.post('l3', `/variables/${variableId}/test-binding`, payload);
+      const parsed = TestVariableBindingResponseSchema.safeParse(response.data);
+      if (!parsed.success) {
+        log.error('Test variable binding validation failed', { error: parsed.error, variableId });
+        throw new VariableApiError(formatZodError(parsed.error, 'test binding response'));
+      }
+      return parsed.data;
     },
   });
 }
