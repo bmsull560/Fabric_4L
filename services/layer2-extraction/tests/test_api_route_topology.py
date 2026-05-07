@@ -2,19 +2,23 @@ import ast
 from pathlib import Path
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
 ROUTE_MODULES = [
-    Path('services/layer2-extraction/src/layer2_extraction/api/routes/extraction.py'),
-    Path('services/layer2-extraction/src/layer2_extraction/api/routes/jobs.py'),
-    Path('services/layer2-extraction/src/layer2_extraction/api/routes/health.py'),
+    REPO_ROOT / 'services/layer2-extraction/src/layer2_extraction/api/routes/extraction.py',
+    REPO_ROOT / 'services/layer2-extraction/src/layer2_extraction/api/routes/jobs.py',
+    REPO_ROOT / 'services/layer2-extraction/src/layer2_extraction/api/routes/health.py',
 ]
 
 
 FORBIDDEN_MODULES = {
     'layer2_extraction.api.main',
+    'layer2_extraction.api.app_factory',
+    'layer2_extraction.api.lifespan',
 }
 FORBIDDEN_IMPORT_PREFIXES = (
     'layer2_extraction.api.main',
     'layer2_extraction.api.app',
+    'layer2_extraction.api.lifespan',
 )
 
 
