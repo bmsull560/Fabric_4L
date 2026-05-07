@@ -17,7 +17,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l4, l6 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import type { OutputType } from '@/stores/narrativeStore';
@@ -59,12 +60,10 @@ export function useIndustries() {
   return useQuery<string[]>({
     queryKey: QK.benchmarks.industries(),
     queryFn: async () => {
-      const response = await apiClient.get('l6', '/industries');
+      const response = await apiGet<string[] | { industries?: string[] }>('l6', '/industries');
       const data = response.data;
-      if (Array.isArray(data)) return data as string[];
-      if (data && typeof data === 'object' && Array.isArray((data as { industries?: unknown }).industries)) {
-        return (data as { industries: string[] }).industries;
-      }
+      if (Array.isArray(data)) return data;
+      if (data.industries && Array.isArray(data.industries)) return data.industries;
       return [];
     },
     staleTime: STALE_TIME.reference,
@@ -82,7 +81,7 @@ export function useGenerateNarrative() {
     mutationFn: async ({ prompt, outputType, industry }) => {
       const workflowType = OUTPUT_TYPE_TO_WORKFLOW[outputType];
 
-      const response = await apiClient.post<WorkflowCreateResponse>('l4', '/workflows', {
+      const response = await apiPost<l4.components['schemas']['WorkflowCreateResponse'] & { workflow_id?: string }>('l4', '/workflows', {
         workflow_type: workflowType,
         inputs: {
           custom_data: {
@@ -96,7 +95,7 @@ export function useGenerateNarrative() {
         },
       });
 
-      const workflowId = response.data?.workflow_instance_id || response.data?.workflow_id;
+      const workflowId = response.data.workflow_instance_id || response.data.workflow_id;
       if (!workflowId) {
         throw new Error('Workflow creation response missing workflow id');
       }

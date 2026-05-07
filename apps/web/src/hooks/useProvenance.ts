@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet } from "@/api/typedClient";
+import type { l3 } from "@/api/generated";
 import { QK } from "./queryKeys";
 import { STALE_TIME } from "./useApiShared";
 import {
@@ -32,7 +33,7 @@ export function useProvenanceTrail(entityId: string | null) {
     queryKey: QK.provenance.trail(entityId || ""),
     queryFn: async () => {
       if (!entityId) throw new Error("No entity ID provided");
-      const response = await apiClient.get(
+      const response = await apiGet<l3.components['schemas']['ProvenanceTrailResponse']>(
         "l3",
         `/provenance/${encodeURIComponent(entityId)}`
       );
@@ -55,7 +56,7 @@ export function useAuditLogs(filters: AuditLogFilter = {}) {
       if (filters.event_type) params.set("event_type", filters.event_type);
       if (filters.agent) params.set("agent", filters.agent);
 
-      const response = await apiClient.get(
+      const response = await apiGet<l3.components['schemas']['AuditLogResponse']>(
         "l3",
         `/audit/logs?${params.toString()}`
       );
@@ -74,7 +75,7 @@ export function useExportProvenance() {
       entityId: string;
       format?: "json" | "prov-o";
     }) => {
-      const response = await apiClient.get(
+      const response = await apiGet<l3.components['schemas']['ProvenanceTrailResponse']>(
         "l3",
         `/provenance/${encodeURIComponent(entityId)}?format=${format}`
       );

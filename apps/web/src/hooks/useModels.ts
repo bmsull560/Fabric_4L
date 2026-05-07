@@ -9,7 +9,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiDelete } from '@/api/typedClient';
+import type { l3 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { BaseApiError, STALE_TIME, RETRY_CONFIG, withApiError } from './useApiShared';
 import { createFeatureLogger } from '@/lib/telemetry';
@@ -23,48 +24,6 @@ export class ModelApiError extends BaseApiError {
     super(message, statusCode, responseData);
     this.name = 'ModelApiError';
   }
-}
-
-// ── Backend Response Types (snake_case) ──────────────────────────────────────
-
-interface BackendModelSummary {
-  model_id: string;
-  name: string;
-  description: string;
-  industry: string;
-  tags: string[];
-  status: 'draft' | 'active' | 'archived';
-  folder: string;
-  formula_count: number;
-  entity_count: number;
-  driver_count: number;
-  created_at: string;
-  updated_at: string;
-  owner: string;
-  is_shared: boolean;
-}
-
-interface BackendModelListResponse {
-  models: BackendModelSummary[];
-  total: number;
-  offset: number;
-  limit: number;
-  filters_applied: Record<string, unknown>;
-}
-
-interface BackendFolderSummary {
-  folder_id: string;
-  name: string;
-  count: number;
-}
-
-interface BackendFoldersResponse {
-  folders: BackendFolderSummary[];
-}
-
-interface BackendCreateResponse {
-  model_id: string;
-  message: string;
 }
 
 // ── Frontend Types (camelCase) ───────────────────────────────────────────────
@@ -112,13 +71,13 @@ export interface CreateModelPayload {
 
 // ── Transformers ───────────────────────────────────────────────────────────────
 
-function transformModel(backend: BackendModelSummary): ValueModel {
+function transformModel(backend: l3.components['schemas']['ModelSummary']): ValueModel {
   return {
     id: backend.model_id,
     name: backend.name,
     description: backend.description,
     industry: backend.industry,
-    tags: backend.tags,
+    tags: backend.tags ?? [],
     status: backend.status,
     folder: backend.folder,
     formulaCount: backend.formula_count,
@@ -131,7 +90,7 @@ function transformModel(backend: BackendModelSummary): ValueModel {
   };
 }
 
-function transformFolder(backend: BackendFolderSummary): ModelFolder {
+function transformFolder(backend: l3.components['schemas']['ModelFolderSummary']): ModelFolder {
   return {
     id: backend.folder_id,
     name: backend.name,
@@ -158,15 +117,13 @@ async function fetchModels(filters: ModelFilters): Promise<ValueModel[]> {
   params.set('sort_by', sortByMap[filters.sortBy || 'updatedAt']);
   params.set('sort_dir', filters.sortDir || 'desc');
   
-  const response = await apiClient.get('l3', `/models?${params.toString()}`);
-  const data = response.data as BackendModelListResponse;
-  return data.models.map(transformModel);
+  const response = await apiGet<l3.components['schemas']['ModelListResponse']>('l3', `/models?${params.toString()}`);
+  return response.data.models.map(transformModel);
 }
 
 async function fetchFolders(): Promise<ModelFolder[]> {
-  const response = await apiClient.get('l3', '/models/folders');
-  const data = response.data as BackendFoldersResponse;
-  return data.folders.map(transformFolder);
+  const response = await apiGet<l3.components['schemas']['FoldersResponse']>('l3', '/models/folders');
+  return response.data.folders.map(transformFolder);
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────────
@@ -201,15 +158,14 @@ export function useCreateModel() {
     mutationFn: async (payload) => {
       if (!payload.name.trim()) throw new ModelApiError('Model name is required');
       
-      const response = await apiClient.post('l3', '/models', {
+      const response = await apiPost<l3.components['schemas']['CreateResponse']>('l3', '/models', {
         name: payload.name.trim(),
         description: payload.description?.trim() || '',
         industry: payload.industry,
         tags: payload.tags || [],
       });
       
-      const data = response.data as BackendCreateResponse;
-      return { modelId: data.model_id };
+      return { modelId: response.data.model_id };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: QK.models.all });
@@ -234,7 +190,7 @@ export function useDeleteModel() {
     mutationFn: async (modelId) => {
       if (!modelId) throw new ModelApiError('Model ID is required');
       
-      await apiClient.delete('l3', `/models/${modelId}`);
+      await apiDelete<l3.components['schemas']['DeleteResponse']>('l3', `/models/${modelId}`);
       return { modelId };
     },
     onSuccess: (data) => {

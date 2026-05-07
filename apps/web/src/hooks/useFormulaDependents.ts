@@ -9,7 +9,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { withApiError, FormulaDependentsApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -35,11 +35,11 @@ async function fetchFormulaDependencies(
   formulaId: string,
   direction: 'outgoing' | 'incoming' | 'both' = 'both'
 ): Promise<FormulaDependency[]> {
-  const response = await apiClient.get(
+  const response = await apiGet<FormulaDependency[]>(
     'l3',
     `/formulas/${encodeURIComponent(formulaId)}/dependencies?direction=${direction}`
   );
-  return (response as { data: FormulaDependency[] }).data;
+  return response.data;
 }
 
 // ── Hooks ───────────────────────────────────────────────────────────────────

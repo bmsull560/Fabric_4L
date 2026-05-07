@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { useGenerateNarrative, type Narrative } from './useNarratives';
 
@@ -45,9 +46,8 @@ export function useValueCaseArtifacts(accountId: string | null) {
     queryKey: QK.versions.detail(`value-case:${accountId ?? 'none'}`),
     queryFn: async () => {
       if (!accountId) return [];
-      const response = await apiClient.get('l4', `/v1/value-case/artifacts?account_id=${encodeURIComponent(accountId)}`);
-      const data = response.data as { versions?: ValueCaseArtifactVersion[] } | null | undefined;
-      return data?.versions ?? [];
+      const response = await apiGet<{ versions?: ValueCaseArtifactVersion[] }>('l4', `/v1/value-case/artifacts?account_id=${encodeURIComponent(accountId)}`);
+      return response.data.versions ?? [];
     },
     enabled: Boolean(accountId),
   });
@@ -69,7 +69,7 @@ export function useValueCaseArtifacts(accountId: string | null) {
         sections: ['executive_summary', 'stakeholder_mapping', 'roi_overview', 'risk_and_mitigation'],
       });
 
-      const response = await apiClient.post('l4', '/v1/value-case/artifacts', {
+      const response = await apiPost<ValueCaseArtifactVersion>('l4', '/v1/value-case/artifacts', {
         account_id: input.account_id,
         inputs: input,
         narrative: {
@@ -84,7 +84,7 @@ export function useValueCaseArtifacts(accountId: string | null) {
           business_case_id: `bc-${input.account_id}`,
         },
       });
-      return response.data as ValueCaseArtifactVersion;
+      return response.data;
     },
     onSuccess: (artifact) => {
       setSelectedVersionId(artifact.id);

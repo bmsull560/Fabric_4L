@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l3, l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { STALE_TIME, withApiError, BaseApiError } from './useApiShared';
 import { L4_ANALYSIS_PREFIX } from '@/lib/apiConfig';
@@ -59,8 +60,8 @@ const ALLOWED_SCHEMES = ['http:', 'https:', 'blob:', 'data:'];
 export function useDocumentExport() {
   return useMutation<DocumentExportResponse, DocumentApiError, DocumentExportRequest>({
     mutationFn: async (request) => {
-      const response = await apiClient.post('l3', '/documents/export', request);
-      return response.data as DocumentExportResponse;
+      const response = await apiPost<DocumentExportResponse>('l3', '/documents/export', request);
+      return response.data;
     },
   });
 }
@@ -85,8 +86,7 @@ export function useBusinessCaseExport() {
     { caseId: string; format?: string }
   >({
     mutationFn: async ({ caseId, format = 'pdf' }) => {
-      const response = await apiClient.get('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/export?format=${format}`);
-      return response.data as {
+      const response = await apiGet<{
         case_id: string;
         format: string;
         document_url?: string;
@@ -95,7 +95,8 @@ export function useBusinessCaseExport() {
         remediation_items?: Array<Record<string, unknown>>;
         truth_references?: Array<Record<string, unknown>>;
         manifest?: Record<string, unknown>;
-      };
+      }>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/export?format=${format}`);
+      return response.data;
     },
   });
 }
@@ -109,8 +110,14 @@ export function useBusinessCase(businessCaseId: string | null) {
     queryKey: QK.documents.businessCase(businessCaseId || ''),
     queryFn: async () => {
       if (!businessCaseId) throw new Error('No business case ID provided');
-      const response = await apiClient.get('l4', `${L4_ANALYSIS_PREFIX}/cases/${businessCaseId}`);
-      return response.data as BusinessCase;
+      const response = await apiGet<l4.components['schemas']['BusinessCaseResponse']>('l4', `${L4_ANALYSIS_PREFIX}/cases/${businessCaseId}`);
+      const data = response.data;
+      return {
+        ...data,
+        created_at: data.created_at ?? undefined,
+        document_url: data.document_url ?? undefined,
+        recommendations: data.recommendations ?? [],
+      };
     },
     enabled: !!businessCaseId,
     staleTime: STALE_TIME.detail,

@@ -8,7 +8,8 @@
  * Endpoints: 5
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -86,13 +87,13 @@ function buildNarrativeParams(filters: NarrativeListFilters): string {
 }
 
 async function fetchNarratives(filters: NarrativeListFilters): Promise<NarrativeListResponse> {
-  const response = await apiClient.get('l4', `/v1/narratives${buildNarrativeParams(filters)}`);
-  return response.data as NarrativeListResponse;
+  const response = await apiGet<NarrativeListResponse>('l4', `/v1/narratives${buildNarrativeParams(filters)}`);
+  return response.data;
 }
 
 async function fetchNarrative(id: string): Promise<Narrative> {
-  const response = await apiClient.get('l4', `/v1/narratives/${id}`);
-  return response.data as Narrative;
+  const response = await apiGet<Narrative>('l4', `/v1/narratives/${id}`);
+  return response.data;
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
@@ -127,8 +128,8 @@ export function useGenerateNarrative() {
   const queryClient = useQueryClient();
   return useMutation<Narrative, NarrativeApiError, GenerateNarrativeRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l4', '/v1/narratives/generate', params);
-      return response.data as Narrative;
+      const response = await apiPost<Narrative>('l4', '/v1/narratives/generate', params);
+      return response.data;
     },
     onSuccess: (_data, { account_id }) => {
       queryClient.invalidateQueries({ queryKey: QK.narratives.all });
@@ -145,8 +146,8 @@ export function useUpdateNarrativeStatus() {
     { narrativeId: string; data: UpdateNarrativeStatusRequest }
   >({
     mutationFn: async ({ narrativeId, data }) => {
-      const response = await apiClient.patch('l4', `/v1/narratives/${narrativeId}/status`, data);
-      return response.data as Narrative;
+      const response = await apiPatch<Narrative>('l4', `/v1/narratives/${narrativeId}/status`, data);
+      return response.data;
     },
     onSuccess: (_data, { narrativeId }) => {
       queryClient.invalidateQueries({ queryKey: QK.narratives.all });
@@ -159,7 +160,7 @@ export function useDeleteNarrative() {
   const queryClient = useQueryClient();
   return useMutation<void, NarrativeApiError, string>({
     mutationFn: async (narrativeId) => {
-      await apiClient.delete('l4', `/v1/narratives/${narrativeId}`);
+      await apiDelete<void>('l4', `/v1/narratives/${narrativeId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.narratives.all });

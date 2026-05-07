@@ -16,7 +16,8 @@
 
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l3 } from '@/api/generated';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { STALE_TIME, withApiError, BaseApiError } from './useApiShared';
@@ -87,7 +88,7 @@ export function useGraphQuery() {
 
   return useMutation<GraphQueryResult, GraphApiError, GraphQueryRequest>({
     mutationFn: async (request): Promise<GraphQueryResult> => {
-      const response = await apiClient.post('l3', '/query/graph', {
+      const response = await apiPost<l3.components['schemas']['GraphRAGResponse']>('l3', '/query/graph', {
         query: request.query,
         entity_type: request.entity_type,
         max_hops: request.max_hops ?? 2,
@@ -140,7 +141,7 @@ export function useEntityContext(
       }
 
       const encodedId = encodeURIComponent(entityId);
-      const response = await apiClient.get('l3', `/entity/${encodedId}/context?${params.toString()}`);
+      const response = await apiGet<l3.components['schemas']['EntityContextResponse']>('l3', `/entity/${encodedId}/context?${params.toString()}`);
 
       const validated = safeParseResponse(
         EntityContextResponseSchema,
@@ -164,7 +165,7 @@ export function useEntityContext(
 export function useEntityTraversal() {
   return useMutation<GraphTraversalResult, GraphApiError, EntityTraversalRequest>({
     mutationFn: async (request): Promise<GraphTraversalResult> => {
-      const response = await apiClient.post('l3', '/entity/traverse', {
+      const response = await apiPost<l3.components['schemas']['layer3_knowledge__api__models__ValueTreeResponse']>('l3', '/entity/traverse', {
         entity_id: request.entity_id,
         direction: request.direction ?? 'both',
       });
@@ -225,7 +226,7 @@ export function useSubgraph(options: SubgraphRequest) {
       params.set('depth', depth.toString());
       params.set('limit', limit.toString());
 
-      const response = await apiClient.get('l3', `/subgraph?${params.toString()}`);
+      const response = await apiGet<l3.components['schemas']['SubgraphResponse']>('l3', `/subgraph?${params.toString()}`);
 
       const validated = validateOrThrow(SubgraphResponseSchema, response.data, 'SubgraphResponse');
       return mapSubgraphResponseDtoToDomain(validated);

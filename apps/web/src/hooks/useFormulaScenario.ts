@@ -10,7 +10,8 @@
  * OpenAPI contract: ScenarioRequest → ScenarioResponse
  */
 import { useMutation } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiPost } from '@/api/typedClient';
+import type { l3 } from '@/api/generated';
 import { FormulaApiError } from './useApiShared';
 import { createFeatureLogger } from '@/lib/telemetry';
 
@@ -76,8 +77,8 @@ export interface ScenarioResponse {
 export function useFormulaScenario() {
   return useMutation<ScenarioResponse, FormulaApiError, ScenarioRequest>({
     mutationFn: async (request) => {
-      const response = await apiClient.post('l3', '/formulas/scenario', request);
-      return (response as { data: ScenarioResponse }).data;
+      const response = await apiPost<l3.components['schemas']['ScenarioResponse']>('l3', '/formulas/scenario', request);
+      return response.data;
     },
     onError: (error) => {
       log.error('Formula scenario calculation failed', { errorCode: error.message });

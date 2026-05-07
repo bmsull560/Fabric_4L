@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z, type ZodError } from 'zod';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, VariableApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
@@ -98,8 +98,8 @@ async function fetchVariables(filters: VariableFilters): Promise<Variable[]> {
   if (filters.status && filters.status !== 'all') params.set('status', filters.status);
   if (filters.search) params.set('search', filters.search);
 
-  const response = await apiClient.get('l3', `/variables?${params.toString()}`);
-  
+  const response = await apiGet<unknown>('l3', `/variables?${params.toString()}`);
+
   // Runtime validation with Zod
   const parsed = VariableListSchema.safeParse(response.data);
   if (!parsed.success) {
@@ -120,8 +120,8 @@ export function useVariables(filters: VariableFilters = {}) {
 }
 
 async function fetchVariable(variableId: string): Promise<Variable> {
-  const response = await apiClient.get('l3', `/variables/${variableId}`);
-  
+  const response = await apiGet<unknown>('l3', `/variables/${variableId}`);
+
   // Runtime validation with Zod
   const parsed = VariableSchema.safeParse(response.data);
   if (!parsed.success) {
@@ -146,8 +146,8 @@ export function useVariable(variableId: string | null) {
 }
 
 async function fetchVariableStats(): Promise<VariableStats> {
-  const response = await apiClient.get('l3', '/variables/stats');
-  
+  const response = await apiGet<unknown>('l3', '/variables/stats');
+
   // Runtime validation with Zod
   const parsed = VariableStatsSchema.safeParse(response.data);
   if (!parsed.success) {
@@ -168,8 +168,8 @@ export function useVariableStats() {
 }
 
 async function fetchSourceBindings(): Promise<SourceBinding[]> {
-  const response = await apiClient.get('l3', '/variables/bindings');
-  
+  const response = await apiGet<unknown>('l3', '/variables/bindings');
+
   // Runtime validation with Zod
   const parsed = SourceBindingListSchema.safeParse(response.data);
   if (!parsed.success) {
@@ -195,7 +195,7 @@ export function useValidateVariable() {
   return useMutation({
     mutationFn: async (variableId: string) => {
       if (!variableId) throw new VariableApiError('Variable ID is required');
-      const response = await apiClient.post('l3', `/variables/${variableId}/validate`, {});
+      const response = await apiPost<unknown>('l3', `/variables/${variableId}/validate`, {});
       return response.data;
     },
     onSuccess: () => {
@@ -208,7 +208,7 @@ export function useTestVariableBinding() {
   return useMutation<TestVariableBindingResponse, VariableApiError, { variableId: string; payload: TestVariableBindingRequest }>({
     mutationFn: async ({ variableId, payload }) => {
       if (!variableId) throw new VariableApiError('Variable ID is required');
-      const response = await apiClient.post('l3', `/variables/${variableId}/test-binding`, payload);
+      const response = await apiPost<unknown>('l3', `/variables/${variableId}/test-binding`, payload);
       const parsed = TestVariableBindingResponseSchema.safeParse(response.data);
       if (!parsed.success) {
         log.error('Test variable binding validation failed', { error: parsed.error, variableId });

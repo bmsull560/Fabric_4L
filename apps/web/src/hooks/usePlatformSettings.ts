@@ -9,7 +9,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPatch } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { withApiError, PlatformSettingsApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -59,13 +59,13 @@ export interface UpdateSettingsPayload {
 // ── Fetch Functions ─────────────────────────────────────────────────────────
 
 async function fetchPlatformSettings(): Promise<TenantSettings> {
-  const response = await apiClient.get('l4', '/tenants/current/settings');
-  return response.data as TenantSettings;
+  const response = await apiGet<TenantSettings>('l4', '/tenants/current/settings');
+  return response.data;
 }
 
 async function updatePlatformSettings(payload: UpdateSettingsPayload): Promise<TenantSettings> {
-  const response = await apiClient.patch('l4', '/tenants/current/settings', payload);
-  return response.data as TenantSettings;
+  const response = await apiPatch<TenantSettings>('l4', '/tenants/current/settings', payload);
+  return response.data;
 }
 
 // ── Hooks ───────────────────────────────────────────────────────────────────

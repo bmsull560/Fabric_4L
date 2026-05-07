@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiDelete } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -52,18 +52,18 @@ export interface ApiKey {
 // ── Fetch Functions ─────────────────────────────────────────────────────────
 
 async function fetchTenants(): Promise<Tenant[]> {
-  const response = await apiClient.get('l4', '/tenants');
-  return response.data as Tenant[];
+  const response = await apiGet<Tenant[]>('l4', '/tenants');
+  return response.data;
 }
 
 async function fetchUsers(): Promise<User[]> {
-  const response = await apiClient.get('l4', '/users');
-  return response.data as User[];
+  const response = await apiGet<User[]>('l4', '/users');
+  return response.data;
 }
 
 async function fetchApiKeys(): Promise<ApiKey[]> {
-  const response = await apiClient.get('l4', '/api-keys');
-  return response.data as ApiKey[];
+  const response = await apiGet<ApiKey[]>('l4', '/api-keys');
+  return response.data;
 }
 
 // ── Hooks ───────────────────────────────────────────────────────────────────
@@ -103,8 +103,8 @@ export function useInviteUser() {
 
   return useMutation<User, GovernanceApiError, { email: string; role: string }>({
     mutationFn: async (payload) => {
-      const response = await apiClient.post('l4', '/users/invite', payload);
-      return response.data as User;
+      const response = await apiPost<User>('l4', '/users/invite', payload);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.governance.users() });
@@ -117,7 +117,7 @@ export function useRevokeApiKey() {
 
   return useMutation<void, GovernanceApiError, string>({
     mutationFn: async (keyId) => {
-      await apiClient.delete('l4', `/api-keys/${keyId}`);
+      await apiDelete<void>('l4', `/api-keys/${keyId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.governance.apiKeys() });

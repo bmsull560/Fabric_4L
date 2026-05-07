@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPut } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { withApiError, BenchmarkApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 import { createFeatureLogger } from '@/lib/telemetry';
@@ -90,9 +90,8 @@ async function fetchBenchmarks(filters: BenchmarkFilters): Promise<Benchmark[]> 
   if (filters.confidence && filters.confidence !== 'all') params.set('confidence', filters.confidence);
   if (filters.search) params.set('search', filters.search);
 
-  const response = await apiClient.get('l6', `/datasets?${params.toString()}`);
-  const datasets = response.data as BenchmarkDatasetSummary[];
-  return datasets.map(mapDatasetSummaryToBenchmark);
+  const response = await apiGet<BenchmarkDatasetSummary[]>('l6', `/datasets?${params.toString()}`);
+  return response.data.map(mapDatasetSummaryToBenchmark);
 }
 
 /**
@@ -112,9 +111,8 @@ export function useBenchmarks(filters: BenchmarkFilters = {}) {
 }
 
 async function fetchBenchmark(benchmarkId: string): Promise<Benchmark> {
-  const response = await apiClient.get('l6', `/datasets/${benchmarkId}`);
-  const dataset = response.data as BenchmarkDatasetSummary;
-  return mapDatasetSummaryToBenchmark(dataset);
+  const response = await apiGet<BenchmarkDatasetSummary>('l6', `/datasets/${benchmarkId}`);
+  return mapDatasetSummaryToBenchmark(response.data);
 }
 
 /**
@@ -138,8 +136,8 @@ export function useBenchmark(benchmarkId: string | null) {
 }
 
 async function fetchBenchmarkPolicies(): Promise<BenchmarkPolicy[]> {
-  const response = await apiClient.get('l3', '/benchmarks/policies');
-  return response.data as BenchmarkPolicy[];
+  const response = await apiGet<BenchmarkPolicy[]>('l3', '/benchmarks/policies');
+  return response.data;
 }
 
 /**
@@ -173,8 +171,8 @@ export function useUpdateBenchmarkPolicy() {
   return useMutation<BenchmarkPolicy, BenchmarkApiError, UpdateBenchmarkPolicyParams>({
     mutationFn: async (policy) => {
       if (!policy.id) throw new BenchmarkApiError('Policy ID is required');
-      const response = await apiClient.put('l3', `/benchmarks/policies/${policy.id}`, policy);
-      return response.data as BenchmarkPolicy;
+      const response = await apiPut<BenchmarkPolicy>('l3', `/benchmarks/policies/${policy.id}`, policy);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.benchmarks.policies });

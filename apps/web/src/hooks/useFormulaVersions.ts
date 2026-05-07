@@ -9,7 +9,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { withApiError, FormulaVersionsApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -42,19 +42,19 @@ export interface FormulaGovernance {
 // ── Fetch Functions ─────────────────────────────────────────────────────────
 
 async function fetchFormulaVersions(formulaId: string, includeRetired = false): Promise<FormulaVersion[]> {
-  const response = await apiClient.get(
+  const response = await apiGet<FormulaVersion[]>(
     'l3',
     `/formulas/${encodeURIComponent(formulaId)}/versions?include_retired=${includeRetired}`
   );
-  return (response as { data: FormulaVersion[] }).data;
+  return response.data;
 }
 
 async function fetchFormulaGovernance(formulaId: string): Promise<FormulaGovernance> {
-  const response = await apiClient.get(
+  const response = await apiGet<FormulaGovernance>(
     'l3',
     `/formulas/${encodeURIComponent(formulaId)}/governance`
   );
-  return (response as { data: FormulaGovernance }).data;
+  return response.data;
 }
 
 // ── Hooks ───────────────────────────────────────────────────────────────────

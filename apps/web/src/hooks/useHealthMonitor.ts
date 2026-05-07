@@ -9,7 +9,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet } from "@/api/typedClient";
 import { QK } from "./queryKeys";
 import {
   withApiError,
@@ -31,14 +31,12 @@ export type { HealthAlert, ServiceHealth, ServiceStatus, SystemHealth };
 // ── Fetch Functions ─────────────────────────────────────────────────────────
 
 async function fetchSystemHealth(): Promise<SystemHealth> {
-  const response = (await apiClient.get("l4", "/health")) as { data: unknown };
+  const response = await apiGet<unknown>("l4", "/health");
   return parseSystemHealth(response.data);
 }
 
 async function fetchHealthAlerts(): Promise<HealthAlert[]> {
-  const response = (await apiClient.get("l4", "/health/alerts")) as {
-    data: unknown;
-  };
+  const response = await apiGet<unknown>("l4", "/health/alerts");
   return parseHealthAlerts(response.data);
 }
 

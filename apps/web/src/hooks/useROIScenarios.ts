@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet, apiPost, apiPatch } from "@/api/typedClient";
+import type { l4 } from "@/api/generated";
 import { QK } from "@/hooks/queryKeys";
 
 export type ScenarioState = {
@@ -32,12 +33,12 @@ export function useROIScenarioVersions(scope: Scope) {
     queryKey: QK.roi.scenarioVersions(scope),
     enabled: scopeReady(scope),
     queryFn: async () => {
-      const response = await apiClient.get(
+      const response = await apiGet<{ items?: PersistedScenarioVersion[] } | PersistedScenarioVersion[]>(
         "l4",
         `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios?account_id=${encodeURIComponent(scope.accountId ?? "")}&model_id=${encodeURIComponent(scope.modelId ?? "")}`
       );
-      const data = response.data as { items?: PersistedScenarioVersion[] } | PersistedScenarioVersion[] | null | undefined;
-      return (Array.isArray(data) ? data : data?.items ?? []) as PersistedScenarioVersion[];
+      const data = response.data;
+      return Array.isArray(data) ? data : data.items ?? [];
     },
   });
 }
@@ -47,13 +48,13 @@ export function useSaveROIScenarioVersion(scope: Scope, scenario: ScenarioState)
   return useMutation({
     mutationKey: ["roi", "scenario", "save", scope.accountId ?? "", scope.caseId ?? "", scope.modelId ?? ""],
     mutationFn: async (name: string) => {
-      const response = await apiClient.post("l4", `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios`, {
+      const response = await apiPost<PersistedScenarioVersion>("l4", `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios`, {
         account_id: scope.accountId,
         model_id: scope.modelId,
         name,
         assumptions: scenario,
       });
-      return response.data as PersistedScenarioVersion;
+      return response.data;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: QK.roi.scenarioVersions(scope) });
@@ -66,12 +67,12 @@ export function useUpdateROIScenarioVersion(scope: Scope) {
   return useMutation({
     mutationKey: ["roi", "scenario", "update", scope.accountId ?? "", scope.caseId ?? "", scope.modelId ?? ""],
     mutationFn: async ({ versionId, assumptions }: { versionId: string; assumptions: ScenarioState }) => {
-      const response = await apiClient.patch("l4", `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios/${encodeURIComponent(versionId)}`, {
+      const response = await apiPatch<PersistedScenarioVersion>("l4", `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios/${encodeURIComponent(versionId)}`, {
         account_id: scope.accountId,
         model_id: scope.modelId,
         assumptions,
       });
-      return response.data as PersistedScenarioVersion;
+      return response.data;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: QK.roi.scenarioVersions(scope) });

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet, apiPost, apiDelete } from "@/api/typedClient";
+import type { l4 } from "@/api/generated";
 import { createLogger } from "@/lib/telemetry";
 import { QK } from "./queryKeys";
 import {
@@ -63,7 +64,7 @@ export class IntegrationApiError extends BaseApiError {
 }
 
 async function fetchIntegrations(): Promise<Integration[]> {
-  const response = await apiClient.get("l4", "/integrations");
+  const response = await apiGet<l4.components["schemas"]["IntegrationListResponse"]>("l4", "/integrations");
   return parseIntegrations(response.data);
 }
 
@@ -78,7 +79,7 @@ export function useIntegrations() {
 }
 
 async function fetchIntegration(provider: CRMProvider): Promise<Integration> {
-  const response = await apiClient.get("l4", `/integrations/${provider}`);
+  const response = await apiGet<l4.components["schemas"]["IntegrationStatusResponse"]>("l4", `/integrations/${provider}`);
   return parseIntegration(response.data);
 }
 
@@ -105,7 +106,7 @@ export function useCreateOrUpdateIntegration() {
     { provider: CRMProvider; data: IntegrationCreateRequest }
   >({
     mutationFn: async ({ provider, data }) => {
-      const response = await apiClient.post(
+      const response = await apiPost<l4.components["schemas"]["IntegrationStatusResponse"]>(
         "l4",
         `/integrations/${provider}`,
         data
@@ -126,7 +127,7 @@ export function useDeleteIntegration() {
 
   return useMutation<void, IntegrationApiError, CRMProvider>({
     mutationFn: async provider => {
-      await apiClient.delete("l4", `/integrations/${provider}`);
+      await apiDelete<void>("l4", `/integrations/${provider}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.integrations.all });
@@ -140,7 +141,7 @@ export function useDeleteIntegration() {
 export function useTestIntegration() {
   return useMutation<ConnectionTestResult, IntegrationApiError, CRMProvider>({
     mutationFn: async provider => {
-      const response = await apiClient.post(
+      const response = await apiPost<l4.components["schemas"]["ConnectionTestResponse"]>(
         "l4",
         `/integrations/${provider}/test`,
         {}
@@ -158,7 +159,7 @@ export function useSyncIntegration() {
 
   return useMutation<SyncTriggerResult, IntegrationApiError, CRMProvider>({
     mutationFn: async provider => {
-      const response = await apiClient.post(
+      const response = await apiPost<l4.components["schemas"]["SyncTriggerResponse"]>(
         "l4",
         `/integrations/${provider}/sync`,
         {}
@@ -181,7 +182,7 @@ export function useStartSalesforceOAuth() {
     SalesforceOAuthAuthorizeRequest
   >({
     mutationFn: async data => {
-      const response = await apiClient.post(
+      const response = await apiPost<unknown>(
         "l4",
         "/integrations/salesforce/oauth/authorize",
         data
