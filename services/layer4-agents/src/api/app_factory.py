@@ -8,6 +8,7 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from value_fabric.shared.security import validate_production_safety
+from value_fabric.shared.observability import configure_observability
 
 from ..config.settings import settings
 from ..metrics import initialize_metrics
@@ -45,6 +46,12 @@ def create_app() -> FastAPI:
 
     app.state.metrics = initialize_metrics()
     configure_middleware(app)
+    configure_observability(
+        app,
+        service_name="layer4-agents",
+        metrics_provider=lambda: app.state.metrics.get_metrics() if getattr(app.state, "metrics", None) else "",
+        readiness_check=lambda: True,
+    )
 
     try:
         from value_fabric.shared.identity.dev_bypass import maybe_install_dev_bypass
