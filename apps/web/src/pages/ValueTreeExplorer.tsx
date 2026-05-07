@@ -9,7 +9,7 @@
  * - Entity selector to choose root entity
  * - Loading, error, and empty states
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, type ChangeEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { 
   ChevronDown, 
@@ -27,9 +27,11 @@ import { PageHeader, Btn, Tabs, SectionCard } from "@/components/WfPrimitives";
 import { EntityBadge } from "@/components/WfPrimitives";
 import type { EntityType } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useValueTree, useValueTreeCache, useValueTreePaths } from "@/hooks/useValueTrees";
+import { toast } from "sonner";
+import { useValueTree, useValueTreeCache, useValueTreePaths, useCreateValueTree, useImportValueTree } from "@/hooks/useValueTrees";
 import { useEntities, type Entity } from "@/hooks/useEntities";
-import type { ValueTreeNode, ValueTreeEdge } from "@/api/valueTrees";
+import type { ValueTreeNode, ValueTreeEdge, ValueTreeResponse } from "@/api/valueTrees";
+import { ValueTreeResponseSchema } from "@/lib/schemas";
 
 // Types for UI tree rendering
 interface TreeNode {
@@ -205,7 +207,10 @@ export default function ValueTreeExplorer() {
   const [activeTab, setActiveTab] = useState("Tree Explorer");
   const [view, setView] = useState<"visual"|"outline"|"paths">("visual");
   const [showEntitySelector, setShowEntitySelector] = useState(false);
+  const importFileRef = useRef<HTMLInputElement | null>(null);
   const { invalidateTree } = useValueTreeCache();
+  const createTreeMutation = useCreateValueTree();
+  const importTreeMutation = useImportValueTree();
 
   // URL-driven query controls for shareable links
   const entityId = searchParams.get("entityId");
@@ -288,6 +293,57 @@ export default function ValueTreeExplorer() {
     setShowEntitySelector(false);
   };
 
+  const handleCreateTree = async () => {
+    if (!entityId) {
+      toast.error("Select a root entity before creating a tree.");
+      return;
+    }
+    try {
+      const createdTree = await createTreeMutation.mutateAsync({
+        entity_id: entityId,
+        direction,
+        initialize_root: true,
+      });
+      invalidateTree(entityId);
+      updateQueryParams({ entityId: createdTree.root_entity_id });
+      toast.success("Value tree created.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create value tree.");
+    }
+  };
+
+  const handleImportClick = () => {
+    if (!entityId) {
+      toast.error("Select a root entity before importing.");
+      return;
+    }
+    importFileRef.current?.click();
+  };
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !entityId) return;
+    try {
+      const raw = await file.text();
+      const json = JSON.parse(raw);
+      const parsedTree = ValueTreeResponseSchema.parse(json) as ValueTreeResponse;
+      if (parsedTree.root_entity_id !== entityId) {
+        toast.error("Tenant/entity mismatch: selected root does not match imported tree root.");
+        return;
+      }
+      const importedTree = await importTreeMutation.mutateAsync({
+        entity_id: entityId,
+        tree: parsedTree,
+      });
+      invalidateTree(entityId);
+      updateQueryParams({ entityId: importedTree.root_entity_id });
+      toast.success("Value tree imported successfully.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid import file.");
+    }
+  };
+
   // Filter entities that could be tree roots (ValueDrivers or Capabilities)
   const rootCandidates = useMemo(() => {
     return entities.filter((entity: Entity) => 
@@ -362,26 +418,19 @@ export default function ValueTreeExplorer() {
             </div>
             <Btn
               variant="primary"
-              disabled
-              onClick={() => {
-                // New Tree flow pending backend API support (L3-XXX)
-                // Keep tree + path caches coherent after edits/imports.
-                invalidateTree(entityId ?? undefined);
-              }}
+              disabled={!entityId || createTreeMutation.isPending || importTreeMutation.isPending}
+              onClick={() => void handleCreateTree()}
             >
-              <Plus size={12}/> New Tree
+              {createTreeMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12}/>} New Tree
             </Btn>
             <Btn
               variant="ghost"
-              disabled
-              onClick={() => {
-                // Import flow pending backend API support (L3-XXX)
-                // Keep tree + path caches coherent after edits/imports.
-                invalidateTree(entityId ?? undefined);
-              }}
+              disabled={!entityId || importTreeMutation.isPending || createTreeMutation.isPending}
+              onClick={handleImportClick}
             >
-              <Upload size={12}/> Import
+              {importTreeMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12}/>} Import
             </Btn>
+            <input ref={importFileRef} type="file" accept="application/json" className="hidden" onChange={(e) => void handleImportFile(e)} />
             <Btn 
               variant="ghost" 
               onClick={() => {

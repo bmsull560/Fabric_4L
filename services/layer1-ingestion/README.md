@@ -1,4 +1,5 @@
 # Layer 1: Intelligent Data Ingestion Service
+> Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
 A production-grade web data ingestion service that continuously acquires unstructured enterprise data from public sources and converts it to clean, structured Markdown ready for semantic processing by Layer 2.
 

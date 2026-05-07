@@ -32,6 +32,11 @@ The repository now treats the comprehensive validation inventory as the product-
 | Review/approval gates before export or CRM push | `P0-APPROVAL-EXPORT`, `P1-INTEGRATIONS` |
 | Recovery from failed jobs and partial workflows | `P0-LAYER-VALIDATION`, `P1-RESILIENCE` |
 
+
+## Route-layer dependency map
+
+For Layer 1–6 backend ownership and required UI fallback contracts per P0/P1 route family, see [`route-layer-dependency-map.md`](./route-layer-dependency-map.md).
+
 ## P0 Workflows
 
 | ID | Workflow | Primary routes | Required test evidence | Persona coverage | Resilience proof | Accessibility proof | Owner |

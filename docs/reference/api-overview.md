@@ -17,6 +17,10 @@ related: ["layer1-ingestion-api", "layer2-extraction-api", "layer3-knowledge-api
 
 ---
 
+## Frontend dependency mapping
+
+For frontend route-family to Layer 1–6 dependency ownership and failure fallback contracts, see [`apps/web/docs/route-layer-dependency-map.md`](../../apps/web/docs/route-layer-dependency-map.md).
+
 ## API Architecture
 
 Value Fabric exposes a layered API architecture where each layer provides specialized capabilities:
