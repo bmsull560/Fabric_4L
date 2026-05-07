@@ -81,7 +81,7 @@ from .dependencies import (
 )
 
 # P1-29: OpenTelemetry imports for distributed tracing
-from .main_fix import (
+from .telemetry import (
     OTEL_AVAILABLE,
     SERVICE_NAME,
     BatchSpanProcessor,

@@ -1,5 +1,4 @@
-# OpenTelemetry conditional import fix for layer3
-# This wrapper makes opentelemetry optional
+"""Optional OpenTelemetry imports for Layer 3 API."""
 
 try:
     from opentelemetry import trace
@@ -8,6 +7,7 @@ try:
     from opentelemetry.sdk.resources import SERVICE_NAME, Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
