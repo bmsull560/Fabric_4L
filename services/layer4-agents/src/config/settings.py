@@ -6,13 +6,23 @@ Fails fast on startup if required configuration is missing or invalid.
 
 import secrets
 
-try:
-    from value_fabric.shared.secrets import load_infisical_secrets
-    load_infisical_secrets()
-except ImportError:
-    pass  # shared package not available; env vars used directly
-
 import logging
+
+from ..startup.dependency_verifier import DependencyRule, verify_startup_dependencies
+
+verify_startup_dependencies(
+    [
+        DependencyRule(
+            module="value_fabric.shared.secrets",
+            required_in_prod=True,
+            remediation="Install shared package and ensure service runs with repository /shared path",
+        ),
+    ]
+)
+
+from value_fabric.shared.secrets import load_infisical_secrets
+
+load_infisical_secrets()
 from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
