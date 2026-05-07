@@ -12,6 +12,7 @@ These workflows must pass before a PR can be merged:
 | Workflow | Purpose | Trigger |
 |----------|---------|---------|
 | `pr-checks.yml` | Multi-layer lint, typecheck, tests, security scan, dependency audit | PR to main |
+| `critical-gates.yml` | Merge-blocking auth/tenant/OpenAPI/config critical gates + evidence artifacts | PR to main |
 | `contract-checks.yml` | Cross-layer contract tests | PR to main |
 | `security-gates.yml` | SAST scanning (Semgrep/CodeQL) | PR/Push |
 | `k8s-dry-run.yml` | Kubernetes manifest validation | PR to main |

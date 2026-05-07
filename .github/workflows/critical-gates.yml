@@ -1,0 +1,125 @@
+name: Critical Gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  EVIDENCE_RETENTION_DAYS: 30
+
+jobs:
+  critical-gates:
+    name: "Critical Gate: ${{ matrix.gate.id }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gate:
+          - id: auth-coverage
+            service: layer3
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/ciso"
+            command: "python -m pytest -q tests/security/test_auth_endpoint_coverage.py --maxfail=1"
+          - id: tenant-isolation-hostile
+            service: layer4
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/backend-leads"
+            command: "python -m pytest -q tests/security/test_tenant_isolation_hostile.py --maxfail=1"
+          - id: openapi-drift
+            service: layer2
+            owner: "@value-fabric/architects"
+            escalation: "@value-fabric/maintainers"
+            command: "python scripts/export_openapi.py && git diff --exit-code contracts/openapi/"
+          - id: production-config-policy
+            service: layer5
+            owner: "@value-fabric/sre-leads"
+            escalation: "@value-fabric/security-leads"
+            command: "make gate-config"
+          - id: production-config-policy-layer6
+            service: layer6
+            owner: "@value-fabric/sre-leads"
+            escalation: "@value-fabric/qa-leads"
+            command: "python -m pytest -q tests/k8s/test_production_blockers.py --maxfail=1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install gate dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pyyaml
+
+      - name: Run gate
+        id: run_gate
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/critical-gates
+          echo "Executing gate ${{ matrix.gate.id }} for ${{ matrix.gate.service }}"
+          set +e
+          bash -lc '${{ matrix.gate.command }}' | tee "artifacts/critical-gates/${{ matrix.gate.id }}.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          export GATE_STATUS="$status"
+          python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+
+          gate_id = os.environ["GATE_ID"]
+          service = os.environ["GATE_SERVICE"]
+          owner = os.environ["GATE_OWNER"]
+          escalation = os.environ["GATE_ESCALATION"]
+          command = os.environ["GATE_COMMAND"]
+          status = int(os.environ["GATE_STATUS"])
+
+          payload = {
+              "gate": gate_id,
+              "service": service,
+              "owner": owner,
+              "escalation": escalation,
+              "command": command,
+              "status": "pass" if status == 0 else "fail",
+              "exit_code": status,
+              "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+          }
+          with open(f"artifacts/critical-gates/{gate_id}.json", "w", encoding="utf-8") as fh:
+              json.dump(payload, fh, indent=2)
+          PY
+          exit "$status"
+        env:
+          GATE_ID: ${{ matrix.gate.id }}
+          GATE_SERVICE: ${{ matrix.gate.service }}
+          GATE_OWNER: ${{ matrix.gate.owner }}
+          GATE_ESCALATION: ${{ matrix.gate.escalation }}
+          GATE_COMMAND: ${{ matrix.gate.command }}
+
+      - name: Upload gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-gate-${{ matrix.gate.id }}
+          path: artifacts/critical-gates/
+          retention-days: ${{ env.EVIDENCE_RETENTION_DAYS }}
+
+  critical-gates-merge-blocker:
+    name: Critical Gates Summary
+    runs-on: ubuntu-latest
+    needs: [critical-gates]
+    if: always()
+    steps:
+      - name: Enforce all critical gates
+        run: |
+          if [ "${{ needs.critical-gates.result }}" != "success" ]; then
+            echo "One or more critical gates failed. Merge is blocked."
+            exit 1
+          fi
+          echo "All critical gates passed."
