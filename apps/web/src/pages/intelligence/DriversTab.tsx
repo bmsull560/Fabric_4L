@@ -39,6 +39,12 @@ export default function DriversTab() {
   }
 
   return <IntelligenceShell account={{ accountName: account?.name ?? "Account", industry: account?.industry ?? "Unknown", revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="drivers" detailContent={selectedDriver ? <div className="space-y-3"><h3 className="text-sm font-bold">{selectedDriver.name}</h3><p className="text-xs text-muted-foreground">{selectedDriver.parentSignal}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}>
+    {persistTab.persistState !== "saved" && (
+      <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs flex items-center justify-between">
+        <span>{persistTab.persistState === "failed" ? "Could not persist drivers tab." : "Drivers tab has unsaved persistence state."}</span>
+        {persistTab.persistState === "failed" && caseId && <button className="underline" onClick={() => persistTab.mutate({ caseId, payload: data ?? { drivers: [] } })}>Retry save</button>}
+      </div>
+    )}
     {drivers.length === 0 ? <SectionCard title="Root Drivers"><div className="text-sm text-muted-foreground">No root-driver output available yet for this case.</div></SectionCard> : <>
       <div className="grid grid-cols-3 gap-4 mb-6">
         <MetricCard label="Root Drivers" value={String(drivers.length)} />
