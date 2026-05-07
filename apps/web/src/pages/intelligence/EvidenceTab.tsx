@@ -12,7 +12,7 @@ import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 type VerificationState = "verified" | "partial" | "unverified";
-interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string; decision_status?: "accepted"|"rejected"|"attached_to_driver"; attached_driver_id?: string }
+interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string; decision_status?: "accepted"|"rejected"|"attached_to_driver"; attached_driver_id?: string; provenance_id?: string; confidence?: number; decision_note?: string }
 const VERIFICATION_CONFIG: Record<VerificationState, { icon: typeof CheckCircle2; color: string }> = { verified: { icon: CheckCircle2, color: "text-green-600" }, partial: { icon: AlertCircle, color: "text-orange-600" }, unverified: { icon: AlertCircle, color: "text-muted-foreground" } };
 
 function useEvidenceTabState() {
@@ -52,6 +52,7 @@ export function EvidenceTabContent() {
   } = useEvidenceTabState();
 
   const [optimisticDecision, setOptimisticDecision] = useState<Record<string, EvidenceItem["decision_status"]>>({});
+  const [modifyNote, setModifyNote] = useState("");
   const [lastFailedAction, setLastFailedAction] = useState<{ evidenceId: string; decision: "accepted"|"rejected"|"attached_to_driver"; driverId?: string } | null>(null);
 
   if (!accountId) {
@@ -126,10 +127,23 @@ export function EvidenceTabContent() {
         </div>
       )}
       {selectedEvidence && (
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 space-y-2">
+          <div className="rounded-md border border-border px-3 py-2 text-xs space-y-1">
+            <div><span className="font-semibold">Source:</span> {selectedEvidence.source}</div>
+            <div><span className="font-semibold">Provenance ID:</span> {selectedEvidence.provenance_id ?? "N/A"}</div>
+            <div><span className="font-semibold">Confidence:</span> {typeof selectedEvidence.confidence === "number" ? `${Math.round(selectedEvidence.confidence * 100)}%` : "N/A"}</div>
+          </div>
+          <div className="flex gap-2">
           <Btn variant="primary" className="h-8" onClick={() => runDecision(selectedEvidence.id, "accepted")} disabled={evidenceDecision.isPending}>Accept</Btn>
           <Btn variant="outline" className="h-8" onClick={() => runDecision(selectedEvidence.id, "rejected")} disabled={evidenceDecision.isPending}>Reject</Btn>
-          <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver", "driver-auto")} disabled={evidenceDecision.isPending}>Attach to driver</Btn>
+          <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver", "driver-auto")} disabled={evidenceDecision.isPending}>Modify</Btn>
+          </div>
+          <input
+            value={modifyNote}
+            onChange={(e) => setModifyNote(e.target.value)}
+            className="w-full border border-border rounded-md px-2 py-1 text-xs"
+            placeholder="Optional modification note"
+          />
         </div>
       )}
     </>
