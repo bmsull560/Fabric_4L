@@ -230,7 +230,6 @@ async def create_account(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except IntegrityError as exc:
-        await db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists") from exc
     return to_detail_schema(account)
 

@@ -8,7 +8,9 @@ on:
       - 'services/**/src/**/routes/**'
       - 'contracts/openapi/**'
       - 'apps/web/src/api/**'
-      - 'apps/web/scripts/generate-api-types.ts'
+      - 'apps/web/scripts/generate-api-types.ts
+      - 'packages/platform-contract/src/typescript/generated/**'
+      - 'packages/platform-contract/scripts/generate-openapi-types.ts''
       - '.github/workflows/generated-api-freshness.yml'
   push:
     branches: [main, develop]
@@ -17,7 +19,9 @@ on:
       - 'services/**/src/**/routes/**'
       - 'contracts/openapi/**'
       - 'apps/web/src/api/**'
-      - 'apps/web/scripts/generate-api-types.ts'
+      - 'apps/web/scripts/generate-api-types.ts
+      - 'packages/platform-contract/src/typescript/generated/**'
+      - 'packages/platform-contract/scripts/generate-openapi-types.ts''
       - '.github/workflows/generated-api-freshness.yml'
   workflow_dispatch:
 
@@ -59,15 +63,16 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          if ! git diff --quiet apps/web/src/api/generated/; then
-            echo "::error::Generated API client files are stale."
+          pnpm --filter ./apps/web run check:no-server-dto-interfaces
+          if ! git diff --quiet packages/platform-contract/src/typescript/generated/; then
+            echo "::error::Generated API type files are stale."
             echo ""
             echo "To fix locally, run:"
             echo "  pnpm run generate:api"
-            echo "  git add apps/web/src/api/generated"
+            echo "  git add packages/platform-contract/src/typescript/generated"
             echo "  git commit"
             echo ""
             node apps/web/scripts/report-generated-type-drift.mjs
             exit 1
           fi
-          echo "✅ Generated API client files are fresh."
+          echo "✅ Generated API type files are fresh."

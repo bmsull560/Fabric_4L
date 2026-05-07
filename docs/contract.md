@@ -45,7 +45,7 @@ Tenant context flows as an immutable request-scoped object established at the au
 - ESLint: `no-tenant-id-parameter` - flags function parameters named tenantId variants
 - ESLint: `no-req-tenant-access` - flags direct header access outside auth middleware
 - Runtime: getTenantContext() returns null outside async scope (fail-safe)
-- Integration test: Cross-tenant isolation test runs on every CI build
+- Integration test: Cross-tenant isolation test runs on every CI build [VERIFY:DOC-TENANT-001]
 
 ---
 
@@ -123,7 +123,7 @@ Request processing pipeline organized as strict ordered stack of eight phases. E
 
 **Contract Rules:**
 - Every route must declare required phases in route manifest
-- Auth phase produces AuthContext; downstream code never re-validates
+- Auth phase produces AuthContext; downstream code never re-validates [VERIFY:DOC-AUTH-001]
 - Rate limiting keyed by tenant_id + endpoint_pattern + identity_hash
 - Request/response validated against OpenAPI spec using generated validators
 - Error responses follow canonical error shape (section 2.5)

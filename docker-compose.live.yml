@@ -1,3 +1,4 @@
+# Credentials must come from secure env injection; see .env.production-compose.template
 # =============================================================================
 # Fabric_4L Live Workflow Validation Stack
 # =============================================================================
@@ -55,7 +56,7 @@ services:
     image: neo4j:5-community
     container_name: vf-live-neo4j
     environment:
-      NEO4J_AUTH: neo4j/devpassword
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_memory_heap_max__size: 1G
       NEO4J_dbms_memory_pagecache_size: 512m
@@ -75,8 +76,8 @@ services:
     container_name: vf-live-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
     volumes:
       - live-minio-data:/data
     networks:

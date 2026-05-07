@@ -1,3 +1,4 @@
+# Credentials must come from secure env injection; see .env.production-compose.template
 # =============================================================================
 # docker-compose.release-smoke.yml — Full L1–L6 Release-Smoke Stack
 # =============================================================================
@@ -19,8 +20,8 @@ x-common-env: &common-env
   ENVIRONMENT: release_smoke
   LOG_LEVEL: warning
   PYTHONUNBUFFERED: "1"
-  JWT_SECRET: release-smoke-secret-with-more-than-32-characters
-  SERVICE_AUTH_SECRET: release-smoke-service-auth-secret-with-more-than-32-characters
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET via secure env}
+  SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:?set SERVICE_AUTH_SECRET via secure env}
   DEV_AUTH_BYPASS: "true"
   ALLOW_INSECURE_DEV_AUTH_BYPASS: "true"
   DEFAULT_TENANT_ID: tenant-release-smoke-a
@@ -45,8 +46,8 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: release_smoke_app
-      POSTGRES_PASSWORD: release_smoke_strong_credential
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: valuefabric
       POSTGRES_MULTIPLE_DATABASES: ingestion,extraction,layer4_agents,ground_truth,benchmarks
     volumes:
@@ -77,7 +78,7 @@ services:
   neo4j:
     image: neo4j:5-community
     environment:
-      NEO4J_AUTH: neo4j/devpassword
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD}
       NEO4J_PLUGINS: '["apoc"]'
     ports:
       - "17474:7474"

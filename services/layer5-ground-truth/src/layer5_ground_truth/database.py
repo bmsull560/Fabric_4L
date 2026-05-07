@@ -127,11 +127,11 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    FastAPI dependency that yields an async database session.
+    Internal-only FastAPI dependency that yields an async database session.
 
     .. warning::
 
-        DEPRECATED — Use ``get_db_from_context`` for all new endpoints.
+        INTERNAL ONLY — Use ``get_db_from_context`` for all tenant routes.
         This dependency does NOT set ``SET LOCAL app.tenant_id``, so RLS
         policies will block all rows.  It is retained only for the
         ``init_db`` / health-check paths that run before tenant context
@@ -144,6 +144,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             ...
     """
     import warnings
+
+    context = get_request_context() if SHARED_IDENTITY_AVAILABLE else None
+    if context is not None and context.tenant_id is not None:
+        raise RuntimeError(
+            "Unsafe get_db() usage detected with tenant request context. "
+            "Tenant-scoped routes must depend on get_db_from_context()."
+        )
+
     warnings.warn(
         "get_db() does not enforce RLS tenant context. "
         "Use get_db_from_context() for tenant-scoped queries.",

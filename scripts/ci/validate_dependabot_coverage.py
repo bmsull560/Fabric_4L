@@ -75,8 +75,9 @@ def load_codeowners() -> str:
 
 
 def normalize_path(path: str) -> str:
-    """Normalize path to use forward slashes and remove leading/trailing slashes."""
-    return path.replace("\\", "/").strip("/")
+    """Normalize path to use forward slashes with ``.`` representing the repo root."""
+    normalized = path.replace("\\", "/").strip("/")
+    return normalized or "."
 
 
 def _pattern_matches_path(pattern: str, path_str: str) -> bool:
@@ -157,6 +158,25 @@ def get_codeowners_owners_for_path(patterns: List[Tuple[str, List[str]]], path_s
     return owners
 
 
+def get_reviewer_owner_lookup_paths(ecosystem: str, directory: str) -> List[str]:
+    """Return CODEOWNERS paths that represent a Dependabot entry."""
+    if ecosystem == "npm":
+        manifest = "package.json"
+    elif ecosystem == "pip":
+        manifest = "pyproject.toml"
+    elif ecosystem == "docker":
+        manifest = "Dockerfile"
+    elif ecosystem == "github-actions":
+        manifest = "workflows"
+    else:
+        return [directory]
+
+    if directory == ".":
+        return [directory, manifest]
+
+    return [directory, f"{directory}/{manifest}"]
+
+
 def validate_reviewer_ownership(
     dependabot_entries: List[Tuple[str, str, List[str]]],
     codeowners_patterns: List[Tuple[str, List[str]]],
@@ -169,7 +189,9 @@ def validate_reviewer_ownership(
     for ecosystem, directory, reviewers in dependabot_entries:
         # Normalize reviewers to bare team names (strip @ if present)
         normalized_reviewers = {r.lstrip("@") for r in reviewers}
-        owners = get_codeowners_owners_for_path(codeowners_patterns, directory)
+        owners: Set[str] = set()
+        for lookup_path in get_reviewer_owner_lookup_paths(ecosystem, directory):
+            owners.update(get_codeowners_owners_for_path(codeowners_patterns, lookup_path))
         normalized_owners = {o.lstrip("@") for o in owners}
         if not normalized_reviewers & normalized_owners:
             mismatches.append(

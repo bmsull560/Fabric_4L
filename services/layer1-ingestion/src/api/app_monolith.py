@@ -45,6 +45,7 @@ from value_fabric.shared.fastapi_framework import (
     add_security_validation_middleware,
 )
 from value_fabric.shared.security import validate_production_safety
+from value_fabric.shared.observability import configure_observability
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -251,6 +252,7 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+configure_observability(app, service_name="layer1-ingestion", readiness_check=lambda: True)
 
 
 @app.exception_handler(HTTPException)

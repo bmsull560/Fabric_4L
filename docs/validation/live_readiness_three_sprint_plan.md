@@ -13,7 +13,7 @@ The implementation sequence follows the live-validation dependency chain. The ba
 |---|---:|---|---|
 | Sprint 1 | P0 | Make the backend-integrated L1–L6 stack start and expose healthy host endpoints. | **Implemented and locally validated:** backend-integrated L1, L2, L3, L5, L6, Postgres, Redis, MinIO, and Neo4j reached healthy status after the readiness, migration, dependency-recovery, and host-gateway fixes. |
 | Sprint 2 | P0 | Make the live frontend and deterministic seed/login path usable against the live backend stack. | **Implemented:** `dev:live`, `seed:live`, guarded live Playwright commands, live compose readiness parity, and live compose syntax validation are in place. Full credential-based UI login remains dependent on the backend auth contract exercised by the live suite. |
-| Sprint 3 | P0 | Automate live workflow validation evidence collection and prevent mock-based false positives. | **Implemented:** `scripts/ci/run_live_workflow_validation.sh` validates compose, blocks mock-enabled runs, waits for service health, writes evidence artifacts, and optionally runs seed plus live P0 Playwright. |
+| Sprint 3 | P0 | Automate live workflow validation evidence collection and prevent mock-based false positives. | **Implemented:** `scripts/ci/run_live_workflow_validation.sh` validates compose, blocks mock-enabled runs, waits for service health, writes evidence artifacts, and optionally runs seed plus live P0 Playwright. [VERIFY:DOC-PROBE-001] |
 
 ## Sprint 1 Backlog: Backend Live-Stack Startup
 
