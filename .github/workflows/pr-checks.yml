@@ -251,6 +251,13 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
 
+      - name: Guard Layer 2 API import ignores
+        run: |
+          if rg -n "^from layer2_extraction\..*# type: ignore" src/layer2_extraction/api; then
+            echo "Disallowed broad type: ignore on layer2_extraction imports in api package"
+            exit 1
+          fi
+
       - name: Run tests with coverage
         run: |
           uv run pytest tests/ -v --tb=short \
