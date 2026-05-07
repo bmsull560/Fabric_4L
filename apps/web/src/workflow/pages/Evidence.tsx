@@ -5,7 +5,7 @@
  */
 import { useMemo, useState } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
-import { useCaseStudies } from "@/hooks/useEvidence";
+import { useCaseStudies, type CaseStudyEvidence } from "@/hooks/useEvidence";
 import {
   Database, Search, CheckCircle2, AlertTriangle,
   Sparkles, ArrowRight, Zap, FileText
@@ -23,10 +23,14 @@ export default function Evidence() {
   const [selectedTier, setSelectedTier] = useState<"all" | "proof" | "supporting">("all");
 
   const { data: evidenceData, isLoading, error } = useCaseStudies({ search });
+  const caseStudies: CaseStudyEvidence[] =
+    evidenceData?.case_studies && Array.isArray(evidenceData.case_studies)
+      ? (evidenceData.case_studies as CaseStudyEvidence[])
+      : [];
 
   const handleContinue = () => {
-    if (evidenceData?.case_studies && Array.isArray(evidenceData.case_studies)) {
-      setEnrichedEntities(evidenceData.case_studies.map((e: any) => ({
+    if (caseStudies.length > 0) {
+      setEnrichedEntities(caseStudies.map((e: CaseStudyEvidence) => ({
         id: e.id,
         name: e.title,
         type: "evidence",
@@ -83,9 +87,9 @@ export default function Evidence() {
               <div className="p-8 text-center text-muted-foreground">Loading evidence library...</div>
             ) : error ? (
               <div className="p-8 text-center text-destructive">Failed to load evidence. Please try again.</div>
-            ) : evidenceData?.case_studies && Array.isArray(evidenceData.case_studies) && evidenceData.case_studies.length > 0 ? (
+            ) : caseStudies.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
-                {evidenceData.case_studies.map((e: any) => (
+                {caseStudies.map((e: CaseStudyEvidence) => (
                   <div key={e.id} className="p-3 rounded-lg border bg-card border-border">
                     <div className="flex items-start justify-between mb-2">
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">Case Study</span>

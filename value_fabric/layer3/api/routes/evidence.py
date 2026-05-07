@@ -303,3 +303,122 @@ async def semantic_search(
     })
 
 
+# ---------------------------------------------------------------------------
+# Evidence-to-Driver Linking
+# ---------------------------------------------------------------------------
+
+class EvidenceLinkRequest(BaseModel):
+    evidence_id: str = Field(..., description="Evidence (case study) identifier")
+    driver_id: str = Field(..., description="Value driver identifier")
+
+
+class EvidenceLinkResponse(BaseModel):
+    evidence_id: str
+    driver_id: str
+    linked: bool
+    linked_at: str
+
+
+@router.post("/links", summary="Link evidence to a value driver")
+async def link_evidence_to_driver(
+    request: EvidenceLinkRequest,
+    tenant_id: str = Depends(get_verified_tenant_id),
+    driver=Depends(get_neo4j_driver),
+) -> EvidenceLinkResponse:
+    """Create a graph relationship between Evidence and ValueDriver.
+
+    Establishes `HAS_EVIDENCE` from ValueDriver to Evidence node,
+    enabling value traceability from driver tree back to proof points.
+    """
+    query = """
+    MATCH (e:Evidence {id: $evidence_id, tenant_id: $tenant_id})
+    MATCH (d:ValueDriver {id: $driver_id, tenant_id: $tenant_id})
+    MERGE (d)-[r:HAS_EVIDENCE]->(e)
+    ON CREATE SET r.linked_at = datetime()
+    RETURN r.linked_at AS linked_at
+    """
+    try:
+        async with driver.session() as session:
+            result = await session.run(query, {
+                "evidence_id": request.evidence_id,
+                "driver_id": request.driver_id,
+                "tenant_id": tenant_id,
+            })
+            record = await result.single()
+            if record is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Evidence or driver not found for tenant",
+                )
+            return EvidenceLinkResponse(
+                evidence_id=request.evidence_id,
+                driver_id=request.driver_id,
+                linked=True,
+                linked_at=record["linked_at"],
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to link evidence to driver", error=str(e), tenant_id=tenant_id)
+        raise HTTPException(status_code=500, detail=f"Link creation failed: {str(e)}")
+
+
+@router.delete("/links", summary="Unlink evidence from a value driver")
+async def unlink_evidence_from_driver(
+    evidence_id: str = Query(..., description="Evidence identifier"),
+    driver_id: str = Query(..., description="Value driver identifier"),
+    tenant_id: str = Depends(get_verified_tenant_id),
+    driver=Depends(get_neo4j_driver),
+) -> dict[str, Any]:
+    """Remove the graph relationship between Evidence and ValueDriver."""
+    query = """
+    MATCH (d:ValueDriver {id: $driver_id, tenant_id: $tenant_id})-[r:HAS_EVIDENCE]->(e:Evidence {id: $evidence_id, tenant_id: $tenant_id})
+    DELETE r
+    RETURN count(r) AS deleted
+    """
+    try:
+        async with driver.session() as session:
+            result = await session.run(query, {
+                "evidence_id": evidence_id,
+                "driver_id": driver_id,
+                "tenant_id": tenant_id,
+            })
+            record = await result.single()
+            deleted = record["deleted"] if record else 0
+            return {"evidence_id": evidence_id, "driver_id": driver_id, "deleted": deleted}
+    except Exception as e:
+        logger.error("Failed to unlink evidence from driver", error=str(e), tenant_id=tenant_id)
+        raise HTTPException(status_code=500, detail=f"Link deletion failed: {str(e)}")
+
+
+@router.get("/links", summary="List evidence links for a driver")
+async def list_evidence_links(
+    driver_id: str = Query(..., description="Value driver identifier"),
+    tenant_id: str = Depends(get_verified_tenant_id),
+    driver=Depends(get_neo4j_driver),
+) -> dict[str, Any]:
+    """Return all Evidence nodes linked to a given ValueDriver."""
+    query = """
+    MATCH (d:ValueDriver {id: $driver_id, tenant_id: $tenant_id})-[:HAS_EVIDENCE]->(e:Evidence)
+    RETURN e.id AS evidence_id, e.title AS evidence_title, e.evidence_type AS evidence_type
+    """
+    try:
+        async with driver.session() as session:
+            result = await session.run(query, {"driver_id": driver_id, "tenant_id": tenant_id})
+            records = await result.data()
+            return {
+                "driver_id": driver_id,
+                "links": [
+                    {
+                        "evidence_id": r["evidence_id"],
+                        "evidence_title": r["evidence_title"],
+                        "evidence_type": r["evidence_type"],
+                    }
+                    for r in records
+                ],
+            }
+    except Exception as e:
+        logger.error("Failed to list evidence links", error=str(e), tenant_id=tenant_id)
+        raise HTTPException(status_code=500, detail=f"Link listing failed: {str(e)}")
+
+

@@ -59,7 +59,26 @@ from .rate_limiter import RedisRateLimiter, RateLimitResult
 from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LIMITS
 
 logger = logging.getLogger(__name__)
+
+
+CANONICAL_ROUTE_LIMIT_TIERS: dict[str, dict[str, int]] = {
+    "auth": {"requests_per_minute": 20, "burst_size": 5},
+    "write": {"requests_per_minute": 80, "burst_size": 15},
+    "expensive_inference": {"requests_per_minute": 25, "burst_size": 5},
+    "admin": {"requests_per_minute": 40, "burst_size": 10},
+    "read": {"requests_per_minute": 300, "burst_size": 50},
+}
 _LEGACY_TEST_TENANT_ID_RE = re.compile(r"^tenant-[a-z0-9]+(?:-[a-z0-9]+)*$")
+_TEST_RUNTIME_SENTINEL_KEYS = ("PYTEST_CURRENT_TEST", "PYTEST_VERSION", "VALUE_FABRIC_TEST_RUNTIME")
+_PRODUCTION_LIKE_MARKER_KEYS = (
+    "KUBERNETES_SERVICE_HOST",
+    "K_SERVICE",
+    "ECS_CONTAINER_METADATA_URI",
+    "ECS_CONTAINER_METADATA_URI_V4",
+    "AWS_EXECUTION_ENV",
+    "DYNO",
+)
+_PRODUCTION_LIKE_ENVIRONMENTS = {"prod", "production", "staging", "stage", "preprod", "pre-production"}
 
 
 def decode_jwt(token: str):
@@ -171,11 +190,28 @@ def audit_protected_routes(app: FastAPI) -> None:
 
 
 def _allow_legacy_test_tenant_ids() -> bool:
-    environment = os.getenv("ENVIRONMENT") or os.getenv("ENV") or os.getenv("APP_ENV") or "development"
-    return (
+    environment = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or os.getenv("APP_ENV") or "development").strip().lower()
+    explicit_test_runtime = any(os.getenv(key, "").strip() for key in _TEST_RUNTIME_SENTINEL_KEYS)
+    production_like_markers_present = any(
+        os.getenv(key, "").strip() for key in _PRODUCTION_LIKE_MARKER_KEYS
+    ) or environment in _PRODUCTION_LIKE_ENVIRONMENTS
+    allowed = (
         os.getenv("ALLOW_LEGACY_TEST_TENANT_IDS", "").strip().lower() == "true"
         or os.getenv("TESTING", "").strip().lower() == "true"
-    ) and environment.strip().lower() not in {"prod", "production", "staging", "stage"}
+    ) and explicit_test_runtime and not production_like_markers_present
+    if allowed:
+        logger.warning(
+            "legacy_tenant_id_mode_enabled",
+            extra={
+                "event": "legacy_tenant_id_mode_enabled",
+                "component": "identity.middleware",
+                "environment": environment,
+                "test_runtime_keys": [
+                    key for key in _TEST_RUNTIME_SENTINEL_KEYS if os.getenv(key, "").strip()
+                ],
+            },
+        )
+    return allowed
 
 
 def _coerce_tenant_id_for_context(raw_tenant_id: Any) -> UUID | str:
@@ -672,6 +708,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             burst_size=rate_limits.get("burst_size", 10),
                             scope=RateLimitScope(rate_limits.get("scope", "tenant")),
                         )
+                        tenant_config = self._apply_canonical_route_tier(request, tenant_config)
                         request.state.rate_limit_config = tenant_config
                         request.state.rate_limit_policy = "tenant_settings"
                         rate_key = self._build_rate_limit_key(request, ctx, tenant_config)
@@ -682,6 +719,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         config = self._resolve_rate_limit_config(request, ctx)
         if config is None:
             return None
+        config = self._apply_canonical_route_tier(request, config)
         request.state.rate_limit_config = config
         request.state.rate_limit_policy = "role_default"
 
@@ -692,12 +730,19 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self, request: Request, ctx: RequestContext, config: RateLimitConfig
     ) -> str:
         """Build a Redis key for the rate limit window."""
-        endpoint_class = self._classify_endpoint(request)
+        route_category = self._classify_endpoint(request)
         if config.scope == RateLimitScope.API_KEY and ctx.api_key_id:
-            return f"ratelimit:api_key:{ctx.api_key_id}:{endpoint_class}"
+            return (
+                f"ratelimit:tenant:{ctx.tenant_id}:"
+                f"user:{ctx.user_id}:api_key:{ctx.api_key_id}:"
+                f"route:{route_category}"
+            )
         if config.scope == RateLimitScope.USER and ctx.user_id:
-            return f"ratelimit:user:{ctx.tenant_id}:{ctx.user_id}:{endpoint_class}"
-        return f"ratelimit:tenant:{ctx.tenant_id}:{endpoint_class}"
+            return (
+                f"ratelimit:tenant:{ctx.tenant_id}:"
+                f"user:{ctx.user_id}:route:{route_category}"
+            )
+        return f"ratelimit:tenant:{ctx.tenant_id}:route:{route_category}"
 
     def _classify_endpoint(self, request: Request) -> str:
         path = request.url.path
@@ -707,10 +752,24 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         if path.startswith("/v1/tenants") or path.startswith("/v1/users") or path.startswith("/v1/admin"):
             return "admin"
         if path.startswith(("/v1/analysis", "/v1/workflows", "/v1/intelligence", "/v1/narratives", "/v1/hypotheses")):
-            return "expensive_compute"
+            return "expensive_inference"
         if method in {"POST", "PUT", "PATCH", "DELETE"}:
             return "write"
         return "read"
+
+    def _apply_canonical_route_tier(
+        self, request: Request, config: RateLimitConfig
+    ) -> RateLimitConfig:
+        route_category = self._classify_endpoint(request)
+        route_tier = CANONICAL_ROUTE_LIMIT_TIERS.get(route_category)
+        if route_tier is None:
+            return config
+        return RateLimitConfig(
+            requests_per_minute=min(config.requests_per_minute, route_tier["requests_per_minute"]),
+            requests_per_hour=config.requests_per_hour,
+            burst_size=min(config.burst_size, route_tier["burst_size"]),
+            scope=config.scope,
+        )
 
 # Merged from root shared/identity/middleware.py
 TenantContextMiddleware = GovernanceMiddleware

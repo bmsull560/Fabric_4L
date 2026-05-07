@@ -19,7 +19,7 @@ from .websocket import websocket_router
 logger = logging.getLogger(__name__)
 
 
-def create_app(*, lifespan):
+def create_app(*, lifespan, rate_limiter=None):
     app = create_fabric_app(
         service_name="layer2-extraction",
         title="Value Fabric - Extraction Pipeline",
@@ -33,7 +33,11 @@ def create_app(*, lifespan):
 
     security_config = SecurityConfig.from_env(skip_validation_paths=frozenset({"/health", "/metrics"}), strict_mode=True)
     add_security_middleware(app, config=security_config)
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=None)
+    app.add_middleware(
+        GovernanceMiddleware,
+        api_key_resolver=reject_api_key_unsupported,
+        rate_limiter=rate_limiter,
+    )
     install_metrics_middleware(app, metrics=initialize_metrics(), middleware_factory=MetricsMiddleware, logger=logger)
 
     app.include_router(websocket_router, prefix="/v1")

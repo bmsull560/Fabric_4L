@@ -310,7 +310,16 @@ export const QK = {
     stats: () => ["hypotheses", "stats"] as const,
   },
 
-  // L4 — Narratives
+  
+  intelligenceDecisions: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
+    all: ["intelligence-decisions"] as const,
+    signalReview: (scope: { tenantId?: string; accountId?: string; caseId?: string; signalId?: string }) =>
+      ["intelligence-decisions", "signal-review", stableKey(scope)] as const,
+    evidenceDecision: (scope: { tenantId?: string; accountId?: string; caseId?: string; evidenceId?: string }) =>
+      ["intelligence-decisions", "evidence", stableKey(scope)] as const,
+  },
+// L4 — Narratives
   narratives: {
     all: ["narratives"] as const,
     list: (filters: NarrativeListFilters) =>

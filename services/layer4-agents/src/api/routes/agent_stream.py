@@ -19,11 +19,13 @@ import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from opentelemetry import trace
 from pydantic import BaseModel, ConfigDict, Field
 from value_fabric.shared.error_handling.middleware import get_request_id
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
+from ..common.db import get_route_db
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +105,7 @@ class AgentStreamResponse(BaseModel):
 _conversation_service = None
 
 
-def _get_conversation_service():
+def _get_conversation_service(context_gatherer=None):
     """Lazy-initialize the ConversationService singleton.
 
     The service is created once and reused across requests. Agent
@@ -112,6 +114,10 @@ def _get_conversation_service():
     """
     global _conversation_service
     if _conversation_service is not None:
+        # If a context_gatherer was provided but the cached service doesn't have one,
+        # update it. This handles the first request that has DB/Neo4j access.
+        if context_gatherer and _conversation_service.context_gatherer is None:
+            _conversation_service.context_gatherer = context_gatherer
         return _conversation_service
 
     from ..services.conversation import ConversationService
@@ -144,13 +150,15 @@ def _get_conversation_service():
         conversation_agent=conversation_agent,
         orchestration_controller=orchestration_controller,
         c1_enabled=c1_enabled,
+        context_gatherer=context_gatherer,
     )
 
     logger.info(
-        "ConversationService initialized: agent=%s, orchestrator=%s, c1=%s",
+        "ConversationService initialized: agent=%s, orchestrator=%s, c1=%s, context=%s",
         conversation_agent is not None,
         orchestration_controller is not None,
         c1_enabled,
+        context_gatherer is not None,
     )
 
     return _conversation_service
@@ -166,6 +174,7 @@ async def agent_stream_chat(
     payload: AgentStreamRequest,
     request: Request,
     ctx: RequestContext = Depends(require_authenticated),
+    db: AsyncSession = Depends(get_route_db),
 ) -> AgentStreamResponse:
     """Handle RightRail chat payload through the ConversationService pipeline.
 
@@ -232,8 +241,15 @@ async def agent_stream_chat(
     # Build message list for context
     messages = [{"role": m.role, "content": m.content} for m in payload.messages]
 
+    # Build context gatherer with real DB + Neo4j access
+    neo4j_driver = getattr(request.app.state, "neo4j_driver", None)
+    context_gatherer = None
+    if neo4j_driver or db:
+        from ...services.context_gatherer import ContextGatheringService
+        context_gatherer = ContextGatheringService(neo4j_driver=neo4j_driver, db=db)
+
     # Delegate to ConversationService
-    service = _get_conversation_service()
+    service = _get_conversation_service(context_gatherer=context_gatherer)
     result = await service.handle_message(
         user_message=last_user_message,
         messages=messages,

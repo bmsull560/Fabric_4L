@@ -1,0 +1,33 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "HTTP 429 Rate",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(rate(value_fabric_http_requests_total{status_code=\"429\"}[5m]))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Top Throttled Tenants",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "topk(10, sum by (tenant_id) (rate(value_fabric_http_requests_total{status_code=\"429\",tenant_id!=\"\"}[5m])))", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Auth Route Throttle Pattern",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "targets": [{"expr": "sum(rate(value_fabric_http_requests_total{status_code=\"429\",route_category=\"auth\"}[5m]))", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["rate-limit", "security", "tenants"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "",
+  "title": "Rate Limiting Observability",
+  "uid": "rate-limiting-observability",
+  "version": 1
+}

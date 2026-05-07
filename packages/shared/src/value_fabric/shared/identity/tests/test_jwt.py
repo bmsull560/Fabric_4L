@@ -58,37 +58,22 @@ class TestTokenClaims:
 
 
 class TestJwtSecretValidation:
-    """Tests for strict JWT_SECRET validation behavior."""
+    """Tests for strict JWT_SECRET required behavior."""
 
-    def test_non_local_env_missing_secret_raises(self):
+    def test_missing_secret_raises_in_production(self):
         with patch.dict(os.environ, {"ENV": "production"}, clear=True):
-            with pytest.raises(RuntimeError, match="JWT_SECRET must be set"):
+            with pytest.raises(RuntimeError, match="JWT_SECRET is required"):
                 _get_jwt_secret()
 
-    def test_non_local_env_default_secret_raises(self):
-        with patch.dict(
-            os.environ,
-            {"APP_ENV": "staging", "JWT_SECRET": "changeme-in-production"},
-            clear=True,
-        ):
-            with pytest.raises(RuntimeError, match="JWT_SECRET must be set"):
-                _get_jwt_secret()
-
-    def test_local_env_missing_secret_warns_and_uses_default(self, caplog):
+    def test_missing_secret_raises_in_local(self):
         with patch.dict(os.environ, {"ENV": "local"}, clear=True):
-            secret = _get_jwt_secret()
-        assert secret == "changeme-in-production"
-        assert "default development value in local/dev mode" in caplog.text
+            with pytest.raises(RuntimeError, match="JWT_SECRET is required"):
+                _get_jwt_secret()
 
-    def test_dev_env_default_secret_warns_and_uses_default(self, caplog):
-        with patch.dict(
-            os.environ,
-            {"APP_ENV": "dev", "JWT_SECRET": "changeme-in-production"},
-            clear=True,
-        ):
-            secret = _get_jwt_secret()
-        assert secret == "changeme-in-production"
-        assert "default development value in local/dev mode" in caplog.text
+    def test_missing_secret_raises_in_test(self):
+        with patch.dict(os.environ, {"APP_ENV": "test"}, clear=True):
+            with pytest.raises(RuntimeError, match="JWT_SECRET is required"):
+                _get_jwt_secret()
 
 
 # ---------------------------------------------------------------------------
@@ -210,9 +195,26 @@ class TestDecodeJwt:
         assert decode_jwt("not.a.jwt") is None
         assert decode_jwt("") is None
 
+    @pytest.mark.parametrize(
+        "env_overrides",
+        [
+            {"ENVIRONMENT": "staging", "ALLOW_LEGACY_TEST_TENANT_IDS": "true", "PYTEST_CURRENT_TEST": "x"},
+            {"ENVIRONMENT": "production", "TESTING": "true", "PYTEST_CURRENT_TEST": "x"},
+            {"ENVIRONMENT": "development", "ALLOW_LEGACY_TEST_TENANT_IDS": "true", "KUBERNETES_SERVICE_HOST": "10.0.0.1", "PYTEST_CURRENT_TEST": "x"},
+        ],
+    )
+    def test_non_uuid_tenant_rejected_in_prod_like_matrices(self, env_overrides):
+        token = pyjwt.encode(
+            {"tenant_id": "tenant-a", "exp": int(time.time()) + 3600},
+            _TEST_SECRET,
+            algorithm="HS256",
+        )
+        with patch.dict(os.environ, env_overrides, clear=False):
+            assert decode_jwt(token) is None
+
 
 class TestJwtSecretPolicy:
-    """Tests for environment-sensitive JWT secret policy."""
+    """Tests for fail-closed JWT secret policy."""
 
     def test_non_dev_raises_when_secret_unset(self):
         with patch.dict(
@@ -223,25 +225,7 @@ class TestJwtSecretPolicy:
             with pytest.raises(RuntimeError, match="JWT_SECRET is required"):
                 _get_jwt_secret()
 
-    def test_non_dev_raises_when_secret_default(self):
-        with patch.dict(
-            os.environ,
-            {
-                "ENVIRONMENT": "staging",
-                "JWT_SECRET": "changeme-in-production",
-            },
-            clear=True,
-        ):
-            with pytest.raises(RuntimeError, match="must not use the default"):
-                _get_jwt_secret()
-
-    def test_test_environment_allows_default(self):
-        with patch.dict(
-            os.environ,
-            {
-                "APP_ENV": "test",
-                "JWT_SECRET": "changeme-in-production",
-            },
-            clear=True,
-        ):
-            assert _get_jwt_secret() == "changeme-in-production"
+    def test_token_operations_fail_without_explicit_secret(self):
+        with patch.dict(os.environ, {"APP_ENV": "test"}, clear=True):
+            with pytest.raises(RuntimeError, match="JWT_SECRET is required"):
+                encode_jwt(_TEST_TENANT)

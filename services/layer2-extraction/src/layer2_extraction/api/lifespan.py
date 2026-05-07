@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
+from ..startup_dependencies import verify_startup_dependencies
 from ..shared_bootstrap import validate_production_safety
 
 logger = logging.getLogger(__name__)
@@ -34,15 +35,28 @@ async def _init_redis_rate_limiter(is_production_like, current_environment) -> R
         return None
 
 
-def create_lifespan(*, is_production_like, current_environment, pending_ingestion_retry_loop, ws_manager):
+def create_lifespan(
+    *,
+    is_production_like,
+    current_environment,
+    pending_ingestion_retry_loop,
+    ws_manager,
+    rate_limiter_proxy=None,
+):
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         global redis_rate_limiter, _retry_task
         validate_production_safety()
+        verify_startup_dependencies()
+
+        if getattr(app.state, "telemetry_provider", None) is not None:
+            logger.info("L2: OpenTelemetry tracing available (initialized by app factory)")
 
         redis = await _init_redis_rate_limiter(is_production_like, current_environment)
         redis_rate_limiter = redis
         app.state.redis_rate_limiter = redis
+        if rate_limiter_proxy is not None:
+            rate_limiter_proxy.bind(redis)
 
         if os.getenv("ENVIRONMENT", "development") == "production":
             vault_addr = os.getenv("VAULT_ADDR")
@@ -64,5 +78,9 @@ def create_lifespan(*, is_production_like, current_environment, pending_ingestio
             _retry_task = None
 
         await ws_manager.stop()
+
+        if getattr(app.state, "telemetry_provider", None) is not None:
+            app.state.telemetry_provider.shutdown()
+            app.state.telemetry_provider = None
 
     return lifespan

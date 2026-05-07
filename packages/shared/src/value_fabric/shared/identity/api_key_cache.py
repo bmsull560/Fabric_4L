@@ -12,21 +12,26 @@ import os
 from uuid import UUID
 
 import redis.asyncio as redis
+from value_fabric.shared.security.config import is_production_like_environment
 
 logger = logging.getLogger(__name__)
 
 # SECURITY: Secret key for HMAC-SHA256 key fingerprinting
 # Must be set in production to prevent key hash collisions
-_API_KEY_CACHE_SECRET = os.getenv("API_KEY_CACHE_SECRET")
+_CACHE_KEY_VERSION = "v2"
+_CACHE_KEY_NAMESPACE = "apikey"
+_API_KEY_FINGERPRINT_SECRET = "API_KEY_FINGERPRINT_SECRET"
 
 
 def _get_cache_secret() -> str:
-    secret = _API_KEY_CACHE_SECRET
+    secret = os.getenv(_API_KEY_FINGERPRINT_SECRET, "")
     if not secret:
-        raise RuntimeError(
-            "API_KEY_CACHE_SECRET environment variable is required. "
-            "Generate a 32+ byte random secret and set it before startup."
-        )
+        if is_production_like_environment():
+            raise RuntimeError(
+                "API_KEY_FINGERPRINT_SECRET environment variable is required in "
+                "production-like environments. Generate a 32+ byte random secret."
+            )
+        return "dev-insecure-api-key-fingerprint-secret"
     return secret
 
 # Redis client singleton
@@ -66,7 +71,7 @@ def _build_api_key_cache_key(api_key: str, tenant_id: UUID) -> str:
         api_key.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()[:32]  # First 32 chars (128 bits) sufficient for cache keys
-    return f"apikey:tenant:{tenant_id}:hash:{key_hash}"
+    return f"{_CACHE_KEY_NAMESPACE}:{_CACHE_KEY_VERSION}:tenant:{tenant_id}:hash:{key_hash}"
 
 
 async def validate_api_key(

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
-import time
-import json
 import re
+import time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -19,11 +19,13 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 class get_jwksResult(TypedDictModel):
     keys: list[Any]
 
+
 class _build_keysetResult(TypedDictModel):
     active_kid: Any
     algorithm: Any
     signing_key: Any
     verify: Any
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,8 @@ _DEFAULT_TENANT_CLAIM = "tenant_id"
 _DEFAULT_USER_CLAIM = "sub"
 _DEFAULT_ROLES_CLAIM = "roles"
 _DEFAULT_JWT_SECRET = "changeme-in-production"
+_DEFAULT_INTERNAL_ISSUER = "value-fabric-internal"
+_DEFAULT_INTERNAL_AUDIENCE = "value-fabric-services"
 
 _DEVELOPMENT_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
 _ENV_KEYS = ("ENVIRONMENT", "ENV", "APP_ENV", "VF_ENV", "VALUE_FABRIC_ENV", "PYTHON_ENV")
@@ -51,15 +55,6 @@ def _is_non_dev_environment() -> bool:
 
 
 def _allow_legacy_test_tenant_ids() -> bool:
-    """Allow legacy string tenant fixtures only in explicit test execution.
-
-    Production and staging deployments continue to require canonical UUID tenant
-    identifiers. This compatibility path is limited to repository tests whose
-    older fixtures still use values such as ``tenant-a`` while the active runtime
-    contract remains UUID-backed.  The pytest runtime guard keeps production
-    fail-closed even if a broad ``TESTING`` flag is accidentally present beside a
-    production-like environment name.
-    """
     explicit_test_flag = (
         os.getenv("ALLOW_LEGACY_TEST_TENANT_IDS", "").strip().lower() == "true"
         or os.getenv("TESTING", "").strip().lower() == "true"
@@ -82,10 +77,7 @@ def _get_jwt_secret() -> str:
                 "JWT_SECRET is required in non-development environments. "
                 f"Detected environment: {env}."
             )
-        logger.warning(
-            "JWT_SECRET is unset in %s; using local development fallback.",
-            env,
-        )
+        logger.warning("JWT_SECRET is unset in %s; using local development fallback.", env)
         return _DEFAULT_JWT_SECRET
 
     if secret == _DEFAULT_JWT_SECRET:
@@ -94,17 +86,17 @@ def _get_jwt_secret() -> str:
                 "JWT_SECRET must not use the default value in non-development "
                 f"environments. Detected environment: {env}."
             )
-        logger.warning(
-            "JWT_SECRET is using the default development value in %s.",
-            env,
-        )
+        logger.warning("JWT_SECRET is using the default development value in %s.", env)
 
     return secret
 
 
 def _get_jwt_algorithm() -> str:
-    """Get the JWT signing algorithm from environment or default."""
     return os.getenv("JWT_ALGORITHM", _DEFAULT_ALGORITHM).strip().upper()
+
+
+def _get_revoked_kids() -> set[str]:
+    return {kid.strip() for kid in os.getenv("JWT_REVOKED_KIDS", "").split(",") if kid.strip()}
 
 
 def _build_keyset() -> Dict[str, Any]:
@@ -152,73 +144,92 @@ def get_jwks() -> Dict[str, Any]:
     return get_jwksResult.model_validate({"keys": keys})
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
+def _resolve_external_key(header: Dict[str, Any], issuer: str) -> Optional[Any]:
+    kid = header.get("kid")
+    if not kid:
+        return None
+    if kid in _get_revoked_kids():
+        return None
+    jwks_raw = os.getenv("OIDC_JWKS_JSON", "").strip()
+    if not jwks_raw:
+        return None
+    try:
+        jwks = json.loads(jwks_raw)
+    except json.JSONDecodeError:
+        logger.warning("OIDC_JWKS_JSON is invalid JSON")
+        return None
+    for key in jwks.get("keys", []):
+        if key.get("kid") == kid:
+            return jwt.algorithms.get_default_algorithms()[key.get("alg", "RS256")].from_jwk(json.dumps(key))
+    logger.debug("No JWKS key found for kid=%s issuer=%s", kid, issuer)
+    return None
 
 
 def decode_jwt(token: str) -> Optional[TokenClaims]:
-    """Verify and decode a JWT.
-
-    Returns:
-        ``TokenClaims`` on success, ``None`` if the token is malformed or
-        the signature is invalid.
-
-    Raises:
-        ``HTTPException(401)`` if the token has expired (so callers can
-        propagate an informative error to the client).
-    """
     keyset = _build_keyset()
     algorithm = keyset["algorithm"]
     tenant_claim = os.getenv("JWT_TENANT_CLAIM", _DEFAULT_TENANT_CLAIM)
     user_claim = os.getenv("JWT_USER_CLAIM", _DEFAULT_USER_CLAIM)
     roles_claim = os.getenv("JWT_ROLES_CLAIM", _DEFAULT_ROLES_CLAIM)
+    internal_issuer = os.getenv("JWT_ISSUER", _DEFAULT_INTERNAL_ISSUER)
+    internal_audience = os.getenv("JWT_AUDIENCE", _DEFAULT_INTERNAL_AUDIENCE)
+    oidc_issuer = os.getenv("OIDC_ISSUER", "").strip()
+    oidc_audience = os.getenv("OIDC_AUDIENCE", "").strip()
 
     try:
         header = jwt.get_unverified_header(token)
+        unverified = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
+        issuer = unverified.get("iss")
+        audience = oidc_audience if oidc_issuer and issuer == oidc_issuer else internal_audience
+        expected_issuer = oidc_issuer if oidc_issuer and issuer == oidc_issuer else internal_issuer
+
+        if issuer != expected_issuer:
+            logger.debug("Unexpected JWT issuer: %s", issuer)
+            return None
+
         kid = header.get("kid")
-        verify_keys = keyset["verify"]
-        if kid and kid in verify_keys:
-            candidates = [verify_keys[kid]]
-        elif kid and kid not in verify_keys:
-            logger.debug("JWT kid not recognized: %s", kid)
+        if kid and kid in _get_revoked_kids():
+            logger.debug("JWT kid revoked: %s", kid)
             return None
+
+        if expected_issuer == oidc_issuer:
+            verify_key = _resolve_external_key(header, issuer)
+            if verify_key is None:
+                return None
+            payload = jwt.decode(token, verify_key, algorithms=[header.get("alg", "RS256")], audience=audience, issuer=expected_issuer)
         else:
-            candidates = list(verify_keys.values())
-        payload = None
-        for key in candidates:
-            try:
-                payload = jwt.decode(token, key, algorithms=[algorithm], options={"verify_exp": True})
-                break
-            except jwt.ExpiredSignatureError:
-                raise
-            except jwt.InvalidTokenError:
-                continue
-        if payload is None:
-            return None
+            verify_keys = keyset["verify"]
+            if kid and kid in verify_keys:
+                candidates = [verify_keys[kid]]
+            elif kid and kid not in verify_keys:
+                return None
+            else:
+                candidates = list(verify_keys.values())
+            payload = None
+            for key in candidates:
+                try:
+                    payload = jwt.decode(token, key, algorithms=[algorithm], audience=audience, issuer=expected_issuer)
+                    break
+                except jwt.ExpiredSignatureError:
+                    raise
+                except jwt.InvalidTokenError:
+                    continue
+            if payload is None:
+                return None
     except jwt.ExpiredSignatureError:
-        logger.debug("JWT has expired")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.InvalidTokenError as exc:
-        logger.debug("JWT validation failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired.", headers={"WWW-Authenticate": "Bearer"})
+    except jwt.InvalidTokenError:
         return None
 
     raw_tenant = payload.get(tenant_claim)
     if not raw_tenant:
-        logger.debug("JWT missing '%s' claim", tenant_claim)
         return None
-
     try:
         tenant_id: UUID | str = UUID(str(raw_tenant))
     except (ValueError, AttributeError):
         if _allow_legacy_test_tenant_ids() and _LEGACY_TEST_TENANT_ID_RE.fullmatch(str(raw_tenant)):
             tenant_id = str(raw_tenant)
         else:
-            logger.debug("JWT '%s' claim is not a valid UUID: %r", tenant_claim, raw_tenant)
             return None
 
     roles = payload.get(roles_claim, [])
@@ -227,25 +238,13 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
     if isinstance(roles, str):
         roles = [roles]
     roles = normalize_role_claims(roles)
-
-    # Extract standard claims
     exp = payload.get("exp")
     iat = payload.get("iat")
     jti = payload.get("jti")
-    
-    # Build extra_claims from remaining fields
     standard_claims = {tenant_claim, user_claim, roles_claim, "role", "exp", "iat", "jti", "api_key_id"}
     extra: Dict[str, Any] = {k: v for k, v in payload.items() if k not in standard_claims}
-    
-    return TokenClaims(
-        sub=payload.get(user_claim, ""),
-        tenant_id=str(tenant_id) if tenant_id else None,
-        roles=roles if isinstance(roles, list) else [roles] if roles else [],
-        exp=exp if isinstance(exp, int) else None,
-        iat=iat if isinstance(iat, int) else None,
-        jti=jti if isinstance(jti, str) else None,
-        extra_claims=extra,
-    )
+
+    return TokenClaims(sub=payload.get(user_claim, ""), tenant_id=str(tenant_id) if tenant_id else None, roles=roles if isinstance(roles, list) else [roles] if roles else [], exp=exp if isinstance(exp, int) else None, iat=iat if isinstance(iat, int) else None, jti=jti if isinstance(jti, str) else None, extra_claims=extra)
 
 
 def encode_jwt(
@@ -257,21 +256,18 @@ def encode_jwt(
     extra_claims: Optional[dict] = None,
     expires_in_seconds: int = 3600,
 ) -> str:
-    """Create a signed JWT for the given identity.
-
-    Used by the Tenant Service when issuing tokens during login / key rotation.
-    """
     keyset = _build_keyset()
     algorithm = keyset["algorithm"]
     tenant_claim = os.getenv("JWT_TENANT_CLAIM", _DEFAULT_TENANT_CLAIM)
     user_claim = os.getenv("JWT_USER_CLAIM", _DEFAULT_USER_CLAIM)
     roles_claim = os.getenv("JWT_ROLES_CLAIM", _DEFAULT_ROLES_CLAIM)
-
     now = int(time.time())
     payload: dict = {
         tenant_claim: str(tenant_id),
         "iat": now,
         "exp": now + expires_in_seconds,
+        "iss": os.getenv("JWT_ISSUER", _DEFAULT_INTERNAL_ISSUER),
+        "aud": os.getenv("JWT_AUDIENCE", _DEFAULT_INTERNAL_AUDIENCE),
     }
     if user_id is not None:
         payload[user_claim] = user_id

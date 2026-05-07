@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { CaseStudyEvidence } from "@/hooks/useEvidence";
 import {
   parseBulkImportResponse,
   parseCaseStudy,
@@ -42,6 +43,17 @@ const backendCaseStudy = {
   linked_signals: ["slow onboarding"],
 };
 
+const workflowEvidenceFixture = {
+  case_studies: [
+    {
+      id: "case-study-1",
+      title: "Acme reduced onboarding time with Fabric",
+      industry: "Healthcare",
+      year: 2026,
+    },
+  ],
+} satisfies { case_studies: CaseStudyEvidence[] };
+
 describe("evidence schemas", () => {
   it("parses backend-shaped case-study detail payloads", () => {
     const parsed = parseCaseStudy(backendCaseStudy);
@@ -65,6 +77,11 @@ describe("evidence schemas", () => {
     expect(parsed.items[0]?.title).toBe(
       "Acme reduced onboarding time with Fabric"
     );
+  });
+
+  it("keeps workflow case-study fixture aligned to UI evidence contract", () => {
+    expect(workflowEvidenceFixture.case_studies[0]?.id).toBe("case-study-1");
+    expect(workflowEvidenceFixture.case_studies[0]?.year).toBe(2026);
   });
 
   it("parses create and update mutation acknowledgement payloads", () => {

@@ -117,6 +117,21 @@ class TestContextExtraction:
         
         with pytest.raises(ValueError, match="Invalid.*tenant_id"):
             extract_context_from_jwt(jwt_payload)
+
+    @pytest.mark.parametrize(
+        "env_overrides",
+        [
+            {"ENVIRONMENT": "staging", "ALLOW_LEGACY_TEST_TENANT_IDS": "true", "PYTEST_CURRENT_TEST": "x"},
+            {"ENVIRONMENT": "production", "TESTING": "true", "PYTEST_CURRENT_TEST": "x"},
+            {"ENVIRONMENT": "development", "ALLOW_LEGACY_TEST_TENANT_IDS": "true", "K_SERVICE": "svc", "PYTEST_CURRENT_TEST": "x"},
+        ],
+    )
+    def test_non_uuid_tenant_rejected_in_prod_like_middleware_matrices(self, env_overrides):
+        from value_fabric.shared.identity.middleware import extract_context_from_jwt
+
+        with patch.dict("os.environ", env_overrides, clear=False):
+            with pytest.raises(ValueError, match="Invalid tenant_id"):
+                extract_context_from_jwt({"sub": str(uuid4()), "tenant_id": "tenant-a"})
     
     @pytest.mark.asyncio
     async def test_conflicting_tenant_ids_in_headers_raises_error(self):

@@ -357,3 +357,36 @@ groups:
           description: "The API health check for {{ $labels.job }} has been reporting unhealthy for more than 2 minutes"
           escalation_policy: "pagerduty-immediate"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/service-down.md"
+
+      # Rate limiting anomaly alerts
+      - alert: ThrottlingAnomalySpike
+        expr: |
+          sum(rate(value_fabric_http_requests_total{status_code="429"}[5m]))
+          /
+          clamp_min(sum(rate(value_fabric_http_requests_total[5m])), 0.001) > 0.20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Throttling anomaly spike detected"
+          description: "429 ratio is above 20% for 10 minutes; investigate rate-limit regressions or traffic spikes."
+
+      - alert: HotTenantThrottling
+        expr: |
+          topk(1, sum by (tenant_id) (rate(value_fabric_http_requests_total{status_code="429",tenant_id!=""}[10m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Hot tenant throttling detected"
+          description: "A single tenant is receiving sustained throttling pressure (>2 req/s of 429s over 10m)."
+
+      - alert: AuthBruteforcePattern
+        expr: |
+          sum(rate(value_fabric_http_requests_total{status_code="429",route_category="auth"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Potential auth brute-force pattern"
+          description: "High auth-route throttling indicates possible credential stuffing or brute-force attacks."

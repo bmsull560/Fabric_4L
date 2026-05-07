@@ -136,10 +136,12 @@ class ConversationService:
         conversation_agent: Any | None = None,
         orchestration_controller: Any | None = None,
         c1_enabled: bool = False,
+        context_gatherer: Any | None = None,
     ) -> None:
         self.conversation_agent = conversation_agent
         self.orchestration_controller = orchestration_controller
         self.c1_enabled = c1_enabled
+        self.context_gatherer = context_gatherer
 
     async def handle_message(
         self,
@@ -213,6 +215,7 @@ class ConversationService:
             account_id=account_id,
             entity_context=entity_context or {},
             gate_context=gate_context,
+            tenant_id=tenant_id,
         )
 
         # Step 3: Check if this intent should trigger a workflow
@@ -307,8 +310,10 @@ class ConversationService:
         account_id: str | None,
         entity_context: dict[str, Any],
         gate_context: dict[str, Any],
+        tenant_id: str = "default",
     ) -> dict[str, Any]:
-        """Gather relevant context using ConversationAgent or return minimal context."""
+        """Gather relevant context using ConversationAgent, ContextGatheringService, or minimal fallback."""
+        # Strategy 1: GATE ConversationAgent
         if self.conversation_agent and account_id:
             try:
                 result = await self.conversation_agent.execute(
@@ -330,6 +335,22 @@ class ConversationService:
             except Exception:
                 logger.warning("ConversationAgent context gathering failed")
 
+        # Strategy 2: ContextGatheringService (real DB/Neo4j queries)
+        if self.context_gatherer and account_id:
+            try:
+                context_data = await self.context_gatherer.gather(
+                    account_id=account_id,
+                    tenant_id=tenant_id,
+                    industry=entity_context.get("industry") if isinstance(entity_context, dict) else None,
+                )
+                context_data["intent"] = intent
+                context_data["entities"] = entities
+                context_data.setdefault("entity_context", entity_context)
+                return context_data
+            except Exception:
+                logger.warning("ContextGatheringService failed, falling back to minimal")
+
+        # Strategy 3: Minimal fallback
         return ConversationService__gather_contextResult.model_validate({
             "intent": intent,
             "entities": entities,
