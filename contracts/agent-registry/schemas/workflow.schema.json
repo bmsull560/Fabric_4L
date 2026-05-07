@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/agent-registry/schemas/workflow.schema.json",
+  "title": "Fabric 4L Workflow State Machine Contract",
+  "allOf": [
+    {
+      "$ref": "./base-contract.schema.json"
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "kind": {
+      "const": "workflow"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk_class": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "regulated"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compatibility": {
+      "type": "object"
+    },
+    "observability": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    },
+    "workflow_type": {
+      "type": "string"
+    },
+    "source_path": {
+      "type": "string"
+    },
+    "entry_point": {
+      "type": "string"
+    },
+    "states": {
+      "type": "array"
+    },
+    "transitions": {
+      "type": "array"
+    },
+    "invariants": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "kind",
+    "owner",
+    "risk_class",
+    "description",
+    "compatibility",
+    "observability",
+    "governance",
+    "workflow_type",
+    "source_path",
+    "entry_point",
+    "states",
+    "transitions",
+    "invariants"
+  ]
+}

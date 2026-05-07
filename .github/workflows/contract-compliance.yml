@@ -22,8 +22,10 @@ on:
       - 'services/**/src/**'
       - 'packages/platform-contract/**'
       - 'contracts/openapi/**'
+      - 'contracts/agent-registry/**'
       - 'tests/contract/**'
       - 'scripts/ci/platform_contract_lint.py'
+      - 'scripts/ci/check_agent_registry.py'
       - '.github/workflows/contract-compliance.yml'
   schedule:
     # Run daily at 03:00 UTC (consolidated from 02:00 and 03:00)
@@ -232,6 +234,10 @@ jobs:
 
       - name: Run Platform Contract Lint
         run: python scripts/ci/platform_contract_lint.py
+
+      - name: Run Agent Registry Contract Validation
+        run: python scripts/ci/check_agent_registry.py
+        # Phase 1 registry coverage starts in warning mode; malformed contracts still fail.
 
       - name: Run Strict Shared-Import Enforcement
         run: python scripts/ci/check_shared_imports.py --strict --scope runtime

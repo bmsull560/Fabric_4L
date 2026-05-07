@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/agent-registry/schemas/base-contract.schema.json",
+  "title": "Fabric 4L Agent Registry Base Contract Metadata",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "agent_output",
+        "prompt",
+        "tool",
+        "workflow",
+        "memory_object",
+        "reasoning_policy"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk_class": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "regulated"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "compatibility": {
+      "type": "object"
+    },
+    "observability": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "kind",
+    "owner",
+    "risk_class",
+    "description",
+    "compatibility",
+    "observability",
+    "governance"
+  ]
+}

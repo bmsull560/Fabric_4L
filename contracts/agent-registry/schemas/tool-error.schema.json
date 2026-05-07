@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/agent-registry/schemas/tool-error.schema.json",
+  "title": "Fabric 4L Tool Error Envelope",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "error": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "recoverable": {
+      "type": "boolean"
+    },
+    "provenance": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "error",
+    "recoverable"
+  ]
+}
