@@ -48,11 +48,78 @@ const mockTenantSettings: TenantSettings = {
   updated_at: '2024-01-15T10:00:00Z',
 };
 
+const mockTenantSettingsResponse = {
+  id: mockTenantSettings.tenant_id,
+  name: mockTenantSettings.tenant_name,
+  slug: 'acme-corp',
+  status: 'active',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: mockTenantSettings.updated_at,
+  settings: {
+    custom_branding: mockTenantSettings.branding,
+    notification_preferences: mockTenantSettings.notifications,
+    security: {
+      ...mockTenantSettings.security,
+      require_mfa: mockTenantSettings.security.require_2fa,
+    },
+    feature_flags: mockTenantSettings.features,
+    limits: mockTenantSettings.limits,
+  },
+};
+
+function buildSettingsResponse(overrides: Partial<TenantSettings> = {}) {
+  const merged: TenantSettings = {
+    ...mockTenantSettings,
+    ...overrides,
+    features: {
+      ...mockTenantSettings.features,
+      ...overrides.features,
+    },
+    limits: {
+      ...mockTenantSettings.limits,
+      ...overrides.limits,
+    },
+    notifications: {
+      ...mockTenantSettings.notifications,
+      ...overrides.notifications,
+    },
+    security: {
+      ...mockTenantSettings.security,
+      ...overrides.security,
+    },
+    branding: {
+      ...mockTenantSettings.branding,
+      ...overrides.branding,
+    },
+  };
+
+  return {
+    id: merged.tenant_id,
+    name: merged.tenant_name,
+    slug: merged.tenant_slug ?? mockTenantSettingsResponse.slug,
+    status: merged.tenant_status ?? mockTenantSettingsResponse.status,
+    created_at: merged.tenant_created_at ?? mockTenantSettingsResponse.created_at,
+    updated_at: merged.updated_at,
+    updated_by: merged.updated_by,
+    settings: {
+      custom_branding: merged.branding,
+      notification_preferences: merged.notifications,
+      security: {
+        ...merged.security,
+        require_mfa: merged.security.require_2fa,
+      },
+      feature_flags: merged.features,
+      limits: merged.limits,
+      webhook_url: merged.notifications.webhook_url,
+    },
+  };
+}
+
 describe('usePlatformSettings', () => {
   it('fetches tenant settings successfully', async () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       })
     );
 
@@ -61,7 +128,7 @@ describe('usePlatformSettings', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toEqual(mockTenantSettings);
+    expect(result.current.data).toMatchObject(mockTenantSettings);
     expect(result.current.data?.tenant_name).toBe('Acme Corp');
     expect(result.current.data?.features.advanced_analytics).toBe(true);
   });
@@ -70,7 +137,7 @@ describe('usePlatformSettings', () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       })
     );
 
@@ -121,15 +188,18 @@ describe('useUpdatePlatformSettings', () => {
   it('updates tenant settings successfully', async () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       }),
       http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
-        const body = (await request.json()) as Partial<TenantSettings>;
-        return HttpResponse.json({
-          ...mockTenantSettings,
-          ...body,
-          updated_at: new Date().toISOString(),
-        });
+        const body = (await request.json()) as { settings?: Record<string, unknown> };
+        expect(body.settings?.feature_flags).toEqual({ advanced_analytics: false });
+        return HttpResponse.json(
+          buildSettingsResponse({
+            tenant_name: 'Updated Corp',
+            features: { ...mockTenantSettings.features, advanced_analytics: false },
+            updated_at: new Date().toISOString(),
+          })
+        );
       })
     );
 
@@ -148,11 +218,13 @@ describe('useUpdatePlatformSettings', () => {
   it('updates feature flags', async () => {
     server.use(
       http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
-        const body = (await request.json()) as Partial<TenantSettings>;
-        return HttpResponse.json({
-          ...mockTenantSettings,
-          ...body,
-        });
+        const body = (await request.json()) as { settings?: Record<string, unknown> };
+        expect(body.settings?.feature_flags).toEqual({ ai_assistant: false, audit_trail: false });
+        return HttpResponse.json(
+          buildSettingsResponse({
+            features: { ...mockTenantSettings.features, ai_assistant: false, audit_trail: false },
+          })
+        );
       })
     );
 
@@ -193,7 +265,7 @@ describe('usePlatformSettings - cache behavior', () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
         requestCount++;
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       })
     );
 
@@ -218,7 +290,7 @@ describe('usePlatformSettings - cache behavior', () => {
     // Second hook instance should use cached data without new request
     const { result: result2 } = renderHook(() => usePlatformSettings(), { wrapper });
     await waitFor(() => expect(result2.current.isSuccess).toBe(true));
-    expect(result2.current.data).toEqual(mockTenantSettings);
+    expect(result2.current.data).toMatchObject(mockTenantSettings);
     expect(requestCount).toBe(1); // No additional request
   });
 
@@ -227,10 +299,9 @@ describe('usePlatformSettings - cache behavior', () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
         requestCount++;
-        return HttpResponse.json({
-          ...mockTenantSettings,
+        return HttpResponse.json(buildSettingsResponse({
           tenant_name: `Acme Corp v${requestCount}`,
-        });
+        }));
       })
     );
 
@@ -271,12 +342,45 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
         fetchCount++;
-        return HttpResponse.json(currentSettings);
+        return HttpResponse.json(buildSettingsResponse(currentSettings));
       }),
       http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
-        const body = (await request.json()) as Partial<TenantSettings>;
-        currentSettings = { ...currentSettings, ...body };
-        return HttpResponse.json(currentSettings);
+        const body = (await request.json()) as { settings?: Record<string, unknown> };
+        if (body.settings) {
+          if (body.settings.custom_branding) {
+            currentSettings.branding = {
+              ...currentSettings.branding,
+              ...(body.settings.custom_branding as TenantSettings['branding']),
+            };
+          }
+          if (body.settings.notification_preferences) {
+            currentSettings.notifications = {
+              ...currentSettings.notifications,
+              ...(body.settings.notification_preferences as TenantSettings['notifications']),
+            };
+          }
+          if (body.settings.feature_flags) {
+            currentSettings.features = {
+              ...currentSettings.features,
+              ...(body.settings.feature_flags as TenantSettings['features']),
+            };
+          }
+          if (body.settings.security) {
+            const security = body.settings.security as Record<string, unknown>;
+            currentSettings.security = {
+              ...currentSettings.security,
+              require_2fa: Boolean(security.require_2fa ?? security.require_mfa ?? currentSettings.security.require_2fa),
+              session_timeout_minutes: Number(security.session_timeout_minutes ?? currentSettings.security.session_timeout_minutes),
+              ip_allowlist: Array.isArray(security.ip_allowlist)
+                ? security.ip_allowlist as string[]
+                : currentSettings.security.ip_allowlist,
+            };
+          }
+        }
+        if (body.settings && 'tenant_name' in body.settings && typeof body.settings.tenant_name === 'string') {
+          currentSettings.tenant_name = body.settings.tenant_name;
+        }
+        return HttpResponse.json(buildSettingsResponse(currentSettings));
       })
     );
 
@@ -300,18 +404,18 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     expect(settingsResult.current.data?.tenant_name).toBe('Acme Corp');
 
     // Update settings
-    updateResult.current.mutate({ tenant_name: 'Updated Corp' });
+    updateResult.current.mutate({ branding: { primary_color: '#ff0000' } });
     await waitFor(() => expect(updateResult.current.isSuccess).toBe(true));
 
     // Query should be invalidated and refetched
-    await waitFor(() => expect(settingsResult.current.data?.tenant_name).toBe('Updated Corp'));
+    await waitFor(() => expect(settingsResult.current.data?.branding?.primary_color).toBe('#ff0000'));
     expect(fetchCount).toBe(2); // Refetch occurred after invalidation
   });
 
   it('failed update preserves previous usable state', async () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       }),
       http.patch('/api/v1/agents/tenants/current/settings', () => {
         return HttpResponse.json({ error: 'Server Error' }, { status: 500 });
@@ -337,7 +441,7 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     const originalData = settingsResult.current.data;
 
     // Failed update
-    updateResult.current.mutate({ tenant_name: 'Should Fail' });
+    updateResult.current.mutate({ branding: { primary_color: '#ffffff' } });
     await waitFor(() => expect(updateResult.current.isError).toBe(true), { timeout: 5000 });
 
     // Original data should still be available
@@ -354,10 +458,9 @@ describe('usePlatformSettings - mutation and invalidation', () => {
           failCount--;
           return HttpResponse.json({ error: 'Transient Error' }, { status: 503 });
         }
-        return HttpResponse.json({
-          ...mockTenantSettings,
-          tenant_name: 'Recovered Corp',
-        });
+        return HttpResponse.json(buildSettingsResponse({
+          branding: { ...mockTenantSettings.branding, primary_color: '#22c55e' },
+        }));
       })
     );
 
@@ -376,14 +479,14 @@ describe('usePlatformSettings - mutation and invalidation', () => {
     const { result } = renderHook(() => useUpdatePlatformSettings(), { wrapper });
 
     // First attempt fails after exhausting axios retries
-    result.current.mutate({ tenant_name: 'Retry Test' });
+    result.current.mutate({ branding: { primary_color: '#000000' } });
     await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 10000 });
     expect(result.current.error).toBeDefined();
 
     // Retry succeeds
-    result.current.mutate({ tenant_name: 'Retry Test' });
+    result.current.mutate({ branding: { primary_color: '#000000' } });
     await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 5000 });
-    expect(result.current.data?.tenant_name).toBe('Recovered Corp');
+    expect(result.current.data?.branding?.primary_color).toBe('#22c55e');
   }, 15000);
 });
 
@@ -392,12 +495,11 @@ describe('usePlatformSettings - concurrency and lifecycle', () => {
     const updates: string[] = [];
     server.use(
       http.patch('/api/v1/agents/tenants/current/settings', async ({ request }) => {
-        const body = (await request.json()) as Partial<TenantSettings>;
-        updates.push(body.tenant_name || 'unknown');
-        return HttpResponse.json({
-          ...mockTenantSettings,
-          ...body,
-        });
+        const body = (await request.json()) as { settings?: { custom_branding?: TenantSettings['branding'] } };
+        updates.push(body.settings?.custom_branding?.primary_color || 'unknown');
+        return HttpResponse.json(buildSettingsResponse({
+          branding: body.settings?.custom_branding,
+        }));
       })
     );
 
@@ -416,8 +518,8 @@ describe('usePlatformSettings - concurrency and lifecycle', () => {
     const { result } = renderHook(() => useUpdatePlatformSettings(), { wrapper });
 
     // Fire two updates concurrently
-    result.current.mutate({ tenant_name: 'First' });
-    result.current.mutate({ tenant_name: 'Second' });
+    result.current.mutate({ branding: { primary_color: 'First' } });
+    result.current.mutate({ branding: { primary_color: 'Second' } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
@@ -425,13 +527,13 @@ describe('usePlatformSettings - concurrency and lifecycle', () => {
     expect(updates).toContain('First');
     expect(updates).toContain('Second');
     // Final state reflects last successful mutation
-    expect(['First', 'Second']).toContain(result.current.data?.tenant_name);
+    expect(['First', 'Second']).toContain(result.current.data?.branding?.primary_color);
   });
 
   it('unmounted/remounted consumer reuses QueryClient state', async () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       })
     );
 
@@ -472,7 +574,7 @@ describe('usePlatformSettings - edge cases', () => {
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       })
     );
 
@@ -490,7 +592,7 @@ describe('usePlatformSettings - edge cases', () => {
     // After delay, should transition to success
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.isLoading).toBe(false);
-    expect(result.current.data).toEqual(mockTenantSettings);
+    expect(result.current.data).toMatchObject(mockTenantSettings);
 
     vi.useRealTimers();
   }, 10000);
@@ -499,7 +601,7 @@ describe('usePlatformSettings - edge cases', () => {
     // Initial handler returns default
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
-        return HttpResponse.json(mockTenantSettings);
+        return HttpResponse.json(mockTenantSettingsResponse);
       })
     );
 
@@ -523,10 +625,9 @@ describe('usePlatformSettings - edge cases', () => {
     // Override with one-off handler for second fetch
     server.use(
       http.get('/api/v1/agents/tenants/current/settings', () => {
-        return HttpResponse.json({
-          ...mockTenantSettings,
+        return HttpResponse.json(buildSettingsResponse({
           tenant_name: 'Overridden Corp',
-        });
+        }));
       })
     );
 

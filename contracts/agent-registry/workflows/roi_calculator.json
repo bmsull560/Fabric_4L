@@ -1,0 +1,88 @@
+{
+  "$schema": "../schemas/workflow.schema.json",
+  "version": "1.0.0",
+  "kind": "workflow",
+  "owner": "@layer4-agents",
+  "risk_class": "high",
+  "compatibility": {
+    "supported_prior_versions": [],
+    "migration_notes": "Initial workflow state-machine registry entry derived from services/layer4-agents/src/models/workflow_config.py."
+  },
+  "observability": {
+    "required_trace_fields": [
+      "tenant_id",
+      "trace_id",
+      "workflow_id",
+      "workflow_type",
+      "state"
+    ],
+    "required_metrics": [
+      "workflow_transition_total",
+      "workflow_duration_ms",
+      "workflow_error_total"
+    ],
+    "audit_events": [
+      "workflow_started",
+      "workflow_transitioned",
+      "workflow_completed",
+      "workflow_failed"
+    ]
+  },
+  "governance": {
+    "review_requirement": "Contract Council review for state, transition, invariant, or tool/prompt binding changes.",
+    "approval_threshold": "Two reviewers representing Layer 4 and Platform Contracts.",
+    "rollout_policy": "CI warning mode first; runtime transition enforcement is feature-flagged.",
+    "deprecation_policy": "Maintain prior workflow version until in-flight checkpoints can be migrated or expired."
+  },
+  "id": "workflow-roi-calculator",
+  "workflow_type": "roi_calculator",
+  "source_path": "../../../services/layer4-agents/src/workflows/roi_calculator.py",
+  "description": "Calculates ROI from value-driver formulas with prospect data.",
+  "entry_point": "load_prospect",
+  "states": [
+    "load_prospect",
+    "fetch_benchmarks",
+    "substitute_vars",
+    "evaluate",
+    "validate",
+    "aggregate",
+    "end"
+  ],
+  "transitions": [
+    {
+      "source": "load_prospect",
+      "target": "fetch_benchmarks"
+    },
+    {
+      "source": "fetch_benchmarks",
+      "target": "substitute_vars"
+    },
+    {
+      "source": "substitute_vars",
+      "target": "evaluate"
+    },
+    {
+      "source": "evaluate",
+      "target": "validate"
+    },
+    {
+      "source": "validate",
+      "target": "aggregate",
+      "condition": "results_valid"
+    },
+    {
+      "source": "validate",
+      "target": "substitute_vars",
+      "condition": "retry_needed"
+    },
+    {
+      "source": "aggregate",
+      "target": "end"
+    }
+  ],
+  "invariants": [
+    "tenant context is present",
+    "formula outputs preserve provenance",
+    "invalid results return to substitution before aggregation"
+  ]
+}

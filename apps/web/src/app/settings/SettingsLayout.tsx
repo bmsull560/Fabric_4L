@@ -115,7 +115,10 @@ export function SettingsLayout() {
       <div className="border-b bg-background px-6">
         <nav className="flex gap-1 -mb-px">
           {visibleCategories.map((cat) => {
-            const isActive = pathname.startsWith(cat.basePath);
+            const isActive =
+              cat.key === "billing"
+                ? pathname.startsWith("/settings/workspace") || pathname.startsWith(cat.basePath)
+                : pathname.startsWith(cat.basePath);
             return (
               <Link
                 key={cat.key}
