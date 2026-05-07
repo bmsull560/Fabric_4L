@@ -14,7 +14,7 @@ _canonical: str = str(_repo_root / "services" / "layer4-agents" / "src")
 # Only register the canonical path if it exists; fail fast otherwise.
 if (_repo_root / "services" / "layer4-agents" / "src").exists():
     if _canonical not in __path__:
-        __path__.insert(0, _canonical)
+        __path__.append(_canonical)
 else:
     raise FileNotFoundError(
         f"Canonical Layer 4 source tree not found at {_canonical}. "
