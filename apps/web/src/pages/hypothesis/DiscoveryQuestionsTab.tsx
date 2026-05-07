@@ -12,7 +12,7 @@ import RightRail, { type RightRailMode } from "@/components/workspace/RightRail"
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
-import { CenteredLoader } from "@/components/CenteredLoader";
+import { LoadingState, ErrorState } from "@/components/states";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 
 export default function DiscoveryQuestionsTab() {
@@ -31,11 +31,11 @@ export default function DiscoveryQuestionsTab() {
   }
 
   if (accountLoading) {
-    return <CenteredLoader message="Loading account…" />;
+    return <LoadingState message="Loading account…" fullPage />;
   }
 
   if (!account) {
-    return <div className="p-6 text-sm text-destructive">Account not found.</div>;
+    return <ErrorState title="Account not found" description="Select a valid account to continue in this workspace." fullPage />;
   }
 
   return (
