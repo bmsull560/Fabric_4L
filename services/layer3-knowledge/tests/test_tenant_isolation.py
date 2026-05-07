@@ -24,8 +24,8 @@ class TestTenantIsolation:
         """Create a mock request with tenant context."""
         request = MagicMock()
         request.state = MagicMock()
-        request.state.context = MagicMock()
-        request.state.context.tenant_id = "tenant-a"
+        request.state.governance_context = MagicMock()
+        request.state.governance_context.tenant_id = "tenant-a"
         return request
 
     @pytest.fixture
@@ -33,7 +33,7 @@ class TestTenantIsolation:
         """Create a mock request without tenant context."""
         request = MagicMock()
         request.state = MagicMock()
-        request.state.context = None
+        request.state.governance_context = None
         return request
 
     @pytest.fixture

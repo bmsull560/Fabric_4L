@@ -109,14 +109,14 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     Returns None if tenant context is unavailable or NEO4J_TENANT_AVAILABLE is False.
     
     Args:
-        request: FastAPI Request object with optional state.context
+        request: FastAPI Request object with optional state.governance_context
         
     Returns:
         Normalized tenant_id string or None
     """
     if not request or not NEO4J_TENANT_AVAILABLE:
         return None
-    ctx = getattr(request.state, "context", None)
+    ctx = getattr(request.state, "governance_context", None)
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
