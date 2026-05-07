@@ -9,7 +9,7 @@ Use this checklist for staging and production release approvals.
 
 ## Pre-Release Validation
 
-- [ ] Run `make verify` and confirm pass.
+- [ ] Run `make verify` and confirm pass. [VERIFY:DOC-DEPLOY-001]
 - [ ] For agent/skill changes, run `make evals` and confirm pass.
 - [ ] Run smoke tests (`scripts/smoke/production_smoke.py`) against the target environment.
 - [ ] Confirm CloudNativePG CRD exists: `kubectl get crd clusters.postgresql.cnpg.io`.
