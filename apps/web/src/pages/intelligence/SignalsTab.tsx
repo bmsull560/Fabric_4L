@@ -9,7 +9,7 @@ import { usePromoteSignal } from "@/hooks/useHypotheses";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence, useReviewSignalMutation } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence, useSignalReview } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -86,7 +86,7 @@ export default function SignalsTab() {
   }
 
   const promoteMutation = usePromoteSignal();
-  const reviewMutation = useReviewSignalMutation();
+  const reviewMutation = useSignalReview();
   const { navigateTo } = useNavigation();
   const [selectedValuePath, setSelectedValuePath] = useState<ValuePathCategory | ''>('');
 

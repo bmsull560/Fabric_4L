@@ -7,12 +7,12 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useCanonicalCaseId, useEvidenceDecisionMutation, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 type VerificationState = "verified" | "partial" | "unverified";
-interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string }
+interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string; decision_status?: "accepted"|"rejected"|"attached_to_driver"; attached_driver_id?: string }
 const VERIFICATION_CONFIG: Record<VerificationState, { icon: typeof CheckCircle2; color: string }> = { verified: { icon: CheckCircle2, color: "text-green-600" }, partial: { icon: AlertCircle, color: "text-orange-600" }, unverified: { icon: AlertCircle, color: "text-muted-foreground" } };
 
 function useEvidenceTabState() {
@@ -22,6 +22,7 @@ function useEvidenceTabState() {
   const { data, isLoading, error } = useWorkspaceTabQuery<{ evidence: EvidenceItem[] }>(caseId ?? null, "evidence");
   const persistTab = usePersistWorkspaceTab("evidence");
   const validateClaim = useValidateEvidenceClaim();
+  const evidenceDecision = useEvidenceDecisionMutation();
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
 
@@ -38,6 +39,7 @@ function useEvidenceTabState() {
     selectedEvidence, setSelectedEvidence, railMode, setRailMode,
     messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
     validateClaim,
+    evidenceDecision,
   };
 }
 
@@ -46,11 +48,29 @@ export function EvidenceTabContent() {
   const {
     evidence, isLoading, error, verified, avgMatch,
     selectedEvidence, setSelectedEvidence,
+    caseId, evidenceDecision,
   } = useEvidenceTabState();
+
+  const [optimisticDecision, setOptimisticDecision] = useState<Record<string, EvidenceItem["decision_status"]>>({});
+  const [lastFailedAction, setLastFailedAction] = useState<{ evidenceId: string; decision: "accepted"|"rejected"|"attached_to_driver"; driverId?: string } | null>(null);
 
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;
   }
+
+
+
+  const runDecision = async (evidenceId: string, decision: "accepted"|"rejected"|"attached_to_driver", driverId?: string) => {
+    if (!accountId || !caseId) return;
+    setOptimisticDecision((prev) => ({ ...prev, [evidenceId]: decision }));
+    setLastFailedAction(null);
+    try {
+      await evidenceDecision.mutateAsync({ evidenceId, accountId, caseId, decision, driverId });
+    } catch {
+      setOptimisticDecision((prev) => ({ ...prev, [evidenceId]: undefined }));
+      setLastFailedAction({ evidenceId, decision, driverId });
+    }
+  };
 
   if (isLoading) return <CenteredLoader message="Loading evidence…" />;
   if (error) return <div className="p-6 text-sm text-destructive">Failed to load evidence.</div>;
@@ -71,6 +91,7 @@ export function EvidenceTabContent() {
           <SectionCard title="Evidence Library">
             <div className="space-y-1">
               {evidence.map((item) => {
+                const decision = optimisticDecision[item.id] ?? item.decision_status;
                 const vc = VERIFICATION_CONFIG[item.verification];
                 const Icon = vc.icon;
                 return (
@@ -90,13 +111,26 @@ export function EvidenceTabContent() {
                     <span className={cn("flex items-center gap-1 text-[10px] font-semibold", vc.color)}>
                       <Icon size={10} />{item.matchScore}%
                     </span>
-                    <ChevronRight size={12} />
+                    <span className="text-[10px] text-muted-foreground capitalize">{decision?.replaceAll("_", " ") ?? "pending"}</span><ChevronRight size={12} />
                   </button>
                 );
               })}
             </div>
           </SectionCard>
         </>
+      )}
+      {lastFailedAction && (
+        <div className="mt-3 text-xs text-destructive flex items-center gap-2">
+          Action failed.
+          <Btn variant="outline" className="h-7" onClick={() => runDecision(lastFailedAction.evidenceId, lastFailedAction.decision, lastFailedAction.driverId)}>Retry</Btn>
+        </div>
+      )}
+      {selectedEvidence && (
+        <div className="mt-4 flex gap-2">
+          <Btn variant="primary" className="h-8" onClick={() => runDecision(selectedEvidence.id, "accepted")} disabled={evidenceDecision.isPending}>Accept</Btn>
+          <Btn variant="outline" className="h-8" onClick={() => runDecision(selectedEvidence.id, "rejected")} disabled={evidenceDecision.isPending}>Reject</Btn>
+          <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver", "driver-auto")} disabled={evidenceDecision.isPending}>Attach to driver</Btn>
+        </div>
       )}
     </>
   );
