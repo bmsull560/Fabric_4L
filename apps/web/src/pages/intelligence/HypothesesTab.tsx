@@ -38,7 +38,7 @@ import {
   type ValueHypothesis,
   type ValidateHypothesisResponse,
 } from "@/hooks/useHypotheses";
-import { useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
+import { fetchWorkspaceTab, useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -449,12 +449,28 @@ export default function HypothesesTab() {
                   convertHypothesisToTree.mutate(
                     { hypothesisId: h.id },
                     {
-                      onSuccess: (result) => {
+                      onSuccess: async (result) => {
                         const createdId = result.value_model_id ?? result.tree_id;
                         setSelection(result.account_id, {
                           valueModelId: result.value_model_id ?? null,
                           treeId: result.tree_id ?? null,
                         });
+                        if (caseId) {
+                          await Promise.all([
+                            queryClient.prefetchQuery({
+                              queryKey: ["workspace", "tab", caseId, "drivers"],
+                              queryFn: () => fetchWorkspaceTab(caseId, "drivers"),
+                            }),
+                            queryClient.prefetchQuery({
+                              queryKey: ["workspace", "tab", caseId, "evidence-links"],
+                              queryFn: () => fetchWorkspaceTab(caseId, "evidence-links"),
+                            }),
+                            queryClient.prefetchQuery({
+                              queryKey: ["workspace", "tab", caseId, "evidence"],
+                              queryFn: () => fetchWorkspaceTab(caseId, "evidence"),
+                            }),
+                          ]);
+                        }
                         const query = new URLSearchParams();
                         if (result.tree_id) query.set("tree_id", result.tree_id);
                         if (result.value_model_id) query.set("value_model_id", result.value_model_id);
