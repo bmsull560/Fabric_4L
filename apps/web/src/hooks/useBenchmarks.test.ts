@@ -15,7 +15,7 @@ import {
   useBenchmark,
 } from './useBenchmarks';
 
-// L6 Benchmark handlers for testing
+// L6 Benchmark handlers for testing (DatasetSummary shape from real API)
 const l6BenchmarkHandlers = [
   // List datasets (benchmarks)
   http.get('/api/v1/benchmarks/datasets', ({ request }) => {
@@ -24,61 +24,55 @@ const l6BenchmarkHandlers = [
     const status = url.searchParams.get('status');
     const confidence = url.searchParams.get('confidence');
 
-    let benchmarks = [
+    let datasets = [
       {
-        id: 'bench-1',
-        benchmark_id: 'bench-1',
+        dataset_id: 'bench-1',
         name: 'Industry Average ROI',
+        description: 'Average ROI benchmarks for the software industry',
         industry: industry || 'Software',
-        vertical: 'SaaS',
-        value_range: '2.5x - 4.0x',
-        confidence: confidence || 'High',
-        source: 'Industry Research',
-        year: 2024,
-        status: status || 'active',
-        tags: ['roi', 'saas'],
-        usage_count: 15,
+        segment: 'SaaS',
+        geography: 'global',
+        metrics: ['roi', 'payback'],
+        metric_count: 2,
+        version: '1.0.0',
+        data_source: 'Industry Research',
       },
       {
-        id: 'bench-2',
-        benchmark_id: 'bench-2',
+        dataset_id: 'bench-2',
         name: 'Implementation Timeline',
+        description: 'Implementation timeline benchmarks',
         industry: industry || 'Software',
-        vertical: 'Enterprise',
-        value_range: '3-6 months',
-        confidence: 'Medium',
-        source: 'Survey Data',
-        year: 2024,
-        status: status || 'active',
-        tags: ['timeline'],
-        usage_count: 8,
+        segment: 'Enterprise',
+        geography: 'US',
+        metrics: ['timeline'],
+        metric_count: 1,
+        version: '1.0.0',
+        data_source: 'Survey Data',
       },
     ];
 
-    // Apply status filter
+    // Apply status filter (L6 does not actually filter by status, but test the param)
     if (status && status !== 'all') {
-      benchmarks = benchmarks.filter(b => b.status === status);
+      // No-op for L6 shape — status is derived, not stored
     }
 
-    return HttpResponse.json(benchmarks);
+    return HttpResponse.json(datasets);
   }),
 
   // Single dataset (benchmark)
   http.get('/api/v1/benchmarks/datasets/:id', ({ params }) => {
     const id = params.id as string;
     return HttpResponse.json({
-      id,
-      benchmark_id: id,
+      dataset_id: id,
       name: 'Detailed Benchmark',
+      description: 'Detailed benchmark data',
       industry: 'Software',
-      vertical: 'SaaS',
-      value_range: '2.5x - 4.0x',
-      confidence: 'High',
-      source: 'Industry Research',
-      year: 2024,
-      status: 'active',
-      tags: ['detailed'],
-      usage_count: 10,
+      segment: 'SaaS',
+      geography: 'global',
+      metrics: ['detailed'],
+      metric_count: 1,
+      version: '1.0.0',
+      data_source: 'Industry Research',
     });
   }),
 ];
@@ -100,7 +94,8 @@ describe('useBenchmarks', () => {
     expect(result.current.data?.[0]).toMatchObject({
       id: expect.any(String),
       name: expect.any(String),
-      confidence: expect.any(String),
+      confidence: 'High',
+      status: 'active',
     });
   });
 
@@ -112,17 +107,16 @@ describe('useBenchmarks', () => {
 
         return HttpResponse.json([
           {
-            id: 'bench-filtered',
-            benchmark_id: 'bench-filtered',
+            dataset_id: 'bench-filtered',
             name: 'Filtered Benchmark',
+            description: 'Filtered description',
             industry: industry || 'Unknown',
-            value_range: '2.5x - 4.0x',
-            confidence: 'High',
-            source: 'Test',
-            year: 2024,
-            status: 'active',
-            tags: [],
-            usage_count: 5,
+            segment: 'enterprise',
+            geography: 'global',
+            metrics: ['m1'],
+            metric_count: 1,
+            version: '1.0.0',
+            data_source: 'Test',
           },
         ]);
       })
@@ -141,7 +135,7 @@ describe('useBenchmarks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    // All returned benchmarks should be active
+    // All returned benchmarks should be active (derived from adapter)
     result.current.data?.forEach(benchmark => {
       expect(benchmark.status).toBe('active');
     });
@@ -179,6 +173,7 @@ describe('useBenchmark', () => {
 
     expect(result.current.data?.id).toBe('bench-1');
     expect(result.current.data?.name).toBeDefined();
+    expect(result.current.data?.confidence).toBe('High');
   });
 
   it('disables query when id is null', async () => {
@@ -202,7 +197,3 @@ describe('useBenchmark', () => {
     await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
   });
 });
-
-
-
-

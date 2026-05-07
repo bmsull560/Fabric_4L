@@ -9,6 +9,7 @@ Or via Docker:
 
 """
 
+import asyncio
 import logging
 import os
 import re
@@ -38,7 +39,7 @@ except ImportError:
 from metrics import MetricsMiddleware, get_metrics, initialize_metrics
 
 from ..config import get_settings
-from ..database import close_db, init_db
+from ..database import close_db, get_session_factory, init_db
 from .router import router
 
 # ---------------------------------------------------------------------------
@@ -111,7 +112,42 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning(f"L5: Redis rate limiter disabled - {e}")
         app.state.redis_rate_limiter = None
 
+    # Start background freshness monitor task
+    freshness_task: asyncio.Task | None = None
+    try:
+        from ..services.freshness_monitor import FreshnessMonitor
+
+        async def _run_freshness_check_periodically() -> None:
+            """Run freshness check every 24 hours."""
+            monitor = FreshnessMonitor()
+            while True:
+                try:
+                    session_factory = get_session_factory()
+                    async with session_factory() as db:
+                        result = await monitor.check_and_mark_stale(db)
+                        logger.info(
+                            "L5 FreshnessMonitor: checked=%d marked_stale=%d",
+                            result.get("checked", 0),
+                            result.get("marked_stale", 0),
+                        )
+                except Exception as exc:
+                    logger.warning("L5 FreshnessMonitor: check failed: %s", exc)
+                await asyncio.sleep(86400)  # 24 hours
+
+        freshness_task = asyncio.create_task(_run_freshness_check_periodically())
+        logger.info("L5: FreshnessMonitor background task started")
+    except Exception as exc:
+        logger.warning("L5: Could not start FreshnessMonitor background task: %s", exc)
+
     yield
+
+    if freshness_task is not None:
+        freshness_task.cancel()
+        try:
+            await freshness_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("L5: FreshnessMonitor background task stopped")
 
     logger.info("Shutting down Layer 5 Ground Truth service")
     await close_db()

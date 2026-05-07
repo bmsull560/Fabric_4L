@@ -41,7 +41,10 @@ from ..database import close_driver, get_driver
 from ..database import health_check as neo4j_health_check
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
+    FINANCIAL_SERVICES_BENCHMARK_SEED,
+    HEALTHCARE_BENCHMARK_SEED,
     MANUFACTURING_BENCHMARK_SEED,
+    SAAS_B2B_BENCHMARK_SEED,
     BenchmarkDataset,
     BenchmarkMetric,
     StatisticalProfile,
@@ -54,9 +57,8 @@ _benchmark_repo: BenchmarkRepository | None = None
 _neo4j_startup_error: str | None = None
 
 
-async def _init_seed_data():
-    """Initialize with manufacturing benchmark dataset."""
-    seed = MANUFACTURING_BENCHMARK_SEED
+def _build_dataset_from_seed(seed: dict) -> BenchmarkDataset:
+    """Construct a BenchmarkDataset from a seed dict."""
     dataset = BenchmarkDataset(
         dataset_id=seed["dataset_id"],
         name=seed["name"],
@@ -86,8 +88,22 @@ async def _init_seed_data():
         )
         dataset.add_metric(metric)
 
+    return dataset
+
+
+async def _init_seed_data():
+    """Initialize with all benchmark reference datasets."""
+    seeds = [
+        MANUFACTURING_BENCHMARK_SEED,
+        SAAS_B2B_BENCHMARK_SEED,
+        HEALTHCARE_BENCHMARK_SEED,
+        FINANCIAL_SERVICES_BENCHMARK_SEED,
+    ]
+
     if _benchmark_repo is not None:
-        await _benchmark_repo.save_dataset(dataset)
+        for seed in seeds:
+            dataset = _build_dataset_from_seed(seed)
+            await _benchmark_repo.save_dataset(dataset)
 
 
 @asynccontextmanager
@@ -333,10 +349,14 @@ async def list_datasets(
         DatasetSummary(
             dataset_id=d.dataset_id,
             name=d.name,
+            description=d.description,
             industry=d.industry,
             segment=d.segment,
+            geography=d.geography,
             metrics=list(d.metrics.keys()),
+            metric_count=len(d.metrics),
             version=d.version,
+            data_source=d.data_source,
         )
         for d in datasets
     ]

@@ -3,7 +3,7 @@ import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { withApiError, BenchmarkApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 import { createFeatureLogger } from '@/lib/telemetry';
-import type { BenchmarkDataset } from '@/api/types';
+import type { BenchmarkDatasetSummary } from '@/api/types';
 
 const log = createFeatureLogger('useBenchmarks');
 
@@ -33,7 +33,7 @@ export interface Benchmark {
  * L6 dataset shape mapped into legacy benchmark UI fields.
  * Keep this hook L6-only; L3 ROI assumptions live in useROICalculator.
  */
-export type L6BenchmarkDataset = BenchmarkDataset;
+export type L6BenchmarkDataset = BenchmarkDatasetSummary;
 
 // Re-export for backward compatibility
 export { BenchmarkApiError } from './useApiShared';
@@ -63,6 +63,26 @@ export interface BenchmarkFilters {
   search?: string;
 }
 
+const CURRENT_YEAR = new Date().getFullYear();
+
+function mapDatasetSummaryToBenchmark(dataset: BenchmarkDatasetSummary): Benchmark {
+  return {
+    id: dataset.dataset_id,
+    benchmark_id: dataset.dataset_id,
+    name: dataset.name,
+    industry: dataset.industry,
+    vertical: dataset.segment,
+    value_range: `${dataset.metric_count} metrics`,
+    confidence: 'High',
+    source: dataset.data_source || 'Industry Research',
+    year: CURRENT_YEAR,
+    status: 'active',
+    tags: [],
+    usage_count: 0,
+    description: dataset.description,
+  };
+}
+
 async function fetchBenchmarks(filters: BenchmarkFilters): Promise<Benchmark[]> {
   const params = new URLSearchParams();
   if (filters.industry) params.set('industry', filters.industry);
@@ -71,7 +91,8 @@ async function fetchBenchmarks(filters: BenchmarkFilters): Promise<Benchmark[]> 
   if (filters.search) params.set('search', filters.search);
 
   const response = await apiClient.get('l6', `/datasets?${params.toString()}`);
-  return response.data as Benchmark[];
+  const datasets = response.data as BenchmarkDatasetSummary[];
+  return datasets.map(mapDatasetSummaryToBenchmark);
 }
 
 /**
@@ -92,7 +113,8 @@ export function useBenchmarks(filters: BenchmarkFilters = {}) {
 
 async function fetchBenchmark(benchmarkId: string): Promise<Benchmark> {
   const response = await apiClient.get('l6', `/datasets/${benchmarkId}`);
-  return response.data as Benchmark;
+  const dataset = response.data as BenchmarkDatasetSummary;
+  return mapDatasetSummaryToBenchmark(dataset);
 }
 
 /**

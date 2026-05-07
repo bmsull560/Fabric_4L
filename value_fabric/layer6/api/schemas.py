@@ -10,10 +10,14 @@ class DatasetSummary(BaseModel):
 
     dataset_id: str
     name: str
+    description: str
     industry: str
     segment: Optional[str]
+    geography: Optional[str]
     metrics: List[str]
+    metric_count: int
     version: str
+    data_source: Optional[str]
 
 
 class DatasetDetail(BaseModel):

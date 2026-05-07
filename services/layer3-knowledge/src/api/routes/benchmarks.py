@@ -288,3 +288,93 @@ async def update_benchmark_policy(
             is_enabled=bp.get("isEnabled", True),
             scope=bp.get("scope", "tenant"),
         )
+
+
+# ── Default Policy Seeding ───────────────────────────────────────────────────
+
+
+DEFAULT_BENCHMARK_POLICIES = [
+    {
+        "id": "bp-freshness-threshold",
+        "policyType": "cadence",
+        "name": "Freshness Threshold",
+        "description": "Maximum age before a benchmark is considered stale",
+        "value": "90",
+        "isEnabled": True,
+        "scope": "tenant",
+    },
+    {
+        "id": "bp-confidence-floor",
+        "policyType": "threshold",
+        "name": "Confidence Floor",
+        "description": "Minimum confidence level required for benchmark inclusion",
+        "value": "Medium",
+        "isEnabled": True,
+        "scope": "tenant",
+    },
+    {
+        "id": "bp-admin-override",
+        "policyType": "override",
+        "name": "Admin Override",
+        "description": "Allows administrators to override benchmark values in formula evaluation",
+        "value": "enabled",
+        "isEnabled": True,
+        "scope": "tenant",
+    },
+]
+
+
+@router.post("/benchmarks/policies/seed", response_model=list[BenchmarkPolicy])
+async def seed_benchmark_policies(
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Seed default benchmark policies if none exist. Idempotent."""
+    tenant_id = getattr(api_key, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Invalid tenant context")
+
+    async with await create_neo4j_tenant_session(tenant_id) as neo4j:
+        created: list[BenchmarkPolicy] = []
+        for policy in DEFAULT_BENCHMARK_POLICIES:
+            query = """
+            MERGE (bp:BenchmarkPolicy {id: $id, tenant_id: $tenant_id})
+            ON CREATE SET
+                bp.policyType = $policyType,
+                bp.name = $name,
+                bp.description = $description,
+                bp.value = $value,
+                bp.isEnabled = $isEnabled,
+                bp.scope = $scope,
+                bp.createdAt = $now,
+                bp.updatedAt = $now
+            ON MATCH SET
+                bp.updatedAt = $now
+            RETURN bp
+            """
+            result = await neo4j.run(
+                query,
+                id=policy["id"],
+                tenant_id=tenant_id,
+                policyType=policy["policyType"],
+                name=policy["name"],
+                description=policy["description"],
+                value=policy["value"],
+                isEnabled=policy["isEnabled"],
+                scope=policy["scope"],
+                now=datetime.now(UTC).isoformat(),
+            )
+            record = await result.single()
+            if record:
+                bp = record["bp"]
+                created.append(
+                    BenchmarkPolicy(
+                        id=bp["id"],
+                        policy_type=bp["policyType"],
+                        name=bp["name"],
+                        description=bp.get("description", ""),
+                        value=bp.get("value", ""),
+                        is_enabled=bp.get("isEnabled", True),
+                        scope=bp.get("scope", "tenant"),
+                    )
+                )
+        return created

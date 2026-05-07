@@ -19,12 +19,16 @@ import { ApiErrorSchema, assertSchema, assertSchemaRejects } from './_helpers';
 // ── Response schemas (frontend-expected shapes) ───────────────────────────────
 
 const BenchmarkDatasetSchema = z.object({
-  id: z.string().min(1),
+  dataset_id: z.string().min(1),
   name: z.string().min(1),
+  description: z.string(),
   industry: z.string().min(1),
+  segment: z.string().optional().nullable(),
+  geography: z.string().optional().nullable(),
+  metrics: z.array(z.string()),
   metric_count: z.number().int().nonnegative(),
-  last_updated: z.string(),
-  source: z.string().optional(),
+  version: z.string(),
+  data_source: z.string().optional().nullable(),
 });
 
 const BenchmarkCompareResponseSchema = z.object({
@@ -77,12 +81,16 @@ describe('Contract: GET /v1/benchmarks/datasets', () => {
     const dataset = assertSchema(
       BenchmarkDatasetSchema,
       {
-        id: 'ds-saas-2024',
+        dataset_id: 'ds-saas-2024',
         name: 'SaaS Industry Benchmarks 2024',
+        description: 'Peer benchmarks for SaaS operational metrics',
         industry: 'Technology',
-        metric_count: 48,
-        last_updated: '2024-01-01T00:00:00Z',
-        source: 'Gartner',
+        segment: 'enterprise',
+        geography: 'global',
+        metrics: ['cac', 'nrr', 'churn'],
+        metric_count: 3,
+        version: '1.0.0',
+        data_source: 'Gartner',
       },
       'BenchmarkDataset'
     );
@@ -93,11 +101,13 @@ describe('Contract: GET /v1/benchmarks/datasets', () => {
     assertSchema(
       BenchmarkDatasetSchema,
       {
-        id: 'ds-001',
+        dataset_id: 'ds-001',
         name: 'Manufacturing Benchmarks',
+        description: 'Manufacturing efficiency benchmarks',
         industry: 'Manufacturing',
-        metric_count: 32,
-        last_updated: '2024-01-01T00:00:00Z',
+        metrics: ['oee', 'cycle_time'],
+        metric_count: 2,
+        version: '1.0.0',
       },
       'BenchmarkDataset (no source)'
     );
@@ -107,11 +117,13 @@ describe('Contract: GET /v1/benchmarks/datasets', () => {
     assertSchemaRejects(
       BenchmarkDatasetSchema,
       {
-        id: 'ds-001',
+        dataset_id: 'ds-001',
         name: 'Test',
+        description: 'Test dataset',
         industry: 'Tech',
+        metrics: [],
         metric_count: -1,
-        last_updated: '2024-01-01T00:00:00Z',
+        version: '1.0.0',
       },
       'BenchmarkDataset with negative metric_count'
     );
@@ -292,11 +304,13 @@ describe('Contract: benchmarks tenant context', () => {
     const ds = assertSchema(
       TenantScopedDatasetSchema,
       {
-        id: 'ds-saas-2024',
+        dataset_id: 'ds-saas-2024',
         name: 'SaaS Benchmarks',
+        description: 'SaaS operational benchmarks',
         industry: 'Technology',
-        metric_count: 48,
-        last_updated: '2024-01-01T00:00:00Z',
+        metrics: ['cac', 'nrr'],
+        metric_count: 2,
+        version: '1.0.0',
         tenant_id: '550e8400-e29b-41d4-a716-446655440000',
       },
       'TenantScopedDataset'
@@ -337,7 +351,7 @@ describe('Contract: benchmarks pagination', () => {
     const resp = assertSchema(
       PaginatedDatasetsSchema,
       {
-        items: [{ id: 'ds-1', name: 'DS1', industry: 'Tech', metric_count: 10, last_updated: '2024-01-01T00:00:00Z' }],
+        items: [{ dataset_id: 'ds-1', name: 'DS1', description: 'Test dataset', industry: 'Tech', metrics: ['m1'], metric_count: 1, version: '1.0.0' }],
         total: 42,
         page: 1,
         page_size: 20,

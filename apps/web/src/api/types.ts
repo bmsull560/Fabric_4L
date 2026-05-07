@@ -80,13 +80,17 @@ export interface EntityListResponse {
 // Layer 6: Benchmarks Types (canonical routes)
 // ============================================================================
 
-export interface BenchmarkDataset {
-  id: string;
+export interface BenchmarkDatasetSummary {
+  dataset_id: string;
   name: string;
+  description: string;
   industry: string;
+  segment?: string;
+  geography?: string;
+  metrics: string[];
   metric_count: number;
-  last_updated: string;
-  source?: string;
+  version: string;
+  data_source?: string;
 }
 
 export interface BenchmarkComparisonMetric {
