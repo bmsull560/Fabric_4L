@@ -9,13 +9,15 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Re
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from value_fabric.shared.audit import AuditAction, AuditEmitter, emit_audit_event
+from value_fabric.shared.audit import AuditAction, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...config.settings import settings
-from ...database import get_db_from_context
+from ..common.audit import emit_and_persist_audit
+from ..common.db import get_route_db
+from ..common.errors import normalize_exception
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
 from ...models.business_case_record import BusinessCaseRecord
@@ -283,7 +285,7 @@ async def quick_roi_analysis(
     http_request: Request,
     request: ROIAnalysisRequest = Body(...),
     executor: WorkflowExecutor = Depends(get_executor),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> ROIAnalysisResponse:
     """Quick ROI analysis for a prospect.
@@ -341,10 +343,8 @@ async def quick_roi_analysis(
             benchmark_comparison=result.output_data.get("fetch_benchmarks", {}).get("benchmarks"),
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"ROI analysis failed: {str(e)}")
+        raise normalize_exception(e, status_code=500, detail=f"ROI analysis failed: {str(e)}")
 
 
 @router.post("/analysis/whitespace", response_model=WhitespaceAnalysisResponse)
@@ -400,7 +400,7 @@ async def generate_business_case(
     background_tasks: BackgroundTasks,
     http_request: Request,
     executor: WorkflowExecutor = Depends(get_executor),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
     """Generate a business case document.
@@ -474,10 +474,8 @@ async def generate_business_case(
             case_metadata=case_metadata,
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Business case generation failed: {str(e)}")
+        raise normalize_exception(e, status_code=500, detail=f"Business case generation failed: {str(e)}")
 
 
 @router.get("/cases/{case_id}", response_model=BusinessCaseResponse)
@@ -519,7 +517,7 @@ async def export_business_case(
     case_id: str,
     format: str = "pdf",
     executor: WorkflowExecutor = Depends(get_executor),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Export a generated business case.
@@ -635,11 +633,9 @@ async def export_business_case(
         tz=UTC,
     ).isoformat()
 
-    request_event = emit_audit_event(
-        AuditAction.EXPORT_REQUESTED,
-        tenant_id=context.tenant_id,
-        user_id=context.user_id,
-        api_key_id=context.api_key_id,
+    await emit_and_persist_audit(
+        action=AuditAction.EXPORT_REQUESTED,
+        context=context,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -649,13 +645,10 @@ async def export_business_case(
             "format": format,
         },
     )
-    await AuditEmitter.write_to_db(request_event, get_db_from_context)
 
-    package_event = emit_audit_event(
-        AuditAction.EXPORT_PACKAGE_GENERATED,
-        tenant_id=context.tenant_id,
-        user_id=context.user_id,
-        api_key_id=context.api_key_id,
+    await emit_and_persist_audit(
+        action=AuditAction.EXPORT_PACKAGE_GENERATED,
+        context=context,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -668,13 +661,10 @@ async def export_business_case(
             "source_references": manifest.get("source_references", []),
         },
     )
-    await AuditEmitter.write_to_db(package_event, get_db_from_context)
 
-    access_event = emit_audit_event(
-        AuditAction.EXPORT_DOWNLOAD_ACCESSED,
-        tenant_id=context.tenant_id,
-        user_id=context.user_id,
-        api_key_id=context.api_key_id,
+    await emit_and_persist_audit(
+        action=AuditAction.EXPORT_DOWNLOAD_ACCESSED,
+        context=context,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -684,7 +674,6 @@ async def export_business_case(
             "pdf_object_key": object_key,
         },
     )
-    await AuditEmitter.write_to_db(access_event, get_db_from_context)
 
     return export_business_caseResult.model_validate({
         "case_id": case_id,
@@ -767,7 +756,7 @@ class WorkspaceTabData(BaseModel):
 @router.get("/cases", response_model=CaseListResponse)
 async def list_cases(
     account_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> CaseListResponse:
     """List cases for an account.
@@ -801,7 +790,7 @@ async def list_cases(
 @router.post("/cases", response_model=CreateCaseResponse)
 async def create_case(
     request: CreateCaseRequest,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> CreateCaseResponse:
     """Create a new case for an account.
@@ -834,7 +823,7 @@ async def create_case(
 @router.get("/cases/{case_id}/scenarios", response_model=list[SavedScenarioSummary])
 async def list_saved_scenarios(
     case_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> list[SavedScenarioSummary]:
     """List saved scenario metadata for a business case."""
@@ -866,7 +855,7 @@ async def list_saved_scenarios(
 async def save_scenario(
     case_id: str,
     request: SaveScenarioRequest,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> SavedScenarioDetail:
     """Persist a business-case what-if scenario server-side."""
@@ -892,7 +881,7 @@ async def save_scenario(
 async def get_saved_scenario(
     case_id: str,
     scenario_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> SavedScenarioDetail:
     """Fetch a saved scenario with sensitive adjustments from server storage."""
@@ -918,7 +907,7 @@ async def get_saved_scenario(
 async def delete_saved_scenario(
     case_id: str,
     scenario_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> None:
     """Delete a saved scenario only within the authenticated tenant scope."""
@@ -982,7 +971,7 @@ async def update_workspace_tab(
 async def generate_workspace_intelligence(
     case_id: str,
     executor: WorkflowExecutor = Depends(get_executor),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Generate workspace intelligence data for a case.
