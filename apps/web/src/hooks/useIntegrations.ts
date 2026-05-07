@@ -12,11 +12,13 @@ import {
   parseConnectionTestResult,
   parseIntegration,
   parseIntegrations,
+  parseOAuthAuthorizeResult,
   parseSyncTriggerResult,
   type CRMProvider,
   type ConnectionTestResult,
   type Integration,
   type IntegrationListResponse,
+  type OAuthAuthorizeResult,
   type SyncTriggerResult,
 } from "@/lib/schemas/integrations";
 
@@ -27,6 +29,7 @@ export type {
   ConnectionTestResult,
   Integration,
   IntegrationListResponse,
+  OAuthAuthorizeResult,
   SyncTriggerResult,
 };
 
@@ -46,6 +49,10 @@ export interface IntegrationCreateRequest {
   sync_interval_minutes: number;
   sync_batch_size: number;
   salesforce_org_id?: string;
+}
+
+export interface SalesforceOAuthAuthorizeRequest {
+  return_to: string;
 }
 
 export class IntegrationApiError extends BaseApiError {
@@ -163,6 +170,26 @@ export function useSyncIntegration() {
     },
     onError: error => {
       log.error("Sync failed", { error: error.message });
+    },
+  });
+}
+
+export function useStartSalesforceOAuth() {
+  return useMutation<
+    OAuthAuthorizeResult,
+    IntegrationApiError,
+    SalesforceOAuthAuthorizeRequest
+  >({
+    mutationFn: async data => {
+      const response = await apiClient.post(
+        "l4",
+        "/integrations/salesforce/oauth/authorize",
+        data
+      );
+      return parseOAuthAuthorizeResult(response.data);
+    },
+    onError: error => {
+      log.error("Salesforce OAuth start failed", { error: error.message });
     },
   });
 }

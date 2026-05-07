@@ -32,28 +32,34 @@ interface EditingConfig {
 }
 
 interface IntegrationConfigPanelProps {
+  provider: CRMProvider | null;
   integration: Integration | undefined;
   onUpdate: (data: IntegrationCreateRequest) => void;
   onDelete: () => void;
   onTest: () => void;
   onSync: () => void;
+  onStartOAuth: () => void;
   isUpdating: boolean;
   isTesting: boolean;
   isSyncing: boolean;
+  isStartingOAuth: boolean;
 }
 
 export function IntegrationConfigPanel({
+  provider,
   integration,
   onUpdate,
   onDelete,
   onTest,
   onSync,
+  onStartOAuth,
   isUpdating,
   isTesting,
   isSyncing,
+  isStartingOAuth,
 }: IntegrationConfigPanelProps) {
-  const provider = (integration?.provider || 'salesforce') as CRMProvider;
-  const providerInfo = PROVIDER_STYLES[provider];
+  const resolvedProvider = (provider || integration?.provider || 'salesforce') as CRMProvider;
+  const providerInfo = PROVIDER_STYLES[resolvedProvider];
   const [isEditing, setIsEditing] = useState(false);
   const [editConfig, setEditConfig] = useState<EditingConfig>({
     enabled: integration?.enabled || false,
@@ -99,14 +105,37 @@ export function IntegrationConfigPanel({
     return (
       <div className="bg-white border border-neutral-200 rounded-xl p-8 h-full min-h-[400px] flex flex-col items-center justify-center text-center">
         <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-          <MousePointerClick size={32} className="text-neutral-400" />
+          {provider ? providerInfo.icon : <MousePointerClick size={32} className="text-neutral-400" />}
         </div>
         <h3 className="text-[16px] font-semibold text-neutral-800 mb-2">
-          Select an integration
+          {provider ? `Configure ${providerInfo.name}` : 'Select an integration'}
         </h3>
         <p className="text-[13px] text-neutral-500 max-w-xs">
-          Choose an integration from the grid to view and configure its settings
+          {provider
+            ? resolvedProvider === 'salesforce'
+              ? 'Use OAuth to connect Salesforce securely, or open manual configuration if you need a temporary fallback.'
+              : 'Enter the provider credentials and sync settings to activate this integration.'
+            : 'Choose an integration from the grid to view and configure its settings'}
         </p>
+        {provider && (
+          <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
+            {resolvedProvider === 'salesforce' && (
+              <Btn variant="primary" onClick={onStartOAuth} disabled={isStartingOAuth}>
+                {isStartingOAuth ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin mr-1" />
+                    Redirecting...
+                  </>
+                ) : (
+                  `Connect ${providerInfo.name}`
+                )}
+              </Btn>
+            )}
+            <Btn variant="ghost" onClick={() => setIsEditing(true)}>
+              Manual Configuration
+            </Btn>
+          </div>
+        )}
       </div>
     );
   }

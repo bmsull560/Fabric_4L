@@ -4,6 +4,7 @@ import {
   parseConnectionTestResult,
   parseIntegration,
   parseIntegrations,
+  parseOAuthAuthorizeResult,
   parseSyncTriggerResult,
 } from "./integrations";
 
@@ -59,6 +60,14 @@ describe("integrations runtime boundary schemas", () => {
       sync_id: "sync-1",
       status: "queued",
     });
+    expect(
+      parseOAuthAuthorizeResult({
+        authorize_url: "https://login.salesforce.com/services/oauth2/authorize?client_id=abc",
+        state_expires_at: "2026-05-05T21:10:00.000Z",
+      })
+    ).toMatchObject({
+      authorize_url: "https://login.salesforce.com/services/oauth2/authorize?client_id=abc",
+    });
   });
 
   it("rejects malformed integration, connection-test, and sync-trigger payloads", () => {
@@ -75,6 +84,9 @@ describe("integrations runtime boundary schemas", () => {
     ).toThrow();
     expect(() =>
       parseSyncTriggerResult({ sync_id: "sync-1", provider: "salesforce" })
+    ).toThrow();
+    expect(() =>
+      parseOAuthAuthorizeResult({ authorize_url: "not-a-url", state_expires_at: "later" })
     ).toThrow();
   });
 });

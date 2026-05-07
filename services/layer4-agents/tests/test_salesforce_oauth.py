@@ -158,6 +158,69 @@ class TestSalesforceTokenRefresh:
         assert sample_integration.sync_status == IntegrationStatus.DEGRADED
         mock_db.commit.assert_awaited()
 
+    @pytest.mark.asyncio
+    async def test_exchange_salesforce_oauth_code_success(self, mock_db):
+        """Test authorization code exchange returns token payload."""
+        service = IntegrationService(mock_db)
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
+            "instance_url": "https://tenant.my.salesforce.com",
+        }
+
+        with patch(
+            "httpx.AsyncClient.post", AsyncMock(return_value=mock_response)
+        ):
+            with patch.dict(
+                os.environ,
+                {
+                    "SALESFORCE_CLIENT_ID": "client-id",
+                    "SALESFORCE_CLIENT_SECRET": "client-secret",
+                },
+            ):
+                token_data = await service.exchange_salesforce_oauth_code(
+                    code="auth-code",
+                    redirect_uri="https://api.example.com/v1/integrations/salesforce/oauth/callback",
+                )
+
+        assert token_data["access_token"] == "access-token"
+        assert token_data["refresh_token"] == "refresh-token"
+        assert token_data["instance_url"] == "https://tenant.my.salesforce.com"
+
+    @pytest.mark.asyncio
+    async def test_upsert_salesforce_oauth_integration_persists_refresh_token(self, mock_db):
+        """Test OAuth upsert stores encrypted access and refresh tokens."""
+        service = IntegrationService(mock_db)
+        execute_result = MagicMock()
+        execute_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=execute_result)
+        mock_db.refresh = AsyncMock()
+
+        with patch.object(
+            EncryptionService,
+            "encrypt",
+            AsyncMock(side_effect=[b"encrypted-creds", b"encrypted-refresh"]),
+        ):
+            integration = await service.upsert_salesforce_oauth_integration(
+                tenant_id="tenant-123",
+                user_id="user-123",
+                token_data={
+                    "access_token": "access-token",
+                    "refresh_token": "refresh-token",
+                    "instance_url": "https://tenant.my.salesforce.com",
+                    "organization_id": "00D123",
+                },
+            )
+
+        assert integration.enabled is True
+        assert integration.instance_url == "https://tenant.my.salesforce.com"
+        assert integration.salesforce_org_id == "00D123"
+        assert integration.refresh_token_encrypted == b"encrypted-refresh"
+        mock_db.add.assert_called_once()
+        mock_db.commit.assert_awaited()
+
 
 class TestSchedulerTenantIsolation:
     """Test that scheduler never bypasses tenant isolation during sync execution."""
@@ -171,7 +234,7 @@ class TestSchedulerTenantIsolation:
         scheduler = CRMSyncScheduler()
 
         with patch(
-            "src.services.crm_sync_scheduler.db_session_for_context"
+            "value_fabric.layer4.services.crm_sync_scheduler.db_session_for_context"
         ) as mock_db_session:
             mock_ctx_db = AsyncMock()
             mock_ctx_db.__aenter__ = AsyncMock(return_value=mock_ctx_db)
@@ -179,7 +242,7 @@ class TestSchedulerTenantIsolation:
             mock_db_session.return_value = mock_ctx_db
 
             with patch(
-                "src.services.crm_sync_scheduler.IntegrationService.get_integration",
+                "value_fabric.layer4.services.crm_sync_scheduler.IntegrationService.get_integration",
                 AsyncMock(return_value=None),
             ):
                 result = await scheduler._execute_sync_for_tenant(

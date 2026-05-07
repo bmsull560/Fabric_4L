@@ -24,6 +24,7 @@ import {
   useIntegrations,
   useCreateOrUpdateIntegration,
   useDeleteIntegration,
+  useStartSalesforceOAuth,
   useTestIntegration,
   useSyncIntegration,
   type CRMProvider,
@@ -38,17 +39,30 @@ import {
 } from "lucide-react";
 
 function Integrations() {
-  const location = useLocation().pathname;
+  const location = useLocation();
   const { navigateTo } = useNavigation();
   const { data: integrations, isLoading, error, refetch } = useIntegrations();
   const createOrUpdateMutation = useCreateOrUpdateIntegration();
   const deleteMutation = useDeleteIntegration();
+  const startSalesforceOAuthMutation = useStartSalesforceOAuth();
   const testMutation = useTestIntegration();
   const syncMutation = useSyncIntegration();
 
   // Parse selected provider from URL query params
-  const searchParams = new URLSearchParams(location.split('?')[1] || '');
+  const searchParams = new URLSearchParams(location.search);
   const selectedProvider = searchParams.get('provider') as CRMProvider | null;
+  const oauthStatus = searchParams.get('oauth_status');
+  const oauthError = searchParams.get('error');
+
+  React.useEffect(() => {
+    if (oauthStatus === 'connected') {
+      toast.success('Salesforce connected successfully');
+      refetch();
+    }
+    if (oauthStatus === 'error') {
+      toast.error(oauthError || 'Salesforce connection failed');
+    }
+  }, [oauthError, oauthStatus, refetch]);
 
   const setSelectedProvider = (provider: CRMProvider | null) => {
     if (provider) {
@@ -124,6 +138,22 @@ function Integrations() {
         toast.error(`Sync failed: ${error.message}`);
       },
     });
+  };
+
+  const handleStartSalesforceOAuth = () => {
+    startSalesforceOAuthMutation.mutate(
+      {
+        return_to: location.pathname + location.search,
+      },
+      {
+        onSuccess: (result) => {
+          window.location.assign(result.authorize_url);
+        },
+        onError: (startError) => {
+          toast.error(`Failed to start Salesforce OAuth: ${startError.message}`);
+        },
+      }
+    );
   };
 
   // Loading state
@@ -221,14 +251,17 @@ function Integrations() {
           {/* Right Column: Config Panel */}
           <div className="lg:col-span-1">
             <IntegrationConfigPanel
+              provider={selectedProvider}
               integration={selectedIntegration}
               onUpdate={(data: IntegrationCreateRequest) => selectedProvider && handleUpdate(selectedProvider, data)}
               onDelete={() => selectedProvider && handleDelete(selectedProvider)}
               onTest={() => selectedProvider && handleTest(selectedProvider)}
               onSync={() => selectedProvider && handleSync(selectedProvider)}
+              onStartOAuth={handleStartSalesforceOAuth}
               isUpdating={createOrUpdateMutation.isPending}
               isTesting={testMutation.isPending}
               isSyncing={syncMutation.isPending && syncMutation.variables === selectedProvider}
+              isStartingOAuth={startSalesforceOAuthMutation.isPending}
             />
           </div>
         </div>

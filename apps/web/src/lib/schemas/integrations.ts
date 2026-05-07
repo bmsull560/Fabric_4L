@@ -39,10 +39,16 @@ export const SyncTriggerResultSchema = z.object({
   provider: z.string(),
 });
 
+export const OAuthAuthorizeResultSchema = z.object({
+  authorize_url: z.string().url(),
+  state_expires_at: z.string(),
+});
+
 export type CRMProvider = z.infer<typeof CRMProviderSchema>;
 export type Integration = z.infer<typeof IntegrationSchema>;
 export type ConnectionTestResult = z.infer<typeof ConnectionTestResultSchema>;
 export type SyncTriggerResult = z.infer<typeof SyncTriggerResultSchema>;
+export type OAuthAuthorizeResult = z.infer<typeof OAuthAuthorizeResultSchema>;
 export type IntegrationListResponse = z.infer<
   typeof IntegrationListResponseSchema
 >;
@@ -61,4 +67,8 @@ export function parseConnectionTestResult(data: unknown): ConnectionTestResult {
 
 export function parseSyncTriggerResult(data: unknown): SyncTriggerResult {
   return SyncTriggerResultSchema.parse(data);
+}
+
+export function parseOAuthAuthorizeResult(data: unknown): OAuthAuthorizeResult {
+  return OAuthAuthorizeResultSchema.parse(data);
 }

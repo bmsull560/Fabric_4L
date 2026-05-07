@@ -5,11 +5,18 @@ Provides CRUD operations for CRM provider configurations (Salesforce, HubSpot).
 All credentials are encrypted at rest and never returned in API responses.
 """
 
+import base64
+import hashlib
+import hmac
+import json
 import logging
 import os
+import time
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
@@ -115,6 +122,27 @@ class SyncTriggerResponse(BaseModel):
     queued_at: str | None = None
 
 
+class SalesforceOAuthAuthorizeRequest(BaseModel):
+    """Request to start Salesforce OAuth."""
+
+    return_to: str = Field(
+        "/context/integrations?provider=salesforce",
+        description="Relative frontend path to return to after OAuth completes",
+    )
+
+    @field_validator("return_to")
+    @classmethod
+    def validate_return_to(cls, value: str) -> str:
+        if not value.startswith("/"):
+            raise ValueError("return_to must be an application-relative path")
+        return value
+
+
+class SalesforceOAuthAuthorizeResponse(BaseModel):
+    authorize_url: str
+    state_expires_at: str
+
+
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
@@ -125,6 +153,77 @@ def get_integration_service(
 ) -> IntegrationService:
     """Dependency for integration service."""
     return IntegrationService(db)
+
+
+_OAUTH_STATE_TTL_SECONDS = 600
+
+
+def _state_secret() -> str:
+    secret = os.getenv("SALESFORCE_OAUTH_STATE_SECRET") or os.getenv("JWT_SECRET")
+    if not secret:
+        raise IntegrationValidationError(
+            "SALESFORCE_OAUTH_STATE_SECRET or JWT_SECRET must be configured for OAuth state signing"
+        )
+    return secret
+
+
+def _api_base_url() -> str:
+    return (os.getenv("PUBLIC_API_URL") or "http://localhost:8000").rstrip("/")
+
+
+def _salesforce_redirect_uri() -> str:
+    explicit = os.getenv("SALESFORCE_OAUTH_REDIRECT_URI")
+    if explicit:
+        return explicit
+    return f"{_api_base_url()}/v1/integrations/salesforce/oauth/callback"
+
+
+def _build_signed_state(*, tenant_id: str, user_id: str | None, return_to: str, oauth_base_url: str) -> str:
+    payload = {
+        "tenant_id": tenant_id,
+        "user_id": user_id,
+        "return_to": return_to,
+        "oauth_base_url": oauth_base_url,
+        "iat": int(time.time()),
+    }
+    payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    encoded_payload = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
+    signature = hmac.new(
+        _state_secret().encode("utf-8"),
+        encoded_payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{encoded_payload}.{signature}"
+
+
+def _decode_signed_state(state: str) -> dict[str, Any]:
+    try:
+        encoded_payload, provided_signature = state.split(".", 1)
+    except ValueError as exc:
+        raise IntegrationValidationError("Invalid OAuth state format") from exc
+
+    expected_signature = hmac.new(
+        _state_secret().encode("utf-8"),
+        encoded_payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(expected_signature, provided_signature):
+        raise IntegrationValidationError("Invalid OAuth state signature")
+
+    padding = "=" * (-len(encoded_payload) % 4)
+    payload_bytes = base64.urlsafe_b64decode((encoded_payload + padding).encode("utf-8"))
+    payload = json.loads(payload_bytes.decode("utf-8"))
+    issued_at = int(payload.get("iat", 0))
+    if issued_at <= 0 or time.time() - issued_at > _OAUTH_STATE_TTL_SECONDS:
+        raise IntegrationValidationError("OAuth state has expired")
+    return payload
+
+
+def _append_query_params(url: str, **params: str) -> str:
+    parsed = urlparse(url)
+    existing = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    existing.update(params)
+    return urlunparse(parsed._replace(query=urlencode(existing)))
 
 
 # -----------------------------------------------------------------------------
@@ -364,3 +463,89 @@ async def trigger_sync(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+@router.post("/salesforce/oauth/authorize", response_model=SalesforceOAuthAuthorizeResponse)
+async def start_salesforce_oauth(
+    request: SalesforceOAuthAuthorizeRequest,
+    context: RequestContext = Depends(require_authenticated),
+) -> SalesforceOAuthAuthorizeResponse:
+    """Generate the Salesforce OAuth authorize URL for the current tenant."""
+    tenant_id = str(context.tenant_id)
+    client_id = os.getenv("SALESFORCE_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Salesforce OAuth is not configured",
+        )
+    oauth_base_url = (os.getenv("SALESFORCE_OAUTH_BASE_URL") or "https://login.salesforce.com").rstrip("/")
+    state = _build_signed_state(
+        tenant_id=tenant_id,
+        user_id=str(context.user_id) if context.user_id is not None else None,
+        return_to=request.return_to,
+        oauth_base_url=oauth_base_url,
+    )
+
+    authorize_url = (
+        f"{oauth_base_url}/services/oauth2/authorize?"
+        + urlencode(
+            {
+                "response_type": "code",
+                "client_id": client_id,
+                "redirect_uri": _salesforce_redirect_uri(),
+                "state": state,
+            }
+        )
+    )
+    expires_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + _OAUTH_STATE_TTL_SECONDS))
+    return SalesforceOAuthAuthorizeResponse(authorize_url=authorize_url, state_expires_at=expires_at)
+
+
+@router.get("/salesforce/oauth/callback", include_in_schema=False)
+async def complete_salesforce_oauth(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+    service: IntegrationService = Depends(get_integration_service),
+) -> RedirectResponse:
+    """Complete the Salesforce OAuth exchange and redirect back to the frontend."""
+    if error:
+        destination = _append_query_params(
+            "/context/integrations?provider=salesforce",
+            oauth_status="error",
+            error=error,
+        )
+        if error_description:
+            destination = _append_query_params(destination, error_description=error_description)
+        return RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)
+
+    if not code or not state:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="code and state are required")
+
+    try:
+        decoded_state = _decode_signed_state(state)
+        token_data = await service.exchange_salesforce_oauth_code(
+            code=code,
+            redirect_uri=_salesforce_redirect_uri(),
+            oauth_base_url=decoded_state["oauth_base_url"],
+        )
+        await service.upsert_salesforce_oauth_integration(
+            tenant_id=decoded_state["tenant_id"],
+            user_id=decoded_state.get("user_id"),
+            token_data=token_data,
+        )
+    except IntegrationValidationError as exc:
+        destination = _append_query_params(
+            decoded_state.get("return_to", "/context/integrations?provider=salesforce") if "decoded_state" in locals() else "/context/integrations?provider=salesforce",
+            oauth_status="error",
+            error=str(exc),
+        )
+        return RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)
+
+    destination = _append_query_params(
+        decoded_state["return_to"],
+        oauth_status="connected",
+        provider="salesforce",
+    )
+    return RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)

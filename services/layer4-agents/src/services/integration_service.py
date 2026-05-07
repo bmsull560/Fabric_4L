@@ -780,3 +780,139 @@ class IntegrationService:
         )
 
         return credentials
+
+    async def exchange_salesforce_oauth_code(
+        self,
+        *,
+        code: str,
+        redirect_uri: str,
+        oauth_base_url: str | None = None,
+    ) -> dict[str, Any]:
+        """Exchange a Salesforce authorization code for OAuth tokens."""
+        client_id = os.getenv("SALESFORCE_CLIENT_ID")
+        client_secret = os.getenv("SALESFORCE_CLIENT_SECRET")
+        if not client_id or not client_secret:
+            raise IntegrationValidationError(
+                "SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET must be configured"
+            )
+
+        base_url = (oauth_base_url or os.getenv("SALESFORCE_OAUTH_BASE_URL") or "https://login.salesforce.com").rstrip("/")
+        self._validate_config(
+            enabled=False,
+            credentials={},
+            sync_interval=self.MIN_SYNC_INTERVAL,
+            batch_size=self.MIN_BATCH_SIZE,
+            instance_url=base_url,
+        )
+        token_url = f"{base_url}/services/oauth2/token"
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                token_url,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": redirect_uri,
+                },
+            )
+
+        if response.status_code != 200:
+            raise IntegrationValidationError(
+                f"Salesforce OAuth exchange failed: HTTP {response.status_code} - {response.text}"
+            )
+
+        token_data = response.json()
+        if not token_data.get("access_token"):
+            raise IntegrationValidationError("Salesforce OAuth response missing access_token")
+        if not token_data.get("refresh_token"):
+            raise IntegrationValidationError("Salesforce OAuth response missing refresh_token")
+        if not token_data.get("instance_url"):
+            raise IntegrationValidationError("Salesforce OAuth response missing instance_url")
+        return token_data
+
+    async def upsert_salesforce_oauth_integration(
+        self,
+        *,
+        tenant_id: str,
+        user_id: str | None,
+        token_data: dict[str, Any],
+    ) -> Integration:
+        """Create or update a Salesforce integration from an OAuth token response."""
+        access_token = str(token_data.get("access_token", "")).strip()
+        refresh_token = str(token_data.get("refresh_token", "")).strip()
+        instance_url = str(token_data.get("instance_url", "")).strip()
+        salesforce_org_id = token_data.get("organization_id") or token_data.get("org_id")
+
+        if not access_token or not refresh_token or not instance_url:
+            raise IntegrationValidationError("OAuth token response is missing required Salesforce values")
+
+        self._validate_config(
+            enabled=True,
+            credentials={"api_key": access_token},
+            sync_interval=60,
+            batch_size=100,
+            instance_url=instance_url,
+        )
+
+        existing = await self.get_integration(tenant_id, CRMProvider.SALESFORCE)
+        credentials = {
+            "api_key": access_token,
+            "instance_url": instance_url,
+        }
+
+        if existing:
+            try:
+                old_credentials = await self.decrypt_credentials(existing)
+            except Exception:
+                old_credentials = {}
+            webhook_token = old_credentials.get("webhook_token")
+            if webhook_token:
+                credentials["webhook_token"] = webhook_token
+
+        if "webhook_token" not in credentials:
+            credentials["webhook_token"] = secrets.token_hex(32)
+
+        encrypted_credentials = await EncryptionService.encrypt(
+            json.dumps(credentials),
+            key_id=DEFAULT_KEY_ID,
+        )
+        encrypted_refresh_token = await EncryptionService.encrypt(
+            refresh_token,
+            key_id=DEFAULT_KEY_ID,
+        )
+
+        if existing:
+            existing.enabled = True
+            existing.credentials_encrypted = encrypted_credentials
+            existing.refresh_token_encrypted = encrypted_refresh_token
+            existing.encryption_key_id = DEFAULT_KEY_ID
+            existing.instance_url = instance_url
+            existing.sync_status = IntegrationStatus.IDLE
+            existing.last_error_message = None
+            existing.updated_by = user_id
+            if salesforce_org_id:
+                existing.salesforce_org_id = str(salesforce_org_id)
+            integration = existing
+        else:
+            integration = Integration(
+                tenant_id=tenant_id,
+                provider=CRMProvider.SALESFORCE,
+                enabled=True,
+                credentials_encrypted=encrypted_credentials,
+                refresh_token_encrypted=encrypted_refresh_token,
+                encryption_key_id=DEFAULT_KEY_ID,
+                instance_url=instance_url,
+                salesforce_org_id=str(salesforce_org_id) if salesforce_org_id else None,
+                sync_interval_minutes=60,
+                sync_batch_size=100,
+                sync_status=IntegrationStatus.IDLE,
+                created_by=user_id,
+                updated_by=user_id,
+            )
+            self.db.add(integration)
+
+        await self.db.commit()
+        await self.db.refresh(integration)
+        return integration
