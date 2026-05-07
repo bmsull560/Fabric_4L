@@ -9,7 +9,7 @@
  * lifecycle management (draft → validated → converted).
  */
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Lightbulb,
   Sparkles,
@@ -33,6 +33,7 @@ import {
   useAccountHypotheses,
   useGenerateHypotheses,
   useValidateHypothesis,
+  useConvertHypothesisToTree,
   type ValueHypothesis,
 } from "@/hooks/useHypotheses";
 
@@ -71,12 +72,16 @@ function HypothesisCard({
   isSelected,
   onSelect,
   onStatusChange,
+  onConvert,
+  isConverting,
   isUpdating,
 }: {
   hypothesis: ValueHypothesis;
   isSelected: boolean;
   onSelect: () => void;
   onStatusChange: (status: "validated" | "rejected") => void;
+  onConvert: () => void;
+  isConverting: boolean;
   isUpdating: boolean;
 }) {
   const cfg = STATUS_CONFIG[hypothesis.status] ?? STATUS_CONFIG.draft;
@@ -93,7 +98,7 @@ function HypothesisCard({
       <div className="flex items-start gap-3 w-full">
         <Icon size={14} className={cn("mt-0.5 shrink-0", cfg.color)} />
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold">{hypothesis.value_driver}</div>
+          <div className="text-xs font-semibold">{hypothesis.capability_name ?? "Value Hypothesis"}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
             {hypothesis.hypothesis_text}
           </div>
@@ -107,7 +112,7 @@ function HypothesisCard({
       {/* Signal → Product mapping */}
       <div className="flex items-center gap-1.5 ml-7 text-[10px] text-muted-foreground">
         <Target size={10} />
-        <span className="truncate">{hypothesis.signal_ids.length} signal(s)</span>
+        <span className="truncate">{hypothesis.signal_id ? "1 signal" : "0 signals"}</span>
         <ArrowRight size={8} />
         <span className="font-medium text-foreground truncate">Product {hypothesis.product_id}</span>
       </div>
@@ -131,6 +136,18 @@ function HypothesisCard({
           </button>
         </div>
       )}
+      {isSelected && hypothesis.status === "validated" && (
+        <div className="flex items-center gap-2 ml-7 mt-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onConvert(); }}
+            disabled={isConverting}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+          >
+            {isConverting ? <Loader2 size={10} className="animate-spin" /> : <ArrowRight size={10} />}
+            Convert to Driver Tree
+          </button>
+        </div>
+      )}
     </button>
   );
 }
@@ -139,6 +156,7 @@ function HypothesisCard({
 
 export default function HypothesesTab() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading, error: accountError, refetch: refetchAccount } = useAccount(accountId ?? null);
   const {
@@ -149,6 +167,7 @@ export default function HypothesesTab() {
   } = useAccountHypotheses(accountId ?? null);
   const generateHypotheses = useGenerateHypotheses();
   const validateHypothesis = useValidateHypothesis();
+  const convertHypothesisToTree = useConvertHypothesisToTree();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -204,7 +223,7 @@ export default function HypothesesTab() {
           detailContent={
             selected ? (
               <div className="space-y-3">
-                <h3 className="text-sm font-bold">{selected.value_driver}</h3>
+                <h3 className="text-sm font-bold">{selected.capability_name ?? "Value Hypothesis"}</h3>
                 <p className="text-xs text-muted-foreground">{selected.hypothesis_text}</p>
                 <div className="space-y-2 text-[10px]">
                   <div className="flex justify-between">
@@ -225,9 +244,9 @@ export default function HypothesesTab() {
                     {selected.evidence_ids.length} evidence item(s) linked
                   </div>
                 )}
-                {selected.validation_notes && (
+                {selected.feedback && (
                   <div className="text-[10px] text-muted-foreground border-t pt-2">
-                    <span className="font-semibold">Notes:</span> {selected.validation_notes}
+                    <span className="font-semibold">Notes:</span> {selected.feedback}
                   </div>
                 )}
               </div>
@@ -388,8 +407,31 @@ export default function HypothesesTab() {
                 isSelected={selectedId === h.id}
                 onSelect={() => setSelectedId(h.id)}
                 onStatusChange={(status) => {
-                  validateHypothesis.mutate({ hypothesisId: h.id, data: { status } });
+                  validateHypothesis.mutate({ hypothesisId: h.id, data: { new_status: status, feedback: `Marked as ${status}` } });
                 }}
+                onConvert={() => {
+                  convertHypothesisToTree.mutate(
+                    { hypothesisId: h.id },
+                    {
+                      onSuccess: (result) => {
+                        const createdId = result.value_model_id ?? result.tree_id;
+                        navigate(`/drivers/${result.account_id}/evidence`, {
+                          state: {
+                            hypothesisId: result.hypothesis_id,
+                            accountId: result.account_id,
+                            tenantId: result.tenant_id,
+                            evidenceIds: result.evidence_ids,
+                            valueModelId: result.value_model_id ?? null,
+                            treeId: result.tree_id ?? null,
+                            createdId: createdId ?? null,
+                            conversionStatus: result.status,
+                          },
+                        });
+                      },
+                    }
+                  );
+                }}
+                isConverting={convertHypothesisToTree.isPending}
                 isUpdating={validateHypothesis.isPending}
               />
             ))}
