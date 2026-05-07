@@ -19,7 +19,7 @@ export function GovernanceAuditTrail() {
               </p>
             </div>
             <Link
-              to="/governance/trace"
+              to="/governance/traces"
               className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-xs font-medium hover:bg-accent"
             >
               Decision trace

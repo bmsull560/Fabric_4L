@@ -127,6 +127,11 @@ vi.mock('@/hooks/useVariables', () => ({
     mutateAsync: async () => ({}),
     isPending: false,
   }),
+  useTestVariableBinding: () => ({
+    mutate: vi.fn(),
+    mutateAsync: async () => ({ success: true }),
+    isPending: false,
+  }),
 }));
 
 vi.mock('@/hooks/useGovernance', () => ({
