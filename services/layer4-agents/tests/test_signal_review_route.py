@@ -19,6 +19,28 @@ def app() -> FastAPI:
     return app
 
 
+class _FakeNeo4jSession:
+    def __init__(self, calls: list[tuple[str, dict]]) -> None:
+        self.calls = calls
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+    async def run(self, query: str, params: dict) -> None:
+        self.calls.append((query, params))
+
+
+class _FakeNeo4jDriver:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict]] = []
+
+    def session(self) -> _FakeNeo4jSession:
+        return _FakeNeo4jSession(self.calls)
+
+
 @pytest.mark.asyncio
 async def test_signal_review_approve_reject_roundtrip_and_persistence_reload(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> None:
     persisted: dict[str, dict] = {}
@@ -53,3 +75,28 @@ async def test_signal_review_approve_reject_roundtrip_and_persistence_reload(app
         assert reject.status_code == 200
         assert reject.json()["review_status"] == "rejected"
         assert persisted["sig-1"]["decision_note"] == "insufficient evidence"
+
+
+@pytest.mark.asyncio
+async def test_evidence_attach_writes_driver_relation(app: FastAPI) -> None:
+    fake_driver = _FakeNeo4jDriver()
+    app.state.neo4j_driver = fake_driver
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/v1/evidence/ev-1/decisions",
+            json={
+                "account_id": "acct-1",
+                "case_id": "case-1",
+                "decision": "attached_to_driver",
+                "driver_id": "drv-1",
+                "decision_note": "attach for model",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["decision"] == "attached_to_driver"
+    assert len(fake_driver.calls) == 1
+    _, params = fake_driver.calls[0]
+    assert params["evidence_id"] == "ev-1"
+    assert params["driver_id"] == "drv-1"
