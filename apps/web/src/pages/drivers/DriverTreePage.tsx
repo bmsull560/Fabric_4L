@@ -46,8 +46,8 @@ export default function DriverTreePage() {
     { status: 'validated' }
   );
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
-  const { data: driverData } = useWorkspaceTabQuery<{ drivers?: PromotedDriver[] }>(caseId ?? null, "drivers");
-  const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: Array<{ evidence_id: string; driver_id: string }> }>(caseId ?? null, "evidence-links");
+  const driversQuery = useWorkspaceTabQuery<{ drivers?: PromotedDriver[] }>(caseId ?? null, "drivers");
+  const linksQuery = useWorkspaceTabQuery<{ evidence_links?: Array<{ evidence_id: string; driver_id: string }> }>(caseId ?? null, "evidence-links");
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function DriverTreePage() {
   const revenue = account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A";
 
   const hypotheses = hypothesesData?.hypotheses ?? [];
-  const promotedDrivers = driverData?.drivers ?? [];
+  const promotedDrivers = driversQuery.data?.drivers ?? [];
   const treeItems = promotedDrivers.length > 0
     ? promotedDrivers.map((driver) => ({
         id: String(driver.id ?? driver.hypothesis_id ?? ""),
@@ -101,21 +101,29 @@ export default function DriverTreePage() {
       }));
   const selectedTree = treeItems.find((item) => item.id === selectedTreeId);
   const capabilityId = selectedTree?.capabilityId;
-  const evidenceLinks = linkData?.evidence_links ?? [];
+  const evidenceLinks = linksQuery.data?.evidence_links ?? [];
 
   const { data: treePaths, isLoading: pathsLoading } = useValueTreePaths(
     capabilityId,
     { direction: 'upward', maxDepth: 4, enabled: !!capabilityId }
   );
 
+  const driverTabIsLoading = hypothesesLoading || driversQuery.isLoading || linksQuery.isLoading;
+  const driverTabError = driversQuery.error ?? linksQuery.error;
+
   const TreesTab = () => (
     <div className="space-y-6">
-      {hypothesesLoading ? (
+      {driverTabIsLoading ? (
         <LoadingState message="Loading driver tree suggestions…" />
+      ) : driverTabError ? (
+        <ErrorState
+          title="Unable to load driver tree data"
+          description="We could not load drivers or evidence links. Please retry from Intelligence or refresh this page."
+        />
       ) : treeItems.length === 0 ? (
         <EmptyState
           title="No driver tree suggestions"
-          description="Promote signals from the Intelligence workspace to generate value hypotheses and driver trees."
+          description="No drivers have been promoted yet. Approve and convert a hypothesis from Intelligence to create your first driver tree."
           icon={TreePine}
           action={
             <Btn onClick={() => navigateTo('intelligence-signals', { accountId })}>
@@ -205,8 +213,8 @@ export default function DriverTreePage() {
     <DriverTreeShell accountName={accountName} industry={industry} revenue={revenue}>
       {tab === "trees" && <TreesTab />}
       {tab === "evidence" && <EvidenceTabContent />}
-      {tab === "alternatives" && <AlternativesTab />}
-      {tab === "solution-cost" && <SolutionCostTab />}
+      {import.meta.env.VITE_ENABLE_DRIVER_TREE_EXPERIMENTAL_TABS === "true" && tab === "alternatives" && <AlternativesTab />}
+      {import.meta.env.VITE_ENABLE_DRIVER_TREE_EXPERIMENTAL_TABS === "true" && tab === "solution-cost" && <SolutionCostTab />}
     </DriverTreeShell>
   );
 }
