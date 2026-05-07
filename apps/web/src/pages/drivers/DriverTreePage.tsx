@@ -21,6 +21,7 @@ import AlternativesTab from "@/pages/evidence/AlternativesTab";
 import SolutionCostTab from "@/pages/evidence/SolutionCostTab";
 import { TreePine, ArrowRight } from "lucide-react";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
+import { useWorkflowSessionContext } from "@/hooks/useWorkflowSessionContext";
 
 interface PromotedDriver {
   id?: string;
@@ -41,6 +42,7 @@ export default function DriverTreePage() {
   const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
   const getSelection = useWorkspaceSelectionStore((state) => state.getSelection);
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
+  const { staleReason, clearWorkflowContext } = useWorkflowSessionContext();
   const { data: hypothesesData, isLoading: hypothesesLoading } = useAccountHypotheses(
     accountId ?? null,
     { status: 'validated' }
@@ -75,7 +77,18 @@ export default function DriverTreePage() {
   }
 
   if (!account) {
+    clearWorkflowContext();
     return <ErrorState title="Account not found." description="Select a valid account to continue in this workspace." fullPage />;
+  }
+
+  if (staleReason === "case-closed" || staleReason === "entity-deleted") {
+    return (
+      <ErrorState
+        title="Saved workflow context is stale"
+        description="The saved case or entity is no longer available. Start from the current account workspace."
+        fullPage
+      />
+    );
   }
 
   const accountName = account?.name ?? "Account";

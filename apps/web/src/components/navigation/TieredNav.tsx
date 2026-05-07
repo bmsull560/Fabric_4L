@@ -34,6 +34,7 @@ export type { UserTier } from "@/navigation/navHelpers";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import { useWorkflowSessionStore } from "@/stores/workflowSessionStore";
 import {
   Building2,
   Radar,
@@ -49,6 +50,7 @@ import {
   Calculator,
   FileText,
   TrendingUp,
+  RotateCcw,
 } from "lucide-react";
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -152,6 +154,14 @@ const NAV_SPINE: NavItem[] = [
     tier: "standard",
     description: "Prospect setup and configuration",
   },
+  {
+    id: "resume-workflow",
+    label: "Resume Last Workflow",
+    icon: <RotateCcw size={16} />,
+    path: "/intelligence",
+    tier: "standard",
+    description: "Jump back to the most recent workflow location",
+  },
   // ─── SETTINGS (Admin) ─────────────────────────────────────────────────────────
   {
     id: "settings",
@@ -231,9 +241,12 @@ const SidebarItem = memo(function SidebarItem({
   const selectedAccountId = useAccountContextStore(
     state => state.selectedAccountId
   );
+  const resumePath = useWorkflowSessionStore((state) => state.context.lastPath);
   const resolvedPath = useMemo(
-    () => resolveWorkspacePath(item.path, selectedAccountId),
-    [item.path, selectedAccountId]
+    () => item.id === "resume-workflow"
+      ? (resumePath ?? resolveWorkspacePath(item.path, selectedAccountId))
+      : resolveWorkspacePath(item.path, selectedAccountId),
+    [item.id, item.path, resumePath, selectedAccountId]
   );
   const isActive = isRouteActive(location, resolvedPath);
   const [open, setOpen] = useState(isActive);
@@ -488,4 +501,3 @@ export function TieredNav({
 
 export { NAV_SPINE };
 export default TieredNav;
-

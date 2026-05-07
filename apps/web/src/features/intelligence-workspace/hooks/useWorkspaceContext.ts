@@ -4,13 +4,15 @@
 import { useParams } from "react-router-dom";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { useAccount } from "@/hooks";
+import { useWorkflowSessionContext } from "@/hooks/useWorkflowSessionContext";
 
 export function useWorkspaceContext() {
   const params = useParams<{ accountId: string; tabId: string }>();
   const accountId = params.accountId ?? "";
-  const tabId = params.tabId ?? "signals";
+  const { workflowContext } = useWorkflowSessionContext();
+  const tabId = params.tabId ?? workflowContext.tabId ?? "signals";
   const selectedAccountId = useAccountContextStore((s) => s.selectedAccountId);
-  const resolvedAccountId = accountId || selectedAccountId || "";
+  const resolvedAccountId = accountId || workflowContext.accountId || selectedAccountId || "";
 
   const { data: account } = useAccount(resolvedAccountId || null);
 
