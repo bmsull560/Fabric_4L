@@ -1,4 +1,5 @@
 # Layer 3: Knowledge Graph & Semantic Layer
+> Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
 Layer 3 of the Value Fabric platform consumes RDF/OWL triples from Layer 2 and provides a queryable knowledge graph with GraphRAG retrieval capabilities.
 

@@ -10,6 +10,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   OPENAPI_SCHEMA_MAP,
   DRIFT_TRACKED_SCHEMAS,
@@ -53,6 +56,33 @@ describe('OpenAPI drift: tracked schemas have canonical mappings', () => {
     const mapKeys = Object.keys(OPENAPI_SCHEMA_MAP).sort();
     const tracked = [...DRIFT_TRACKED_SCHEMAS].sort();
     expect(tracked).toEqual(mapKeys);
+  });
+
+  it('checked-in OpenAPI fixtures keep expected base-path version prefixes', () => {
+    const expectedPrefixes: Record<string, Array<`/${string}`>> = {
+      'layer1-ingestion.json': ['/api/v1', '/api', '/v1', '/health'],
+      'layer2-extraction.json': ['/v1', '/health'],
+      'layer3-knowledge.json': ['/v1', '/health', '/graph', '/entities'],
+      'layer4-agents.json': ['/v1', '/', '/health', '/metrics', '/auth'],
+      'layer5-ground-truth.json': ['/api/v1'],
+      'layer6-benchmarks.json': ['/v1', '/health'],
+    };
+
+    for (const [specFile, allowedPrefixes] of Object.entries(expectedPrefixes)) {
+      const absolutePath = resolve(CONTRACTS_OPENAPI_DIR, specFile);
+      const spec = JSON.parse(readFileSync(absolutePath, 'utf-8')) as { paths: Record<string, unknown> };
+      const paths = Object.keys(spec.paths ?? {});
+      expect(paths.length).toBeGreaterThan(0);
+
+      for (const routePath of paths) {
+        const allowed = allowedPrefixes.some((prefix) => (
+          prefix === '/'
+            ? routePath === '/'
+            : routePath === prefix || routePath.startsWith(`${prefix}/`)
+        ));
+        expect(allowed, `${specFile} path ${routePath} must match one of: ${allowedPrefixes.join(', ')}`).toBe(true);
+      }
+    }
   });
 });
 
@@ -278,3 +308,7 @@ describe('OpenAPI drift: common error shapes', () => {
     assertCanonicalSchema(ApiErrorSchema, 'layer4-agents.json', '#/components/schemas/ErrorResponse', frontendError, 'frontend ApiError');
   });
 });
+const CONTRACTS_OPENAPI_DIR = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../../../../contracts/openapi'
+);
