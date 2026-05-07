@@ -554,4 +554,16 @@ journeyTest.describe('Calculation, Evidence Integrity, and Scenario Deep', () =>
       'formula options display expected output ranges',
     );
   });
+
+
+  journeyTest('CALC-DEEP-013: accepted evidence appears in downstream value assumptions', async ({ authedPage }) => {
+    await authedPage.goto(`/calculator/${DEEP_ACCOUNT_ID}/value-model`, { waitUntil: 'domcontentloaded' });
+
+    await expectAnyVisible(
+      authedPage,
+      [/accepted evidence inputs/i, /linkage id/i],
+      'accepted evidence summary in value model',
+    );
+  });
+
 });

@@ -27,6 +27,7 @@ import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { cn } from "@/lib/utils";
 import {
   useCalculateROI,
@@ -208,6 +209,8 @@ function ProjectionTable({ projections }: { projections: AnnualProjection[] }) {
 export default function ROITab() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
+  const { data: caseId } = useCanonicalCaseId(accountId ?? null);
+  const { data: evidenceData } = useWorkspaceTabQuery<{ evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }> }>(caseId ?? null, "evidence");
   const { data: templates } = useROITemplates();
   const { data: benchmarks } = useIndustryBenchmarks(account?.industry ?? null);
   const calculateROI = useCalculateROI();
@@ -223,6 +226,7 @@ export default function ROITab() {
   });
 
   const result: ROICalculationResult | undefined = calculateROI.data;
+  const acceptedEvidence = (evidenceData?.evidence ?? []).filter((item) => item.decision_status === "accepted");
   const scenarios: Record<string, ScenarioResult> = result?.scenarios ?? {};
   const activeResult: ScenarioResult | undefined = scenarios[activeScenario];
 
@@ -289,6 +293,18 @@ export default function ROITab() {
         />
       }
     >
+      <SectionCard title="Accepted Evidence Inputs" className="mb-4">
+        {acceptedEvidence.length === 0 ? (
+          <div className="text-xs text-muted-foreground">No accepted evidence linked yet.</div>
+        ) : (
+          <div className="space-y-1">
+            {acceptedEvidence.map((item) => (
+              <div key={item.id} className="text-xs">{item.title} · Linkage ID: {item.provenance_id ?? item.id}</div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
       {/* Input form */}
       <SectionCard title="ROI Calculator" className="mb-4">
         <div className="grid grid-cols-3 gap-4 mb-4">

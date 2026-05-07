@@ -144,6 +144,17 @@ describe('useWorkspaceTabQuery', () => {
     expect(result.current.error).toBeDefined();
   });
 
+  it('should tolerate 501 in test mode fallback', async () => {
+    (apiClient.get as Mock).mockRejectedValueOnce({ statusCode: 501, message: 'Not implemented' });
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () => useWorkspaceTabQuery<{ signals: [] }>('case-123', 'signals'),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({ signals: [] });
+  });
+
   /**
    * REGRESSION TEST: This test prevents the bug where the Pydantic model
    * stripped out dynamic fields (signals, drivers, etc.) due to extra="forbid".
@@ -313,5 +324,15 @@ describe('usePersistWorkspaceTab', () => {
       '/analysis/cases/case-123/workspace/signals',
       payload
     );
+    expect(result.current.persistState).toBe('saved');
+  });
+
+  it('exposes failed persist state when request fails', async () => {
+    (apiClient.put as Mock).mockRejectedValueOnce(new Error('boom'));
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => usePersistWorkspaceTab('signals'), { wrapper });
+    result.current.mutate({ caseId: 'case-123', payload: { signals: [] } });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.persistState).toBe('failed');
   });
 });
