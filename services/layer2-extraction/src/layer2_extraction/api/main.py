@@ -21,10 +21,7 @@ from typing import Any
 from uuid import uuid4
 
 # Third-party imports for health check
-try:
-    import psutil  # type: ignore[import-untyped]
-except ImportError:
-    psutil = None  # type: ignore[assignment]  # Health check will work without system metrics
+import importlib
 
 from fastapi import BackgroundTasks, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
@@ -32,12 +29,33 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
-from value_fabric.shared.secrets import load_infisical_secrets
+from ..startup.dependency_verifier import DependencyRule, verify_startup_dependencies
+
+verify_startup_dependencies(
+    [
+        DependencyRule(
+            module="value_fabric.shared.secrets",
+            required_in_prod=True,
+            remediation="Install shared package and verify PYTHONPATH includes /shared",
+        ),
+        DependencyRule(
+            module="psutil",
+            required_in_prod=False,
+            remediation="Install psutil to enable host-level health metrics",
+        ),
+    ]
+)
 
 from layer2_extraction.api.deps import RequestContext
 
+psutil = importlib.import_module("psutil") if importlib.util.find_spec("psutil") else None
+
+_secrets_module = importlib.import_module("value_fabric.shared.secrets") if importlib.util.find_spec("value_fabric.shared.secrets") else None
+load_infisical_secrets = getattr(_secrets_module, "load_infisical_secrets", None)
+
 try:
-    load_infisical_secrets()
+    if load_infisical_secrets is not None:
+        load_infisical_secrets()
 except Exception:
     _secret_env = (
         os.getenv("ENVIRONMENT")
