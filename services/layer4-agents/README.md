@@ -1,4 +1,5 @@
 # Layer 4: Agentic Workflow Engine
+> Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
 LangGraph-powered agentic workflow layer for the Value Fabric platform.
 

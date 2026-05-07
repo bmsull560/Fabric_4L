@@ -73,17 +73,19 @@ function getEnvVar(name: string, fallback: string): string {
   return fallback;
 }
 
-// Base API path - layer prefixes must include /v1 to match backend OpenAPI routes
-const API_BASE = getEnvVar('VITE_API_BASE', '/api/v1');
+// Canonical routing/versioning matrix:
+// docs/reference/service-routing-and-api-version-matrix.md
+// Shared gateway API version prefix.
+const API_VERSION_PREFIX = getEnvVar('VITE_API_VERSION_PREFIX', getEnvVar('VITE_API_BASE', '/api/v1'));
 
-// Layer prefixes (must match .env.example to avoid double-/v1 when VITE_API_BASE is set)
+// Layer route prefixes (aligned with matrix terminology; legacy VITE_L*_PREFIX still supported)
 const LAYER_PREFIXES = {
-  l1: getEnvVar('VITE_L1_PREFIX', '/ingest'),
-  l2: getEnvVar('VITE_L2_PREFIX', '/extract'),
-  l3: getEnvVar('VITE_L3_PREFIX', '/graph'),
-  l4: getEnvVar('VITE_L4_PREFIX', '/agents'),
-  l5: getEnvVar('VITE_L5_PREFIX', '/truths'),
-  l6: getEnvVar('VITE_L6_PREFIX', '/benchmarks'),
+  l1: getEnvVar('VITE_LAYER1_ROUTE_PREFIX', getEnvVar('VITE_L1_PREFIX', '/ingest')),
+  l2: getEnvVar('VITE_LAYER2_ROUTE_PREFIX', getEnvVar('VITE_L2_PREFIX', '/extract')),
+  l3: getEnvVar('VITE_LAYER3_ROUTE_PREFIX', getEnvVar('VITE_L3_PREFIX', '/graph')),
+  l4: getEnvVar('VITE_LAYER4_ROUTE_PREFIX', getEnvVar('VITE_L4_PREFIX', '/agents')),
+  l5: getEnvVar('VITE_LAYER5_ROUTE_PREFIX', getEnvVar('VITE_L5_PREFIX', '/truths')),
+  l6: getEnvVar('VITE_LAYER6_ROUTE_PREFIX', getEnvVar('VITE_L6_PREFIX', '/benchmarks')),
 } as const;
 
 /**
@@ -193,7 +195,7 @@ class ApiClient {
   private initializeClients() {
     (Object.keys(LAYER_PREFIXES) as LayerKey[]).forEach((layer) => {
       const client = axios.create({
-        baseURL: `${API_BASE}${LAYER_PREFIXES[layer]}`,
+        baseURL: `${API_VERSION_PREFIX}${LAYER_PREFIXES[layer]}`,
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
