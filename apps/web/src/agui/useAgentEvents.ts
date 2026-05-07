@@ -35,6 +35,7 @@ import {
 } from "./events";
 import { sendAgentMessage } from "./AgentEventClient";
 import { getDefaultSuggestedActions } from "@/hooks/useAgentStream";
+import { useApplyWorkspacePageAction, type WorkspacePageActionContract } from "@/hooks/useWorkspaceCase";
 
 // ── Tab System Prompts (reused from useAgentStream) ─────────────────────────
 
@@ -152,6 +153,7 @@ export function useAgentEvents({
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<RunMetadata | null>(null);
+  const applyWorkspacePageAction = useApplyWorkspacePageAction();
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -288,6 +290,20 @@ export function useAgentEvents({
       }
 
       case AgentEventType.TOOL_CALL_END: {
+        const eventResult = event.result as { pageAction?: WorkspacePageActionContract } | undefined;
+        if (event.success && eventResult?.pageAction) {
+          const pageAction = eventResult.pageAction;
+          applyWorkspacePageAction.mutate({
+            ...pageAction,
+            runMetadataIds: {
+              ...pageAction.runMetadataIds,
+              runId: currentRunId ?? undefined,
+              traceId: metadata?.traceId,
+              workflowId: metadata?.workflowId,
+              toolCallId: event.toolCallId,
+            },
+          });
+        }
         setSteps((prev) =>
           prev.map((s) =>
             s.id === event.toolCallId
@@ -307,7 +323,7 @@ export function useAgentEvents({
       default:
         break;
     }
-  }, []);
+  }, [applyWorkspacePageAction, currentRunId, metadata?.traceId, metadata?.workflowId]);
 
   // ── Send Message ────────────────────────────────────────────────────────
 
