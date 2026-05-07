@@ -34,6 +34,7 @@ export type {
   CapabilityCoverage,
   PortfolioSummary,
   Product,
+  ProductCapability,
   ProductFeature,
   ProductListResponse,
   SignalMatch,

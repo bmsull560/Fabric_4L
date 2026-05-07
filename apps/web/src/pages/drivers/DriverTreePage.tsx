@@ -22,6 +22,17 @@ import SolutionCostTab from "@/pages/evidence/SolutionCostTab";
 import { TreePine, ArrowRight } from "lucide-react";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 
+interface PromotedDriver {
+  id?: string;
+  hypothesis_id?: string;
+  name?: string;
+  hypothesis_text?: string;
+  category?: string;
+  value_path_category?: string;
+  confidence?: number;
+  capability_id?: string;
+}
+
 export default function DriverTreePage() {
   const params = useParams<{ accountId: string; tab?: string }>();
   const { accountId, tab = "trees" } = params;
@@ -35,7 +46,7 @@ export default function DriverTreePage() {
     { status: 'validated' }
   );
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
-  const { data: driverData } = useWorkspaceTabQuery<{ drivers?: Array<Record<string, unknown>> }>(caseId ?? null, "drivers");
+  const { data: driverData } = useWorkspaceTabQuery<{ drivers?: PromotedDriver[] }>(caseId ?? null, "drivers");
   const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: Array<{ evidence_id: string; driver_id: string }> }>(caseId ?? null, "evidence-links");
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
 

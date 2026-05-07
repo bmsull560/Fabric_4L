@@ -153,7 +153,16 @@ async def update_current_tenant_settings(
 
     current_settings = tenant.settings or {}
     if update.settings:
-        allowed_fields = {"custom_branding", "notification_preferences", "webhook_url"}
+        allowed_fields = {
+            "custom_branding",
+            "notification_preferences",
+            "webhook_url",
+            "security",
+            "feature_flags",
+            "limits",
+            "retention",
+            "integrations_summary",
+        }
         for key, value in update.settings.items():
             if key in allowed_fields:
                 current_settings[key] = value

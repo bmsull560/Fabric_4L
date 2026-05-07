@@ -12,6 +12,7 @@ import { apiGet } from '@/api/typedClient';
 import type { l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import { type EnrichmentFinancials } from './useEnrichment';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ export interface AccountBriefing {
   enrichment: {
     last_enriched_at?: string;
     sources_used: string[];
-    financials?: Record<string, unknown>;
+    financials?: EnrichmentFinancials;
     tech_stack?: string[];
   };
   signals: {

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
-import { apiGet, apiPost } from '@/api/typedClient';
+import { apiGet, apiPost, apiDelete } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import { POLL_INTERVALS } from './usePolling';
@@ -404,7 +404,7 @@ export function useCancelJob() {
 
   return useMutation<unknown, Error, string>({
     mutationFn: async (jobId: string) => {
-      return apiClient.delete('l1', `/jobs/${jobId}`);
+      return apiDelete('l1', `/jobs/${jobId}`);
     },
     onSuccess: (_, jobId) => {
       queryClient.invalidateQueries({ queryKey: QK.ingestion.detail(jobId) });
@@ -419,7 +419,7 @@ export function useRetryJob() {
 
   return useMutation<unknown, Error, string>({
     mutationFn: async (jobId: string) => {
-      return apiClient.post('l1', `/jobs/${jobId}/retry`, { retry_strategy: 'FULL' });
+      return apiPost('l1', `/jobs/${jobId}/retry`, { retry_strategy: 'FULL' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ingestion.all });

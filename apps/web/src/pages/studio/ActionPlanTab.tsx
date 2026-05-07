@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 // DIL hooks
 import { useAccountHypotheses, type ValueHypothesis } from "@/hooks/useHypotheses";
-import { useProducts, type Product, type ProductListResponse } from "@/hooks/useProducts";
+import { useProducts, type Product, type ProductListResponse, type ProductCapability } from "@/hooks/useProducts";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Recommendation {
@@ -82,7 +82,7 @@ function synthesizeRecommendations(
     // Find a matching product by capability or fallback to first product
     const matchingProduct = products.find((p) =>
       p.capabilities?.some(
-        (c: Record<string, unknown>) =>
+        (c: ProductCapability) =>
           (c.name as string | undefined)?.toLowerCase() ===
           (h.capability_name ?? "").toLowerCase()
       )
@@ -158,7 +158,7 @@ export default function ActionPlanTab() {
   const { data: productsData } = useProducts();
 
   const hypotheses = hypothesesData?.hypotheses ?? [];
-  const products = (productsData as ProductListResponse | undefined)?.products ?? [];
+  const products = productsData?.products ?? [];
 
   const hasGenerated = recommendations.length > 0;
 

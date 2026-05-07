@@ -212,7 +212,7 @@ export default function DecisionTrace() {
         <SectionCard title="Truth References" className="mb-5">
           <div className="space-y-2">
             {governanceCase.truth_references.map((truthRef, idx) => {
-              const ref = truthRef as Record<string, unknown>;
+              const ref = truthRef;
               return (
                 <div key={`${String(ref.truth_object_id || idx)}`} className="rounded-md border border-neutral-200 p-3 text-[12px]">
                   <div className="font-semibold text-neutral-800">Requirement: {String(ref.requirement || ref.claim || "Truth reference")}</div>
@@ -231,7 +231,7 @@ export default function DecisionTrace() {
               <div className="font-semibold mb-1">Remediation Required</div>
               <ul className="list-disc pl-5 space-y-1">
                 {governanceCase.remediation_items.map((item, idx) => {
-                  const rem = item as Record<string, unknown>;
+                  const rem = item;
                   return <li key={`${idx}-${String(rem.type || "rem")}`}>{String(rem.message || rem.requirement || "Action required")}</li>;
                 })}
               </ul>

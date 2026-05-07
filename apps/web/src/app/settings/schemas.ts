@@ -79,7 +79,8 @@ export const settingsRoutes = {
 export const settingsAccessRules = {
   personal: {
     scope: "user" as const,
-    allowedRoles: ["viewer", "editor", "admin", "owner"],
+    capability: "personal" as const,
+    allowedRoles: ["super_admin", "tenant_admin", "content_admin", "analyst", "read_only", "admin", "advanced", "standard", "viewer", "user"],
     rule: "All authenticated users can manage their own personal settings.",
     restrictions: [
       "Tenant admins cannot edit another user's personal preferences.",
@@ -89,8 +90,9 @@ export const settingsAccessRules = {
 
   billing: {
     scope: "tenant" as const,
-    allowedRoles: ["owner", "billing_admin", "platform_admin"],
-    rule: "Only tenant owners, billing admins, and platform admins can access billing controls.",
+    capability: "billing" as const,
+    allowedRoles: ["super_admin", "tenant_admin", "admin"],
+    rule: "Tenant admins and super admins can access billing and workspace controls.",
     restrictions: [
       "Standard users should not see payment methods.",
       "Editors and viewers should not see subscription controls.",
@@ -99,7 +101,8 @@ export const settingsAccessRules = {
 
   teamAccess: {
     scope: "workspace" as const,
-    allowedRoles: ["admin", "owner", "platform_admin"],
+    capability: "team" as const,
+    allowedRoles: ["super_admin", "tenant_admin", "admin"],
     partialAccess: {
       editor: ["members:view"],
       viewer: [],
@@ -113,7 +116,8 @@ export const settingsAccessRules = {
 
   dataIntegrations: {
     scope: "workspace" as const,
-    allowedRoles: ["admin", "owner", "platform_admin"],
+    capability: "integrations" as const,
+    allowedRoles: ["super_admin", "tenant_admin", "admin"],
     partialAccess: {
       editor: ["sources:view", "variables:view", "value_packs:view"],
       viewer: [],
@@ -124,8 +128,9 @@ export const settingsAccessRules = {
 
   governance: {
     scope: "admin" as const,
-    allowedRoles: ["owner", "platform_admin", "governance_admin"],
-    rule: "Governance controls are restricted to high-trust administrative roles.",
+    capability: "governance" as const,
+    allowedRoles: ["super_admin", "tenant_admin", "content_admin", "admin"],
+    rule: "Governance controls are restricted to tenant admins, content admins, and super admins.",
     restrictions: [
       "Audit trail is read-only for most admins.",
       "Policy edits require elevated permissions.",

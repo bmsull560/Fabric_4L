@@ -1,68 +1,103 @@
+import { Link } from "react-router-dom";
+import { AlertTriangle, Shield, Workflow } from "lucide-react";
+import { usePlatformSettings } from "@/hooks/usePlatformSettings";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { CapabilityGate } from "../components/CapabilityGate";
+
 export function GovernanceAdminControls() {
+  const { data: settings, isLoading, error } = usePlatformSettings();
+  const { user } = useAuthContext();
+  const isSuperAdmin = user?.role === "super_admin";
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border bg-card p-5">
-        <h3 className="text-sm font-semibold">Tenant Administration</h3>
-        <p className="text-xs text-muted-foreground">High-sensitivity controls restricted to tenant owners.</p>
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between rounded-md border p-3">
+    <CapabilityGate capability="governance">
+      <div className="space-y-6">
+        <section className="rounded-lg border bg-card p-5">
+          <div className="flex items-start gap-3">
+            <Shield className="mt-0.5 h-4 w-4 text-primary" />
             <div>
-              <p className="text-sm font-medium">Maintenance mode</p>
-              <p className="text-xs text-muted-foreground">Temporarily disable non-essential features.</p>
+              <h3 className="text-sm font-semibold">Tenant Security Controls</h3>
+              <p className="text-xs text-muted-foreground">
+                Canonical security and notification controls are now managed through
+                live tenant settings rather than shell-only toggles.
+              </p>
             </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input type="checkbox" className="peer sr-only" />
-              <div className="h-5 w-9 rounded-full bg-muted-foreground/30 transition-colors peer-checked:bg-primary" />
-              <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
-            </label>
           </div>
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Require MFA for all users</p>
-              <p className="text-xs text-muted-foreground">Enforce two-factor authentication tenant-wide.</p>
+          {isLoading ? (
+            <div className="mt-4 rounded-md border p-4 text-sm text-muted-foreground">
+              Loading current controls...
             </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input type="checkbox" className="peer sr-only" defaultChecked />
-              <div className="h-5 w-9 rounded-full bg-muted-foreground/30 transition-colors peer-checked:bg-primary" />
-              <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
-            </label>
-          </div>
+          ) : error ? (
+            <div className="mt-4 rounded-md border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+              {error.message}
+            </div>
+          ) : settings ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border p-4">
+                <p className="text-xs text-muted-foreground">Tenant status</p>
+                <p className="mt-1 text-sm font-medium capitalize">
+                  {settings.tenant_status ?? "active"}
+                </p>
+              </div>
+              <div className="rounded-md border p-4">
+                <p className="text-xs text-muted-foreground">MFA requirement</p>
+                <p className="mt-1 text-sm font-medium">
+                  {settings.security.require_2fa ? "Required" : "Optional"}
+                </p>
+              </div>
+              <div className="rounded-md border p-4">
+                <p className="text-xs text-muted-foreground">Session timeout</p>
+                <p className="mt-1 text-sm font-medium">
+                  {settings.security.session_timeout_minutes} minutes
+                </p>
+              </div>
+              <div className="rounded-md border p-4">
+                <p className="text-xs text-muted-foreground">Audit trail feature</p>
+                <p className="mt-1 text-sm font-medium">
+                  {settings.features.audit_trail ? "Enabled" : "Disabled"}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Audit log retention</p>
-              <p className="text-xs text-muted-foreground">Keep audit logs for 7 years (compliance requirement).</p>
-            </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input type="checkbox" className="peer sr-only" defaultChecked />
-              <div className="h-5 w-9 rounded-full bg-muted-foreground/30 transition-colors peer-checked:bg-primary" />
-              <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
-            </label>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              to="/settings/workspace"
+              className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"
+            >
+              Manage tenant settings
+            </Link>
+            <Link
+              to="/settings/governance/health"
+              className="inline-flex h-8 items-center gap-1 rounded-md border px-3 text-xs font-medium hover:bg-accent"
+            >
+              <Workflow className="h-3.5 w-3.5" />
+              Review health
+            </Link>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="rounded-lg border border-destructive/20 bg-destructive/5 p-5">
-        <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
-        <p className="text-xs text-muted-foreground">Destructive actions that cannot be undone.</p>
-        <div className="mt-4 space-y-2">
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Export all tenant data</p>
-              <p className="text-xs text-muted-foreground">Download a full archive of your workspace data.</p>
+        <section className="rounded-lg border border-destructive/20 bg-destructive/5 p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive" />
+            <div className="space-y-2">
+              <div>
+                <h3 className="text-sm font-semibold text-destructive">Privileged Operations</h3>
+                <p className="text-xs text-muted-foreground">
+                  Suspend, export, and delete flows remain super-admin operations and should
+                  stay outside tenant-admin self-service screens.
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {isSuperAdmin
+                  ? "Your current role can use the super-admin tenant management surfaces for destructive platform actions."
+                  : "Your current role does not include destructive tenant lifecycle permissions."}
+              </p>
             </div>
-            <button type="button" className="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium hover:bg-accent">Export</button>
           </div>
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <p className="text-sm font-medium">Delete tenant</p>
-              <p className="text-xs text-muted-foreground">Permanently delete this tenant and all associated data.</p>
-            </div>
-            <button type="button" className="inline-flex h-8 items-center rounded-md bg-destructive px-3 text-xs font-medium text-destructive-foreground hover:opacity-90">Delete</button>
-          </div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </CapabilityGate>
   );
 }

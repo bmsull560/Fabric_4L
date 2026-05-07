@@ -34,6 +34,7 @@ import {
   useEnrichAccount,
   useEnrichmentDetails,
   type EnrichmentResult,
+  type EnrichmentFinancials,
 } from "@/hooks/useEnrichment";
 import {
   useAccountBriefing,
@@ -98,7 +99,7 @@ function ReadinessGauge({ readiness }: { readiness: DealReadiness }) {
         {Object.entries(readiness.components).map(([key, val]) => (
           <div key={key} className="flex items-center justify-between text-[10px]">
             <span className="text-muted-foreground truncate">{key.replace(/_/g, " ")}</span>
-            <span className="font-semibold">{Math.round((val as number) * 100)}%</span>
+            <span className="font-semibold">{Math.round(val * 100)}%</span>
           </div>
         ))}
       </div>
@@ -118,11 +119,11 @@ function ReadinessGauge({ readiness }: { readiness: DealReadiness }) {
   );
 }
 
-function FinancialsSection({ financials }: { financials: Record<string, unknown> }) {
-  const revenue = financials?.revenue as number | undefined;
-  const employees = financials?.employees as number | undefined;
-  const growthRate = financials?.growth_rate as number | undefined;
-  const fiscalYear = financials?.fiscal_year as string | undefined;
+function FinancialsSection({ financials }: { financials: EnrichmentFinancials }) {
+  const revenue = financials?.revenue;
+  const employees = financials?.employees;
+  const growthRate = financials?.growth_rate;
+  const fiscalYear = financials?.fiscal_year;
 
   return (
     <SectionCard title="Financials">

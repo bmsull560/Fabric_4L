@@ -3,10 +3,9 @@
  *
  * React Router-native layout. Renders child routes via <Outlet />.
  */
-import { useMemo, useCallback } from "react";
+import { useMemo } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 import {
   settingsCategories,
   settingsNavigation,
@@ -14,13 +13,13 @@ import {
   settingsScreens,
   type SettingsCategoryKey,
 } from "./schemas";
+import { useSettingsAccess } from "./access";
 import {
   User,
   CreditCard,
   Users,
   Database,
   Shield,
-  Save,
   FileText,
   AlertCircle,
   HelpCircle,
@@ -36,6 +35,9 @@ const CATEGORY_ICONS: Record<SettingsCategoryKey, React.ReactNode> = {
 
 function useActiveCategory(pathname: string) {
   return useMemo(() => {
+    if (pathname.startsWith("/settings/workspace") || pathname.startsWith("/settings/billing")) {
+      return settingsCategories.find((cat) => cat.key === "billing") ?? settingsCategories[0];
+    }
     for (const cat of settingsCategories) {
       if (pathname.startsWith(cat.basePath)) return cat;
     }
@@ -67,12 +69,20 @@ function useScreenMeta(pathname: string) {
 
 export function SettingsLayout() {
   const { pathname } = useLocation();
-
-  const handleSave = useCallback(() => {
-    toast.warning("Save is not yet implemented for this settings page.");
-  }, []);
+  const { hasCapability } = useSettingsAccess();
   const activeCategory = useActiveCategory(pathname);
-  const subnavItems = useActiveSubnav(activeCategory.basePath);
+  const visibleCategories = settingsCategories.filter((category) => {
+    const accessRule = settingsAccessRules[category.key as keyof typeof settingsAccessRules];
+    return hasCapability(accessRule.capability);
+  });
+  const subnavItems = useActiveSubnav(activeCategory.basePath).filter((item) => {
+    if (item.path.startsWith("/personal")) return hasCapability("personal");
+    if (item.path.startsWith("/settings/workspace") || item.path.startsWith("/settings/billing")) return hasCapability("billing");
+    if (item.path.startsWith("/settings/team")) return hasCapability("team");
+    if (item.path.startsWith("/settings/data")) return hasCapability("integrations");
+    if (item.path.startsWith("/settings/governance")) return hasCapability("governance");
+    return true;
+  });
   const { screen, access } = useScreenMeta(pathname);
 
   return (
@@ -82,29 +92,21 @@ export function SettingsLayout() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold tracking-tight">
-              Settings / Configuration Center
+              Settings / Control Plane
             </h1>
             <p className="text-xs text-muted-foreground">
-              Manage personal preferences, tenant configuration, and governance
-              controls.
+              Canonical admin surfaces for tenant configuration, access control,
+              billing, integrations, and governance.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Link
+              to="/settings/governance/audit-trail"
               className="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium hover:bg-accent"
             >
               <FileText className="h-3.5 w-3.5" />
               View audit trail
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"
-            >
-              <Save className="h-3.5 w-3.5" />
-              Save changes
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -112,7 +114,7 @@ export function SettingsLayout() {
       {/* ── Horizontal Category Tabs ── */}
       <div className="border-b bg-background px-6">
         <nav className="flex gap-1 -mb-px">
-          {settingsCategories.map((cat) => {
+          {visibleCategories.map((cat) => {
             const isActive = pathname.startsWith(cat.basePath);
             return (
               <Link
@@ -241,8 +243,8 @@ export function SettingsLayout() {
                 </h3>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Changes to {activeCategory.label} settings may require a page
-                refresh to take effect across all workspaces.
+                Each section owns its own mutation flow. Save and retry actions
+                are handled inside the page instead of by a shell-level control.
               </p>
             </div>
           </div>

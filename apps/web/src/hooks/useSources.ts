@@ -9,7 +9,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/api/typedClient';
+import type { l1 } from '@/api/generated';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, SourceApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
@@ -180,40 +181,7 @@ function buildTargetPayload(request: CreateSourceRequest): Record<string, unknow
 
 // ── API Response Types (Layer 1) ────────────────────────────────────────────
 
-interface ApiScrapingTargetDetail {
-  id: string;
-  name: string;
-  url: string;
-  target_type: string;
-  source_category?: string | null;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  last_success_at: string | null;
-  success_count: number;
-  error_count: number;
-  average_execution_time_ms: number;
-  tags: string[];
-  tenant_id: string;
-  description: string | null;
-  url_pattern: string | null;
-  extraction_config: Record<string, unknown>;
-  browser_config: Record<string, unknown>;
-  schedule: {
-    enabled?: boolean;
-    cron_expression?: string;
-    timezone?: string;
-  } | null;
-  rate_limit: Record<string, unknown>;
-  compliance: Record<string, unknown>;
-  proxy_config: Record<string, unknown>;
-  authentication: {
-    type?: AuthType;
-    credentials_ref?: string;
-  } | null;
-  created_by: string;
-  last_error_at: string | null;
-}
+type ApiScrapingTargetDetail = l1.components['schemas']['ScrapingTargetDetail'];
 
 interface ApiTargetListResponse {
   data: ApiScrapingTargetDetail[];
@@ -307,8 +275,9 @@ function deriveConnectionStatus(
  * Derive sync frequency from schedule config
  */
 function deriveSyncFrequency(schedule: ApiScrapingTargetDetail['schedule']): SyncFrequency {
-  if (!schedule?.enabled) return 'manual';
-  const cron = schedule.cron_expression || '';
+  if (!schedule || typeof schedule !== 'object') return 'manual';
+  if (schedule.enabled !== true) return 'manual';
+  const cron = typeof schedule.cron_expression === 'string' ? schedule.cron_expression : '';
   if (cron.includes('*/5') || cron.includes('*/1')) return 'realtime';
   if (cron.includes('0 *')) return 'hourly';
   if (cron.includes('0 0')) return 'daily';
@@ -357,7 +326,7 @@ function extractFieldMappings(extractionConfig: Record<string, unknown> | null |
 function normalizeDataSource(api: ApiScrapingTargetDetail): DataSource {
   const status = deriveConnectionStatus(
     api.status,
-    api.last_success_at,
+    api.last_success_at ?? null,
     api.last_error_at,
     api.error_count
   );
@@ -384,7 +353,10 @@ function normalizeDataSource(api: ApiScrapingTargetDetail): DataSource {
     compliance: api.compliance,
     proxyConfig: api.proxy_config,
     authentication: api.authentication
-      ? { type: api.authentication.type, credentialsRef: api.authentication.credentials_ref }
+      ? {
+          type: typeof api.authentication.type === 'string' ? (api.authentication.type as AuthType) : undefined,
+          credentialsRef: typeof api.authentication.credentials_ref === 'string' ? api.authentication.credentials_ref : undefined,
+        }
       : null,
     tenantId: api.tenant_id,
     createdBy: api.created_by,
@@ -425,11 +397,11 @@ export function useSources(filters: SourceFilters = {}) {
       if (type) params.set('source_category', type);
 
       const response = await withApiError(
-        apiClient.get('l1', `/targets?${params.toString()}`),
+        apiGet<ApiTargetListResponse>('l1', `/targets?${params.toString()}`),
         SourceApiError
       );
 
-      const data = response.data as ApiTargetListResponse;
+      const data = response.data;
 
       return {
         sources: data.data.map(normalizeDataSource),
@@ -455,10 +427,10 @@ export function useSource(id: string | null) {
     queryFn: async () => {
       if (!id) throw new SourceApiError('Source ID is required');
       const response = await withApiError(
-        apiClient.get('l1', `/targets/${id}`),
+        apiGet<ApiScrapingTargetDetail>('l1', `/targets/${id}`),
         SourceApiError
       );
-      return normalizeDataSource(response.data as ApiScrapingTargetDetail);
+      return normalizeDataSource(response.data);
     },
     enabled: !!id,
     staleTime: STALE_TIME.detail,
@@ -477,18 +449,11 @@ export function useSourceStats() {
     queryKey: QK.sources.stats,
     queryFn: async () => {
       const response = await withApiError(
-        apiClient.get('l1', '/targets/stats'),
+        apiGet<l1.components['schemas']['TargetStatsResponse']>('l1', '/targets/stats'),
         SourceApiError
       );
 
-      const data = response.data as {
-        total: number;
-        connected: number;
-        disconnected: number;
-        error: number;
-        total_records: number;
-        average_health_score: number;
-      };
+      const data = response.data;
 
       return {
         total: data.total,
@@ -517,11 +482,11 @@ export function useCreateSource() {
       const payload = buildTargetPayload(request);
 
       const response = await withApiError(
-        apiClient.post('l1', '/targets', payload),
+        apiPost<ApiScrapingTargetDetail>('l1', '/targets', payload),
         SourceApiError
       );
 
-      return normalizeDataSource(response.data as ApiScrapingTargetDetail);
+      return normalizeDataSource(response.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.sources.all });
@@ -563,11 +528,11 @@ export function useUpdateSource() {
       addIfDefined('tags', updates.tags);
 
       const response = await withApiError(
-        apiClient.put('l1', `/targets/${id}`, payload),
+        apiPut<ApiScrapingTargetDetail>('l1', `/targets/${id}`, payload),
         SourceApiError
       );
 
-      return normalizeDataSource(response.data as ApiScrapingTargetDetail);
+      return normalizeDataSource(response.data);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: QK.sources.all });
@@ -588,7 +553,7 @@ export function useDeleteSource() {
   return useMutation<unknown, SourceApiError, string>({
     mutationFn: async (id) => {
       return withApiError(
-        apiClient.delete('l1', `/targets/${id}`),
+        apiDelete<unknown>('l1', `/targets/${id}`),
         SourceApiError
       );
     },
@@ -608,11 +573,11 @@ export function useTestConnection() {
   return useMutation<TestConnectionResult, SourceApiError, { id: string; config?: Record<string, unknown> }>({
     mutationFn: async ({ id, config }) => {
       const response = await withApiError(
-        apiClient.post('l1', `/targets/${id}/validate`, config ? { config } : {}),
+        apiPost<ApiValidateTargetResponse>('l1', `/targets/${id}/validate`, config ? { config } : {}),
         SourceApiError
       );
 
-      const data = response.data as ApiValidateTargetResponse;
+      const data = response.data;
 
       return {
         success: data.valid,
@@ -636,11 +601,11 @@ export function useExecuteSource() {
   return useMutation<{ jobId: string }, SourceApiError, { id: string; priority?: number }>({
     mutationFn: async ({ id, priority = DEFAULT_EXECUTION_PRIORITY }) => {
       const response = await withApiError(
-        apiClient.post('l1', `/targets/${id}/execute`, { priority }),
+        apiPost<l1.components['schemas']['ExecuteTargetResponse']>('l1', `/targets/${id}/execute`, { priority }),
         SourceApiError
       );
 
-      return { jobId: (response.data as { job_id: string }).job_id };
+      return { jobId: response.data.job_id };
     },
     onSuccess: () => {
       // Invalidate both sources and ingestion jobs

@@ -28,7 +28,7 @@ export interface EnrichmentResult {
 
 export interface EnrichmentFinancials {
   revenue?: number;
-  revenue_growth_pct?: number;
+  growth_rate?: number;
   employees?: number;
   market_cap?: number;
   fiscal_year?: string;

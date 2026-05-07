@@ -94,11 +94,15 @@ function PermissionsSkeleton() {
 type TabType = "users" | "api-keys";
 
 function getTabFromPath(path: string): TabType {
-  if (path.startsWith("/settings/access/keys")) {
+  if (path.startsWith("/settings/access/keys") || path.startsWith("/settings/team/api-keys")) {
     return "api-keys";
   }
 
-  if (path.startsWith("/settings/access/roles") || path.startsWith("/settings/access/teams")) {
+  if (
+    path.startsWith("/settings/access/roles") ||
+    path.startsWith("/settings/access/teams") ||
+    path.startsWith("/settings/team")
+  ) {
     return "users";
   }
 

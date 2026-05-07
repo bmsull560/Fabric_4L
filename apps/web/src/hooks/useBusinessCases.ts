@@ -138,7 +138,7 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
 
   // Query L4 for business case workflows
   const response = await apiGet<Record<string, unknown>>('l4', `/workflows?type=business_case&${params.toString()}`);
-  
+
   // Transform workflow data to BusinessCaseListItem format
   interface WorkflowItem {
     workflow_id: string;
@@ -152,8 +152,8 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
     updated_at?: string;
     owner?: string;
   }
-  const rawData = response.data as { items?: WorkflowItem[] };
-  const items = (rawData?.items || []).map((workflow) => ({
+  const rawData = response.data;
+  const items = (Array.isArray(rawData.items) ? rawData.items as WorkflowItem[] : []).map((workflow) => ({
     id: workflow.workflow_id,
     name: workflow.name || `Case ${workflow.workflow_id}`,
     company: workflow.company_name || 'Unknown Company',
@@ -166,7 +166,7 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
     owner: workflow.owner || 'System',
   }));
 
-  return items as BusinessCaseListItem[];
+  return items;
 }
 
 /**
@@ -202,7 +202,7 @@ export function useCreateBusinessCase() {
 
   return useMutation<CreateBusinessCaseResponse, BusinessCaseApiError, CreateBusinessCasePayload>({
     mutationFn: async (payload) => {
-      const response = await apiPost<unknown>('l4', '/workflows', {
+      const response = await apiPost<Record<string, unknown>>('l4', '/workflows', {
         workflow_type: 'business_case',
         inputs: {
           prospect_company: payload.company,
@@ -212,7 +212,13 @@ export function useCreateBusinessCase() {
           },
         },
       });
-      return response.data as CreateBusinessCaseResponse;
+      const data = response.data;
+      return {
+        workflow_id: String(data.workflow_id ?? data.workflow_instance_id ?? ''),
+        name: String(data.name ?? payload.name),
+        status: String(data.status ?? ''),
+        created_at: String(data.created_at ?? new Date().toISOString()),
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-cases'] });

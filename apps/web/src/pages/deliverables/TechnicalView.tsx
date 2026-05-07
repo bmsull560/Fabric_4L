@@ -101,7 +101,7 @@ export default function TechnicalView() {
         <h3 className="text-[14px] font-bold text-neutral-800 mb-3">Evidence Provenance Chain</h3>
         {bc.truth_references && bc.truth_references.length > 0 ? (
           <div className="space-y-2">
-            {bc.truth_references.map((ref: Record<string, unknown>, i: number) => (
+            {bc.truth_references.map((ref, i: number) => (
               <div key={i} className="flex items-start gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
                 <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                   <span className="text-[10px] font-bold text-blue-600">{i + 1}</span>
@@ -135,7 +135,7 @@ export default function TechnicalView() {
         <SectionCard className="mt-4">
           <h3 className="text-[14px] font-bold text-neutral-800 mb-3">Case Metadata</h3>
           <div className="grid grid-cols-2 gap-2">
-            {Object.entries(metadata).map(([key, value]: [string, unknown]) => (
+            {Object.entries(metadata).map(([key, value]) => (
               <div key={key} className="flex justify-between p-2 bg-neutral-50 rounded-md">
                 <span className="text-[11px] font-medium text-neutral-500">{key.replace(/_/g, ' ')}</span>
                 <span className="text-[11px] font-semibold text-neutral-700">{String(value)}</span>
@@ -150,7 +150,7 @@ export default function TechnicalView() {
         <SectionCard className="mt-4">
           <h3 className="text-[14px] font-bold text-neutral-800 mb-3">Technical Remediation Items</h3>
           <div className="space-y-2">
-            {bc.remediation_items.map((item: Record<string, unknown>, i: number) => (
+            {bc.remediation_items.map((item, i: number) => (
               <div key={i} className="flex items-start gap-2 p-2 bg-amber-50/50 rounded-md border border-amber-100">
                 <Clock size={12} className="text-amber-500 mt-0.5 shrink-0" />
                 <div>

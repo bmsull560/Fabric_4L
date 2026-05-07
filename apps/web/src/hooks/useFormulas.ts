@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/api/typedClient';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, FormulaApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
@@ -41,11 +41,11 @@ async function fetchFormulas(filters: FormulaFilters): Promise<Formula[]> {
   if (filters.search) params.set('search', filters.search);
   if (filters.pack_id) params.set('pack_id', filters.pack_id);
 
-  const response = await apiClient.get('l3', `/formulas?${params.toString()}`);
-  
+  const response = await apiGet<Record<string, unknown>>('l3', `/formulas?${params.toString()}`);
+
   // Backend returns { formulas: [...], total: number }
-  const wrapper = response.data as { formulas?: unknown[]; total?: number } | unknown[];
-  const formulasArray = Array.isArray(wrapper) ? wrapper : (wrapper.formulas ?? []);
+  const raw = response.data;
+  const formulasArray = Array.isArray(raw) ? raw : (Array.isArray(raw.formulas) ? raw.formulas : []);
   
   // Runtime validation with Zod
   const parsed = FormulaListSchema.safeParse(formulasArray);
@@ -73,7 +73,7 @@ export function useFormulas(filters: FormulaFilters = {}) {
 }
 
 async function fetchFormula(formulaId: string): Promise<Formula> {
-  const response = await apiClient.get('l3', `/formulas/${formulaId}`);
+  const response = await apiGet<unknown>('l3', `/formulas/${formulaId}`);
   
   // Runtime validation with Zod
   const parsed = FormulaSchema.safeParse(response.data);
@@ -105,7 +105,7 @@ export function useFormula(formulaId: string | null) {
 }
 
 async function fetchFormulaApprovals(): Promise<ApprovalRequest[]> {
-  const response = await apiClient.get('l3', '/formulas/approvals/pending');
+  const response = await apiGet<unknown>('l3', '/formulas/approvals/pending');
   
   // Runtime validation with Zod
   const parsed = ApprovalRequestListSchema.safeParse(response.data);
@@ -141,7 +141,7 @@ export function useApproveFormula() {
 
   return useMutation<unknown, FormulaApiError, ApproveFormulaParams>({
     mutationFn: async ({ formulaId, action, reason }) => {
-      const response = await apiClient.post('l3', `/formulas/${formulaId}/approve`, {
+      const response = await apiPost<unknown>('l3', `/formulas/${formulaId}/approve`, {
         action,
         reason,
       });
@@ -166,7 +166,7 @@ export function useSubmitFormula() {
 
   return useMutation<unknown, FormulaApiError, string>({
     mutationFn: async (formulaId) => {
-      const response = await apiClient.post('l3', `/formulas/${formulaId}/submit`, {});
+      const response = await apiPost<unknown>('l3', `/formulas/${formulaId}/submit`, {});
       return response.data;
     },
     onSuccess: () => {
@@ -200,8 +200,13 @@ export function useCreateFormula() {
 
   return useMutation<Formula, FormulaApiError, CreateFormulaInput, { previousFormulas?: Formula[] }>({
     mutationFn: async (input) => {
-      const response = await apiClient.post('l3', '/formulas', input);
-      return response.data as Formula;
+      const response = await apiPost<unknown>('l3', '/formulas', input);
+      const parsed = FormulaSchema.safeParse(response.data);
+      if (!parsed.success) {
+        log.error('Formula creation validation failed', { error: parsed.error });
+        throw new FormulaApiError(formatZodError(parsed.error, 'formula creation response'));
+      }
+      return parsed.data;
     },
     onMutate: async (newFormula) => {
       // Cancel any outgoing refetches
@@ -268,8 +273,13 @@ export function useUpdateFormula() {
 
   return useMutation<Formula, FormulaApiError, UpdateFormulaInput, { previousFormula?: Formula; previousFormulas?: Formula[] }>({
     mutationFn: async ({ formulaId, ...updates }) => {
-      const response = await apiClient.patch('l3', `/formulas/${formulaId}`, updates);
-      return response.data as Formula;
+      const response = await apiPatch<unknown>('l3', `/formulas/${formulaId}`, updates);
+      const parsed = FormulaSchema.safeParse(response.data);
+      if (!parsed.success) {
+        log.error('Formula update validation failed', { error: parsed.error });
+        throw new FormulaApiError(formatZodError(parsed.error, 'formula update response'));
+      }
+      return parsed.data;
     },
     onMutate: async ({ formulaId, ...updates }) => {
       // Cancel any outgoing refetches
@@ -326,7 +336,7 @@ export function useDeleteFormula() {
 
   return useMutation<unknown, FormulaApiError, string>({
     mutationFn: async (formulaId) => {
-      const response = await apiClient.delete('l3', `/formulas/${formulaId}`);
+      const response = await apiDelete<unknown>('l3', `/formulas/${formulaId}`);
       return response.data;
     },
     onSuccess: () => {
@@ -357,7 +367,7 @@ export interface FormulaEvaluationInput {
 export function useEvaluateFormula() {
   return useMutation<FormulaEvaluationResult, FormulaApiError, FormulaEvaluationInput>({
     mutationFn: async (input) => {
-      const response = await apiClient.post('l3', '/formulas/evaluate', input);
+      const response = await apiPost<unknown>('l3', '/formulas/evaluate', input);
       
       // Runtime validation with Zod
       const parsed = FormulaEvaluationResultSchema.safeParse(response.data);
