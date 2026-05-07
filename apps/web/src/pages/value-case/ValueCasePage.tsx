@@ -15,6 +15,18 @@ import { LoadingState, ErrorState } from "@/components/states";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { Button } from "@/components/ui/button";
 import { useValueCaseArtifacts } from "@/hooks/useValueCaseArtifacts";
+import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useROICalculations } from "@/hooks/useROICalculator";
+
+interface StakeholderTabResponse {
+  stakeholders?: Array<{ name?: string; title?: string }>;
+}
+interface EvidenceTabResponse {
+  evidence?: Array<{ title?: string; decision?: string; status?: string }>;
+}
+interface AssumptionsTabResponse {
+  assumptions?: Array<{ statement?: string; text?: string; status?: string }>;
+}
 
 export default function ValueCasePage() {
   const params = useParams<{ accountId: string }>();
@@ -29,6 +41,11 @@ export default function ValueCasePage() {
   });
 
   const { versions, selectedVersion, setSelectedVersionId, generateArtifact } = useValueCaseArtifacts(accountId);
+  const { data: caseId } = useCanonicalCaseId(accountId);
+  const stakeholderTab = useWorkspaceTabQuery<StakeholderTabResponse>(caseId ?? null, "stakeholders");
+  const evidenceTab = useWorkspaceTabQuery<EvidenceTabResponse>(caseId ?? null, "evidence");
+  const assumptionsTab = useWorkspaceTabQuery<AssumptionsTabResponse>(caseId ?? null, "assumptions");
+  const roiCalcs = useROICalculations({ account_id: accountId ?? undefined, limit: 1 });
 
   const previousVersion = useMemo(() => {
     if (!selectedVersion) return null;
@@ -50,18 +67,34 @@ export default function ValueCasePage() {
   }
 
   const handleGenerate = () => {
+    const stakeholders = (stakeholderTab.data?.stakeholders ?? [])
+      .map((item) => item.name ?? item.title ?? "")
+      .filter(Boolean);
+    const acceptedEvidence = (evidenceTab.data?.evidence ?? [])
+      .filter((item) => item.decision === "accepted" || item.status === "accepted")
+      .map((item) => item.title ?? "")
+      .filter(Boolean);
+    const selectedAssumptions = (assumptionsTab.data?.assumptions ?? [])
+      .filter((item) => item.status !== "rejected")
+      .map((item) => item.statement ?? item.text ?? "")
+      .filter(Boolean);
+    const latestCalc = roiCalcs.data?.calculations?.[0];
+
     generateArtifact.mutate({
       account_id: account.id,
       account_name: account.name,
-      stakeholders: ["Economic buyer", "Business champion", "Technical evaluator"],
-      accepted_evidence: ["Validated calculator assumptions", "Accepted business pains from discovery"],
-      scenario_assumptions: ["Conservative ramp in Q1", "Expected adoption by Q2"],
+      stakeholders: stakeholders.length ? stakeholders : ["Economic buyer", "Business champion", "Technical evaluator"],
+      accepted_evidence: acceptedEvidence.length ? acceptedEvidence : ["Validated calculator assumptions"],
+      scenario_assumptions: selectedAssumptions.length ? selectedAssumptions : ["Moderate scenario selected"],
       roi_metrics: {
-        three_year_value: "$1.8M",
-        roi: "214%",
-        payback: "9 months",
+        three_year_value: latestCalc ? `$${Math.round(latestCalc.npv).toLocaleString()}` : "$1.8M",
+        roi: latestCalc ? `${Math.round(latestCalc.total_roi_pct)}%` : "214%",
+        payback: latestCalc ? `${Math.round(latestCalc.payback_months)} months` : "9 months",
       },
-      risk_notes: ["Change management capacity", "Competing budget priorities"],
+      risk_notes: [
+        `Generated from case ${caseId ?? "unknown"} and ROI model ${latestCalc?.id ?? "latest-default"}`,
+        "Change management capacity",
+      ],
     });
   };
 
