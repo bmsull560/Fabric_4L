@@ -39,7 +39,7 @@ mock_stripe_module.checkout = MagicMock()
 mock_stripe_module.billing_portal = MagicMock()
 
 with patch.dict('sys.modules', {'stripe': mock_stripe_module}):
-    from src.services.billing_service import BillingService
+    from value_fabric.layer4.services.billing_service import BillingService
 
 
 # =============================================================================
@@ -61,7 +61,7 @@ def mock_db():
 @pytest.fixture(autouse=True)
 def override_app_db_dependency(mock_db):
     """Override FastAPI get_db dependency to use the mock session."""
-    from src.database import get_db
+    from value_fabric.layer4.database import get_db
     async def _override():
         yield mock_db
     app.dependency_overrides[get_db] = _override
@@ -422,7 +422,7 @@ def test_check_feature_endpoint(client, mock_db, sample_subscription):
 
 def test_plan_configuration():
     """Test that plan configuration is correctly defined."""
-    from src.config.plans import PLANS, FEATURES, get_plan, check_entitlement
+    from value_fabric.layer4.config.plans import PLANS, FEATURES, get_plan, check_entitlement
 
     # Test plan existence
     assert get_plan("free") is not None
@@ -443,7 +443,7 @@ def test_plan_configuration():
 
 def test_plan_features_list():
     """Test getting list of features for a plan."""
-    from src.config.plans import get_plan_features
+    from value_fabric.layer4.config.plans import get_plan_features
 
     free_features = get_plan_features("free")
     assert len(free_features) == 3  # basic_extraction, knowledge_graph, formula_builder
@@ -457,7 +457,7 @@ def test_plan_features_list():
 
 def test_invalid_plan_returns_no_features():
     """Test that invalid plan returns empty feature list."""
-    from src.config.plans import get_plan_features, check_entitlement, get_plan
+    from value_fabric.layer4.config.plans import get_plan_features, check_entitlement, get_plan
 
     assert get_plan_features("invalid") == []
     assert check_entitlement("invalid", "basic_extraction") is False
@@ -466,7 +466,7 @@ def test_invalid_plan_returns_no_features():
 
 def test_subscription_is_active_property():
     """Test subscription is_active property with various statuses."""
-    from src.models.billing import BillingSubscription, SubscriptionStatus
+    from value_fabric.layer4.models.billing import BillingSubscription, SubscriptionStatus
 
     # Active statuses
     for status in [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING]:
@@ -481,7 +481,7 @@ def test_subscription_is_active_property():
 
 def test_subscription_is_canceled_property():
     """Test subscription is_canceled property."""
-    from src.models.billing import BillingSubscription, SubscriptionStatus
+    from value_fabric.layer4.models.billing import BillingSubscription, SubscriptionStatus
 
     # Explicitly canceled
     sub = BillingSubscription(id="1", status=SubscriptionStatus.CANCELED, plan_id="pro")

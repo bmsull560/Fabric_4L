@@ -74,7 +74,7 @@ def mock_db():
 @pytest.fixture(autouse=True)
 def override_app_db_dependency(mock_db):
     """Override FastAPI get_db dependency to use the mock session."""
-    from src.database import get_db
+    from value_fabric.layer4.database import get_db
     async def _override():
         yield mock_db
     app.dependency_overrides[get_db] = _override
@@ -141,7 +141,7 @@ class MockProspectDataTool:
         self._mock_interactions = interactions or []
     
     async def execute(self, input_data):
-        from src.models.tool_schemas import GetProspectDataOutput
+        from value_fabric.layer4.models.tool_schemas import GetProspectDataOutput
         
         return GetProspectDataOutput(
             profile=self._mock_profile or {
@@ -392,7 +392,7 @@ class TestCRMSyncService:
     @pytest.mark.asyncio
     async def test_get_crm_config_from_integration_table(self, mock_db):
         """Test loading CRM config from tenant integration table (no env fallback)."""
-        from src.models.integration import Integration, IntegrationStatus
+        from value_fabric.layer4.models.integration import Integration, IntegrationStatus
         sync_service = CRMSyncService(mock_db, batch_size=10)
         
         mock_integration = Integration(
@@ -633,7 +633,7 @@ class TestAccountServiceIntegration:
     @pytest.mark.asyncio
     async def test_trigger_sync_delegates_to_sync_service(self, mock_db):
         """Test that AccountService.trigger_sync delegates to CRMSyncService."""
-        from src.services.account_service import AccountService
+        from value_fabric.layer4.services.account_service import AccountService
         
         account_service = AccountService(mock_db)
         
@@ -662,7 +662,7 @@ class TestAccountServiceIntegration:
     @pytest.mark.asyncio
     async def test_refresh_account_delegates_to_sync_service(self, mock_db):
         """Test that AccountService.refresh_account delegates to CRMSyncService."""
-        from src.services.account_service import AccountService
+        from value_fabric.layer4.services.account_service import AccountService
         
         account_service = AccountService(mock_db)
         account_id = uuid4()

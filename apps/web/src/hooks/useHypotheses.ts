@@ -117,6 +117,16 @@ export interface HypothesisStats {
   conversion_rate: number;
 }
 
+export interface ConvertHypothesisToTreeResponse {
+  hypothesis_id: string;
+  account_id: string;
+  tenant_id: string;
+  evidence_ids: string[];
+  value_model_id?: string | null;
+  tree_id?: string | null;
+  status: HypothesisStatus;
+}
+
 // ── Domain Error ───────────────────────────────────────────────────────────
 
 export class HypothesisApiError extends BaseApiError {
@@ -250,6 +260,26 @@ export function useDeleteHypothesis() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
+    },
+  });
+}
+
+export function useConvertHypothesisToTree() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    ConvertHypothesisToTreeResponse,
+    HypothesisApiError,
+    { hypothesisId: string }
+  >({
+    mutationFn: async ({ hypothesisId }) => {
+      const response = await apiClient.post('l4', `/v1/hypotheses/${hypothesisId}/convert`, {});
+      return response.data as ConvertHypothesisToTreeResponse;
+    },
+    onSuccess: (_data, { hypothesisId }) => {
+      queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
+      queryClient.invalidateQueries({ queryKey: QK.hypotheses.detail(hypothesisId) });
+      queryClient.invalidateQueries({ queryKey: QK.accounts.all });
+      queryClient.invalidateQueries({ queryKey: QK.valueTrees.all });
     },
   });
 }

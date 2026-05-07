@@ -21,14 +21,14 @@ pytestmark = [
     pytest.mark.skipif(_playwright_missing, reason="playwright not installed — optional slow dep"),
 ]
 
-from value_fabric.layer1_ingestion.src.crawler.crawler_config import CrawlerConfig
+from value_fabric.layer1.crawler.crawler_config import CrawlerConfig
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 if _playwright_missing:
     CrawlResult = None  # type: ignore[misc]
     PlaywrightCrawler = None  # type: ignore[misc]
 else:
-    from value_fabric.layer1_ingestion.src.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
+    from value_fabric.layer1.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
 
 
 class mock_playwrightResult(TypedDictModel):

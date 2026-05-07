@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from src.cache import (
+from value_fabric.layer3.cache import (
     AiocacheCacheAdapter,
     CacheConfig,
     CachePort,

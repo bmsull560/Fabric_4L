@@ -32,10 +32,27 @@ import type { AccountHypothesesFilters } from "./useHypotheses";
 import type { NarrativeListFilters } from "./useNarratives";
 import type { LeverConfigRequest } from "./useCalculators";
 
+
+
+/**
+ * Observability tags used by query keys/hooks to correlate cache entries to
+ * backend layer ownership in traces and debug tooling.
+ */
+export const QUERY_LAYER_TAGS = {
+  layer1: "layer:1-ingestion",
+  layer2: "layer:2-extraction",
+  layer3: "layer:3-knowledge",
+  layer4: "layer:4-agents",
+  layer5: "layer:5-ground-truth",
+  layer6: "layer:6-benchmarks",
+  crossLayer: "layer:x-cross",
+} as const;
+
 // ── Registry ─────────────────────────────────────────────────────────────────
 export const QK = {
   // Layer 1 — Ingestion
   ingestion: {
+    layerTag: QUERY_LAYER_TAGS.layer1,
     all: ["ingestion"] as const,
     jobs: () => ["ingestion", "jobs"] as const,
     recent: () => ["ingestion", "recent"] as const,
@@ -48,6 +65,7 @@ export const QK = {
 
   // Layer 1 — Sources (Data Source Configuration)
   sources: {
+    layerTag: QUERY_LAYER_TAGS.layer1,
     all: ["sources"] as const,
     list: (filters: SourceFilters) =>
       ["sources", "list", stableKey(filters)] as const,
@@ -57,6 +75,7 @@ export const QK = {
 
   // Layer 2 — Extraction
   extraction: {
+    layerTag: QUERY_LAYER_TAGS.layer2,
     all: ["extraction"] as const,
     job: (id: string) => ["extraction", "job", id] as const,
     results: (id: string) => ["extraction", "results", id] as const,
@@ -64,6 +83,7 @@ export const QK = {
 
   // Layer 3 — Knowledge graph
   graph: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["graph"] as const,
     query: (params: GraphQueryRequest) =>
       ["graph", "query", stableKey(params)] as const,
@@ -88,6 +108,7 @@ export const QK = {
   },
 
   entities: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["entities"] as const,
     list: () => ["entities", "list"] as const,
     search: (query: string) => ["entities", "search", query] as const,
@@ -95,6 +116,7 @@ export const QK = {
   },
 
   formulas: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["formulas"] as const,
     list: (filters: FormulaFilters) => ["formulas", "list", filters] as const,
     detail: (id: string) => ["formulas", "detail", id] as const,
@@ -102,6 +124,7 @@ export const QK = {
   },
 
   benchmarks: {
+    layerTag: QUERY_LAYER_TAGS.layer6,
     all: ["benchmarks"] as const,
     list: (filters: BenchmarkFilters) =>
       ["benchmarks", "datasets", stableKey(filters)] as const,
@@ -112,6 +135,7 @@ export const QK = {
   },
 
   variables: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["variables"] as const,
     list: (filters: VariableFilters) => ["variables", "list", filters] as const,
     detail: (id: string) => ["variables", "detail", id] as const,
@@ -120,6 +144,7 @@ export const QK = {
   },
 
   valuePacks: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["value-packs"] as const,
     list: (filters: ValuePackFilters) =>
       ["value-packs", "list", filters] as const,
@@ -128,6 +153,7 @@ export const QK = {
   },
 
   models: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["models"] as const,
     list: (filters: ModelFilters) =>
       ["models", "list", stableKey(filters)] as const,
@@ -136,6 +162,7 @@ export const QK = {
   },
 
   valueTrees: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["value-trees"] as const,
     tree: (entityId: string, direction: string, maxDepth: number) =>
       ["value-trees", "tree", entityId, direction, maxDepth] as const,
@@ -144,6 +171,7 @@ export const QK = {
   },
 
   provenance: {
+    layerTag: QUERY_LAYER_TAGS.layer5,
     all: ["provenance"] as const,
     trail: (entityId: string) => ["provenance", "trail", entityId] as const,
     audit: (filters: AuditLogFilter) =>
@@ -152,6 +180,7 @@ export const QK = {
 
   // Layer 4 — Agents / Governance
   workflows: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["workflows"] as const,
     active: () => ["workflows", "active"] as const,
     history: () => ["workflows", "history"] as const,
@@ -159,6 +188,7 @@ export const QK = {
   },
 
   businessCases: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["business-cases"] as const,
     list: (filters: { status?: string; search?: string; company?: string }) =>
       ["business-cases", "list", stableKey(filters)] as const,
@@ -166,12 +196,14 @@ export const QK = {
   },
 
   documents: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["documents"] as const,
     export: (id: string) => ["documents", "export", id] as const,
     businessCase: (id: string) => ["documents", "businessCase", id] as const,
   },
 
   governance: {
+    layerTag: QUERY_LAYER_TAGS.layer5,
     all: ["governance"] as const,
     tenants: ["governance", "tenants"] as const,
     users: (tenantId?: string) => ["governance", "users", tenantId] as const,
@@ -189,6 +221,7 @@ export const QK = {
   },
 
   versions: {
+    layerTag: QUERY_LAYER_TAGS.layer5,
     all: ["versions"] as const,
     detail: (versionId: string) => ["versions", "detail", versionId] as const,
     compare: (versionId: string, compareToVersionId: string) =>
@@ -196,6 +229,7 @@ export const QK = {
   },
 
   accounts: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["accounts"] as const,
     list: (filters: unknown) => ["accounts", "list", filters] as const,
     detail: (id: string) => ["accounts", "detail", id] as const,
@@ -205,6 +239,7 @@ export const QK = {
   },
 
   integrations: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["integrations"] as const,
     list: ["integrations", "list"] as const,
     detail: (provider: string) => ["integrations", "detail", provider] as const,
@@ -212,12 +247,14 @@ export const QK = {
 
   // Narrative generation
   narrative: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["narrative"] as const,
     industries: () => ["narrative", "industries"] as const,
   },
 
   // Platform/Admin Settings
   platform: {
+    layerTag: QUERY_LAYER_TAGS.crossLayer,
     all: ["platform"] as const,
     settings: ["platform", "settings"] as const,
     health: ["platform", "health"] as const,
@@ -225,6 +262,7 @@ export const QK = {
 
   // Ontology Schema Management
   ontology: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["ontology"] as const,
     schema: () => ["ontology", "schema"] as const,
     type: (id: string) => ["ontology", "type", id] as const,
@@ -234,6 +272,7 @@ export const QK = {
 
   // L3 — Product Portfolio
   products: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["products"] as const,
     list: (filters: ProductListFilters) =>
       ["products", "list", stableKey(filters)] as const,
@@ -246,6 +285,7 @@ export const QK = {
 
   // L3 — Evidence Library
   evidence: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["evidence"] as const,
     list: (filters: CaseStudyListFilters) =>
       ["evidence", "list", stableKey(filters)] as const,
@@ -256,6 +296,7 @@ export const QK = {
 
   // L3 — Competitive Intelligence
   competitive: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["competitive"] as const,
     list: (filters: CompetitorListFilters) =>
       ["competitive", "list", stableKey(filters)] as const,
@@ -272,6 +313,7 @@ export const QK = {
 
   // L3 — ROI Calculator
   roi: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["roi"] as const,
     list: (filters: ROICalculationListFilters) =>
       ["roi", "list", stableKey(filters)] as const,
@@ -284,10 +326,13 @@ export const QK = {
     assumptionsList: () => ["roi", "assumptions-list"] as const,
     assumptionDetail: (id: string) => ["roi", "assumption", id] as const,
     agentCalculation: () => ["roi", "agent-calculation"] as const,
+    scenarioVersions: (scope: { tenantId?: string | null; accountId?: string | null; caseId?: string | null; modelId?: string | null }) =>
+      ["roi", "scenario-versions", stableKey(scope)] as const,
   },
 
   // L3 — Value Calculators (Workflow)
   calculators: {
+    layerTag: QUERY_LAYER_TAGS.layer3,
     all: ["calculators"] as const,
     levers: (filters: unknown) =>
       ["calculators", "levers", stableKey(filters)] as const,
@@ -296,6 +341,7 @@ export const QK = {
 
   // L4 — Account Enrichment
   enrichment: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["enrichment"] as const,
     status: () => ["enrichment", "status"] as const,
     detail: (accountId: string) => ["enrichment", "detail", accountId] as const,
@@ -303,6 +349,7 @@ export const QK = {
 
   // L4 — Value Hypotheses
   hypotheses: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["hypotheses"] as const,
     detail: (id: string) => ["hypotheses", "detail", id] as const,
     byAccount: (accountId: string, filters?: AccountHypothesesFilters) =>
@@ -312,6 +359,7 @@ export const QK = {
 
   
   intelligenceDecisions: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["intelligence-decisions"] as const,
     signalReview: (scope: { tenantId?: string; accountId?: string; caseId?: string; signalId?: string }) =>
       ["intelligence-decisions", "signal-review", stableKey(scope)] as const,
@@ -320,6 +368,7 @@ export const QK = {
   },
 // L4 — Narratives
   narratives: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["narratives"] as const,
     list: (filters: NarrativeListFilters) =>
       ["narratives", "list", stableKey(filters)] as const,
@@ -328,6 +377,7 @@ export const QK = {
 
   // L5 — Ground Truth Governance
   groundTruth: {
+    layerTag: QUERY_LAYER_TAGS.layer5,
     all: ["ground-truth"] as const,
     list: (filters: unknown) =>
       ["ground-truth", "list", stableKey(filters)] as const,
@@ -340,6 +390,7 @@ export const QK = {
 
   // L4 — Intelligence Orchestration
   intelligence: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["intelligence"] as const,
     briefing: (accountId: string) =>
       ["intelligence", "briefing", accountId] as const,

@@ -14,11 +14,6 @@ _repo_root = _layer4_dir.parent.parent.resolve()  # layer4-agents -> services ->
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
-# Add layer4 src to path for internal imports
-_layer4_src = _layer4_dir / "src"
-if str(_layer4_src) not in sys.path:
-    sys.path.insert(0, str(_layer4_src))
-
 # Settings are instantiated by several service imports during collection.
 # Keep tests hermetic while still allowing callers to provide real endpoints.
 os.environ.setdefault("LAYER4_LAYER1_API_URL", "http://localhost:8001")
@@ -165,7 +160,7 @@ def mock_tool_registry():
             mock_tool_registry.execute.return_value = {"result": "mocked"}
             workflow = BusinessCaseGeneratorWorkflow(tool_registry=mock_tool_registry)
     """
-    from src.tools.registry import ToolRegistry
+    from value_fabric.layer4.tools.registry import ToolRegistry
     registry = Mock(spec=ToolRegistry)
     registry.execute = AsyncMock()
     return registry
@@ -209,7 +204,7 @@ def business_case_workflow(mock_tool_registry, mock_openai_client):
     This fixture provides a workflow instance ready for testing with
     all external calls (LLM, tools) pre-mocked.
     """
-    from src.workflows.business_case import BusinessCaseGeneratorWorkflow
+    from value_fabric.layer4.workflows.business_case import BusinessCaseGeneratorWorkflow
     return BusinessCaseGeneratorWorkflow(
         tool_registry=mock_tool_registry,
         openai_client=mock_openai_client,
@@ -219,7 +214,7 @@ def business_case_workflow(mock_tool_registry, mock_openai_client):
 @pytest.fixture
 def roi_calculator_workflow(mock_tool_registry, mock_openai_client):
     """Create a ROICalculatorWorkflow with mocked dependencies."""
-    from src.workflows.roi_calculator import ROICalculatorWorkflow
+    from value_fabric.layer4.workflows.roi_calculator import ROICalculatorWorkflow
     return ROICalculatorWorkflow(
         tool_registry=mock_tool_registry,
         openai_client=mock_openai_client,

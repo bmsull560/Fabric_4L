@@ -164,6 +164,23 @@ export interface ToolCallEndEvent extends BaseAgentEvent {
   error?: string;
 }
 
+export interface PageActionPayload {
+  entityType: "signal" | "evidence" | "hypothesis" | "scenario";
+  entityId: string;
+  accountId: string;
+  caseId: string;
+  tenantId?: string;
+  intendedOperation: "signal_review" | "evidence_attach" | "hypothesis_convert" | "scenario_update";
+  payload?: Record<string, unknown>;
+  runMetadataIds?: {
+    runId: string;
+    traceId: string;
+    workflowId?: string;
+    auditEventId: string;
+    toolCallId?: string;
+  };
+}
+
 // ── State Events ────────────────────────────────────────────────────────────
 
 export interface StateDeltaEvent extends BaseAgentEvent {
@@ -208,10 +225,11 @@ export type AgentEvent =
 // ── Run Metadata ────────────────────────────────────────────────────────────
 
 export interface RunMetadata {
-  traceId?: string;
+  runId: string;
+  traceId: string;
   workflowId?: string;
   tenantId?: string;
-  auditEventId?: string;
+  auditEventId: string;
   /** Workflow node that produced this event */
   sourceNode?: string;
 }

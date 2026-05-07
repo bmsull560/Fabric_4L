@@ -17,7 +17,7 @@ from unittest.mock import patch
 import pytest
 from cryptography.fernet import Fernet
 
-from src.services.encryption_service import (
+from value_fabric.layer4.services.encryption_service import (
     DEFAULT_KEY_ID,
     MAX_CACHE_SIZE,
     EncryptionService,

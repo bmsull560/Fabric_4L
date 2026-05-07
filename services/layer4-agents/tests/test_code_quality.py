@@ -72,7 +72,7 @@ class TestImportPathConvention:
         """Import paths rely on pytest pythonpath configuration.
         
         The project uses: pythonpath = [".", "src"] in pyproject.toml
-        This allows 'from src.interfaces' to work when running from layer4-agents/.
+        This allows 'from value_fabric.layer4.interfaces' to work when running from layer4-agents/.
         
         The import convention is documented in test_interfaces_exports.py header.
         """

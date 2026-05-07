@@ -17,7 +17,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
+from value_fabric.shared.audit import AuditAction
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -25,6 +25,12 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
 from ...workflows import list_workflow_types
+from ..common.audit import emit_route_audit
+<<<<<<< ours
+from ..common.errors import raise_normalized, raise_normalized_with_log
+=======
+from ..common.errors import raise_normalized
+>>>>>>> theirs
 from ..schemas.workflow_progress import WorkflowProgressSchema, normalize_workflow_progress
 
 
@@ -349,11 +355,20 @@ async def create_workflow(
             estimated_duration_seconds=estimated_duration,
         )
 
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
-        logger.exception("Workflow execution failed")
-        raise HTTPException(status_code=500, detail="Workflow execution failed")
+    except Exception as exc:
+<<<<<<< ours
+        raise_normalized_with_log(
+            exc,
+            status_code=500,
+            detail="Workflow execution failed",
+            logger=logger,
+            log_message="Workflow execution failed",
+        )
+=======
+        if not isinstance(exc, HTTPException):
+            logger.exception("Workflow execution failed")
+        raise_normalized(exc, status_code=500, detail="Workflow execution failed")
+>>>>>>> theirs
 
 
 
@@ -640,13 +655,23 @@ async def resume_workflow(
             ),
             estimated_completion_seconds=0 if is_complete else 60,
         )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except WorkflowExecutionError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, ValueError):
+            raise HTTPException(status_code=404, detail=str(exc))
+        if isinstance(exc, WorkflowExecutionError):
+            raise HTTPException(status_code=400, detail=str(exc))
+<<<<<<< ours
+        raise_normalized_with_log(
+            exc,
+            status_code=500,
+            detail="Failed to resume workflow",
+            logger=logger,
+            log_message=f"Unexpected error resuming workflow {workflow_id}",
+        )
+=======
         logger.exception(f"Unexpected error resuming workflow {workflow_id}")
-        raise HTTPException(status_code=500, detail="Failed to resume workflow")
+        raise_normalized(exc, status_code=500, detail="Failed to resume workflow")
+>>>>>>> theirs
 
 
 @router.post("/workflows/{workflow_id}/pause", response_model=WorkflowPauseResponse)
@@ -715,11 +740,21 @@ async def pause_workflow(
             current_node=status.get("current_node"),
             message=f"Workflow paused at node: {status.get('current_node', 'unknown')}",
         )
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, ValueError):
+            raise HTTPException(status_code=404, detail=str(exc))
+<<<<<<< ours
+        raise_normalized_with_log(
+            exc,
+            status_code=500,
+            detail="Failed to pause workflow",
+            logger=logger,
+            log_message=f"Unexpected error pausing workflow {workflow_id}",
+        )
+=======
         logger.exception(f"Unexpected error pausing workflow {workflow_id}")
-        raise HTTPException(status_code=500, detail="Failed to pause workflow")
+        raise_normalized(exc, status_code=500, detail="Failed to pause workflow")
+>>>>>>> theirs
 
 
 
@@ -861,14 +896,12 @@ async def archive_workflow(
 
     # Emit audit event (best-effort)
     try:
-        await emit_audit_event(
-            AuditAction.UPDATE,
-            outcome=AuditOutcome.SUCCESS,
-            tenant_id=_ctx.tenant_id,
-            actor_id=_ctx.user_id,
+        await emit_route_audit(
+            action=AuditAction.UPDATE,
+            context=_ctx,
             resource_type="Workflow",
             resource_id=workflow_id,
-            details={"archived_at": archived_at},
+            details={"archived_at": archived_at, "outcome": "success"},
         )
     except Exception:
         logger.exception(f"Audit logging failed for archive of workflow {workflow_id}")

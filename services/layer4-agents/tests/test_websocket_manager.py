@@ -609,7 +609,7 @@ class TestSingleton:
     def test_get_ws_manager_creates_new_if_none(self):
         """Should create new instance if none exists."""
         # Arrange - reset singleton
-        import src.api.websocket.manager as manager_module
+        import value_fabric.layer4.api.websocket.manager as manager_module
         manager_module._ws_manager = None
         
         # Act

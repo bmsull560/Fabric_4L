@@ -1,5 +1,5 @@
-from value_fabric.layer3_knowledge.src.api.exception_mapping import map_exception_to_http_error
-from value_fabric.layer3_knowledge.src.api.exceptions import DatabaseError, SearchError, ValidationError
+from value_fabric.layer3.api.exception_mapping import map_exception_to_http_error
+from value_fabric.layer3.api.exceptions import DatabaseError, SearchError, ValidationError
 
 
 def test_validation_error_maps_to_422_with_context():

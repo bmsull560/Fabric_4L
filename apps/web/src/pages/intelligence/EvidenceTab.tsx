@@ -8,7 +8,7 @@ import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCaseStudies, useLinkEvidence, useUnlinkEvidence, type CaseStudy } from "@/hooks/useEvidence";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, useEvidenceDecisionMutation, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,11 @@ interface EvidenceItem {
   verification: VerificationState;
   linkedSignals: string[];
   excerpt: string;
+  decision_status?: "accepted" | "rejected" | "attached_to_driver";
+  attached_driver_id?: string;
+  provenance_id?: string;
+  confidence?: number;
+  decision_note?: string;
 }
 
 interface DriverOption {
@@ -48,7 +53,6 @@ const VERIFICATION_CONFIG: Record<
 };
 
 function mapCaseStudyToEvidenceItem(cs: CaseStudy): EvidenceItem {
-  // Derive a match score from outcome data if available
   const outcomes = cs.outcomes ?? [];
   const avgImprovement =
     outcomes.length > 0
@@ -59,7 +63,6 @@ function mapCaseStudyToEvidenceItem(cs: CaseStudy): EvidenceItem {
       : 0;
   const matchScore = Math.min(100, Math.max(50, 60 + avgImprovement));
 
-  // Derive verification state from data richness
   let verification: VerificationState = "unverified";
   if (outcomes.length > 0 && cs.published_date) {
     verification = "verified";
@@ -89,11 +92,10 @@ function useEvidenceTabState() {
   const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: EvidenceLink[] }>(caseId ?? null, "evidence-links");
   const persistLinks = usePersistWorkspaceTab("evidence-links");
 
-  // Load real case studies filtered by account industry
-  const { data: caseStudiesData, isLoading, error } = useCaseStudies({
-    industry: account?.industry || undefined,
-    limit: 50,
-  });
+  const { data, isLoading, error } = useWorkspaceTabQuery<{ evidence: EvidenceItem[] }>(caseId ?? null, "evidence");
+  const persistTab = usePersistWorkspaceTab("evidence");
+  const validateClaim = useValidateEvidenceClaim();
+  const evidenceDecision = useEvidenceDecisionMutation();
 
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState("");
@@ -104,10 +106,7 @@ function useEvidenceTabState() {
   const linkMutation = useLinkEvidence();
   const unlinkMutation = useUnlinkEvidence();
 
-  const evidence = useMemo(() => {
-    const items = caseStudiesData?.items ?? [];
-    return items.map(mapCaseStudyToEvidenceItem);
-  }, [caseStudiesData]);
+  const evidence = useMemo(() => data?.evidence ?? [], [data]);
 
   const verified = useMemo(
     () => evidence.filter((e) => e.verification === "verified").length,
@@ -158,6 +157,7 @@ function useEvidenceTabState() {
   return {
     account,
     accountLoading,
+    caseId,
     evidence,
     isLoading,
     error,
@@ -180,6 +180,10 @@ function useEvidenceTabState() {
     steps,
     isStreaming,
     metadata,
+    validateClaim,
+    evidenceDecision,
+    persistTab,
+    data,
   };
 }
 
@@ -196,17 +200,43 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
     avgMatch,
     selectedEvidence,
     setSelectedEvidence,
+    caseId,
+    evidenceDecision,
+    persistTab,
+    data,
   } = providedState ?? ownedState;
+
+  const [optimisticDecision, setOptimisticDecision] = useState<Record<string, EvidenceItem["decision_status"]>>({});
+  const [modifyNote, setModifyNote] = useState("");
+  const [lastFailedAction, setLastFailedAction] = useState<{ evidenceId: string; decision: "accepted"|"rejected"|"attached_to_driver"; driverId?: string } | null>(null);
 
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;
   }
+
+  const runDecision = async (evidenceId: string, decision: "accepted"|"rejected"|"attached_to_driver", driverId?: string) => {
+    if (!accountId || !caseId) return;
+    setOptimisticDecision((prev) => ({ ...prev, [evidenceId]: decision }));
+    setLastFailedAction(null);
+    try {
+      await evidenceDecision.mutateAsync({ evidenceId, accountId, caseId, decision, driverId });
+    } catch {
+      setOptimisticDecision((prev) => ({ ...prev, [evidenceId]: undefined }));
+      setLastFailedAction({ evidenceId, decision, driverId });
+    }
+  };
 
   if (isLoading) return <CenteredLoader message="Loading evidence…" />;
   if (error) return <div className="p-6 text-sm text-destructive">Failed to load evidence.</div>;
 
   return (
     <>
+      {persistTab.persistState !== "saved" && (
+        <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs flex items-center justify-between">
+          <span>{persistTab.persistState === "failed" ? "Could not persist evidence tab." : "Evidence tab has unsaved persistence state."}</span>
+          {persistTab.persistState === "failed" && caseId && <Btn variant="outline" className="h-7" onClick={() => persistTab.mutate({ caseId, payload: data ?? { evidence: [] } })}>Retry save</Btn>}
+        </div>
+      )}
       {evidence.length === 0 ? (
         <SectionCard title="Evidence Library">
           <div className="text-sm text-muted-foreground">
@@ -223,6 +253,7 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
           <SectionCard title="Evidence Library">
             <div className="space-y-1">
               {evidence.map((item) => {
+                const decision = optimisticDecision[item.id] ?? item.decision_status;
                 const vc = VERIFICATION_CONFIG[item.verification];
                 const Icon = vc.icon;
                 return (
@@ -245,13 +276,39 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
                       <Icon size={10} />
                       {item.matchScore}%
                     </span>
-                    <ChevronRight size={12} />
+                    <span className="text-[10px] text-muted-foreground capitalize">{decision?.replaceAll("_", " ") ?? "pending"}</span><ChevronRight size={12} />
                   </button>
                 );
               })}
             </div>
           </SectionCard>
         </>
+      )}
+      {lastFailedAction && (
+        <div className="mt-3 text-xs text-destructive flex items-center gap-2">
+          Action failed.
+          <Btn variant="outline" className="h-7" onClick={() => runDecision(lastFailedAction.evidenceId, lastFailedAction.decision, lastFailedAction.driverId)}>Retry</Btn>
+        </div>
+      )}
+      {selectedEvidence && (
+        <div className="mt-4 space-y-2">
+          <div className="rounded-md border border-border px-3 py-2 text-xs space-y-1">
+            <div><span className="font-semibold">Source:</span> {selectedEvidence.source}</div>
+            <div><span className="font-semibold">Provenance ID:</span> {selectedEvidence.provenance_id ?? "N/A"}</div>
+            <div><span className="font-semibold">Confidence:</span> {typeof selectedEvidence.confidence === "number" ? `${Math.round(selectedEvidence.confidence * 100)}%` : "N/A"}</div>
+          </div>
+          <div className="flex gap-2">
+          <Btn variant="primary" className="h-8" onClick={() => runDecision(selectedEvidence.id, "accepted")} disabled={evidenceDecision.isPending}>Accept</Btn>
+          <Btn variant="outline" className="h-8" onClick={() => runDecision(selectedEvidence.id, "rejected")} disabled={evidenceDecision.isPending}>Reject</Btn>
+          <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver", "driver-auto")} disabled={evidenceDecision.isPending}>Modify</Btn>
+          </div>
+          <input
+            value={modifyNote}
+            onChange={(e) => setModifyNote(e.target.value)}
+            className="w-full border border-border rounded-md px-2 py-1 text-xs"
+            placeholder="Optional modification note"
+          />
+        </div>
       )}
     </>
   );

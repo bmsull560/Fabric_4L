@@ -6,9 +6,9 @@ import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
-import src.services.llm_budget_guardrails as budget_module
-from src.services.llm_budget_guardrails import LLMBudgetGuardrails
-from src.workflows.whitespace import ExtractedNeedsResponse
+import value_fabric.layer4.services.llm_budget_guardrails as budget_module
+from value_fabric.layer4.services.llm_budget_guardrails import LLMBudgetGuardrails
+from value_fabric.layer4.workflows.whitespace import ExtractedNeedsResponse
 
 
 class FakeRedisPipeline:

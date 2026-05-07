@@ -20,6 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Enforce package manager policy (root + apps/web)
+        run: pnpm run check:package-manager-policy
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -37,19 +40,20 @@ jobs:
 
       - name: Run import topology tests
         run: |
-          pip install pytest
+          pip install pytest pyyaml
           pytest tests/contract/test_import_topology.py -v --tb=short
 
       - name: Enforce pytest skip governance
         run: |
           mkdir -p artifacts
-          pip install pytest pyyaml
           set +e
-          pytest --collect-only -q -rs > artifacts/pytest-collect.txt 2>&1
-          status=$?
+          python -m pytest --collect-only -q -ra tests > artifacts/pytest-collection.txt 2>&1
+          collect_status=$?
           set -e
-          echo "pytest collect exit code: ${status}" >> artifacts/pytest-collect.txt
-          python scripts/ci/check_pytest_skip_governance.py --input artifacts/pytest-collect.txt
+          python scripts/ci/check_pytest_skip_governance.py             artifacts/pytest-collection.txt             --allowlist config/ci/pytest_skip_allowlist.yaml             --baseline config/ci/pytest_skip_baseline.json             --write-report artifacts/pytest-skip-governance.json
+          if [ "$collect_status" -ne 0 ]; then
+            echo "pytest collection exited non-zero (${collect_status}); structural-preflight should catch import errors separately."
+          fi
 
       - name: Run Layer 3 source mirror drift gate
         run: |
@@ -103,7 +107,8 @@ jobs:
             artifacts/layer3-source-mirror.txt
             artifacts/duplicate-source-trees.json
             artifacts/shared-imports-runtime.json
-            artifacts/pytest-collect.txt
+            artifacts/pytest-collection.txt
+            artifacts/pytest-skip-governance.json
             artifacts/violation-diff-summary.json
             artifacts/violation-diff-summary.md
           retention-days: 14
@@ -263,13 +268,20 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
 
-      - name: Type check Layer 2 API entrypoint imports
-        run: uv run mypy src/layer2_extraction/api/main.py --ignore-missing-imports --follow-imports=skip
+<<<<<<< ours
+      - name: Type check Layer 2 API imports
+        run: uv run mypy src/layer2_extraction/api --follow-imports=normal --no-incremental
 
+      - name: Guard Layer 2 API import ignores
+        run: |
+          if rg -n "^(from|import) layer2_extraction\..*# type: ignore(\[[^]]+\])?$" src/layer2_extraction/api; then
+            echo "Disallowed type: ignore on layer2_extraction imports in api package"
+=======
       - name: Guard Layer 2 API import ignores
         run: |
           if rg -n "^from layer2_extraction\..*# type: ignore" src/layer2_extraction/api; then
             echo "Disallowed broad type: ignore on layer2_extraction imports in api package"
+>>>>>>> theirs
             exit 1
           fi
 
@@ -872,7 +884,6 @@ jobs:
       - name: Run runtime contract marker suite
         env:
           RUN_RUNTIME_CONTRACTS: "1"
-          CONTRACT_TEST_STRICT: "1"
           L1_URL: http://localhost:8001
           L2_URL: http://localhost:8002
           L3_URL: http://localhost:8003

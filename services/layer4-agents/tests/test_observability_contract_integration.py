@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from src.api.app_factory import create_app
+from value_fabric.layer4.api.app_factory import create_app
 
 
 def test_standard_observability_probes_and_correlation_header() -> None:

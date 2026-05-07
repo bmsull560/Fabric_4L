@@ -21,6 +21,7 @@ from uuid import UUID, uuid4
 from zoneinfo import available_timezones
 
 import structlog
+from enum import Enum as PyEnum
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware

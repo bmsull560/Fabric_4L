@@ -40,7 +40,7 @@ class TestTenantStatusTransitions:
 
     def _make_tenant(self, status: str = "active"):
         """Create a Tenant instance with the given status."""
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
 
         tenant = Tenant(
             id=uuid.uuid4(),
@@ -268,7 +268,7 @@ class TestTenantServiceLifecycle:
     @pytest.mark.asyncio
     async def test_update_tenant_status_uses_state_machine(self):
         """update_tenant_status should use transition_to() and record audit fields."""
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
 
         mock_tenant = Tenant(
             id=uuid.uuid4(),
@@ -283,7 +283,7 @@ class TestTenantServiceLifecycle:
         mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session.flush = AsyncMock()
 
-        from src.tenants.service import update_tenant_status
+        from value_fabric.layer4.tenants.service import update_tenant_status
 
         result = await update_tenant_status(
             mock_session,
@@ -301,7 +301,7 @@ class TestTenantServiceLifecycle:
     @pytest.mark.asyncio
     async def test_update_tenant_status_invalid_raises(self):
         """update_tenant_status should raise ValueError on invalid transition."""
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
 
         mock_tenant = Tenant(
             id=uuid.uuid4(),
@@ -315,7 +315,7 @@ class TestTenantServiceLifecycle:
         mock_result.scalar_one_or_none.return_value = mock_tenant
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        from src.tenants.service import update_tenant_status
+        from value_fabric.layer4.tenants.service import update_tenant_status
 
         with pytest.raises(ValueError, match="Invalid status transition"):
             await update_tenant_status(mock_session, mock_tenant.id, "active")
@@ -328,7 +328,7 @@ class TestTenantServiceLifecycle:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        from src.tenants.service import update_tenant_status
+        from value_fabric.layer4.tenants.service import update_tenant_status
 
         result = await update_tenant_status(
             mock_session, uuid.uuid4(), "suspended"
@@ -338,7 +338,7 @@ class TestTenantServiceLifecycle:
     @pytest.mark.asyncio
     async def test_delete_tenant_uses_state_machine(self):
         """delete_tenant should use transition_to('deleted')."""
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
 
         mock_tenant = Tenant(
             id=uuid.uuid4(),
@@ -353,7 +353,7 @@ class TestTenantServiceLifecycle:
         mock_session.execute = AsyncMock(return_value=mock_result)
         mock_session.flush = AsyncMock()
 
-        from src.tenants.service import delete_tenant
+        from value_fabric.layer4.tenants.service import delete_tenant
 
         result = await delete_tenant(
             mock_session,

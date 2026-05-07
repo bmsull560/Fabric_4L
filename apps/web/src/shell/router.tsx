@@ -125,6 +125,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 function ProspectSetupWithNav() {
   const { navigateTo } = useNavigation();
   const createAccount = useCreateAccount();
+  const setSelectedAccountId = useAccountContextStore((state) => state.setSelectedAccountId);
 
   const handleCreateSetup = async (payload: {
     companyName?: string;
@@ -152,7 +153,10 @@ function ProspectSetupWithNav() {
 
   return (
     <ProspectSetup
-      onNavigateToWorkspace={path => navigateTo(path)}
+      onNavigateToWorkspace={(path, accountId) => {
+        setSelectedAccountId(accountId);
+        navigateTo(`/intelligence/${accountId}/signals`);
+      }}
       onCreateSetup={handleCreateSetup}
       isSubmitting={createAccount.isPending}
     />

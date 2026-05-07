@@ -10,14 +10,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Import the helper under test
-from value_fabric.layer3_knowledge.src.api.app_monolith import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
+from value_fabric.layer3.api.app_monolith import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
 
 
 @pytest.fixture(autouse=True)
 def _ensure_neo4j_tenant_available():
     """Patch NEO4J_TENANT_AVAILABLE so tests run without optional neo4j dependency."""
     with patch(
-        "value_fabric.layer3_knowledge.src.api.app_monolith.NEO4J_TENANT_AVAILABLE", True
+        "value_fabric.layer3.api.app_monolith.NEO4J_TENANT_AVAILABLE", True
     ):
         yield
 

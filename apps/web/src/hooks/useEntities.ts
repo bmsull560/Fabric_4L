@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
@@ -31,6 +32,78 @@ export interface Entity {
 /**
  * Entity filter parameters for server-backed filtering
  */
+
+
+export interface CreateEntityPayload {
+  name: string;
+  type: Entity['type'];
+  domain: string | null;
+  status: Entity['status'];
+  confidence: number;
+  confidenceLabel: Entity['confidenceLabel'];
+  description?: string;
+  sourceName?: string;
+  extractionJobId?: string;
+  createdBy?: string;
+  properties?: Record<string, unknown>;
+}
+
+interface CreateEntityRequestDto {
+  name: string;
+  entity_type: Entity['type'];
+  domain?: string;
+  status: Entity['status'];
+  confidence: number;
+  confidence_label: Entity['confidenceLabel'];
+  description?: string;
+  source_name?: string;
+  extraction_job_id?: string;
+  created_by?: string;
+  properties?: Record<string, unknown>;
+}
+
+function mapCreateEntityPayloadToDto(payload: CreateEntityPayload): CreateEntityRequestDto {
+  return {
+    name: payload.name,
+    entity_type: payload.type,
+    domain: payload.domain ?? undefined,
+    status: payload.status,
+    confidence: payload.confidence,
+    confidence_label: payload.confidenceLabel,
+    description: payload.description,
+    source_name: payload.sourceName,
+    extraction_job_id: payload.extractionJobId,
+    created_by: payload.createdBy,
+    properties: payload.properties,
+  };
+}
+
+function getCreateEntityErrorMessage(error: unknown): string {
+  if (error instanceof AxiosError) {
+    const status = error.response?.status;
+    const detail = error.response?.data;
+    const detailMessage = typeof detail === 'object' && detail !== null && 'detail' in detail
+      ? String((detail as { detail?: unknown }).detail ?? '')
+      : '';
+
+    if (status === 409) {
+      return detailMessage || 'An entity with this name already exists in this domain.';
+    }
+    if (status === 422) {
+      return detailMessage || 'Please review the entity fields and correct validation errors.';
+    }
+    if (status === 403) {
+      return detailMessage || 'You are not authorized to create entities for this tenant.';
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Failed to create entity. Please try again.';
+}
+
 export interface EntityFilters {
   searchText?: string;
   entityTypes?: string[];
@@ -248,14 +321,29 @@ export function useEntity(id: string | null) {
 }
 
 /**
- * Create entity - uses Neo4j directly
- * Note: Entity creation is not supported in Layer 3 API.
- * This feature requires a dedicated Layer 3 endpoint to create entities in the knowledge graph.
+ * Create entity using Layer 3 API endpoint: POST /entities
+ * Reference: Layer 3 entities contract (v1 graph namespace)
  */
 export function useCreateEntity() {
-  return useMutation({
-    mutationFn: async (_entity: Omit<Entity, 'id' | 'createdAt'>) => {
-      throw new Error('Entity creation not supported - requires Layer 3 entity creation endpoint');
+  const queryClient = useQueryClient();
+
+  return useMutation<Entity, Error, CreateEntityPayload>({
+    mutationFn: async (entity): Promise<Entity> => {
+      try {
+        const response = await apiClient.post('l3', '/entities', mapCreateEntityPayloadToDto(entity));
+        return mapApiEntity(response.data);
+      } catch (error) {
+        const message = getCreateEntityErrorMessage(error);
+        log.error('Failed to create entity', { errorCode: message });
+        throw new Error(message);
+      }
+    },
+    onSuccess: async (createdEntity) => {
+      queryClient.setQueryData(QK.entities.detail(createdEntity.id), createdEntity);
+      await queryClient.invalidateQueries({ queryKey: QK.entities.list() });
+      await queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === QK.entities.all[0] && query.queryKey[1] === 'search',
+      });
     },
   });
 }

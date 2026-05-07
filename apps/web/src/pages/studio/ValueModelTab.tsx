@@ -133,6 +133,7 @@ export default function ValueModelTab() {
   const { data, isLoading, error } = useWorkspaceTabQuery<{
     valueLines: ValueLine[];
   }>(caseId ?? null, "value-model");
+  const { data: evidenceData } = useWorkspaceTabQuery<{ evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }> }>(caseId ?? null, "evidence");
   const persistTab = usePersistWorkspaceTab("value-model");
   const [scenario, setScenario] = useState<Scenario>("expected");
   const [showStrategic, setShowStrategic] = useState(true);
@@ -155,6 +156,7 @@ export default function ValueModelTab() {
   });
 
   const lines = data?.valueLines ?? [];
+  const acceptedEvidence = (evidenceData?.evidence ?? []).filter((item) => item.decision_status === "accepted");
   const visibleLines = useMemo(
     () => (showStrategic ? lines : lines.filter((l) => l.category === "hard")),
     [showStrategic, lines]
@@ -278,6 +280,20 @@ export default function ValueModelTab() {
             />
             <MetricCard label="Value Lines" value={String(lines.length)} />
           </div>
+
+          <SectionCard title="Accepted Evidence Inputs" className="mb-4">
+            {acceptedEvidence.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No accepted evidence yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {acceptedEvidence.map((item) => (
+                  <div key={item.id} className="text-xs border border-border rounded-md px-2 py-1">
+                    <span className="font-semibold">{item.title}</span> · Linkage ID: {item.provenance_id ?? item.id}
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
 
           {/* Scenario selector + controls */}
           <div className="flex items-center justify-between mb-4">

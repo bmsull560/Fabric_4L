@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from value_fabric.layer1_ingestion.src.scheduler.priority_queue import PriorityScheduler, RoundRobinScheduler
+from value_fabric.layer1.scheduler.priority_queue import PriorityScheduler, RoundRobinScheduler
 
 
 class TestPriorityScheduler:

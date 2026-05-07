@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from value_fabric.layer1_ingestion.src.crawler.smart_router import (
+from value_fabric.layer1.crawler.smart_router import (
     QualityDecision,
     RouteType,
     RoutingDecision,

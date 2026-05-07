@@ -20,8 +20,8 @@ class TestCheckpointPostgresBoundaries:
     @pytest.mark.asyncio
     async def test_state_survives_postgres_restart(self) -> None:
         """Workflow state must persist through Postgres restart."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = Mock()
         state_manager = StateManager()
@@ -81,8 +81,8 @@ class TestCheckpointRaceConditions:
     @pytest.mark.asyncio
     async def test_concurrent_resume_attempts(self) -> None:
         """Only one resume attempt should succeed, others should fail gracefully."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = Mock()
         state_manager = StateManager()

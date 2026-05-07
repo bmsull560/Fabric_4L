@@ -8,6 +8,7 @@ import { POLL_INTERVALS } from "./usePolling";
 import { createFeatureLogger } from "@/lib/telemetry";
 import { parseJsonValue } from "@/agui/eventSchemas";
 import { z } from "zod";
+import type { WorkflowState } from "@/api/types";
 
 const log = createFeatureLogger("useWorkflows");
 
@@ -19,14 +20,7 @@ const CANCEL_DELAY_MS = 500;
 export interface Workflow {
   id: string;
   name: string;
-  status:
-    | "pending"
-    | "running"
-    | "paused"
-    | "interrupted"
-    | "completed"
-    | "failed"
-    | "cancelled";
+  status: WorkflowState;
   progress: number;
   createdAt?: string;
   updatedAt?: string;
@@ -35,21 +29,24 @@ export interface Workflow {
   lineageKey?: string;
 }
 
-function normalizeWorkflowStatus(status: unknown): Workflow["status"] {
+function normalizeWorkflowStatus(status: unknown): WorkflowState {
   const value = typeof status === "string" ? status.toLowerCase() : "";
-  const validStatuses: Workflow["status"][] = [
-    "pending",
-    "running",
-    "paused",
-    "interrupted",
-    "completed",
-    "failed",
-    "cancelled",
-  ];
-  if (validStatuses.includes(value as Workflow["status"])) {
-    return value as Workflow["status"];
-  }
-  return "pending";
+  const statusMap: Record<string, WorkflowState> = {
+    created: "created",
+    pending: "queued",
+    queued: "queued",
+    running: "running",
+    waiting_dependency: "waiting_dependency",
+    retrying: "retrying",
+    paused: "paused",
+    interrupted: "paused",
+    completed: "succeeded",
+    succeeded: "succeeded",
+    failed: "failed_terminal",
+    failed_terminal: "failed_terminal",
+    cancelled: "cancelled",
+  };
+  return statusMap[value] ?? "created";
 }
 
 function normalizeWorkflowProgress(rawProgress: unknown): number {
@@ -241,7 +238,7 @@ function parsePaginatedResponse(
  *
  * @param limit - Maximum number of workflows to fetch (default: 50, max: 100)
  * @param offset - Number of workflows to skip for pagination (default: 0)
- * @param status - Optional status filter ('pending' | 'running' | 'completed' | 'failed' | 'cancelled')
+ * @param status - Optional status filter ('created' | 'queued' | 'running' | 'waiting_dependency' | 'retrying' | 'paused' | 'succeeded' | 'failed_terminal' | 'cancelled')
  */
 export function useActiveWorkflows(
   options: { limit?: number; offset?: number; status?: string } = {}

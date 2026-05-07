@@ -397,7 +397,7 @@ async def quick_whitespace_analysis(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Whitespace analysis failed: {str(e)}")
+        raise normalize_exception(e, status_code=500, detail=f"Whitespace analysis failed: {str(e)}")
 
 
 @router.post("/cases", response_model=BusinessCaseResponse)
@@ -997,6 +997,7 @@ async def update_workspace_tab(
 async def generate_workspace_intelligence(
     case_id: str,
     request: Request,
+    executor: WorkflowExecutor = Depends(get_executor),
     db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:

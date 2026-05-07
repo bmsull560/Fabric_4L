@@ -7,7 +7,7 @@ frontend-backend contract drift.
 import pytest
 from fastapi import HTTPException
 
-from src.api.routes.workflows import (
+from value_fabric.layer4.api.routes.workflows import (
     ESTIMATED_DURATION_SECONDS,
     TERMINAL_STATUSES,
     PAUSABLE_STATUSES,
@@ -91,7 +91,7 @@ class TestWorkflowStatusResponse:
         assert resp.progress_percentage == 45.0
 
     def test_status_response_with_progress(self):
-        from src.api.schemas.workflow_progress import WorkflowProgressSchema
+        from value_fabric.layer4.api.schemas.workflow_progress import WorkflowProgressSchema
 
         progress = WorkflowProgressSchema(
             step_id="node-1",

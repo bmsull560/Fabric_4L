@@ -28,6 +28,8 @@ import {
   useVariables,
   useSourceBindings,
   useVariableStats,
+  useTestVariableBinding,
+  type TestVariableBindingResponse,
   type Variable,
   type SourceBinding,
   type VariableType,
@@ -124,7 +126,7 @@ function BindingCard({ binding, onTest }: { binding: SourceBinding; onTest: (id:
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => onTest(binding.id)}
             className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
           >
@@ -200,6 +202,9 @@ function VariableRegistryContent() {
   const [typeFilter, setTypeFilter] = useState<"all" | VariableType>("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | SourceType>("all");
   const [expandedVariable, setExpandedVariable] = useState<string | null>(null);
+  const [testResultsByVariable, setTestResultsByVariable] = useState<Record<string, TestVariableBindingResponse>>({});
+  const [expandedDiagnosticsByVariable, setExpandedDiagnosticsByVariable] = useState<Record<string, boolean>>({});
+  const [activeTestVariableId, setActiveTestVariableId] = useState<string | null>(null);
 
   const { 
     data: variables = [], 
@@ -220,6 +225,7 @@ function VariableRegistryContent() {
   } = useSourceBindings();
 
   const { data: stats } = useVariableStats();
+  const testVariableBinding = useTestVariableBinding();
 
   const filteredVariables = useMemo(() => {
     return variables.filter(v =>
@@ -234,10 +240,27 @@ function VariableRegistryContent() {
   const isLoading = variablesLoading || bindingsLoading;
   const error = variablesError || bindingsError;
 
-  const handleTestBinding = (id: string) => {
-    // Binding test functionality remains disabled until the Layer 3 binding-test API is available.
-    // This feature requires a new endpoint to test variable bindings
-    throw new Error('Binding test not yet implemented - requires backend API endpoint');
+  const handleTestBinding = async (variable: Variable) => {
+    setActiveTestVariableId(variable.variable_id);
+    try {
+      const result = await testVariableBinding.mutateAsync({
+        variableId: variable.variable_id,
+        payload: {
+          sample_input: {
+            tenant_id: "demo-tenant",
+            effective_at: new Date().toISOString(),
+          },
+          context: {
+            trigger: "admin-variable-registry",
+            source: variable.source,
+            binding: variable.binding,
+          },
+        },
+      });
+      setTestResultsByVariable(prev => ({ ...prev, [variable.variable_id]: result }));
+    } finally {
+      setActiveTestVariableId(null);
+    }
   };
 
   if (isLoading) {
@@ -431,6 +454,17 @@ function VariableRegistryContent() {
                           <button className="p-1.5 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700" title="Edit">
                             <Edit3 size={13}/>
                           </button>
+                          <button
+                            className="p-1.5 rounded hover:bg-blue-50 text-neutral-400 hover:text-blue-600 disabled:opacity-50"
+                            title="Test binding"
+                            disabled={activeTestVariableId === v.variable_id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleTestBinding(v);
+                            }}
+                          >
+                            <RefreshCw size={13} className={cn(activeTestVariableId === v.variable_id && "animate-spin")} />
+                          </button>
                           <button className="p-1.5 rounded hover:bg-red-50 text-neutral-400 hover:text-red-500" title="Delete">
                             <Trash2 size={13}/>
                           </button>
@@ -471,6 +505,44 @@ function VariableRegistryContent() {
                               {v.validation_message}
                             </div>
                           )}
+                          {testResultsByVariable[v.variable_id] && (
+                            <div className={`mt-3 p-3 rounded-lg border text-[11px] ${testResultsByVariable[v.variable_id].pass ? "bg-emerald-50 border-emerald-100 text-emerald-700" : "bg-red-50 border-red-100 text-red-700"}`}>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-semibold">{testResultsByVariable[v.variable_id].pass ? "Binding test passed" : "Binding test failed"}</p>
+                                  <p className="mt-1 font-mono break-all">
+                                    Value: {String(testResultsByVariable[v.variable_id].evaluated_value ?? "—")}
+                                  </p>
+                                </div>
+                                <button
+                                  className="text-[10px] underline"
+                                  onClick={() => setExpandedDiagnosticsByVariable(prev => ({ ...prev, [v.variable_id]: !prev[v.variable_id] }))}
+                                >
+                                  {expandedDiagnosticsByVariable[v.variable_id] ? "Hide diagnostics" : "Show diagnostics"}
+                                </button>
+                              </div>
+                              {!testResultsByVariable[v.variable_id].pass && testResultsByVariable[v.variable_id].failure_class && (
+                                <p className="mt-2">
+                                  {testResultsByVariable[v.variable_id].failure_class === "missing_source_binding" && "No source binding is configured for this variable."}
+                                  {testResultsByVariable[v.variable_id].failure_class === "invalid_variable_config" && "Variable configuration is invalid; review type, binding path, and constraints."}
+                                  {testResultsByVariable[v.variable_id].failure_class === "connector_unavailable" && "Connector or source service is unavailable; retry when the service is healthy."}
+                                  {testResultsByVariable[v.variable_id].failure_class === "authorization" && "Your account is not authorized to test this binding."}
+                                  {testResultsByVariable[v.variable_id].failure_class === "unknown" && "The test failed for an unknown reason."}
+                                </p>
+                              )}
+                              {expandedDiagnosticsByVariable[v.variable_id] && (
+                                <div className="mt-2 space-y-1">
+                                  <p className="font-semibold">Source trace</p>
+                                  <p className="font-mono">source={testResultsByVariable[v.variable_id].source_trace.source}, binding={testResultsByVariable[v.variable_id].source_trace.binding}, path={testResultsByVariable[v.variable_id].source_trace.resolved_path ?? "—"}</p>
+                                  {testResultsByVariable[v.variable_id].diagnostics.map((d, index) => (
+                                    <p key={`${d.code}-${index}`}>
+                                      [{d.severity}] {d.code}: {d.message}{d.path ? ` (${d.path})` : ""}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}
@@ -499,7 +571,7 @@ function VariableRegistryContent() {
                 <BindingCard 
                   key={binding.id} 
                   binding={binding} 
-                  onTest={handleTestBinding}
+                  onTest={() => {}}
                 />
               ))}
             </div>

@@ -234,11 +234,24 @@ export async function* sendAgentMessage(
       data?: {
         content?: string;
         metadata?: {
+          run_id?: string;
           trace_id?: string;
           workflow_id?: string;
           tenant_id?: string;
           audit_event_id?: string;
         };
+        actions?: Array<{
+          label: string;
+          page_action: {
+            entityType: "signal" | "evidence" | "hypothesis" | "scenario";
+            entityId: string;
+            accountId: string;
+            caseId: string;
+            tenantId?: string;
+            intendedOperation: "signal_review" | "evidence_attach" | "hypothesis_convert" | "scenario_update";
+            payload?: Record<string, unknown>;
+          };
+        }>;
       };
     };
 
@@ -249,10 +262,11 @@ export async function* sendAgentMessage(
       data?.content ??
       "I received your message but couldn't generate a response.";
     const metadata: RunMetadata = {
-      traceId: data?.metadata?.trace_id,
+      runId: data?.metadata?.run_id ?? runId,
+      traceId: data?.metadata?.trace_id ?? runId,
       workflowId: data?.metadata?.workflow_id,
       tenantId: data?.metadata?.tenant_id,
-      auditEventId: data?.metadata?.audit_event_id,
+      auditEventId: data?.metadata?.audit_event_id ?? `audit-${runId}`,
     };
 
     const lastStep = steps[steps.length - 1];
@@ -289,6 +303,7 @@ export async function* sendAgentMessage(
       type: AgentEventType.RUN_FINISHED,
       timestamp: now(),
       runId,
+      output: { actions: data?.actions ?? [] },
       metadata,
     };
   } catch (error) {

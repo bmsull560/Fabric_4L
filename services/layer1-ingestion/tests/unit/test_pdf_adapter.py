@@ -36,13 +36,13 @@ try:
 except Exception:
     TESSERACT_AVAILABLE = False
 
-from value_fabric.layer1_ingestion.src.adapters.base import AdapterType, FilingDocument
+from value_fabric.layer1.adapters.base import AdapterType, FilingDocument
 
 if _pdf2image_missing:
     PDFAdapter = None  # type: ignore[misc]
     PDFAdapterConfig = None  # type: ignore[misc]
 else:
-    from value_fabric.layer1_ingestion.src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
+    from value_fabric.layer1.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
 
 
 class TestPDFAdapter:

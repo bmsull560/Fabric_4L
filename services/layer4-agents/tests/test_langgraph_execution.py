@@ -386,8 +386,8 @@ class TestGenerateSectionToolLLMMock:
     @pytest.mark.asyncio
     async def test_generate_section_tool_with_mocked_openai(self) -> None:
         """GenerateSectionTool must use AsyncOpenAI and be mockable."""
-        from src.models.tool_schemas import GenerateSectionInput
-        from src.tools.generation_tools import GenerateSectionTool
+        from value_fabric.layer4.models.tool_schemas import GenerateSectionInput
+        from value_fabric.layer4.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
 
@@ -415,8 +415,8 @@ class TestGenerateSectionToolLLMMock:
     @pytest.mark.asyncio
     async def test_generate_section_tool_uses_gpt4o(self) -> None:
         """GenerateSectionTool must call gpt-4o model."""
-        from src.models.tool_schemas import GenerateSectionInput
-        from src.tools.generation_tools import GenerateSectionTool
+        from value_fabric.layer4.models.tool_schemas import GenerateSectionInput
+        from value_fabric.layer4.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
         mock_response = _make_mock_openai_response("Mock content")
@@ -447,8 +447,8 @@ class TestGenerateSectionToolLLMMock:
     @pytest.mark.asyncio
     async def test_generate_section_tool_raises_on_llm_failure(self) -> None:
         """GenerateSectionTool must raise RuntimeError when LLM call fails."""
-        from src.models.tool_schemas import GenerateSectionInput
-        from src.tools.generation_tools import GenerateSectionTool
+        from value_fabric.layer4.models.tool_schemas import GenerateSectionInput
+        from value_fabric.layer4.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
 
@@ -470,7 +470,7 @@ class TestGenerateSectionToolLLMMock:
 
     def test_generate_section_tool_has_all_section_templates(self) -> None:
         """GenerateSectionTool must have templates for all 6 standard section types."""
-        from src.tools.generation_tools import GenerateSectionTool
+        from value_fabric.layer4.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
         required_sections = {
@@ -494,8 +494,8 @@ class TestOrchestrationControllerWorkflowLifecycle:
     @pytest.mark.asyncio
     async def test_execute_workflow_creates_metadata(self) -> None:
         """execute_workflow must store workflow_metadata for the new workflow_id."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = _make_mock_tool_registry()
         mock_saver = Mock()
@@ -557,8 +557,8 @@ class TestOrchestrationControllerWorkflowLifecycle:
     @pytest.mark.asyncio
     async def test_get_workflow_status_returns_none_for_unknown(self) -> None:
         """get_workflow_status must return None for unknown workflow IDs."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = _make_mock_tool_registry()
         state_manager = StateManager()
@@ -574,8 +574,8 @@ class TestOrchestrationControllerWorkflowLifecycle:
     @pytest.mark.asyncio
     async def test_list_active_workflows_returns_list(self) -> None:
         """list_active_workflows must return a list (possibly empty)."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = _make_mock_tool_registry()
         state_manager = StateManager()
@@ -591,8 +591,8 @@ class TestOrchestrationControllerWorkflowLifecycle:
     @pytest.mark.asyncio
     async def test_get_result_returns_route_compatible_shape_from_persisted_state(self) -> None:
         """get_result should read persisted state and return route-compatible keys."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = _make_mock_tool_registry()
         state_manager = StateManager()
@@ -803,8 +803,8 @@ class TestOrchestrationControllerErrorPaths:
 
     async def test_cancel_nonexistent_workflow_returns_false(self) -> None:
         """cancel_workflow must return False for unknown workflow IDs."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = _make_mock_tool_registry()
         state_manager = StateManager()
@@ -819,8 +819,8 @@ class TestOrchestrationControllerErrorPaths:
 
     async def test_execute_workflow_rejects_unknown_type(self) -> None:
         """execute_workflow must raise for unknown workflow types."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = _make_mock_tool_registry()
         state_manager = StateManager()
@@ -840,8 +840,8 @@ class TestOrchestrationControllerErrorPaths:
 
     async def test_get_workflow_status_after_execute(self) -> None:
         """get_workflow_status must return valid data after workflow execution."""
-        from src.engine.executor import OrchestrationController
-        from src.engine.state_manager import StateManager
+        from value_fabric.layer4.engine.executor import OrchestrationController
+        from value_fabric.layer4.engine.state_manager import StateManager
 
         mock_registry = _make_mock_tool_registry()
         state_manager = StateManager()

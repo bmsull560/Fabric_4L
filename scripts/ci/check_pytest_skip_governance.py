@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""Govern pytest skip reasons captured during collection.
-
-- Parses pytest output (typically from `pytest --collect-only -rs -q`).
-- Allows infrastructure/environment skips by default pattern.
-- Flags code-health skips as policy violations unless temporarily allowlisted.
-- Tracks skip-count regressions via a baseline file.
-"""
 from __future__ import annotations
 
 import argparse
@@ -16,147 +9,162 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except Exception:
+    yaml = None
 
-SKIP_LINE_RE = re.compile(r"^SKIPPED\s+\[(\d+)\]\s+(.+?)\s*$")
+SKIP_LINE = re.compile(r"^SKIPPED\s+\[[0-9]+\].*?:\s*(?P<reason>.+)$")
 
-ALLOWED_PATTERNS = [
+INFRA_PATTERNS = [
     re.compile(p, re.IGNORECASE)
     for p in [
-        r"\b(redis|postgres|mysql|db|database|neo4j|kafka|rabbitmq)\b",
-        r"\b(k8s|kubernetes|kubectl|helm|kind|minikube|cluster)\b",
-        r"\b(docker|container|service unavailable|external service)\b",
-        r"\b(environment|env var|missing secret|credentials)\b",
+        r"\bdb\b|database|postgres|mysql|sqlite",
+        r"\bredis\b",
+        r"\bk8s\b|kubernetes|kubectl|kustomize|helm",
+        r"docker|container runtime",
+        r"environment variable|missing env|requires? env",
+        r"external service unavailable|service unavailable",
     ]
 ]
 
-DENIED_PATTERNS = [
+CODE_HEALTH_PATTERNS = [
     re.compile(p, re.IGNORECASE)
     for p in [
-        r"import path unresolved",
+        r"import path.*unresolved",
         r"module not found",
-        r"modulenotfounderror",
-        r"importerror",
+        r"cannot import",
         r"pending refactor",
-        r"todo",
-        r"temporary skip",
+        r"legacy import layout",
     ]
 ]
 
 
 @dataclass
-class SkipRecord:
-    count: int
-    reason: str
+class AllowEntry:
+    pattern: re.Pattern[str]
+    owner: str
+    expires_on: date
+    note: str
 
 
-def parse_skips(text: str) -> list[SkipRecord]:
-    out: list[SkipRecord] = []
-    for line in text.splitlines():
-        m = SKIP_LINE_RE.match(line.strip())
-        if not m:
-            continue
-        out.append(SkipRecord(count=int(m.group(1)), reason=m.group(2)))
+def load_allowlist(path: Path) -> list[AllowEntry]:
+    if not path.exists():
+        return []
+    if yaml is None:
+        raise RuntimeError("pyyaml is required to parse allowlist")
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    entries = raw.get("allowlist", [])
+    out: list[AllowEntry] = []
+    for i, entry in enumerate(entries):
+        pattern = entry.get("pattern")
+        owner = entry.get("owner")
+        expires = entry.get("expires_on")
+        note = entry.get("note", "")
+        if not pattern or not owner or not expires:
+            raise ValueError(f"Invalid allowlist entry index {i}: pattern, owner, expires_on required")
+        out.append(AllowEntry(re.compile(pattern, re.IGNORECASE), owner, date.fromisoformat(expires), note))
     return out
 
 
-def is_allowed(reason: str) -> bool:
-    return any(p.search(reason) for p in ALLOWED_PATTERNS)
+def classify_reason(reason: str, allowlist: list[AllowEntry], today: date) -> tuple[str, str, str]:
+    for entry in allowlist:
+        if entry.pattern.search(reason):
+            if entry.expires_on < today:
+                return ("violation", "allowlisted", f"expired allowlist ({entry.owner}, expired {entry.expires_on.isoformat()})")
+            return ("allowlisted", "allowlisted", f"allowlisted by {entry.owner} until {entry.expires_on.isoformat()}")
 
-
-def is_denied(reason: str) -> bool:
-    return any(p.search(reason) for p in DENIED_PATTERNS)
-
-
-def load_allowlist(path: Path) -> dict[str, dict[str, str]]:
-    if not path.exists():
-        return {}
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    entries = data.get("entries", [])
-    by_pattern: dict[str, dict[str, str]] = {}
-    for e in entries:
-        pattern = e.get("pattern")
-        if pattern:
-            by_pattern[pattern] = e
-    return by_pattern
-
-
-def matches_allowlist(reason: str, allowlist: dict[str, dict[str, str]]) -> tuple[bool, str | None]:
-    today = date.today()
-    for pattern, meta in allowlist.items():
-        if re.search(pattern, reason, re.IGNORECASE):
-            exp = meta.get("expires")
-            if exp:
-                y, m, d = map(int, exp.split("-"))
-                if date(y, m, d) < today:
-                    return False, f"allowlist entry expired on {exp} ({meta.get('owner', 'unknown owner')})"
-            return True, None
-    return False, None
+    if any(p.search(reason) for p in CODE_HEALTH_PATTERNS):
+        return ("violation", "code_health", "code-health skip")
+    if any(p.search(reason) for p in INFRA_PATTERNS):
+        return ("allowed", "infrastructure", "infrastructure/environment skip")
+    return ("violation", "unclassified", "unclassified skip reason")
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--input", required=True, help="pytest output file")
-    ap.add_argument("--allowlist", default="scripts/ci/pytest_skip_allowlist.yaml")
-    ap.add_argument("--baseline", default="scripts/ci/pytest_skip_baseline.json")
-    ap.add_argument("--write-baseline", action="store_true")
+    ap = argparse.ArgumentParser(description="Govern pytest skip reasons from collection output")
+    ap.add_argument("collection_output", type=Path)
+    ap.add_argument("--allowlist", type=Path, default=Path("config/ci/pytest_skip_allowlist.yaml"))
+    ap.add_argument("--baseline", type=Path, default=Path("config/ci/pytest_skip_baseline.json"))
+    ap.add_argument("--write-report", type=Path)
     args = ap.parse_args()
 
-    text = Path(args.input).read_text(encoding="utf-8", errors="ignore")
-    skips = parse_skips(text)
-    total = sum(s.count for s in skips)
-    collection_import_errors = len(re.findall(r"(ModuleNotFoundError|ImportError)", text, flags=re.IGNORECASE))
+    content = args.collection_output.read_text(encoding="utf-8")
+    reasons = [m.group("reason").strip() for line in content.splitlines() if (m := SKIP_LINE.match(line.strip()))]
 
-    allowlist = load_allowlist(Path(args.allowlist))
-    violations: list[str] = []
-    categorized: dict[str, int] = {"infra_allowed": 0, "code_health": 0, "other": 0}
+    allowlist = load_allowlist(args.allowlist)
+    today = date.today()
 
-    for s in skips:
-        if is_denied(s.reason):
-            ok, err = matches_allowlist(s.reason, allowlist)
-            if ok:
-                categorized["other"] += s.count
-            else:
-                categorized["code_health"] += s.count
-                msg = f"{s.count}x {s.reason}"
-                if err:
-                    msg += f" ({err})"
-                violations.append(msg)
-            continue
+    counts: dict[str, int] = {}
+    classified: list[dict[str, str]] = []
+    violations: list[dict[str, str]] = []
 
-        if is_allowed(s.reason):
-            categorized["infra_allowed"] += s.count
-        else:
-            ok, err = matches_allowlist(s.reason, allowlist)
-            if ok:
-                categorized["other"] += s.count
-            else:
-                categorized["other"] += s.count
+    for reason in reasons:
+        counts[reason] = counts.get(reason, 0) + 1
 
-    baseline_path = Path(args.baseline)
-    if args.write_baseline:
-        baseline_path.write_text(json.dumps({"total_skips": total, "categorized": categorized}, indent=2) + "\n", encoding="utf-8")
-        print(f"wrote skip baseline: {baseline_path}")
-        return 0
+    category_counts = {
+        "infrastructure": 0,
+        "code_health": 0,
+        "allowlisted": 0,
+        "unclassified": 0,
+    }
 
-    if collection_import_errors > 0:
-        violations.append(f"collection import-path unresolved errors detected: {collection_import_errors}")
+    for reason, count in sorted(counts.items(), key=lambda x: (-x[1], x[0])):
+        status, category, detail = classify_reason(reason, allowlist, today)
+        row = {"reason": reason, "count": str(count), "status": status, "category": category, "detail": detail}
+        classified.append(row)
+        category_counts[category] = category_counts.get(category, 0) + count
+        if status == "violation":
+            violations.append(row)
 
-    if baseline_path.exists():
-        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-        prev_total = int(baseline.get("total_skips", 0))
-        if total > prev_total:
-            violations.append(f"skip regression: current={total} baseline={prev_total}")
+    baseline_total = None
+    baseline_category_max: dict[str, int] = {}
+    if args.baseline.exists():
+        baseline_data = json.loads(args.baseline.read_text(encoding="utf-8"))
+        baseline_total = int(baseline_data.get("max_total_skips", 0))
+        baseline_category_max = {k: int(v) for k, v in baseline_data.get("max_category_skips", {}).items()}
 
-    print(f"skip summary: total={total} infra_allowed={categorized['infra_allowed']} code_health={categorized['code_health']} other={categorized['other']}")
+    total_skips = len(reasons)
+    regression = baseline_total is not None and total_skips > baseline_total
+    category_regressions = {
+        k: {"actual": v, "max": baseline_category_max[k]}
+        for k, v in category_counts.items()
+        if k in baseline_category_max and v > baseline_category_max[k]
+    }
+
+    report = {
+        "total_skips": total_skips,
+        "baseline_max_total_skips": baseline_total,
+        "regression": regression,
+        "category_counts": category_counts,
+        "baseline_max_category_skips": baseline_category_max,
+        "category_regressions": category_regressions,
+        "classified": classified,
+        "violations": violations,
+    }
+    if args.write_report:
+        args.write_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+    print(f"total skipped entries: {total_skips}")
+    print(f"category counts: {json.dumps(category_counts, sort_keys=True)}")
+    for row in classified:
+        print(f"- [{row['status']}]/{row['category']} x{row['count']} :: {row['reason']} ({row['detail']})")
+
+    if regression:
+        print(
+            f"ERROR: skip count regression detected (total {total_skips} > baseline {baseline_total}).",
+            file=sys.stderr,
+        )
+    if category_regressions:
+        print("ERROR: skip category regression(s) detected:", file=sys.stderr)
+        for category, data in sorted(category_regressions.items()):
+            print(f"  - {category}: {data['actual']} > {data['max']}", file=sys.stderr)
     if violations:
-        print("policy violations:", file=sys.stderr)
+        print("ERROR: policy-violating skip reasons detected:", file=sys.stderr)
         for v in violations:
-            print(f"- {v}", file=sys.stderr)
-        return 1
+            print(f"  - x{v['count']} {v['reason']} ({v['detail']})", file=sys.stderr)
 
-    print("skip governance check passed")
-    return 0
+    return 1 if regression or category_regressions or violations else 0
 
 
 if __name__ == "__main__":

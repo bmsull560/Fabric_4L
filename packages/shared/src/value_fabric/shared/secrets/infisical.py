@@ -21,7 +21,52 @@ import logging
 import os
 from typing import Optional
 
+from value_fabric.shared.security.config import is_production_like_environment
+
 logger = logging.getLogger(__name__)
+
+REQUIRED_SECRET_KEYS: frozenset[str] = frozenset(
+    {
+        "JWT_SECRET",
+        "DATABASE_URL",
+        "API_KEY_HMAC_SECRET",
+        "SERVICE_AUTH_SECRET",
+    }
+)
+
+
+class InfisicalError(RuntimeError):
+    """Base class for Infisical bootstrap failures."""
+
+
+class InfisicalNotConfiguredError(InfisicalError):
+    """Raised when required Infisical bootstrap environment is absent."""
+
+
+class InfisicalAuthError(InfisicalError):
+    """Raised when Universal Auth login fails."""
+
+
+class InfisicalNetworkError(InfisicalError):
+    """Raised when network issues prevent fetching secrets."""
+
+
+class InfisicalMissingRequiredSecretsError(InfisicalError):
+    """Raised when required bootstrap secrets are missing."""
+
+
+def _raise_or_log(exc: InfisicalError, *, production_like: bool) -> None:
+    if production_like:
+        raise exc
+    logger.warning("%s. Falling back to existing environment variables.", exc)
+
+
+def _validate_required_secrets() -> None:
+    missing = sorted(key for key in REQUIRED_SECRET_KEYS if not os.getenv(key, "").strip())
+    if missing:
+        raise InfisicalMissingRequiredSecretsError(
+            "Missing required secrets: " + ", ".join(missing)
+        )
 
 
 def load_infisical_secrets(
@@ -58,6 +103,8 @@ def load_infisical_secrets(
     Returns:
         Number of secrets written into os.environ (0 if not configured).
     """
+    production_like = is_production_like_environment(environment)
+
     client_id = client_id or os.getenv("INFISICAL_CLIENT_ID", "")
     client_secret = client_secret or os.getenv("INFISICAL_CLIENT_SECRET", "")
     project_id = project_id or os.getenv("INFISICAL_PROJECT_ID", "")
@@ -70,36 +117,47 @@ def load_infisical_secrets(
 
     # All three auth/project fields are required to proceed.
     if not (client_id and client_secret and project_id):
-        logger.debug(
-            "Infisical not configured — INFISICAL_CLIENT_ID, INFISICAL_CLIENT_SECRET, "
-            "and INFISICAL_PROJECT_ID must all be set. "
-            "Falling back to existing environment variables."
+        _raise_or_log(
+            InfisicalNotConfiguredError(
+                "Infisical not configured: INFISICAL_CLIENT_ID, "
+                "INFISICAL_CLIENT_SECRET, and INFISICAL_PROJECT_ID must all be set"
+            ),
+            production_like=production_like,
         )
+        _validate_required_secrets()
         return 0
 
     try:
         from infisical_sdk import InfisicalSDKClient  # type: ignore[import-untyped]
     except ImportError:
-        logger.warning(
-            "infisical-sdk is not installed. "
-            "Add it to your dependencies and re-build the image. "
-            "Falling back to existing environment variables."
+        _raise_or_log(
+            InfisicalNotConfiguredError(
+                "infisical-sdk is not installed; add dependency before startup"
+            ),
+            production_like=production_like,
         )
+        _validate_required_secrets()
         return 0
 
     try:
         client = InfisicalSDKClient(host=host)
-        client.auth.universal_auth.login(
-            client_id=client_id,
-            client_secret=client_secret,
-        )
+        try:
+            client.auth.universal_auth.login(
+                client_id=client_id,
+                client_secret=client_secret,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise InfisicalAuthError(f"Infisical auth failed: {exc}") from exc
 
-        secrets = client.listSecrets(
-            project_id=project_id,
-            environment_slug=environment,
-            secret_path=secret_path,
-            attach_to_process_env=False,
-        )
+        try:
+            secrets = client.listSecrets(
+                project_id=project_id,
+                environment_slug=environment,
+                secret_path=secret_path,
+                attach_to_process_env=False,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise InfisicalNetworkError(f"Infisical network/fetch failed: {exc}") from exc
 
         loaded = 0
         skipped = 0
@@ -121,13 +179,21 @@ def load_infisical_secrets(
             environment,
             secret_path,
         )
+        _validate_required_secrets()
         return loaded
 
+    except InfisicalError as exc:
+        _raise_or_log(exc, production_like=production_like)
+        _validate_required_secrets()
+        return 0
+
     except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "Infisical: failed to load secrets — %s. "
-            "Service will start with existing environment variables only. "
-            "Check INFISICAL_* configuration and network connectivity.",
-            exc,
+        _raise_or_log(
+            InfisicalNetworkError(
+                "Infisical: unexpected failure while loading secrets; "
+                f"check INFISICAL_* configuration and connectivity ({exc})"
+            ),
+            production_like=production_like,
         )
+        _validate_required_secrets()
         return 0

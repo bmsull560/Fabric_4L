@@ -15,8 +15,8 @@ for module_name in list(sys.modules):
     if module_name == "src" or module_name.startswith("src."):
         sys.modules.pop(module_name, None)
 
-from src.api.routes import analysis
-from src.config.settings import settings
+from value_fabric.layer4.api.routes import analysis
+from value_fabric.layer4.config.settings import settings
 from value_fabric.shared.audit import AuditAction
 
 

@@ -13,8 +13,8 @@ Covers:
 
 import pytest
 
-from src.api.schemas.value_flow import ValueFlowStep
-from src.services.value_flow_facade import ValueFlowFacadeService
+from value_fabric.layer4.api.schemas.value_flow import ValueFlowStep
+from value_fabric.layer4.services.value_flow_facade import ValueFlowFacadeService
 
 
 # ---------------------------------------------------------------------------

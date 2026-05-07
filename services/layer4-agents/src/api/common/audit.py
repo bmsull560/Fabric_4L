@@ -28,3 +28,21 @@ async def emit_and_persist_audit(
         details=dict(details or {}),
     )
     await AuditEmitter.write_to_db(event, get_db_from_context)
+
+
+async def emit_route_audit(
+    *,
+    action: Any,
+    context: RequestContext,
+    resource_type: str,
+    resource_id: str,
+    details: Mapping[str, Any] | None = None,
+) -> None:
+    """Route-level alias for consistent audit emission semantics."""
+    await emit_and_persist_audit(
+        action=action,
+        context=context,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        details=details,
+    )

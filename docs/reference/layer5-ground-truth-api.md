@@ -392,3 +392,18 @@ print(f"Pass rate: {metrics.pass_rate:.1%}")
 ---
 
 *Last updated: 2026-04-19 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/reference/layer5-ground-truth-api.md)*
+
+## Canonical governance envelope on truth APIs
+
+Layer 5 endpoints that surface AI-assembled claim summaries or governance decisions may return a canonical envelope around payload data, defined in `contracts/jsonschema/agent-response-envelope.json`.
+
+Current endpoints where envelope fields can appear:
+- `GET /api/v1/truths`
+- `GET /api/v1/truths/{id}`
+- `POST /api/v1/truths/{id}/validate`
+
+Behavior:
+- `claim_citations` and `evidence_provenance_ids` are returned when supporting evidence linkage exists.
+- `policy_decision` and `approval_required` are set when governance policy evaluates the response/action.
+- `refusal_reason` is returned when policy blocks disclosure/action (for example, out-of-scope tenant data).
+- `tenant_scope` identifies evaluated tenant context and cross-tenant blocks.

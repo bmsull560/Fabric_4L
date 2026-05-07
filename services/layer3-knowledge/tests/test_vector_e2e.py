@@ -38,12 +38,12 @@ from value_fabric.layer3.api.dependencies import (
     get_sync_manager,
 )
 from value_fabric.layer3.api.main import app
-from value_fabric.layer3_knowledge.src.config import Settings
-from value_fabric.layer3_knowledge.src.ingestion.neo4j_loader import Neo4jLoader
-from value_fabric.layer3_knowledge.src.ingestion.sync_manager import SyncManager
-from value_fabric.layer3_knowledge.src.retrieval.hybrid_search import HybridSearch
-from value_fabric.layer3_knowledge.src.retrieval.vector_store import VectorStore
-from value_fabric.layer3_knowledge.src.schema.initializer import SchemaInitializer
+from value_fabric.layer3.config import Settings
+from value_fabric.layer3.ingestion.neo4j_loader import Neo4jLoader
+from value_fabric.layer3.ingestion.sync_manager import SyncManager
+from value_fabric.layer3.retrieval.hybrid_search import HybridSearch
+from value_fabric.layer3.retrieval.vector_store import VectorStore
+from value_fabric.layer3.schema.initializer import SchemaInitializer
 
 # Skip entire module if testcontainers not installed
 pytestmark = [

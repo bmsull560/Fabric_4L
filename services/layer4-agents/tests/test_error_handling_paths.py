@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.services.usage_service import UsageService
-from src.services.billing_service import BillingService
+from value_fabric.layer4.services.usage_service import UsageService
+from value_fabric.layer4.services.billing_service import BillingService
 
 
 @pytest.mark.asyncio

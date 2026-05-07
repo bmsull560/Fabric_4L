@@ -565,7 +565,7 @@ async def test_get_sync_status_empty(client: AsyncClient):
 async def test_sync_accounts_all_providers(client: AsyncClient, monkeypatch):
     """Test triggering sync for all providers returns completed or partial status."""
     # Mock CRMSyncService to avoid environment coupling
-    from src.services.crm_sync_service import CRMSyncService
+    from value_fabric.layer4.services.crm_sync_service import CRMSyncService
     
     async def mock_sync_provider(self, provider, incremental=True, account_ids=None):
         return mock_sync_providerResult.model_validate({"updated": 5, "failed": 0, "errors": []})
@@ -590,7 +590,7 @@ async def test_sync_accounts_all_providers(client: AsyncClient, monkeypatch):
 async def test_sync_accounts_specific_provider(client: AsyncClient, monkeypatch):
     """Test triggering sync for specific provider returns completed or partial status."""
     # Mock CRMSyncService to avoid environment coupling
-    from src.services.crm_sync_service import CRMSyncService
+    from value_fabric.layer4.services.crm_sync_service import CRMSyncService
     
     async def mock_sync_provider(self, provider, incremental=True, account_ids=None):
         return mock_sync_providerResult.model_validate({"updated": 3, "failed": 0, "errors": []})
@@ -616,7 +616,7 @@ async def test_sync_accounts_specific_provider(client: AsyncClient, monkeypatch)
 async def test_sync_accounts_force_refresh(client: AsyncClient, monkeypatch):
     """Test triggering sync with force refresh returns completed or partial status."""
     # Mock CRMSyncService to avoid environment coupling
-    from src.services.crm_sync_service import CRMSyncService
+    from value_fabric.layer4.services.crm_sync_service import CRMSyncService
     
     async def mock_sync_provider(self, provider, incremental=False, account_ids=None):
         return mock_sync_providerResult.model_validate({"updated": 10, "failed": 0, "errors": []})
@@ -677,7 +677,7 @@ async def test_refresh_account_not_found(client: AsyncClient):
 async def test_refresh_account_success(client: AsyncClient, sample_account: Account, monkeypatch):
     """Test refreshing existing account."""
     # Mock CRMSyncService to avoid environment coupling
-    from src.services.crm_sync_service import CRMSyncService
+    from value_fabric.layer4.services.crm_sync_service import CRMSyncService
     
     async def mock_refresh_single_account(self, account_id):
         # Return the account with updated timestamp

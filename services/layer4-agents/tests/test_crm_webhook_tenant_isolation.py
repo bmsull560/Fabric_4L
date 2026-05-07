@@ -79,8 +79,8 @@ def _make_client(mock_db):
 
 def _make_integration(enabled: bool = True):
     """Create a mock Integration object."""
-    from src.models.account import CRMProvider
-    from src.models.integration import Integration, IntegrationStatus
+    from value_fabric.layer4.models.account import CRMProvider
+    from value_fabric.layer4.models.integration import Integration, IntegrationStatus
 
     integration = MagicMock(spec=Integration)
     integration.enabled = enabled
@@ -207,8 +207,8 @@ class TestHubSpotWebhookTenantIsolation:
         os.environ["CRM_WEBHOOKS_REQUIRE_TENANT_ID"] = "true"
         client = _make_client(mock_db)
 
-        from src.models.account import CRMProvider
-        from src.models.integration import Integration
+        from value_fabric.layer4.models.account import CRMProvider
+        from value_fabric.layer4.models.integration import Integration
 
         enabled_integration = MagicMock(spec=Integration)
         enabled_integration.enabled = True

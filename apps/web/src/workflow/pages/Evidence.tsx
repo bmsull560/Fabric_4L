@@ -5,7 +5,7 @@
  */
 import { useMemo, useState } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
-import { useCaseStudies } from "@/hooks/useEvidence";
+import { useCaseStudies, type CaseStudyEvidence } from "@/hooks/useEvidence";
 import type { CaseStudy } from "@/lib/schemas/evidence";
 import {
   Database, Search, CheckCircle2, AlertTriangle,
@@ -24,14 +24,13 @@ export default function Evidence() {
   const [selectedTier, setSelectedTier] = useState<"all" | "proof" | "supporting">("all");
 
   const { data: evidenceData, isLoading, error } = useCaseStudies({ search });
-  const caseStudies: CaseStudy[] =
-    evidenceData?.case_studies && Array.isArray(evidenceData.case_studies)
-      ? (evidenceData.case_studies as CaseStudy[])
-      : [];
+  const caseStudies: CaseStudyEvidence[] = Array.isArray(evidenceData?.case_studies)
+    ? evidenceData.case_studies
+    : [];
 
   const handleContinue = () => {
     if (caseStudies.length > 0) {
-      setEnrichedEntities(caseStudies.map((e: CaseStudy) => ({
+      setEnrichedEntities(caseStudies.map((e: CaseStudyEvidence) => ({
         id: e.id,
         name: e.title,
         type: "evidence",
@@ -90,7 +89,7 @@ export default function Evidence() {
               <div className="p-8 text-center text-destructive">Failed to load evidence. Please try again.</div>
             ) : caseStudies.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
-                {caseStudies.map((e: CaseStudy) => (
+                {caseStudies.map((e: CaseStudyEvidence) => (
                   <div key={e.id} className="p-3 rounded-lg border bg-card border-border">
                     <div className="flex items-start justify-between mb-2">
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">Case Study</span>

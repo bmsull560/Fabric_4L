@@ -25,8 +25,8 @@ except ImportError:
 
 from neo4j import AsyncGraphDatabase
 
-from value_fabric.layer3_knowledge.src.config import Settings
-from value_fabric.layer3_knowledge.src.schema.initializer import SchemaInitializer
+from value_fabric.layer3.config import Settings
+from value_fabric.layer3.schema.initializer import SchemaInitializer
 
 pytestmark = [
     pytest.mark.skipif(
@@ -279,7 +279,7 @@ class TestNeo4jFailureModes:
 
 def test_get_tenant_constraints_community_returns_empty() -> None:
     """P2 Regression: Verify Community Edition gets no tenant constraints."""
-    from value_fabric.layer3_knowledge.src.schema.constraints import get_tenant_constraints
+    from value_fabric.layer3.schema.constraints import get_tenant_constraints
 
     constraints = get_tenant_constraints("community")
     assert constraints == []
@@ -287,7 +287,7 @@ def test_get_tenant_constraints_community_returns_empty() -> None:
 
 def test_get_tenant_constraints_enterprise_returns_all() -> None:
     """P2 Regression: Verify Enterprise Edition gets all tenant constraints."""
-    from value_fabric.layer3_knowledge.src.schema.constraints import TENANT_CONSTRAINTS, get_tenant_constraints
+    from value_fabric.layer3.schema.constraints import TENANT_CONSTRAINTS, get_tenant_constraints
 
     constraints = get_tenant_constraints("enterprise")
     assert len(constraints) == len(TENANT_CONSTRAINTS)

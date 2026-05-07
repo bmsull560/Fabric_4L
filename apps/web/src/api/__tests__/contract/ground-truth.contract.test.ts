@@ -341,3 +341,40 @@ describe('Contract: ground truth auth failures', () => {
     expect(err.code).toBe('NOT_FOUND');
   });
 });
+
+describe('Contract: Ground Truth canonical envelope scenarios', () => {
+  const CanonicalEnvelopeSchema = z.object({
+    content: z.unknown().optional(),
+    claim_citations: z.array(z.object({ claim_id: z.string(), source_id: z.string() })),
+    evidence_provenance_ids: z.array(z.string()),
+    refusal_reason: z.string().nullable().optional(),
+    policy_decision: z.enum(['allow', 'allow_with_redaction', 'needs_approval', 'deny']),
+    tenant_scope: z.object({ tenant_id: z.string(), scope: z.enum(['tenant', 'cross_tenant_blocked']) }),
+    approval_required: z.boolean(),
+  });
+
+  it('accepts list payload wrapped with citations/provenance', () => {
+    const wrapped = assertSchema(CanonicalEnvelopeSchema, {
+      content: { items: [fixtures.truthObjectSummary()], total: 1, limit: 20, offset: 0, has_more: false },
+      claim_citations: [{ claim_id: 'truth-1', source_id: 'src-1' }],
+      evidence_provenance_ids: ['prov-1'],
+      policy_decision: 'allow',
+      tenant_scope: { tenant_id: '550e8400-e29b-41d4-a716-446655440000', scope: 'tenant' },
+      approval_required: false,
+    }, 'GT envelope allow');
+    expect(wrapped.claim_citations.length).toBe(1);
+  });
+
+  it('supports refusal + approval gate', () => {
+    const wrapped = assertSchema(CanonicalEnvelopeSchema, {
+      content: null,
+      claim_citations: [],
+      evidence_provenance_ids: [],
+      refusal_reason: 'Human approver required for disputed claim transition',
+      policy_decision: 'needs_approval',
+      tenant_scope: { tenant_id: '550e8400-e29b-41d4-a716-446655440000', scope: 'tenant' },
+      approval_required: true,
+    }, 'GT envelope approval gate');
+    expect(wrapped.approval_required).toBe(true);
+  });
+});

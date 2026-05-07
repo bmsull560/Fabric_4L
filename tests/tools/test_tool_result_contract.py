@@ -8,7 +8,7 @@ from pathlib import Path
 
 # Set up import paths for Layer 4 agents
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-_L4_PATH = str(_PROJECT_ROOT / "services" / "layer4-agents" / "src")
+_L4_PATH = str(_PROJECT_ROOT / "services" / "layer4-agents")
 if _L4_PATH not in sys.path:
     sys.path.insert(0, _L4_PATH)
 
@@ -16,8 +16,8 @@ import pytest
 from pydantic import BaseModel
 
 # Use direct import from tools
-from tools.registry import BaseTool, ToolRegistry, ToolResult
-from tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
+from value_fabric.layer4.tools.registry import BaseTool, ToolRegistry, ToolResult
+from src.tools.calculation_tools import CalculateROITool, EvaluateFormulaTool
 
 
 def validate_tool_result(result):
@@ -418,7 +418,7 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_validates_correct_json(self):
         """Test that valid LLM JSON response is parsed correctly."""
-        from tools.competitive_tools import (
+        from src.tools.competitive_tools import (
             LLMDifferenceItem,
             LLMDifferencesResponse,
         )
@@ -434,7 +434,7 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_handles_invalid_json(self):
         """Test that invalid JSON is handled gracefully."""
-        from tools.competitive_tools import (
+        from src.tools.competitive_tools import (
             LLMDifferencesResponse,
         )
 
@@ -446,7 +446,7 @@ class TestLLMResponseValidation:
 
     def test_llm_response_model_uses_defaults_for_missing_fields(self):
         """Test that missing fields use sensible defaults."""
-        from tools.competitive_tools import (
+        from src.tools.competitive_tools import (
             LLMDifferenceItem,
         )
 

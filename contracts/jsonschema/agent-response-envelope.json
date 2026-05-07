@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/jsonschema/agent-response-envelope.json",
+  "title": "AgentResponseEnvelope",
+  "description": "Canonical envelope for Layer 4 and Layer 5 AI-assisted responses.",
+  "type": "object",
+  "properties": {
+    "content": { "type": ["string", "null"] },
+    "claim_citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_id": { "type": "string" },
+          "source_id": { "type": "string" },
+          "quote": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "required": ["claim_id", "source_id"],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "evidence_provenance_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "refusal_reason": {
+      "type": ["string", "null"],
+      "description": "Present when model declines or cannot safely answer."
+    },
+    "policy_decision": {
+      "type": "string",
+      "enum": ["allow", "allow_with_redaction", "needs_approval", "deny"]
+    },
+    "tenant_scope": {
+      "type": "object",
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "scope": { "type": "string", "enum": ["tenant", "cross_tenant_blocked"] }
+      },
+      "required": ["tenant_id", "scope"],
+      "additionalProperties": false
+    },
+    "approval_required": {
+      "type": "boolean",
+      "description": "True when human approval is required before downstream actions."
+    }
+  },
+  "required": [
+    "claim_citations",
+    "evidence_provenance_ids",
+    "policy_decision",
+    "tenant_scope",
+    "approval_required"
+  ],
+  "additionalProperties": true
+}

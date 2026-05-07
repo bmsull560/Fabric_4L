@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from src.cache.ports import CachePort, LegacyCacheAdapter, as_cache_port
+from value_fabric.layer3.cache.ports import CachePort, LegacyCacheAdapter, as_cache_port
 
 
 class SpyCache:

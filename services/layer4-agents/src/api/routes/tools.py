@@ -12,8 +12,9 @@ from sqlalchemy import text
 from value_fabric.shared.audit import AuditAction, AuditEmitter, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
+
 from ...config.settings import settings
-from ...contracts.tool_dto import ToolCategoryListResponse, ToolSchemaResponse
+from ...contracts.tool_dto import ToolCategoriesResponse, ToolSchemaResponse
 from ...database import get_db_from_context
 from ...engine.executor import WorkflowExecutor
 from ...services.export_provenance import build_export_provenance_manifest
@@ -531,13 +532,13 @@ async def list_export_audit_events(
     return records
 
 
-@router.get("/tools/categories", response_model=ToolCategoryListResponse)
+@router.get("/tools/categories", response_model=ToolCategoriesResponse)
 async def list_tool_categories(
     ctx: RequestContext = Depends(require_authenticated),
-) -> ToolCategoryListResponse:
+) -> ToolCategoriesResponse:
     """List available tool categories."""
     categories = [
         {"id": cat.value, "name": cat.value.replace("_", " ").title()} for cat in ToolCategory
     ]
 
-    return ToolCategoryListResponse.model_validate({"categories": categories})
+    return ToolCategoriesResponse.model_validate({"categories": categories})

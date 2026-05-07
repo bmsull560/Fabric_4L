@@ -133,7 +133,7 @@ class TestModelPromotion:
             eval_score=0.80,
         )
         # Mock tenant for threshold lookup
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
         tenant = Tenant(id=tenant_id, name="Test", slug="test", settings={}, status="active")
 
         # promote_model does 1 execute, then check_eval_gate does 2 executes
@@ -155,7 +155,7 @@ class TestModelPromotion:
             stage="staging",
             eval_score=0.95,
         )
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
         tenant = Tenant(id=tenant_id, name="Test", slug="test", settings={}, status="active")
 
         # promote_model: 1 execute + check_eval_gate (2 executes) first call
@@ -237,7 +237,7 @@ class TestEvalGate:
             model_version="v1",
             eval_score=0.84,
         )
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
         tenant = Tenant(
             id=tenant_id,
             name="Test",
@@ -259,7 +259,7 @@ class TestEvalGate:
             model_version="v1",
             eval_score=_DEFAULT_PROMOTION_THRESHOLD,
         )
-        from src.tenants.models.tenant import Tenant
+        from value_fabric.layer4.tenants.models.tenant import Tenant
         tenant = Tenant(id=tenant_id, name="Test", slug="test", settings={}, status="active")
         db.execute.side_effect = [FakeResult(mv), FakeResult(tenant)]
         passed = await check_eval_gate(db, mv.id)

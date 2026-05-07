@@ -1,270 +1,191 @@
 /**
- * ROITab — account-scoped ROI calculator.
+ * ROITab — ROI Calculator
+ *
+ * Workspace tab for the Calculator workspace.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
-import { ArrowRight, Calculator, FileText, Save } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Calculator, Loader2, RefreshCcw, Save } from "lucide-react";
 import CalculatorShell from "@/components/workspace/CalculatorShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
-import { useHypothesis } from "@/hooks/useHypotheses";
-import { useCreateValueCase, useValueLevers, type ValueCaseRequest, type ValueLever } from "@/hooks/useCalculators";
-import { useCalculateROI } from "@/hooks/useROICalculator";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
-import { LoadingState, ErrorState, EmptyState } from "@/components/states";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
-import { useNavigation } from "@/hooks";
+import { LoadingState, ErrorState } from "@/components/states";
+import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { QK } from "@/hooks/queryKeys";
+import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useModels } from "@/hooks/useModels";
+import { useROIScenarioVersions, useSaveROIScenarioVersion, useUpdateROIScenarioVersion, type ScenarioState, type PersistedScenarioVersion } from "@/hooks/useROIScenarios";
+import { useValueLevers } from "@/hooks/useCalculators";
+import { useBenchmarksList, useCalculateROI, useIndustryBenchmarks, type ROICalculationRequest } from "@/hooks/useROICalculator";
+import { useValuePacks } from "@/hooks/useValuePacks";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-type LeverValues = Record<string, { conservative: number; expected: number; optimistic: number }>;
+const DEFAULT_SCENARIO: ScenarioState = {
+  deal_size: 120000,
+  implementation_cost: 60000,
+  annual_benefit: 100000,
+  time_horizon_years: 3,
+  discount_rate: 10,
+  ramp_months: 3,
+};
 
-const SCENARIOS = ["conservative", "expected", "optimistic"] as const;
-const SCENARIO_LABELS = {
-  conservative: "Conservative",
-  expected: "Expected",
-  optimistic: "Optimistic",
-} as const;
-
-function currency(value: number): string {
+function fmtCurrency(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
-}
-
-function buildInitialValues(levers: ValueLever[]): LeverValues {
-  return Object.fromEntries(
-    levers.map((lever) => [
-      lever.id,
-      {
-        conservative: lever.min_value,
-        expected: lever.base_value,
-        optimistic: lever.max_value,
-      },
-    ]),
-  );
-}
-
-function scenarioTotal(levers: ValueLever[], values: LeverValues, scenario: keyof typeof SCENARIO_LABELS): number {
-  return levers.reduce((sum, lever) => {
-    const selected = values[lever.id]?.[scenario] ?? lever.base_value;
-    const ratio = lever.base_value === 0 ? 1 : selected / lever.base_value;
-    return sum + lever.annual_impact * ratio;
-  }, 0);
-}
-
-function buildValueCaseRequest(accountId: string, levers: ValueLever[], values: LeverValues, hypothesisId: string | null): ValueCaseRequest {
-  const totals = Object.fromEntries(SCENARIOS.map((scenario) => [scenario, scenarioTotal(levers, values, scenario)])) as Record<keyof typeof SCENARIO_LABELS, number>;
-  const expectedTotal = totals.expected || 1;
-
-  return {
-    account_id: accountId,
-    levers: levers.map((lever) => ({
-      lever_id: lever.id,
-      scenario_a: values[lever.id]?.conservative ?? lever.min_value,
-      scenario_b: values[lever.id]?.expected ?? lever.base_value,
-      scenario_c: values[lever.id]?.optimistic ?? lever.max_value,
-    })),
-    scenarios: SCENARIOS.map((scenario) => ({
-      name: SCENARIO_LABELS[scenario],
-      total_value: totals[scenario],
-      breakdown: levers.map((lever) => {
-        const value = scenarioTotal([lever], values, scenario);
-        return {
-          area: lever.name,
-          value,
-          percentage: expectedTotal > 0 ? Math.round((value / expectedTotal) * 100) : 0,
-        };
-      }),
-    })),
-    metadata: {
-      generated_by: "calculator-roi",
-      confidence_score: Math.round(
-        levers.reduce((sum, lever) => sum + lever.confidence, 0) / Math.max(levers.length, 1),
-      ),
-      hypothesis_id: hypothesisId ?? undefined,
-    } as ValueCaseRequest["metadata"] & { hypothesis_id?: string },
-  };
 }
 
 export default function CalcROITab() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
-  const [searchParams] = useSearchParams();
-  const hypothesisId = searchParams.get("hypothesisId");
-  const { navigateTo } = useNavigation();
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
-  const [leverValues, setLeverValues] = useState<LeverValues>({});
-
-  const { data: hypothesis } = useHypothesis(hypothesisId);
   const { data: caseId } = useCanonicalCaseId(accountId);
-  const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: Array<{ evidence_id: string; driver_id: string }> }>(caseId ?? null, "evidence-links");
-  const persistValueModel = usePersistWorkspaceTab("value-model");
-  const createValueCase = useCreateValueCase();
-  const calculateROI = useCalculateROI();
-  const { data: leverConfig, isLoading: leversLoading, error: leversError } = useValueLevers({
-    industry: account?.industry || undefined,
+  const { data: valueModelTab } = useWorkspaceTabQuery<{ model_id?: string; value_model_id?: string; selected_model_id?: string }>(caseId ?? null, "value-model");
+  const { data: models } = useModels({});
+  const modelId = valueModelTab?.selected_model_id ?? valueModelTab?.value_model_id ?? valueModelTab?.model_id ?? models?.[0]?.id ?? null;
+  const [scenario, setScenario] = useState<ScenarioState>(DEFAULT_SCENARIO);
+
+  const queryClient = useQueryClient();
+  const { data: leverData, isLoading: leversLoading, error: leverError } = useValueLevers({ industry: account?.industry ?? undefined });
+  const { data: assumptions, isLoading: assumptionsLoading } = useIndustryBenchmarks(account?.industry ?? null);
+  const { data: allAssumptions } = useBenchmarksList();
+  const { data: packs } = useValuePacks({});
+  const recalcMutation = useCalculateROI();
+
+  const scenarioScope = useMemo(
+    () => ({ tenantId: null, accountId, caseId: caseId ?? null, modelId }),
+    [accountId, caseId, modelId]
+  );
+
+  const versionsQuery = useROIScenarioVersions(scenarioScope);
+  const saveScenarioMutation = useSaveROIScenarioVersion(scenarioScope, scenario);
+  const updateRemoteVersionMutation = useUpdateROIScenarioVersion(scenarioScope);
+
+  const updateScenarioMutation = useMutation({
+    mutationKey: ["calculator", "roi", "scenario", "edit"],
+    mutationFn: async (next: Partial<ScenarioState>) => {
+      const updated = { ...scenario, ...next };
+      setScenario(updated);
+      return updated;
+    },
+    onSuccess: async (updated) => {
+      if (!accountId) return;
+      await recalcMutation.mutateAsync({ ...updated, account_id: accountId } as ROICalculationRequest);
+      await queryClient.invalidateQueries({ queryKey: QK.roi.list({ account_id: accountId }) });
+      await queryClient.invalidateQueries({ queryKey: QK.roi.scenarioVersions(scenarioScope) });
+      await queryClient.invalidateQueries({ queryKey: QK.roi.all });
+      const latest = versionsQuery.data?.[0];
+      if (latest?.versionId) {
+        await updateRemoteVersionMutation.mutateAsync({ versionId: latest.versionId, assumptions: updated });
+      }
+    },
   });
-
-  const levers = leverConfig?.levers ?? [];
-
   useEffect(() => {
-    if (levers.length > 0 && Object.keys(leverValues).length === 0) {
-      setLeverValues(buildInitialValues(levers));
+    const latest = versionsQuery.data?.[0];
+    if (latest) {
+      setScenario(latest.assumptions);
     }
-  }, [levers, leverValues]);
-
-  const totals = useMemo(() => ({
-    conservative: scenarioTotal(levers, leverValues, "conservative"),
-    expected: scenarioTotal(levers, leverValues, "expected"),
-    optimistic: scenarioTotal(levers, leverValues, "optimistic"),
-  }), [levers, leverValues]);
+  }, [versionsQuery.data]);
 
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "roi",
     accountName: account?.name ?? "Account",
     accountId: accountId ?? undefined,
-    selectedHypothesisId: hypothesisId ?? undefined,
-    workspaceCaseId: caseId ?? undefined,
-    entityContext: { hypothesisId, valueTotals: totals, evidenceLinks: linkData?.evidence_links ?? [] },
   });
 
-  const updateLever = (leverId: string, scenario: keyof typeof SCENARIO_LABELS, value: number) => {
-    setLeverValues((prev) => ({
-      ...prev,
-      [leverId]: {
-        conservative: prev[leverId]?.conservative ?? 0,
-        expected: prev[leverId]?.expected ?? 0,
-        optimistic: prev[leverId]?.optimistic ?? 0,
-        [scenario]: value,
-      },
-    }));
-  };
-
-  const handleSaveValueCase = async () => {
-    if (!accountId || levers.length === 0) return;
-    const request = buildValueCaseRequest(accountId, levers, leverValues, hypothesisId);
-    const saved = await createValueCase.mutateAsync(request);
-    await calculateROI.mutateAsync({
-      deal_size: account?.annual_revenue ?? totals.expected,
-      implementation_cost: Math.max(totals.expected * 0.2, 1),
-      annual_benefit: totals.expected,
-      time_horizon_years: 3,
-      account_id: accountId,
-      product_id: hypothesis?.product_id,
-    });
-    if (caseId) {
-      await persistValueModel.mutateAsync({
-        caseId,
-        payload: {
-          latest_value_case_id: saved.case_id,
-          value_case: saved,
-          evidence_links: linkData?.evidence_links ?? [],
-        },
-      });
-    }
-    navigateTo("value-case", { accountId });
-  };
-
   if (!accountId) return <AccountRequiredGuard accountId={accountId} />;
-  if (accountLoading) return <LoadingState message="Loading account..." fullPage />;
+  if (accountLoading) return <LoadingState message="Loading account…" fullPage />;
   if (!account) return <ErrorState title="Account not found" description="Select a valid account to continue in this workspace." fullPage />;
+
+  const calc = recalcMutation.data;
+  const scenarioNames = Object.keys(calc?.scenarios ?? {});
 
   return (
     <CalculatorShell
       account={{
-        accountName: account.name,
-        industry: account.industry ?? "Unknown",
-        revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
+        accountName: account?.name ?? "Account",
+        industry: account?.industry ?? "Unknown",
+        revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
       }}
-      rightRail={
-        <RightRail
-          mode={railMode}
-          onModeChange={setRailMode}
-          activeTab="roi"
-          messages={messages}
-          onSendMessage={sendMessage}
-          suggestedActions={suggestedActions}
-          steps={steps}
-          isStreaming={isStreaming}
-          runMetadata={metadata}
-        />
-      }
+      rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="roi" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Calculator className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">ROI Calculator</h2>
-              <p className="text-sm text-muted-foreground">Scenario-based ROI modeling from value levers.</p>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Calculator className="w-5 h-5 text-primary" />
           </div>
-          <Btn
-            variant="primary"
-            disabled={createValueCase.isPending || calculateROI.isPending || levers.length === 0}
-            onClick={handleSaveValueCase}
-          >
-            <Save size={12} />
-            {createValueCase.isPending || calculateROI.isPending ? "Saving..." : "Save Value Case"}
-            <ArrowRight size={12} />
-          </Btn>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">ROI Calculator</h2>
+            <p className="text-sm text-muted-foreground">Scenario assumptions, value levers, and traceable formula outcomes.</p>
+          </div>
         </div>
-
-        {hypothesis && (
-          <SectionCard title="Linked Hypothesis">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium">{hypothesis.hypothesis_text}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Value Path: {hypothesis.value_path_category ?? "Unclassified"} - Confidence: {Math.round((hypothesis.confidence_score ?? hypothesis.confidence ?? 0.5) * 100)}% - Impact: {currency(hypothesis.estimated_impact_usd ?? 0)}
-                </p>
-              </div>
-              <FileText size={16} className="text-muted-foreground" />
-            </div>
-          </SectionCard>
-        )}
 
         <div className="grid grid-cols-3 gap-4">
-          <MetricCard label="Conservative" value={currency(totals.conservative)} />
-          <MetricCard label="Expected" value={currency(totals.expected)} />
-          <MetricCard label="Optimistic" value={currency(totals.optimistic)} />
+          <MetricCard label="Conservative" value={calc?.scenarios?.conservative ? `${Math.round(calc.scenarios.conservative.total_roi_pct)}%` : "—"} />
+          <MetricCard label="Moderate" value={calc?.scenarios?.moderate ? `${Math.round(calc.scenarios.moderate.total_roi_pct)}%` : "—"} />
+          <MetricCard label="Aggressive" value={calc?.scenarios?.aggressive ? `${Math.round(calc.scenarios.aggressive.total_roi_pct)}%` : "—"} />
         </div>
 
-        <SectionCard title="Value Levers">
-          {leversLoading ? (
-            <LoadingState message="Loading value levers..." />
-          ) : leversError ? (
-            <ErrorState title="Value levers could not be loaded" description="Retry after the calculator API is available." />
-          ) : levers.length === 0 ? (
-            <EmptyState title="No value levers" description="Validate hypotheses to promote driver tree levers for this account." icon={Calculator} />
-          ) : (
-            <div className="space-y-3">
-              {levers.map((lever) => (
-                <div key={lever.id} className="grid grid-cols-[1.2fr_1fr_1fr_1fr_auto] gap-3 items-center rounded-md border border-border px-3 py-3">
-                  <div>
-                    <div className="text-xs font-semibold">{lever.name}</div>
-                    <div className="text-[10px] text-muted-foreground">{lever.category} - {currency(lever.annual_impact)} annual impact</div>
+        <SectionCard title="Scenario assumptions">
+          <div className="grid grid-cols-2 gap-3">
+            {Object.entries(scenario).map(([k, v]) => (
+              <label key={k} className="space-y-1">
+                <span className="text-xs text-muted-foreground">{k.replaceAll("_", " ")}</span>
+                <input type="number" value={v} onChange={(e) => updateScenarioMutation.mutate({ [k]: Number(e.target.value) } as Partial<ScenarioState>)} className="w-full rounded border border-border bg-background px-2 py-1 text-xs" />
+              </label>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+            <button onClick={() => saveScenarioMutation.mutate(`Version ${new Date().toLocaleString()}`)} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted" disabled={saveScenarioMutation.isPending}>
+              <Save className="h-3.5 w-3.5" /> Save version
+            </button>
+            <button onClick={() => recalcMutation.mutate({ ...scenario, account_id: accountId })} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted" disabled={recalcMutation.isPending}>
+              {recalcMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />} Recalculate
+            </button>
+            {updateScenarioMutation.isPending && <span className="text-muted-foreground">Updating assumptions…</span>}
+            {recalcMutation.isError && <span className="text-destructive">Failed to recalculate scenario.</span>}
+            {saveScenarioMutation.isError && <span className="text-destructive">Failed to persist scenario version.</span>}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Value model drivers and levers">
+          {leversLoading ? <p className="text-sm text-muted-foreground">Loading value levers…</p> : leverError ? <p className="text-sm text-destructive">Failed to load value levers.</p> : (
+            <div className="space-y-2">
+              {(leverData?.levers ?? []).map((lever) => {
+                const mappedPack = packs?.find((p) => p.name.toLowerCase().includes(lever.category.toLowerCase()));
+                return (
+                  <div key={lever.id} className="rounded border border-border p-2 text-xs">
+                    <div className="font-medium">{lever.name}</div>
+                    <div className="text-muted-foreground">Driver: {lever.category} · Formula var: <code>{lever.id}</code></div>
+                    <div className="text-muted-foreground">Mapped value pack: {mappedPack?.name ?? "Unmapped"}</div>
                   </div>
-                  {SCENARIOS.map((scenario) => (
-                    <label key={scenario} className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground">{SCENARIO_LABELS[scenario]}</span>
-                      <input
-                        type="number"
-                        min={lever.min_value}
-                        max={lever.max_value}
-                        value={leverValues[lever.id]?.[scenario] ?? lever.base_value}
-                        onChange={(event) => updateLever(lever.id, scenario, Number(event.target.value))}
-                        className="w-full h-8 rounded-md border border-border bg-background px-2 text-xs"
-                      />
-                    </label>
-                  ))}
-                  <span className="text-[10px] text-muted-foreground">{lever.confidence}%</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
+        </SectionCard>
+
+        <SectionCard title="Trace / explain">
+          <div className="space-y-2 text-xs">
+            <p className="text-muted-foreground">Changed assumptions are reflected in scenario outputs and benchmarks.</p>
+            <p>Total NPV: <span className="font-semibold">{calc ? fmtCurrency(calc.npv) : "—"}</span></p>
+            <p>Benchmark ROI ({account.industry ?? "Industry"}): <span className="font-semibold">{assumptions ? `${Math.round(assumptions.avg_roi_pct)}%` : assumptionsLoading ? "Loading…" : "N/A"}</span></p>
+            <p>Loaded assumption sets: <span className="font-semibold">{allAssumptions?.benchmarks.length ?? 0}</span></p>
+            <p>Calculated scenarios: <span className="font-semibold">{scenarioNames.join(", ") || "None yet"}</span></p>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Saved scenario versions (reload/resume)">
+          <div className="space-y-2">
+            {(versionsQuery.data ?? []).map((version) => (
+              <button key={version.versionId} onClick={() => setScenario(version.assumptions)} className="w-full rounded border border-border p-2 text-left text-xs hover:bg-muted">
+                <div className="font-medium">{version.name}</div>
+                <div className="text-muted-foreground">{version.accountId} / {version.caseId} / {version.modelId}</div>
+              </button>
+            ))}
+            {!versionsQuery.data?.length && <p className="text-xs text-muted-foreground">No versions saved for this account/case/model.</p>}
+          </div>
         </SectionCard>
       </div>
     </CalculatorShell>

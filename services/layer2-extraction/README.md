@@ -1,4 +1,5 @@
 # Layer 2: Ontology-Guided Extraction Pipeline
+> Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
 Transforms unstructured Markdown content into structured RDF/OWL triples using LLM-guided extraction with strict schema compliance.
 

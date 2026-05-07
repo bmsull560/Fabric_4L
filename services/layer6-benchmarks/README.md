@@ -1,4 +1,5 @@
 # Layer 6: Benchmark Service
+> Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
 Standalone service for comparative intelligence and peer benchmarking.
 

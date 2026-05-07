@@ -5,8 +5,8 @@
  *
  * Tabs: Trees | Evidence | Alternatives | Solution Cost
  */
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import DriverTreeShell from "@/components/workspace/DriverTreeShell";
 import { useAccount } from "@/hooks/useAccounts";
 import { useAccountHypotheses } from "@/hooks/useHypotheses";
@@ -20,11 +20,15 @@ import { EvidenceTabContent } from "@/pages/intelligence/EvidenceTab";
 import AlternativesTab from "@/pages/evidence/AlternativesTab";
 import SolutionCostTab from "@/pages/evidence/SolutionCostTab";
 import { TreePine, ArrowRight } from "lucide-react";
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 
 export default function DriverTreePage() {
   const params = useParams<{ accountId: string; tab?: string }>();
   const { accountId, tab = "trees" } = params;
   const { navigateTo } = useNavigation();
+  const location = useLocation();
+  const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
+  const getSelection = useWorkspaceSelectionStore((state) => state.getSelection);
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: hypothesesData, isLoading: hypothesesLoading } = useAccountHypotheses(
     accountId ?? null,
@@ -34,6 +38,22 @@ export default function DriverTreePage() {
   const { data: driverData } = useWorkspaceTabQuery<{ drivers?: Array<Record<string, unknown>> }>(caseId ?? null, "drivers");
   const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: Array<{ evidence_id: string; driver_id: string }> }>(caseId ?? null, "evidence-links");
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!accountId) return;
+    const params = new URLSearchParams(location.search);
+    const treeId = params.get("tree_id") || null;
+    const valueModelId = params.get("value_model_id") || null;
+    if (treeId || valueModelId) {
+      setSelection(accountId, { treeId, valueModelId });
+      if (treeId) setSelectedTreeId(treeId);
+      return;
+    }
+    const persisted = getSelection(accountId);
+    if (persisted.treeId) {
+      setSelectedTreeId(persisted.treeId);
+    }
+  }, [accountId, location.search, getSelection, setSelection]);
 
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;

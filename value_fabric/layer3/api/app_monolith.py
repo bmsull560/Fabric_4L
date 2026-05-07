@@ -81,7 +81,7 @@ from .dependencies import (
 )
 
 # P1-29: OpenTelemetry imports for distributed tracing
-from .main_fix import (
+from .telemetry import (
     OTEL_AVAILABLE,
     SERVICE_NAME,
     BatchSpanProcessor,
@@ -92,7 +92,6 @@ from .main_fix import (
     trace,
 )
 from .metrics_state import get_system_metrics, set_app_metrics
-from .routes import entity_compat, query_search
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
@@ -625,6 +624,7 @@ if OTEL_AVAILABLE and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
 from .routes import (
     benchmarks,
     calculators,
+    compat_aliases,
     competitive_intel,
     entities,
     evidence,
@@ -658,6 +658,7 @@ include_router_mounts(
         RouterMount(benchmarks.router, prefix="/v1/roi"),
         RouterMount(calculators.router, prefix="/v1"),
         RouterMount(system.router),
+        RouterMount(compat_aliases.router),
     ],
 )
 
@@ -1656,393 +1657,11 @@ async def _execute_graph_rag_query(
     })
 
 
-@app.post("/v1/graphrag", response_model=GraphRAGResponse)
-async def graph_rag_legacy_alias(
-    query: GraphRAGQuery,
-    graph_rag=Depends(get_graph_rag),
-):
-    """Compatibility alias; implementation moved to routes.query_search."""
-    return await query_search.graph_rag_query_impl(query, graph_rag)
-
-
-@app.post("/v1/query/graph", response_model=GraphRAGResponse)
-@app.post("/v1/query", response_model=GraphRAGResponse)
-async def graph_rag_query(
-    query: GraphRAGQuery,
-    graph_rag=Depends(get_graph_rag),
-):
-    """Compatibility forwarder; implementation moved to routes.query_search."""
-    return await query_search.graph_rag_query_impl(query, graph_rag)
-
-
-@app.post("/v1/query/graph/stream")
-async def graph_rag_query_stream(
-    query: GraphRAGQuery,
-    graph_rag=Depends(get_graph_rag),
-):
-    """Compatibility forwarder; implementation moved to routes.query_search."""
-    return await query_search.graph_rag_query_stream_impl(query, graph_rag)
-
-
-# Search endpoints
-# Canonical route. Legacy `/v1/search` remains for backward compatibility.
-
-
-async def _execute_hybrid_search(
-    hybrid_search,
-    query: str,
-    entity_type: str | None,
-    search_type: SearchType | str,
-    top_k: int,
-    weights: dict | None,
-) -> SearchResponse:
-    """Execute hybrid search (extracted for caching/deduplication)."""
-    start_time = time.time()
-    search_type_value = search_type.value if isinstance(search_type, SearchType) else search_type
-    if search_type_value == "vector":
-        results = await hybrid_search.semantic_search(query, entity_type, top_k)
-    elif search_type_value == "fulltext":
-        results = await hybrid_search.fulltext_search(query, entity_type, top_k)
-    else:  # hybrid
-        results = await hybrid_search.search(
-            query,
-            [entity_type] if entity_type else None,
-            top_k,
-            weights,
-        )
-
-    # Convert HybridSearchResult dataclass objects to SearchResult Pydantic models
-    search_results = [
-        SearchResult(**asdict(result)) for result in results
-    ]
-    processing_time_ms = (time.time() - start_time) * 1000
-    normalized_search_type = SearchType(search_type_value)
-
-    return SearchResponse.model_validate({
-        "query": query,
-        "results": search_results,
-        "total_results": len(search_results),
-        "search_type": normalized_search_type,
-        "processing_time_ms": processing_time_ms,
-    })
-
-
-@app.post(
-    "/v1/search/hybrid",
-    response_model=SearchResponse,
-    deprecated=True,
-    summary="Deprecated: Use GET /v1/entities for entity listing",
-)
-@app.post("/v1/search", response_model=SearchResponse, deprecated=True)
-async def hybrid_search(
-    request: SearchRequest,
-    hybrid_search=Depends(get_hybrid_search),
-):
-    """DEPRECATED compatibility forwarder; implementation moved to routes.query_search."""
-    return await query_search.hybrid_search_impl(request, hybrid_search)
 
 
 # Entity endpoints
-@app.get("/v1/entity/{entity_id}/context", response_model=EntityContextResponse)
-async def get_entity_context(
-    entity_id: str,
-    hops: int = 2,
-    relationship_types: list[str] | None = None,
-    fields: str | None = Query(
-        None, description="Comma-separated fields to include (e.g., 'id,name,type')"
-    ),
-    cursor: str | None = Query(None, description="Pagination cursor for neighbors"),
-    limit: int = Query(100, ge=1, le=500, description="Max neighbors to return"),
-    graph_rag=Depends(get_graph_rag),
-):
-    """Get neighborhood context around an entity.
-
-    Supports field selection (?fields=id,name,type) to reduce payload size,
-    and cursor-based pagination (?cursor=xyz&limit=50) for large neighborhoods.
-    """
-    try:
-        return await entity_compat.get_entity_context_impl(
-            entity_id, hops, relationship_types, fields, cursor, limit, graph_rag
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Context retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail="Context retrieval failed. Please try again later.")
 
 
-@app.post("/v1/entity/traverse", response_model=ValueTreeResponse)
-async def traverse_value_tree(
-    request: ValueTreeTraversal,
-    graph_rag=Depends(get_graph_rag),
-):
-    """Traverse the 4-layer value tree from an entity."""
-    try:
-        return await entity_compat.traverse_value_tree_impl(request, graph_rag)
-    except Exception as e:
-        logger.error(f"Value tree traversal failed: {e}")
-        raise HTTPException(status_code=500, detail="Value tree traversal failed. Please try again later.")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Canonical Entity Browser Endpoints (High-Quality Contract)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/v1/entities", response_model=EntityListResponse)
-async def list_entities(
-    request: Request,  # Sprint 5: For tenant context extraction
-    search_text: str | None = Query(None, max_length=200, description="Search across name and description"),
-    entity_types: list[str] | None = Query(None, description="Filter by entity types"),
-    domains: list[str] | None = Query(None, description="Filter by domains"),
-    statuses: list[str] | None = Query(None, description="Filter by status: validated, pending, draft, deprecated"),
-    min_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Minimum confidence"),
-    max_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Maximum confidence"),
-    limit: int = Query(25, ge=1, le=100, description="Max results to return"),
-    offset: int = Query(0, ge=0, description="Results to skip"),
-    sort_by: str = Query("updated_at", description="Field to sort by: name, updated_at, confidence, entity_type, status"),
-    sort_order: str = Query("desc", description="Sort direction: asc or desc"),
-    _ctx: RequestContext = Depends(require_authenticated),
-    neo4j_driver=Depends(get_neo4j_driver),
-):
-    """List entities with server-backed filtering and sorting.
-
-    This endpoint provides a canonical entity summary contract optimized for
-    browser table views. It supports filtering by domain, status, type, and
-    confidence—eliminating the need for client-side filtering of large datasets.
-
-    **Query Parameters:**
-    - `search_text`: Full-text search across entity names and descriptions
-    - `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)
-    - `domains`: Filter by business domain (e.g., Finance, Healthcare)
-    - `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)
-    - `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)
-    - `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)
-    - `sort_order`: Sort direction (asc, desc)
-    - `limit`/`offset`: Pagination control
-
-    **Response:** Returns EntityListResponse with canonical EntitySummary objects.
-    """
-    try:
-        return await entity_compat.list_entities_impl(
-            request=request, search_text=search_text, entity_types=entity_types,
-            domains=domains, statuses=statuses, min_confidence=min_confidence,
-            max_confidence=max_confidence, limit=limit, offset=offset, sort_by=sort_by,
-            sort_order=sort_order, neo4j_driver=neo4j_driver, extract_tenant_id=_extract_tenant_id
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Entity listing failed: {e}")
-        raise HTTPException(status_code=500, detail="Entity listing failed. Please try again later.")
-
-
-@app.get("/v1/entities/{entity_id}", response_model=EntityDetail)
-async def get_entity_detail(
-    entity_id: str,
-    request: Request,  # Sprint 5: For tenant context extraction
-    include_provenance: bool = Query(True, description="Include provenance chain"),
-    include_relationships: bool = Query(True, description="Include related entities"),
-    _ctx: RequestContext = Depends(require_authenticated),
-    neo4j_driver=Depends(get_neo4j_driver),
-):
-    """Get full entity detail for inspection/drawer views.
-
-    Returns the canonical EntityDetail shape with all fields from EntitySummary
-    plus extended data: relationships, provenance, validation state, and raw properties.
-
-    **Path Parameters:**
-    - `entity_id`: Canonical entity identifier
-
-    **Query Parameters:**
-    - `include_provenance`: Whether to include audit trail (default: true)
-    - `include_relationships`: Whether to include related entities (default: true)
-
-    **Response:** Returns EntityDetail with full canonical contract.
-    """
-    try:
-        # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _extract_tenant_id(request)
-
-        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
-        if not tenant_id:
-            raise HTTPException(
-                status_code=400,
-                detail="tenant_id is required for entity access"
-            )
-        
-        async with neo4j_driver.session() as session:
-            # Fetch main entity with mandatory tenant filtering
-            entity_query = """
-                MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
-                RETURN e {
-                    .id, .name, .entity_type, .domain, .status,
-                    .confidence, .confidence_label, .description,
-                    .updated_at, .source_name, .extraction_job_id,
-                    .created_at, .created_by, .properties,
-                    .validation_errors, .last_validated_at
-                }
-            """
-            query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-            result = await session.run(entity_query, query_params)
-            record = await result.single()
-
-            if not record:
-                raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
-
-            node = record["e"]
-
-            # Derive status and confidence_label if not stored
-            confidence = node.get("confidence", 0.0)
-            status = node.get("status")
-            if status is None:
-                if confidence >= 0.9:
-                    status = "validated"
-                elif confidence >= 0.7:
-                    status = "pending"
-                else:
-                    status = "draft"
-
-            confidence_label = node.get("confidence_label")
-            if confidence_label is None:
-                if confidence >= 0.9:
-                    confidence_label = "high"
-                elif confidence >= 0.7:
-                    confidence_label = "medium"
-                else:
-                    confidence_label = "low"
-
-            # Build relationships if requested
-            relationships = EntityRelationships(total_count=0)
-            if include_relationships:
-                # Outgoing relationships with mandatory tenant filtering
-                outgoing_query = """
-                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[r]->(target:Entity {tenant_id: $tenant_id})
-                    RETURN type(r) as rel_type, target.id as target_id,
-                           target.name as target_name, target.entity_type as target_type
-                    LIMIT 5
-                """
-                outgoing_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-                outgoing_result = await session.run(outgoing_query, outgoing_params)
-                outgoing_records = await outgoing_result.fetch()
-                outgoing_rels = [
-                    RelationshipPreview(
-                        relationship_type=r["rel_type"],
-                        target_entity_id=r["target_id"],
-                        target_entity_name=r["target_name"],
-                        target_entity_type=r["target_type"],
-                    )
-                    for r in outgoing_records
-                ]
-
-                # Incoming relationships with mandatory tenant filtering
-                incoming_query = """
-                    MATCH (source:Entity {tenant_id: $tenant_id})-[r]->(e:Entity {id: $entity_id, tenant_id: $tenant_id})
-                    RETURN type(r) as rel_type, source.id as source_id,
-                           source.name as source_name, source.entity_type as source_type
-                    LIMIT 5
-                """
-                incoming_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-                incoming_result = await session.run(incoming_query, incoming_params)
-                incoming_records = await incoming_result.fetch()
-                incoming_rels = [
-                    RelationshipPreview(
-                        relationship_type=r["rel_type"],
-                        target_entity_id=r["source_id"],
-                        target_entity_name=r["source_name"],
-                        target_entity_type=r["source_type"],
-                    )
-                    for r in incoming_records
-                ]
-
-                # Total count with mandatory tenant filtering
-                count_query = """
-                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
-                    OPTIONAL MATCH (e)-[r1]->(:Entity {tenant_id: $tenant_id})
-                    OPTIONAL MATCH (e)<-[r2]-(:Entity {tenant_id: $tenant_id})
-                    RETURN count(r1) + count(r2) as total
-                """
-                count_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-                count_result = await session.run(count_query, count_params)
-                count_record = await count_result.single()
-                total_rels = count_record["total"] if count_record else 0
-
-                relationships = EntityRelationships(
-                    total_count=total_rels,
-                    incoming=incoming_rels,
-                    outgoing=outgoing_rels,
-                )
-
-            # Build provenance if requested
-            provenance: list[Any] = []
-            if include_provenance:
-                # For now, return basic provenance from entity fields
-                # This can be extended to query a separate provenance store
-                if node.get("extraction_job_id"):
-                    provenance.append({
-                        "event_type": "extracted",
-                        "timestamp": node.get("created_at") or datetime.utcnow(),
-                        "actor": node.get("extraction_job_id"),
-                        "details": {"source": node.get("source_name")},
-                    })
-
-            # Build detail response
-            detail = EntityDetail(
-                id=node.get("id", "unknown"),
-                name=node.get("name", "Unknown"),
-                entity_type=node.get("entity_type", "Capability"),
-                domain=node.get("domain"),
-                status=status,
-                confidence=confidence,
-                confidence_label=confidence_label,
-                description=node.get("description"),
-                updated_at=node.get("updated_at") or datetime.utcnow(),
-                source_name=node.get("source_name"),
-                extraction_job_id=node.get("extraction_job_id"),
-                created_at=node.get("created_at") or datetime.utcnow(),
-                created_by=node.get("created_by"),
-                provenance=provenance,
-                relationships=relationships,
-                properties=node.get("properties") or {},
-                validation_errors=node.get("validation_errors") or [],
-                last_validated_at=node.get("last_validated_at"),
-            )
-
-            return detail
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Entity detail retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail="Entity detail retrieval failed. Please try again later.")
-
-
-@app.post("/v1/entities/query", response_model=EntityListResponse)
-async def query_entities(
-    request: EntityFilterRequest,
-    fastapi_request: Request,
-    _ctx: RequestContext = Depends(require_authenticated),
-    neo4j_driver=Depends(get_neo4j_driver),
-):
-    """Advanced entity filtering with complex criteria.
-
-    Supports complex filter combinations not easily expressed in query parameters.
-    Uses the same underlying logic as GET /v1/entities but with a request body.
-
-    **Request Body:** EntityFilterRequest with full filter specification
-
-    **Response:** Returns EntityListResponse with canonical EntitySummary objects.
-    """
-    try:
-        return await entity_compat.query_entities_impl(request, fastapi_request, neo4j_driver, list_entities)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Entity query failed: {e}")
-        raise HTTPException(status_code=500, detail="Query failed. Please try again later.")
-
-
-# Analytics endpoints
 @app.post("/v1/analytics/communities", response_model=CommunityDetectionResponse)
 async def detect_communities(
     request: CommunityDetectionRequest,

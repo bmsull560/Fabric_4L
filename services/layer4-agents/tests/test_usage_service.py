@@ -279,7 +279,7 @@ async def test_tenant_isolation_in_queries(mock_db):
 def client():
     """FastAPI test client."""
     from fastapi.testclient import TestClient
-    from src.api.main import app
+    from value_fabric.layer4.api.main import app
     return TestClient(app)
 
 

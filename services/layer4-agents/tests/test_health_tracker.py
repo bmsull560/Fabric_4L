@@ -236,7 +236,7 @@ class TestHealthTracker:
         badge_id = "rate_limit_degraded"
 
         # Create badge manually with auto-hide
-        from src.services.health_tracker import HealthBadge
+        from value_fabric.layer4.services.health_tracker import HealthBadge
         badge = HealthBadge(
             badge_id=badge_id,
             title="Test",
@@ -288,7 +288,7 @@ class TestGetHealthTracker:
     def test_singleton_is_global(self):
         """Test that singleton is truly global."""
         # Reset by accessing private global
-        import src.services.health_tracker as ht_module
+        import value_fabric.layer4.services.health_tracker as ht_module
 
         original = ht_module._health_tracker
         try:

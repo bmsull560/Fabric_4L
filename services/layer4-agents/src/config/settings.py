@@ -4,15 +4,19 @@ P0-29: Pydantic-settings with validation for required secrets.
 Fails fast on startup if required configuration is missing or invalid.
 """
 
+import importlib
 import secrets
 
-try:
-    from value_fabric.shared.secrets import load_infisical_secrets
-    load_infisical_secrets()
-except ImportError:
-    pass  # shared package not available; env vars used directly
-
 import logging
+
+from ..startup.dependency_verifier import verify_layer4_startup_dependencies
+
+verify_layer4_startup_dependencies()
+
+_secrets_module = importlib.import_module("value_fabric.shared.secrets") if importlib.util.find_spec("value_fabric.shared.secrets") else None
+load_infisical_secrets = getattr(_secrets_module, "load_infisical_secrets", None)
+if load_infisical_secrets is not None:
+    load_infisical_secrets()
 from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator

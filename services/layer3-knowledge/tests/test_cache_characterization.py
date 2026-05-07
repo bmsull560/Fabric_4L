@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from src.cache.redis_cache import CacheManager, RequestDeduplicator
+from value_fabric.layer3.cache.redis_cache import CacheManager, RequestDeduplicator
 
 
 class FakeAsyncCache:

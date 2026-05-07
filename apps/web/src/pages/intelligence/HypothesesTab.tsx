@@ -9,7 +9,8 @@
  * lifecycle management (draft → validated → converted).
  */
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 import {
   Lightbulb,
   Sparkles,
@@ -33,6 +34,7 @@ import {
   useAccountHypotheses,
   useGenerateHypotheses,
   useValidateHypothesis,
+  useConvertHypothesisToTree,
   type ValueHypothesis,
   type ValidateHypothesisResponse,
 } from "@/hooks/useHypotheses";
@@ -77,12 +79,16 @@ function HypothesisCard({
   isSelected,
   onSelect,
   onStatusChange,
+  onConvert,
+  isConverting,
   isUpdating,
 }: {
   hypothesis: ValueHypothesis;
   isSelected: boolean;
   onSelect: () => void;
   onStatusChange: (status: "validated" | "rejected") => void;
+  onConvert: () => void;
+  isConverting: boolean;
   isUpdating: boolean;
 }) {
   const cfg = STATUS_CONFIG[hypothesis.status] ?? STATUS_CONFIG.draft;
@@ -113,7 +119,7 @@ function HypothesisCard({
       {/* Signal → Product mapping */}
       <div className="flex items-center gap-1.5 ml-7 text-[10px] text-muted-foreground">
         <Target size={10} />
-        <span className="truncate">{hypothesis.signal_id ? 1 : 0} signal(s)</span>
+        <span className="truncate">{hypothesis.signal_id ? "1 signal" : "0 signals"}</span>
         <ArrowRight size={8} />
         <span className="font-medium text-foreground truncate">Product {hypothesis.product_id}</span>
       </div>
@@ -137,6 +143,18 @@ function HypothesisCard({
           </button>
         </div>
       )}
+      {isSelected && hypothesis.status === "validated" && (
+        <div className="flex items-center gap-2 ml-7 mt-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onConvert(); }}
+            disabled={isConverting}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+          >
+            {isConverting ? <Loader2 size={10} className="animate-spin" /> : <ArrowRight size={10} />}
+            Convert to Driver Tree
+          </button>
+        </div>
+      )}
     </button>
   );
 }
@@ -145,6 +163,8 @@ function HypothesisCard({
 
 export default function HypothesesTab() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading, error: accountError, refetch: refetchAccount } = useAccount(accountId ?? null);
   const {
@@ -157,6 +177,7 @@ export default function HypothesesTab() {
   const validateHypothesis = useValidateHypothesis();
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
   const persistDrivers = usePersistWorkspaceTab("drivers");
+  const convertHypothesisToTree = useConvertHypothesisToTree();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -424,6 +445,39 @@ export default function HypothesesTab() {
                     },
                   );
                 }}
+                onConvert={() => {
+                  convertHypothesisToTree.mutate(
+                    { hypothesisId: h.id },
+                    {
+                      onSuccess: (result) => {
+                        const createdId = result.value_model_id ?? result.tree_id;
+                        setSelection(result.account_id, {
+                          valueModelId: result.value_model_id ?? null,
+                          treeId: result.tree_id ?? null,
+                        });
+                        const query = new URLSearchParams();
+                        if (result.tree_id) query.set("tree_id", result.tree_id);
+                        if (result.value_model_id) query.set("value_model_id", result.value_model_id);
+                        navigate({
+                          pathname: `/drivers/${result.account_id}/evidence`,
+                          search: query.toString() ? `?${query.toString()}` : "",
+                        }, {
+                          state: {
+                            hypothesisId: result.hypothesis_id,
+                            accountId: result.account_id,
+                            tenantId: result.tenant_id,
+                            evidenceIds: result.evidence_ids,
+                            valueModelId: result.value_model_id ?? null,
+                            treeId: result.tree_id ?? null,
+                            createdId: createdId ?? null,
+                            conversionStatus: result.status,
+                          },
+                        });
+                      },
+                    }
+                  );
+                }}
+                isConverting={convertHypothesisToTree.isPending}
                 isUpdating={validateHypothesis.isPending}
               />
             ))}

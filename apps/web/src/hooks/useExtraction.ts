@@ -2,12 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
-import { parseExtractionJob, type ApiExtractedEntityDto, type ApiProgressLogDto } from '@/types/api';
+import { parseExtractionJob } from '@/types/api';
+import type { WorkflowState } from '@/api/types';
+import type { ApiExtractedEntityDto, ApiProgressLogDto } from '@/types/api';
 
 export interface ExtractionJob {
   id: string;
   domain: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: WorkflowState;
   progress: number;
   steps: ExtractionStep[];
   logs: LogLine[];
@@ -79,18 +81,18 @@ export function useExtractionJob(jobId: string | null) {
 
       // Map backend status to frontend status
       const statusMap: Record<string, ExtractionJob['status']> = {
-        'PENDING': 'pending',
-        'QUEUED': 'pending',
+        'PENDING': 'created',
+        'QUEUED': 'queued',
         'VALIDATING': 'running',
         'BROWSER_ACQUIRING': 'running',
         'NAVIGATING': 'running',
         'EXTRACTING': 'running',
         'TRANSFORMING': 'running',
         'STORING': 'running',
-        'COMPLETED': 'completed',
-        'FAILED': 'failed',
+        'COMPLETED': 'succeeded',
+        'FAILED': 'failed_terminal',
         'CANCELLED': 'cancelled',
-        'PARTIAL_SUCCESS': 'completed',
+        'PARTIAL_SUCCESS': 'succeeded',
       };
 
       // Build steps from job phases
@@ -156,7 +158,7 @@ export function useExtractionJob(jobId: string | null) {
       return {
         id: job.id || jobId,
         domain: job.configuration?.url || 'unknown',
-        status: statusMap[backendStatus] || 'pending',
+        status: statusMap[backendStatus] || 'created',
         progress: job.progress_percent_complete ?? 0,
         steps,
         logs,
@@ -169,7 +171,7 @@ export function useExtractionJob(jobId: string | null) {
     refetchInterval: (query) => {
       const data = query.state.data;
       // Stop polling if job is complete or failed
-      if (data?.status === 'completed' || data?.status === 'failed' || data?.status === 'cancelled') {
+      if (data?.status === 'succeeded' || data?.status === 'failed_terminal' || data?.status === 'cancelled') {
         return false;
       }
       return 2000; // Poll every 2 seconds while running

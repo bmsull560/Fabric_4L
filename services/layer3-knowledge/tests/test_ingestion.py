@@ -3,7 +3,7 @@
 import pytest
 from rdflib import RDF, Graph, Literal, Namespace, URIRef
 
-from value_fabric.layer3_knowledge.src.ingestion import Neo4jLoader
+from value_fabric.layer3.ingestion import Neo4jLoader
 
 
 @pytest.fixture

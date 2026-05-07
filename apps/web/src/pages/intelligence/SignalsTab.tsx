@@ -9,7 +9,7 @@ import { usePromoteSignal, useReviewSignal } from "@/hooks/useHypotheses";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence, useSignalReview } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,9 +23,10 @@ interface Signal {
   confidence: number;
   impact: string;
   trend?: string;
-  review_status?: "unreviewed" | "approved" | "rejected";
+  review_status?: "unreviewed" | "approved" | "rejected" | "pending_review";
   review_notes?: string;
   reviewed_at?: string;
+  reviewed_by?: string;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -128,6 +129,7 @@ export default function SignalsTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
+
   const handlePromoteSignal = async (signalId: string) => {
     if (!accountId || !selectedValuePath || selectedSignal?.review_status !== "approved") return;
     await promoteMutation.mutateAsync({
@@ -161,6 +163,11 @@ export default function SignalsTab() {
           <XCircle size={12} /> Reject
         </Btn>
       </div>
+      {selectedSignal.review_status && (
+        <div className="text-[11px] text-muted-foreground">
+          Review: {selectedSignal.review_status}{selectedSignal.reviewed_by ? ` by ${selectedSignal.reviewed_by}` : ''}{selectedSignal.reviewed_at ? ` at ${new Date(selectedSignal.reviewed_at).toLocaleString()}` : ''}
+        </div>
+      )}
       {/* Value Path Classification */}
       <div className="space-y-2 pt-2">
         <label className="text-[11px] font-medium text-muted-foreground">Value Path</label>
@@ -235,6 +242,20 @@ export default function SignalsTab() {
         />
       ) : (
         <>
+          {persistTab.persistState !== 'saved' && (
+            <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground flex items-center justify-between">
+              <span>
+                {persistTab.persistState === 'failed'
+                  ? 'Could not persist this tab. Your latest changes may be unsaved.'
+                  : 'Workspace state is not yet persisted.'}
+              </span>
+              {persistTab.persistState === 'failed' && caseId && (
+                <Btn variant="outline" className="h-7" onClick={() => persistTab.mutate({ caseId, payload: data ?? { signals: [] } })}>
+                  Retry save
+                </Btn>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <MetricCard label="Signals Detected" value={String(signals.length)} trend="Account-scoped" trendUp />
             <MetricCard label="Avg Confidence" value={`${Math.round(signals.reduce((s, x) => s + x.confidence, 0) / signals.length)}%`} />

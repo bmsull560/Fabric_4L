@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock
 
-from value_fabric.layer3_knowledge.src.api import app_monolith
+from value_fabric.layer3.api import app_monolith
 
 
 @pytest.mark.asyncio

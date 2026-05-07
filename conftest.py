@@ -10,6 +10,20 @@ silently skipping tests.
 """
 
 import importlib.util
+import os
+os.environ["ENVIRONMENT"] = "development"
+os.environ["ALLOW_DEV_AUTH_BYPASS"] = "I_UNDERSTAND_RISK"
+os.environ["LAYER1_API_URL"] = "http://layer1:8001"
+os.environ["LAYER2_API_URL"] = "http://layer2:8002"
+os.environ["LAYER3_API_URL"] = "http://layer3:8003"
+os.environ["LAYER5_API_URL"] = "http://layer5:8005"
+os.environ["LAYER6_API_URL"] = "http://layer6:8006"
+os.environ["ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT"] = "true"
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/fabric"
+os.environ["JWT_SECRET"] = "dummy_jwt_secret_for_tests_must_be_32_chars"
+os.environ["API_KEY_HMAC_SECRET"] = "dummy_api_key_secret_for_tests_must_be_32_chars"
+os.environ["SERVICE_AUTH_SECRET"] = "dummy_service_auth_secret_for_tests_32_chars"
+
 import sys
 from pathlib import Path
 

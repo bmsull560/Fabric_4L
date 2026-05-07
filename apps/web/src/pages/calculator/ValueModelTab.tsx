@@ -1,9 +1,18 @@
 /**
  * ValueModelTab — persisted account value model.
  */
+<<<<<<< ours
+<<<<<<< ours
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { BarChart3, Calculator, Link2 } from "lucide-react";
+=======
+=======
+>>>>>>> theirs
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { BarChart3 } from "lucide-react";
+>>>>>>> theirs
 import CalculatorShell from "@/components/workspace/CalculatorShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
@@ -12,6 +21,7 @@ import { useValueCase, type ValueCaseResponse } from "@/hooks/useCalculators";
 import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+<<<<<<< ours
 import { LoadingState, ErrorState, EmptyState } from "@/components/states";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 
@@ -24,12 +34,51 @@ interface PersistedValueModel {
 function currency(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
 }
+=======
+import { LoadingState, ErrorState } from "@/components/states";
+import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 
 export default function CalcValueModelTab() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
+  const location = useLocation();
+  const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
+  const getSelection = useWorkspaceSelectionStore((state) => state.getSelection);
+  const [activeTreeId, setActiveTreeId] = useState<string | null>(null);
+  const [activeValueModelId, setActiveValueModelId] = useState<string | null>(null);
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
+<<<<<<< ours
+<<<<<<< ours
   const { navigateTo } = useNavigation();
+=======
+=======
+>>>>>>> theirs
+
+  useEffect(() => {
+    if (!accountId) return;
+    const params = new URLSearchParams(location.search);
+    const queryTreeId = params.get("tree_id") || null;
+    const queryValueModelId = params.get("value_model_id") || null;
+    if (queryTreeId || queryValueModelId) {
+      setSelection(accountId, { treeId: queryTreeId, valueModelId: queryValueModelId });
+      setActiveTreeId(queryTreeId);
+      setActiveValueModelId(queryValueModelId);
+      return;
+    }
+    const persisted = getSelection(accountId);
+    setActiveTreeId(persisted.treeId);
+    setActiveValueModelId(persisted.valueModelId);
+  }, [accountId, location.search, getSelection, setSelection]);
+
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
 
   const { data: caseId } = useCanonicalCaseId(accountId);
@@ -115,6 +164,7 @@ export default function CalcValueModelTab() {
           </Btn>
         </div>
 
+<<<<<<< ours
         {isLoading ? (
           <LoadingState message="Loading value model..." />
         ) : !valueCase ? (
@@ -130,6 +180,21 @@ export default function CalcValueModelTab() {
               <MetricCard label="Expected Value" value={currency(totals.expected)} />
               <MetricCard label="Optimistic Value" value={currency(totals.optimistic)} />
             </div>
+=======
+        <div className="rounded border border-border p-3 text-xs text-muted-foreground">
+          Active selection · Tree: {activeTreeId ?? "None"} · Value model: {activeValueModelId ?? "None"}
+        </div>
+
+        <div className="rounded border border-border p-3 text-xs text-muted-foreground">
+          Active selection · Tree: {activeTreeId ?? "None"} · Value model: {activeValueModelId ?? "None"}
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <MetricCard label="Hard Savings" value="—" />
+          <MetricCard label="Strategic Value" value="—" />
+          <MetricCard label="Total Annual Value" value="—" />
+        </div>
+>>>>>>> theirs
 
             <SectionCard title="Scenario Lines" subtitle={`Value case ${valueCase.case_id}`}>
               <div className="space-y-4">

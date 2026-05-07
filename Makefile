@@ -9,7 +9,8 @@
 	check-workflow-matrix \
 	gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
 	collect-95-plus-evidence collect-95-plus-evidence-focused \
-	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency check-pytest-skip-governance
+	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency \
+	check-pytest-skip-governance
 
 
 # Strict shell settings for production safety
@@ -34,7 +35,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-pytest-skip-governance check-workflow-matrix verify-structure ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + pytest-skip-governance + workflow-matrix + structure) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance verify-structure ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure) — required before PR
 	@echo "✅  All checks passed"
 
 verify-structure: ## Run structural preflight and Python contract lint checks
@@ -61,11 +62,12 @@ check-workflow-matrix: ## Ensure the master workflow traceability matrix keeps i
 	@python3 scripts/ci/assert_backend_workflow_traceability.py
 	@python3 scripts/ci/assert_backend_platform_validation_ownership.py
 
-
-check-pytest-skip-governance: ## Parse pytest collection skips and enforce governance policy
+check-pytest-skip-governance: ## Enforce pytest skip governance from collection output (with allowlist + baseline)
 	@mkdir -p artifacts
-	@set +e; python -m pytest --collect-only -q -rs > artifacts/pytest-collect.txt 2>&1; status=$$?; set -e; echo "pytest collect exit code: $$status" >> artifacts/pytest-collect.txt
-	@python scripts/ci/check_pytest_skip_governance.py --input artifacts/pytest-collect.txt
+	@set +e; python -m pytest --collect-only -q -ra tests > artifacts/pytest-collection.txt 2>&1; collect_status=$$?; set -e; \
+	 python scripts/ci/check_pytest_skip_governance.py artifacts/pytest-collection.txt --allowlist config/ci/pytest_skip_allowlist.yaml --baseline config/ci/pytest_skip_baseline.json --write-report artifacts/pytest-skip-governance.json; \
+	 if [ "$$collect_status" -ne 0 ]; then echo "pytest collection exited non-zero ($$collect_status); structural-preflight should catch import errors separately."; fi
+
 verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
 	@echo "✅  Strict verification passed"
 

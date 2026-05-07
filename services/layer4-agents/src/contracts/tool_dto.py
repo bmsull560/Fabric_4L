@@ -1,4 +1,6 @@
-"""Typed DTOs for tools API responses."""
+"""DTOs for tool route contracts."""
+
+from __future__ import annotations
 
 from typing import Any
 
@@ -6,35 +8,42 @@ from pydantic import BaseModel, Field
 
 from ..models.tool_schemas import ToolCategory
 
+JsonValue = Any
+ToolSchemaDocument = dict[str, JsonValue]
+
 
 class ToolSchemaExample(BaseModel):
-    """Example payloads for a tool schema entry."""
+    """Single tool example preserving arbitrary JSON-shaped payloads."""
 
-    input: dict[str, Any] = Field(default_factory=dict)
-    output: dict[str, Any] = Field(default_factory=dict)
+    input: ToolSchemaDocument = Field(default_factory=dict)
+    output: ToolSchemaDocument = Field(default_factory=dict)
 
 
 class ToolSchemaResponse(BaseModel):
-    """Detailed schema metadata returned for a single tool."""
+    """Typed response model for a single tool schema."""
 
     name: str
     category: ToolCategory
     description: str
-    input_schema: dict[str, Any] = Field(default_factory=dict)
-    output_schema: dict[str, Any] = Field(default_factory=dict)
-    examples: list[dict[str, Any]] = Field(default_factory=list)
+    input_schema: ToolSchemaDocument = Field(default_factory=dict)
+    output_schema: ToolSchemaDocument = Field(default_factory=dict)
+    examples: list[ToolSchemaExample] = Field(default_factory=list)
     timeout_seconds: int
     requires_auth: bool
 
 
 class ToolCategoryItem(BaseModel):
-    """Category entry in the tool category list endpoint."""
+    """Single tool category metadata item."""
 
     id: str
     name: str
 
 
-class ToolCategoryListResponse(BaseModel):
-    """Response payload for listing tool categories."""
+class ToolCategoriesResponse(BaseModel):
+    """Typed response model for categories listing."""
 
     categories: list[ToolCategoryItem]
+
+
+# Backward-compatible alias for legacy consumers
+ToolCategoryListResponse = ToolCategoriesResponse

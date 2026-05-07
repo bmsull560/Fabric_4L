@@ -44,6 +44,15 @@ class rank_hypothesesResult(TypedDictModel):
     hypotheses: Any
     strategy: Any
 
+class convert_hypothesisResult(TypedDictModel):
+    hypothesis_id: str
+    account_id: str
+    tenant_id: str
+    evidence_ids: list[str]
+    value_model_id: str | None = None
+    tree_id: str | None = None
+    status: str
+
 router = APIRouter(prefix="/hypotheses", tags=["Value Hypotheses"])
 
 
@@ -290,6 +299,25 @@ async def delete_hypothesis(
         raise HTTPException(status_code=404, detail="Hypothesis not found")
 
     return delete_hypothesisResult.model_validate({"status": "deleted", "hypothesis_id": hypothesis_id})
+
+
+@router.post("/{hypothesis_id}/convert", response_model=convert_hypothesisResult)
+async def convert_hypothesis_to_tree(
+    hypothesis_id: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
+    """Convert a hypothesis to a driver tree/value model linkage."""
+    from ...services.value_hypothesis_engine import ValueHypothesisEngine
+
+    driver = _get_neo4j_driver(request)
+    engine = ValueHypothesisEngine(driver)
+
+    result = await engine.convert_hypothesis_to_tree(tenant_id, hypothesis_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Hypothesis not found")
+
+    return convert_hypothesisResult.model_validate(result)
 
 
 @router.get("/summary/stats")

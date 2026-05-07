@@ -93,6 +93,14 @@ CONTRACT_CHECKS: dict[str, dict[str, Any]] = {
         ],
         "preferred_pattern": "Return ToolResult with status='error' and safe error message",
     },
+    "no_fix_imports": {
+        "severity": "high",
+        "patterns": [
+            (r"from\s+[^\n#]*fix[^\n#]*\s+import", "import from fix module"),
+            (r"import\s+[^\n#]*fix[^\n#]*", "import fix module"),
+        ],
+        "preferred_pattern": "Move production imports to stable module names (for example, telemetry.py)",
+    },
     "security_todo": {
         "severity": "medium",
         "patterns": [

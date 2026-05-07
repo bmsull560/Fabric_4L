@@ -74,6 +74,15 @@ class ValueHypothesisEngine_get_hypothesis_summaryResult(TypedDictModel):
     unique_accounts: Any | None = None
     unique_products: Any | None = None
 
+class ValueHypothesisEngine_convert_hypothesis_to_treeResult(TypedDictModel):
+    hypothesis_id: str
+    account_id: str
+    tenant_id: str
+    evidence_ids: list[str]
+    value_model_id: str | None = None
+    tree_id: str | None = None
+    status: str
+
 logger = structlog.get_logger()
 
 
@@ -724,6 +733,32 @@ class ValueHypothesisEngine:
             "levers": [record["lever"]],
             "created": True,
         }
+
+    async def convert_hypothesis_to_tree(
+        self,
+        tenant_id: str,
+        hypothesis_id: str,
+    ) -> dict[str, Any] | None:
+        """Convert a validated hypothesis into downstream tree/model linkage."""
+        converted = await self.validate_hypothesis(
+            tenant_id,
+            hypothesis_id,
+            feedback="Converted hypothesis to tree",
+            new_status=HypothesisStatus.CONVERTED.value,
+            confidence_adjustment=0.0,
+        )
+        if not converted:
+            return None
+
+        return ValueHypothesisEngine_convert_hypothesis_to_treeResult.model_validate({
+            "hypothesis_id": converted["id"],
+            "account_id": converted["account_id"],
+            "tenant_id": converted["tenant_id"],
+            "evidence_ids": converted.get("evidence_ids", []),
+            "value_model_id": converted.get("value_model_id"),
+            "tree_id": converted.get("tree_id"),
+            "status": converted.get("status", HypothesisStatus.CONVERTED.value),
+        })
 
     async def delete_hypothesis(
         self, tenant_id: str, hypothesis_id: str

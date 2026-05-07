@@ -8,13 +8,17 @@
  * All hooks handle loading, error, and caching automatically.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import {
   getValueTree,
   getValueTreePaths,
+  createValueTree,
+  importValueTree,
   type ValueTreeResponse,
   type ValueTreePath,
+  type CreateValueTreeRequest,
+  type ImportValueTreeRequest,
 } from '@/api/valueTrees';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
@@ -148,6 +152,26 @@ export function useValueTreeCache() {
   );
 
   return { invalidateTree, setTreeData };
+}
+
+export function useCreateValueTree() {
+  const { invalidateTree } = useValueTreeCache();
+  return useMutation<ValueTreeResponse, Error, CreateValueTreeRequest>({
+    mutationFn: createValueTree,
+    onSuccess: (_data, variables) => {
+      invalidateTree(variables.entity_id);
+    },
+  });
+}
+
+export function useImportValueTree() {
+  const { invalidateTree } = useValueTreeCache();
+  return useMutation<ValueTreeResponse, Error, ImportValueTreeRequest>({
+    mutationFn: importValueTree,
+    onSuccess: (_data, variables) => {
+      invalidateTree(variables.entity_id);
+    },
+  });
 }
 
 // Re-export types for convenience

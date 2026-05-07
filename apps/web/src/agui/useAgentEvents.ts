@@ -35,6 +35,7 @@ import {
 } from "./events";
 import { sendAgentMessage } from "./AgentEventClient";
 import { getDefaultSuggestedActions } from "@/hooks/useAgentStream";
+import { useApplyWorkspacePageAction, type WorkspacePageActionContract } from "@/hooks/useWorkspaceCase";
 
 // ── Tab System Prompts (reused from useAgentStream) ─────────────────────────
 
@@ -162,6 +163,8 @@ export function useAgentEvents({
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<RunMetadata | null>(null);
+  const [structuredActions, setStructuredActions] = useState<AgentAction[]>([]);
+  const applyWorkspacePageAction = useApplyWorkspacePageAction();
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -261,6 +264,26 @@ export function useAgentEvents({
         if (event.metadata) {
           setMetadata(event.metadata);
         }
+        const output = event.output as {
+          actions?: Array<{ label: string; page_action: WorkspacePageActionContract }>;
+        } | undefined;
+        if (event.metadata && output?.actions?.length) {
+          setStructuredActions(
+            output.actions.map((action) => ({
+              label: action.label,
+              onClick: () =>
+                applyWorkspacePageAction.mutate({
+                  ...action.page_action,
+                  runMetadataIds: {
+                    runId: event.metadata!.runId,
+                    traceId: event.metadata!.traceId,
+                    workflowId: event.metadata!.workflowId,
+                    auditEventId: event.metadata!.auditEventId,
+                  },
+                }),
+            })),
+          );
+        }
         break;
       }
 
@@ -298,6 +321,21 @@ export function useAgentEvents({
       }
 
       case AgentEventType.TOOL_CALL_END: {
+        const eventResult = event.result as { pageAction?: WorkspacePageActionContract } | undefined;
+        if (event.success && eventResult?.pageAction) {
+          const pageAction = eventResult.pageAction;
+          applyWorkspacePageAction.mutate({
+            ...pageAction,
+            runMetadataIds: {
+              ...pageAction.runMetadataIds,
+              runId: metadata?.runId ?? currentRunId ?? "unknown-run",
+              traceId: metadata?.traceId ?? "unknown-trace",
+              workflowId: metadata?.workflowId,
+              auditEventId: metadata?.auditEventId ?? "unknown-audit",
+              toolCallId: event.toolCallId,
+            },
+          });
+        }
         setSteps((prev) =>
           prev.map((s) =>
             s.id === event.toolCallId
@@ -317,7 +355,7 @@ export function useAgentEvents({
       default:
         break;
     }
-  }, []);
+  }, [applyWorkspacePageAction, currentRunId, metadata?.auditEventId, metadata?.runId, metadata?.traceId, metadata?.workflowId]);
 
   // ── Send Message ────────────────────────────────────────────────────────
 
@@ -390,7 +428,9 @@ export function useAgentEvents({
 
   // ── Suggested Actions ─────────────────────────────────────────────────
 
-  const suggestedActions = getDefaultSuggestedActions(activeTab, sendMessage);
+  const suggestedActions = structuredActions.length > 0
+    ? structuredActions
+    : getDefaultSuggestedActions(activeTab, sendMessage);
 
   return {
     messages,

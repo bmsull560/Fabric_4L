@@ -12,11 +12,11 @@ from decimal import Decimal
 
 import pytest
 
-from src.interfaces.variable_registry import (
+from value_fabric.layer4.interfaces.variable_registry import (
     VariableDataType,
     VariableValidationRule,
 )
-from src.services.variable_registry_service import Neo4jVariableRegistry
+from value_fabric.layer4.services.variable_registry_service import Neo4jVariableRegistry
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-from src.backup.backup_manager import BackupConfig, BackupManager, LocalStorage
+from value_fabric.layer3.backup.backup_manager import BackupConfig, BackupManager, LocalStorage
 
 
 def test_backup_manager_uses_concrete_storage(tmp_path):

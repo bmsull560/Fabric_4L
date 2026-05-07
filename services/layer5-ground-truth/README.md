@@ -1,4 +1,5 @@
 # Layer 5 — Ground Truth
+> Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
 > **Evidence-backed, CFO-defensible facts for the Value Fabric platform.**
 

@@ -17,24 +17,32 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypeVar
 from uuid import uuid4
 
-import psutil  # type: ignore[import-untyped]
+# Third-party imports for health check
+import importlib
+import importlib.util
 
 from fastapi import BackgroundTasks, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 
 from pydantic import BaseModel, Field
-from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
-from value_fabric.shared.secrets import load_infisical_secrets
+from ..startup.dependency_verifier import verify_layer2_startup_dependencies
+
+verify_layer2_startup_dependencies()
 
 from layer2_extraction.api.deps import RequestContext
 
+psutil = importlib.import_module("psutil") if importlib.util.find_spec("psutil") else None
+
 try:
-    load_infisical_secrets()
+    _secrets_module = importlib.import_module("value_fabric.shared.secrets")
+    load_infisical_secrets = getattr(_secrets_module, "load_infisical_secrets", None)
+    if load_infisical_secrets is not None:
+        load_infisical_secrets()
 except Exception:
     _secret_env = (
         os.getenv("ENVIRONMENT")
@@ -64,8 +72,13 @@ from layer2_extraction.integration.pending_ingestion_store import (
 )
 from layer2_extraction.metrics import get_metrics
 from layer2_extraction.models import (
+    Capability,
     ExtractionResult,
+    Feature,
+    Persona,
     Relationship,
+    UseCase,
+    ValueDriver,
 )
 from layer2_extraction.output.provenance import (
     ExtractionStep,
@@ -77,6 +90,15 @@ from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 logger = logging.getLogger(__name__)
 
 PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+
+
+
+TEntity = TypeVar("TEntity")
+
+
+def _typed_entities(items: list[Any], expected_type: type[TEntity]) -> list[TEntity]:
+    """Return only entities matching the expected model type."""
+    return [item for item in items if isinstance(item, expected_type)]
 
 
 def _current_environment() -> str:
@@ -100,25 +122,14 @@ _app_start_time = time.time()
 # WebSocket manager for real-time pipeline streaming
 _ws_manager = get_pipeline_ws_manager()
 
-class DeferredRateLimiter:
-    """Rate-limiter proxy that binds to the live Redis limiter after startup."""
+lifespan = create_lifespan(
+    is_production_like=_is_production_like,
+    current_environment=_current_environment,
+    pending_ingestion_retry_loop=lambda: _pending_ingestion_retry_loop(),
+    ws_manager=_ws_manager,
+)
 
-    def __init__(self) -> None:
-        self._delegate: RedisRateLimiter | None = None
-
-    def bind(self, limiter: RedisRateLimiter | None) -> None:
-        self._delegate = limiter
-
-    async def check(self, key: str, config: Any):
-        if self._delegate is None:
-            if _is_production_like():
-                raise RuntimeError("Rate limiter unavailable in production-like environment")
-            now = time.time()
-            return type("_OpenResult", (), {"allowed": True, "remaining": config.requests_per_minute, "reset_at": now + 60, "retry_after": None})()
-        return await self._delegate.check(key, config)
-
-
-_live_rate_limiter = DeferredRateLimiter()
+app = create_app(lifespan=lifespan)
 
 # Extraction configuration constants
 DEFAULT_CHUNK_SIZE = 2000
@@ -304,9 +315,9 @@ async def _set_pipeline_job(
     if retry_count is not None:
         job.retry_count = retry_count
     if last_error is not _UNSET:
-        job.last_error = last_error  # type: ignore[assignment]
+        job.last_error = last_error if isinstance(last_error, str) else None
     if next_retry_at is not _UNSET:
-        job.next_retry_at = next_retry_at  # type: ignore[assignment]
+        job.next_retry_at = next_retry_at.isoformat() if isinstance(next_retry_at, datetime) else None
     if completed_at is not None:
         job.completed_at = completed_at.isoformat() if completed_at else None
     # Persist to job store
@@ -773,11 +784,11 @@ async def run_extraction(
         result = ExtractionResult(
             job_id=job_id,
             source_url=source_url,
-            capabilities=deduplicated.get("capabilities", []),  # type: ignore[arg-type]
-            use_cases=deduplicated.get("use_cases", []),  # type: ignore[arg-type]
-            personas=deduplicated.get("personas", []),  # type: ignore[arg-type]
-            value_drivers=deduplicated.get("value_drivers", []),  # type: ignore[arg-type]
-            features=deduplicated.get("features", []),  # type: ignore[arg-type]
+            capabilities=_typed_entities(deduplicated.get("capabilities", []), Capability),
+            use_cases=_typed_entities(deduplicated.get("use_cases", []), UseCase),
+            personas=_typed_entities(deduplicated.get("personas", []), Persona),
+            value_drivers=_typed_entities(deduplicated.get("value_drivers", []), ValueDriver),
+            features=_typed_entities(deduplicated.get("features", []), Feature),
             chunks_processed=len(chunks),
         )
 
@@ -853,7 +864,7 @@ async def run_extraction(
         activity.add_step(step5)
 
         # Complete activity
-        activity.output_entities = [e.id for e in result.get_all_entities()]  # type: ignore[attr-defined]
+        activity.output_entities = [e.id for e in result.get_all_entities()]
         activity.output_relationships = [r.id for r in all_relationships]
         activity.complete(rdf_path=rdf_path)
 
@@ -1444,17 +1455,6 @@ class extract_batchResult(TypedDictModel):
     job_ids: Any
     status: str
     total_jobs: Any
-
-
-lifespan = create_lifespan(
-    is_production_like=_is_production_like,
-    current_environment=_current_environment,
-    pending_ingestion_retry_loop=lambda: _pending_ingestion_retry_loop(),
-    ws_manager=_ws_manager,
-    rate_limiter_proxy=_live_rate_limiter,
-)
-
-app = create_app(lifespan=lifespan, rate_limiter=_live_rate_limiter)
 
 
 if __name__ == "__main__":
