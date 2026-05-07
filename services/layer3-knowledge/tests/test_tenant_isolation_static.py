@@ -190,3 +190,17 @@ async def test_neo4j_tenant_session_executes_scoped_query_with_tenant_params() -
             {"id": "shared-id", "tenant_id": "tenant-a", "_tenant_id": "tenant-a"},
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_neo4j_tenant_session_denies_broad_match_without_tenant_constraint() -> None:
+    from api.dependencies_tenant import Neo4jTenantSession
+
+    class FakeSession:
+        async def run(self, query, params):  # pragma: no cover
+            raise AssertionError("query should have been blocked")
+
+    tenant_session = Neo4jTenantSession(FakeSession(), tenant_id="tenant-a")
+
+    with pytest.raises(ValueError, match="Denied broad MATCH traversal"):
+        await tenant_session.run("MATCH (n) RETURN n LIMIT 1")

@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import Depends, HTTPException, Request, status
 
 from src.security import QueryValidator, UnscopedQueryError
+from src.db.query_execution import TenantExecutionContext, TenantQueryExecutor
 from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
 if TYPE_CHECKING:
@@ -154,7 +155,13 @@ class Neo4jTenantSessionSecured:
         if "tenant_id" not in params:
             params["tenant_id"] = self._tenant_id
         
-        return await self._session.run(query, params)
+        allow_system_query = bool(params.pop("allow_system_query", False))
+        return await TenantQueryExecutor.run(
+            self._session.run,
+            query,
+            params,
+            TenantExecutionContext(tenant_id=self._tenant_id, allow_system_query=allow_system_query),
+        )
 
 
 async def get_neo4j_secured(

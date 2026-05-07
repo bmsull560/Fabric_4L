@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from value_fabric.shared.identity.context import RequestContext
 
 from .dependencies import get_neo4j_driver
+from src.db.query_execution import TenantExecutionContext, TenantQueryExecutor
 from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
 try:
@@ -143,7 +144,7 @@ class Neo4jTenantSession:
                 params = {**query.params, **params}
             else:
                 params = {**query.params, **params}
-            return await self._session.run(query.cypher, params)
+            return await TenantQueryExecutor.run(self._session.run, query.cypher, params, TenantExecutionContext(tenant_id=self._tenant_id, is_bypass=self._is_bypass))
 
         query_text = str(query)
         labels = _tenant_labels_in_query(query_text)
@@ -160,7 +161,7 @@ class Neo4jTenantSession:
             params.setdefault("tenant_id", self._tenant_id)
             params.setdefault("_tenant_id", self._tenant_id)
 
-        return await self._session.run(query_text, params)
+        return await TenantQueryExecutor.run(self._session.run, query_text, params, TenantExecutionContext(tenant_id=self._tenant_id, is_bypass=self._is_bypass))
 
     def _create_tenant_tx(self, tx) -> Any:
         """Create a tenant-aware transaction wrapper.
@@ -185,7 +186,7 @@ class Neo4jTenantSession:
                         params.setdefault("_tenant_id", scoped_tenant)
                     else:
                         params = {**query.params, **params}
-                    return await self._tx.run(query.cypher, params)
+                    return await TenantQueryExecutor.run(self._tx.run, query.cypher, params, TenantExecutionContext(tenant_id=self._tenant_id))
 
                 query_text = str(query)
                 labels = _tenant_labels_in_query(query_text)
@@ -199,7 +200,7 @@ class Neo4jTenantSession:
                 if self._tenant_id:
                     params.setdefault("tenant_id", self._tenant_id)
                     params.setdefault("_tenant_id", self._tenant_id)
-                return await self._tx.run(query_text, params)
+                return await TenantQueryExecutor.run(self._tx.run, query_text, params, TenantExecutionContext(tenant_id=self._tenant_id))
 
         return TenantTx(tx, self._tenant_id)
 
