@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import { POLL_INTERVALS } from './usePolling';
-import { parseIngestionAggregation, parseIngestionJobs, type ApiIngestionJobDto, type ApiJobDetailDto, type ApiComplianceLogDto } from '@/types/api';
+import { parseIngestionAggregation, parseIngestionJobs, type ApiIngestionJobDto, type ApiComplianceLogDto } from '@/types/api';
+import type { l1 } from '@/api/generated';
 
 export interface IngestionJob {
   id: string;
@@ -126,26 +128,12 @@ export interface JobListResponse {
   };
 }
 
-type IngestionJobsEnvelope = {
-  data?: unknown;
-  pagination?: JobListResponse['pagination'];
-  aggregation?: {
-    by_status?: Record<string, number>;
-    total_execution_time_ms?: number;
-    total_records_extracted?: number;
-  };
-};
-
-type TargetCreateResponse = {
-  id?: string;
-};
-
-type ExecuteTargetResponse = {
-  job_id?: string;
-};
-
 type ComplianceLogsResponse = {
   items?: ApiComplianceLogDto[];
+};
+
+type JobDetailResponse = l1.components['schemas']['ScrapingJobDetail'] & {
+  updated_at?: string | null;
 };
 
 function mapIngestionJob(job: ApiIngestionJobDto): IngestionJob {
@@ -164,8 +152,8 @@ export function useIngestionJobs() {
   return useQuery<IngestionJob[], Error>({
     queryKey: QK.ingestion.jobs(),
     queryFn: async () => {
-      const response = await apiClient.get<IngestionJobsEnvelope>('l1', '/jobs');
-      const jobs = parseIngestionJobs(response.data?.data);
+      const response = await apiGet<l1.components['schemas']['JobListResponse']>('l1', '/jobs');
+      const jobs = parseIngestionJobs(response.data.data);
       return jobs.map(mapIngestionJob);
     },
     staleTime: STALE_TIME.poll,
@@ -176,8 +164,8 @@ export function useRecentIngestionJobs(limit = 5) {
   return useQuery<IngestionJob[], Error>({
     queryKey: QK.ingestion.recent(),
     queryFn: async () => {
-      const response = await apiClient.get<IngestionJobsEnvelope>('l1', `/jobs?limit=${limit}&sort_by=created_at&sort_order=desc`);
-      const jobs = parseIngestionJobs(response.data?.data);
+      const response = await apiGet<l1.components['schemas']['JobListResponse']>('l1', `/jobs?limit=${limit}&sort_by=created_at&sort_order=desc`);
+      const jobs = parseIngestionJobs(response.data.data);
       return jobs.map(mapIngestionJob);
     },
     staleTime: STALE_TIME.poll,
@@ -208,8 +196,8 @@ export function useIngestionStats() {
   return useQuery<IngestionStats, Error>({
     queryKey: QK.ingestion.stats(),
     queryFn: async () => {
-      const response = await apiClient.get<IngestionJobsEnvelope>('l1', '/jobs?limit=1');
-      const agg = parseIngestionAggregation(response.data?.aggregation);
+      const response = await apiGet<l1.components['schemas']['JobListResponse']>('l1', '/jobs?limit=1');
+      const agg = parseIngestionAggregation(response.data.aggregation);
       const byStatus = agg.by_status || {};
       return {
         totalDomains: Object.values(byStatus).reduce((a, b) => a + b, 0),
@@ -242,7 +230,7 @@ export function useSubmitDomain() {
       const url = domain.startsWith('http') ? domain : `https://${domain}`;
 
       // Step 1: Create a scraping target with the domain URL
-      const targetResponse = await apiClient.post<TargetCreateResponse>('l1', '/targets', {
+      const targetResponse = await apiPost<l1.components['schemas']['ScrapingTargetDetail']>('l1', '/targets', {
         name: domain,
         url,
       });
@@ -258,7 +246,7 @@ export function useSubmitDomain() {
       if (ontology) executePayload.ontology_target = ontology;
       if (depth) executePayload.crawl_depth = parseInt(depth, 10);
 
-      const executeResponse = await apiClient.post<ExecuteTargetResponse>('l1', `/targets/${targetId}/execute`, executePayload);
+      const executeResponse = await apiPost<l1.components['schemas']['ExecuteTargetResponse']>('l1', `/targets/${targetId}/execute`, executePayload);
       const jobId = executeResponse.data.job_id;
       if (!jobId) {
         throw new Error('Target execution response missing job id');
@@ -288,17 +276,17 @@ export function useIngestionJobList(filters: JobListFilters = {}) {
       if (dateFrom) params.set('date_from', dateFrom);
       if (dateTo) params.set('date_to', dateTo);
 
-      const response = await apiClient.get<IngestionJobsEnvelope>('l1', `/jobs?${params.toString()}`);
+      const response = await apiGet<l1.components['schemas']['JobListResponse']>('l1', `/jobs?${params.toString()}`);
       const data = response.data;
-      const jobs = parseIngestionJobs(data?.data);
+      const jobs = parseIngestionJobs(data.data);
 
       return {
         jobs: jobs.map(mapIngestionJob),
-        pagination: data?.pagination || { page, limit, total: 0, totalPages: 0 },
+        pagination: data.pagination || { page, limit, total: 0, totalPages: 0 },
         aggregation: {
-          byStatus: data?.aggregation?.by_status || {},
-          totalExecutionTimeMs: data?.aggregation?.total_execution_time_ms || 0,
-          totalRecordsExtracted: data?.aggregation?.total_records_extracted || 0,
+          byStatus: (data.aggregation as Record<string, unknown>)?.by_status as Record<string, number> || {},
+          totalExecutionTimeMs: (data.aggregation as Record<string, unknown>)?.total_execution_time_ms as number || 0,
+          totalRecordsExtracted: (data.aggregation as Record<string, unknown>)?.total_records_extracted as number || 0,
         },
       };
     },

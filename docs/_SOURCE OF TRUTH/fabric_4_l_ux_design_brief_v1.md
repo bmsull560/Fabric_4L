@@ -72,21 +72,37 @@ A feature should not be considered complete just because its screen exists. It i
 ## Canonical Fabric_4L Workflow
 
 ```text
-1. Account Context
-2. Signal Discovery
-3. Value Path Classification
-4. Driver Tree Selection
-5. Lever and Assumption Mapping
-6. Evidence Attachment
-7. Formula Resolution
-8. Scenario Modeling
-9. Business Case Generation
-10. Realization Tracking
+1. Prompt Chat Entry (AI Agent Interface)
+2. Account Context
+3. Signal Discovery
+4. Value Path Classification
+5. Driver Tree Selection
+6. Lever and Assumption Mapping
+7. Evidence Attachment
+8. Formula Resolution
+9. Scenario Modeling
+10. Business Case Generation
+11. Realization Tracking
 ```
 
 ## Journey Description
 
-### 1. Account Context
+### 1. Prompt Chat Entry (AI Agent Interface)
+
+The user begins by interacting with the AI agent through a prompt chat box. This serves as the primary natural language entry point where users can:
+
+- Ask questions about account value opportunities
+- Request analysis of specific business scenarios
+- Describe pain points or initiatives they want to explore
+- Get recommendations for next steps in the value justification workflow
+
+The agent interprets the user's intent and either:
+
+- Provides direct answers with supporting evidence
+- Navigates the user to the appropriate workspace (Signals, Hypothesis, Driver Tree, Calculator, etc.)
+- Generates hypotheses and value path suggestions based on the conversation
+
+### 2. Account Context
 
 The user starts with an account, company, prospect, or customer. Fabric_4L identifies the relevant industry, segment, personas, product fit, and active Value Pack.
 
@@ -315,15 +331,28 @@ Suggested value drivers may include:
 
 Each screen should make the next step obvious.
 
-Examples:
+**Primary Entry Point - Prompt Chat Box:**
 
-- Signal detail: **Create Value Opportunity**
-- Value opportunity: **Classify Value Path**
-- Value path: **Build Driver Tree**
-- Driver tree: **Attach Evidence**
-- Evidence: **Use in Model**
-- Scenario: **Generate Business Case**
-- Business case: **Create Realization Plan**
+The prompt chat box (AI agent interface) serves as the main starting point for the value justification workflow. Users can:
+
+- **Ask natural language questions** about account value opportunities
+- **Request analysis** of specific business scenarios
+- **Generate hypotheses** about potential value paths
+- **Navigate to specific workspaces** based on agent recommendations
+
+**Workspace Navigation Flow:**
+
+- Prompt Chat: **Generate value analysis** or **Navigate to Signals**
+- Signals: **Navigate to Stakeholders** or **Navigate to Value Hypotheses**
+- Stakeholders: **Navigate to Value Ontology** or **Navigate to Value Hypotheses**
+- Value Ontology: **Navigate to Value Hypotheses**
+- Value Hypotheses: **Navigate to Value Drivers**
+- Value Drivers: **Navigate to Evidence**
+- Evidence: **Navigate to ROI Calculator**
+- ROI Calculator: **Navigate to Value Model**
+- Value Model: **Navigate to Executive Value Case**
+- Executive Value Case: **Navigate to Realization Plan**
+- Realization Plan: **Track realization progress**
 
 ## 2. Preserve Context Across the Journey
 
@@ -428,55 +457,95 @@ Value Realization
 Inside an account, the user navigates through functional workspaces with their respective tabs:
 
 **Intelligence Workspace** (/intelligence/:accountId):
+
 - Signals
 - Stakeholders
 - Ontology Match
 - Account Enrichment
 
 **Hypothesis Workspace** (/hypothesis/:accountId):
+
 - Hypothesis
 - Discovery Questions
 - Persona Fit
 - Assumptions
 
 **Driver Tree Workspace** (/drivers/:accountId):
+
 - Driver Tree visualization and editing
 
 **Calculator Workspace** (/calculator/:accountId):
+
 - ROI
 - Value Model
 
 **Value Case Workspace** (/value-case/:accountId):
+
 - Executive Value Case generation
 
 **Value Realization Workspace** (/realization/:accountId):
+
 - Realization Plan tracking
 
 ## Suggested Tabs
 
-### Intelligence
+### Intelligence Workspace
 
 - Signals
+- Account Enrichment
 - Stakeholders
-- Evidence Candidates
-- Enrichment
-- Ontology Match
+- Value Ontology
+- Value Hypotheses
+- Value Drivers
+- Evidence
+- Alternatives
+- Solution Cost
+- ROI Calculator
+- Value Model
+- Executive Value Case
+- Realization Plan
 
-### Value Studio
+### Hypothesis Workspace
 
-- Opportunities
-- Value Paths
-- Driver Tree
+- Hypothesis
+- Discovery Questions
+- Persona Fit
 - Assumptions
-- Scenarios
-- Narrative
+
+### Calculator Workspace
+
+- ROI
+- Value Model
+
+### Additional Context Engine Pages
+
+- Value Packs
+- My Models
+- Formula List
+- Formula Builder
+- Value Tree Explorer
+- Agent Workflows
+- Ontology Editor
+- Entity Browser
+- Graph Explorer
+- Ingestion Jobs
+- Extraction Engine
 
 ### Deliverables
 
 - Business Cases
-- Executive Briefs
-- ROI Summaries
-- Value Realization Plans
+- Interactive Business Case
+- CFO View
+- Executive View
+- Technical View
+
+### Governance
+
+- Decision Trace
+- Evidence
+- Compliance
+- Audit Log
+- Change History
 
 ---
 
