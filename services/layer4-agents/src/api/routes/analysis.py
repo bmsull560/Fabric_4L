@@ -817,6 +817,26 @@ class WorkspaceTabData(BaseModel):
     stakeholders: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class WorkspaceEvidenceItem(BaseModel):
+    id: str
+    title: str
+    type: str = "evidence"
+    source: str = "Unknown"
+    matchScore: int = 0
+    verification: str = "unverified"
+    linkedSignals: list[str] = Field(default_factory=list)
+    excerpt: str = ""
+    decision_status: str | None = None
+    attached_driver_id: str | None = None
+    provenance_id: str | None = None
+    confidence: float | None = None
+    decision_note: str | None = None
+
+
+class WorkspaceEvidenceResponse(BaseModel):
+    evidence: list[WorkspaceEvidenceItem] = Field(default_factory=list)
+
+
 @router.get("/cases", response_model=CaseListResponse)
 async def list_cases(
     account_id: str,
@@ -984,6 +1004,34 @@ async def delete_saved_scenario(
     )
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Saved scenario not found")
+
+
+@router.get("/cases/{case_id}/workspace/evidence", response_model=WorkspaceEvidenceResponse)
+async def get_workspace_evidence(
+    case_id: str,
+    db: AsyncSession = Depends(get_route_db),
+    context: RequestContext = Depends(require_authenticated),
+) -> WorkspaceEvidenceResponse:
+    from sqlalchemy import select
+    from ...models.workspace_tab_data import WorkspaceTabData
+
+    tenant_id = str(context.tenant_id)
+    result = await db.execute(
+        select(WorkspaceTabData).where(
+            WorkspaceTabData.case_id == case_id,
+            WorkspaceTabData.tab_key == "evidence",
+            WorkspaceTabData.tenant_id == tenant_id,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if record is None:
+        return WorkspaceEvidenceResponse(evidence=[])
+    payload = record.data if isinstance(record.data, dict) else {}
+    evidence_items = payload.get("evidence", [])
+    if not isinstance(evidence_items, list):
+        raise HTTPException(status_code=500, detail="Invalid persisted evidence payload shape")
+    return WorkspaceEvidenceResponse(evidence=[WorkspaceEvidenceItem.model_validate(item) for item in evidence_items])
+
 
 
 @router.get("/cases/{case_id}/workspace/{tab_key}")

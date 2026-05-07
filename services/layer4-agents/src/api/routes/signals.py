@@ -12,7 +12,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from value_fabric.shared.audit import AuditAction, AuditEmitter, AuditOutcome
 from value_fabric.shared.identity.context import RequestContext
@@ -486,6 +486,7 @@ _EVIDENCE_DECISIONS: dict[tuple[str, str, str], dict[str, Any]] = {}
 async def decide_evidence(
     evidence_id: str,
     request: EvidenceDecisionRequest,
+    http_request: Request,
     ctx: RequestContext = Depends(require_authenticated),
 ) -> EvidenceDecisionResponse:
     if request.decision not in {"accepted", "rejected", "attached_to_driver"}:
@@ -508,4 +509,28 @@ async def decide_evidence(
         "confidence": 0.9 if request.decision == "accepted" else 0.75,
     }
     _EVIDENCE_DECISIONS[(str(ctx.tenant_id), request.account_id, evidence_id)] = record
+
+    if request.decision == "attached_to_driver" and request.driver_id:
+        driver = http_request.app.state.neo4j_driver
+        query = """
+        MERGE (e:Evidence {id: $evidence_id, account_id: $account_id, tenant_id: $tenant_id})
+        MERGE (d:ValueHypothesis {id: $driver_id, account_id: $account_id, tenant_id: $tenant_id})
+        MERGE (e)-[r:ATTACHED_TO_DRIVER]->(d)
+        SET r.case_id = $case_id,
+            r.decision_note = $decision_note,
+            r.updated_at = datetime()
+        """
+        async with driver.session() as session:
+            await session.run(
+                query,
+                {
+                    "evidence_id": evidence_id,
+                    "driver_id": request.driver_id,
+                    "account_id": request.account_id,
+                    "tenant_id": str(ctx.tenant_id),
+                    "case_id": request.case_id,
+                    "decision_note": request.decision_note,
+                },
+            )
+
     return EvidenceDecisionResponse(**record)
