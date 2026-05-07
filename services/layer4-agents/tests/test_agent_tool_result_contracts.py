@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from uuid import UUID
 
 import pytest
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 import value_fabric.layer4.tools.registry as registry_module
 from value_fabric.layer4.models.tool_schemas import ToolCategory
 from value_fabric.layer4.tools.registry import BaseTool, ToolRegistry, ToolResult
+from value_fabric.shared.identity.context import RequestContext, clear_current_context, set_current_context
 
 
 class EchoInput(BaseModel):
@@ -66,6 +68,30 @@ class SlowTool(BaseTool):
     async def execute(self, input_data: SlowInput) -> dict[str, Any]:
         await asyncio.sleep(1)
         return {"value": input_data.value}
+
+
+class MutatingInput(BaseModel):
+    value: int
+    idempotency_key: str | None = None
+    tenant_id: str | None = None
+    approval_decision: str | None = None
+    workflow_id: str | None = None
+
+
+class MutatingTool(BaseTool):
+    name = "agent_mutating_contract"
+    category = ToolCategory.INTEGRATION
+    description = "Simulates irreversible side effect."
+    input_schema = MutatingInput
+    output_schema = BaseModel
+
+    def __init__(self, config: dict[str, Any] | None = None):
+        super().__init__(config)
+        self.calls = 0
+
+    async def execute(self, input_data: MutatingInput) -> dict[str, Any]:
+        self.calls += 1
+        return {"calls": self.calls, "value": input_data.value}
 
 
 @pytest.mark.asyncio
@@ -264,3 +290,46 @@ async def test_agent_failed_tool_execution_creates_audit_event(monkeypatch: pyte
     assert event["details"]["tool_name"] == tool.name
     assert event["details"]["trace_id"] == "trace-failed-audit"
     assert event["details"]["response_hash"]
+
+
+@pytest.mark.asyncio
+async def test_retry_with_same_idempotency_key_executes_side_effect_once() -> None:
+    clear_current_context()
+    set_current_context(RequestContext(tenant_id=UUID("12345678-1234-1234-1234-123456789abc"), user_id="user-1"))
+    registry = ToolRegistry()
+    tool = MutatingTool(config={"tenant_id": "12345678-1234-1234-1234-123456789abc"})
+    registry.register(tool)
+
+    first = await registry.execute(
+        tool.name,
+        {"value": 10, "idempotency_key": "idem-1", "approval_decision": "approved", "workflow_id": "wf-1"},
+    )
+    second = await registry.execute(
+        tool.name,
+        {"value": 10, "idempotency_key": "idem-1", "approval_decision": "approved", "workflow_id": "wf-1"},
+    )
+
+    assert first.status == "success"
+    assert second.status == "success"
+    assert tool.calls == 1
+    assert first.data == second.data
+    clear_current_context()
+
+
+@pytest.mark.asyncio
+async def test_irreversible_tool_requires_approval_and_idempotency_key() -> None:
+    clear_current_context()
+    set_current_context(RequestContext(tenant_id=UUID("12345678-1234-1234-1234-123456789abc"), user_id="user-1"))
+    registry = ToolRegistry()
+    tool = MutatingTool(config={"tenant_id": "12345678-1234-1234-1234-123456789abc"})
+    registry.register(tool)
+
+    missing_idem = await registry.execute(tool.name, {"value": 10, "approval_decision": "approved"})
+    denied = await registry.execute(tool.name, {"value": 10, "idempotency_key": "idem-2"})
+
+    assert missing_idem.status == "error"
+    assert missing_idem.error["code"] == "IDEMPOTENCY_KEY_REQUIRED"
+    assert denied.status == "error"
+    assert denied.error["code"] == "APPROVAL_REQUIRED"
+    assert tool.calls == 0
+    clear_current_context()

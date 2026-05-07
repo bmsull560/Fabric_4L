@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.context import get_request_context
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..models.tool_schemas import ToolCategory, ToolSchema
@@ -408,6 +408,11 @@ class ToolRegistry:
     def __init__(self):
         """Initialize empty registry."""
         self._tools: dict[str, BaseTool] = {}
+        self._idempotency_cache: dict[tuple[str, str, str], ToolResult] = {}
+        self._approval_required_categories: set[ToolCategory] = {
+            ToolCategory.CRM,
+            ToolCategory.INTEGRATION,
+        }
 
     def register(self, tool: BaseTool) -> None:
         """Register a single tool.
@@ -504,6 +509,66 @@ class ToolRegistry:
 
         tenant_id = tool.get_tenant_id() or input_dict.get("tenant_id")
         trace_id = input_dict.get("trace_id")
+        workflow_id = input_dict.get("workflow_id")
+        idempotency_key = input_dict.get("idempotency_key")
+        request_context = get_request_context()
+        context_tenant_id = str(request_context.tenant_id) if request_context and request_context.tenant_id else None
+        user_id = str(request_context.user_id) if request_context and request_context.user_id else None
+
+        if not tenant_id:
+            return ToolResult.failure(
+                code="TENANT_CONTEXT_MISSING",
+                message=f"Tool '{tool_name}' requires tenant context",
+                recoverable=False,
+                metadata=_safe_metadata(trace_id=trace_id),
+            )
+        tenant_id = str(tenant_id)
+        if context_tenant_id and context_tenant_id != tenant_id:
+            return ToolResult.failure(
+                code="TENANT_CONTEXT_MISMATCH",
+                message=f"Tool '{tool_name}' tenant_id does not match request context",
+                recoverable=False,
+                metadata=_safe_metadata(trace_id=trace_id, tenant_id=tenant_id),
+            )
+        if tool.category in self._approval_required_categories and not idempotency_key:
+            return ToolResult.failure(
+                code="IDEMPOTENCY_KEY_REQUIRED",
+                message=f"Tool '{tool_name}' requires idempotency_key for irreversible operation",
+                recoverable=False,
+                metadata=_safe_metadata(trace_id=trace_id, tenant_id=tenant_id),
+            )
+
+        approval_required = tool.category in self._approval_required_categories
+        approved = bool(input_dict.get("approval_decision") == "approved" or not approval_required)
+        if approval_required and not approved:
+            self._emit_policy_audit_event(
+                workflow_id=workflow_id,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                tool_name=tool_name,
+                approval_decision="denied",
+            )
+            return ToolResult.failure(
+                code="APPROVAL_REQUIRED",
+                message=f"Tool '{tool_name}' requires approval before execution",
+                recoverable=False,
+                metadata=_safe_metadata(trace_id=trace_id, tenant_id=tenant_id),
+            )
+
+        if approval_required:
+            self._emit_policy_audit_event(
+                workflow_id=workflow_id,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                tool_name=tool_name,
+                approval_decision="approved",
+            )
+
+        if idempotency_key:
+            cache_key = (tenant_id, tool_name, str(idempotency_key))
+            cached = self._idempotency_cache.get(cache_key)
+            if cached is not None:
+                return cached
 
         # Task 2.3: Log tenant context for tools that require it
         if tool.requires_tenant:
@@ -525,6 +590,8 @@ class ToolRegistry:
         response_hash: str | None = None
 
         result = await tool.run(input_dict, trace_id=trace_id)
+        if idempotency_key:
+            self._idempotency_cache[(tenant_id, tool_name, str(idempotency_key))] = result
 
         if ledger_enabled:
             from value_fabric.shared.crypto.canonical import canonical_hash as _ch
@@ -542,6 +609,24 @@ class ToolRegistry:
             )
 
         return result
+
+    @staticmethod
+    def _emit_policy_audit_event(
+        *,
+        workflow_id: str | None,
+        tenant_id: str | None,
+        user_id: str | None,
+        tool_name: str,
+        approval_decision: str,
+    ) -> None:
+        logger.info(
+            "tool_policy_decision workflow_id=%s tenant_id=%s user_id=%s tool_name=%s approval_decision=%s",
+            workflow_id,
+            tenant_id,
+            user_id,
+            tool_name,
+            approval_decision,
+        )
 
     @staticmethod
     def _emit_tool_invocation_audit(
