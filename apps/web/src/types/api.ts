@@ -1,4 +1,6 @@
-export interface ApiEntityResultDto {
+import type { layer1_ingestion, layer2_extraction, layer4_agents } from '@fabric/platform-contract/generated';
+
+export type ApiEntityResultDto = {
   id?: string;
   entity_id?: string;
   name?: string;
@@ -12,7 +14,7 @@ export interface ApiEntityResultDto {
   data?: Record<string, unknown>;
 }
 
-export interface ApiIngestionJobDto {
+export type ApiIngestionJobDto = layer1_ingestion.components["schemas"]["JobSummary"] & {
   id?: string;
   status?: string;
   created_at?: string;
@@ -25,20 +27,20 @@ export interface ApiIngestionJobDto {
   };
 }
 
-export interface ApiIngestionAggregationDto {
+export type ApiIngestionAggregationDto = layer1_ingestion.components["schemas"]["ComplianceSummaryResponse"] & {
   by_status?: Record<string, number>;
   total_records_extracted?: number;
   total_execution_time_ms?: number;
 }
 
-export interface ApiWorkflowStepDto {
+export type ApiWorkflowStepDto = {
   agent?: string;
   result?: {
     output?: unknown;
   };
 }
 
-export interface ApiBusinessCaseUseCaseDto {
+export type ApiBusinessCaseUseCaseDto = {
   name?: string;
   persona?: string;
   value_driver?: string;
@@ -47,18 +49,18 @@ export interface ApiBusinessCaseUseCaseDto {
   confidence?: number;
 }
 
-export interface ApiBusinessCaseRoiOutputDto {
+export type ApiBusinessCaseRoiOutputDto = {
   use_cases?: ApiBusinessCaseUseCaseDto[];
   total_value?: number;
   avg_payback_months?: number;
   confidence?: number;
 }
 
-export interface ApiBusinessCaseNarrativeOutputDto {
+export type ApiBusinessCaseNarrativeOutputDto = {
   executive_summary?: string;
 }
 
-export interface ApiWorkflowResultDto {
+export type ApiWorkflowResultDto = layer4_agents.components["schemas"]["BusinessCaseResponse"] & {
   output?: {
     company_name?: string;
   };
@@ -66,19 +68,19 @@ export interface ApiWorkflowResultDto {
   completed_at?: string;
 }
 
-export interface ApiProgressLogDto {
+export type ApiProgressLogDto = {
   timestamp?: string;
   level?: string;
   message?: string;
   status?: string;
 }
 
-export interface ApiExtractedEntityDto {
+export type ApiExtractedEntityDto = {
   type?: string;
   name?: string;
 }
 
-export interface ApiExtractionJobDto {
+export type ApiExtractionJobDto = layer2_extraction.components["schemas"]["ExtractionStatusResponse"] & {
   id?: string;
   status?: string;
   progress_percent_complete?: number;
@@ -91,7 +93,7 @@ export interface ApiExtractionJobDto {
   configuration?: {
     url?: string;
   };
-}
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -218,7 +220,7 @@ export const parseExtractionJob = (value: unknown): ApiExtractionJobDto => {
 // INGESTION JOB DETAIL DTOs
 // =============================================================================
 
-export interface ApiJobProgressDto {
+export type ApiJobProgressDto = {
   total_pages?: number;
   processed_pages: number;
   failed_pages: number;
@@ -227,21 +229,21 @@ export interface ApiJobProgressDto {
   percent_complete: number;
 }
 
-export interface ApiJobResultsDto {
+export type ApiJobResultsDto = {
   raw_content_count: number;
   extracted_record_count: number;
   storage_bytes_used: number;
   output_location?: string;
 }
 
-export interface ApiJobResourcesDto {
+export type ApiJobResourcesDto = {
   browser_sessions_used: number;
   proxy_requests_made: number;
   llm_tokens_consumed: number;
   compute_time_ms: number;
 }
 
-export interface ApiJobStageDto {
+export type ApiJobStageDto = {
   stage: string;
   status: string;
   started_at?: string;
@@ -250,7 +252,7 @@ export interface ApiJobStageDto {
   error_message?: string;
 }
 
-export interface ApiJobErrorDto {
+export type ApiJobErrorDto = {
   id: string;
   stage: string;
   error_code: string;
@@ -262,7 +264,7 @@ export interface ApiJobErrorDto {
   resolved_at?: string;
 }
 
-export interface ApiJobDetailDto {
+export type ApiJobDetailDto = {
   id: string;
   target_id: string;
   tenant_id: string;
@@ -285,7 +287,7 @@ export interface ApiJobDetailDto {
   errors: ApiJobErrorDto[];
 }
 
-export interface ApiComplianceLogDto {
+export type ApiComplianceLogDto = {
   id: string;
   event_type: string;
   severity: string;
