@@ -189,21 +189,6 @@ async def extract_and_ingest(request: service.ExtractRequest, background_tasks: 
     return await service.extract_and_ingest(request, background_tasks)
 
 
-@router.get("/extract/status/{job_id}", response_model=service.ExtractionStatusResponse)
-async def get_extraction_status(job_id: str):
-    return await service.get_extraction_status(job_id)
-
-
-@router.post("/extract/batch")
-async def extract_batch(requests: list[service.ExtractRequest], background_tasks: BackgroundTasks):
-    return await service.extract_batch(requests, background_tasks)
-
-
-@router.get("/extract/jobs/{job_id}/events")
-async def stream_job_events(job_id: str):
-    return await service.stream_job_events(job_id)
-
-
 @router.get("/extract/results/{job_id}", response_model=ExtractionResultsResponse)
 async def get_extraction_results(
     job_id: str,
