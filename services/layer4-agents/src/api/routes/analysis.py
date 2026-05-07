@@ -391,7 +391,7 @@ async def quick_whitespace_analysis(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Whitespace analysis failed: {str(e)}")
+        raise normalize_exception(e, status_code=500, detail=f"Whitespace analysis failed: {str(e)}")
 
 
 @router.post("/cases", response_model=BusinessCaseResponse)

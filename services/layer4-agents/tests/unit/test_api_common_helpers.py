@@ -4,7 +4,7 @@ import pytest
 from types import SimpleNamespace
 
 from src.api.common import audit as audit_helpers
-from src.api.common.errors import normalize_exception, raise_normalized
+from src.api.common.errors import normalize_exception, raise_normalized, raise_normalized_with_log
 
 
 def test_normalize_exception_passthrough_http_exception() -> None:
@@ -66,3 +66,45 @@ async def test_emit_route_audit_delegates_to_emit_and_persist(monkeypatch: pytes
     assert captured["resource_type"] == "Workflow"
     assert captured["resource_id"] == "wf-123"
     assert captured["details"] == {"archived_at": "2026-05-07T00:00:00Z"}
+
+
+def test_raise_normalized_with_log_logs_non_http_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+
+    class _Logger:
+        def exception(self, message: str) -> None:
+            calls.append(message)
+
+    with pytest.raises(HTTPException) as raised:
+        raise_normalized_with_log(
+            RuntimeError("boom"),
+            status_code=500,
+            detail="Failed to pause workflow",
+            logger=_Logger(),
+            log_message="Unexpected error pausing workflow wf-123",
+        )
+
+    assert raised.value.status_code == 500
+    assert raised.value.detail == "Failed to pause workflow"
+    assert calls == ["Unexpected error pausing workflow wf-123"]
+
+
+def test_raise_normalized_with_log_skips_logging_http_exception() -> None:
+    calls: list[str] = []
+
+    class _Logger:
+        def exception(self, message: str) -> None:
+            calls.append(message)
+
+    with pytest.raises(HTTPException) as raised:
+        raise_normalized_with_log(
+            HTTPException(status_code=404, detail="not found"),
+            status_code=500,
+            detail="unused",
+            logger=_Logger(),
+            log_message="should not log",
+        )
+
+    assert raised.value.status_code == 404
+    assert raised.value.detail == "not found"
+    assert calls == []
