@@ -50,6 +50,21 @@ automatically, at scale, with full auditability.
 
 Frontend changes are governed by the root [`DESIGN.md`](DESIGN.md) contract. Human contributors and AI coding agents must read it before modifying `apps/web/`, reuse existing React/Vite/TypeScript/Tailwind/shadcn/TanStack Query patterns, and report validation results with any remaining risks.
 
+## Package Manager Policy (Monorepo)
+
+This repository uses **pnpm** as the canonical package manager.
+
+```bash
+# Enable corepack and activate the repo-pinned pnpm version
+corepack enable
+corepack use pnpm@10.18.1
+
+# Install JavaScript/TypeScript dependencies
+pnpm install
+```
+
+Using `npm install` or `yarn install` is not supported and will fail fast via the root `preinstall` guard.
+
 ## Quickstart
 
 ```bash
