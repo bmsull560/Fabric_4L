@@ -67,18 +67,18 @@ def load_allowlist(path: Path) -> list[AllowEntry]:
     return out
 
 
-def classify_reason(reason: str, allowlist: list[AllowEntry], today: date) -> tuple[str, str]:
+def classify_reason(reason: str, allowlist: list[AllowEntry], today: date) -> tuple[str, str, str]:
     for entry in allowlist:
         if entry.pattern.search(reason):
             if entry.expires_on < today:
-                return ("violation", f"expired allowlist ({entry.owner}, expired {entry.expires_on.isoformat()})")
-            return ("allowlisted", f"allowlisted by {entry.owner} until {entry.expires_on.isoformat()}")
+                return ("violation", "allowlisted", f"expired allowlist ({entry.owner}, expired {entry.expires_on.isoformat()})")
+            return ("allowlisted", "allowlisted", f"allowlisted by {entry.owner} until {entry.expires_on.isoformat()}")
 
     if any(p.search(reason) for p in CODE_HEALTH_PATTERNS):
-        return ("violation", "code-health skip")
+        return ("violation", "code_health", "code-health skip")
     if any(p.search(reason) for p in INFRA_PATTERNS):
-        return ("allowed", "infrastructure/environment skip")
-    return ("violation", "unclassified skip reason")
+        return ("allowed", "infrastructure", "infrastructure/environment skip")
+    return ("violation", "unclassified", "unclassified skip reason")
 
 
 def main() -> int:
@@ -102,24 +102,43 @@ def main() -> int:
     for reason in reasons:
         counts[reason] = counts.get(reason, 0) + 1
 
+    category_counts = {
+        "infrastructure": 0,
+        "code_health": 0,
+        "allowlisted": 0,
+        "unclassified": 0,
+    }
+
     for reason, count in sorted(counts.items(), key=lambda x: (-x[1], x[0])):
-        status, detail = classify_reason(reason, allowlist, today)
-        row = {"reason": reason, "count": str(count), "status": status, "detail": detail}
+        status, category, detail = classify_reason(reason, allowlist, today)
+        row = {"reason": reason, "count": str(count), "status": status, "category": category, "detail": detail}
         classified.append(row)
+        category_counts[category] = category_counts.get(category, 0) + count
         if status == "violation":
             violations.append(row)
 
     baseline_total = None
+    baseline_category_max: dict[str, int] = {}
     if args.baseline.exists():
-        baseline_total = int(json.loads(args.baseline.read_text(encoding="utf-8")).get("max_total_skips", 0))
+        baseline_data = json.loads(args.baseline.read_text(encoding="utf-8"))
+        baseline_total = int(baseline_data.get("max_total_skips", 0))
+        baseline_category_max = {k: int(v) for k, v in baseline_data.get("max_category_skips", {}).items()}
 
     total_skips = len(reasons)
     regression = baseline_total is not None and total_skips > baseline_total
+    category_regressions = {
+        k: {"actual": v, "max": baseline_category_max[k]}
+        for k, v in category_counts.items()
+        if k in baseline_category_max and v > baseline_category_max[k]
+    }
 
     report = {
         "total_skips": total_skips,
         "baseline_max_total_skips": baseline_total,
         "regression": regression,
+        "category_counts": category_counts,
+        "baseline_max_category_skips": baseline_category_max,
+        "category_regressions": category_regressions,
         "classified": classified,
         "violations": violations,
     }
@@ -127,20 +146,25 @@ def main() -> int:
         args.write_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
     print(f"total skipped entries: {total_skips}")
+    print(f"category counts: {json.dumps(category_counts, sort_keys=True)}")
     for row in classified:
-        print(f"- [{row['status']}] x{row['count']} :: {row['reason']} ({row['detail']})")
+        print(f"- [{row['status']}]/{row['category']} x{row['count']} :: {row['reason']} ({row['detail']})")
 
     if regression:
         print(
             f"ERROR: skip count regression detected (total {total_skips} > baseline {baseline_total}).",
             file=sys.stderr,
         )
+    if category_regressions:
+        print("ERROR: skip category regression(s) detected:", file=sys.stderr)
+        for category, data in sorted(category_regressions.items()):
+            print(f"  - {category}: {data['actual']} > {data['max']}", file=sys.stderr)
     if violations:
         print("ERROR: policy-violating skip reasons detected:", file=sys.stderr)
         for v in violations:
             print(f"  - x{v['count']} {v['reason']} ({v['detail']})", file=sys.stderr)
 
-    return 1 if regression or violations else 0
+    return 1 if regression or category_regressions or violations else 0
 
 
 if __name__ == "__main__":
