@@ -11,7 +11,8 @@
     "test": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run test",
     "typecheck": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run typecheck",
     "check:default-scope": "node scripts/ci/check_default_scope.mjs",
-    "preinstall": "node scripts/enforce-package-manager.cjs"
+    "preinstall": "node scripts/enforce-package-manager.cjs",
+    "check:package-manager-policy": "node scripts/ci/check_package_manager_policy.mjs"
   },
   "packageManager": "pnpm@10.18.1"
 }

@@ -20,10 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enforce root package manager policy
-        run: |
-          test ! -f package-lock.json
-          node -e "const pkg=require('./package.json'); if(!pkg.packageManager || !pkg.packageManager.startsWith('pnpm@')) { throw new Error('package.json must pin pnpm via packageManager'); }"
+      - name: Enforce package manager policy (root + apps/web)
+        run: pnpm run check:package-manager-policy
 
       - name: Set up Python
         uses: actions/setup-python@v5
