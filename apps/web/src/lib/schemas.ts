@@ -207,6 +207,17 @@ export const ValueTreePathSchema = z.object({
 
 export const ValueTreePathListSchema = z.array(ValueTreePathSchema);
 
+export const CreateValueTreeRequestSchema = z.object({
+  entity_id: z.string().min(1),
+  direction: z.enum(['upward', 'downward']).optional(),
+  initialize_root: z.boolean().optional(),
+});
+
+export const ImportValueTreeRequestSchema = z.object({
+  entity_id: z.string().min(1),
+  tree: ValueTreeResponseSchema,
+});
+
 // ===== Validation Helpers =====
 
 /**
