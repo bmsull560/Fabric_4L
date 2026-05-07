@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiPut, apiPatch } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { L4_ANALYSIS_PREFIX } from '@/lib/apiConfig';
 import { QK } from './queryKeys';
 
@@ -31,32 +32,31 @@ export async function getOrCreateCanonicalCaseId(accountId: string): Promise<str
   const stored = getStoredCaseId(accountId);
   if (stored) return stored;
 
-  const lookup = await apiClient.get<CaseListResponse>('l4', `${L4_ANALYSIS_PREFIX}/cases?account_id=${encodeURIComponent(accountId)}`);
-  const items = Array.isArray(lookup.data) ? lookup.data : (lookup.data?.items ?? []);
-  const existing = (items[0] ?? {}) as CaseRecord;
-  const existingCaseId = existing.case_id || existing.id;
+  const lookup = await apiGet<l4.components['schemas']['CaseListResponse']>('l4', `${L4_ANALYSIS_PREFIX}/cases?account_id=${encodeURIComponent(accountId)}`);
+  const items = lookup.data.items;
+  const existingCaseId = items[0]?.case_id;
   if (existingCaseId) {
     setStoredCaseId(accountId, existingCaseId);
     return existingCaseId;
   }
 
-  const created = await apiClient.post<CaseRecord>('l4', `${L4_ANALYSIS_PREFIX}/cases`, {
+  const created = await apiPost<l4.components['schemas']['CreateCaseResponse']>('l4', `${L4_ANALYSIS_PREFIX}/cases`, {
     account_id: accountId,
     title: `Account ${accountId} workspace`,
   });
-  const createdCaseId = String(created.data.case_id ?? created.data.id ?? '');
+  const createdCaseId = created.data.case_id;
   if (!createdCaseId) throw new Error('Unable to create case for account workspace');
   setStoredCaseId(accountId, createdCaseId);
   return createdCaseId;
 }
 
 export async function fetchWorkspaceTab<TData>(caseId: string, tabKey: string): Promise<TData> {
-  const response = await apiClient.get<TData>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/${tabKey}`);
+  const response = await apiGet<TData>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/${tabKey}`);
   return response.data;
 }
 
 export async function persistWorkspaceTab(caseId: string, tabKey: string, payload: unknown): Promise<unknown> {
-  const response = await apiClient.put<unknown>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/${tabKey}`, payload);
+  const response = await apiPut<unknown>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/${tabKey}`, payload);
   return response.data;
 }
 
@@ -123,7 +123,7 @@ export function usePersistWorkspaceTab(tabKey: string) {
 export function useValidateEvidenceClaim() {
   return useMutation({
     mutationFn: async ({ caseId, evidenceId, claim }: { caseId: string; evidenceId: string; claim: string }) => {
-      const response = await apiClient.post<unknown>('l5', '/claims/validate', {
+      const response = await apiPost<unknown>('l5', '/claims/validate', {
         case_id: caseId,
         evidence_id: evidenceId,
         claim,
@@ -140,8 +140,7 @@ export function useValidateEvidenceClaim() {
 export function useGenerateWorkspaceIntelligence() {
   return useMutation({
     mutationFn: async (caseId: string) => {
-      const response = await apiClient.post('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/generate`, {});
-      return response.data as {
+      const response = await apiPost<{
         case_id: string;
         account_id: string;
         generated: boolean;
@@ -151,7 +150,8 @@ export function useGenerateWorkspaceIntelligence() {
           evidence: number;
           stakeholders: number;
         };
-      };
+      }>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/generate`, {});
+      return response.data;
     },
   });
 }
@@ -170,7 +170,7 @@ export function useSignalReview() {
       reviewStatus: 'approved' | 'rejected';
       decisionNote?: string;
     }) => {
-      const response = await apiClient.patch('l4', `/v1/signals/${signalId}/review`, {
+      const response = await apiPatch<unknown>('l4', `/v1/signals/${signalId}/review`, {
         account_id: accountId,
         review_status: reviewStatus,
         decision_note: decisionNote,
@@ -209,7 +209,7 @@ export function useEvidenceDecisionMutation() {
       driverId?: string;
       decisionNote?: string;
     }) => {
-      const response = await apiClient.post('l4', `/v1/evidence/${evidenceId}/decisions`, {
+      const response = await apiPost<unknown>('l4', `/v1/evidence/${evidenceId}/decisions`, {
         account_id: accountId,
         case_id: caseId,
         decision,
@@ -266,7 +266,7 @@ export function useApplyWorkspacePageAction() {
       switch (action.intendedOperation) {
         case 'signal_review':
           return (
-            await apiClient.patch('l4', `/v1/signals/${action.entityId}/review`, {
+            await apiPatch<unknown>('l4', `/v1/signals/${action.entityId}/review`, {
               account_id: action.accountId,
               review_status: action.payload?.reviewStatus,
               decision_note: action.payload?.decisionNote,
@@ -275,7 +275,7 @@ export function useApplyWorkspacePageAction() {
           ).data;
         case 'evidence_attach':
           return (
-            await apiClient.post('l4', `/v1/hypotheses/${String(action.payload?.hypothesisId ?? '')}/attach-evidence`, {
+            await apiPost<unknown>('l4', `/v1/hypotheses/${String(action.payload?.hypothesisId ?? '')}/attach-evidence`, {
               evidence_id: action.entityId,
               account_id: action.accountId,
               ...auditEnvelope,
@@ -283,7 +283,7 @@ export function useApplyWorkspacePageAction() {
           ).data;
         case 'hypothesis_convert':
           return (
-            await apiClient.post('l4', `/v1/hypotheses/${action.entityId}/validate`, {
+            await apiPost<unknown>('l4', `/v1/hypotheses/${action.entityId}/validate`, {
               new_status: 'converted',
               feedback: action.payload?.feedback,
               ...auditEnvelope,
@@ -291,7 +291,7 @@ export function useApplyWorkspacePageAction() {
           ).data;
         case 'scenario_update':
           return (
-            await apiClient.patch('l4', `/analysis/cases/${action.caseId}/workspace/value-model/scenarios/${action.entityId}`, {
+            await apiPatch<unknown>('l4', `/analysis/cases/${action.caseId}/workspace/value-model/scenarios/${action.entityId}`, {
               account_id: action.accountId,
               updates: action.payload,
               ...auditEnvelope,

@@ -8,7 +8,7 @@
  * Endpoints: 7
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -159,33 +159,33 @@ function buildCalcParams(filters: ROICalculationListFilters): string {
 }
 
 async function fetchTemplates(): Promise<ROITemplate[]> {
-  const response = await apiClient.get('l3', '/v1/roi/templates');
-  return response.data as ROITemplate[];
+  const response = await apiGet<ROITemplate[]>('l3', '/v1/roi/templates');
+  return response.data;
 }
 
 async function fetchCalculations(filters: ROICalculationListFilters): Promise<ROICalculationListResponse> {
-  const response = await apiClient.get('l3', `/v1/roi/calculations${buildCalcParams(filters)}`);
-  return response.data as ROICalculationListResponse;
+  const response = await apiGet<ROICalculationListResponse>('l3', `/v1/roi/calculations${buildCalcParams(filters)}`);
+  return response.data;
 }
 
 async function fetchCalculation(calcId: string): Promise<ROICalculationResult> {
-  const response = await apiClient.get('l3', `/v1/roi/calculations/${calcId}`);
-  return response.data as ROICalculationResult;
+  const response = await apiGet<ROICalculationResult>('l3', `/v1/roi/calculations/${calcId}`);
+  return response.data;
 }
 
 async function fetchBenchmarks(industry: string): Promise<IndustryBenchmark> {
-  const response = await apiClient.get('l3', `/v1/roi/benchmarks/${encodeURIComponent(industry)}`);
-  return response.data as IndustryBenchmark;
+  const response = await apiGet<IndustryBenchmark>('l3', `/v1/roi/benchmarks/${encodeURIComponent(industry)}`);
+  return response.data;
 }
 
 async function fetchBenchmarksList(): Promise<BenchmarkListResponse> {
-  const response = await apiClient.get('l3', '/v1/roi/benchmarks');
-  return response.data as BenchmarkListResponse;
+  const response = await apiGet<BenchmarkListResponse>('l3', '/v1/roi/benchmarks');
+  return response.data;
 }
 
 async function fetchBenchmarkDetail(benchmarkId: string): Promise<Benchmark> {
-  const response = await apiClient.get('l3', `/v1/roi/benchmarks/${encodeURIComponent(benchmarkId)}`);
-  return response.data as Benchmark;
+  const response = await apiGet<Benchmark>('l3', `/v1/roi/benchmarks/${encodeURIComponent(benchmarkId)}`);
+  return response.data;
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
@@ -268,8 +268,8 @@ export function useCalculateROI() {
   const queryClient = useQueryClient();
   return useMutation<ROICalculationResult, ROIApiError, ROICalculationRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/roi/calculate', params);
-      return response.data as ROICalculationResult;
+      const response = await apiPost<ROICalculationResult>('l3', '/v1/roi/calculate', params);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.roi.all });
@@ -280,8 +280,8 @@ export function useCalculateROI() {
 export function useCompareROI() {
   return useMutation<ROICompareResult, ROIApiError, ROICompareRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/roi/compare', params);
-      return response.data as ROICompareResult;
+      const response = await apiPost<ROICompareResult>('l3', '/v1/roi/compare', params);
+      return response.data;
     },
   });
 }
@@ -290,8 +290,8 @@ export function useCreateROITemplate() {
   const queryClient = useQueryClient();
   return useMutation<ROITemplate, ROIApiError, CreateROITemplateRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/roi/templates', params);
-      return response.data as ROITemplate;
+      const response = await apiPost<ROITemplate>('l3', '/v1/roi/templates', params);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.roi.templates() });
@@ -303,8 +303,8 @@ export function useROICalculationAgent() {
   const queryClient = useQueryClient();
   return useMutation<ROICalculationAgentResult, ROIApiError, ROICalculationAgentRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/agents/roi-calculation', params);
-      return response.data as ROICalculationAgentResult;
+      const response = await apiPost<ROICalculationAgentResult>('l3', '/v1/agents/roi-calculation', params);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.roi.agentCalculation() });

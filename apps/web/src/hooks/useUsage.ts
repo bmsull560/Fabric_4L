@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
 import { withApiError, BaseApiError, STALE_TIME } from './useApiShared';
 
 // ============================================================================
@@ -65,10 +65,10 @@ export function useUsageSummary(customerId: string) {
   return useQuery({
     queryKey: usageKeys.summary(customerId),
     queryFn: async () => {
-      const response = await apiClient.get(
+      const response = await apiGet<{ metrics: UsageMetric[] }>(
         'l4',
         `/billing/usage?customer_id=${encodeURIComponent(customerId)}`
-      ) as { data: { metrics: UsageMetric[] } };
+      );
       return response.data;
     },
     enabled: !!customerId,
@@ -84,10 +84,10 @@ export function useUsageLimits(customerId: string) {
   return useQuery({
     queryKey: usageKeys.limits(customerId),
     queryFn: async () => {
-      const response = await apiClient.get(
+      const response = await apiGet<{ limits: UsageLimit[] }>(
         'l4',
         `/billing/limits?customer_id=${encodeURIComponent(customerId)}`
-      ) as { data: { limits: UsageLimit[] } };
+      );
       return response.data;
     },
     enabled: !!customerId,
@@ -103,10 +103,10 @@ export function useUsageEvents(customerId: string) {
   return useQuery({
     queryKey: usageKeys.events(customerId),
     queryFn: async () => {
-      const response = await apiClient.get(
+      const response = await apiGet<{ events: UsageEvent[] }>(
         'l4',
         `/billing/events?customer_id=${encodeURIComponent(customerId)}`
-      ) as { data: { events: UsageEvent[] } };
+      );
       return response.data;
     },
     enabled: !!customerId,
@@ -124,9 +124,8 @@ export function useCheckLimits(customerId: string) {
   const checkMutation = useMutation({
     mutationFn: async (params: { metric: string; quantity: number }) => {
       return withApiError(
-        apiClient
-          .post('l4', `/billing/check?customer_id=${encodeURIComponent(customerId)}`, params)
-          .then((r) => (r as { data: OverageCheck }).data),
+        apiPost<OverageCheck>('l4', `/billing/check?customer_id=${encodeURIComponent(customerId)}`, params)
+          .then((r) => r.data),
         BaseApiError
       );
     },

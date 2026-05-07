@@ -8,7 +8,8 @@
  * Endpoints: 12
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/api/typedClient';
+import type { l3 } from '@/api/generated';
 import {
   parseCapabilityCoverageList,
   parseCapabilityMutationResponse,
@@ -101,12 +102,12 @@ function buildProductParams(filters: ProductListFilters): string {
 }
 
 async function fetchProducts(filters: ProductListFilters): Promise<ProductListResponse> {
-  const response = await apiClient.get('l3', `/v1/products${buildProductParams(filters)}`);
+  const response = await apiGet<l3.components['schemas']['ProductListResponse']>('l3', `/v1/products${buildProductParams(filters)}`);
   return parseProductListResponse(response.data);
 }
 
 async function fetchProduct(productId: string): Promise<Product> {
-  const response = await apiClient.get('l3', `/v1/products/${productId}`);
+  const response = await apiGet<l3.components['schemas']['ProductResponse']>('l3', `/v1/products/${productId}`);
   return parseProduct(response.data);
 }
 
@@ -114,17 +115,17 @@ async function fetchSignalMatching(accountId?: string): Promise<SignalMatch[]> {
   const params = new URLSearchParams();
   if (accountId) params.set('account_id', accountId);
   const qs = params.toString();
-  const response = await apiClient.get('l3', `/v1/products/matching/signals${qs ? `?${qs}` : ''}`);
+  const response = await apiGet<l3.components['schemas']['SignalMatchResponse'][]>('l3', `/v1/products/matching/signals${qs ? `?${qs}` : ''}`);
   return parseSignalMatchList(response.data);
 }
 
 async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
-  const response = await apiClient.get('l3', '/v1/products/analytics/summary');
+  const response = await apiGet<l3.components['schemas']['PortfolioSummaryResponse']>('l3', '/v1/products/analytics/summary');
   return parsePortfolioSummary(response.data);
 }
 
 async function fetchCapabilityCoverage(): Promise<CapabilityCoverage[]> {
-  const response = await apiClient.get('l3', '/v1/products/analytics/coverage');
+  const response = await apiGet<l3.components['schemas']['CapabilityCoverageItem'][]>('l3', '/v1/products/analytics/coverage');
   return parseCapabilityCoverageList(response.data);
 }
 
@@ -190,7 +191,7 @@ export function useCreateProduct() {
   const queryClient = useQueryClient();
   return useMutation<Product, ProductApiError, CreateProductRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l3', '/v1/products', params);
+      const response = await apiPost<Record<string, unknown>>('l3', '/v1/products', params);
       return parseProduct(response.data);
     },
     onSuccess: () => {
@@ -203,7 +204,7 @@ export function useUpdateProduct() {
   const queryClient = useQueryClient();
   return useMutation<Product, ProductApiError, { productId: string; data: UpdateProductRequest }>({
     mutationFn: async ({ productId, data }) => {
-      const response = await apiClient.patch('l3', `/v1/products/${productId}`, data);
+      const response = await apiPatch<Record<string, unknown>>('l3', `/v1/products/${productId}`, data);
       return parseProduct(response.data);
     },
     onSuccess: (_data, { productId }) => {
@@ -217,7 +218,7 @@ export function useDeleteProduct() {
   const queryClient = useQueryClient();
   return useMutation<void, ProductApiError, string>({
     mutationFn: async (productId) => {
-      await apiClient.delete('l3', `/v1/products/${productId}`);
+      await apiDelete<unknown>('l3', `/v1/products/${productId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.products.all });
@@ -229,7 +230,7 @@ export function useAddProductFeature() {
   const queryClient = useQueryClient();
   return useMutation<FeatureMutationResponse, ProductApiError, { productId: string; data: AddFeatureRequest }>({
     mutationFn: async ({ productId, data }) => {
-      const response = await apiClient.post('l3', `/v1/products/${productId}/features`, data);
+      const response = await apiPost<Record<string, unknown>>('l3', `/v1/products/${productId}/features`, data);
       return parseFeatureMutationResponse(response.data);
     },
     onSuccess: (_data, { productId }) => {
@@ -243,7 +244,7 @@ export function useDeleteProductFeature() {
   const queryClient = useQueryClient();
   return useMutation<void, ProductApiError, { productId: string; featureId: string }>({
     mutationFn: async ({ productId, featureId }) => {
-      await apiClient.delete('l3', `/v1/products/${productId}/features/${featureId}`);
+      await apiDelete<unknown>('l3', `/v1/products/${productId}/features/${featureId}`);
     },
     onSuccess: (_data, { productId }) => {
       queryClient.invalidateQueries({ queryKey: QK.products.detail(productId) });
@@ -255,7 +256,7 @@ export function useAddProductCapability() {
   const queryClient = useQueryClient();
   return useMutation<CapabilityMutationResponse, ProductApiError, { productId: string; data: AddCapabilityRequest }>({
     mutationFn: async ({ productId, data }) => {
-      const response = await apiClient.post('l3', `/v1/products/${productId}/capabilities`, data);
+      const response = await apiPost<Record<string, unknown>>('l3', `/v1/products/${productId}/capabilities`, data);
       return parseCapabilityMutationResponse(response.data);
     },
     onSuccess: (_data, { productId }) => {
@@ -269,7 +270,7 @@ export function useDeleteProductCapability() {
   const queryClient = useQueryClient();
   return useMutation<void, ProductApiError, { productId: string; capabilityId: string }>({
     mutationFn: async ({ productId, capabilityId }) => {
-      await apiClient.delete('l3', `/v1/products/${productId}/capabilities/${capabilityId}`);
+      await apiDelete<unknown>('l3', `/v1/products/${productId}/capabilities/${capabilityId}`);
     },
     onSuccess: (_data, { productId }) => {
       queryClient.invalidateQueries({ queryKey: QK.products.detail(productId) });

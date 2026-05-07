@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
 import { withApiError, BaseApiError, STALE_TIME } from './useApiShared';
 import { createFeatureLogger } from '@/lib/telemetry';
 
@@ -57,8 +57,8 @@ export function useBilling(customerId: string) {
   const subscriptionQuery = useQuery({
     queryKey: billingKeys.subscription(customerId),
     queryFn: async () => {
-      const response = await apiClient.get('l4', `/billing/subscription?customer_id=${encodeURIComponent(customerId)}`);
-      return response.data as Subscription;
+      const response = await apiGet<Subscription>('l4', `/billing/subscription?customer_id=${encodeURIComponent(customerId)}`);
+      return response.data;
     },
     enabled: !!customerId,
     staleTime: STALE_TIME.detail,
@@ -72,7 +72,7 @@ export function useBilling(customerId: string) {
     }) => {
       setCheckoutError(null);
       return withApiError(
-        apiClient.post('l4', `/billing/checkout?customer_id=${encodeURIComponent(customerId)}`, params).then(r => r.data as CheckoutResponse),
+        apiPost<CheckoutResponse>('l4', `/billing/checkout?customer_id=${encodeURIComponent(customerId)}`, params).then(r => r.data),
         BaseApiError
       );
     },
@@ -90,7 +90,7 @@ export function useBilling(customerId: string) {
     mutationFn: async (returnUrl: string) => {
       setPortalError(null);
       return withApiError(
-        apiClient.post('l4', `/billing/portal?customer_id=${encodeURIComponent(customerId)}`, { return_url: returnUrl }).then(r => r.data as PortalResponse),
+        apiPost<PortalResponse>('l4', `/billing/portal?customer_id=${encodeURIComponent(customerId)}`, { return_url: returnUrl }).then(r => r.data),
         BaseApiError
       );
     },
@@ -155,8 +155,8 @@ export function useEntitlements(customerId: string) {
   return useQuery({
     queryKey: billingKeys.entitlements(customerId),
     queryFn: async () => {
-      const response = await apiClient.get('l4', `/billing/entitlements?customer_id=${encodeURIComponent(customerId)}`);
-      return response.data as EntitlementsResponse;
+      const response = await apiGet<EntitlementsResponse>('l4', `/billing/entitlements?customer_id=${encodeURIComponent(customerId)}`);
+      return response.data;
     },
     enabled: !!customerId,
     staleTime: STALE_TIME.detail,
@@ -167,11 +167,11 @@ export function useFeatureCheck(customerId: string, featureId: string) {
   return useQuery({
     queryKey: billingKeys.feature(customerId, featureId),
     queryFn: async () => {
-      const response = await apiClient.get(
+      const response = await apiGet<FeatureCheck>(
         'l4',
         `/billing/check-feature?customer_id=${encodeURIComponent(customerId)}&feature_id=${encodeURIComponent(featureId)}`
       );
-      return response.data as FeatureCheck;
+      return response.data;
     },
     enabled: !!customerId && !!featureId,
     staleTime: STALE_TIME.detail,

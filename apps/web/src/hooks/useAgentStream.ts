@@ -19,7 +19,7 @@
  */
 import { useState, useCallback } from "react";
 import type { AgentMessage, AgentAction } from "@/components/workspace/RightRail";
-import { apiClient } from "@/api/client";
+import { apiPost } from "@/api/typedClient";
 import { parseAgentResponseEnvelope } from "@/lib/schemas/provenance";
 
 // ── System Prompts by Tab ────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ export function useAgentStream({
           { role: "user" as const, content: userInput },
         ];
 
-        const response = (await apiClient.post("l4", "/agent-stream/chat", {
+        const response = await apiPost<unknown>("l4", "/agent-stream/chat", {
           messages: conversationMessages,
           activeTab,
           account: {
@@ -184,7 +184,7 @@ export function useAgentStream({
             accountName,
             accountTier,
           },
-        })) as { data?: unknown };
+        });
 
         const envelope = parseAgentResponseEnvelope(response.data ?? {});
         const agentContent =

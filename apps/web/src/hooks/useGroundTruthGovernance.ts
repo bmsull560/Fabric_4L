@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet } from "@/api/typedClient";
+import type { l5 } from "@/api/generated";
 import type {
   ClaimType,
   FreshnessSummaryResponse,
@@ -66,45 +67,46 @@ function toQueryString(filters: object): string {
 async function fetchTruths(
   filters: TruthListFilters
 ): Promise<TruthObjectListResponse> {
-  const response = (await apiClient.get(
+  const response = await apiGet<l5.components["schemas"]["TruthObjectListResponse"]>(
     "l4",
     `/ground-truth/truths${toQueryString(filters)}`
-  )) as { data: unknown };
+  );
   return parseTruthObjectListResponse(response.data);
 }
 
 async function fetchTruthAuditTrail(
   truthId: string
 ): Promise<ValidationEventResponse[]> {
-  const response = (await apiClient.get(
+  const response = await apiGet<l5.components["schemas"]["ValidationEventResponse"][]>(
     "l4",
     `/ground-truth/truths/${encodeURIComponent(truthId)}/audit`
-  )) as { data: unknown };
+  );
   return parseValidationEventListResponse(response.data);
 }
 
 async function fetchFreshnessSummary(): Promise<FreshnessSummaryResponse> {
-  const response = (await apiClient.get(
+  const response = await apiGet<unknown>(
     "l4",
     "/ground-truth/truths/freshness-summary"
-  )) as { data: unknown };
+  );
   return parseFreshnessSummaryResponse(response.data);
 }
 
 async function fetchStaleTruths(
   params: Pick<TruthListFilters, "limit" | "offset">
 ): Promise<StaleTruthsResponse> {
-  const response = (await apiClient.get(
+  const response = await apiGet<unknown>(
     "l4",
     `/ground-truth/truths/stale${toQueryString(params)}`
-  )) as { data: unknown };
+  );
   return parseStaleTruthsResponse(response.data, params);
 }
 
 async function fetchMaturityLadder(): Promise<MaturityLadderResponse> {
-  const response = (await apiClient.get("l4", "/ground-truth/maturity-ladder")) as {
-    data: unknown;
-  };
+  const response = await apiGet<l5.components["schemas"]["MaturityLadderResponse"]>(
+    "l4",
+    "/ground-truth/maturity-ladder"
+  );
   return parseMaturityLadderResponse(response.data);
 }
 

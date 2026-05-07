@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l3 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import { EntityListResponseSchema, validateOrThrow, validateObject } from '@/lib/validation/schemas';
@@ -211,7 +212,7 @@ export function useEntities(filters?: EntityFilters) {
       params.append('sort_by', filters?.sortBy ?? 'updated_at');
       params.append('sort_order', filters?.sortOrder ?? 'desc');
 
-      const response = await apiClient.get('l3', `/entities?${params.toString()}`);
+      const response = await apiGet<l3.components['schemas']['EntityListResponse']>('l3', `/entities?${params.toString()}`);
       const data = validateOrThrow(EntityListResponseSchema, response.data, 'EntityListResponse');
 
       return {
@@ -244,7 +245,7 @@ export function useEntitySearch(query: string) {
         sort_order: 'desc',
       });
 
-      const response = await apiClient.get('l3', `/entities?${params.toString()}`);
+      const response = await apiGet<l3.components['schemas']['EntityListResponse']>('l3', `/entities?${params.toString()}`);
       const data = validateOrThrow(EntityListResponseSchema, response.data, 'EntityListResponse');
 
       return {
@@ -271,7 +272,7 @@ export function useEntityFilterOptions() {
   return useQuery({
     queryKey: ['entityFilterOptions'],
     queryFn: async () => {
-      const response = await apiClient.get('l3', '/entities?limit=1');
+      const response = await apiGet<l3.components['schemas']['EntityListResponse']>('l3', '/entities?limit=1');
       const data = validateOrThrow(EntityListResponseSchema, response.data, 'EntityFilterOptions');
       return {
         availableDomains: data.available_domains,
@@ -303,7 +304,7 @@ export function useEntity(id: string | null) {
       if (!id) throw new Error('No entity ID provided');
 
       const encodedId = encodeURIComponent(id);
-      const response = await apiClient.get(
+      const response = await apiGet<l3.components['schemas']['EntityDetail']>(
         'l3',
         `/entities/${encodedId}?include_provenance=true&include_relationships=true`
       );
@@ -330,7 +331,7 @@ export function useCreateEntity() {
   return useMutation<Entity, Error, CreateEntityPayload>({
     mutationFn: async (entity): Promise<Entity> => {
       try {
-        const response = await apiClient.post('l3', '/entities', mapCreateEntityPayloadToDto(entity));
+        const response = await apiPost<l3.components['schemas']['EntityDetail']>('l3', '/entities', mapCreateEntityPayloadToDto(entity));
         return mapApiEntity(response.data);
       } catch (error) {
         const message = getCreateEntityErrorMessage(error);

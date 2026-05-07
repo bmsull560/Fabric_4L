@@ -11,7 +11,8 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { QK } from "./queryKeys";
-import { apiClient } from "@/api/client";
+import { apiGet } from "@/api/typedClient";
+import type { l4 } from "@/api/generated";
 
 // ── Prefetch Registry ────────────────────────────────────────────────────────
 
@@ -24,14 +25,14 @@ const PREFETCH_REGISTRY: Record<string, PrefetchTarget> = {
   account: {
     preloadComponent: () => import("@/pages/EntityDetail"),
     prefetchData: async (accountId: string) => {
-      const response = await apiClient.get("l4", `/accounts/${accountId}`);
+      const response = await apiGet<l4.components["schemas"]["AccountDetailSchema"]>("l4", `/accounts/${accountId}`);
       return response;
     },
   },
   businessCase: {
     preloadComponent: () => import("@/pages/BusinessCase"),
     prefetchData: async (caseId: string) => {
-      const response = await apiClient.get("l4", `/workflows/${caseId}/result`);
+      const response = await apiGet<unknown>("l4", `/workflows/${caseId}/result`);
       return response;
     },
   },

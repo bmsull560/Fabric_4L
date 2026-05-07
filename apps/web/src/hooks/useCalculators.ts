@@ -9,7 +9,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet, apiPost, apiPut } from "@/api/typedClient";
 import { QK } from "./queryKeys";
 import {
   withApiError,
@@ -108,31 +108,31 @@ function buildLeverParams(filters: LeverConfigRequest): string {
 async function fetchValueLevers(
   filters: LeverConfigRequest
 ): Promise<LeverConfigResponse> {
-  const response = await apiClient.get(
+  const response = await apiGet<LeverConfigResponse>(
     "l3",
     `/v1/calculators/levers${buildLeverParams(filters)}`
   );
-  return response.data as LeverConfigResponse;
+  return response.data;
 }
 
 async function createValueCase(
   data: ValueCaseRequest
 ): Promise<ValueCaseResponse> {
-  const response = await apiClient.post("l3", "/v1/calculators/value-cases", data);
-  return response.data as ValueCaseResponse;
+  const response = await apiPost<ValueCaseResponse>("l3", "/v1/calculators/value-cases", data);
+  return response.data;
 }
 
 async function fetchValueCase(caseId: string): Promise<ValueCaseResponse> {
-  const response = await apiClient.get("l3", `/v1/calculators/value-cases/${caseId}`);
-  return response.data as ValueCaseResponse;
+  const response = await apiGet<ValueCaseResponse>("l3", `/v1/calculators/value-cases/${caseId}`);
+  return response.data;
 }
 
 async function updateValueCase(
   caseId: string,
   data: ValueCaseRequest
 ): Promise<ValueCaseResponse> {
-  const response = await apiClient.put("l3", `/v1/calculators/value-cases/${caseId}`, data);
-  return response.data as ValueCaseResponse;
+  const response = await apiPut<ValueCaseResponse>("l3", `/v1/calculators/value-cases/${caseId}`, data);
+  return response.data;
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import { apiClient } from '@/api/client';
+import { apiGet } from '@/api/typedClient';
 import { STALE_TIME } from './useApiShared';
 
 // ============================================================================
@@ -96,10 +96,10 @@ export function useInvoiceList(customerId: string, options: { limit?: number; of
   return useQuery({
     queryKey: invoiceKeys.list(customerId),
     queryFn: async () => {
-      const response = await apiClient.get(
+      const response = await apiGet<{ invoices: Invoice[]; pagination: { limit: number; offset: number } }>(
         'l4',
         `/billing/invoices?customer_id=${encodeURIComponent(customerId)}&limit=${limit}&offset=${offset}`
-      ) as { data: { invoices: Invoice[]; pagination: { limit: number; offset: number } } };
+      );
       return response.data;
     },
     enabled: !!customerId,
@@ -115,10 +115,10 @@ export function useInvoiceDetail(customerId: string, invoiceId: string | null) {
     queryKey: invoiceKeys.detail(customerId, invoiceId || 'null'),
     queryFn: async () => {
       if (!invoiceId) return null;
-      const response = await apiClient.get(
+      const response = await apiGet<Invoice & { items: InvoiceItem[]; charges: Charge[] }>(
         'l4',
         `/billing/invoices/${encodeURIComponent(invoiceId)}?customer_id=${encodeURIComponent(customerId)}`
-      ) as { data: Invoice & { items: InvoiceItem[]; charges: Charge[] } };
+      );
       return response.data;
     },
     enabled: !!customerId && !!invoiceId,
@@ -135,10 +135,10 @@ export function useChargeList(customerId: string, options: { limit?: number; off
   return useQuery({
     queryKey: invoiceKeys.charges(customerId),
     queryFn: async () => {
-      const response = await apiClient.get(
+      const response = await apiGet<{ charges: Charge[]; pagination: { limit: number; offset: number } }>(
         'l4',
         `/billing/charges?customer_id=${encodeURIComponent(customerId)}&limit=${limit}&offset=${offset}`
-      ) as { data: { charges: Charge[]; pagination: { limit: number; offset: number } } };
+      );
       return response.data;
     },
     enabled: !!customerId,
@@ -157,10 +157,10 @@ export function useInvoices(customerId: string) {
   // Manual fetch for invoice detail (used when clicking on invoice in list)
   const getInvoice = useCallback(
     async (invoiceId: string) => {
-      const response = await apiClient.get(
+      const response = await apiGet<Invoice & { items: InvoiceItem[]; charges: Charge[] }>(
         'l4',
         `/billing/invoices/${encodeURIComponent(invoiceId)}?customer_id=${encodeURIComponent(customerId)}`
-      ) as { data: Invoice & { items: InvoiceItem[]; charges: Charge[] } };
+      );
       return response.data;
     },
     [customerId]

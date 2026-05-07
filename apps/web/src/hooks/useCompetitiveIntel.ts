@@ -8,7 +8,7 @@
  * Endpoints: 10
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/api/typedClient";
 import {
   parseBattlecard,
   parseBattlecardList,
@@ -132,7 +132,7 @@ function buildOptionalProductParams(productId?: string): string {
 async function fetchCompetitors(
   filters: CompetitorListFilters
 ): Promise<CompetitorListResponse> {
-  const response = await apiClient.get(
+  const response = await apiGet<unknown>(
     "l3",
     `/v1/competitive/competitors${buildCompetitorParams(filters)}`
   );
@@ -140,7 +140,7 @@ async function fetchCompetitors(
 }
 
 async function fetchCompetitor(id: string): Promise<Competitor> {
-  const response = await apiClient.get(
+  const response = await apiGet<unknown>(
     "l3",
     `/v1/competitive/competitors/${encodeURIComponent(id)}`
   );
@@ -148,7 +148,7 @@ async function fetchCompetitor(id: string): Promise<Competitor> {
 }
 
 async function fetchBattlecards(competitorId: string): Promise<Battlecard[]> {
-  const response = await apiClient.get(
+  const response = await apiGet<unknown>(
     "l3",
     `/v1/competitive/competitors/${encodeURIComponent(competitorId)}/battlecards`
   );
@@ -159,7 +159,7 @@ async function fetchBattlecard(
   competitorId: string,
   productId: string
 ): Promise<Battlecard> {
-  const response = await apiClient.get(
+  const response = await apiGet<unknown>(
     "l3",
     `/v1/competitive/competitors/${encodeURIComponent(competitorId)}/battlecard?product_id=${encodeURIComponent(productId)}`
   );
@@ -167,7 +167,7 @@ async function fetchBattlecard(
 }
 
 async function fetchWinLossSummary(): Promise<WinLossSummaryResponse> {
-  const response = await apiClient.get(
+  const response = await apiGet<unknown>(
     "l3",
     "/v1/competitive/win-loss/summary"
   );
@@ -177,7 +177,7 @@ async function fetchWinLossSummary(): Promise<WinLossSummaryResponse> {
 async function fetchLandscape(
   productId?: string
 ): Promise<CompetitiveLandscapeResponse> {
-  const response = await apiClient.get(
+  const response = await apiGet<unknown>(
     "l3",
     `/v1/competitive/landscape${buildOptionalProductParams(productId)}`
   );
@@ -282,7 +282,7 @@ export function useCreateCompetitor() {
     CreateCompetitorRequest
   >({
     mutationFn: async params => {
-      const response = await apiClient.post(
+      const response = await apiPost<unknown>(
         "l3",
         "/v1/competitive/competitors",
         params
@@ -303,7 +303,7 @@ export function useUpdateCompetitor() {
     { id: string; data: UpdateCompetitorRequest }
   >({
     mutationFn: async ({ id, data }) => {
-      const response = await apiClient.put(
+      const response = await apiPut<unknown>(
         "l3",
         `/v1/competitive/competitors/${encodeURIComponent(id)}`,
         data
@@ -321,7 +321,7 @@ export function useDeleteCompetitor() {
   const queryClient = useQueryClient();
   return useMutation<void, CompetitiveIntelApiError, string>({
     mutationFn: async id => {
-      await apiClient.delete(
+      await apiDelete<void>(
         "l3",
         `/v1/competitive/competitors/${encodeURIComponent(id)}`
       );
@@ -340,7 +340,7 @@ export function useCreateBattlecard() {
     { competitorId: string; data: CreateBattlecardRequest }
   >({
     mutationFn: async ({ competitorId, data }) => {
-      const response = await apiClient.post(
+      const response = await apiPost<unknown>(
         "l3",
         `/v1/competitive/competitors/${encodeURIComponent(competitorId)}/battlecards`,
         data
@@ -364,7 +364,7 @@ export function useRecordWinLoss() {
     RecordWinLossRequest
   >({
     mutationFn: async params => {
-      const response = await apiClient.post(
+      const response = await apiPost<unknown>(
         "l3",
         "/v1/competitive/win-loss",
         params
