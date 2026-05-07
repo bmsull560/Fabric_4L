@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Btn } from "@/components/WfPrimitives";
-import { useCreateAccount } from "@/hooks/useAccounts";
+import { buildCreateAccountPayload, useCreateAccount } from "@/hooks/useAccounts";
 import { getOrCreateCanonicalCaseId, persistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 
 interface ApiValidationDetail {
@@ -175,15 +175,18 @@ export default function AccountIntakeModal({
     try {
       const annualRevenue = parseAnnualRevenue(revenue);
       const slug = companyName.trim().toLowerCase().replace(/\s+/g, '-');
-      const payload = {
+      const payload = buildCreateAccountPayload({
         name: companyName.trim(),
         provider: 'manual' as const,
         provider_record_id: `manual-${slug}`,
         domain: `${slug}.com`,
         industry: industry.trim() || undefined,
         owner_name: contactName.trim() || undefined,
+        company_size: undefined,
+        annual_revenue: annualRevenue,
+        website: `${slug}.com`,
         stage: 'prospect' as const,
-      };
+      });
 
       const result = await createAccount.mutateAsync(payload);
       const accountId = result.account.id;
