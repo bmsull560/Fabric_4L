@@ -3,11 +3,11 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBusinessCase, useBusinessCaseExport, downloadExport } from "@/hooks/useDocuments";
+import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
 
 export default function BusinessCase() {
@@ -17,6 +17,7 @@ export default function BusinessCase() {
 
   const { data: businessCase, isLoading, error } = useBusinessCase(businessCaseId);
   const exportMutation = useBusinessCaseExport();
+  const regenerateMutation = useRegenerateBusinessCase();
 
   // Handle missing ID gracefully
   if (!businessCaseId) {
@@ -49,6 +50,12 @@ export default function BusinessCase() {
     if (businessCaseId) {
       navigateTo('business-case-interactive', undefined, { query: { id: businessCaseId } });
     }
+  };
+  const handleRegenerate = () => {
+    if (!businessCaseId) return;
+    const accountId = String(businessCase?.case_metadata?.account_id ?? "");
+    if (!accountId) return;
+    regenerateMutation.mutate({ caseId: businessCaseId, accountId });
   };
 
   if (isLoading) {
@@ -154,6 +161,10 @@ export default function BusinessCase() {
               Export PDF
             </Btn>
             <Btn variant="ghost" onClick={handleViewTrace}><Share2 size={12}/> View Trace</Btn>
+            <Btn variant="ghost" onClick={handleRegenerate} disabled={regenerateMutation.isPending || !businessCase?.case_metadata?.account_id}>
+              {regenerateMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              Regenerate Business Case
+            </Btn>
           </>
         }
       />
@@ -211,6 +222,20 @@ export default function BusinessCase() {
           {businessCase.summary}
         </div>
       </SectionCard>
+      {businessCase.diff_summary && (
+        <SectionCard title="Regeneration Diff Summary" className="mt-5">
+          <pre className="text-[12px] whitespace-pre-wrap">{JSON.stringify(businessCase.diff_summary, null, 2)}</pre>
+        </SectionCard>
+      )}
+      {businessCase.revision_history && businessCase.revision_history.length > 0 && (
+        <SectionCard title="Revision History" className="mt-5">
+          <ul className="space-y-1 text-[12px]">
+            {businessCase.revision_history.map((entry, idx) => (
+              <li key={idx}>{String(entry.case_id)} · {String(entry.created_at ?? "unknown")}</li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
     </div>
   );
 }
