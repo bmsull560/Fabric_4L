@@ -78,6 +78,26 @@ src/
 - **Integration** (4): `send_notification`, `create_task`, etc.
 - **Utility** (2): `validate_input`, `format_currency`
 
+
+## Workflow State Dependencies (Platform Contract)
+
+Layer 4 orchestration follows the platform-level workflow state contract: `docs/reference/workflow-state-contract.md`.
+
+For orchestration requests, Layer 4 must carry and/or resolve:
+
+- `content_id` (upstream Layer 1 artifact identity)
+- `extraction_job_id` (upstream Layer 2 execution identity)
+- `graph_sync_status` (downstream Layer 3 sync gate: `pending | syncing | succeeded | failed`)
+- `truth_approval_status` (Layer 5 governance gate: `pending | approved | rejected`)
+- `correlation_id` + `trace_id` (cross-layer lineage and tracing)
+
+Dependency-aware state behavior:
+
+- Use `waiting_dependency` when upstream/downstream gate states are unresolved.
+- Transition to `running` only when required dependency states are satisfied.
+- Transition to `failed_terminal` for non-retryable dependency failures (for example `graph_sync_status=failed` with no retry policy, or `truth_approval_status=rejected` for gated flows).
+- Use `retrying` for retryable dependency and tool failures according to retry budget.
+
 ## Database Migrations
 
 Layer 4 uses Alembic for database schema management.

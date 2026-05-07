@@ -24,6 +24,7 @@ import {
 import { parseExtractionJob } from "@/types/api";
 import { parseJsonValue } from "@/agui/eventSchemas";
 import { POLL_INTERVALS } from "./usePolling";
+import type { WorkflowState } from "@/api/types";
 
 // ============================================================================
 // MANDATE 2: TYPE SAFETY - Zod Schemas for Runtime Validation
@@ -101,7 +102,7 @@ function validateJobId(jobId: string | null): string | null {
 
 export interface JobStreamState {
   progress: number;
-  status: "pending" | "running" | "completed" | "failed" | "cancelled";
+  status: WorkflowState;
   logs: Array<{
     timestamp: string;
     level: string;
@@ -171,7 +172,7 @@ export function useJobStream(jobId: string | null) {
 
   const [state, setState] = useState<JobStreamState>({
     progress: 0,
-    status: "pending",
+    status: "created",
     logs: [],
     entities: [],
   });
@@ -288,7 +289,7 @@ export function useJobStream(jobId: string | null) {
     // MANDATE 4: Reset state when jobId becomes null
     if (validatedJobId === null) {
       cleanup();
-      setState({ progress: 0, status: "pending", logs: [], entities: [] });
+      setState({ progress: 0, status: "created", logs: [], entities: [] });
       setIsConnected(false);
       setError(null);
       return;
@@ -536,7 +537,7 @@ export function useJobStream(jobId: string | null) {
   // MANDATE 2: TYPE SAFETY - Safe return with computed properties
   // ============================================================================
   const isStreaming =
-    isConnected && (state.status === "pending" || state.status === "running");
+    isConnected && (state.status === "queued" || state.status === "running" || state.status === "retrying" || state.status === "waiting_dependency");
 
   return {
     ...state,
@@ -551,20 +552,20 @@ export function useJobStream(jobId: string | null) {
 // ============================================================================
 function mapJobStatus(status: string): JobStreamState["status"] {
   const statusMap: Record<string, JobStreamState["status"]> = {
-    PENDING: "pending",
-    QUEUED: "pending",
+    PENDING: "created",
+    QUEUED: "queued",
     VALIDATING: "running",
     BROWSER_ACQUIRING: "running",
     NAVIGATING: "running",
     EXTRACTING: "running",
     TRANSFORMING: "running",
     STORING: "running",
-    COMPLETED: "completed",
-    FAILED: "failed",
+    COMPLETED: "succeeded",
+    FAILED: "failed_terminal",
     CANCELLED: "cancelled",
-    PARTIAL_SUCCESS: "completed",
+    PARTIAL_SUCCESS: "succeeded",
   };
 
   // MANDATE 1: NULL/UNDEFINED SAFETY - Return default if status not found
-  return statusMap[status] ?? "pending";
+  return statusMap[status] ?? "created";
 }
