@@ -9,6 +9,11 @@ interface CaseRecord {
   id?: string;
 }
 
+export type WorkspacePersistResultState = 'saved' | 'unsaved' | 'failed';
+
+const ALLOW_WORKSPACE_501_FALLBACK =
+  import.meta.env.DEV || import.meta.env.MODE === 'test' || import.meta.env.VITEST === 'true';
+
 function getStoredCaseId(accountId: string): string | null {
   return window.localStorage.getItem(`${CASE_STORAGE_PREFIX}.${accountId}`);
 }
@@ -61,7 +66,7 @@ export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: strin
         // 501 = workspace tab persistence not yet implemented (H-01).
         // Return empty tab data so the UI renders empty states rather than errors.
         const apiError = error as { statusCode?: number };
-        if (apiError.statusCode === 501) {
+        if (apiError.statusCode === 501 && ALLOW_WORKSPACE_501_FALLBACK) {
           return { [tabKey]: [] } as TData;
         }
         throw error;
@@ -71,7 +76,7 @@ export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: strin
 }
 
 export function usePersistWorkspaceTab(tabKey: string) {
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: async ({ caseId, payload }: { caseId: string; payload: unknown }) => {
       try {
         const response = await apiClient.put('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
@@ -80,13 +85,22 @@ export function usePersistWorkspaceTab(tabKey: string) {
         // 501 = workspace tab persistence not yet implemented (H-01).
         // Surface as a soft warning so the UI does not crash.
         const apiError = error as { statusCode?: number };
-        if (apiError.statusCode === 501) {
+        if (apiError.statusCode === 501 && ALLOW_WORKSPACE_501_FALLBACK) {
           return { case_id: caseId, tab: tabKey, updated: false, not_implemented: true };
         }
         throw error;
       }
     },
   });
+  const persistState: WorkspacePersistResultState = mutation.isError
+    ? 'failed'
+    : mutation.isSuccess
+      ? 'saved'
+      : 'unsaved';
+  return {
+    ...mutation,
+    persistState,
+  };
 }
 
 export function useValidateEvidenceClaim() {

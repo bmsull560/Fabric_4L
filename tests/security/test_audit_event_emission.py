@@ -1,63 +1,87 @@
-"""
-Test audit event emission invariants.
+"""Test audit event emission invariants.
 
 Verifies that TENANT_CONTEXT_SET audit events are emitted for all database session types.
-
-Critical P0 test - compliance gaps if audit events are missing.
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import uuid4
-from sqlalchemy.ext.asyncio import AsyncSession
+
+import pytest
+
+from value_fabric.layer4 import database_facade as database
 
 
-@pytest.mark.skip(reason="Audit event emission tests require layer4-agents database module which has import path issues. Tests skipped pending module path resolution.")
-class TestAuditEventEmissionForSessionTypes:
-    """Test suite for audit event emission across all session types.
+@pytest.mark.asyncio
+async def test_emit_tenant_context_set_audit_emits_event_when_audit_available(monkeypatch):
+    """Audit helper emits TENANT_CONTEXT_SET with expected context payload."""
+    fake_emit = AsyncMock()
+    monkeypatch.setattr(database, "AUDIT_AVAILABLE", True)
+    monkeypatch.setattr(database, "emit_audit_event", fake_emit)
+    monkeypatch.setattr(database, "AuditAction", SimpleNamespace(TENANT_CONTEXT_SET="TENANT_CONTEXT_SET"))
+    monkeypatch.setattr(database, "AuditOutcome", SimpleNamespace(SUCCESS="SUCCESS"))
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    The actual audit emission logic is tested in the layer4-agents service tests.
-    """
-    pass
+    class _Details:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def model_dump(self, exclude_none=True):
+            return dict(self.kwargs)
+
+    monkeypatch.setattr(database, "TenantContextSetDetails", _Details)
+
+    context = SimpleNamespace(
+        isolation_tier="shared",
+        tenant_id=str(uuid4()),
+        user_id="user-123",
+        api_key_id=None,
+        service_account_id=None,
+        request_id="req-123",
+    )
+
+    tenant_id = str(uuid4())
+    await database._emit_tenant_context_set_audit(context, tenant_id)
+
+    fake_emit.assert_awaited_once()
+    _, kwargs = fake_emit.await_args
+    assert kwargs["action"] == "TENANT_CONTEXT_SET"
+    assert kwargs["outcome"] == "SUCCESS"
+    assert kwargs["resource_type"] == "database_session"
+    assert kwargs["resource_id"] == tenant_id
+    assert kwargs["tenant_id"] == context.tenant_id
+    assert kwargs["request_id"] == context.request_id
+    assert kwargs["details"]["tenant_id"] == tenant_id
+    assert kwargs["details"]["bypass"] is False
 
 
-@pytest.mark.skip(reason="Audit event failure handling tests require layer4-agents database module.")
-class TestAuditEventFailureHandling:
-    """Test suite for audit event emission failure handling.
+@pytest.mark.asyncio
+async def test_emit_tenant_context_set_audit_is_non_blocking_on_emit_error(monkeypatch):
+    """Audit emission failures must not raise and break request flow."""
+    monkeypatch.setattr(database, "AUDIT_AVAILABLE", True)
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+    async def _boom(**_kwargs):
+        raise RuntimeError("audit backend unavailable")
 
+    monkeypatch.setattr(database, "emit_audit_event", _boom)
+    monkeypatch.setattr(database, "AuditAction", SimpleNamespace(TENANT_CONTEXT_SET="TENANT_CONTEXT_SET"))
+    monkeypatch.setattr(database, "AuditOutcome", SimpleNamespace(SUCCESS="SUCCESS"))
 
-@pytest.mark.skip(reason="Set tenant context audit integration tests require layer4-agents database module.")
-class TestSetTenantContextAuditIntegration:
-    """Test suite for set_tenant_context audit integration.
+    class _Details:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+        def model_dump(self, exclude_none=True):
+            return dict(self.kwargs)
 
+    monkeypatch.setattr(database, "TenantContextSetDetails", _Details)
 
-@pytest.mark.skip(reason="Audit event content tests require layer4-agents database module.")
-class TestAuditEventContent:
-    """Test suite for audit event content validation.
+    context = SimpleNamespace(
+        isolation_tier="shared",
+        tenant_id=str(uuid4()),
+        user_id="user-123",
+        api_key_id=None,
+        service_account_id=None,
+        request_id="req-123",
+    )
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
-
-
-@pytest.mark.skip(reason="Audit event completeness tests require layer4-agents database module.")
-class TestAuditEventEmissionCompleteness:
-    """Test suite for comprehensive audit event emission coverage.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+    await database._emit_tenant_context_set_audit(context, str(uuid4()))

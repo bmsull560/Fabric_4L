@@ -1,70 +1,31 @@
-"""
-Test tenant validation metrics tracking invariants.
+"""Test tenant validation metrics tracking invariants."""
 
-Verifies that tenant validation metrics are tracked accurately and can be reset.
-
-Critical P0 test - monitoring gaps if metrics are not tracked correctly.
-"""
-
-import pytest
+from value_fabric.layer4 import database_facade as database
 
 
-@pytest.mark.skip(reason="Tenant validation metrics tests require layer4-agents database module which has import path issues. Tests skipped pending module path resolution.")
-class TestTenantValidationMetricsTracking:
-    """Test suite for tenant validation metrics tracking invariants.
+def test_tenant_validation_metrics_round_trip_and_reset():
+    """Metrics counters should increment during validation and reset deterministically."""
+    database.reset_tenant_validation_metrics()
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    The actual metrics tracking logic is tested in the layer4-agents service tests.
-    """
-    pass
+    ok_tenant = "550e8400-e29b-41d4-a716-446655440000"
+    assert database.validate_tenant_id(ok_tenant) == ok_tenant
 
+    metrics = database.get_tenant_validation_metrics()
+    assert metrics["validations_total"] >= 1
 
-@pytest.mark.skip(reason="Metrics accuracy tests require layer4-agents database module.")
-class TestMetricsAccuracy:
-    """Test suite for metrics accuracy invariants.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
-
-
-@pytest.mark.skip(reason="Metrics reset functionality tests require layer4-agents database module.")
-class TestMetricsResetFunctionality:
-    """Test suite for metrics reset functionality.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+    database.reset_tenant_validation_metrics()
+    reset = database.get_tenant_validation_metrics()
+    assert reset == {
+        "validations_total": 0,
+        "validation_failures": 0,
+        "uuid_format_errors": 0,
+        "missing_context_errors": 0,
+        "empty_tenant_errors": 0,
+    }
 
 
-@pytest.mark.skip(reason="Metrics monitoring integration tests require layer4-agents database module.")
-class TestMetricsMonitoringIntegration:
-    """Test suite for metrics monitoring integration.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
-
-
-@pytest.mark.skip(reason="Metrics concurrency safety tests require layer4-agents database module.")
-class TestMetricsConcurrencySafety:
-    """Test suite for metrics concurrency safety.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
-
-
-@pytest.mark.skip(reason="Reserved keyword handling tests require layer4-agents database module.")
-class TestReservedKeywordHandling:
-    """Test suite for reserved keyword handling in metrics.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+def test_layer4_database_import_path_is_stable_facade():
+    """Guard: tests rely on value_fabric.layer4.database_facade facade staying stable."""
+    assert database.__name__ == "value_fabric.layer4.database_facade"
+    assert hasattr(database, "validate_tenant_id")
+    assert hasattr(database, "get_tenant_validation_metrics")

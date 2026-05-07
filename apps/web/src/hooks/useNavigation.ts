@@ -74,7 +74,7 @@ export function useNavigation() {
     navigateTo('account-detail', { accountId });
 
   const navigateToIntelligence = (accountId: string, tab?: string) =>
-    navigateTo('intelligence', { accountId, tab });
+    navigateTo('intelligence-signals', { accountId, tab });
 
   return {
     navigate,

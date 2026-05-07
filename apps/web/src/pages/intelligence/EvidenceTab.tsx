@@ -40,6 +40,8 @@ function useEvidenceTabState() {
     messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
     validateClaim,
     evidenceDecision,
+    persistTab,
+    data,
   };
 }
 
@@ -48,7 +50,7 @@ export function EvidenceTabContent() {
   const {
     evidence, isLoading, error, verified, avgMatch,
     selectedEvidence, setSelectedEvidence,
-    caseId, evidenceDecision,
+    caseId, evidenceDecision, persistTab, data,
   } = useEvidenceTabState();
 
   const [optimisticDecision, setOptimisticDecision] = useState<Record<string, EvidenceItem["decision_status"]>>({});
@@ -78,6 +80,12 @@ export function EvidenceTabContent() {
 
   return (
     <>
+      {persistTab.persistState !== "saved" && (
+        <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs flex items-center justify-between">
+          <span>{persistTab.persistState === "failed" ? "Could not persist evidence tab." : "Evidence tab has unsaved persistence state."}</span>
+          {persistTab.persistState === "failed" && caseId && <Btn variant="outline" className="h-7" onClick={() => persistTab.mutate({ caseId, payload: data ?? { evidence: [] } })}>Retry save</Btn>}
+        </div>
+      )}
       {evidence.length === 0 ? (
         <SectionCard title="Evidence Library">
           <div className="text-sm text-muted-foreground">No evidence has been returned for this case.</div>
