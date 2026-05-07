@@ -141,3 +141,36 @@ export interface ValueTreeNode {
 
 // Re-export from formula schema for convenience
 export type { Formula, FormulaStatus, FormulaType, ApprovalRequest } from '@/lib/schemas/formula';
+
+// ============================================================================
+// Platform Workflow State Contract Types
+// ============================================================================
+
+export type WorkflowState =
+  | 'created'
+  | 'queued'
+  | 'running'
+  | 'waiting_dependency'
+  | 'retrying'
+  | 'paused'
+  | 'cancelled'
+  | 'succeeded'
+  | 'failed_terminal';
+
+export type GraphSyncStatus = 'pending' | 'syncing' | 'succeeded' | 'failed';
+
+export type TruthApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface WorkflowCorrelationIds {
+  correlation_id: string;
+  trace_id?: string;
+  workflow_id?: string;
+  job_id?: string;
+  content_id?: string;
+  extraction_job_id?: string;
+}
+
+export interface WorkflowDependencyState {
+  graph_sync_status?: GraphSyncStatus;
+  truth_approval_status?: TruthApprovalStatus;
+}
