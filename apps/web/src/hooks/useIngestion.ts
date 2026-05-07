@@ -279,14 +279,21 @@ export function useIngestionJobList(filters: JobListFilters = {}) {
       const response = await apiGet<l1.components['schemas']['JobListResponse']>('l1', `/jobs?${params.toString()}`);
       const data = response.data;
       const jobs = parseIngestionJobs(data.data);
+      const pagination = data.pagination as Record<string, unknown>;
+      const aggregation = data.aggregation as Record<string, unknown>;
 
       return {
         jobs: jobs.map(mapIngestionJob),
-        pagination: data.pagination || { page, limit, total: 0, totalPages: 0 },
+        pagination: {
+          page: (pagination.page as number) || page,
+          limit: (pagination.limit as number) || limit,
+          total: (pagination.total as number) || 0,
+          totalPages: (pagination.totalPages as number) || 0,
+        },
         aggregation: {
-          byStatus: (data.aggregation as Record<string, unknown>)?.by_status as Record<string, number> || {},
-          totalExecutionTimeMs: (data.aggregation as Record<string, unknown>)?.total_execution_time_ms as number || 0,
-          totalRecordsExtracted: (data.aggregation as Record<string, unknown>)?.total_records_extracted as number || 0,
+          byStatus: (aggregation.by_status as Record<string, number>) || {},
+          totalExecutionTimeMs: (aggregation.total_execution_time_ms as number) || 0,
+          totalRecordsExtracted: (aggregation.total_records_extracted as number) || 0,
         },
       };
     },
@@ -301,64 +308,64 @@ export function useIngestionJobDetail(jobId: string | null) {
     queryKey: jobId ? QK.ingestion.detail(jobId) : ['ingestion', 'detail', 'null'],
     queryFn: async () => {
       if (!jobId) throw new Error('Job ID is required');
-      const response = await apiClient.get('l1', `/jobs/${jobId}`);
-      const data = response.data as ApiJobDetailDto;
+      const response = await apiGet<JobDetailResponse>('l1', `/jobs/${jobId}`);
+      const data = response.data;
 
       return {
         id: data.id,
         targetId: data.target_id,
         tenantId: data.tenant_id,
-        domain: String(data.configuration?.url || 'unknown'),
-        configuration: data.configuration || {},
+        domain: String((data.configuration as Record<string, unknown>)?.url || 'unknown'),
+        configuration: data.configuration as Record<string, unknown> || {},
         status: mapJobStatus(data.status || ''),
         priority: data.priority ?? 5,
         createdAt: data.created_at || new Date(0).toISOString(),
-        updatedAt: data.updated_at || data.created_at || new Date(0).toISOString(),
-        scheduledAt: data.scheduled_at,
-        startedAt: data.started_at,
-        completedAt: data.completed_at,
+        updatedAt: (data.updated_at ?? data.created_at) || new Date(0).toISOString(),
+        scheduledAt: data.scheduled_at ?? undefined,
+        startedAt: data.started_at ?? undefined,
+        completedAt: data.completed_at ?? undefined,
         triggeredBy: data.triggered_by || 'manual',
-        correlationId: data.correlation_id,
+        correlationId: data.correlation_id ?? undefined,
         createdBy: data.created_by,
         progress: {
-          totalPages: data.progress?.total_pages,
-          processedPages: data.progress?.processed_pages ?? 0,
-          failedPages: data.progress?.failed_pages ?? 0,
-          currentUrl: data.progress?.current_url,
-          currentStage: data.progress?.current_stage ?? 'INIT',
-          percentComplete: data.progress?.percent_complete ?? 0,
+          totalPages: data.progress.total_pages ?? undefined,
+          processedPages: data.progress.processed_pages ?? 0,
+          failedPages: data.progress.failed_pages ?? 0,
+          currentUrl: data.progress.current_url ?? undefined,
+          currentStage: data.progress.current_stage ?? 'INIT',
+          percentComplete: data.progress.percent_complete ?? 0,
         },
         results: {
-          rawContentCount: data.results?.raw_content_count ?? 0,
-          extractedRecordCount: data.results?.extracted_record_count ?? 0,
-          storageBytesUsed: data.results?.storage_bytes_used ?? 0,
-          outputLocation: data.results?.output_location,
+          rawContentCount: data.results.raw_content_count ?? 0,
+          extractedRecordCount: data.results.extracted_record_count ?? 0,
+          storageBytesUsed: data.results.storage_bytes_used ?? 0,
+          outputLocation: data.results.output_location ?? undefined,
         },
         resources: {
-          browserSessionsUsed: data.resources?.browser_sessions_used ?? 0,
-          proxyRequestsMade: data.resources?.proxy_requests_made ?? 0,
-          llmTokensConsumed: data.resources?.llm_tokens_consumed ?? 0,
-          computeTimeMs: data.resources?.compute_time_ms ?? 0,
+          browserSessionsUsed: data.resources.browser_sessions_used ?? 0,
+          proxyRequestsMade: data.resources.proxy_requests_made ?? 0,
+          llmTokensConsumed: data.resources.llm_tokens_consumed ?? 0,
+          computeTimeMs: data.resources.compute_time_ms ?? 0,
         },
-        stages: data.stages?.map(s => ({
+        stages: data.stages.map(s => ({
           stage: s.stage,
           status: s.status,
-          startedAt: s.started_at,
-          completedAt: s.completed_at,
-          durationMs: s.duration_ms,
-          errorMessage: s.error_message,
-        })) || [],
-        errors: data.errors?.map(e => ({
+          startedAt: s.started_at ?? undefined,
+          completedAt: s.completed_at ?? undefined,
+          durationMs: s.duration_ms ?? undefined,
+          errorMessage: s.error_message ?? undefined,
+        })),
+        errors: data.errors.map(e => ({
           id: e.id,
           stage: e.stage,
           errorCode: e.error_code,
           errorMessage: e.error_message,
-          url: e.url,
+          url: e.url ?? undefined,
           retryable: e.retryable,
           retryCount: e.retry_count,
           occurredAt: e.occurred_at,
-          resolvedAt: e.resolved_at,
-        })) || [],
+          resolvedAt: e.resolved_at ?? undefined,
+        })),
       };
     },
     enabled: !!jobId,

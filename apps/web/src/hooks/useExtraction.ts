@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet } from '@/api/typedClient';
+import type { l2 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import { parseExtractionJob } from '@/types/api';
@@ -76,7 +77,7 @@ export function useExtractionJob(jobId: string | null) {
       if (!jobId) throw new Error('No job ID provided');
 
       // Query L2 for job status
-      const response = await apiClient.get('l2', `/jobs/${jobId}`);
+      const response = await apiGet('l2', `/jobs/${jobId}`);
       const job = parseExtractionJob(response.data);
 
       // Map backend status to frontend status

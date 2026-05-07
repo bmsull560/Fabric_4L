@@ -8,7 +8,8 @@
  * Endpoints: 4
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -90,13 +91,13 @@ export class EnrichmentApiError extends BaseApiError {
 // ── Fetch Functions ────────────────────────────────────────────────────────
 
 async function fetchEnrichmentStatus(): Promise<EnrichmentCoverageStats> {
-  const response = await apiClient.get('l4', '/v1/enrichment/status');
-  return response.data as EnrichmentCoverageStats;
+  const response = await apiGet<EnrichmentCoverageStats>('l4', '/v1/enrichment/status');
+  return response.data;
 }
 
 async function fetchEnrichmentDetails(accountId: string): Promise<EnrichmentResult> {
-  const response = await apiClient.get('l4', `/v1/enrichment/${accountId}`);
-  return response.data as EnrichmentResult;
+  const response = await apiGet<EnrichmentResult>('l4', `/v1/enrichment/${accountId}`);
+  return response.data;
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
@@ -131,8 +132,8 @@ export function useEnrichAccount() {
   const queryClient = useQueryClient();
   return useMutation<EnrichmentResult, EnrichmentApiError, { accountId: string; params?: EnrichAccountRequest }>({
     mutationFn: async ({ accountId, params }) => {
-      const response = await apiClient.post('l4', `/v1/enrichment/${accountId}`, params ?? {});
-      return response.data as EnrichmentResult;
+      const response = await apiPost<EnrichmentResult>('l4', `/v1/enrichment/${accountId}`, params ?? {});
+      return response.data;
     },
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: QK.enrichment.all });
@@ -147,8 +148,8 @@ export function useBatchEnrich() {
   const queryClient = useQueryClient();
   return useMutation<BatchEnrichResponse, EnrichmentApiError, BatchEnrichRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l4', '/v1/enrichment/batch', params);
-      return response.data as BatchEnrichResponse;
+      const response = await apiPost<BatchEnrichResponse>('l4', '/v1/enrichment/batch', params);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.enrichment.all });

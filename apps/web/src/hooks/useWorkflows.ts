@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { apiClient } from "@/api/client";
+import { apiGet, apiPost, apiDelete } from "@/api/typedClient";
+import type { l4 } from "@/api/generated";
 import { QK } from "./queryKeys";
 import { STALE_TIME } from "./useApiShared";
 import { API_BASE, L4_PREFIX } from "@/lib/apiConfig";
@@ -253,10 +254,10 @@ export function useActiveWorkflows(
       params.set("offset", String(offset));
       if (status) params.set("status", status);
 
-      const response = (await apiClient.get(
+      const response = await apiGet<unknown>(
         "l4",
         `/workflows/active?${params.toString()}`
-      )) as { data: unknown };
+      );
       const items = normalizeWorkflowList(response.data);
       return parsePaginatedResponse(response.data, items);
     },
@@ -280,10 +281,10 @@ export function useWorkflowHistory(
       params.set("limit", String(limit));
       params.set("offset", String(offset));
 
-      const response = (await apiClient.get(
+      const response = await apiGet<unknown>(
         "l4",
         `/workflows/active?${params.toString()}`
-      )) as { data: unknown };
+      );
       const items = normalizeWorkflowList(response.data);
       return parsePaginatedResponse(response.data, items);
     },
@@ -300,15 +301,15 @@ export function useCreateWorkflow() {
       inputs?: Record<string, unknown>;
       priority?: "CRITICAL" | "HIGH" | "NORMAL" | "LOW" | "BACKGROUND";
     }) => {
-      const response = (await apiClient.post("l4", "/workflows", {
+      const response = await apiPost<l4.components["schemas"]["WorkflowCreateResponse"] & { workflow_id?: string }>("l4", "/workflows", {
         workflow_type: params.type,
         inputs: {
           custom_data: params.inputs || {},
         },
         priority: params.priority || "NORMAL",
-      })) as { data: Record<string, unknown> };
+      });
       const workflowId =
-        response.data?.workflow_instance_id || response.data?.workflow_id;
+        response.data.workflow_instance_id || response.data.workflow_id;
       if (!workflowId) {
         throw new Error("Workflow creation response missing workflow id");
       }
@@ -330,7 +331,7 @@ export function useCancelWorkflow() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete("l4", `/workflows/${id}`);
+      await apiDelete<unknown>("l4", `/workflows/${id}`);
     },
     onSuccess: async () => {
       // Brief delay to allow backend to process cancellation
@@ -433,7 +434,7 @@ export function usePauseWorkflow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.post("l4", `/workflows/${id}/pause`, {});
+      await apiPost<l4.components["schemas"]["WorkflowPauseResponse"]>("l4", `/workflows/${id}/pause`, {});
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
@@ -449,7 +450,7 @@ export function useResumeWorkflow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.post("l4", `/workflows/${id}/resume`, {});
+      await apiPost<l4.components["schemas"]["WorkflowResumeResponse"]>("l4", `/workflows/${id}/resume`, {});
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
@@ -465,10 +466,10 @@ export function useWorkflowDetail(workflowId: string | null) {
   return useQuery({
     queryKey: QK.workflows.detail(workflowId ?? ""),
     queryFn: async () => {
-      const response = (await apiClient.get(
+      const response = await apiGet<l4.components["schemas"]["WorkflowStatusResponse"]>(
         "l4",
         `/workflows/${workflowId}`
-      )) as { data: unknown };
+      );
       return parseWorkflowDetail(response.data);
     },
     enabled: !!workflowId,
@@ -484,9 +485,7 @@ export function useWorkflowTypes() {
   return useQuery({
     queryKey: [...QK.workflows.all, "types"],
     queryFn: async () => {
-      const response = (await apiClient.get("l4", "/workflows/types")) as {
-        data: unknown;
-      };
+      const response = await apiGet<unknown>("l4", "/workflows/types");
       const data = WorkflowTypesResponseSchema.parse(response.data);
       // Normalize backend shape { workflows: [{ type, name, description }] }
       // to frontend shape { types: [{ id, name, description }] }

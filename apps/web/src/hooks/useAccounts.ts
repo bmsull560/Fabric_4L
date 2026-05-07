@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
@@ -140,19 +141,10 @@ async function fetchAccounts(filters: AccountFilters): Promise<AccountListRespon
   if (filters.sort_by) params.set('sort_by', filters.sort_by);
   if (filters.sort_order) params.set('sort_order', filters.sort_order);
 
-  const response = await apiClient.get('l4', `/accounts?${params.toString()}`);
-  // Backend returns { items, total, page, page_size, has_more }
-  // Map to frontend contract for backward compatibility
-  const data = response.data as {
-    items?: Account[];
-    accounts?: Account[];
-    total: number;
-    page: number;
-    page_size: number;
-    has_more?: boolean;
-  };
+  const response = await apiGet<AccountListResponse>('l4', `/accounts?${params.toString()}`);
+  const data = response.data;
   return {
-    items: data.items ?? data.accounts ?? [],
+    items: data.items ?? [],
     total: data.total,
     page: data.page,
     page_size: data.page_size,
@@ -171,8 +163,8 @@ export function useAccounts(filters: AccountFilters = {}) {
 }
 
 async function fetchAccount(accountId: string): Promise<Account> {
-  const response = await apiClient.get('l4', `/accounts/${accountId}`);
-  return response.data as Account;
+  const response = await apiGet<Account>('l4', `/accounts/${accountId}`);
+  return response.data;
 }
 
 export function useAccount(accountId: string | null) {
@@ -190,8 +182,23 @@ export function useAccount(accountId: string | null) {
 }
 
 async function fetchAccountActivity(accountId: string, sinceDays: number = 90): Promise<AccountActivity> {
-  const response = await apiClient.get('l4', `/accounts/${accountId}/activity?since_days=${sinceDays}`);
-  return response.data as AccountActivity;
+  const response = await apiGet<l4.components['schemas']['AccountActivityResponse']>('l4', `/accounts/${accountId}/activity?since_days=${sinceDays}`);
+  const data = response.data;
+  return {
+    account_id: data.account_id,
+    total_count: data.total_count,
+    summary: data.summary ?? '',
+    interactions: data.interactions.map((i) => ({
+      id: i.id,
+      type: i.type,
+      date: i.date,
+      subject: i.subject ?? '',
+      duration_minutes: i.duration_minutes ?? undefined,
+      notes: i.notes ?? undefined,
+      outcome: i.outcome ?? undefined,
+      sender: undefined,
+    })),
+  };
 }
 
 export function useAccountActivity(accountId: string | null, sinceDays?: number) {
@@ -209,8 +216,8 @@ export function useAccountActivity(accountId: string | null, sinceDays?: number)
 }
 
 async function fetchSyncStatus(): Promise<AccountSyncStatusInfo[]> {
-  const response = await apiClient.get('l4', '/accounts/sync-status');
-  return response.data as AccountSyncStatusInfo[];
+  const response = await apiGet<AccountSyncStatusInfo[]>('l4', '/accounts/sync-status');
+  return response.data;
 }
 
 export function useAccountSyncStatus() {
@@ -224,8 +231,8 @@ export function useAccountSyncStatus() {
 }
 
 async function fetchFilterOptions(): Promise<FilterOptions> {
-  const response = await apiClient.get('l4', '/accounts/filters');
-  return response.data as FilterOptions;
+  const response = await apiGet<FilterOptions>('l4', '/accounts/filters');
+  return response.data;
 }
 
 export function useAccountFilterOptions() {
@@ -272,7 +279,7 @@ export function useCreateAccount() {
 
   return useMutation<CreateAccountResponse, AccountApiError, CreateAccountParams>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l4', '/accounts', {
+      const response = await apiPost<CreateAccountApiResponse>('l4', '/accounts', {
         id: params.id,
         provider: params.provider,
         provider_record_id: params.provider_record_id,
@@ -287,7 +294,7 @@ export function useCreateAccount() {
         owner_name: params.owner_name,
         owner_email: params.owner_email,
       });
-      const data = response.data as CreateAccountApiResponse;
+      const data = response.data;
       return 'account' in data ? data : { account: data };
     },
     onSuccess: () => {
@@ -304,12 +311,12 @@ export function useSyncAccounts() {
 
   return useMutation<SyncResult, AccountApiError, SyncAccountsParams>({
     mutationFn: async (params = {}) => {
-      const response = await apiClient.post('l4', '/accounts/sync', {
+      const response = await apiPost<SyncResult>('l4', '/accounts/sync', {
         provider: params.provider,
         account_ids: params.account_ids,
         force_refresh: params.force_refresh || false,
       });
-      return response.data as SyncResult;
+      return response.data;
     },
     onSuccess: () => {
       // Invalidate all account queries to refresh data
@@ -329,8 +336,8 @@ export function useRefreshAccount() {
       if (!accountId || accountId.trim() === '') {
         throw new AccountApiError('Account ID is required');
       }
-      const response = await apiClient.post('l4', `/accounts/${accountId}/refresh`, {});
-      return response.data as Account;
+      const response = await apiPost<Account>('l4', `/accounts/${accountId}/refresh`, {});
+      return response.data;
     },
     onSuccess: (data) => {
       // Invalidate to get fresh data from server

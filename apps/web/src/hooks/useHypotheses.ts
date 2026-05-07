@@ -8,7 +8,8 @@
  * Endpoints: 7
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -151,24 +152,24 @@ function buildHypothesisParams(filters: AccountHypothesesFilters): string {
 }
 
 async function fetchHypothesis(id: string): Promise<ValueHypothesis> {
-  const response = await apiClient.get('l4', `/v1/hypotheses/${id}`);
-  return response.data as ValueHypothesis;
+  const response = await apiGet<ValueHypothesis>('l4', `/v1/hypotheses/${id}`);
+  return response.data;
 }
 
 async function fetchAccountHypotheses(
   accountId: string,
   filters: AccountHypothesesFilters,
 ): Promise<AccountHypothesesResponse> {
-  const response = await apiClient.get(
+  const response = await apiGet<AccountHypothesesResponse>(
     'l4',
     `/v1/hypotheses/account/${accountId}${buildHypothesisParams(filters)}`,
   );
-  return response.data as AccountHypothesesResponse;
+  return response.data;
 }
 
 async function fetchHypothesisStats(): Promise<HypothesisStats> {
-  const response = await apiClient.get('l4', '/v1/hypotheses/summary/stats');
-  return response.data as HypothesisStats;
+  const response = await apiGet<HypothesisStats>('l4', '/v1/hypotheses/summary/stats');
+  return response.data;
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
@@ -217,8 +218,8 @@ export function useGenerateHypotheses() {
   const queryClient = useQueryClient();
   return useMutation<GenerateHypothesesResponse, HypothesisApiError, GenerateHypothesesRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l4', '/v1/hypotheses/generate', params);
-      return response.data as GenerateHypothesesResponse;
+      const response = await apiPost<GenerateHypothesesResponse>('l4', '/v1/hypotheses/generate', params);
+      return response.data;
     },
     onSuccess: (_data, { account_id }) => {
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
@@ -235,8 +236,8 @@ export function useValidateHypothesis() {
     { hypothesisId: string; data: ValidateHypothesisRequest }
   >({
     mutationFn: async ({ hypothesisId, data }) => {
-      const response = await apiClient.post('l4', `/v1/hypotheses/${hypothesisId}/validate`, data);
-      const raw = response.data as ValidateHypothesisResponse | ValueHypothesis;
+      const response = await apiPost<ValidateHypothesisResponse | ValueHypothesis>('l4', `/v1/hypotheses/${hypothesisId}/validate`, data);
+      const raw = response.data;
       if ('hypothesis' in raw) return raw;
       return { status: 'updated', hypothesis: raw };
     },
@@ -256,7 +257,7 @@ export function useDeleteHypothesis() {
   const queryClient = useQueryClient();
   return useMutation<void, HypothesisApiError, string>({
     mutationFn: async (hypothesisId) => {
-      await apiClient.delete('l4', `/v1/hypotheses/${hypothesisId}`);
+      await apiDelete<void>('l4', `/v1/hypotheses/${hypothesisId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
@@ -272,8 +273,8 @@ export function useConvertHypothesisToTree() {
     { hypothesisId: string }
   >({
     mutationFn: async ({ hypothesisId }) => {
-      const response = await apiClient.post('l4', `/v1/hypotheses/${hypothesisId}/convert`, {});
-      return response.data as ConvertHypothesisToTreeResponse;
+      const response = await apiPost<ConvertHypothesisToTreeResponse>('l4', `/v1/hypotheses/${hypothesisId}/convert`, {});
+      return response.data;
     },
     onSuccess: (_data, { hypothesisId }) => {
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
@@ -287,8 +288,8 @@ export function useConvertHypothesisToTree() {
 export function useRankHypotheses() {
   return useMutation<RankedHypothesis[], HypothesisApiError, RankHypothesesRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l4', '/v1/hypotheses/rank', params);
-      return response.data as RankedHypothesis[];
+      const response = await apiPost<RankedHypothesis[]>('l4', '/v1/hypotheses/rank', params);
+      return response.data;
     },
   });
 }
@@ -297,8 +298,8 @@ export function usePromoteSignal() {
   const queryClient = useQueryClient();
   return useMutation<PromoteSignalResponse, HypothesisApiError, PromoteSignalRequest>({
     mutationFn: async (params) => {
-      const response = await apiClient.post('l4', '/v1/hypotheses/from-signal', params);
-      return response.data as PromoteSignalResponse;
+      const response = await apiPost<PromoteSignalResponse>('l4', '/v1/hypotheses/from-signal', params);
+      return response.data;
     },
     onSuccess: (_data, { account_id }) => {
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
@@ -324,8 +325,8 @@ export function useReviewSignal() {
   const queryClient = useQueryClient();
   return useMutation<SignalReviewResponse, HypothesisApiError, { signalId: string; data: SignalReviewRequest }>({
     mutationFn: async ({ signalId, data }) => {
-      const response = await apiClient.patch('l4', `/v1/signals/${signalId}/review`, data);
-      return response.data as SignalReviewResponse;
+      const response = await apiPatch<SignalReviewResponse>('l4', `/v1/signals/${signalId}/review`, data);
+      return response.data;
     },
     onSuccess: (_data, { signalId }) => {
       queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });

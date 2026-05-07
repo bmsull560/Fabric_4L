@@ -6,7 +6,9 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { apiClient, ApiError } from '@/api/client';
+import { apiGet } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
+import { ApiError } from '@/api/client';
 
 export type OpportunityStatus = 'new' | 'investigating' | 'qualified' | 'converted' | 'dismissed';
 export type ImpactLevel = 'high' | 'medium' | 'low';
@@ -56,14 +58,14 @@ function isApiError(error: unknown): error is ApiError {
 
 async function fetchOpportunities(): Promise<OpportunitiesResponse> {
   try {
-    const response = await apiClient.get('l4', API_ENDPOINT);
+    const response = await apiGet<OpportunitiesResponse>('l4', API_ENDPOINT);
 
     if (!response.data || typeof response.data !== 'object') {
       throw new OpportunitiesApiError('Invalid response format from API');
     }
 
     // Validate required fields
-    const data = response.data as OpportunitiesResponse;
+    const data = response.data;
     if (!Array.isArray(data.opportunities)) {
       throw new OpportunitiesApiError('Missing or invalid opportunities array');
     }

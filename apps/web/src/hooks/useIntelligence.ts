@@ -8,7 +8,8 @@
  * Endpoints: 3
  */
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
@@ -120,18 +121,18 @@ export class IntelligenceApiError extends BaseApiError {
 // ── Fetch Functions ────────────────────────────────────────────────────────
 
 async function fetchAccountBriefing(accountId: string): Promise<AccountBriefing> {
-  const response = await apiClient.get('l4', `/v1/accounts/${accountId}/briefing`);
-  return response.data as AccountBriefing;
+  const response = await apiGet<AccountBriefing>('l4', `/v1/accounts/${accountId}/briefing`);
+  return response.data;
 }
 
 async function fetchDealReadiness(accountId: string): Promise<DealReadiness> {
-  const response = await apiClient.get('l4', `/v1/accounts/${accountId}/deal-readiness`);
-  return response.data as DealReadiness;
+  const response = await apiGet<DealReadiness>('l4', `/v1/accounts/${accountId}/deal-readiness`);
+  return response.data;
 }
 
 async function fetchPipelineSummary(): Promise<PipelineSummary> {
-  const response = await apiClient.get('l4', '/v1/intelligence/pipeline-summary');
-  return response.data as PipelineSummary;
+  const response = await apiGet<PipelineSummary>('l4', '/v1/intelligence/pipeline-summary');
+  return response.data;
 }
 
 // ── Query Hooks ────────────────────────────────────────────────────────────

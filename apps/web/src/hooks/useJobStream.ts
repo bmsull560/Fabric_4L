@@ -15,7 +15,8 @@
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { z } from "zod";
-import { apiClient } from "@/api/client";
+import { apiGet } from "@/api/typedClient";
+import type { l2 } from "@/api/generated";
 import { createFeatureLogger } from "@/lib/telemetry";
 import {
   SSEBuilders,
@@ -206,7 +207,7 @@ export function useJobStream(jobId: string | null) {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await apiClient.get("l2", `/jobs/${currentJobId}`, {
+      const response = await apiGet("l2", `/jobs/${currentJobId}`, {
         signal: abortControllerRef.current.signal,
       });
 

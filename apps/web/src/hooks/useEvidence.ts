@@ -8,7 +8,8 @@
  * Endpoints: 9
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/api/typedClient";
+import type { l3 } from "@/api/generated";
 import { QK } from "./queryKeys";
 import {
   withApiError,
@@ -158,7 +159,7 @@ function buildEvidenceParams(filters: CaseStudyListFilters): string {
 async function fetchCaseStudies(
   filters: CaseStudyListFilters
 ): Promise<CaseStudyListResponse> {
-  const response = await apiClient.get(
+  const response = await apiGet<CaseStudyListResponse>(
     "l3",
     `/v1/evidence/case-studies${buildEvidenceParams(filters)}`
   );
@@ -166,17 +167,17 @@ async function fetchCaseStudies(
 }
 
 async function fetchCaseStudy(id: string): Promise<CaseStudy> {
-  const response = await apiClient.get("l3", `/v1/evidence/case-studies/${id}`);
+  const response = await apiGet<CaseStudy>("l3", `/v1/evidence/case-studies/${id}`);
   return parseCaseStudy(response.data);
 }
 
 async function fetchIndustryStats(): Promise<IndustryStats> {
-  const response = await apiClient.get("l3", "/v1/evidence/stats/by-industry");
+  const response = await apiGet<IndustryStats>("l3", "/v1/evidence/stats/by-industry");
   return parseEvidenceStatsResponse(response.data);
 }
 
 async function fetchProductStats(): Promise<ProductStats> {
-  const response = await apiClient.get("l3", "/v1/evidence/stats/by-product");
+  const response = await apiGet<ProductStats>("l3", "/v1/evidence/stats/by-product");
   return parseEvidenceStatsResponse(response.data);
 }
 
@@ -236,7 +237,7 @@ export function useCreateCaseStudy() {
     CreateCaseStudyRequest
   >({
     mutationFn: async params => {
-      const response = await apiClient.post(
+      const response = await apiPost<CaseStudyMutationResponse>(
         "l3",
         "/v1/evidence/case-studies",
         params
@@ -257,7 +258,7 @@ export function useUpdateCaseStudy() {
     { id: string; data: UpdateCaseStudyRequest }
   >({
     mutationFn: async ({ id, data }) => {
-      const response = await apiClient.put(
+      const response = await apiPut<CaseStudyMutationResponse>(
         "l3",
         `/v1/evidence/case-studies/${id}`,
         data
@@ -275,7 +276,7 @@ export function useDeleteCaseStudy() {
   const queryClient = useQueryClient();
   return useMutation<DeleteCaseStudyResponse, EvidenceApiError, string>({
     mutationFn: async id => {
-      const response = await apiClient.delete(
+      const response = await apiDelete<DeleteCaseStudyResponse>(
         "l3",
         `/v1/evidence/case-studies/${id}`
       );
@@ -291,7 +292,7 @@ export function useBulkImportCaseStudies() {
   const queryClient = useQueryClient();
   return useMutation<BulkImportResponse, EvidenceApiError, BulkImportRequest>({
     mutationFn: async params => {
-      const response = await apiClient.post(
+      const response = await apiPost<BulkImportResponse>(
         "l3",
         "/v1/evidence/case-studies/bulk-import",
         params
@@ -311,7 +312,7 @@ export function useEvidenceSearch() {
     EvidenceSearchRequest
   >({
     mutationFn: async params => {
-      const response = await apiClient.post("l3", "/v1/evidence/search", {
+      const response = await apiPost<EvidenceSearchResponse>("l3", "/v1/evidence/search", {
         query: params.query,
         evidence_types: params.evidence_types,
         limit: params.limit,
@@ -363,8 +364,8 @@ export function useLinkEvidence() {
   const queryClient = useQueryClient();
   return useMutation<LinkEvidenceResponse, EvidenceApiError, LinkEvidenceRequest>({
     mutationFn: async params => {
-      const response = await apiClient.post("l3", "/v1/evidence/links", params);
-      return response.data as LinkEvidenceResponse;
+      const response = await apiPost<LinkEvidenceResponse>("l3", "/v1/evidence/links", params);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.evidence.all });
@@ -376,13 +377,13 @@ export function useUnlinkEvidence() {
   const queryClient = useQueryClient();
   return useMutation<UnlinkEvidenceResponse, EvidenceApiError, { evidence_id: string; driver_id: string }>({
     mutationFn: async params => {
-      const response = await apiClient.delete("l3", "/v1/evidence/links", {
+      const response = await apiDelete<UnlinkEvidenceResponse>("l3", "/v1/evidence/links", {
         params: {
           evidence_id: params.evidence_id,
           driver_id: params.driver_id,
         },
       });
-      return response.data as UnlinkEvidenceResponse;
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.evidence.all });
@@ -394,10 +395,10 @@ export function useEvidenceLinks(driverId: string | null) {
   return useQuery<EvidenceLinkListResponse, EvidenceApiError>({
     queryKey: ["evidence", "links", driverId],
     queryFn: async () => {
-      const response = await apiClient.get("l3", "/v1/evidence/links", {
+      const response = await apiGet<EvidenceLinkListResponse>("l3", "/v1/evidence/links", {
         params: { driver_id: driverId },
       });
-      return response.data as EvidenceLinkListResponse;
+      return response.data;
     },
     enabled: !!driverId,
   });

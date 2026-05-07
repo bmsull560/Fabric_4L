@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+import { apiGet, apiPost } from '@/api/typedClient';
+import type { l4 } from '@/api/generated';
 import { QK } from './queryKeys';
 import { STALE_TIME, BusinessCaseApiError, withApiError } from './useApiShared';
 import { formatCompactCurrency } from '@/lib/formatters';
@@ -76,8 +77,8 @@ export function useBusinessCase(caseId: string | null) {
       if (!caseId) throw new Error('No case ID provided');
 
       // Query L4 for workflow result
-      const response = await apiClient.get('l4', `/workflows/${caseId}/result`);
-      const result = parseWorkflowResult((response as { data: unknown }).data);
+      const response = await apiGet<unknown>('l4', `/workflows/${caseId}/result`);
+      const result = parseWorkflowResult(response.data);
 
       // Parse workflow output into business case format
       const output = result.output || {};
@@ -136,7 +137,7 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
   if (filters.company) params.set('company', filters.company);
 
   // Query L4 for business case workflows
-  const response = await apiClient.get('l4', `/workflows?type=business_case&${params.toString()}`);
+  const response = await apiGet<Record<string, unknown>>('l4', `/workflows?type=business_case&${params.toString()}`);
   
   // Transform workflow data to BusinessCaseListItem format
   interface WorkflowItem {
@@ -151,7 +152,7 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
     updated_at?: string;
     owner?: string;
   }
-  const rawData = (response as { data: { items?: WorkflowItem[] } }).data;
+  const rawData = response.data as { items?: WorkflowItem[] };
   const items = (rawData?.items || []).map((workflow) => ({
     id: workflow.workflow_id,
     name: workflow.name || `Case ${workflow.workflow_id}`,
@@ -201,7 +202,7 @@ export function useCreateBusinessCase() {
 
   return useMutation<CreateBusinessCaseResponse, BusinessCaseApiError, CreateBusinessCasePayload>({
     mutationFn: async (payload) => {
-      const response = await apiClient.post('l4', '/workflows', {
+      const response = await apiPost<unknown>('l4', '/workflows', {
         workflow_type: 'business_case',
         inputs: {
           prospect_company: payload.company,
@@ -211,7 +212,7 @@ export function useCreateBusinessCase() {
           },
         },
       });
-      return (response as { data: CreateBusinessCaseResponse }).data;
+      return response.data as CreateBusinessCaseResponse;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-cases'] });
@@ -236,8 +237,8 @@ export function useArchiveBusinessCase() {
 
   return useMutation<unknown, BusinessCaseApiError, string>({
     mutationFn: async (caseId) => {
-      const response = await apiClient.post('l4', `/workflows/${caseId}/archive`, {});
-      return (response as { data: unknown }).data;
+      const response = await apiPost<l4.components['schemas']['ArchiveWorkflowResponse']>('l4', `/workflows/${caseId}/archive`, {});
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-cases'] });
