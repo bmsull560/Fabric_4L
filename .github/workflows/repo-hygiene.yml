@@ -11,6 +11,7 @@ on:
       - 'monitoring/alerting/rules.yml'
       - 'canonical-paths.yaml'
       - 'scripts/ci/repo_hygiene.py'
+      - 'scripts/ci/legacy_path_guard.py'
   push:
     branches: [main]
     paths:
@@ -21,6 +22,7 @@ on:
       - 'monitoring/alerting/rules.yml'
       - 'canonical-paths.yaml'
       - 'scripts/ci/repo_hygiene.py'
+      - 'scripts/ci/legacy_path_guard.py'
   workflow_dispatch:
 
 concurrency:
@@ -44,6 +46,9 @@ jobs:
 
       - name: Install PyYAML
         run: pip install pyyaml
+
+      - name: Run legacy path guard
+        run: python scripts/ci/legacy_path_guard.py --repo-root .
 
       - name: Run repository hygiene validator
         id: hygiene
