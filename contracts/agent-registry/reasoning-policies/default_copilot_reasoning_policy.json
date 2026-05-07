@@ -1,0 +1,71 @@
+{
+  "$schema": "../schemas/reasoning-policy.schema.json",
+  "id": "default-copilot-reasoning-policy",
+  "version": "1.0.0",
+  "kind": "reasoning_policy",
+  "owner": "@layer4-agents",
+  "risk_class": "high",
+  "description": "Default reasoning policy for Layer 4 agentic workflows that produce user-facing value narratives or recommendations.",
+  "confidence_thresholds": {
+    "minimum_user_visible_confidence": 0.7,
+    "minimum_auto_action_confidence": 0.85,
+    "escalate_below_confidence": 0.6
+  },
+  "evidence_requirements": [
+    "Cite at least one provenance-bearing source for factual claims.",
+    "Ground ROI, formula, and value-driver claims in Layer 5 truth references when available.",
+    "Preserve tenant_id and trace_id across tool calls and workflow steps."
+  ],
+  "explanation_requirements": [
+    "State assumptions for generated recommendations.",
+    "Expose low-confidence outputs as review-required rather than final decisions."
+  ],
+  "escalation_rules": [
+    {
+      "condition": "confidence < 0.6",
+      "action": "request_human_review"
+    },
+    {
+      "condition": "regulated_data_detected",
+      "action": "block_auto_action_and_escalate"
+    },
+    {
+      "condition": "missing_truth_reference_for_financial_claim",
+      "action": "block_claim_publication"
+    }
+  ],
+  "allowed_tool_classes": [
+    "read_only",
+    "write",
+    "export",
+    "external_notification",
+    "administrative"
+  ],
+  "compatibility": {
+    "supported_prior_versions": [],
+    "migration_notes": "Initial policy. Threshold or escalation changes require prompt/policy changelog evidence."
+  },
+  "observability": {
+    "required_trace_fields": [
+      "tenant_id",
+      "trace_id",
+      "policy_id",
+      "policy_version",
+      "confidence"
+    ],
+    "required_metrics": [
+      "reasoning_policy_evaluation_total",
+      "reasoning_escalation_total"
+    ],
+    "audit_events": [
+      "reasoning_policy_applied",
+      "reasoning_escalated"
+    ]
+  },
+  "governance": {
+    "review_requirement": "Contract Council review for thresholds, evidence requirements, or escalation changes.",
+    "approval_threshold": "Two reviewers representing Layer 4 and Platform/Security.",
+    "rollout_policy": "Feature-flagged rollout for enforcement changes; CI starts in warning mode.",
+    "deprecation_policy": "Maintain previous policy version until dependent prompts are migrated."
+  }
+}

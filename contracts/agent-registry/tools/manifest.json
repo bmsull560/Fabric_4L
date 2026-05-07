@@ -1,0 +1,936 @@
+{
+  "$schema": "../schemas/tool-registry.schema.json",
+  "id": "layer4-agent-tool-registry",
+  "version": "1.0.0",
+  "kind": "tool",
+  "owner": "@platform-contracts",
+  "risk_class": "high",
+  "description": "Central registry of Layer 4 agent tool contracts, side-effect classes, timeout budgets, tenant requirements, and provenance expectations.",
+  "tools": [
+    {
+      "name": "analyze_competition",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/analyze_competition.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/analyze_competition.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/analyze_competition.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "assemble_document",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/assemble_document.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/assemble_document.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/assemble_document.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "assess_drift",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/assess_drift.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/assess_drift.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/assess_drift.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "audit_ai_systems",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/audit_ai_systems.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/audit_ai_systems.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/audit_ai_systems.json#/returns"
+      },
+      "side_effect_class": "administrative",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "audit_compliance",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/audit_compliance.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/audit_compliance.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/audit_compliance.json#/returns"
+      },
+      "side_effect_class": "administrative",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "audit_infrastructure",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/audit_infrastructure.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/audit_infrastructure.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/audit_infrastructure.json#/returns"
+      },
+      "side_effect_class": "administrative",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "audit_performance",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/audit_performance.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/audit_performance.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/audit_performance.json#/returns"
+      },
+      "side_effect_class": "administrative",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "calculate_roi",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/calculate_roi.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/calculate_roi.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/calculate_roi.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "compare_benchmarks",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/compare_benchmarks.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/compare_benchmarks.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/compare_benchmarks.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "create_chart",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/create_chart.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/create_chart.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/create_chart.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "create_task",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/create_task.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/create_task.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/create_task.json#/returns"
+      },
+      "side_effect_class": "write",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "document_export",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/document_export.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/document_export.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/document_export.json#/returns"
+      },
+      "side_effect_class": "export",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "evaluate_formula",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/evaluate_formula.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/evaluate_formula.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/evaluate_formula.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "export_to_crm",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/export_to_crm.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/export_to_crm.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/export_to_crm.json#/returns"
+      },
+      "side_effect_class": "export",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "fetch_interaction_history",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/fetch_interaction_history.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/fetch_interaction_history.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/fetch_interaction_history.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "find_paths",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/find_paths.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/find_paths.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/find_paths.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "format_currency",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/format_currency.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/format_currency.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/format_currency.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "format_table",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/format_table.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/format_table.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/format_table.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "generate_business_case",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/generate_business_case.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/generate_business_case.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/generate_business_case.json#/returns"
+      },
+      "side_effect_class": "write",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "generate_section",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/generate_section.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/generate_section.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/generate_section.json#/returns"
+      },
+      "side_effect_class": "write",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "get_entity",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/get_entity.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/get_entity.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/get_entity.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "get_prospect_data",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/get_prospect_data.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/get_prospect_data.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/get_prospect_data.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "get_relationships",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/get_relationships.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/get_relationships.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/get_relationships.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "graph_traverse",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/graph_traverse.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/graph_traverse.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/graph_traverse.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "query_graph",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/query_graph.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/query_graph.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/query_graph.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "schedule_meeting",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/schedule_meeting.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/schedule_meeting.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/schedule_meeting.json#/returns"
+      },
+      "side_effect_class": "external_notification",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "score_lead",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/score_lead.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/score_lead.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/score_lead.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "semantic_search",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/semantic_search.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/semantic_search.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/semantic_search.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "send_notification",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/send_notification.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/send_notification.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/send_notification.json#/returns"
+      },
+      "side_effect_class": "external_notification",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "sensitivity_analysis",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/sensitivity_analysis.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/sensitivity_analysis.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/sensitivity_analysis.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "update_opportunity",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/update_opportunity.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/update_opportunity.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/update_opportunity.json#/returns"
+      },
+      "side_effect_class": "write",
+      "timeout_budget_ms": 60000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    },
+    {
+      "name": "validate_input",
+      "version": "1.0.0",
+      "manifest_path": "../../tool-manifests/validate_input.json",
+      "input_schema": {
+        "$ref": "../../tool-manifests/validate_input.json#/parameters"
+      },
+      "output_schema": {
+        "$ref": "../../tool-manifests/validate_input.json#/returns"
+      },
+      "side_effect_class": "read_only",
+      "timeout_budget_ms": 30000,
+      "tenant_required": true,
+      "provenance": {
+        "required": true,
+        "fields": [
+          "tenant_id",
+          "trace_id",
+          "tool_name",
+          "tool_version",
+          "side_effect_class",
+          "caller_agent_type"
+        ]
+      },
+      "error_schema": {
+        "$ref": "../schemas/tool-error.schema.json"
+      }
+    }
+  ],
+  "compatibility": {
+    "supported_prior_versions": [],
+    "migration_notes": "Initial registry projection of contracts/tool-manifests/*.json. Tool interface changes require Contract Council review and a manifest changelog entry."
+  },
+  "observability": {
+    "required_trace_fields": [
+      "tenant_id",
+      "trace_id",
+      "tool_name",
+      "tool_version",
+      "caller_agent_type"
+    ],
+    "required_metrics": [
+      "tool_invocation_total",
+      "tool_latency_ms",
+      "tool_error_total"
+    ],
+    "audit_events": [
+      "tool_invoked",
+      "tool_failed",
+      "tool_side_effect_committed"
+    ]
+  },
+  "governance": {
+    "review_requirement": "Contract Council review for tool input/output, side-effect, tenant, or provenance changes.",
+    "approval_threshold": "Two reviewers representing Platform Contracts and Layer 4.",
+    "rollout_policy": "Warning-mode CI validation before runtime enforcement; high-risk side effects require feature-flagged rollout.",
+    "deprecation_policy": "Maintain prior contract for at least one minor release unless a security hotfix is approved."
+  }
+}

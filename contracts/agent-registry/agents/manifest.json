@@ -1,0 +1,362 @@
+{
+  "$schema": "../schemas/agent-output.schema.json",
+  "id": "layer4-agent-output-registry",
+  "version": "1.0.0",
+  "kind": "agent_output",
+  "owner": "@layer4-agents",
+  "risk_class": "high",
+  "description": "Registry of production Layer 4 agent output envelopes and capabilities used to detect untracked behavior drift.",
+  "agents": [
+    {
+      "agent_type": "ContextExtractionAgent",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "extract_profile",
+        "extract_stakeholders",
+        "extract_pain_points",
+        "extract_financials",
+        "extract_risk_factors"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "profile",
+            "confidence",
+            "stakeholders",
+            "pain_points",
+            "categories",
+            "risks"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "ValueModelAgent",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "build_value_tree",
+        "calculate_gaps",
+        "project_value",
+        "sensitivity_analysis"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "value_tree",
+            "coverage_percentage",
+            "gaps",
+            "nodes_created"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "IntegrityAgent",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "validate_claims",
+        "verify_formulas",
+        "audit_evidence",
+        "detect_violations"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "audit_result",
+            "validated",
+            "verified",
+            "violations",
+            "discrepancies",
+            "stale_evidence"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "NarrativeAgent",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "generate_summary",
+        "create_proposal",
+        "build_slides",
+        "synthesize_narrative"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "summary",
+            "proposal",
+            "slides",
+            "speaker_notes",
+            "risk_mitigation",
+            "key_points"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "CompetitiveIntelAgent",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "analyze_competitors",
+        "generate_battlecard",
+        "position_solution",
+        "win_loss_analysis"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "analysis",
+            "battlecard",
+            "positioning",
+            "differentiators",
+            "factors",
+            "win_rate"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "SignalDetectionAgent",
+      "source_path": "services/layer4-agents/src/agents/signal_detection.py",
+      "capabilities": [
+        "detect_signals",
+        "score_signals",
+        "publish_signal_event"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "signals",
+            "score",
+            "events_published"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "CRMSyncAgent",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "sync_accounts",
+        "sync_opportunities",
+        "sync_contacts"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "sync_status",
+            "records_processed",
+            "errors"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "ConversationAgent",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "classify_intent",
+        "route_request",
+        "compose_response",
+        "execute_action"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "response",
+            "intent",
+            "confidence",
+            "actions_taken",
+            "sources"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    },
+    {
+      "agent_type": "OrchestrationController",
+      "source_path": "services/layer4-agents/src/agents/taxonomy.py",
+      "capabilities": [
+        "schedule_workflow",
+        "assign_agent",
+        "recover_workflow",
+        "scale_capacity"
+      ],
+      "decision_envelope": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "capability",
+            "parameters"
+          ]
+        },
+        "output_schema": {
+          "type": "object",
+          "expected_fields": [
+            "schedule_id",
+            "assignments",
+            "recovery_action",
+            "scaling_action",
+            "current_instances"
+          ]
+        },
+        "required_context_fields": [
+          "tenant_id",
+          "trace_id"
+        ],
+        "error_schema": {
+          "$ref": "../schemas/tool-error.schema.json"
+        }
+      }
+    }
+  ],
+  "compatibility": {
+    "supported_prior_versions": [],
+    "migration_notes": "Initial registry captures the canonical nine-agent taxonomy. Deprecated aliases remain import-compatible but are intentionally excluded from production registry coverage."
+  },
+  "observability": {
+    "required_trace_fields": [
+      "tenant_id",
+      "trace_id",
+      "agent_id",
+      "agent_type",
+      "capability"
+    ],
+    "required_metrics": [
+      "agent_run_total",
+      "agent_run_latency_ms",
+      "agent_error_total"
+    ],
+    "audit_events": [
+      "agent_started",
+      "agent_completed",
+      "agent_failed"
+    ]
+  },
+  "governance": {
+    "review_requirement": "Contract Council review for added or removed production agent types, capabilities, or output fields.",
+    "approval_threshold": "Two reviewers representing Layer 4 and Platform Contracts.",
+    "rollout_policy": "Registry validation runs in warning mode before runtime enforcement is enabled.",
+    "deprecation_policy": "Deprecated aliases must be documented and kept out of production registry coverage unless reactivated."
+  }
+}

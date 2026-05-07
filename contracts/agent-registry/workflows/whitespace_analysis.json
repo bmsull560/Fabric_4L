@@ -1,0 +1,72 @@
+{
+  "$schema": "../schemas/workflow.schema.json",
+  "version": "1.0.0",
+  "kind": "workflow",
+  "owner": "@layer4-agents",
+  "risk_class": "high",
+  "compatibility": {
+    "supported_prior_versions": [],
+    "migration_notes": "Initial workflow state-machine registry entry derived from services/layer4-agents/src/models/workflow_config.py."
+  },
+  "observability": {
+    "required_trace_fields": [
+      "tenant_id",
+      "trace_id",
+      "workflow_id",
+      "workflow_type",
+      "state"
+    ],
+    "required_metrics": [
+      "workflow_transition_total",
+      "workflow_duration_ms",
+      "workflow_error_total"
+    ],
+    "audit_events": [
+      "workflow_started",
+      "workflow_transitioned",
+      "workflow_completed",
+      "workflow_failed"
+    ]
+  },
+  "governance": {
+    "review_requirement": "Contract Council review for state, transition, invariant, or tool/prompt binding changes.",
+    "approval_threshold": "Two reviewers representing Layer 4 and Platform Contracts.",
+    "rollout_policy": "CI warning mode first; runtime transition enforcement is feature-flagged.",
+    "deprecation_policy": "Maintain prior workflow version until in-flight checkpoints can be migrated or expired."
+  },
+  "id": "workflow-whitespace-analysis",
+  "workflow_type": "whitespace_analysis",
+  "source_path": "../../../services/layer4-agents/src/workflows/whitespace.py",
+  "description": "Identifies gaps between prospect needs and solution capabilities.",
+  "entry_point": "analyze_prospect",
+  "states": [
+    "analyze_prospect",
+    "query_capabilities",
+    "identify_gaps",
+    "score_opportunity",
+    "end"
+  ],
+  "transitions": [
+    {
+      "source": "analyze_prospect",
+      "target": "query_capabilities"
+    },
+    {
+      "source": "query_capabilities",
+      "target": "identify_gaps"
+    },
+    {
+      "source": "identify_gaps",
+      "target": "score_opportunity"
+    },
+    {
+      "source": "score_opportunity",
+      "target": "end"
+    }
+  ],
+  "invariants": [
+    "tenant context is present",
+    "capability queries remain read-only",
+    "gap scores include supporting evidence"
+  ]
+}
