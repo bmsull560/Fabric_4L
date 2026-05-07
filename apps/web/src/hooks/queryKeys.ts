@@ -326,6 +326,8 @@ export const QK = {
     assumptionsList: () => ["roi", "assumptions-list"] as const,
     assumptionDetail: (id: string) => ["roi", "assumption", id] as const,
     agentCalculation: () => ["roi", "agent-calculation"] as const,
+    scenarioVersions: (scope: { tenantId?: string | null; accountId?: string | null; caseId?: string | null; modelId?: string | null }) =>
+      ["roi", "scenario-versions", stableKey(scope)] as const,
   },
 
   // L3 — Value Calculators (Workflow)
