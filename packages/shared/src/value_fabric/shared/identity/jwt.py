@@ -31,7 +31,6 @@ _DEFAULT_ALGORITHM = "HS256"
 _DEFAULT_TENANT_CLAIM = "tenant_id"
 _DEFAULT_USER_CLAIM = "sub"
 _DEFAULT_ROLES_CLAIM = "roles"
-_DEFAULT_JWT_SECRET = "changeme-in-production"
 
 _DEVELOPMENT_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
 _ENV_KEYS = ("ENVIRONMENT", "ENV", "APP_ENV", "VF_ENV", "VALUE_FABRIC_ENV", "PYTHON_ENV")
@@ -73,30 +72,12 @@ def _allow_legacy_test_tenant_ids() -> bool:
 
 def _get_jwt_secret() -> str:
     secret = os.getenv("JWT_SECRET", "").strip()
-    env = _detect_environment()
-    is_non_dev = _is_non_dev_environment()
 
     if not secret:
-        if is_non_dev:
-            raise RuntimeError(
-                "JWT_SECRET is required in non-development environments. "
-                f"Detected environment: {env}."
-            )
-        logger.warning(
-            "JWT_SECRET is unset in %s; using local development fallback.",
-            env,
-        )
-        return _DEFAULT_JWT_SECRET
-
-    if secret == _DEFAULT_JWT_SECRET:
-        if is_non_dev:
-            raise RuntimeError(
-                "JWT_SECRET must not use the default value in non-development "
-                f"environments. Detected environment: {env}."
-            )
-        logger.warning(
-            "JWT_SECRET is using the default development value in %s.",
-            env,
+        raise RuntimeError(
+            "JWT_SECRET is required and is currently unset. "
+            "Set JWT_SECRET in your environment (for local development, copy "
+            ".env.example to .env/.env.dev and provide a strong secret)."
         )
 
     return secret
