@@ -311,3 +311,61 @@ async def test_export_gate_rejects_smoke_draft_record_without_executor_result(
 
     assert response.status_code == 409, response.text
     assert "draft" in response.text.lower() or "document bytes" in response.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_regenerate_business_case_returns_lineage_and_diff(
+    analysis_app: FastAPI,
+    monkeypatch,
+) -> None:
+    tenant_id = UUID("12345678-1234-1234-1234-123456789abc")
+    account_id = uuid4()
+
+    async def mock_require_authenticated():
+        from value_fabric.shared.identity.context import RequestContext
+        return RequestContext(tenant_id=tenant_id, user_id="workflow-user")
+
+    class FakeExecutor:
+        async def get_result(self, case_id: str) -> Any:
+            if case_id == "case-1":
+                return {"created_at": "2026-01-01T00:00:00Z", "output": {"assemble_document": {"total_estimated_value": 100.0, "executive_summary": "before"}}}
+            return {"created_at": "2026-01-02T00:00:00Z", "output": {"assemble_document": {"total_estimated_value": 150.0, "executive_summary": "after"}}}
+
+        async def run(self, **kwargs: Any) -> Any:
+            return SimpleNamespace(
+                workflow_id="case-2",
+                status=SimpleNamespace(value="completed"),
+                output_data={"assemble_document": {"case_metadata": {}, "document_url": None}, "verify_truth_requirements": {}, "generate_sdes": {}},
+            )
+
+    class FakeAccountService:
+        def __init__(self, db: Any) -> None:
+            self.db = db
+        async def get_account(self, requested_account_id: UUID, *, tenant_id: str | None = None) -> Any:
+            return SimpleNamespace(id=account_id, provider_record_id="crm-account-1")
+
+    class FakeBusinessCaseService:
+        def __init__(self, db: Any) -> None:
+            self.db = db
+        async def upsert_case_record(self, **kwargs: Any) -> Any:
+            return SimpleNamespace(**kwargs)
+
+    analysis_app.dependency_overrides[analysis.require_authenticated] = mock_require_authenticated
+    analysis_app.dependency_overrides[analysis.get_executor] = lambda: FakeExecutor()
+    analysis_app.dependency_overrides[analysis.get_db_from_context] = lambda: object()
+    monkeypatch.setattr(analysis, "AccountService", FakeAccountService)
+    monkeypatch.setattr(analysis, "BusinessCaseService", FakeBusinessCaseService)
+
+    async with AsyncClient(transport=ASGITransport(app=analysis_app), base_url="http://test") as client:
+        response = await client.post(
+            "/v1/cases/case-1/regenerate",
+            json={"previous_case_id": "case-1", "account_id": str(account_id), "custom_inputs": {"value_case_version": "7", "value_case_hash": "abc123"}},
+        )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["case_metadata"]["source_value_case_version"] == "7"
+    assert payload["case_metadata"]["source_value_case_hash"] == "abc123"
+    assert payload["revision_history"][0]["case_id"] == "case-1"
+    assert payload["revision_history"][1]["case_id"] == "case-2"
+    assert payload["diff_summary"]["totals"]["delta"] == 50.0

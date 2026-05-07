@@ -125,6 +125,11 @@ class BusinessCaseRequest(BaseModel):
         description="Optional custom inputs, including truth_requirements and organization_id",
     )
 
+class RegenerateBusinessCaseRequest(BusinessCaseRequest):
+    """Regenerate request with lineage to an existing case."""
+
+    previous_case_id: str = Field(..., description="Existing case id being regenerated")
+
 
 class BusinessCaseResponse(BaseModel):
     """Business case generation response."""
@@ -147,6 +152,25 @@ class BusinessCaseResponse(BaseModel):
     remediation_items: list[dict[str, Any]] = Field(default_factory=list)
     sdes: dict[str, Any] = Field(default_factory=dict)
     case_metadata: dict[str, Any] = Field(default_factory=dict)
+    revision_history: list[dict[str, Any]] = Field(default_factory=list)
+    diff_summary: dict[str, Any] = Field(default_factory=dict)
+
+
+def _compute_case_diff(previous: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    prev_total = float(previous.get("total_estimated_value", 0.0) or 0.0)
+    curr_total = float(current.get("total_estimated_value", 0.0) or 0.0)
+    prev_narrative = str(previous.get("executive_summary", "") or "")
+    curr_narrative = str(current.get("executive_summary", "") or "")
+    return {
+        "totals": {
+            "previous_total_value": prev_total,
+            "current_total_value": curr_total,
+            "delta": curr_total - prev_total,
+        },
+        "narrative_sections_changed": {
+            "executive_summary": prev_narrative != curr_narrative,
+        },
+    }
 
 
 def get_executor() -> WorkflowExecutor:
@@ -482,6 +506,40 @@ async def generate_business_case(
 
     except Exception as e:
         raise normalize_exception(e, status_code=500, detail=f"Business case generation failed: {str(e)}")
+
+
+@router.post("/cases/{case_id}/regenerate", response_model=BusinessCaseResponse)
+async def regenerate_business_case(
+    case_id: str,
+    request: RegenerateBusinessCaseRequest,
+    background_tasks: BackgroundTasks,
+    http_request: Request,
+    executor: WorkflowExecutor = Depends(get_executor),
+    db: AsyncSession = Depends(get_route_db),
+    context: RequestContext = Depends(require_authenticated),
+) -> BusinessCaseResponse:
+    """Regenerate a business case with latest inputs and preserve revision lineage."""
+    if request.previous_case_id != case_id:
+        raise HTTPException(status_code=400, detail="previous_case_id must match route case_id")
+    previous_result = await executor.get_result(case_id)
+    previous_assemble = (previous_result or {}).get("output", {}).get("assemble_document", {})
+    response = await generate_business_case(request, background_tasks, http_request, executor, db, context)
+    current_result = await executor.get_result(response.case_id)
+    current_assemble = (current_result or {}).get("output", {}).get("assemble_document", {})
+    diff_summary = _compute_case_diff(previous_assemble, current_assemble)
+    source_version = str(request.custom_inputs.get("value_case_version", "latest"))
+    source_hash = str(request.custom_inputs.get("value_case_hash", "unknown"))
+    response.case_metadata.update({
+        "source_value_case_version": source_version,
+        "source_value_case_hash": source_hash,
+        "regenerated_from_case_id": case_id,
+    })
+    response.revision_history = [
+        {"case_id": case_id, "created_at": (previous_result or {}).get("created_at")},
+        {"case_id": response.case_id, "created_at": current_result.get("created_at") if current_result else None},
+    ]
+    response.diff_summary = diff_summary
+    return response
 
 
 @router.get("/cases/{case_id}", response_model=BusinessCaseResponse)
