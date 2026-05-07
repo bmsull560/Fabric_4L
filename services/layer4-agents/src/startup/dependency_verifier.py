@@ -46,3 +46,26 @@ def verify_startup_dependencies(rules: list[DependencyRule], *, environment: str
 
     if missing_required:
         raise RuntimeError("Layer 4 startup dependency verification failed:\n" + "\n".join(missing_required))
+
+
+LAYER4_STARTUP_DEPENDENCIES = [
+    DependencyRule(
+        module="value_fabric.shared.identity",
+        required_in_prod=True,
+        remediation="Install value_fabric shared identity package for auth and tenant isolation",
+    ),
+    DependencyRule(
+        module="value_fabric.shared.audit",
+        required_in_prod=False,
+        remediation="Install value_fabric shared audit package to emit audit trails",
+    ),
+    DependencyRule(
+        module="value_fabric.shared.secrets",
+        required_in_prod=True,
+        remediation="Install shared package and ensure service runs with repository /shared path",
+    ),
+]
+
+
+def verify_layer4_startup_dependencies(*, environment: str | None = None) -> None:
+    verify_startup_dependencies(LAYER4_STARTUP_DEPENDENCIES, environment=environment)

@@ -9,17 +9,9 @@ import secrets
 
 import logging
 
-from ..startup.dependency_verifier import DependencyRule, verify_startup_dependencies
+from ..startup.dependency_verifier import verify_layer4_startup_dependencies
 
-verify_startup_dependencies(
-    [
-        DependencyRule(
-            module="value_fabric.shared.secrets",
-            required_in_prod=True,
-            remediation="Install shared package and ensure service runs with repository /shared path",
-        ),
-    ]
-)
+verify_layer4_startup_dependencies()
 
 _secrets_module = importlib.import_module("value_fabric.shared.secrets") if importlib.util.find_spec("value_fabric.shared.secrets") else None
 load_infisical_secrets = getattr(_secrets_module, "load_infisical_secrets", None)

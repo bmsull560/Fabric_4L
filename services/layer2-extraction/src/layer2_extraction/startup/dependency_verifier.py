@@ -51,3 +51,26 @@ def verify_startup_dependencies(rules: list[DependencyRule], *, environment: str
 
     if missing_required:
         raise RuntimeError("Layer 2 startup dependency verification failed:\n" + "\n".join(missing_required))
+
+
+LAYER2_STARTUP_DEPENDENCIES = [
+    DependencyRule(
+        module="value_fabric.shared.secrets",
+        required_in_prod=True,
+        remediation="Install shared package and verify PYTHONPATH includes /shared",
+    ),
+    DependencyRule(
+        module="value_fabric.shared.identity.context",
+        required_in_prod=True,
+        remediation="Install value_fabric.shared.identity to enable authenticated request context",
+    ),
+    DependencyRule(
+        module="psutil",
+        required_in_prod=False,
+        remediation="Install psutil to enable host-level health metrics",
+    ),
+]
+
+
+def verify_layer2_startup_dependencies(*, environment: str | None = None) -> None:
+    verify_startup_dependencies(LAYER2_STARTUP_DEPENDENCIES, environment=environment)
