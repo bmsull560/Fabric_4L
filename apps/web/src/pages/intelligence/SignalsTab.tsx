@@ -5,7 +5,7 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
-import { usePromoteSignal, useReviewSignal } from "@/hooks/useHypotheses";
+import { usePromoteSignal } from "@/hooks/useHypotheses";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
@@ -59,7 +59,7 @@ export default function SignalsTab() {
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
   const promoteMutation = usePromoteSignal();
-  const reviewMutation = useReviewSignal();
+  const reviewMutation = useSignalReview();
   const { navigateTo } = useNavigation();
   const [selectedValuePath, setSelectedValuePath] = useState<ValuePathCategory | ''>('');
 
@@ -71,31 +71,43 @@ export default function SignalsTab() {
   };
 
   const setSignalReview = async (signalId: string, review_status: SignalReviewStatus) => {
-    const reviewed_at = new Date().toISOString();
-    const nextSignals = signals.map((signal) =>
+    if (!accountId) return;
+
+    const priorSignals = signals;
+    const optimisticReviewedAt = new Date().toISOString();
+    const optimisticSignals = priorSignals.map((signal) =>
       signal.id === signalId
-        ? { ...signal, review_status, reviewed_at }
+        ? { ...signal, review_status, reviewed_at: optimisticReviewedAt }
         : signal,
     );
-    persistSignals(nextSignals);
-    const updated = nextSignals.find((signal) => signal.id === signalId) ?? null;
-    setSelectedSignal(updated);
 
-    // Persist to backend
+    persistSignals(optimisticSignals);
+    setSelectedSignal(optimisticSignals.find((signal) => signal.id === signalId) ?? null);
+
     try {
-      await reviewMutation.mutateAsync({
+      const response = await reviewMutation.mutateAsync({
         signalId,
-        data: { review_status, reviewed_at },
+        accountId,
+        reviewStatus: review_status,
       });
-    } catch (err) {
-      // Revert local state on backend failure so user sees the truth
-      const reverted = signals.map((signal) =>
+
+      const reconciledSignals = optimisticSignals.map((signal) =>
         signal.id === signalId
-          ? { ...signal, review_status: signal.review_status, reviewed_at: signal.reviewed_at }
+          ? {
+              ...signal,
+              review_status: response.review_status as Signal["review_status"],
+              reviewed_at: response.reviewed_at,
+              reviewed_by: response.reviewed_by,
+              review_notes: response.decision_note ?? signal.review_notes,
+            }
           : signal,
       );
-      persistSignals(reverted);
-      setSelectedSignal(reverted.find((s) => s.id === signalId) ?? null);
+
+      persistSignals(reconciledSignals);
+      setSelectedSignal(reconciledSignals.find((signal) => signal.id === signalId) ?? null);
+    } catch (_err) {
+      persistSignals(priorSignals);
+      setSelectedSignal(priorSignals.find((signal) => signal.id === signalId) ?? null);
     }
   };
 

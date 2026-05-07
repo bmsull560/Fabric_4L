@@ -23,6 +23,7 @@ import { useValuePacks } from "@/hooks/useValuePacks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@/hooks";
 import { createNextAction } from "@/components/workspace/nextAction";
+import { ValueLeversCalculator } from "@/components/calculator/ValueLeversCalculator";
 
 
 function fmtCurrency(value: number): string {
@@ -43,7 +44,6 @@ export default function CalcROITab() {
   const [activeScenario, setActiveScenario] = useState<ScenarioName>("expected");
 
   const queryClient = useQueryClient();
-  const { data: leverData, isLoading: leversLoading, error: leverError } = useValueLevers({ industry: account?.industry ?? undefined });
   const { data: assumptions, isLoading: assumptionsLoading } = useIndustryBenchmarks(account?.industry ?? null);
   const { data: allAssumptions } = useBenchmarksList();
   const { data: packs } = useValuePacks({});
@@ -164,22 +164,12 @@ export default function CalcROITab() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Value model drivers and levers">
-          {leversLoading ? <p className="text-sm text-muted-foreground">Loading value levers…</p> : leverError ? <p className="text-sm text-destructive">Failed to load value levers.</p> : (
-            <div className="space-y-2">
-              {(leverData?.levers ?? []).map((lever) => {
-                const mappedPack = packs?.find((p) => p.name.toLowerCase().includes(lever.category.toLowerCase()));
-                return (
-                  <div key={lever.id} className="rounded border border-border p-2 text-xs">
-                    <div className="font-medium">{lever.name}</div>
-                    <div className="text-muted-foreground">Driver: {lever.category} · Formula var: <code>{lever.id}</code></div>
-                    <div className="text-muted-foreground">Mapped value pack: {mappedPack?.name ?? "Unmapped"}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </SectionCard>
+        <ValueLeversCalculator
+          accountId={accountId}
+          industry={account?.industry ?? undefined}
+          companySize={account?.employee_count ? (account.employee_count > 5000 ? "Enterprise" : "SMB") : undefined}
+          initialCaseId={caseId ?? null}
+        />
 
         <SectionCard title="Trace / explain">
           <div className="space-y-2 text-xs">

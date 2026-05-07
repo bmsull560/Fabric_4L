@@ -672,6 +672,7 @@ class ValueHypothesisEngine:
         """Create idempotent driver-tree artifacts for a validated hypothesis."""
         driver_id = f"driver_{hypothesis_id}"
         lever_id = f"lever_{hypothesis_id}"
+        linkage_id = f"vh:{hypothesis_id}:driver:{driver_id}"
         now = datetime.now(UTC).isoformat()
 
         query = """
@@ -691,7 +692,8 @@ class ValueHypothesisEngine:
             d.confidence = coalesce(vh.confidence_score, vh.confidence, 0.5),
             d.estimated_impact_usd = coalesce(vh.estimated_impact_usd, ps.impact_value, 0),
             d.evidence_ids = evidence_ids,
-            d.source = 'hypothesis_validation'
+            d.source = 'hypothesis_validation',
+            d.hypothesis_driver_linkage_id = $linkage_id
         MERGE (l:ValueLever {id: $lever_id, tenant_id: $tenant_id})
         ON CREATE SET l.created_at = $now
         SET l.updated_at = $now,
@@ -712,7 +714,7 @@ class ValueHypothesisEngine:
         FOREACH (_ IN CASE WHEN ps IS NULL THEN [] ELSE [1] END |
           MERGE (d)-[:DERIVED_FROM_SIGNAL]->(ps)
         )
-        RETURN d {.*} AS driver, l {.*} AS lever
+        RETURN d {.*} AS driver, l {.*} AS lever, $linkage_id AS linkage_id
         """
 
         async with self._driver.session() as session:
@@ -721,6 +723,7 @@ class ValueHypothesisEngine:
                 "hypothesis_id": hypothesis_id,
                 "driver_id": driver_id,
                 "lever_id": lever_id,
+                "linkage_id": linkage_id,
                 "now": now,
             })
             record = await result.single()
@@ -731,8 +734,25 @@ class ValueHypothesisEngine:
         return {
             "drivers": [record["driver"]],
             "levers": [record["lever"]],
+            "linkages": [{
+                "hypothesis_id": hypothesis_id,
+                "driver_id": record["driver"]["id"],
+                "linkage_id": record["linkage_id"],
+            }],
             "created": True,
         }
+
+    async def orchestrate_post_validation(
+        self,
+        tenant_id: str,
+        hypothesis_id: str,
+        *,
+        new_status: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Run post-validation orchestration steps (driver generation workflow)."""
+        if new_status != HypothesisStatus.VALIDATED.value:
+            return None
+        return await self.promote_validated_hypothesis(tenant_id, hypothesis_id)
 
     async def convert_hypothesis_to_tree(
         self,
@@ -827,4 +847,3 @@ class ValueHypothesisEngine:
                 "unique_products": record["unique_products"],
                 "unique_accounts": record["unique_accounts"],
             })
-

@@ -46,6 +46,8 @@ export interface BusinessCase {
   truth_references?: Array<Record<string, unknown>>;
   remediation_items?: Array<Record<string, unknown>>;
   case_metadata?: Record<string, unknown>;
+  revision_history?: Array<Record<string, unknown>>;
+  diff_summary?: Record<string, unknown>;
 }
 
 // Constants for document operations
@@ -121,6 +123,26 @@ export function useBusinessCase(businessCaseId: string | null) {
     },
     enabled: !!businessCaseId,
     staleTime: STALE_TIME.detail,
+  });
+}
+
+export function useRegenerateBusinessCase() {
+  return useMutation<BusinessCase, DocumentApiError, { caseId: string; accountId: string; valueCaseVersion?: string; valueCaseHash?: string }>({
+    mutationFn: async ({ caseId, accountId, valueCaseVersion, valueCaseHash }) => {
+      const response = await apiPost<l4.components['schemas']['BusinessCaseResponse']>(
+        'l4',
+        `${L4_ANALYSIS_PREFIX}/cases/${caseId}/regenerate`,
+        {
+          previous_case_id: caseId,
+          account_id: accountId,
+          custom_inputs: {
+            value_case_version: valueCaseVersion ?? 'latest',
+            value_case_hash: valueCaseHash ?? 'latest',
+          },
+        }
+      );
+      return { ...response.data, recommendations: response.data.recommendations ?? [] };
+    },
   });
 }
 

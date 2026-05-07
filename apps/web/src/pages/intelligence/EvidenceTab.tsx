@@ -227,7 +227,7 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
   };
 
   if (isLoading) return <CenteredLoader message="Loading evidence…" />;
-  if (error) return <div className="p-6 text-sm text-destructive">Failed to load evidence.</div>;
+  if (error) return <div className="p-6 text-sm text-destructive">Evidence service error: unable to load workspace evidence.</div>;
 
   return (
     <>
@@ -300,7 +300,7 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
           <div className="flex gap-2">
           <Btn variant="primary" className="h-8" onClick={() => runDecision(selectedEvidence.id, "accepted")} disabled={evidenceDecision.isPending}>Accept</Btn>
           <Btn variant="outline" className="h-8" onClick={() => runDecision(selectedEvidence.id, "rejected")} disabled={evidenceDecision.isPending}>Reject</Btn>
-          <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver", "driver-auto")} disabled={evidenceDecision.isPending}>Modify</Btn>
+          <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver")} disabled={evidenceDecision.isPending}>Attach to Driver</Btn>
           </div>
           <input
             value={modifyNote}

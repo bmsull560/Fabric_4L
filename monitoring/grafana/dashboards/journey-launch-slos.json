@@ -1,0 +1,33 @@
+{
+  "title": "Journey Launch SLOs",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Success Rate (5m)",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "journey:sli_success_rate_5m{journey=\"account_signals_evidence_driver_calculator_business_case\"}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "p95 Latency (s)",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "journey:sli_p95_latency_seconds_5m{journey=\"account_signals_evidence_driver_calculator_business_case\"}" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Non-empty Ratio (5m)",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "journey:sli_non_empty_ratio_5m{journey=\"account_signals_evidence_driver_calculator_business_case\"}" }
+      ]
+    }
+  ]
+}

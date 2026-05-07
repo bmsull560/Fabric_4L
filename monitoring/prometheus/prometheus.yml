@@ -11,6 +11,7 @@ alerting:
         - targets: ['alertmanager:9093']
 
 rule_files:
+  - 'recording-rules.yml'
   - 'alerting/rules.yml'
 
 scrape_configs:

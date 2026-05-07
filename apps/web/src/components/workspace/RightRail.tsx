@@ -81,6 +81,7 @@ interface RightRailProps {
   isStreaming?: boolean;
   /** AG-UI: Run metadata for observability */
   runMetadata?: RunMetadata | null;
+<<<<<<< HEAD
   auditEntries?: Array<{
     id: string;
     kind: string;
@@ -88,6 +89,10 @@ interface RightRailProps {
     actor: string;
     created_at: string;
   }>;
+=======
+  isActionContextReady?: boolean;
+  missingActionContextMessage?: string;
+>>>>>>> ead7b7275ee7f2f488b05158c495e936ad9ed203
 }
 
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
@@ -160,6 +165,8 @@ function AgentStream({
   steps,
   isStreaming,
   runMetadata,
+  isActionContextReady = true,
+  missingActionContextMessage,
 }: {
   messages: AgentMessage[];
   onSendMessage: (msg: string) => void;
@@ -175,6 +182,8 @@ function AgentStream({
     actor: string;
     created_at: string;
   }>;
+  isActionContextReady?: boolean;
+  missingActionContextMessage?: string;
 }) {
   const [input, setInput] = useState("");
 
@@ -282,8 +291,11 @@ function AgentStream({
       {/* Suggested actions */}
       {suggestedActions && suggestedActions.length > 0 && (
         <div className="px-4 py-2 border-t border-border flex flex-wrap gap-2">
+          {!isActionContextReady && missingActionContextMessage && (
+            <p className="w-full text-[11px] text-muted-foreground">{missingActionContextMessage}</p>
+          )}
           {suggestedActions.map((action, i) => (
-            <Btn key={i} variant="outline" onClick={action.onClick} className="text-[11px]">
+            <Btn key={i} variant="outline" onClick={action.onClick} disabled={!isActionContextReady} className="text-[11px]">
               {action.icon}
               {action.label}
             </Btn>
@@ -342,6 +354,8 @@ export default function RightRail({
   isStreaming,
   runMetadata,
   auditEntries,
+  isActionContextReady,
+  missingActionContextMessage,
 }: RightRailProps) {
   return (
     <div className="flex flex-col h-full bg-background">
@@ -387,6 +401,8 @@ export default function RightRail({
           steps={steps}
           isStreaming={isStreaming}
           runMetadata={runMetadata}
+          isActionContextReady={isActionContextReady}
+          missingActionContextMessage={missingActionContextMessage}
         />
       )}
     </div>

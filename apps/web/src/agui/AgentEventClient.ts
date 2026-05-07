@@ -113,6 +113,22 @@ export interface AgentEventClientOptions {
   entityContext?: Record<string, unknown>;
 }
 
+export interface RightRailContextEnvelope {
+  accountId: string | null;
+  signalId: string | null;
+  evidenceId: string | null;
+  workspaceTab: string;
+}
+
+export function buildRightRailContextEnvelope(options: AgentEventClientOptions): RightRailContextEnvelope {
+  return {
+    accountId: options.accountId ?? null,
+    signalId: options.selectedSignalId ?? null,
+    evidenceId: options.selectedEvidenceId ?? null,
+    workspaceTab: options.activeTab,
+  };
+}
+
 /**
  * Send a message to the agent and yield AG-UI events.
  *
@@ -130,6 +146,8 @@ export async function* sendAgentMessage(
   const steps = TAB_STEP_TEMPLATES[options.activeTab] ?? DEFAULT_STEPS;
 
   // ── Build request body ────────────────────────────────────────────────
+  const contextEnvelope = buildRightRailContextEnvelope(options);
+
   const entityContext = {
     accountId: options.accountId,
     activeTab: options.activeTab,
@@ -143,6 +161,7 @@ export async function* sendAgentMessage(
     selectedBusinessCaseId: options.selectedBusinessCaseId,
     workspaceCaseId: options.workspaceCaseId,
     workflowContext: options.workflowContext,
+    contextEnvelope,
     ...(options.entityContext ?? {}),
   };
 
@@ -154,6 +173,7 @@ export async function* sendAgentMessage(
       accountName: options.accountName,
       accountTier: options.accountTier,
     },
+    contextEnvelope,
     entityContext,
     selectedSignalId: options.selectedSignalId,
     selectedValuePath: options.selectedValuePath,

@@ -17,9 +17,6 @@ type CaseListResponse = CaseRecord[] | {
 
 export type WorkspacePersistResultState = 'saved' | 'unsaved' | 'failed';
 
-const ALLOW_WORKSPACE_501_FALLBACK =
-  import.meta.env.DEV || import.meta.env.MODE === 'test' || import.meta.env.VITEST === 'true';
-
 function getStoredCaseId(accountId: string): string | null {
   return window.localStorage.getItem(`${CASE_STORAGE_PREFIX}.${accountId}`);
 }
@@ -78,17 +75,7 @@ export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: strin
     enabled: Boolean(caseId),
     queryFn: async () => {
       if (!caseId) throw new Error('Missing case_id');
-      try {
-        return await fetchWorkspaceTab<TData>(caseId, tabKey);
-      } catch (error: unknown) {
-        // 501 = workspace tab persistence not yet implemented (H-01).
-        // Return empty tab data so the UI renders empty states rather than errors.
-        const apiError = error as { statusCode?: number };
-        if (apiError.statusCode === 501 && ALLOW_WORKSPACE_501_FALLBACK) {
-          return { [tabKey]: [] } as TData;
-        }
-        throw error;
-      }
+      return await fetchWorkspaceTab<TData>(caseId, tabKey);
     },
   });
 }
@@ -99,12 +86,6 @@ export function usePersistWorkspaceTab(tabKey: string) {
       try {
         return await persistWorkspaceTab(caseId, tabKey, payload);
       } catch (error: unknown) {
-        // 501 = workspace tab persistence not yet implemented (H-01).
-        // Surface as a soft warning so the UI does not crash.
-        const apiError = error as { statusCode?: number };
-        if (apiError.statusCode === 501 && ALLOW_WORKSPACE_501_FALLBACK) {
-          return { case_id: caseId, tab: tabKey, updated: false, not_implemented: true };
-        }
         throw error;
       }
     },
@@ -156,6 +137,16 @@ export function useGenerateWorkspaceIntelligence() {
   });
 }
 
+
+interface SignalReviewMutationResponse {
+  signal_id: string;
+  account_id: string;
+  review_status: "approved" | "rejected";
+  reviewed_by: string;
+  reviewed_at: string;
+  decision_note?: string | null;
+}
+
 export function useSignalReview() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -170,7 +161,7 @@ export function useSignalReview() {
       reviewStatus: 'approved' | 'rejected';
       decisionNote?: string;
     }) => {
-      const response = await apiPatch<unknown>('l4', `/v1/signals/${signalId}/review`, {
+      const response = await apiPatch<SignalReviewMutationResponse>('l4', `/v1/signals/${signalId}/review`, {
         account_id: accountId,
         review_status: reviewStatus,
         decision_note: decisionNote,
@@ -184,6 +175,8 @@ export function useSignalReview() {
         queryClient.invalidateQueries({ queryKey: QK.accounts.detail(vars.accountId) }),
         queryClient.invalidateQueries({ queryKey: QK.hypotheses.all }),
         queryClient.invalidateQueries({ queryKey: QK.evidence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.intelligence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.valueTrees.all }),
       ]);
     },
   });
@@ -304,6 +297,8 @@ export function useApplyWorkspacePageAction() {
         queryClient.invalidateQueries({ queryKey: ['workspace', 'tab', action.caseId] }),
         queryClient.invalidateQueries({ queryKey: QK.hypotheses.all }),
         queryClient.invalidateQueries({ queryKey: QK.evidence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.intelligence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.valueTrees.all }),
         queryClient.invalidateQueries({ queryKey: QK.accounts.detail(action.accountId) }),
       ]);
     },

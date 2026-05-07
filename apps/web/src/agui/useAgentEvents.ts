@@ -127,6 +127,15 @@ export interface UseAgentEventsReturn {
   metadata: RunMetadata | null;
   /** Whether the agent is actively processing (alias for runState === "running") */
   isStreaming: boolean;
+  isActionContextReady: boolean;
+  missingActionContextMessage?: string;
+}
+
+export function getMissingActionContextMessage(options: Pick<UseAgentEventsOptions, "activeTab" | "accountId" | "selectedSignalId" | "selectedEvidenceId">): string | undefined {
+  if (!options.accountId) return "Select an account first to enable agent actions.";
+  if (options.activeTab === "signals" && !options.selectedSignalId) return "Select a signal first to enable signal actions.";
+  if (options.activeTab === "evidence" && !options.selectedEvidenceId) return "Select an evidence item first to enable evidence actions.";
+  return undefined;
 }
 
 // ── Hook Implementation ─────────────────────────────────────────────────────
@@ -435,6 +444,13 @@ export function useAgentEvents({
     ? structuredActions
     : getDefaultSuggestedActions(activeTab, sendMessage);
 
+  const missingActionContextMessage = getMissingActionContextMessage({
+    activeTab,
+    accountId,
+    selectedSignalId,
+    selectedEvidenceId,
+  });
+
   return {
     messages,
     steps,
@@ -445,5 +461,7 @@ export function useAgentEvents({
     lastError,
     metadata,
     isStreaming: runState === "running",
+    isActionContextReady: !missingActionContextMessage,
+    missingActionContextMessage,
   };
 }
