@@ -18,7 +18,7 @@ from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
 from ...db.driver import get_driver
 from ...logging_config import get_logger
-from ...models.valuepack import (
+from value_fabric.layer3.models.valuepack import (
     DEFAULT_VALUEPACKS,
     ComposableTemplateLibraryResponse,
     OntologyMapResponse,

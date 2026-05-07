@@ -182,6 +182,20 @@ alue-fabric/layer4-agents/src/tools/__init__.py.
 
 ---
 
+
+
+### 3.5.1 Single Source of Truth for Shared Layer 3 Models
+
+**Canonical:** `value_fabric.layer3.models.valuepack`.
+
+**Compatibility adapter:** `services/layer3-knowledge/src/models/valuepack.py` is allowed only as an import-forwarder for legacy module paths.
+
+**Rules:**
+- Do not duplicate Pydantic model definitions in service-local Layer 3 model modules when the runtime package already defines the model.
+- Service code should import ValuePack models directly from `value_fabric.layer3.models.valuepack`.
+- If a compatibility module is retained, it must contain forwarding imports only and no local class/function definitions.
+- CI must enforce that the compatibility module cannot diverge from forwarder-only behavior.
+
 ### 3.5 Agent Output Shape and Traceability
 
 **Canonical:** All agent outputs conform to AgentResultEnvelope.
