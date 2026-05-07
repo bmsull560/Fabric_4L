@@ -102,6 +102,17 @@ export interface CaseStudyListFilters {
   offset?: number;
 }
 
+export interface CaseStudyEvidence {
+  id: string;
+  title: string;
+  industry?: string | null;
+  year?: string | number | null;
+}
+
+export type CaseStudiesEvidenceResponse = CaseStudyListResponse & {
+  case_studies?: CaseStudyEvidence[] | null;
+};
+
 export interface EvidenceSearchRequest {
   query: string;
   evidence_types?: string[] | null;
@@ -171,7 +182,7 @@ async function fetchProductStats(): Promise<ProductStats> {
 // ── Query Hooks ────────────────────────────────────────────────────────────
 
 export function useCaseStudies(filters: CaseStudyListFilters = {}) {
-  return useQuery<CaseStudyListResponse, EvidenceApiError>({
+  return useQuery<CaseStudiesEvidenceResponse, EvidenceApiError>({
     queryKey: QK.evidence.list(filters),
     queryFn: () => withApiError(fetchCaseStudies(filters), EvidenceApiError),
     staleTime: STALE_TIME.list,

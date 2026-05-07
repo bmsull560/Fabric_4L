@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { CaseStudiesEvidenceResponse } from "@/hooks/useEvidence";
 import {
   parseBulkImportResponse,
   parseCaseStudy,
@@ -42,6 +43,21 @@ const backendCaseStudy = {
   linked_signals: ["slow onboarding"],
 };
 
+const workflowEvidenceFixture: CaseStudiesEvidenceResponse = {
+  total: 1,
+  offset: 0,
+  limit: 20,
+  items: [backendCaseStudy],
+  case_studies: [
+    {
+      id: "case-study-1",
+      title: "Acme reduced onboarding time with Fabric",
+      industry: "Healthcare",
+      year: 2026,
+    },
+  ],
+};
+
 describe("evidence schemas", () => {
   it("parses backend-shaped case-study detail payloads", () => {
     const parsed = parseCaseStudy(backendCaseStudy);
@@ -53,12 +69,7 @@ describe("evidence schemas", () => {
   });
 
   it("parses backend-shaped case-study list envelopes", () => {
-    const parsed = parseCaseStudyListResponse({
-      total: 1,
-      offset: 0,
-      limit: 20,
-      items: [backendCaseStudy],
-    });
+    const parsed = parseCaseStudyListResponse(workflowEvidenceFixture);
 
     expect(parsed.total).toBe(1);
     expect(parsed.items).toHaveLength(1);
