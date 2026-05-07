@@ -42,6 +42,10 @@ async def test_get_tool_schema_returns_typed_shape() -> None:
     assert isinstance(payload["input_schema"], dict)
     assert isinstance(payload["output_schema"], dict)
     assert isinstance(payload["examples"], list)
+    assert payload["examples"], "expected at least one example"
+    assert set(payload["examples"][0].keys()) == {"input", "output"}
+    assert isinstance(payload["examples"][0]["input"], dict)
+    assert isinstance(payload["examples"][0]["output"], dict)
     assert isinstance(payload["timeout_seconds"], int)
     assert isinstance(payload["requires_auth"], bool)
 
@@ -53,6 +57,8 @@ async def test_list_tool_categories_returns_typed_items() -> None:
     payload = response.model_dump()
     assert isinstance(payload["categories"], list)
     assert payload["categories"], "expected at least one category"
+    assert set(payload.keys()) == {"categories"}
     for category in payload["categories"]:
+        assert set(category.keys()) == {"id", "name"}
         assert isinstance(category["id"], str)
         assert isinstance(category["name"], str)

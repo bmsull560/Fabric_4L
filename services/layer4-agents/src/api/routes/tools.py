@@ -140,7 +140,7 @@ async def list_tools(
     ]
 
 
-@router.get("/tools/{tool_name}")
+@router.get("/tools/{tool_name}", response_model=ToolSchemaResponse)
 async def get_tool_schema(
     tool_name: str,
     registry: ToolRegistry = Depends(get_tool_registry),
@@ -532,7 +532,7 @@ async def list_export_audit_events(
     return records
 
 
-@router.get("/tools/categories")
+@router.get("/tools/categories", response_model=ToolCategoriesResponse)
 async def list_tool_categories(
     ctx: RequestContext = Depends(require_authenticated),
 ) -> ToolCategoriesResponse:
