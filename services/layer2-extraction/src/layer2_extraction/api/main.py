@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from value_fabric.shared.secrets import load_infisical_secrets
 
-from layer2_extraction.api.deps import RequestContext  # type: ignore
+from layer2_extraction.api.deps import RequestContext
 
 try:
     load_infisical_secrets()
@@ -52,30 +52,30 @@ from ..shared_bootstrap import verify_metrics_access
 from .app_factory import create_app
 from .lifespan import create_lifespan
 
-from layer2_extraction.alignment import SemanticAligner  # type: ignore
-from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager  # type: ignore
-from layer2_extraction.extraction.chunker import chunk_markdown  # type: ignore
-from layer2_extraction.extraction.deduplicator import deduplicate_entities  # type: ignore
-from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor  # type: ignore
-from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store  # type: ignore
-from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient  # type: ignore
-from layer2_extraction.integration.pending_ingestion_store import (  # type: ignore
+from layer2_extraction.alignment import SemanticAligner
+from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager
+from layer2_extraction.extraction.chunker import chunk_markdown
+from layer2_extraction.extraction.deduplicator import deduplicate_entities
+from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
+from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store
+from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
+from layer2_extraction.integration.pending_ingestion_store import (
     PendingIngestionRecord,
     PendingIngestionStore,
     SqlitePendingIngestionStore,
     build_pending_ingestion_store,
 )
-from layer2_extraction.metrics import get_metrics  # type: ignore
-from layer2_extraction.models import (  # type: ignore
+from layer2_extraction.metrics import get_metrics
+from layer2_extraction.models import (
     ExtractionResult,
     Relationship,
 )
-from layer2_extraction.output.provenance import (  # type: ignore
+from layer2_extraction.output.provenance import (
     ExtractionStep,
     get_provenance_tracker,
 )
-from layer2_extraction.output.rdf_generator import generate_rdf  # type: ignore
-from layer2_extraction.validation import EntailmentValidator, ValidationSeverity  # type: ignore
+from layer2_extraction.output.rdf_generator import generate_rdf
+from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 
 logger = logging.getLogger(__name__)
 
