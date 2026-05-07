@@ -10,6 +10,8 @@ import { apiClient } from './client';
 import {
   ValueTreeResponseSchema,
   ValueTreePathListSchema,
+  CreateValueTreeRequestSchema,
+  ImportValueTreeRequestSchema,
   parseResponseOrThrow,
 } from '@/lib/schemas';
 
@@ -55,6 +57,17 @@ export interface ValueTreePath {
     type: string;
   }>;
   length: number;
+}
+
+export interface CreateValueTreeRequest {
+  entity_id: string;
+  direction?: 'upward' | 'downward';
+  initialize_root?: boolean;
+}
+
+export interface ImportValueTreeRequest {
+  entity_id: string;
+  tree: ValueTreeResponse;
 }
 
 /**
@@ -126,4 +139,22 @@ export async function getValueTreePaths(
     response.data,
     `GET /value-trees/${entityId}/paths`
   );
+}
+
+export async function createValueTree(payload: CreateValueTreeRequest): Promise<ValueTreeResponse> {
+  const validatedPayload = CreateValueTreeRequestSchema.parse(payload);
+  const response = await apiClient.post('l3', '/value-trees', validatedPayload);
+  if (!response.data) {
+    throw new Error('Empty response from create value tree API');
+  }
+  return parseResponseOrThrow(ValueTreeResponseSchema, response.data, 'POST /value-trees');
+}
+
+export async function importValueTree(payload: ImportValueTreeRequest): Promise<ValueTreeResponse> {
+  const validatedPayload = ImportValueTreeRequestSchema.parse(payload);
+  const response = await apiClient.post('l3', '/value-trees/import', validatedPayload);
+  if (!response.data) {
+    throw new Error('Empty response from import value tree API');
+  }
+  return parseResponseOrThrow(ValueTreeResponseSchema, response.data, 'POST /value-trees/import');
 }
