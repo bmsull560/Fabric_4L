@@ -181,7 +181,13 @@ describe('useWizard', () => {
       const { result } = renderHook(() => useWizard({ totalSteps: 5, storageKey: 'test' }));
       
       const loaded = result.current.loadDraft();
-      expect(loaded).toEqual({ currentStep: 2, customField: 'test' });
+      expect(loaded).toMatchObject({
+        currentStep: 2,
+        customField: 'test',
+        stepValidation: {},
+        sessionId: result.current.sessionId,
+      });
+      expect(typeof loaded?.savedAt).toBe('string');
     });
 
     it('should clear draft', () => {

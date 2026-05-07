@@ -49,6 +49,7 @@ class CRMProvider(str, PyEnum):
 
     SALESFORCE = "salesforce"
     HUBSPOT = "hubspot"
+    MANUAL = "manual"
 
 
 # ---------------------------------------------------------------------------

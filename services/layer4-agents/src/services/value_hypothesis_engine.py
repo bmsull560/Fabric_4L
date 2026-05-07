@@ -52,6 +52,7 @@ class ValueHypothesis_to_node_propertiesResult(TypedDictModel):
     status: Any
     tenant_id: Any
     updated_at: Any
+    value_path_category: Any | None = None
 
 class ValueHypothesisEngine_get_account_hypothesesResult(TypedDictModel):
     hypotheses: Any
@@ -116,6 +117,7 @@ class ValueHypothesis:
     impact_timeframe_days: int = 365
     evidence_ids: list[str] = field(default_factory=list)
     status: str = HypothesisStatus.DRAFT
+    value_path_category: str | None = None
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
@@ -138,6 +140,7 @@ class ValueHypothesis:
             "impact_timeframe_days": self.impact_timeframe_days,
             "evidence_ids": self.evidence_ids,
             "status": self.status,
+            "value_path_category": self.value_path_category,
             "entity_type": "ValueHypothesis",
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -353,6 +356,92 @@ class ValueHypothesisEngine:
                 return record["hypothesis"]
             return props
 
+    async def promote_signal(
+        self,
+        tenant_id: str,
+        account_id: str,
+        signal_id: str,
+        *,
+        value_path_category: str | None = None,
+        product_id: str | None = None,
+        product_name: str | None = None,
+        capability_id: str | None = None,
+        capability_name: str | None = None,
+    ) -> dict[str, Any]:
+        """Promote a single pain signal to a value hypothesis (opportunity).
+
+        Looks up the signal in the knowledge graph and creates a ValueHypothesis
+        node linked to the signal and account. This is the canonical hinge
+        between Signal Discovery and Value Path Classification.
+
+        Args:
+            tenant_id: Tenant scope.
+            account_id: Account the signal belongs to.
+            signal_id: ID of the pain signal to promote.
+            value_path_category: Optional initial value path (revenue_uplift,
+                cost_savings, risk_reduction, blended).
+            product_id: Optional product to associate.
+            product_name: Optional product name.
+            capability_id: Optional capability to associate.
+            capability_name: Optional capability name.
+
+        Returns:
+            The created hypothesis dict.
+        """
+        # Fetch signal details from Neo4j
+        signal_query = """
+        MATCH (ps:PainSignal {id: $signal_id, tenant_id: $tenant_id, account_id: $account_id})
+        RETURN ps {.id, .name, .category, .confidence_score, .impact_value, .description} AS signal
+        """
+        async with self._driver.session() as session:
+            result = await session.run(signal_query, {
+                "signal_id": signal_id,
+                "tenant_id": tenant_id,
+                "account_id": account_id,
+            })
+            record = await result.single()
+            if not record or not record["signal"]:
+                raise ValueError(f"Signal {signal_id} not found for account {account_id}")
+
+            signal = record["signal"]
+
+        # Use signal category as fallback capability if none provided
+        cap_id = capability_id or signal["id"]
+        cap_name = capability_name or signal.get("category", "Unknown")
+        prod_id = product_id or ""
+        prod_name = product_name or "Unknown Product"
+
+        hypothesis_text = (
+            f"Address '{signal['name']}' through {cap_name} "
+            f"to unlock {value_path_category or 'value'} impact."
+        )
+
+        hypothesis = ValueHypothesis(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            signal_id=signal["id"],
+            signal_name=signal["name"],
+            product_id=prod_id,
+            product_name=prod_name,
+            capability_id=cap_id,
+            capability_name=cap_name,
+            hypothesis_text=hypothesis_text,
+            confidence_score=float(signal.get("confidence_score") or 0.5),
+            estimated_impact_usd=float(signal.get("impact_value") or 0),
+            value_path_category=value_path_category,
+            status=HypothesisStatus.DRAFT,
+        )
+
+        stored = await self._store_hypothesis(hypothesis)
+        logger.info(
+            "signal_promoted",
+            signal_id=signal_id,
+            account_id=account_id,
+            hypothesis_id=hypothesis.id,
+            value_path_category=value_path_category,
+        )
+        return stored
+
     # ------------------------------------------------------------------
     # Hypothesis Ranking
     # ------------------------------------------------------------------
@@ -449,10 +538,11 @@ class ValueHypothesisEngine:
         account_id: str,
         *,
         status: str | None = None,
+        value_path_category: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> dict[str, Any]:
-        """Get all hypotheses for an account with optional status filter."""
+        """Get all hypotheses for an account with optional status and value_path filters."""
         where_clauses = [
             "vh.tenant_id = $tenant_id",
             "vh.account_id = $account_id",
@@ -466,6 +556,9 @@ class ValueHypothesisEngine:
         if status:
             where_clauses.append("vh.status = $status")
             params["status"] = status
+        if value_path_category:
+            where_clauses.append("vh.value_path_category = $value_path_category")
+            params["value_path_category"] = value_path_category
 
         where = " AND ".join(where_clauses)
 

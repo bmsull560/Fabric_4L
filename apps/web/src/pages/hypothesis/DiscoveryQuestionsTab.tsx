@@ -24,6 +24,7 @@ export default function DiscoveryQuestionsTab() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "discovery-questions",
     accountName: account?.name ?? "Account",
+    accountId: accountId ?? undefined,
   });
 
   if (!accountId) {

@@ -35,6 +35,19 @@ export type BackendRole = typeof BackendRoles[number];
 export type FrontendTier = typeof FrontendTiers[number];
 export type UserRole = typeof AllRoles[number];
 
+const unsafeEmailInputPattern = /[<>"'`\\\u0000-\u001f]|javascript:|data:/i;
+
+export const SafeEmailSchema = z
+  .string()
+  .trim()
+  .max(254, 'Email must be 254 characters or fewer')
+  .refine((value) => !unsafeEmailInputPattern.test(value), 'Email contains unsafe characters')
+  .email('Valid email required');
+
+export function isSafeEmail(value: string): boolean {
+  return SafeEmailSchema.safeParse(value).success;
+}
+
 /**
  * UserInfo schema — user identity attributes from IdP
  *
@@ -43,7 +56,7 @@ export type UserRole = typeof AllRoles[number];
  */
 export const UserInfoSchema = z.object({
   id: z.string().min(1, 'User ID is required'),
-  email: z.string().email('Valid email required'),
+  email: SafeEmailSchema,
   role: z.enum(AllRoles).default('standard'),
   tenantId: z.string().min(1, 'Tenant ID is required'),
   tenantSlug: z.string().min(1, 'Tenant slug is required'),
@@ -72,7 +85,7 @@ export const TokenResponseSchema = z.object({
   expires_in: z.number().int().positive().optional().default(3600),
   token_type: z.string().transform(val => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()).default('Bearer'),
   user_id: z.string().min(1, 'User ID is required'),
-  email: z.string().email('Valid email required'),
+  email: SafeEmailSchema,
   role: z.enum(AllRoles).default('standard'),
 });
 

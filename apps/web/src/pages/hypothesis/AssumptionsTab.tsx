@@ -24,6 +24,7 @@ export default function AssumptionsTab() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "assumptions",
     accountName: account?.name ?? "Account",
+    accountId: accountId ?? undefined,
   });
 
   if (!accountId) {

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { apiClient } from './client';
-import { AllRoles } from '../schemas/auth';
+import { AllRoles, SafeEmailSchema } from '../schemas/auth';
 
 const RegisterRequestSchema = z.object({
-  email: z.string().email(),
+  email: SafeEmailSchema,
   password: z.string().min(8),
 });
 
@@ -14,7 +14,7 @@ const RegisterResponseSchema = z.object({
   expires_in: z.number().int().positive().optional(),
   refresh_token: z.string().optional(),
   user_id: z.string().optional(),
-  email: z.string().email().optional(),
+  email: SafeEmailSchema.optional(),
   role: z.enum(AllRoles).optional(),
   tenant_id: z.string().optional(),
   tenant_slug: z.string().optional(),

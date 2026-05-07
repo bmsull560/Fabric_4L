@@ -99,6 +99,12 @@ export interface AgentEventClientOptions {
   accountId?: string;
   accountName?: string;
   accountTier?: string;
+  /** Selected entity context for contextual co-pilot */
+  selectedSignalId?: string;
+  selectedValuePath?: string;
+  selectedDriverTreeId?: string;
+  selectedScenarioId?: string;
+  selectedBusinessCaseId?: string;
 }
 
 /**
@@ -161,6 +167,11 @@ export async function* sendAgentMessage(
         accountName: options.accountName,
         accountTier: options.accountTier,
       },
+      selectedSignalId: options.selectedSignalId,
+      selectedValuePath: options.selectedValuePath,
+      selectedDriverTreeId: options.selectedDriverTreeId,
+      selectedScenarioId: options.selectedScenarioId,
+      selectedBusinessCaseId: options.selectedBusinessCaseId,
     })) as {
       data?: {
         content?: string;

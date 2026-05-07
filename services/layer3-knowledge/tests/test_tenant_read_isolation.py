@@ -358,14 +358,21 @@ class TestGetEntityContext:
             mock_session,
             entity_id="entity-123",
             tenant_id="tenant-a",
-            relationship_types=["ENABLES", "AFFECTS"]
+            relationship_types=["ENABLES", "IMPACTS"]
         )
         
         call_args = mock_session.run.call_args
         query = call_args[0][0]
         
-        assert "'ENABLES'" in query
-        assert "'AFFECTS'" in query
+        # params can be passed as second positional argument or kwargs
+        if len(call_args[0]) > 1:
+            params = call_args[0][1]
+        else:
+            params = call_args[1]
+        
+        assert "ALL(r IN relationships(path) WHERE type(r) IN $relationship_types)" in query
+        assert "ENABLES" in params["relationship_types"]
+        assert "IMPACTS" in params["relationship_types"]
 
 
 class TestCountEntityRelationships:

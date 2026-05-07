@@ -183,7 +183,7 @@ export default function EnrichmentTab() {
   const enrichAccount = useEnrichAccount();
 
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ accountId: accountId ?? undefined,
     activeTab: "enrichment",
     accountName: account?.name ?? "Account",
   });

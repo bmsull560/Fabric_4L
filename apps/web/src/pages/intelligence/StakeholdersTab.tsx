@@ -23,7 +23,7 @@ export default function StakeholdersTab() {
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
   useEffect(() => { if (caseId && data) persistTab.mutate({ caseId, payload: data }); }, [caseId, data]);
 
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "stakeholders", accountName: account?.name ?? "Account" });
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "stakeholders", accountName: account?.name ?? "Account", accountId: accountId ?? undefined });
   const stakeholders = data?.stakeholders ?? [];
 
   if (!accountId) {

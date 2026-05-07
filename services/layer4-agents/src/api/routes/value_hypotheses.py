@@ -80,6 +80,28 @@ class RankHypothesesRequest(BaseModel):
     strategy: str = Field("balanced", description="Ranking strategy")
 
 
+class PromoteSignalRequest(BaseModel):
+    """Request to promote a pain signal to a value hypothesis."""
+    account_id: str = Field(..., description="Account ID the signal belongs to")
+    signal_id: str = Field(..., description="Pain signal ID to promote")
+    value_path_category: str | None = Field(
+        None,
+        description="Value path classification: revenue_uplift, cost_savings, risk_reduction, blended",
+    )
+    product_id: str | None = Field(None)
+    product_name: str | None = Field(None)
+    capability_id: str | None = Field(None)
+    capability_name: str | None = Field(None)
+
+
+class PromoteSignalResponse(TypedDictModel):
+    status: str
+    hypothesis_id: str
+    signal_id: str
+    account_id: str
+    value_path_category: str | None
+
+
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
@@ -127,6 +149,45 @@ async def generate_hypotheses(
     })
 
 
+@router.post("/from-signal", response_model=PromoteSignalResponse)
+async def promote_signal(
+    body: PromoteSignalRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
+    """Promote a single pain signal to a value hypothesis.
+
+    This is the canonical hinge between Signal Discovery and Value Path
+    Classification. Creates a ValueHypothesis node linked to the signal.
+    """
+    from ...services.value_hypothesis_engine import ValueHypothesisEngine
+
+    driver = _get_neo4j_driver(request)
+    engine = ValueHypothesisEngine(driver)
+
+    try:
+        hypothesis = await engine.promote_signal(
+            tenant_id,
+            body.account_id,
+            body.signal_id,
+            value_path_category=body.value_path_category,
+            product_id=body.product_id,
+            product_name=body.product_name,
+            capability_id=body.capability_id,
+            capability_name=body.capability_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return PromoteSignalResponse.model_validate({
+        "status": "success",
+        "hypothesis_id": hypothesis["id"],
+        "signal_id": body.signal_id,
+        "account_id": body.account_id,
+        "value_path_category": body.value_path_category,
+    })
+
+
 @router.get("/{hypothesis_id}")
 async def get_hypothesis(
     hypothesis_id: str,
@@ -151,6 +212,7 @@ async def get_account_hypotheses(
     account_id: str,
     request: Request,
     status: str | None = Query(None, description="Filter by status"),
+    value_path_category: str | None = Query(None, description="Filter by value path category: revenue_uplift, cost_savings, risk_reduction, blended"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     tenant_id: str = Depends(get_verified_tenant_id),
@@ -165,6 +227,7 @@ async def get_account_hypotheses(
         tenant_id,
         account_id,
         status=status,
+        value_path_category=value_path_category,
         skip=skip,
         limit=limit,
     )

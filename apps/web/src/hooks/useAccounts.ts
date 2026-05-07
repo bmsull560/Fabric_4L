@@ -4,7 +4,7 @@ import { createLogger } from '@/lib/telemetry';
 import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
-export type CRMProvider = 'salesforce' | 'hubspot';
+export type CRMProvider = 'salesforce' | 'hubspot' | 'manual';
 export type SyncStatus = 'synced' | 'pending' | 'failed' | 'stale';
 
 export interface Account {
@@ -244,10 +244,12 @@ export interface CreateAccountParams {
   industry?: string;
   stage?: string;
   region?: string;
-  employees?: number;
+  company_size?: number;
   annual_revenue?: number;
   headquarters?: string;
   website?: string;
+  owner_name?: string;
+  provider?: CRMProvider;
   enrichment_input?: string;
 }
 
@@ -273,10 +275,12 @@ export function useCreateAccount() {
         industry: params.industry,
         stage: params.stage || 'prospect',
         region: params.region,
-        employees: params.employees,
+        company_size: params.company_size,
         annual_revenue: params.annual_revenue,
         headquarters: params.headquarters,
         website: params.website,
+        owner_name: params.owner_name,
+        provider: params.provider || 'manual',
         enrichment_input: params.enrichment_input,
       });
       return response.data as CreateAccountResponse;

@@ -21,7 +21,7 @@ export default function OntologyMatchTab() {
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
 
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ accountId: accountId ?? undefined,
     activeTab: "ontology-match",
     accountName: account?.name ?? "Account",
   });

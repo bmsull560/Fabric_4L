@@ -23,6 +23,7 @@ export default function CalcROITab() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "roi",
     accountName: account?.name ?? "Account",
+    accountId: accountId ?? undefined,
   });
 
   if (!accountId) {

@@ -1,16 +1,20 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Filter, Activity } from "lucide-react";
+import { Filter, Activity, ArrowRight } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { usePromoteSignal } from "@/hooks/useHypotheses";
+import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+
+export type ValuePathCategory = 'revenue_uplift' | 'cost_savings' | 'risk_reduction' | 'blended';
 
 interface Signal {
   id: string;
@@ -51,6 +55,8 @@ export default function SignalsTab() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "signals",
     accountName: account?.name ?? "Account",
+    accountId: accountId ?? undefined,
+    selectedSignalId: selectedSignal?.id,
   });
 
   const generateMutation = useGenerateWorkspaceIntelligence();
@@ -76,14 +82,17 @@ export default function SignalsTab() {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  const [signalStatuses, setSignalStatuses] = useState<Record<string, 'pending_review' | 'approved' | 'rejected'>>({});
+  const promoteMutation = usePromoteSignal();
+  const { navigateTo } = useNavigation();
+  const [selectedValuePath, setSelectedValuePath] = useState<ValuePathCategory | ''>('');
 
-  const handleApproveSignal = (signalId: string) => {
-    setSignalStatuses(prev => ({ ...prev, [signalId]: 'approved' }));
-  };
-
-  const handleRejectSignal = (signalId: string) => {
-    setSignalStatuses(prev => ({ ...prev, [signalId]: 'rejected' }));
+  const handlePromoteSignal = async (signalId: string) => {
+    if (!accountId || !selectedValuePath) return;
+    await promoteMutation.mutateAsync({
+      account_id: accountId,
+      signal_id: signalId,
+      value_path_category: selectedValuePath,
+    });
   };
 
   const detailContent = selectedSignal ? (
@@ -94,24 +103,37 @@ export default function SignalsTab() {
         <div className="text-center p-2 bg-muted/50 rounded-md"><div className="text-[10px]">Impact</div><div className="text-[14px] font-bold">{selectedSignal.impact}</div></div>
         <div className="text-center p-2 bg-muted/50 rounded-md"><div className="text-[10px]">Trend</div><div className="text-[14px] font-bold">{selectedSignal.trend ?? "—"}</div></div>
       </div>
-      {/* Signal Review Actions */}
-      <div className="flex gap-2 pt-2">
-        <Btn 
-          variant="outline" 
-          className="flex-1 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-          onClick={() => handleApproveSignal(selectedSignal.id)}
-          disabled={signalStatuses[selectedSignal.id] === 'approved'}
+      {/* Value Path Classification */}
+      <div className="space-y-2 pt-2">
+        <label className="text-[11px] font-medium text-muted-foreground">Value Path</label>
+        <select
+          className="w-full h-8 px-2 text-[12px] rounded-md border border-border bg-background text-foreground"
+          value={selectedValuePath}
+          onChange={(e) => setSelectedValuePath(e.target.value as ValuePathCategory)}
         >
-          {signalStatuses[selectedSignal.id] === 'approved' ? 'Approved' : 'Approve'}
-        </Btn>
-        <Btn 
-          variant="outline" 
-          className="flex-1 bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-          onClick={() => handleRejectSignal(selectedSignal.id)}
-          disabled={signalStatuses[selectedSignal.id] === 'rejected'}
+          <option value="">Select value path...</option>
+          <option value="revenue_uplift">Revenue Uplift</option>
+          <option value="cost_savings">Cost Savings</option>
+          <option value="risk_reduction">Risk Reduction</option>
+          <option value="blended">Blended</option>
+        </select>
+        <Btn
+          variant="primary"
+          className="w-full"
+          disabled={!selectedValuePath || promoteMutation.isPending}
+          onClick={() => handlePromoteSignal(selectedSignal.id)}
         >
-          {signalStatuses[selectedSignal.id] === 'rejected' ? 'Rejected' : 'Reject'}
+          {promoteMutation.isPending ? 'Promoting...' : 'Promote to Value Path'}
         </Btn>
+        {promoteMutation.isSuccess && (
+          <Btn
+            variant="ghost"
+            className="w-full text-primary"
+            onClick={() => navigateTo('hypothesis', { accountId })}
+          >
+            View Hypothesis <ArrowRight size={12} />
+          </Btn>
+        )}
       </div>
     </div>
   ) : null;

@@ -4,16 +4,50 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.api.main import _benchmark_store, _init_seed_data, app
-
+from src.api.main import app
+import src.api.main as main_module
+from unittest.mock import AsyncMock, MagicMock
 
 @pytest.fixture(autouse=True)
-def reset_store():
-    """Reset benchmark store before each test."""
-    _benchmark_store.clear()
-    _init_seed_data()
-    yield
-    _benchmark_store.clear()
+def setup_mock_repo(monkeypatch):
+    """Setup mock repository before each test."""
+    mock_repo = AsyncMock()
+    mock_dataset = MagicMock()
+    mock_dataset.dataset_id = "manufacturing-efficiency-2024"
+    mock_dataset.industry = "manufacturing"
+    mock_dataset.segment = "default"
+    mock_dataset.version = "1.0.0"
+    mock_dataset.name = "Manufacturing Efficiency"
+    mock_dataset.description = "desc"
+    mock_dataset.geography = "global"
+    mock_dataset.data_source = "source"
+    mock_dataset.metrics = {
+        "oee_overall_equipment_effectiveness": MagicMock(
+            name="oee",
+            profile=MagicMock(p10=60, p25=70, p50=80, p75=90, p90=95, mean=80, std_dev=5, sample_size=1000)
+        ),
+        "defect_rate_percent": MagicMock(
+            name="defect",
+            profile=MagicMock(p10=1, p25=2, p50=3, p75=4, p90=5, mean=3, std_dev=1, sample_size=1000)
+        ),
+        "production_cycle_time_minutes": MagicMock(
+            name="cycle_time",
+            profile=MagicMock(p10=10, p25=20, p50=30, p75=40, p90=50, mean=30, std_dev=10, sample_size=1000)
+        )
+    }
+    
+    mock_dataset.get_metric = lambda m: mock_dataset.metrics.get(m)
+    
+    mock_repo.list_datasets.return_value = [mock_dataset]
+    
+    async def get_dataset(dataset_id, tenant_id="system"):
+        if dataset_id == "manufacturing-efficiency-2024":
+            return mock_dataset
+        return None
+        
+    mock_repo.get_dataset = AsyncMock(side_effect=get_dataset)
+    monkeypatch.setattr(main_module, "_benchmark_repo", mock_repo)
+    yield mock_repo
 
 
 @pytest.fixture

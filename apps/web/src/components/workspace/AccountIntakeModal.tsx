@@ -175,7 +175,10 @@ export default function AccountIntakeModal({
       const payload = {
         name: companyName.trim(),
         industry: industry.trim() || undefined,
+        company_size: parseAnnualRevenue(revenue) || undefined,
         annual_revenue: parseAnnualRevenue(revenue),
+        owner_name: contactName.trim() || undefined,
+        provider: 'manual' as const,
         enrichment_input: JSON.stringify({
           companyName: companyName.trim(),
           industry: industry.trim() || null,

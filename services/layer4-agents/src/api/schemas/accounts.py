@@ -119,16 +119,24 @@ class AccountSearchRequest(BaseModel):
 
 
 class CreateAccountRequest(BaseModel):
-    """Account creation request."""
+    """Account creation request.
+
+    Supports both CRM-imported accounts (provider=salesforce|hubspot)
+    and manually created accounts (provider=manual).
+    For manual accounts, provider_record_id is auto-generated if omitted.
+    """
 
     id: UUID | None = Field(None, description="Optional deterministic account UUID for validation seeding")
     provider: CRMProvider
-    provider_record_id: str = Field(..., min_length=1, max_length=100)
+    provider_record_id: str | None = Field(None, min_length=1, max_length=100, description="Original CRM record ID. Auto-generated for manual accounts.")
     name: str = Field(..., min_length=1, max_length=255)
     domain: str | None = Field(None, max_length=255)
     industry: str | None = Field(None, max_length=100)
     region: str | None = Field(None, max_length=100)
     company_size: int | None = Field(None, ge=0)
+    annual_revenue: float | None = Field(None, ge=0, description="Annual revenue in USD")
+    headquarters: str | None = Field(None, max_length=255)
+    website: str | None = Field(None, max_length=255)
     owner_id: str | None = Field(None, max_length=100)
     owner_name: str | None = Field(None, max_length=255)
     owner_email: str | None = Field(None, max_length=255)

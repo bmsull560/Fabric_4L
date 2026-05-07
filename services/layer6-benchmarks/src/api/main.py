@@ -20,8 +20,10 @@ try:
 except ImportError:
     pass  # shared package not available; env vars used directly
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import Response
+
+from value_fabric.shared.identity.context import RequestContext, get_request_context
 
 from ..shared_bootstrap import (
     SecurityConfig,
@@ -313,7 +315,7 @@ async def health_check(request: Request):
 async def list_datasets(
     industry: Optional[str] = None,
     segment: Optional[str] = None,
-    ctx: Any = None,
+    ctx: RequestContext = Depends(get_request_context),
 ):
     """List available benchmark datasets."""
     if _benchmark_repo is None:
@@ -333,7 +335,7 @@ async def list_datasets(
     ]
 
 
-async def get_dataset(dataset_id: str, ctx: Any = None):
+async def get_dataset(dataset_id: str, ctx: RequestContext = Depends(get_request_context)):
     """Get benchmark dataset by ID."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
@@ -363,7 +365,7 @@ async def get_dataset(dataset_id: str, ctx: Any = None):
     )
 
 
-async def compare(payload: ComparisonRequestPayload, ctx: Any = None):
+async def compare(payload: ComparisonRequestPayload, ctx: RequestContext = Depends(get_request_context)):
     """Execute peer comparison."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
@@ -427,7 +429,7 @@ async def compare(payload: ComparisonRequestPayload, ctx: Any = None):
     )
 
 
-async def validate(payload: ValidationRequestPayload, ctx: Any = None):
+async def validate(payload: ValidationRequestPayload, ctx: RequestContext = Depends(get_request_context)):
     """Validate value against benchmark range."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
@@ -488,7 +490,7 @@ async def validate(payload: ValidationRequestPayload, ctx: Any = None):
     )
 
 
-async def list_industries(ctx: Any = None):
+async def list_industries(ctx: RequestContext = Depends(get_request_context)):
     """List available industries."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")

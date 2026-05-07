@@ -10,18 +10,18 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
+import { isSafeEmail } from '@/schemas/auth';
 
 describe('Input Validation', () => {
   describe('Form Field Validation', () => {
     it('should validate email format', () => {
-      const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      
-      expect(isValidEmail('valid@example.com')).toBe(true);
-      expect(isValidEmail('user+tag@example.com')).toBe(true);
-      expect(isValidEmail('invalid')).toBe(false);
-      expect(isValidEmail('invalid@')).toBe(false);
-      expect(isValidEmail('@example.com')).toBe(false);
-      expect(isValidEmail('script>alert(1)</script>@example.com')).toBe(false);
+      expect(isSafeEmail('valid@example.com')).toBe(true);
+      expect(isSafeEmail('user+tag@example.com')).toBe(true);
+      expect(isSafeEmail('invalid')).toBe(false);
+      expect(isSafeEmail('invalid@')).toBe(false);
+      expect(isSafeEmail('@example.com')).toBe(false);
+      expect(isSafeEmail('script>alert(1)</script>@example.com')).toBe(false);
+      expect(isSafeEmail('javascript:alert(1)@example.com')).toBe(false);
     });
 
     it('should validate UUID format', () => {

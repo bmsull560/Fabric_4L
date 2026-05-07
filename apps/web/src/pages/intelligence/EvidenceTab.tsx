@@ -31,7 +31,7 @@ function useEvidenceTabState() {
   const verified = useMemo(() => evidence.filter((e) => e.verification === "verified").length, [evidence]);
   const avgMatch = evidence.length ? Math.round(evidence.reduce((s, e) => s + e.matchScore, 0) / evidence.length) : 0;
 
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "evidence", accountName: account?.name ?? "Account" });
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "evidence", accountName: account?.name ?? "Account", accountId: accountId ?? undefined });
 
   return {
     account, accountLoading, caseId, evidence, isLoading, error, verified, avgMatch,

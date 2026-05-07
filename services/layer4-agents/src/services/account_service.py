@@ -66,13 +66,16 @@ class AccountService:
         self,
         *,
         provider: CRMProvider,
-        provider_record_id: str,
+        provider_record_id: str | None,
         name: str,
         tenant_id: str,
         domain: str | None = None,
         industry: str | None = None,
         region: str | None = None,
         company_size: int | None = None,
+        annual_revenue: float | None = None,
+        headquarters: str | None = None,
+        website: str | None = None,
         owner_id: str | None = None,
         owner_name: str | None = None,
         owner_email: str | None = None,
@@ -81,6 +84,13 @@ class AccountService:
         account_id: UUID | None = None,
     ) -> Account:
         """Create a new account record scoped to the authenticated tenant."""
+        # Auto-generate provider_record_id for manual accounts
+        if provider == CRMProvider.MANUAL and not provider_record_id:
+            provider_record_id = f"manual-{uuid.uuid4()}"
+
+        if not provider_record_id:
+            raise ValueError("provider_record_id is required for non-manual providers")
+
         existing = await self.get_account_by_provider_id(provider, provider_record_id, tenant_id=tenant_id)
         if existing:
             raise ValueError(
@@ -97,6 +107,9 @@ class AccountService:
             industry=industry,
             region=region,
             company_size=company_size,
+            annual_revenue=annual_revenue,
+            headquarters=headquarters,
+            website=website,
             owner_id=owner_id,
             owner_name=owner_name,
             owner_email=owner_email,

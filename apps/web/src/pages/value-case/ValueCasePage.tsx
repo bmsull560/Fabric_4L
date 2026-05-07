@@ -23,6 +23,7 @@ export default function ValueCasePage() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "value-case",
     accountName: account?.name ?? "Account",
+    accountId: accountId ?? undefined,
   });
 
   if (!accountId) {

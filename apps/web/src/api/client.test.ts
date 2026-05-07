@@ -65,7 +65,7 @@ describe("ApiClient", () => {
       vi.restoreAllMocks();
     });
 
-    it("should include tenant ID header from session metadata", async () => {
+    it("should not include client-controlled auth or tenant headers with session metadata", async () => {
       testSessionStorage.setItem(
         "vf.auth.session.meta",
         JSON.stringify(
@@ -87,11 +87,11 @@ describe("ApiClient", () => {
       );
 
       await apiClient.get("l3", "/test");
-      expect(capturedHeaders["x-tenant-id"]).toBe("test-tenant-123");
+      expect(capturedHeaders["x-tenant-id"]).toBeUndefined();
       expect(capturedHeaders.authorization).toBeUndefined();
     });
 
-    it("should use default tenant ID when session metadata is absent", async () => {
+    it("should not synthesize a default tenant header when session metadata is absent", async () => {
       let capturedHeaders: Record<string, string> = {};
 
       server.use(
@@ -104,7 +104,8 @@ describe("ApiClient", () => {
       );
 
       await apiClient.get("l3", "/test");
-      expect(capturedHeaders["x-tenant-id"]).toBe("default");
+      expect(capturedHeaders["x-tenant-id"]).toBeUndefined();
+      expect(capturedHeaders.authorization).toBeUndefined();
     });
   });
 

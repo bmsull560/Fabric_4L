@@ -28,7 +28,6 @@ describe("WfPrimitives", () => {
       "SearchInput",
       "SectionCard",
       "SidePanel",
-      "Skeleton",
       "StatusBadge",
       "StatusBadgeLegacy",
       "Tabs",

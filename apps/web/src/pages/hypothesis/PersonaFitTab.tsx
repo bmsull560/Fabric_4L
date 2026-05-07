@@ -24,6 +24,7 @@ export default function PersonaFitTab() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "persona-fit",
     accountName: account?.name ?? "Account",
+    accountId: accountId ?? undefined,
   });
 
   if (!accountId) {

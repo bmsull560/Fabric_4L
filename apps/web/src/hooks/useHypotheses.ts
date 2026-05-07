@@ -20,13 +20,15 @@ export interface ValueHypothesis {
   id: string;
   account_id: string;
   product_id: string;
-  signal_ids: string[];
+  signal_id: string;
+  capability_id?: string;
   hypothesis_text: string;
-  value_driver: string;
+  capability_name?: string;
+  value_path_category?: string;
   confidence: number;
   status: HypothesisStatus;
   evidence_ids: string[];
-  validation_notes?: string;
+  feedback?: string;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +48,7 @@ export interface GenerateHypothesesResponse {
 
 export interface AccountHypothesesFilters {
   status?: HypothesisStatus;
+  value_path_category?: 'revenue_uplift' | 'cost_savings' | 'risk_reduction' | 'blended';
   product_id?: string;
   min_confidence?: number;
   skip?: number;
@@ -58,8 +61,8 @@ export interface AccountHypothesesResponse {
 }
 
 export interface ValidateHypothesisRequest {
-  status: HypothesisStatus;
-  validation_notes?: string;
+  new_status: HypothesisStatus;
+  feedback?: string;
   evidence_ids?: string[];
   confidence_adjustment?: number;
 }
@@ -72,6 +75,24 @@ export interface RankHypothesesRequest {
 export interface RankedHypothesis extends ValueHypothesis {
   rank: number;
   composite_score: number;
+}
+
+export interface PromoteSignalRequest {
+  account_id: string;
+  signal_id: string;
+  value_path_category?: 'revenue_uplift' | 'cost_savings' | 'risk_reduction' | 'blended';
+  product_id?: string;
+  product_name?: string;
+  capability_id?: string;
+  capability_name?: string;
+}
+
+export interface PromoteSignalResponse {
+  status: string;
+  hypothesis_id: string;
+  signal_id: string;
+  account_id: string;
+  value_path_category: string | null;
 }
 
 export interface HypothesisStats {
@@ -95,6 +116,7 @@ export class HypothesisApiError extends BaseApiError {
 function buildHypothesisParams(filters: AccountHypothesesFilters): string {
   const params = new URLSearchParams();
   if (filters.status) params.set('status', filters.status);
+  if (filters.value_path_category) params.set('value_path_category', filters.value_path_category);
   if (filters.product_id) params.set('product_id', filters.product_id);
   if (filters.min_confidence != null) params.set('min_confidence', filters.min_confidence.toString());
   if (filters.skip != null) params.set('skip', filters.skip.toString());
@@ -215,6 +237,20 @@ export function useRankHypotheses() {
     mutationFn: async (params) => {
       const response = await apiClient.post('l4', '/v1/hypotheses/rank', params);
       return response.data as RankedHypothesis[];
+    },
+  });
+}
+
+export function usePromoteSignal() {
+  const queryClient = useQueryClient();
+  return useMutation<PromoteSignalResponse, HypothesisApiError, PromoteSignalRequest>({
+    mutationFn: async (params) => {
+      const response = await apiClient.post('l4', '/v1/hypotheses/from-signal', params);
+      return response.data as PromoteSignalResponse;
+    },
+    onSuccess: (_data, { account_id }) => {
+      queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
+      queryClient.invalidateQueries({ queryKey: QK.intelligence.briefing(account_id) });
     },
   });
 }

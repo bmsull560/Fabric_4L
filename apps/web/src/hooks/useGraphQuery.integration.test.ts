@@ -191,14 +191,19 @@ describe('useSubgraph Integration [L2-Integration]', () => {
 
       server.use(
         http.get('/api/v1/graph/subgraph', ({ request }) => {
-          const tenantId = request.headers.get('x-tenant-id');
+          const tenantId = sessionService.getSessionMeta()?.tenantId ?? null;
           const auth = request.headers.get('authorization');
+          const clientTenantId = request.headers.get('x-tenant-id');
 
           if (auth !== null) {
             return HttpResponse.json({ error: 'Unexpected bearer token' }, { status: 403 });
           }
 
-          if (!roleConfig.canRead || !roleConfig.tenantId || tenantId === 'default') {
+          if (clientTenantId !== null) {
+            return HttpResponse.json({ error: 'Unexpected client tenant header' }, { status: 403 });
+          }
+
+          if (!roleConfig.canRead || !roleConfig.tenantId || !tenantId) {
             return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
           }
 

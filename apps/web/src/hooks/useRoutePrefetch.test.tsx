@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { useRoutePrefetch } from "./useRoutePrefetch";
 import { apiClient } from "@/api/client";
 
@@ -68,7 +69,7 @@ describe("useRoutePrefetch", () => {
   });
 
   function createWrapper() {
-    return ({ children }: { children: React.ReactNode }) => (
+    return ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
   }

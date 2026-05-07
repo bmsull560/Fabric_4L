@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { isSafeEmail } from '@/schemas/auth';
 
 describe('Auth Component', () => {
   beforeEach(() => {
@@ -18,13 +19,11 @@ describe('Auth Component', () => {
 
   describe('Login Form', () => {
     it('should validate email format', () => {
-      // Test email validation logic
-      const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      
-      expect(isValidEmail('valid@example.com')).toBe(true);
-      expect(isValidEmail('invalid')).toBe(false);
-      expect(isValidEmail('invalid@')).toBe(false);
-      expect(isValidEmail('@example.com')).toBe(false);
+      expect(isSafeEmail('valid@example.com')).toBe(true);
+      expect(isSafeEmail('invalid')).toBe(false);
+      expect(isSafeEmail('invalid@')).toBe(false);
+      expect(isSafeEmail('@example.com')).toBe(false);
+      expect(isSafeEmail('script>alert(1)</script>@example.com')).toBe(false);
     });
 
     it('should require password', () => {

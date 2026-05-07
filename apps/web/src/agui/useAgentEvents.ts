@@ -89,6 +89,12 @@ export interface UseAgentEventsOptions {
   accountId?: string;
   accountName?: string;
   accountTier?: string;
+  /** Selected entity context for contextual co-pilot */
+  selectedSignalId?: string;
+  selectedValuePath?: string;
+  selectedDriverTreeId?: string;
+  selectedScenarioId?: string;
+  selectedBusinessCaseId?: string;
   /** Initial messages (e.g. restored from session) */
   initialMessages?: AgentMessage[];
 }
@@ -123,6 +129,11 @@ export function useAgentEvents({
   accountId,
   accountName = "this account",
   accountTier,
+  selectedSignalId,
+  selectedValuePath,
+  selectedDriverTreeId,
+  selectedScenarioId,
+  selectedBusinessCaseId,
   initialMessages,
 }: UseAgentEventsOptions): UseAgentEventsReturn {
   const [messages, setMessages] = useState<AgentMessage[]>(
@@ -339,6 +350,11 @@ export function useAgentEvents({
               accountId,
               accountName,
               accountTier,
+              selectedSignalId,
+              selectedValuePath,
+              selectedDriverTreeId,
+              selectedScenarioId,
+              selectedBusinessCaseId,
             },
             abortRef.current?.signal,
           );
@@ -354,12 +370,12 @@ export function useAgentEvents({
         }
       })();
     },
-    [activeTab, accountId, accountName, accountTier, messages, processEvent],
+    [activeTab, accountId, accountName, accountTier, selectedSignalId, selectedValuePath, selectedDriverTreeId, selectedScenarioId, selectedBusinessCaseId, messages, processEvent],
   );
 
   // ── Suggested Actions ─────────────────────────────────────────────────
 
-  const suggestedActions = getDefaultSuggestedActions(activeTab);
+  const suggestedActions = getDefaultSuggestedActions(activeTab, sendMessage);
 
   return {
     messages,

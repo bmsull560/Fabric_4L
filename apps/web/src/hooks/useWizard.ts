@@ -102,7 +102,9 @@ export function useWizard(options: UseWizardOptions): UseWizardReturn {
   // Auto-save draft on step change
   useEffect(() => {
     if (autoSave) {
+      const existingDraft = loadDraftFromStorage(storageKey) ?? {};
       saveDraftToStorage(storageKey, {
+        ...existingDraft,
         currentStep,
         stepValidation,
         sessionId,

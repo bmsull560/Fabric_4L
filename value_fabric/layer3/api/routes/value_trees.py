@@ -278,6 +278,7 @@ async def get_value_tree_paths(
     direction: Literal["upward", "downward"] = "upward",
     max_depth: int = 4,
     app_state: AppState = Depends(get_app_state),
+    request: Request = None,
 ) -> list[dict[str, Any]]:
     """Get all value tree paths from a starting entity."""
     try:
@@ -285,23 +286,28 @@ async def get_value_tree_paths(
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
+        # Extract tenant_id for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+        if not tenant_id:
+            raise HTTPException(status_code=400, detail="tenant_id is required for value tree access")
+
         max_depth = max(1, min(max_depth, 4))
 
         if direction == "upward":
             query = """
-            MATCH path = (start {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]->(target:ValueDriver)
+            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]->(target:ValueDriver {tenant_id: $tenant_id})
             RETURN [node in nodes(path) | {id: node.id, name: node.name, type: node.type}] as path_nodes,
                    length(path) as path_length
             """
         else:
             query = """
-            MATCH path = (start {id: $entity_id})<-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]-(target:Capability)
+            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})<-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]-(target:Capability {tenant_id: $tenant_id})
             RETURN [node in nodes(path) | {id: node.id, name: node.name, type: node.type}] as path_nodes,
                    length(path) as path_length
             """
 
         result = await neo4j.execute_query(
-            query, {"entity_id": entity_id, "max_depth": max_depth}
+            query, {"entity_id": entity_id, "max_depth": max_depth, "tenant_id": tenant_id}
         )
 
         paths = []

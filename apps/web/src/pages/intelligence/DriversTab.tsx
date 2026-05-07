@@ -23,7 +23,7 @@ export default function DriversTab() {
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
   useEffect(() => { if (caseId && data) persistTab.mutate({ caseId, payload: data }); }, [caseId, data]);
 
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "drivers", accountName: account?.name ?? "Account" });
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "drivers", accountName: account?.name ?? "Account", accountId: accountId ?? undefined });
   const drivers = data?.drivers ?? [];
   const grouped = useMemo(() => drivers.reduce<Record<string, Driver[]>>((acc, d) => { (acc[d.parentSignal] ??= []).push(d); return acc; }, {}), [drivers]);
 

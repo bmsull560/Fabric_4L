@@ -508,8 +508,7 @@ class ROICalculatorService:
             total = count_record["total"] if count_record else 0
 
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
-            list_# strict-scoped-query-execution: query parameters include tenant_id
-            result = await session.run(query, params)
+            list_result = await session.run(query, params)
             records = [record async for record in list_result]
 
         return ROICalculatorService_get_templatesResult.model_validate({
@@ -652,8 +651,7 @@ class ROICalculatorService:
             total = count_record["total"] if count_record else 0
 
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
-            list_# strict-scoped-query-execution: query parameters include tenant_id
-            result = await session.run(query, params)
+            list_result = await session.run(query, params)
             records = [record async for record in list_result]
 
         calculations = []
