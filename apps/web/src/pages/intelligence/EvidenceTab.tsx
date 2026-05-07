@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { FileText, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle, ChevronRight, Link2, XCircle } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useAttachEvidenceToDriverMutation, useCanonicalCaseId, useEvidenceDecisionMutation, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 type VerificationState = "verified" | "partial" | "unverified";
@@ -24,6 +24,10 @@ function useEvidenceTabState() {
   const validateClaim = useValidateEvidenceClaim();
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
+  const [pendingDecisions, setPendingDecisions] = useState<Record<string, "accepted" | "rejected">>({});
+  const [actionError, setActionError] = useState<string | null>(null);
+  const evidenceDecision = useEvidenceDecisionMutation();
+  const attachDriver = useAttachEvidenceToDriverMutation();
 
   useEffect(() => { if (caseId && data) persistTab.mutate({ caseId, payload: data }); }, [caseId, data]);
 
@@ -37,7 +41,7 @@ function useEvidenceTabState() {
     account, accountLoading, caseId, evidence, isLoading, error, verified, avgMatch,
     selectedEvidence, setSelectedEvidence, railMode, setRailMode,
     messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
-    validateClaim,
+    validateClaim, pendingDecisions, setPendingDecisions, actionError, setActionError, evidenceDecision, attachDriver,
   };
 }
 
@@ -45,7 +49,7 @@ export function EvidenceTabContent() {
   const { accountId } = useParams<{ accountId: string }>();
   const {
     evidence, isLoading, error, verified, avgMatch,
-    selectedEvidence, setSelectedEvidence,
+    selectedEvidence, setSelectedEvidence, pendingDecisions, setPendingDecisions, actionError, setActionError, evidenceDecision, attachDriver, caseId,
   } = useEvidenceTabState();
 
   if (!accountId) {
@@ -57,6 +61,7 @@ export function EvidenceTabContent() {
 
   return (
     <>
+      {actionError && <div className="mb-3 text-xs text-destructive">{actionError}</div>}
       {evidence.length === 0 ? (
         <SectionCard title="Evidence Library">
           <div className="text-sm text-muted-foreground">No evidence has been returned for this case.</div>
@@ -88,7 +93,7 @@ export function EvidenceTabContent() {
                       <div className="text-[10px] text-muted-foreground">{item.linkedSignals.join(" · ")}</div>
                     </div>
                     <span className={cn("flex items-center gap-1 text-[10px] font-semibold", vc.color)}>
-                      <Icon size={10} />{item.matchScore}%
+                      <Icon size={10} />{pendingDecisions[item.id] ? `${pendingDecisions[item.id]}` : `${item.matchScore}%`}
                     </span>
                     <ChevronRight size={12} />
                   </button>
@@ -106,6 +111,7 @@ export default function EvidenceTab() {
   const {
     account, accountLoading, selectedEvidence, railMode, setRailMode,
     messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
+    caseId, setPendingDecisions, setActionError, evidenceDecision, attachDriver,
   } = useEvidenceTabState();
 
   const { accountId } = useParams<{ accountId: string }>();
@@ -139,6 +145,25 @@ export default function EvidenceTab() {
               <div className="space-y-2">
                 <h3 className="text-sm font-bold">{selectedEvidence.title}</h3>
                 <p className="text-xs text-muted-foreground">{selectedEvidence.excerpt}</p>
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <Btn variant="primary" onClick={async () => {
+                    if (!accountId || !caseId) return;
+                    setActionError(null);
+                    setPendingDecisions((p) => ({ ...p, [selectedEvidence.id]: "accepted" }));
+                    try { await evidenceDecision.mutateAsync({ evidenceId: selectedEvidence.id, accountId, caseId, decision: "accepted" }); } catch { setActionError("Failed to accept evidence. Retry."); }
+                  }}><CheckCircle2 size={12} />Accept</Btn>
+                  <Btn variant="outline" onClick={async () => {
+                    if (!accountId || !caseId) return;
+                    setActionError(null);
+                    setPendingDecisions((p) => ({ ...p, [selectedEvidence.id]: "rejected" }));
+                    try { await evidenceDecision.mutateAsync({ evidenceId: selectedEvidence.id, accountId, caseId, decision: "rejected" }); } catch { setActionError("Failed to reject evidence. Retry."); }
+                  }}><XCircle size={12} />Reject</Btn>
+                  <Btn variant="ghost" onClick={async () => {
+                    if (!accountId || !caseId) return;
+                    setActionError(null);
+                    try { await attachDriver.mutateAsync({ evidenceId: selectedEvidence.id, driverId: selectedEvidence.linkedSignals[0] ?? "", accountId, caseId }); } catch { setActionError("Failed to attach evidence to driver. Retry."); }
+                  }}><Link2 size={12} />Attach</Btn>
+                </div>
               </div>
             ) : null
           }

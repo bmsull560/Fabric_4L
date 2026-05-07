@@ -426,6 +426,36 @@ class Layer3Client:
             payload["decision_note"] = decision_note
         return await self._make_request("PATCH", url, effective_tenant, json=payload) or {}
 
+
+    async def decide_evidence(
+        self,
+        evidence_id: str,
+        account_id: str,
+        case_id: str,
+        decision: str,
+        reviewer_id: str,
+        decision_note: str | None = None,
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/evidence/{evidence_id}/decision"
+        payload: dict[str, Any] = {"account_id": account_id, "case_id": case_id, "decision": decision, "reviewer_id": reviewer_id}
+        if decision_note:
+            payload["decision_note"] = decision_note
+        return await self._make_request("PATCH", url, effective_tenant, json=payload) or {}
+
+    async def link_evidence_driver(
+        self,
+        evidence_id: str,
+        driver_id: str,
+        account_id: str,
+        case_id: str,
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/evidence/{evidence_id}/drivers/{driver_id}"
+        payload = {"account_id": account_id, "case_id": case_id}
+        return await self._make_request("POST", url, effective_tenant, json=payload) or {}
     async def close(self) -> None:
         """Close HTTP client and release resources."""
         if self._client:

@@ -112,6 +112,29 @@ class SignalReviewResponse(BaseModel):
     decision_note: str | None = None
 
 
+
+
+class EvidenceDecisionRequest(BaseModel):
+    account_id: str
+    case_id: str
+    decision: str
+    decision_note: str | None = None
+
+
+class EvidenceDriverLinkRequest(BaseModel):
+    account_id: str
+    case_id: str
+
+
+class EvidenceDecisionResponse(BaseModel):
+    evidence_id: str
+    account_id: str
+    case_id: str
+    decision: str
+    reviewed_by: str
+    reviewed_at: str
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    confidence: float | None = None
 # ============================================================================
 # API Endpoints
 # ============================================================================
@@ -457,3 +480,54 @@ async def stream_signals_to_websocket(
 
     # Execute with streaming
     await agent.execute(task, context)
+
+
+@router.patch("/evidence/{evidence_id}/decision", response_model=EvidenceDecisionResponse)
+async def decide_evidence(
+    evidence_id: str,
+    request: EvidenceDecisionRequest,
+    ctx: RequestContext = Depends(require_authenticated),
+) -> EvidenceDecisionResponse:
+    if request.decision not in {"accepted", "rejected"}:
+        raise HTTPException(status_code=400, detail="decision must be accepted or rejected")
+    from ...integration.layer3_client import Layer3Client
+    now = datetime.now(UTC).isoformat()
+    async with Layer3Client() as client:
+        response = await client.decide_evidence(
+            evidence_id=evidence_id,
+            account_id=request.account_id,
+            case_id=request.case_id,
+            decision=request.decision,
+            reviewer_id=ctx.user_id,
+            decision_note=request.decision_note,
+            tenant_id=ctx.tenant_id,
+        )
+    return EvidenceDecisionResponse(
+        evidence_id=evidence_id,
+        account_id=request.account_id,
+        case_id=request.case_id,
+        decision=response.get("decision", request.decision),
+        reviewed_by=response.get("reviewed_by", ctx.user_id),
+        reviewed_at=response.get("reviewed_at", now),
+        provenance=response.get("provenance", {}),
+        confidence=response.get("confidence"),
+    )
+
+
+@router.post("/evidence/{evidence_id}/drivers/{driver_id}")
+async def link_evidence_driver(
+    evidence_id: str,
+    driver_id: str,
+    request: EvidenceDriverLinkRequest,
+    ctx: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    from ...integration.layer3_client import Layer3Client
+    async with Layer3Client() as client:
+        response = await client.link_evidence_driver(
+            evidence_id=evidence_id,
+            driver_id=driver_id,
+            account_id=request.account_id,
+            case_id=request.case_id,
+            tenant_id=ctx.tenant_id,
+        )
+    return {"evidence_id": evidence_id, "driver_id": driver_id, **(response or {})}

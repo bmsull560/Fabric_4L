@@ -195,6 +195,14 @@ export const QK = {
       ["versions", "compare", versionId, compareToVersionId] as const,
   },
 
+
+  workspace: {
+    all: ["workspace"] as const,
+    tab: (caseId: string, tab: string) => ["workspace", "tab", caseId, tab] as const,
+    signalReview: (caseId: string, accountId: string) => ["workspace", "signal-review", caseId, accountId] as const,
+    evidenceDecision: (caseId: string, accountId: string) => ["workspace", "evidence-decision", caseId, accountId] as const,
+    evidenceDriverLinks: (caseId: string, accountId: string) => ["workspace", "evidence-driver-links", caseId, accountId] as const,
+  },
   accounts: {
     all: ["accounts"] as const,
     list: (filters: unknown) => ["accounts", "list", filters] as const,
