@@ -3,8 +3,8 @@
  *
  * Workspace tab for the Calculator workspace.
  */
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { BarChart3 } from "lucide-react";
 import CalculatorShell from "@/components/workspace/CalculatorShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
@@ -13,11 +13,34 @@ import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 
 export default function CalcValueModelTab() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
+  const location = useLocation();
+  const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
+  const getSelection = useWorkspaceSelectionStore((state) => state.getSelection);
+  const [activeTreeId, setActiveTreeId] = useState<string | null>(null);
+  const [activeValueModelId, setActiveValueModelId] = useState<string | null>(null);
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
+
+  useEffect(() => {
+    if (!accountId) return;
+    const params = new URLSearchParams(location.search);
+    const queryTreeId = params.get("tree_id");
+    const queryValueModelId = params.get("value_model_id");
+    if (queryTreeId || queryValueModelId) {
+      setSelection(accountId, { treeId: queryTreeId, valueModelId: queryValueModelId });
+      setActiveTreeId(queryTreeId);
+      setActiveValueModelId(queryValueModelId);
+      return;
+    }
+    const persisted = getSelection(accountId);
+    setActiveTreeId(persisted.treeId);
+    setActiveValueModelId(persisted.valueModelId);
+  }, [accountId, location.search, getSelection, setSelection]);
+
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
 
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
@@ -70,6 +93,10 @@ export default function CalcValueModelTab() {
               Quantitative value lines mapped to business drivers and evidence
             </p>
           </div>
+        </div>
+
+        <div className="rounded border border-border p-3 text-xs text-muted-foreground">
+          Active selection · Tree: {activeTreeId ?? "None"} · Value model: {activeValueModelId ?? "None"}
         </div>
 
         <div className="grid grid-cols-3 gap-4">
