@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request, HTTPEx
 from pydantic import BaseModel, Field
 from value_fabric.shared.identity import require_authenticated
 
-from .. import main as handlers
+from .. import service
 
 logger = logging.getLogger(__name__)
 
@@ -179,29 +179,29 @@ Freeform Context:
     )
 
 
-@router.post("/extract", response_model=handlers.ExtractResponse)
-async def extract(request: handlers.ExtractRequest, background_tasks: BackgroundTasks):
-    return await handlers.extract(request, background_tasks)
+@router.post("/extract", response_model=service.ExtractResponse)
+async def extract(request: service.ExtractRequest, background_tasks: BackgroundTasks):
+    return await service.extract(request, background_tasks)
 
 
-@router.post("/extract-and-ingest", response_model=handlers.ExtractAndIngestResponse)
-async def extract_and_ingest(request: handlers.ExtractRequest, background_tasks: BackgroundTasks):
-    return await handlers.extract_and_ingest(request, background_tasks)
+@router.post("/extract-and-ingest", response_model=service.ExtractAndIngestResponse)
+async def extract_and_ingest(request: service.ExtractRequest, background_tasks: BackgroundTasks):
+    return await service.extract_and_ingest(request, background_tasks)
 
 
-@router.get("/extract/status/{job_id}", response_model=handlers.ExtractionStatusResponse)
+@router.get("/extract/status/{job_id}", response_model=service.ExtractionStatusResponse)
 async def get_extraction_status(job_id: str):
-    return await handlers.get_extraction_status(job_id)
+    return await service.get_extraction_status(job_id)
 
 
 @router.post("/extract/batch")
-async def extract_batch(requests: list[handlers.ExtractRequest], background_tasks: BackgroundTasks):
-    return await handlers.extract_batch(requests, background_tasks)
+async def extract_batch(requests: list[service.ExtractRequest], background_tasks: BackgroundTasks):
+    return await service.extract_batch(requests, background_tasks)
 
 
 @router.get("/extract/jobs/{job_id}/events")
 async def stream_job_events(job_id: str):
-    return await handlers.stream_job_events(job_id)
+    return await service.stream_job_events(job_id)
 
 
 @router.get("/extract/results/{job_id}", response_model=ExtractionResultsResponse)

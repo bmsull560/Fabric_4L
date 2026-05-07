@@ -16,3 +16,9 @@ from being mistaken for CI-runnable gate tests.
 | `production_smoke.py` | Hit HTTP health endpoints on a running deployment | Running services |
 | `clustersecretstore_check.py` | Validate ClusterSecretStore configuration | Kubernetes cluster |
 | `vault_smoke.py` | Validate HashiCorp Vault connectivity | Running Vault instance |
+
+## Runbooks
+
+| Runbook | Purpose |
+|--------|---------|
+| `abuse-emergency-controls.md` | Emergency controls for abuse spikes, blocklists, replay response, and temporary stricter limits |

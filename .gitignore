@@ -21,6 +21,8 @@ ehthumbs.db
 .env.dev
 .env.local
 .env.*.local
+.local/secrets/
+.local/**/*.env
 
 # Kubernetes secrets (use External Secrets Operator in production)
 k8s/secrets.yml

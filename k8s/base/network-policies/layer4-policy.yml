@@ -20,7 +20,14 @@ spec:
         - protocol: TCP
           port: 8000
   egress:
-    # Allow initContainers to reach layer2/3 for readiness probes
+    # Allow to exact service dependencies only.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: layer1-ingestion
+      ports:
+        - protocol: TCP
+          port: 8000
     - to:
         - podSelector:
             matchLabels:
@@ -35,52 +42,40 @@ spec:
       ports:
         - protocol: TCP
           port: 8001
-    # Allow to all layers (main container traffic)
     - to:
         - podSelector:
             matchLabels:
-              component: layer1
-      ports:
-        - protocol: TCP
-          port: 8000
-    - to:
-        - podSelector:
-            matchLabels:
-              component: layer2
-      ports:
-        - protocol: TCP
-          port: 8000
-    - to:
-        - podSelector:
-            matchLabels:
-              component: layer3
-      ports:
-        - protocol: TCP
-          port: 8001
-    - to:
-        - podSelector:
-            matchLabels:
-              component: layer5
+              app: layer5-ground-truth
       ports:
         - protocol: TCP
           port: 8005
     - to:
         - podSelector:
             matchLabels:
-              component: layer6
+              app: layer6-benchmarks
       ports:
         - protocol: TCP
           port: 8006
-    # Allow to infrastructure
+    # Allow to infrastructure dependencies using exact identity labels.
     - to:
         - podSelector:
             matchLabels:
-              component: infrastructure
+              app: postgres
       ports:
         - protocol: TCP
           port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
         - protocol: TCP
           port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: neo4j
+      ports:
         - protocol: TCP
           port: 7687
     # Allow DNS

@@ -1,62 +1,78 @@
 #!/usr/bin/env python3
 """Production auth bypass prevention gate.
 
-Scans production-like deployment manifests and compose files
-for insecure authentication bypass flags and hardcoded weak secrets.
+Scans production-like deployment manifests for insecure authentication bypass
+flags and weak defaults that could silently disable auth in staging/prod.
 """
 
-import os
-import sys
-import glob
+from __future__ import annotations
+
 from pathlib import Path
+import sys
 
-# Files to check
-PROD_FILES = [
-    "docker-compose.live.yml",
-    "docker-compose.full.yml",
-]
-
-# Add any k8s prod/staging overlays if they exist
-for root, _, _ in os.walk("k8s/envs/prod"):
-    PROD_FILES.extend(glob.glob(os.path.join(root, "*.yml")))
-    PROD_FILES.extend(glob.glob(os.path.join(root, "*.yaml")))
-
-for root, _, _ in os.walk("k8s/envs/staging"):
-    PROD_FILES.extend(glob.glob(os.path.join(root, "*.yml")))
-    PROD_FILES.extend(glob.glob(os.path.join(root, "*.yaml")))
-
-BANNED_PATTERNS = [
+BYPASS_FLAGS = (
     "DEV_AUTH_BYPASS",
     "ALLOW_INSECURE_DEV_AUTH_BYPASS",
-    "VITE_ENABLE_MOCK_FALLBACK: \"true\"",
+    "ALLOW_DEV_AUTH_BYPASS",
+    "AUTH_BYPASS_ENABLED",
+)
+
+WEAK_PATTERNS = (
+    'VITE_ENABLE_MOCK_FALLBACK: "true"',
     "VITE_ENABLE_MOCK_FALLBACK: true",
     "dev-local-secret-do-not-use-in-production",
     "dev-local-service-auth-secret",
-]
+)
 
-def main():
-    has_errors = False
-    
-    for filepath in PROD_FILES:
-        if not os.path.exists(filepath):
-            continue
-            
-        with open(filepath, 'r', encoding='utf-8') as f:
-            content = f.read()
-            
-        for idx, line in enumerate(content.splitlines(), 1):
-            for pattern in BANNED_PATTERNS:
+SCAN_ROOTS = (
+    Path("k8s/envs/prod"),
+    Path("k8s/envs/staging"),
+    Path("k8s/deployments/prod-gateway-api"),
+    Path("k8s/deployments/prod-istio"),
+    Path("k8s/deployments/prod-nginx"),
+)
+
+EXPLICIT_FILES = (
+    Path("docker-compose.live.yml"),
+    Path("docker-compose.full.yml"),
+)
+
+
+def yaml_files(root: Path) -> list[Path]:
+    if not root.exists():
+        return []
+    return sorted([*root.rglob("*.yml"), *root.rglob("*.yaml")])
+
+
+def main() -> int:
+    files: list[Path] = []
+    for root in SCAN_ROOTS:
+        files.extend(yaml_files(root))
+    files.extend([p for p in EXPLICIT_FILES if p.exists()])
+
+    errors: list[str] = []
+    for path in sorted(set(files)):
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            normalized = line.strip().lower()
+            for flag in BYPASS_FLAGS:
+                if flag in line and any(tok in normalized for tok in ("true", "i_understand_risk")):
+                    errors.append(
+                        f"{path}:{line_no} contains forbidden bypass flag assignment: {line.strip()}"
+                    )
+            for pattern in WEAK_PATTERNS:
                 if pattern in line:
-                    print(f"ERROR: Insecure pattern '{pattern}' found in {filepath}:{idx}")
-                    has_errors = True
-                    
-    if has_errors:
-        print("\nProduction auth bypass check failed.")
-        print("Please remove all DEV_AUTH_BYPASS flags, mock fallbacks, and weak secrets from production configs.")
-        sys.exit(1)
-        
+                    errors.append(f"{path}:{line_no} contains insecure pattern: {pattern}")
+
+    if errors:
+        print("ERROR: Production auth bypass check failed.\n")
+        for error in errors:
+            print(f" - {error}")
+        print("\nRemove bypass flags and weak defaults from production/staging overlays and manifests.")
+        return 1
+
     print("Production auth bypass check passed.")
-    sys.exit(0)
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

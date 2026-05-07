@@ -22,11 +22,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-# Third-party imports for health check
-try:
-    import psutil  # type: ignore[import-untyped]
-except ImportError:
-    psutil = None  # type: ignore[assignment]  # Health check will work without system metrics
+import psutil  # type: ignore[import-untyped]
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
@@ -38,7 +34,7 @@ from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from value_fabric.shared.secrets import load_infisical_secrets
 
-from layer2_extraction.api.deps import RequestContext  # type: ignore
+from layer2_extraction.api.deps import RequestContext
 
 try:
     load_infisical_secrets()
@@ -54,6 +50,8 @@ except Exception:
 
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
+<<<<<<< ours
+from ..startup_dependencies import verify_startup_dependencies
 from ..shared_bootstrap import (
     SecurityConfig,
     add_security_middleware,
@@ -63,31 +61,36 @@ from ..shared_bootstrap import (
     validate_production_safety,
     verify_metrics_access,
 )
+=======
+from ..shared_bootstrap import verify_metrics_access
+from .app_factory import create_app
+from .lifespan import create_lifespan
+>>>>>>> theirs
 
-from layer2_extraction.alignment import SemanticAligner  # type: ignore
-from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router  # type: ignore
-from layer2_extraction.extraction.chunker import chunk_markdown  # type: ignore
-from layer2_extraction.extraction.deduplicator import deduplicate_entities  # type: ignore
-from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor  # type: ignore
-from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store  # type: ignore
-from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient  # type: ignore
-from layer2_extraction.integration.pending_ingestion_store import (  # type: ignore
+from layer2_extraction.alignment import SemanticAligner
+from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
+from layer2_extraction.extraction.chunker import chunk_markdown
+from layer2_extraction.extraction.deduplicator import deduplicate_entities
+from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
+from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store
+from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
+from layer2_extraction.integration.pending_ingestion_store import (
     PendingIngestionRecord,
     PendingIngestionStore,
     SqlitePendingIngestionStore,
     build_pending_ingestion_store,
 )
-from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics  # type: ignore
-from layer2_extraction.models import (  # type: ignore
+from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics
+from layer2_extraction.models import (
     ExtractionResult,
     Relationship,
 )
-from layer2_extraction.output.provenance import (  # type: ignore
+from layer2_extraction.output.provenance import (
     ExtractionStep,
     get_provenance_tracker,
 )
-from layer2_extraction.output.rdf_generator import generate_rdf  # type: ignore
-from layer2_extraction.validation import EntailmentValidator, ValidationSeverity  # type: ignore
+from layer2_extraction.output.rdf_generator import generate_rdf
+from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 
 logger = logging.getLogger(__name__)
 
@@ -118,10 +121,32 @@ _ws_manager = get_pipeline_ws_manager()
 # Redis rate limiter - initialized in startup event
 redis_rate_limiter: RedisRateLimiter | None = None
 
+
+class DeferredRateLimiter:
+    """Rate-limiter proxy that binds to the live Redis limiter after startup."""
+
+    def __init__(self) -> None:
+        self._delegate: RedisRateLimiter | None = None
+
+    def bind(self, limiter: RedisRateLimiter | None) -> None:
+        self._delegate = limiter
+
+    async def check(self, key: str, config: Any):
+        if self._delegate is None:
+            if _is_production_like():
+                raise RuntimeError("Rate limiter unavailable in production-like environment")
+            now = time.time()
+            return type("_OpenResult", (), {"allowed": True, "remaining": config.requests_per_minute, "reset_at": now + 60, "retry_after": None})()
+        return await self._delegate.check(key, config)
+
+
+_live_rate_limiter = DeferredRateLimiter()
+
 # Background retry task for pending ingestion
 _retry_task: asyncio.Task | None = None
 
 
+<<<<<<< ours
 async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
     """Initialize Redis client for rate limiting."""
     try:
@@ -151,12 +176,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global redis_rate_limiter, _retry_task
 
     validate_production_safety()
+    verify_startup_dependencies()
 
     if getattr(app.state, "telemetry_provider", None) is not None:
         logger.info("L2: OpenTelemetry tracing available (initialized by app factory)")
 
     redis_rate_limiter = await _init_redis_rate_limiter()
     app.state.redis_rate_limiter = redis_rate_limiter
+    _live_rate_limiter.bind(redis_rate_limiter)
 
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
@@ -213,17 +240,27 @@ _security_config_l2 = SecurityConfig.from_env(
 )
 add_security_middleware(app, config=_security_config_l2)
 
-app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=None)
+app.add_middleware(
+    GovernanceMiddleware,
+    api_key_resolver=reject_api_key_unsupported,
+    rate_limiter=_live_rate_limiter,
+)
 
 install_metrics_middleware(
     app,
     metrics=initialize_metrics(),
     middleware_factory=MetricsMiddleware,
     logger=logger,
+=======
+lifespan = create_lifespan(
+    is_production_like=_is_production_like,
+    current_environment=_current_environment,
+    pending_ingestion_retry_loop=lambda: _pending_ingestion_retry_loop(),
+    ws_manager=_ws_manager,
+>>>>>>> theirs
 )
 
-# Include WebSocket router for real-time pipeline streaming
-app.include_router(websocket_router, prefix="/v1")
+app = create_app(lifespan=lifespan)
 
 # Extraction configuration constants
 DEFAULT_CHUNK_SIZE = 2000
@@ -1532,7 +1569,6 @@ async def stream_job_events(job_id: str):
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from .routes import audit, extraction, ontology, system
 
 
 class health_checkResult(TypedDictModel):
@@ -1550,11 +1586,6 @@ class extract_batchResult(TypedDictModel):
     job_ids: Any
     status: str
     total_jobs: Any
-
-app.include_router(system.router)
-app.include_router(extraction.router)
-app.include_router(ontology.router)
-app.include_router(audit.router)
 
 
 if __name__ == "__main__":

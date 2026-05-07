@@ -1,70 +1,75 @@
-"""
-Test tenant validation metrics tracking invariants.
+"""Tenant validation metrics regression tests for Layer 4 database validation."""
 
-Verifies that tenant validation metrics are tracked accurately and can be reset.
+from __future__ import annotations
 
-Critical P0 test - monitoring gaps if metrics are not tracked correctly.
-"""
+import importlib
 
 import pytest
 
 
-@pytest.mark.skip(reason="Tenant validation metrics tests require layer4-agents database module which has import path issues. Tests skipped pending module path resolution.")
+db = importlib.import_module("value_fabric.layer4.database")
+
+
 class TestTenantValidationMetricsTracking:
-    """Test suite for tenant validation metrics tracking invariants.
+    def setup_method(self):
+        db.reset_tenant_validation_metrics()
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    The actual metrics tracking logic is tested in the layer4-agents service tests.
-    """
-    pass
+    def test_tracks_successful_validation(self):
+        tenant = "550e8400-e29b-41d4-a716-446655440000"
+        assert db.validate_tenant_id(tenant) == tenant
+
+        metrics = db.get_tenant_validation_metrics()
+        assert metrics["validations_total"] == 1
+        assert metrics["validation_failures"] == 0
 
 
-@pytest.mark.skip(reason="Metrics accuracy tests require layer4-agents database module.")
 class TestMetricsAccuracy:
-    """Test suite for metrics accuracy invariants.
+    def setup_method(self):
+        db.reset_tenant_validation_metrics()
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+    @pytest.mark.parametrize(
+        "tenant_id,error_key",
+        [
+            (None, "missing_context_errors"),
+            ("", "empty_tenant_errors"),
+            ("not-a-uuid", "uuid_format_errors"),
+        ],
+    )
+    def test_failure_metrics_counted(self, tenant_id, error_key):
+        with pytest.raises(db.TenantContextError):
+            db.validate_tenant_id(tenant_id)
+
+        metrics = db.get_tenant_validation_metrics()
+        assert metrics["validations_total"] == 1
+        assert metrics["validation_failures"] == 1
+        assert metrics[error_key] == 1
 
 
-@pytest.mark.skip(reason="Metrics reset functionality tests require layer4-agents database module.")
 class TestMetricsResetFunctionality:
-    """Test suite for metrics reset functionality.
+    def test_reset_sets_all_counters_to_zero(self):
+        with pytest.raises(db.TenantContextError):
+            db.validate_tenant_id("bad")
+        db.reset_tenant_validation_metrics()
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
-
-
-@pytest.mark.skip(reason="Metrics monitoring integration tests require layer4-agents database module.")
-class TestMetricsMonitoringIntegration:
-    """Test suite for metrics monitoring integration.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+        metrics = db.get_tenant_validation_metrics()
+        assert all(v == 0 for v in metrics.values())
 
 
-@pytest.mark.skip(reason="Metrics concurrency safety tests require layer4-agents database module.")
-class TestMetricsConcurrencySafety:
-    """Test suite for metrics concurrency safety.
-
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
-
-
-@pytest.mark.skip(reason="Reserved keyword handling tests require layer4-agents database module.")
 class TestReservedKeywordHandling:
-    """Test suite for reserved keyword handling in metrics.
+    def setup_method(self):
+        db.reset_tenant_validation_metrics()
 
-    NOTE: These tests are skipped because they require importing from
-    services.layer4-agents.src.database which has import path issues.
-    """
-    pass
+    def test_reserved_keyword_is_accepted(self):
+        assert db.validate_tenant_id("system") == "system"
+        metrics = db.get_tenant_validation_metrics()
+        assert metrics["validations_total"] == 1
+        assert metrics["validation_failures"] == 0
+
+
+class TestStableModulePathGuard:
+    def test_canonical_layer4_database_path_is_resolvable(self):
+        module = importlib.import_module("value_fabric.layer4.database")
+
+        assert hasattr(module, "validate_tenant_id")
+        assert hasattr(module, "get_tenant_validation_metrics")
+        assert module.validate_tenant_id("system") == "system"

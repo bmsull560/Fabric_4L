@@ -142,6 +142,11 @@ jobs:
           echo "Validating that all layer secret references have ExternalSecret coverage..."
           python3 .github/scripts/validate-external-secrets.py
 
+      - name: Enforce secret store security policy (hard-fail)
+        run: |
+          python3 .github/scripts/enforce_secret_store_security.py
+
+
       - name: Validate Prometheus metrics wiring for all layers
         run: |
           echo "Validating that all layers with prometheus_metrics.py expose /metrics endpoint..."

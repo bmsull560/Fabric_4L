@@ -23,6 +23,7 @@ from ..feature_flags.service import FeatureFlagService
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
 from ..services.value_flow_facade import ValueFlowFacadeService
+from ..startup_dependencies import verify_startup_dependencies
 from ..tools import create_default_registry
 from .websocket import get_ws_manager
 
@@ -84,6 +85,7 @@ def build_lifespan(
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         validate_production_safety()
+        verify_startup_dependencies()
         app.state.tracer_provider = init_telemetry()
         ws_manager = get_ws_manager()
         health_tracker = get_health_tracker()

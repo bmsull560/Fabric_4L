@@ -24,23 +24,18 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Allow HTTPS to Slack API
+    # Allow HTTPS webhooks (Slack/PagerDuty/etc.).
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
       ports:
         - protocol: TCP
           port: 443
-    # Allow HTTPS to PagerDuty API
+    # Allow in-namespace scrape/check traffic from Prometheus only.
     - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-      ports:
-        - protocol: TCP
-          port: 443
-    # Allow internal communication within namespace (for health checks)
-    - to:
-        - podSelector: {}
+        - podSelector:
+            matchLabels:
+              app: prometheus
       ports:
         - protocol: TCP
           port: 9093

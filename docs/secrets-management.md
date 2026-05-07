@@ -10,8 +10,8 @@ Production-ready secret handling across local development, Docker Compose, and K
 |-------------|--------|--------------|
 | Local Dev | `.env` file | Local filesystem (git-ignored) |
 | Docker Compose | `.env` file + env vars | Local filesystem (git-ignored) |
-| Kubernetes (dev) | K8s Secrets | etcd (base64 encoded) |
-| Kubernetes (prod) | External Secrets Operator | HashiCorp Vault, AWS Secrets Manager, Azure Key Vault, or GCP Secret Manager |
+| Kubernetes (dev/shared) | External Secrets Operator | HashiCorp Vault or Infisical (preferred) |
+| Kubernetes (prod) | External Secrets Operator | HashiCorp Vault or Infisical (preferred); cloud secret managers supported |
 
 ---
 
@@ -43,9 +43,17 @@ Production-ready secret handling across local development, Docker Compose, and K
 
 ---
 
-## Local Development Setup
+## Local Development Setup (Default: Ephemeral Local Bootstrap)
 
-### 1. Create .env file
+### 1. Generate ephemeral local env file
+
+```bash
+scripts/security/bootstrap_local_secrets.sh
+```
+
+This writes `.local/secrets/dev.env` (git-ignored), sets strict file permissions, and rotates values each time the script runs.
+
+### 2. Optional: Create manual .env file
 
 ```bash
 cd value-fabric
@@ -53,7 +61,7 @@ cp .env.example .env
 # Edit .env with your real secrets
 ```
 
-### 2. Required minimum for local dev
+### 3. Required minimum for local dev
 
 Your `.env` file must contain at minimum:
 
@@ -61,10 +69,10 @@ Your `.env` file must contain at minimum:
 OPENAI_API_KEY=sk-your-actual-key-here
 ```
 
-### 3. Verify .env is git-ignored
+### 4. Verify local env files are git-ignored
 
 ```bash
-cat ../.gitignore | grep -E "^\.env"
+cat .gitignore | rg -n "\\.env|\\.local/secrets"
 ```
 
 Expected output: `.env` or `.env.local` should be listed.
@@ -95,17 +103,10 @@ docker exec value-fabric-layer1 env | grep OPENAI
 
 ## Kubernetes Setup
 
-### Development (K8s Secrets - Base64 Encoded)
+### Development and Shared Clusters (External Secrets Required)
 
-**⚠️ WARNING:** K8s Secrets are base64-encoded, not encrypted. Use only for development.
-
-```bash
-# Apply the development secrets template
-kubectl apply -f k8s/secrets.yml
-
-# Verify
-kubectl get secrets -n value-fabric
-```
+`k8s/secrets.yml` is a blocked legacy path and must not be used in shared dev, staging, or production clusters.
+Use External Secrets + Vault (or Infisical) in every cluster that more than one developer can access.
 
 ### Production (External Secrets Operator)
 
@@ -199,7 +200,7 @@ kubectl get secrets -n value-fabric
 ### General
 
 - **Never commit secrets to git** - Use `.env.example` for templates
-- **Rotate keys regularly** - Set calendar reminders quarterly
+- **Rotate keys regularly** - API keys every 30 days; DB/JWT every 90 days or immediately after incidents
 - **Use least privilege** - Scope API keys to minimum required permissions
 - **Monitor key usage** - Set up alerts for unusual activity
 
@@ -210,11 +211,29 @@ kubectl get secrets -n value-fabric
 
 ### Kubernetes
 
-- **Development:** K8s Secrets acceptable but keep minimal
-- **Production:** Always use external secret store (Vault, cloud provider)
+- **Development/shared clusters:** Always use External Secrets backed by Vault/Infisical
+- **Production:** Always use External Secrets backed by Vault/Infisical (or approved cloud manager)
 - Enable encryption at rest for etcd (K8s 1.7+)
 - Use RBAC to limit secret access
 - Rotate service account tokens regularly
+
+## Developer Runbook: Rotation Cadence & Revocation Drill
+
+### Rotation cadence (minimum)
+
+- LLM/API provider tokens: every 30 days.
+- Database and Redis credentials: every 90 days.
+- JWT signing material: every 90 days (or move to keyset rotation if supported).
+- Emergency rotation: within 1 hour of suspected leak.
+
+### Revocation drill (monthly, non-prod)
+
+1. Select one non-critical key (for example, staging `OPENAI_API_KEY`).
+2. Mint replacement in Vault/Infisical.
+3. Update ExternalSecret source value.
+4. Force refresh/restart workloads and verify readiness checks pass.
+5. Revoke old secret and confirm no further successful authentication with old credential.
+6. Capture evidence (timestamp, operator, impacted workloads, rollback plan) in incident log.
 
 ### Vault Specific
 

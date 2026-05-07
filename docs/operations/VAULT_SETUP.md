@@ -22,7 +22,7 @@ Complete guide for setting up and operating HashiCorp Vault for Value Fabric sec
 kubectl create namespace vault
 
 # Deploy Vault in dev mode
-kubectl apply -f k8s/vault/vault-deployment.yaml
+kubectl apply -f k8s/dev-only/vault-deployment.yaml
 
 # Wait for Vault to be ready
 kubectl wait --for=condition=ready pod -l app=vault -n vault --timeout=60s
@@ -301,7 +301,7 @@ vault operator raft list-peers
 
 | File | Purpose |
 |------|---------|
-| `k8s/vault/vault-deployment.yaml` | Vault server deployment |
+| `k8s/dev-only/vault-deployment.yaml` | Vault server deployment |
 | `k8s/vault/policies/*.hcl` | Vault policy definitions |
 | `k8s/vault/k8s-auth-roles.yaml` | Kubernetes auth role config |
 | `k8s/external-secrets/cluster-secret-store.yaml` | ESO cluster config |

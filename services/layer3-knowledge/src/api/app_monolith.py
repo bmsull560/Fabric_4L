@@ -732,6 +732,41 @@ _security_config_l3 = add_security_validation_middleware(
     strict_mode=True,
 )
 
+
+@app.middleware("http")
+async def enforce_openapi_request_body_contract(request: Request, call_next):
+    """Reject malformed/oversized request payloads at gateway boundary.
+
+    FastAPI performs model validation later in the pipeline; this middleware
+    performs early boundary checks for endpoints with OpenAPI request bodies.
+    """
+    if request.method in {"POST", "PUT", "PATCH"} and request.url.path.startswith("/v1/"):
+        openapi_spec = app.openapi()
+        path_spec = openapi_spec.get("paths", {}).get(request.url.path, {})
+        op_spec = path_spec.get(request.method.lower(), {})
+        requires_body = "requestBody" in op_spec
+        if requires_body:
+            content_length = request.headers.get("content-length")
+            if content_length and content_length.isdigit() and int(content_length) > _security_config_l3.max_body_size_bytes:
+                return JSONResponse(
+                    status_code=413,
+                    content={
+                        "detail": "Request body too large",
+                        "max_body_size_bytes": _security_config_l3.max_body_size_bytes,
+                    },
+                )
+            content_type = request.headers.get("content-type", "")
+            if "application/json" in content_type:
+                try:
+                    await request.json()
+                except Exception:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"detail": "Malformed JSON payload rejected at API boundary"},
+                    )
+
+    return await call_next(request)
+
 class InitSchemaResult(TypedDictModel):
     drop_existing: Any
     status: str

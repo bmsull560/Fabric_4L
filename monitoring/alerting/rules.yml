@@ -289,6 +289,36 @@ groups:
           description: "Tokens consumed: {{ $value }}. Possible runaway extraction job or infinite loop."
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/token-spike.md"
 
+      # Abuse telemetry alerts
+      - alert: AuthDeniedSpike
+        expr: |
+          sum(rate(http_requests_total{status=~"401|403"}[5m])) by (layer) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "401/403 spike in {{ $labels.layer }}"
+          description: "Authentication/authorization denials spiking above 2 rps over 5m."
+
+      - alert: RateLimit429Spike
+        expr: |
+          sum(rate(http_requests_total{status="429"}[5m])) by (layer) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "429 spike in {{ $labels.layer }}"
+          description: "Rate limit denials spiking above 1 rps over 5m."
+
+      - alert: TokenReplaySuspected
+        expr: increase(auth_token_replay_suspected_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Token replay pattern suspected"
+          description: "Replay-suspected token events exceeded threshold in 10m window."
+
       # Ground truth staleness (L5)
       # `layer5_stale_objects_detected` is a Gauge reflecting the *current*
       # count of stale objects, so this alert auto-clears once staleness is

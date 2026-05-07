@@ -1,16 +1,31 @@
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
-  name: value-fabric-ingress-and-internal
+  name: value-fabric-ingress-and-cross-layer
   namespace: value-fabric
 spec:
   action: ALLOW
   rules:
+    # Permit ingress traffic from the Istio ingress gateway namespace.
     - from:
         - source:
             namespaces:
               - istio-system
-              - value-fabric
+    # Permit only explicit service-to-service identities for cross-layer calls.
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/value-fabric/sa/frontend
+              - cluster.local/ns/value-fabric/sa/layer1-ingestion
+              - cluster.local/ns/value-fabric/sa/layer2-extraction
+              - cluster.local/ns/value-fabric/sa/layer3-knowledge
+              - cluster.local/ns/value-fabric/sa/layer4-agents
+              - cluster.local/ns/value-fabric/sa/layer5-ground-truth
+              - cluster.local/ns/value-fabric/sa/layer6-benchmarks
+      to:
+        - operation:
+            ports: ["8000", "8001", "8005", "8006", "5432", "6379", "7474", "7687", "9093"]
+    # Keep health endpoints reachable for kube/mesh health probing.
     - to:
         - operation:
             paths:

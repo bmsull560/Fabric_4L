@@ -12,6 +12,14 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+_BYPASS_TRUE_VALUES = {"true", "1", "yes", "on"}
+_BYPASS_FLAGS = (
+    "ALLOW_INSECURE_DEV_AUTH_BYPASS",
+    "DEV_AUTH_BYPASS",
+    "ALLOW_DEV_AUTH_BYPASS",
+    "AUTH_BYPASS_ENABLED",
+)
+
 # Minimum JWT secret length for production (NIST SP 800-117 recommends >= 256 bits)
 _MIN_JWT_SECRET_LENGTH = 32
 
@@ -169,11 +177,17 @@ class ProductionSafetyValidator:
             )
 
         # Auth bypass flags must never be enabled in production-like envs
-        if os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() in ("true", "1", "yes"):
-            self.errors.append(
-                "ALLOW_INSECURE_DEV_AUTH_BYPASS must be false or unset in production-like environments. "
-                "Development authentication bypass is a critical security risk."
+        for bypass_flag in _BYPASS_FLAGS:
+            raw_value = os.getenv(bypass_flag, "")
+            normalized = raw_value.strip().lower()
+            is_enabled = normalized in _BYPASS_TRUE_VALUES or (
+                bypass_flag == "ALLOW_DEV_AUTH_BYPASS" and normalized == "i_understand_risk"
             )
+            if is_enabled:
+                self.errors.append(
+                    f"{bypass_flag} must be false or unset in production-like environments. "
+                    "Authentication bypass flags are forbidden outside local development."
+                )
         if os.getenv("JWT_FALLBACK_TO_QUERY_PARAM", "").lower() in ("true", "1", "yes"):
             self.errors.append(
                 "JWT_FALLBACK_TO_QUERY_PARAM must be false or unset in production-like environments. "

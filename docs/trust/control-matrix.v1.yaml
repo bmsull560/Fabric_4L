@@ -1,0 +1,128 @@
+version: "1.0"
+updated_on: "2026-05-07"
+owner: "Compliance Engineering"
+controls:
+  - id: GDPR-LAWFUL-BASIS-01
+    framework: GDPR
+    title: Lawful basis declaration and processing purpose limitation
+    datasets:
+      - class: tenant_profile
+        lawful_basis:
+          - contract
+          - legitimate_interest
+        minimization_controls:
+          - field-level required-only intake for onboarding
+          - tenant-scoped read paths
+      - class: user_identity
+        lawful_basis:
+          - contract
+        minimization_controls:
+          - role-scoped API responses
+          - tenant header enforcement
+    implementation_files:
+      - docs/compliance/control-matrix.md
+      - services/layer4-agents/src/tenants/api/routes/tenants.py
+      - services/layer4-agents/src/tenants/api/routes/users.py
+    monitoring_signals:
+      - ci: .github/workflows/pr-checks.yml
+      - audit_log: services/layer4-agents/migrations/versions/003_add_audit_events.py
+    test_cases:
+      - tests/integration/test_tenant_isolation_end_to_end.py
+      - tests/integration/test_cross_layer_tenant_isolation.py
+
+  - id: GDPR-DSAR-ACCESS-DELETE-EXPORT-01
+    framework: GDPR
+    title: DSAR intake, verification, fulfillment workflow
+    datasets:
+      - class: tenant_admin_records
+        lawful_basis: [contract]
+      - class: user_account_records
+        lawful_basis: [contract]
+    dsar:
+      access:
+        steps: [identity_verification, scope_validation, tenant_scoped_retrieval, audit_record]
+      delete:
+        steps: [legal_hold_check, deactivation_or_delete, downstream_cleanup_verification, fulfillment_notice]
+      export:
+        steps: [identity_verification, export_scope_check, package_generation, secure_delivery, audit_record]
+      sla:
+        acknowledge_hours: 72
+        delete_days: 30
+        export_status_days: 7
+    implementation_files:
+      - services/layer4-agents/src/tenants/api/routes/tenants.py
+      - services/layer4-agents/src/tenants/api/routes/users.py
+      - services/layer4-agents/src/tenants/api/routes/api_keys.py
+      - services/layer4-agents/src/api/routes/analysis.py
+      - services/layer1-ingestion/src/shared/tasks.py
+    monitoring_signals:
+      - ci: .github/workflows/audit-evidence.yml
+      - process: docs/runbooks/compliance/quarterly-control-attestation.md
+    test_cases:
+      - tests/contracts/test_retention_deletion_contract.py
+
+  - id: GDPR-RETENTION-DELETION-01
+    framework: GDPR
+    title: Retention/deletion enforcement and data minimization by class
+    datasets:
+      - class: raw_ingestion_content
+        retention_days: 30
+        deletion_enforcement: cleanup_old_content(days)
+      - class: audit_events
+        retention_years: 7
+        deletion_enforcement: append_only_plus_archive_policy
+      - class: operational_telemetry
+        retention_days: 30
+        deletion_enforcement: service_cleanup_managers
+    implementation_files:
+      - services/layer1-ingestion/src/shared/config.py
+      - services/layer1-ingestion/src/shared/tasks.py
+      - services/layer4-agents/migrations/versions/003_add_audit_events.py
+    monitoring_signals:
+      - ci: .github/workflows/pr-checks.yml
+      - docs: docs/compliance/control-evidence-calendar.md
+    test_cases:
+      - tests/contracts/test_retention_deletion_contract.py
+
+  - id: HIPAA-BAA-PHI-BOUNDARY-01
+    framework: HIPAA
+    applicability: conditional_if_phi_processed
+    title: BAA execution and PHI boundary classification
+    implementation_files:
+      - docs/compliance/hipaa-applicability-decision-record.md
+      - shared/identity/isolation.py
+      - services/layer4-agents/migrations/versions/007_add_rls_policies.py
+    monitoring_signals:
+      - process: tenant_onboarding_phi_classification
+      - artifact: docs/audit/README.md
+    test_cases:
+      - tests/integration/test_cross_layer_tenant_isolation.py
+
+  - id: HIPAA-ENCRYPTION-KEYMGMT-01
+    framework: HIPAA
+    applicability: conditional_if_phi_processed
+    title: Encryption in transit/at rest and key management
+    implementation_files:
+      - docs/secrets-management.md
+      - docs/ENVIRONMENT.md
+      - k8s/envs
+    monitoring_signals:
+      - ci: .github/workflows/security-gates.yml
+      - process: quarterly_key_rotation_attestation
+    test_cases:
+      - make verify
+
+  - id: HIPAA-BREAKGLASS-AUDIT-01
+    framework: HIPAA
+    applicability: conditional_if_phi_processed
+    title: Break-glass access path and immutable audit trail
+    implementation_files:
+      - shared/audit/models.py
+      - shared/audit/emitter.py
+      - services/layer4-agents/migrations/versions/003_add_audit_events.py
+      - docs/runbooks/README.md
+    monitoring_signals:
+      - ci: .github/workflows/audit-evidence.yml
+      - process: monthly_phi_access_review
+    test_cases:
+      - make test-layer4

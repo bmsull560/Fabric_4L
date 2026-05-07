@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-05-07T11:45:42+00:00",
+  "policy_state": {
+    "gdpr_enabled": true,
+    "hipaa_mode": "conditional_if_phi_processed"
+  },
+  "checks": [
+    {
+      "name": "control_matrix_exists",
+      "command": "test -f docs/trust/control-matrix.v1.yaml",
+      "status": "pass",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "retention_contract_test_exists",
+      "command": "test -f tests/contracts/test_retention_deletion_contract.py",
+      "status": "pass",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "audit_events_migration_exists",
+      "command": "test -f services/layer4-agents/migrations/versions/003_add_audit_events.py",
+      "status": "pass",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

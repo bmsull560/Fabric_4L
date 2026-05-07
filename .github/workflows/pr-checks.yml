@@ -40,6 +40,17 @@ jobs:
           pip install pytest
           pytest tests/contract/test_import_topology.py -v --tb=short
 
+      - name: Enforce pytest skip governance
+        run: |
+          mkdir -p artifacts
+          pip install pytest pyyaml
+          set +e
+          pytest --collect-only -q -rs > artifacts/pytest-collect.txt 2>&1
+          status=$?
+          set -e
+          echo "pytest collect exit code: ${status}" >> artifacts/pytest-collect.txt
+          python scripts/ci/check_pytest_skip_governance.py --input artifacts/pytest-collect.txt
+
       - name: Run Layer 3 source mirror drift gate
         run: |
           mkdir -p artifacts
@@ -92,6 +103,7 @@ jobs:
             artifacts/layer3-source-mirror.txt
             artifacts/duplicate-source-trees.json
             artifacts/shared-imports-runtime.json
+            artifacts/pytest-collect.txt
             artifacts/violation-diff-summary.json
             artifacts/violation-diff-summary.md
           retention-days: 14
@@ -250,6 +262,9 @@ jobs:
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
+
+      - name: Type check Layer 2 API entrypoint imports
+        run: uv run mypy src/layer2_extraction/api/main.py --ignore-missing-imports --follow-imports=skip
 
       - name: Run tests with coverage
         run: |

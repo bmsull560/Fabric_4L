@@ -105,7 +105,7 @@ from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from ...database import get_db_from_context
+from ..common.db import get_route_db
 from ...services.billing_service import BillingService
 from ...services.overage_service import OverageService
 from ...services.stripe_client import StripeError
@@ -303,7 +303,7 @@ class UsageBatchRequest(BaseModel):
 @router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get current subscription status for a customer.
@@ -343,7 +343,7 @@ async def get_subscription(
 async def create_checkout(
     request: CheckoutRequest,
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, str]:
     """Create a Stripe checkout session for subscription.
@@ -377,7 +377,7 @@ async def create_checkout(
 async def create_portal(
     request: PortalRequest,
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, str]:
     """Create a Stripe customer portal session.
@@ -412,7 +412,7 @@ async def create_portal(
 @router.get("/entitlements")
 async def get_entitlements(
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get all feature entitlements for a customer.
@@ -431,7 +431,7 @@ async def get_entitlements(
 async def check_feature(
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     feature_id: str = Query(..., min_length=1, max_length=64),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Check if a customer has access to a specific feature.
@@ -460,7 +460,7 @@ async def check_feature(
 async def sync_customer(
     request: CustomerSyncRequest,
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Sync customer with Stripe (create or update).
@@ -504,7 +504,7 @@ async def stripe_webhook(
     # SECURITY: Webhook uses get_db (no tenant context) intentionally.
     # Stripe server-to-server calls don't carry tenant JWTs.
     # Authentication is via Stripe-Signature HMAC verification + IP allowlist.
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
 ) -> dict[str, Any]:
     """Handle Stripe webhook events.
 
@@ -573,7 +573,7 @@ async def stripe_webhook(
 @router.post("/events")
 async def ingest_usage_event(
     request: UsageEventRequest,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Ingest a single usage event for billing.
@@ -634,7 +634,7 @@ async def ingest_usage_event(
 @router.post("/events/batch")
 async def ingest_usage_batch(
     request: UsageBatchRequest,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Ingest multiple usage events in a batch.
@@ -685,7 +685,7 @@ async def get_usage_summary(
     metric_name: str,
     start_date: datetime | None = None,
     end_date: datetime | None = None,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get aggregated usage summary for a customer and metric.
@@ -733,7 +733,7 @@ async def list_usage_events(
     end_date: datetime | None = None,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> list[dict[str, Any]]:
     """List individual usage events for a customer.
@@ -795,7 +795,7 @@ async def list_usage_events(
 async def sync_usage_to_stripe(
     customer_id: str,
     metric_name: str | None = None,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Sync pending usage events to Stripe MeterEvents.
@@ -859,7 +859,7 @@ async def sync_usage_to_stripe(
 @router.get("/limits/{customer_id}")
 async def get_usage_limits(
     customer_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get current usage and limits for a customer.
@@ -921,7 +921,7 @@ async def check_request_allowed(
     customer_id: str,
     metric_name: str,
     quantity: float = Query(1.0, ge=0),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Check if a request should be allowed based on usage limits.
@@ -1054,7 +1054,7 @@ async def list_invoices(
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """List invoices with optional filters.
@@ -1111,7 +1111,7 @@ async def list_invoices(
 @router.post("/invoices")
 async def create_invoice(
     request: CreateInvoiceRequest,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Create a new invoice.
@@ -1159,7 +1159,7 @@ async def create_invoice(
 @router.get("/invoices/{invoice_id}")
 async def get_invoice(
     invoice_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get invoice details including line items and charges."""
@@ -1244,7 +1244,7 @@ async def get_invoice(
 async def add_invoice_item(
     invoice_id: str,
     request: AddInvoiceItemRequest,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Add a line item to an invoice."""
@@ -1290,7 +1290,7 @@ async def add_invoice_item(
 @router.post("/invoices/{invoice_id}/finalize")
 async def finalize_invoice(
     invoice_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Finalize a draft invoice (make it open/payable).
@@ -1329,7 +1329,7 @@ async def finalize_invoice(
 async def void_invoice(
     invoice_id: str,
     reason: str | None = Query(None, description="Void reason"),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Void an invoice."""
@@ -1369,7 +1369,7 @@ async def list_charges(
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """List charge records."""
@@ -1422,7 +1422,7 @@ async def list_charges(
 @router.post("/charges")
 async def record_charge(
     request: RecordChargeRequest,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Record a charge attempt."""
@@ -1471,7 +1471,7 @@ async def record_charge(
 async def get_revenue_summary(
     period_start: datetime,
     period_end: datetime,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get revenue summary for a period.
@@ -1497,7 +1497,7 @@ async def get_revenue_summary(
 @router.get("/customers/{customer_id}/balance")
 async def get_customer_balance(
     customer_id: str,
-    db: AsyncSession = Depends(get_db_from_context),
+    db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get customer balance summary.

@@ -13,6 +13,7 @@ Comprehensive test coverage for the Value Fabric Kubernetes infrastructure, incl
 | `test_workload_validation.py` | Rollout strategies, health probes, resource constraints, image pinning, Layer 5 migrations | [5a], [5b], [5c], [5d], [5e], [5f] |
 | `test_monitoring_validation.py` | monitoring-validation.sh script, alerting rules, recording rules | [6a], [6b], [6c], [6d], [6e], [6f], [7a], [7b], [7c], [7d], [7e], [7f] |
 | `test_integration.py` | End-to-end pipeline, environment differences, cross-component integration |
+| `test_network_policy_paths.py` | Denied/allowed network paths, selector precision, Istio principal-based identity enforcement |
 
 ## Running Tests
 
@@ -57,6 +58,9 @@ pytest tests/k8s/test_prometheus_monitoring.py -v
 
 # Security policy tests
 pytest tests/k8s/test_security_policies.py -v
+
+# Network policy path verification tests
+pytest tests/k8s/test_network_policy_paths.py -v
 
 # Workload validation tests
 pytest tests/k8s/test_workload_validation.py -v
@@ -218,6 +222,14 @@ def test_my_new_feature(self, k8s_base_dir: Path) -> None:
 ```
 
 ## CI Integration
+
+Add a scheduled CI run (for example, nightly) that executes:
+
+```bash
+pytest tests/k8s/test_network_policy_paths.py -v
+```
+
+This catches drift in allowed/denied paths and identity enforcement before rollout.
 
 These tests complement the GitHub Actions workflow at `.github/workflows/k8s-readiness.yml`:
 

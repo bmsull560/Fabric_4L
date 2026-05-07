@@ -52,6 +52,21 @@ Frontend changes are governed by the root [`DESIGN.md`](DESIGN.md) contract. Hum
 
 ## Quickstart
 
+### Package manager policy (required)
+
+This monorepo is **pnpm-only**. Use the root lockfile `pnpm-lock.yaml` as the canonical dependency snapshot.
+
+```bash
+# Enable Corepack and activate the pinned pnpm version
+corepack enable
+corepack prepare pnpm@10.18.1 --activate
+
+# Install dependencies at repo root
+pnpm install --frozen-lockfile
+```
+
+Running `npm install` or `npm ci` at repo root is not supported and will fail fast via `preinstall` checks.
+
 ```bash
 # 1. Clone and enter repo
 git clone https://github.com/bmsull560/Fabric_4L.git && cd Fabric_4L

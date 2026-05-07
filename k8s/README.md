@@ -23,6 +23,12 @@ This directory supports both:
 
 This deployment includes production-grade security controls:
 
+### Secret Management Default (All Cluster Types)
+
+- **Default path for dev/shared/staging/prod:** External Secrets Operator + Vault or Infisical.
+- `k8s/secrets.yml` is a legacy local-only file path and is blocked by commit/CI guardrails.
+- Shared dev clusters must not contain manually managed plaintext/base64 Kubernetes Secret manifests.
+
 ### Pod Security Contexts
 
 All deployments run with:
@@ -124,12 +130,10 @@ Deploy in this order to satisfy dependencies:
 # 1. Create namespace
 kubectl apply -f namespace.yml
 
-# 2. Create secrets (dev overlay only)
-# For development:
-kubectl apply -f k8s/envs/dev/secrets.yml
-
-# For production with Vault (requires External Secrets Operator):
-# kubectl apply -f k8s/external-secrets/vault-integration.yml
+# 2. Configure secret back-end and sync (all envs)
+# Preferred: Vault integration
+kubectl apply -f k8s/external-secrets/vault-integration.yml
+# Alternative: Infisical integration manifests under k8s/infisical/
 
 # 3. Create config maps
 kubectl apply -f configmap-global.yml
@@ -173,6 +177,8 @@ kubectl get pods -n value-fabric
 ```bash
 kubectl apply -f .
 ```
+
+> `kubectl apply -f .` is for quick smoke/dev validation only. For shared environments, deploy via `k8s/deployments/*` with External Secrets configured first.
 
 ## Service Dependencies
 

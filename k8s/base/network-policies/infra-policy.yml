@@ -11,9 +11,23 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from all layers on required ports
+    # Allow only declared service dependencies on required ports.
     - from:
-        - namespaceSelector: {}
+        - podSelector:
+            matchLabels:
+              app: layer1-ingestion
+        - podSelector:
+            matchLabels:
+              app: layer2-extraction
+        - podSelector:
+            matchLabels:
+              app: layer3-knowledge
+        - podSelector:
+            matchLabels:
+              app: layer4-agents
+        - podSelector:
+            matchLabels:
+              app: layer5-ground-truth
       ports:
         - protocol: TCP
           port: 5432  # Postgres

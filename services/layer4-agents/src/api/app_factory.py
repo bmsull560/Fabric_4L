@@ -1,5 +1,7 @@
 """Layer 4 FastAPI application factory."""
 
+import logging
+
 from fastapi import FastAPI
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -11,6 +13,8 @@ from value_fabric.shared.security import validate_production_safety
 from value_fabric.shared.observability import configure_observability
 
 from ..config.settings import settings
+
+logger = logging.getLogger(__name__)
 from ..metrics import initialize_metrics
 from .core_routes import register_core_routes
 from .middleware import configure_middleware
@@ -53,12 +57,16 @@ def create_app() -> FastAPI:
         readiness_check=lambda: True,
     )
 
-    try:
-        from value_fabric.shared.identity.dev_bypass import maybe_install_dev_bypass
+    from value_fabric.shared.identity.dev_bypass import maybe_install_dev_bypass
 
-        maybe_install_dev_bypass(app)
-    except Exception:
-        pass
+    dev_bypass_active = maybe_install_dev_bypass(app)
+    if dev_bypass_active:
+        logger.critical(
+            "SECURITY: DEV_AUTH_BYPASS is enabled for ENVIRONMENT=%s. "
+            "Only local development is allowed. Disable DEV_AUTH_BYPASS and "
+            "unset ALLOW_DEV_AUTH_BYPASS before promoting this build.",
+            settings.environment,
+        )
 
     register_core_routes(app)
     register_routers(app)

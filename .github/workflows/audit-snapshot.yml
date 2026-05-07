@@ -1,0 +1,27 @@
+name: audit-snapshot
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate snapshot
+        run: python3 scripts/compliance/generate_audit_snapshot.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-snapshot
+          path: docs/audit/snapshots/latest.json

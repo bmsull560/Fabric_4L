@@ -274,3 +274,29 @@ kubectl exec -n value-fabric -it deployment/redis -- \
 ---
 
 > **Policy reference:** [Incident Severity Matrix and On-Call Escalation Policy](../operations/severity-escalation-policy.md)
+
+## Rate-limiting behavior during Redis outage (authoritative policy)
+
+- Authenticated/protected routes use `value_fabric.shared.identity.authoritative_rate_limiter.AuthoritativeRateLimiter`.
+- Default outage mode is **fail-closed** (`RATE_LIMIT_FAIL_MODE=closed`): protected traffic receives `429` with `Retry-After`.
+- Optional degraded-safe mode is `RATE_LIMIT_FAIL_MODE=local_fallback`, enforcing strict in-memory caps (`5 req/min`) per dimension.
+- Dimensions enforced together for tenant isolation and abuse containment:
+  - tenant ID
+  - API key ID (when present)
+  - user ID (when present)
+  - source IP (when present)
+- Standardized headers:
+  - `X-RateLimit-Limit`
+  - `X-RateLimit-Remaining`
+  - `X-RateLimit-Reset`
+  - `Retry-After` (on throttled responses)
+
+### Ops checks
+
+```bash
+# Confirm fail mode
+kubectl exec -n value-fabric deploy/layer3-knowledge -- printenv RATE_LIMIT_FAIL_MODE
+
+# Confirm backend-failure events are emitted
+kubectl logs -n value-fabric deploy/layer3-knowledge --tail=200 | grep rate_limit_backend_failure
+```

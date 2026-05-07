@@ -188,6 +188,12 @@ repos:
   # Contract drift check
   - repo: local
     hooks:
+      - id: secret-guardrails
+        name: Secret guardrails (blocked files + entropy)
+        entry: python scripts/security/secret_guardrails.py
+        language: system
+        files: .
+        pass_filenames: true
       - id: contract-drift-check
         name: Check for OpenAPI/Schema drift
         entry: python scripts/check_contract_drift.py

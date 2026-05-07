@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.identity.authoritative_rate_limiter import AuthoritativeRateLimiter, RateLimitDimensions
 from value_fabric.shared.rate_limiting.tenant_rate_limiter import SlidingWindowAdapter
 
 from ..logging_config import get_logger
@@ -104,13 +105,21 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._configure_endpoint_limits()
 
     def _configure_endpoint_limits(self) -> None:
+        # Route-class policy: auth endpoints (tight limits, low burst).
+        self.rate_limiter.set_endpoint_limit("/v1/auth", 30, 60)
+        self.rate_limiter.set_endpoint_limit("/auth", 30, 60)
+        # Route-class policy: write-heavy endpoints (moderate sustained throughput).
+        self.rate_limiter.set_endpoint_limit("/v1/ingest", 80, 60)
+        self.rate_limiter.set_endpoint_limit("/v1/sync", 40, 60)
+        self.rate_limiter.set_endpoint_limit("/v1/schema/init", 12, 60)
+        # Route-class policy: export/report endpoints (expensive operations, tighter ceiling).
+        self.rate_limiter.set_endpoint_limit("/v1/export", 20, 60)
+        self.rate_limiter.set_endpoint_limit("/v1/report", 20, 60)
+
         self.rate_limiter.set_endpoint_limit("/health", 300, 60)
         self.rate_limiter.set_endpoint_limit("/health/detailed", 60, 60)
-        self.rate_limiter.set_endpoint_limit("/v1/schema/init", 10, 60)
         self.rate_limiter.set_endpoint_limit("/v1/schema/status", 60, 60)
         self.rate_limiter.set_endpoint_limit("/v1/schema/statistics", 30, 60)
-        self.rate_limiter.set_endpoint_limit("/v1/ingest", 50, 60)
-        self.rate_limiter.set_endpoint_limit("/v1/sync", 30, 60)
         self.rate_limiter.set_endpoint_limit("/v1/search", 200, 60)
         self.rate_limiter.set_endpoint_limit("/v1/graphrag", 100, 60)
         self.rate_limiter.set_endpoint_limit("/v1/analytics", 30, 60)
@@ -205,10 +214,10 @@ TIER_RATE_LIMITS: dict[str, int] = {
 
 
 class TenantRateLimiter:
-    """Layer 3 adapter over canonical shared sliding-window limiter."""
+    """Layer 3 compatibility adapter over authoritative identity rate limiter."""
 
     def __init__(self, redis_client=None) -> None:
-        self._adapter = SlidingWindowAdapter(redis_client)
+        self._authoritative = AuthoritativeRateLimiter(redis_client)
 
     async def check(
         self,
@@ -219,40 +228,21 @@ class TenantRateLimiter:
         key_limit: int | None = None,
         window_seconds: int = 60,
     ) -> tuple[bool, dict[str, int]]:
-        tenant_limit = TIER_RATE_LIMITS.get(tier, TIER_RATE_LIMITS["free"])
-        tenant_decision = await self._adapter.check(
-            key=f"ratelimit:tenant:{tenant_id}:minute", limit=tenant_limit, window_seconds=window_seconds
+        from value_fabric.shared.identity.rate_limiting import RateLimitConfig
+
+        tenant_limit = key_limit or TIER_RATE_LIMITS.get(tier, TIER_RATE_LIMITS["free"])
+        decision = await self._authoritative.evaluate(
+            RateLimitDimensions(
+                tenant_id=str(tenant_id),
+                endpoint_class="layer3",
+                api_key_id=api_key_id,
+            ),
+            RateLimitConfig(requests_per_minute=tenant_limit, burst_size=max(1, tenant_limit // 10)),
         )
-
-        key_allowed = True
-        key_headers: dict[str, int] = {}
-        if api_key_id and key_limit:
-            key_decision = await self._adapter.check(
-                key=f"ratelimit:apikey:{api_key_id}:minute", limit=key_limit, window_seconds=window_seconds
-            )
-            key_allowed = key_decision.allowed
-            key_headers = {
-                "limit": key_decision.limit,
-                "remaining": key_decision.remaining,
-                "reset": key_decision.reset_epoch,
-                "retry_after": key_decision.retry_after or 0,
-            }
-
-        allowed = tenant_decision.allowed and key_allowed
-        tenant_headers = {
-            "limit": tenant_decision.limit,
-            "remaining": tenant_decision.remaining,
-            "reset": tenant_decision.reset_epoch,
-            "retry_after": tenant_decision.retry_after or 0,
+        headers = {
+            "limit": decision.limit,
+            "remaining": decision.remaining,
+            "reset": decision.reset_epoch,
+            "retry_after": decision.retry_after or 0,
         }
-        if key_headers:
-            headers = {
-                "limit": min(tenant_headers["limit"], key_headers["limit"]),
-                "remaining": min(tenant_headers["remaining"], key_headers["remaining"]),
-                "reset": max(tenant_headers["reset"], key_headers["reset"]),
-                "retry_after": max(tenant_headers["retry_after"], key_headers["retry_after"]),
-            }
-        else:
-            headers = tenant_headers
-
-        return allowed, headers
+        return decision.allowed, headers
