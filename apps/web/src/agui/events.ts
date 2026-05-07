@@ -173,10 +173,10 @@ export interface PageActionPayload {
   intendedOperation: "signal_review" | "evidence_attach" | "hypothesis_convert" | "scenario_update";
   payload?: Record<string, unknown>;
   runMetadataIds?: {
-    runId?: string;
-    traceId?: string;
+    runId: string;
+    traceId: string;
     workflowId?: string;
-    auditEventId?: string;
+    auditEventId: string;
     toolCallId?: string;
   };
 }
@@ -225,10 +225,11 @@ export type AgentEvent =
 // ── Run Metadata ────────────────────────────────────────────────────────────
 
 export interface RunMetadata {
-  traceId?: string;
+  runId: string;
+  traceId: string;
   workflowId?: string;
   tenantId?: string;
-  auditEventId?: string;
+  auditEventId: string;
   /** Workflow node that produced this event */
   sourceNode?: string;
 }
