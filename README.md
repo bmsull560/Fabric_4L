@@ -65,6 +65,16 @@ pnpm install
 
 Using `npm install` or `yarn install` is not supported and will fail fast via the root `preinstall` guard.
 
+Frontend workspace (`apps/web`) follows the same policy:
+
+```bash
+# Install from monorepo root (recommended)
+pnpm install
+
+# Or install only the frontend workspace
+pnpm --dir apps/web install
+```
+
 ## Quickstart
 
 ```bash
