@@ -182,6 +182,7 @@ export default function HypothesesTab() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
 
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ accountId: accountId ?? undefined,
     activeTab: "hypotheses",
@@ -409,6 +410,11 @@ export default function HypothesesTab() {
         </SectionCard>
       ) : (
         <SectionCard title={`Value Hypotheses (${filtered.length})`}>
+          {validationWarning && (
+            <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {validationWarning}
+            </div>
+          )}
           <div className="space-y-1">
             {filtered.map((h) => (
               <HypothesisCard
@@ -427,7 +433,10 @@ export default function HypothesesTab() {
                     },
                     {
                       onSuccess: (result: ValidateHypothesisResponse) => {
+                        setValidationWarning(null);
                         const promotedDrivers = result.promoted_artifacts?.drivers ?? [];
+                        const promotedDriver = promotedDrivers[0] as { id?: string } | undefined;
+                        const promotedLinkage = result.promoted_artifacts?.linkages?.[0];
                         if (caseId && promotedDrivers.length > 0) {
                           persistDrivers.mutate({
                             caseId,
@@ -440,6 +449,29 @@ export default function HypothesesTab() {
                               })),
                             },
                           });
+                        }
+                        if (status === "validated" && promotedDrivers.length === 0) {
+                          setValidationWarning("Hypothesis status was updated, but driver generation did not complete. Retry validation to regenerate the driver subtree.");
+                          return;
+                        }
+                        if (status === "validated" && result.hypothesis?.account_id && promotedDriver?.id) {
+                          const query = new URLSearchParams();
+                          query.set("driver_id", String(promotedDriver.id));
+                          if (promotedLinkage?.linkage_id) query.set("linkage_id", promotedLinkage.linkage_id);
+                          navigate(
+                            {
+                              pathname: `/drivers/${result.hypothesis.account_id}/evidence`,
+                              search: `?${query.toString()}`,
+                            },
+                            {
+                              state: {
+                                hypothesisId: h.id,
+                                driverId: String(promotedDriver.id),
+                                linkageId: promotedLinkage?.linkage_id ?? null,
+                                source: "hypothesis_validation",
+                              },
+                            },
+                          );
                         }
                       },
                     },
