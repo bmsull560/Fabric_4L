@@ -26,11 +26,7 @@ from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
 from ...workflows import list_workflow_types
 from ..common.audit import emit_route_audit
-<<<<<<< ours
 from ..common.errors import raise_normalized, raise_normalized_with_log
-=======
-from ..common.errors import raise_normalized
->>>>>>> theirs
 from ..schemas.workflow_progress import WorkflowProgressSchema, normalize_workflow_progress
 
 
@@ -356,7 +352,6 @@ async def create_workflow(
         )
 
     except Exception as exc:
-<<<<<<< ours
         raise_normalized_with_log(
             exc,
             status_code=500,
@@ -364,11 +359,6 @@ async def create_workflow(
             logger=logger,
             log_message="Workflow execution failed",
         )
-=======
-        if not isinstance(exc, HTTPException):
-            logger.exception("Workflow execution failed")
-        raise_normalized(exc, status_code=500, detail="Workflow execution failed")
->>>>>>> theirs
 
 
 
@@ -660,7 +650,6 @@ async def resume_workflow(
             raise HTTPException(status_code=404, detail=str(exc))
         if isinstance(exc, WorkflowExecutionError):
             raise HTTPException(status_code=400, detail=str(exc))
-<<<<<<< ours
         raise_normalized_with_log(
             exc,
             status_code=500,
@@ -668,10 +657,6 @@ async def resume_workflow(
             logger=logger,
             log_message=f"Unexpected error resuming workflow {workflow_id}",
         )
-=======
-        logger.exception(f"Unexpected error resuming workflow {workflow_id}")
-        raise_normalized(exc, status_code=500, detail="Failed to resume workflow")
->>>>>>> theirs
 
 
 @router.post("/workflows/{workflow_id}/pause", response_model=WorkflowPauseResponse)
@@ -743,7 +728,6 @@ async def pause_workflow(
     except Exception as exc:
         if isinstance(exc, ValueError):
             raise HTTPException(status_code=404, detail=str(exc))
-<<<<<<< ours
         raise_normalized_with_log(
             exc,
             status_code=500,
@@ -751,10 +735,6 @@ async def pause_workflow(
             logger=logger,
             log_message=f"Unexpected error pausing workflow {workflow_id}",
         )
-=======
-        logger.exception(f"Unexpected error pausing workflow {workflow_id}")
-        raise_normalized(exc, status_code=500, detail="Failed to pause workflow")
->>>>>>> theirs
 
 
 

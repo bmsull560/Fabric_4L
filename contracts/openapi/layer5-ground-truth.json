@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Value Fabric — Ground Truth Layer (L5)",
-    "description": "Evidence-backed, CFO-defensible facts for the Value Fabric platform. Provides a validation state machine (extracted → supported → corroborated → approved), a 0–5 maturity ladder, and bidirectional integration with the Layer 3 Knowledge Graph.",
+    "title": "Value Fabric \u2014 Ground Truth Layer (L5)",
+    "description": "Evidence-backed, CFO-defensible facts for the Value Fabric platform. Provides a validation state machine (extracted \u2192 supported \u2192 corroborated \u2192 approved), a 0\u20135 maturity ladder, and bidirectional integration with the Layer 3 Knowledge Graph.",
     "contact": {
       "name": "Value Fabric Engineering",
       "url": "https://github.com/bmsull560/Fabric_4L"
@@ -35,10 +35,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -158,10 +158,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Minimum maturity level (0–5)",
+              "description": "Minimum maturity level (0\u20135)",
               "title": "Min Maturity"
             },
-            "description": "Minimum maturity level (0–5)"
+            "description": "Minimum maturity level (0\u20135)"
           },
           {
             "name": "min_confidence",
@@ -171,8 +171,8 @@
               "anyOf": [
                 {
                   "type": "number",
-                  "maximum": 1,
-                  "minimum": 0
+                  "maximum": 1.0,
+                  "minimum": 0.0
                 },
                 {
                   "type": "null"
@@ -255,10 +255,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -349,10 +349,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -444,10 +444,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -531,10 +531,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -641,10 +641,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -748,10 +748,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -836,10 +836,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -906,7 +906,7 @@
           "ground-truth"
         ],
         "summary": "Get maturity ladder definition",
-        "description": "Returns the full 0–5 maturity ladder with descriptions and advancement criteria.",
+        "description": "Returns the full 0\u20135 maturity ladder with descriptions and advancement criteria.",
         "operationId": "wrapper_api_v1_maturity_ladder_get",
         "parameters": [
           {
@@ -984,10 +984,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1093,10 +1093,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1179,10 +1179,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1288,10 +1288,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1457,10 +1457,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1551,10 +1551,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1663,10 +1663,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1757,10 +1757,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1851,10 +1851,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -1955,10 +1955,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -2071,10 +2071,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -2165,10 +2165,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -2259,10 +2259,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -2407,10 +2407,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -2501,10 +2501,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Tenant UUID — dev/test fallback when JWT is absent",
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
               "title": "Tenant Id"
             },
-            "description": "Tenant UUID — dev/test fallback when JWT is absent"
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
           },
           {
             "name": "authorization",
@@ -2639,11 +2639,11 @@
           },
           "confidence_contribution": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence Contribution",
-            "description": "Contribution to overall confidence (0.0–1.0)",
-            "default": 0
+            "description": "Contribution to overall confidence (0.0\u20131.0)",
+            "default": 0.0
           },
           "source_date": {
             "anyOf": [
@@ -2892,7 +2892,7 @@
           "levels"
         ],
         "title": "MaturityLadderResponse",
-        "description": "Reference endpoint — returns the full maturity ladder definition."
+        "description": "Reference endpoint \u2014 returns the full maturity ladder definition."
       },
       "MaturityLevelDetail": {
         "properties": {
@@ -3136,8 +3136,8 @@
           },
           "score": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Score",
             "description": "Primary score (0.0-1.0)"
           },
@@ -3151,7 +3151,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -3164,7 +3164,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -3177,7 +3177,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -3418,7 +3418,7 @@
           },
           "context_window": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Context Window",
             "description": "Maximum context window in tokens",
             "default": 4096
@@ -3427,7 +3427,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -3438,23 +3438,23 @@
           },
           "cost_per_1k_input": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Cost Per 1K Input",
             "description": "Cost per 1,000 input tokens in USD",
-            "default": 0
+            "default": 0.0
           },
           "cost_per_1k_output": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Cost Per 1K Output",
             "description": "Cost per 1,000 output tokens in USD",
-            "default": 0
+            "default": 0.0
           },
           "cost_per_1k_cached": {
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -3739,8 +3739,8 @@
           },
           "traffic_percentage": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Traffic Percentage",
             "description": "Traffic percentage (0-100)",
             "default": 100
@@ -3901,8 +3901,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Extraction model confidence score",
             "examples": [
@@ -3993,7 +3993,7 @@
             },
             "type": "array",
             "title": "Sources",
-            "description": "Initial evidence sources (optional — can be added later via POST /truths/{id}/sources)"
+            "description": "Initial evidence sources (optional \u2014 can be added later via POST /truths/{id}/sources)"
           }
         },
         "type": "object",
@@ -4002,7 +4002,7 @@
           "confidence"
         ],
         "title": "TruthObjectCreate",
-        "description": "Schema for POST /truths — create a new TruthObject.\n\nThe tenant_id is injected from the auth context in the router;\nit is not accepted from the request body."
+        "description": "Schema for POST /truths \u2014 create a new TruthObject.\n\nThe tenant_id is injected from the auth context in the router;\nit is not accepted from the request body."
       },
       "TruthObjectListResponse": {
         "properties": {
@@ -4437,11 +4437,11 @@
           },
           "confidence_contribution": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence Contribution",
-            "description": "Contribution to overall confidence (0.0–1.0)",
-            "default": 0
+            "description": "Contribution to overall confidence (0.0\u20131.0)",
+            "default": 0.0
           },
           "source_date": {
             "anyOf": [
@@ -4539,11 +4539,11 @@
           },
           "confidence_contribution": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence Contribution",
-            "description": "Contribution to overall confidence (0.0–1.0)",
-            "default": 0
+            "description": "Contribution to overall confidence (0.0\u20131.0)",
+            "default": 0.0
           },
           "source_date": {
             "anyOf": [
@@ -4615,7 +4615,7 @@
           "disputed"
         ],
         "title": "TruthStatus",
-        "description": "Validation state machine — four ordered states.\n\nTransitions (forward only, except DISPUTED which can revert):\n  extracted → supported → corroborated → approved\n                                       ↘ disputed (can revert to corroborated)"
+        "description": "Validation state machine \u2014 four ordered states.\n\nTransitions (forward only, except DISPUTED which can revert):\n  extracted \u2192 supported \u2192 corroborated \u2192 approved\n                                       \u2198 disputed (can revert to corroborated)"
       },
       "ValidateRequest": {
         "properties": {
@@ -4674,7 +4674,7 @@
           "actor"
         ],
         "title": "ValidateRequest",
-        "description": "Schema for POST /truths/{id}/validate — trigger a state transition.\n\naction values:\n  advance_supported     — EXTRACTED → SUPPORTED\n  advance_corroborated  — SUPPORTED → CORROBORATED\n  approve               — CORROBORATED → APPROVED (requires actor)\n  dispute               — ANY → DISPUTED (requires dispute_reason)\n  resolve_dispute       — DISPUTED → CORROBORATED\n  operationalize        — APPROVED → maturity 5 (status stays APPROVED)"
+        "description": "Schema for POST /truths/{id}/validate \u2014 trigger a state transition.\n\naction values:\n  advance_supported     \u2014 EXTRACTED \u2192 SUPPORTED\n  advance_corroborated  \u2014 SUPPORTED \u2192 CORROBORATED\n  approve               \u2014 CORROBORATED \u2192 APPROVED (requires actor)\n  dispute               \u2014 ANY \u2192 DISPUTED (requires dispute_reason)\n  resolve_dispute       \u2014 DISPUTED \u2192 CORROBORATED\n  operationalize        \u2014 APPROVED \u2192 maturity 5 (status stays APPROVED)"
       },
       "ValidateResponse": {
         "properties": {

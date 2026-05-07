@@ -1,4 +1,4 @@
-from value_fabric.layer4.api.routes.tools import ToolCategoryListResponse, ToolSchemaResponse
+from value_fabric.layer4.contracts.tool_dto import ToolCategoryListResponse, ToolSchemaResponse
 
 
 def test_tool_schema_response_has_typed_fields() -> None:

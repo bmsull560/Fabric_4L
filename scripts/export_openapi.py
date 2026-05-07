@@ -75,6 +75,7 @@ EXPORT_ENV: dict[str, str] = {
     "ENV": "development",
     "APP_ENV": "development",
     "OPENAPI_EXPORT": "1",
+    "ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT": "true",
     "LAYER1_ENVIRONMENT": "development",
     "LAYER1_JWT_SECRET": "openapi-export-local-secret-with-32-characters",
     "LAYER1_DATABASE_URL": "postgresql://fabric_export:fabric_export_secret@localhost:5432/layer1_ingestion",
@@ -89,7 +90,31 @@ EXPORT_ENV: dict[str, str] = {
     "S3_SECRET_KEY": "fabric_export_secret_key",
     "MINIO_ACCESS_KEY": "fabric_export_access_key",
     "MINIO_SECRET_KEY": "fabric_export_secret_key",
+    "API_KEY_HMAC_SECRET": "openapi-export-local-secret-with-32-characters",
+    "SERVICE_AUTH_SECRET": "openapi-export-local-secret-with-32-characters",
+    "LAYER1_API_URL": "http://localhost:8001",
+    "LAYER2_API_URL": "http://localhost:8002",
+    "LAYER3_API_URL": "http://localhost:8003",
+    "LAYER4_API_URL": "http://localhost:8004",
+    "LAYER5_GROUND_TRUTH_URL": "http://localhost:8005",
+    "LAYER6_API_URL": "http://localhost:8006",
 }
+
+class _MockPsycopg2:
+    paramstyle = "pyformat"
+    extras = type("MockModule", (), {})()
+
+sys.modules["psycopg2"] = _MockPsycopg2()
+sys.modules["psycopg2.extras"] = _MockPsycopg2.extras
+
+class _MockLanggraphCheckpoint:
+    class AsyncPostgresSaver:
+        pass
+
+import sys
+sys.modules["langgraph.checkpoint.postgres"] = type("MockModule", (), {})()
+sys.modules["langgraph.checkpoint.postgres.aio"] = type("MockModule", (), {"AsyncPostgresSaver": _MockLanggraphCheckpoint.AsyncPostgresSaver})()
+
 
 
 def _spec_by_output(output_filename: str) -> OpenApiExportSpec:

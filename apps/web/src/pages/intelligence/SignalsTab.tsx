@@ -29,6 +29,8 @@ interface Signal {
   reviewed_by?: string;
 }
 
+type SignalReviewStatus = Exclude<Signal["review_status"], "pending_review" | undefined>;
+
 const CATEGORY_COLORS: Record<string, string> = {
   Operational: "bg-red-500",
   Workforce: "bg-orange-500",
@@ -68,7 +70,7 @@ export default function SignalsTab() {
     persistTab.mutate({ caseId, payload });
   };
 
-  const setSignalReview = async (signalId: string, review_status: Signal["review_status"]) => {
+  const setSignalReview = async (signalId: string, review_status: SignalReviewStatus) => {
     const reviewed_at = new Date().toISOString();
     const nextSignals = signals.map((signal) =>
       signal.id === signalId
@@ -83,7 +85,7 @@ export default function SignalsTab() {
     try {
       await reviewMutation.mutateAsync({
         signalId,
-        data: { review_status: review_status ?? "unreviewed", reviewed_at },
+        data: { review_status, reviewed_at },
       });
     } catch (err) {
       // Revert local state on backend failure so user sees the truth

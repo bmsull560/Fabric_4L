@@ -92,16 +92,41 @@ export { SidePanel } from "./ui/fabric/SidePanel";
 import { StatusBadge as FabricStatusBadge } from "./ui/fabric/StatusBadge";
 import { cn } from "@/lib/utils";
 
-export type LegacyStatusType = "completed" | "processing" | "failed" | "running" | "paused" | "pending" | "cancelled" | "success" | "error" | "warning" | "info";
+export type LegacyStatusType =
+  | "created"
+  | "queued"
+  | "waiting_dependency"
+  | "retrying"
+  | "succeeded"
+  | "failed_terminal"
+  | "interrupted"
+  | "completed"
+  | "processing"
+  | "failed"
+  | "running"
+  | "paused"
+  | "pending"
+  | "cancelled"
+  | "success"
+  | "error"
+  | "warning"
+  | "info";
 
 const legacyStatusMap: Record<string, { variant: "success" | "warning" | "destructive" | "secondary" | "default" | "outline" | "info" | "pending"; label: string }> = {
   completed: { variant: "success", label: "Completed" },
+  created: { variant: "secondary", label: "Created" },
+  queued: { variant: "pending", label: "Queued" },
+  waiting_dependency: { variant: "pending", label: "Waiting" },
+  retrying: { variant: "warning", label: "Retrying" },
+  succeeded: { variant: "success", label: "Succeeded" },
   success: { variant: "success", label: "Success" },
   running: { variant: "warning", label: "Running" },
   processing: { variant: "warning", label: "Processing" },
   failed: { variant: "destructive", label: "Failed" },
+  failed_terminal: { variant: "destructive", label: "Failed" },
   error: { variant: "destructive", label: "Error" },
   paused: { variant: "secondary", label: "Paused" },
+  interrupted: { variant: "secondary", label: "Interrupted" },
   pending: { variant: "pending", label: "Pending" },
   cancelled: { variant: "secondary", label: "Cancelled" },
   warning: { variant: "warning", label: "Warning" },

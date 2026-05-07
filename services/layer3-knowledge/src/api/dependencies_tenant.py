@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from value_fabric.shared.identity.context import RequestContext
 
 from .dependencies import get_neo4j_driver
-from src.db.query_execution import TenantExecutionContext, TenantQueryExecutor
+from ..db.query_execution import TenantExecutionContext, TenantQueryExecutor
 from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
 try:

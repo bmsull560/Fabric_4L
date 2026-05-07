@@ -6,6 +6,55 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "summary": "Legacy Health Check",
+        "description": "Legacy-compatible health check with dependency status.",
+        "operationId": "legacy_health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Ready",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/ingest": {
       "post": {
         "tags": [
@@ -2369,6 +2418,95 @@
         }
       }
     },
+    "/api/v1/ingestion/jobs/batch": {
+      "post": {
+        "summary": "Batch Operation",
+        "description": "Execute batch operations on ingestion jobs and targets.\n\nSupports three operations:\n- execute: Trigger crawl jobs for multiple targets\n- cancel: Cancel multiple running/queued jobs\n- retry: Retry multiple failed jobs\n\nReturns per-item results with success/failure status.",
+        "operationId": "batch_operation_api_v1_ingestion_jobs_batch_post",
+        "parameters": [
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          },
+          {
+            "name": "X-Service-Auth",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Service-Auth"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchOperationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchOperationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ingestion/content/raw/{content_id}": {
       "get": {
         "summary": "Get Raw Content",
@@ -3263,23 +3401,6 @@
           }
         }
       }
-    },
-    "/health": {
-      "get": {
-        "summary": "Legacy Health Check",
-        "description": "Legacy-compatible health check with dependency status.",
-        "operationId": "legacy_health_check_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -3316,6 +3437,142 @@
           "OAUTH2"
         ],
         "title": "AuthenticationType"
+      },
+      "BatchOperationItemResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "Target or job ID"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Operation status: succeeded, failed, or skipped"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id",
+            "description": "Resulting job ID (if applicable)"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "BatchOperationItemResult",
+        "description": "Result of a single item in a batch operation."
+      },
+      "BatchOperationRequest": {
+        "properties": {
+          "operation": {
+            "$ref": "#/components/schemas/BatchOperationType",
+            "description": "Operation to perform"
+          },
+          "target_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Target Ids",
+            "description": "Target IDs for execute operation"
+          },
+          "job_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Job Ids",
+            "description": "Job IDs for cancel/retry operations"
+          },
+          "options": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Options",
+            "description": "Additional operation options"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation"
+        ],
+        "title": "BatchOperationRequest",
+        "description": "Request for batch operations on jobs and targets."
+      },
+      "BatchOperationResponse": {
+        "properties": {
+          "operation": {
+            "$ref": "#/components/schemas/BatchOperationType",
+            "description": "Operation performed"
+          },
+          "requested": {
+            "type": "integer",
+            "title": "Requested",
+            "description": "Total number of items requested"
+          },
+          "succeeded": {
+            "type": "integer",
+            "title": "Succeeded",
+            "description": "Number of successful operations"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed",
+            "description": "Number of failed operations"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BatchOperationItemResult"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "Per-item results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "requested",
+          "succeeded",
+          "failed",
+          "results"
+        ],
+        "title": "BatchOperationResponse",
+        "description": "Response for batch operation."
+      },
+      "BatchOperationType": {
+        "type": "string",
+        "enum": [
+          "execute",
+          "cancel",
+          "retry"
+        ],
+        "title": "BatchOperationType",
+        "description": "Types of batch operations supported."
       },
       "BrowserConfigInput": {
         "properties": {
@@ -3426,7 +3683,7 @@
           "crawl_delay_seconds": {
             "type": "number",
             "title": "Crawl Delay Seconds",
-            "default": 1
+            "default": 1.0
           },
           "domain_allowlist": {
             "items": {
@@ -3824,8 +4081,8 @@
         "properties": {
           "priority": {
             "type": "integer",
-            "maximum": 10,
-            "minimum": 1,
+            "maximum": 10.0,
+            "minimum": 1.0,
             "title": "Priority",
             "default": 5
           },
@@ -4024,8 +4281,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 10,
-                "minimum": 0
+                "maximum": 10.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -4067,43 +4324,17 @@
         "title": "ExtractionMethod"
       },
       "HTTPValidationError": {
-        "type": "object",
-        "title": "HTTPValidationError",
-        "required": [
-          "message",
-          "code",
-          "trace_id"
-        ],
-        "additionalProperties": false,
         "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message"
-          },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Machine-readable error code"
-          },
-          "trace_id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Request trace ID for support correlation"
-          },
-          "details": {
-            "anyOf": [
-              {
-                "type": "object",
-                "additionalProperties": true
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Optional sanitized error details"
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
           }
         },
-        "description": "Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients."
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "HealthCheckResponse": {
         "properties": {
@@ -4652,7 +4883,7 @@
           "requests_per_second": {
             "type": "number",
             "title": "Requests Per Second",
-            "default": 1
+            "default": 1.0
           },
           "requests_per_minute": {
             "type": "integer",
@@ -5150,8 +5381,8 @@
           },
           "max_concurrent_jobs": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
             "title": "Max Concurrent Jobs",
             "default": 1
           }
@@ -6007,44 +6238,6 @@
         ],
         "title": "ValidationWarning",
         "description": "Validation warning detail."
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "title": "ErrorResponse",
-        "required": [
-          "message",
-          "code",
-          "trace_id"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message"
-          },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Machine-readable error code"
-          },
-          "trace_id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Request trace ID for support correlation"
-          },
-          "details": {
-            "anyOf": [
-              {
-                "type": "object",
-                "additionalProperties": true
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Optional sanitized error details"
-          }
-        }
       }
     }
   }

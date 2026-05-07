@@ -152,13 +152,17 @@ export type { Formula, FormulaStatus, FormulaType, ApprovalRequest } from '@/lib
 
 export type WorkflowState =
   | 'created'
+  | 'pending'
   | 'queued'
   | 'running'
   | 'waiting_dependency'
   | 'retrying'
   | 'paused'
+  | 'interrupted'
   | 'cancelled'
+  | 'completed'
   | 'succeeded'
+  | 'failed'
   | 'failed_terminal';
 
 export type GraphSyncStatus = 'pending' | 'syncing' | 'succeeded' | 'failed';

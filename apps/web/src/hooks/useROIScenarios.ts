@@ -36,7 +36,8 @@ export function useROIScenarioVersions(scope: Scope) {
         "l4",
         `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios?account_id=${encodeURIComponent(scope.accountId ?? "")}&model_id=${encodeURIComponent(scope.modelId ?? "")}`
       );
-      return (response.data?.items ?? response.data ?? []) as PersistedScenarioVersion[];
+      const data = response.data as { items?: PersistedScenarioVersion[] } | PersistedScenarioVersion[] | null | undefined;
+      return (Array.isArray(data) ? data : data?.items ?? []) as PersistedScenarioVersion[];
     },
   });
 }

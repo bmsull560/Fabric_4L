@@ -423,6 +423,10 @@
             "type": "string",
             "title": "Name"
           },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
           "industry": {
             "type": "string",
             "title": "Industry"
@@ -438,6 +442,17 @@
             ],
             "title": "Segment"
           },
+          "geography": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geography"
+          },
           "metrics": {
             "items": {
               "type": "string"
@@ -445,19 +460,38 @@
             "type": "array",
             "title": "Metrics"
           },
+          "metric_count": {
+            "type": "integer",
+            "title": "Metric Count"
+          },
           "version": {
             "type": "string",
             "title": "Version"
+          },
+          "data_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Source"
           }
         },
         "type": "object",
         "required": [
           "dataset_id",
           "name",
+          "description",
           "industry",
           "segment",
+          "geography",
           "metrics",
-          "version"
+          "metric_count",
+          "version",
+          "data_source"
         ],
         "title": "DatasetSummary",
         "description": "Summary of benchmark dataset."

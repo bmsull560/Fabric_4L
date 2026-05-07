@@ -196,11 +196,11 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
     evidence,
     isLoading,
     error,
+    caseId,
     verified,
     avgMatch,
     selectedEvidence,
     setSelectedEvidence,
-    caseId,
     evidenceDecision,
     persistTab,
     data,
@@ -321,6 +321,7 @@ export default function EvidenceTab() {
     evidence,
     isLoading,
     error,
+    caseId,
     verified,
     avgMatch,
     selectedEvidence,
@@ -340,6 +341,10 @@ export default function EvidenceTab() {
     steps,
     isStreaming,
     metadata,
+    validateClaim,
+    evidenceDecision,
+    persistTab,
+    data,
   } = useEvidenceTabState();
 
   const { accountId } = useParams<{ accountId: string }>();
@@ -423,6 +428,7 @@ export default function EvidenceTab() {
         evidence,
         isLoading,
         error,
+        caseId,
         verified,
         avgMatch,
         selectedEvidence,
@@ -442,6 +448,10 @@ export default function EvidenceTab() {
         steps,
         isStreaming,
         metadata,
+        validateClaim,
+        evidenceDecision,
+        persistTab,
+        data,
       }} />
     </IntelligenceShell>
   );

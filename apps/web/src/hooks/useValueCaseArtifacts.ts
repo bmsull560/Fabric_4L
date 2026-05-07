@@ -46,7 +46,8 @@ export function useValueCaseArtifacts(accountId: string | null) {
     queryFn: async () => {
       if (!accountId) return [];
       const response = await apiClient.get('l4', `/v1/value-case/artifacts?account_id=${encodeURIComponent(accountId)}`);
-      return (response.data?.versions ?? []) as ValueCaseArtifactVersion[];
+      const data = response.data as { versions?: ValueCaseArtifactVersion[] } | null | undefined;
+      return data?.versions ?? [];
     },
     enabled: Boolean(accountId),
   });

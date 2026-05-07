@@ -49,9 +49,6 @@ export type {
   ProductStats,
 } from "@/lib/schemas/evidence";
 
-// Legacy alias used by workflow/pages/Evidence.tsx
-export type CaseStudyEvidence = CaseStudy;
-
 export interface CaseStudyOutcomeInput {
   metric: string;
   before_value?: string | null;
@@ -110,6 +107,7 @@ export interface CaseStudyEvidence {
   title: string;
   industry?: string | null;
   year?: string | number | null;
+  published_date?: string | null;
 }
 
 export type CaseStudiesEvidenceResponse = CaseStudyListResponse & {

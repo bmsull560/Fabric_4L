@@ -9,6 +9,7 @@
 
 export const API_VERSION_PREFIX =
   import.meta.env.VITE_API_VERSION_PREFIX || import.meta.env.VITE_API_BASE || '/api/v1';
+export const API_BASE = API_VERSION_PREFIX;
 
 // Layer prefixes
 export const L1_PREFIX = import.meta.env.VITE_LAYER1_ROUTE_PREFIX || import.meta.env.VITE_L1_PREFIX || '/ingest';

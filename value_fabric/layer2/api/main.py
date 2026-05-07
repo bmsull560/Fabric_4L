@@ -54,7 +54,6 @@ except Exception:
         raise RuntimeError("Failed to load Infisical secrets in production-like Layer 2 runtime")
 
 from ..shared_bootstrap import verify_metrics_access
-from .app_factory import create_app
 from .lifespan import create_lifespan
 
 from layer2_extraction.alignment import SemanticAligner
@@ -128,8 +127,6 @@ lifespan = create_lifespan(
     pending_ingestion_retry_loop=lambda: _pending_ingestion_retry_loop(),
     ws_manager=_ws_manager,
 )
-
-app = create_app(lifespan=lifespan)
 
 # Extraction configuration constants
 DEFAULT_CHUNK_SIZE = 2000
@@ -1456,6 +1453,9 @@ class extract_batchResult(TypedDictModel):
     status: str
     total_jobs: Any
 
+
+from .app_factory import create_app
+app = create_app(lifespan=lifespan)
 
 if __name__ == "__main__":
     import uvicorn

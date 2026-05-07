@@ -6,6 +6,70 @@
     "version": "0.2.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Ready",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics Endpoint",
+        "operationId": "metrics_endpoint_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/workflows": {
       "post": {
         "tags": [
@@ -125,9 +189,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Workflows V1 Workflows Get"
+                  "$ref": "#/components/schemas/WorkflowListResponse"
                 }
               }
             }
@@ -224,9 +286,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response List Active Workflows V1 Workflows Active Get"
+                  "$ref": "#/components/schemas/WorkflowListResponse"
                 }
               }
             }
@@ -684,9 +744,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Tool Schema V1 Tools  Tool Name  Get"
+                  "$ref": "#/components/schemas/ToolSchemaResponse"
                 }
               }
             }
@@ -882,9 +940,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response List Tool Categories V1 Tools Categories Get"
+                  "$ref": "#/components/schemas/ToolCategoriesResponse"
                 }
               }
             }
@@ -1548,7 +1604,7 @@
           "analysis"
         ],
         "summary": "Get Workspace Tab",
-        "description": "Get workspace tab data.\n\nWorkspace tab persistence is not yet implemented. This endpoint fails closed\nwith 501 instead of returning misleading in-memory data that would be lost\non restart.",
+        "description": "Get persisted workspace tab data.",
         "operationId": "get_workspace_tab_v1_cases__case_id__workspace__tab_key__get",
         "parameters": [
           {
@@ -1600,7 +1656,7 @@
           "analysis"
         ],
         "summary": "Update Workspace Tab",
-        "description": "Update workspace tab data.\n\nWorkspace tab persistence is not yet implemented. This endpoint fails closed\nwith 501 instead of accepting updates that would be stored only in memory\nand lost on restart.",
+        "description": "Update persisted workspace tab data.",
         "operationId": "update_workspace_tab_v1_cases__case_id__workspace__tab_key__put",
         "parameters": [
           {
@@ -1666,7 +1722,7 @@
           "analysis"
         ],
         "summary": "Generate Workspace Intelligence",
-        "description": "Generate workspace intelligence data for a case.\n\nThe previous implementation returned fabricated sample signals, drivers,\nevidence, stakeholders, recommendations, value models, and narratives. That\nmade the endpoint appear production-ready while no AI workflow or persisted\ngeneration pipeline was actually being invoked. Until the production\nworkflow is wired here, the endpoint fails closed with an explicit 501 after\nverifying that the requested case and account exist.",
+        "description": "Generate workspace intelligence data for a case.\n\nLightweight generation that surfaces existing Neo4j data (signals,\nhypotheses) for the account. No LLM call \u2014 just exposes graph data\nthe frontend currently can't see.",
         "operationId": "generate_workspace_intelligence_v1_cases__case_id__workspace_generate_post",
         "parameters": [
           {
@@ -2375,6 +2431,111 @@
         }
       }
     },
+    "/v1/signals/{signal_id}/review": {
+      "patch": {
+        "tags": [
+          "signals"
+        ],
+        "summary": "Review Signal",
+        "description": "Review a signal and persist reviewer metadata/timestamp.",
+        "operationId": "review_signal_v1_signals__signal_id__review_patch",
+        "parameters": [
+          {
+            "name": "signal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Signal Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignalReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evidence/{evidence_id}/decisions": {
+      "post": {
+        "tags": [
+          "signals"
+        ],
+        "summary": "Decide Evidence",
+        "operationId": "decide_evidence_v1_evidence__evidence_id__decisions_post",
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Evidence Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceDecisionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/agent-stream/chat": {
       "post": {
         "tags": [
@@ -2401,6 +2562,46 @@
                 "schema": {
                   "$ref": "#/components/schemas/AgentStreamResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agent-stream/chat/stream": {
+      "post": {
+        "tags": [
+          "agent-stream"
+        ],
+        "summary": "Agent Stream Chat Sse",
+        "description": "SSE streaming version of the agent chat endpoint.\n\nEmits AG-UI protocol events as server-sent events:\n  RUN_STARTED \u2192 STEP_STARTED/STEP_FINISHED \u2192 TEXT_MESSAGE_* \u2192 RUN_FINISHED",
+        "operationId": "agent_stream_chat_sse_v1_agent_stream_chat_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentStreamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -6497,6 +6698,48 @@
         }
       }
     },
+    "/v1/hypotheses/from-signal": {
+      "post": {
+        "tags": [
+          "Value Hypotheses"
+        ],
+        "summary": "Promote Signal",
+        "description": "Promote a single pain signal to a value hypothesis.\n\nThis is the canonical hinge between Signal Discovery and Value Path\nClassification. Creates a ValueHypothesis node linked to the signal.",
+        "operationId": "promote_signal_v1_hypotheses_from_signal_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoteSignalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromoteSignalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hypotheses/{hypothesis_id}": {
       "get": {
         "tags": [
@@ -6614,6 +6857,24 @@
             "description": "Filter by status"
           },
           {
+            "name": "value_path_category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by value path category: revenue_uplift, cost_savings, risk_reduction, blended",
+              "title": "Value Path Category"
+            },
+            "description": "Filter by value path category: revenue_uplift, cost_savings, risk_reduction, blended"
+          },
+          {
             "name": "skip",
             "in": "query",
             "required": false,
@@ -6694,6 +6955,49 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hypotheses/{hypothesis_id}/convert": {
+      "post": {
+        "tags": [
+          "Value Hypotheses"
+        ],
+        "summary": "Convert Hypothesis To Tree",
+        "description": "Convert a hypothesis to a driver tree/value model linkage.",
+        "operationId": "convert_hypothesis_to_tree_v1_hypotheses__hypothesis_id__convert_post",
+        "parameters": [
+          {
+            "name": "hypothesis_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Hypothesis Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/convert_hypothesisResult"
+                }
               }
             }
           },
@@ -7263,8 +7567,8 @@
               "anyOf": [
                 {
                   "type": "number",
-                  "maximum": 1,
-                  "minimum": 0
+                  "maximum": 1.0,
+                  "minimum": 0.0
                 },
                 {
                   "type": "null"
@@ -7583,6 +7887,483 @@
         }
       }
     },
+    "/v1/governance/reviews": {
+      "post": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Create Review",
+        "operationId": "create_review_v1_governance_reviews_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewRequest"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "List Reviews",
+        "operationId": "list_reviews_v1_governance_reviews_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "subject_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Type"
+            }
+          },
+          {
+            "name": "correlation_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Correlation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewRequest"
+                  },
+                  "title": "Response List Reviews V1 Governance Reviews Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/reviews/{review_id}": {
+      "get": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Get Review",
+        "operationId": "get_review_v1_governance_reviews__review_id__get",
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewRequest"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/reviews/{review_id}/decisions": {
+      "post": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Create Decision",
+        "operationId": "create_decision_v1_governance_reviews__review_id__decisions_post",
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalDecision"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/versions/{version_id}": {
+      "get": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Get Version",
+        "operationId": "get_version_v1_governance_versions__version_id__get",
+        "parameters": [
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/versions": {
+      "post": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Create Version",
+        "operationId": "create_version_v1_governance_versions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionRecord"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/versions/{version_id}/diff": {
+      "get": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Get Version Diff",
+        "operationId": "get_version_diff_v1_governance_versions__version_id__diff_get",
+        "parameters": [
+          {
+            "name": "version_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version Id"
+            }
+          },
+          {
+            "name": "compare_to_version_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Compare To Version Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionDiff"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/audit/exports": {
+      "post": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Create Audit Export",
+        "operationId": "create_audit_export_v1_governance_audit_exports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditExportCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditExportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/audit/exports/{audit_export_id}": {
+      "get": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Get Audit Export",
+        "operationId": "get_audit_export_v1_governance_audit_exports__audit_export_id__get",
+        "parameters": [
+          {
+            "name": "audit_export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Audit Export Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditExportJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/lineage/{correlation_id}": {
+      "get": {
+        "tags": [
+          "governance-workflows"
+        ],
+        "summary": "Get Lineage",
+        "operationId": "get_lineage_v1_governance_lineage__correlation_id__get",
+        "parameters": [
+          {
+            "name": "correlation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Correlation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/c1/stream": {
       "post": {
         "tags": [
@@ -7875,7 +8656,7 @@
           "prospects"
         ],
         "summary": "Start Prospect Analysis",
-        "description": "Start prospect analysis workflow — real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
+        "description": "Start prospect analysis workflow \u2014 real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
         "operationId": "start_prospect_analysis_v1_prospects__prospect_id__start_analysis_post",
         "parameters": [
           {
@@ -7916,57 +8697,6 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health": {
-      "get": {
-        "summary": "Health Check",
-        "description": "Health check endpoint with real metrics and dependency status.",
-        "operationId": "health_check_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/metrics": {
-      "get": {
-        "summary": "Metrics Endpoint",
-        "description": "Prometheus metrics endpoint.\n\nSECURITY: Requires valid Bearer token, scrape token header, or internal IP.\nDev bypass via ALLOW_INSECURE_DEV_AUTH_BYPASS env var (never enable in production).",
-        "operationId": "metrics_endpoint_metrics_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/": {
-      "get": {
-        "summary": "Root",
-        "description": "Root endpoint with API info.",
-        "operationId": "root__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           }
@@ -8019,8 +8749,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 10000,
-                "minimum": 1
+                "maximum": 10000.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -8059,7 +8789,7 @@
           "api_key": {
             "type": "string",
             "title": "Api Key",
-            "description": "Full key — shown ONCE, store securely"
+            "description": "Full key \u2014 shown ONCE, store securely"
           },
           "prefix": {
             "type": "string",
@@ -8119,7 +8849,7 @@
           "created_at"
         ],
         "title": "APIKeyCreateResponse",
-        "description": "Returned once on key creation — includes the raw secret (shown only once)."
+        "description": "Returned once on key creation \u2014 includes the raw secret (shown only once)."
       },
       "APIKeyModel": {
         "properties": {
@@ -8207,8 +8937,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 10000,
-                "minimum": 1
+                "maximum": 10000.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -8808,14 +9538,14 @@
           },
           "page": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Page",
             "default": 1
           },
           "page_size": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
             "title": "Page Size",
             "default": 20
           },
@@ -9066,6 +9796,73 @@
                 "type": "null"
               }
             ]
+          },
+          "entityContext": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitycontext"
+          },
+          "selectedSignalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedsignalid"
+          },
+          "selectedValuePath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedvaluepath"
+          },
+          "selectedDriverTreeId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selecteddrivertreeid"
+          },
+          "selectedScenarioId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedscenarioid"
+          },
+          "selectedBusinessCaseId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedbusinesscaseid"
           }
         },
         "type": "object",
@@ -9093,6 +9890,49 @@
         ],
         "title": "AgentStreamResponse",
         "description": "Assistant response payload for RightRail."
+      },
+      "ApprovalDecision": {
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "title": "Decision Id"
+          },
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "changes_requested",
+              "rejected"
+            ],
+            "title": "Decision"
+          },
+          "immutable_audit_hash": {
+            "type": "string",
+            "title": "Immutable Audit Hash"
+          },
+          "decided_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Decided At"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "review_id",
+          "decision",
+          "immutable_audit_hash",
+          "decided_at",
+          "lineage"
+        ],
+        "title": "ApprovalDecision"
       },
       "ArchiveWorkflowResponse": {
         "properties": {
@@ -9166,6 +10006,90 @@
         ],
         "title": "AuditEventInfo",
         "description": "Audit event information."
+      },
+      "AuditExportCreateRequest": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "correlation_id": {
+            "type": "string",
+            "title": "Correlation Id"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_id",
+          "correlation_id"
+        ],
+        "title": "AuditExportCreateRequest"
+      },
+      "AuditExportJob": {
+        "properties": {
+          "audit_export_id": {
+            "type": "string",
+            "title": "Audit Export Id"
+          },
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "immutable_audit_hash": {
+            "type": "string",
+            "title": "Immutable Audit Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audit_export_id",
+          "review_id",
+          "status",
+          "lineage",
+          "created_at",
+          "immutable_audit_hash"
+        ],
+        "title": "AuditExportJob"
       },
       "AuditLogEntry": {
         "properties": {
@@ -9282,8 +10206,8 @@
         "properties": {
           "limit": {
             "type": "integer",
-            "maximum": 500,
-            "minimum": 1,
+            "maximum": 500.0,
+            "minimum": 1.0,
             "title": "Limit",
             "description": "Max accounts to enrich",
             "default": 50
@@ -9661,17 +10585,17 @@
           "total_value": {
             "type": "number",
             "title": "Total Value",
-            "default": 0
+            "default": 0.0
           },
           "implementation_cost": {
             "type": "number",
             "title": "Implementation Cost",
-            "default": 0
+            "default": 0.0
           },
           "roi_ratio": {
             "type": "number",
             "title": "Roi Ratio",
-            "default": 0
+            "default": 0.0
           },
           "payback_months": {
             "type": "integer",
@@ -9681,7 +10605,7 @@
           "confidence_score": {
             "type": "number",
             "title": "Confidence Score",
-            "default": 0
+            "default": 0.0
           },
           "recommendations": {
             "items": {
@@ -9878,7 +10802,8 @@
         "type": "string",
         "enum": [
           "salesforce",
-          "hubspot"
+          "hubspot",
+          "manual"
         ],
         "title": "CRMProvider",
         "description": "Supported CRM providers."
@@ -10123,10 +11048,10 @@
           },
           "packet_loss_percent": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Packet Loss Percent",
-            "default": 0
+            "default": 0.0
           },
           "connection_type": {
             "type": "string",
@@ -10293,10 +11218,18 @@
             "$ref": "#/components/schemas/CRMProvider"
           },
           "provider_record_id": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Provider Record Id"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Record Id",
+            "description": "Original CRM record ID. Auto-generated for manual accounts."
           },
           "name": {
             "type": "string",
@@ -10344,13 +11277,50 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
               }
             ],
             "title": "Company Size"
+          },
+          "annual_revenue": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Revenue",
+            "description": "Annual revenue in USD"
+          },
+          "headquarters": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headquarters"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
           },
           "owner_id": {
             "anyOf": [
@@ -10416,11 +11386,10 @@
         "type": "object",
         "required": [
           "provider",
-          "provider_record_id",
           "name"
         ],
         "title": "CreateAccountRequest",
-        "description": "Account creation request."
+        "description": "Account creation request.\n\nSupports both CRM-imported accounts (provider=salesforce|hubspot)\nand manually created accounts (provider=manual).\nFor manual accounts, provider_record_id is auto-generated if omitted."
       },
       "CreateCaseRequest": {
         "properties": {
@@ -10977,28 +11946,28 @@
         "properties": {
           "overall_pass_rate": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Overall Pass Rate",
             "description": "Overall evaluation pass rate"
           },
           "total_tests": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Tests",
             "description": "Total number of tests run",
             "default": 0
           },
           "passed_tests": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Passed Tests",
             "description": "Number of passing tests",
             "default": 0
           },
           "skills_evaluated": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Skills Evaluated",
             "description": "Number of skills evaluated",
             "default": 0
@@ -11019,6 +11988,117 @@
         ],
         "title": "EvalRunRequest",
         "description": "Request to record an evaluation run against the active model."
+      },
+      "EvidenceDecisionRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision",
+            "description": "accepted|rejected|attached_to_driver"
+          },
+          "driver_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Id"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "case_id",
+          "decision"
+        ],
+        "title": "EvidenceDecisionRequest"
+      },
+      "EvidenceDecisionResponse": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "driver_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Id"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "type": "string",
+            "title": "Reviewed At"
+          },
+          "provenance": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Provenance"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "account_id",
+          "case_id",
+          "decision",
+          "reviewed_at"
+        ],
+        "title": "EvidenceDecisionResponse"
       },
       "ExportAuditRecord": {
         "properties": {
@@ -11139,8 +12219,8 @@
           },
           "rollout_percentage": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Rollout Percentage"
           },
           "description": {
@@ -11204,8 +12284,8 @@
           },
           "rollout_percentage": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Rollout Percentage"
           },
           "description": {
@@ -11300,15 +12380,15 @@
           },
           "min_confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Min Confidence",
             "default": 0.3
           },
           "max_hypotheses": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
             "title": "Max Hypotheses",
             "default": 20
           },
@@ -11587,15 +12667,15 @@
           },
           "sync_interval_minutes": {
             "type": "integer",
-            "maximum": 1440,
-            "minimum": 5,
+            "maximum": 1440.0,
+            "minimum": 5.0,
             "title": "Sync Interval Minutes",
             "default": 60
           },
           "sync_batch_size": {
             "type": "integer",
-            "maximum": 500,
-            "minimum": 10,
+            "maximum": 500.0,
+            "minimum": 10.0,
             "title": "Sync Batch Size",
             "default": 100
           },
@@ -11699,6 +12779,93 @@
         "title": "IntegrationStatusResponse",
         "description": "Integration with sync status (response only)."
       },
+      "LineageRef": {
+        "properties": {
+          "business_case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Case Id"
+          },
+          "value_model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Model Id"
+          },
+          "correlation_id": {
+            "type": "string",
+            "title": "Correlation Id"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "correlation_id"
+        ],
+        "title": "LineageRef",
+        "description": "Shared immutable lineage carried by L4/L5 governance objects."
+      },
+      "LineageResponse": {
+        "properties": {
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRequest"
+            },
+            "type": "array",
+            "title": "Reviews"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ApprovalDecision"
+            },
+            "type": "array",
+            "title": "Decisions"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/VersionRecord"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "exports": {
+            "items": {
+              "$ref": "#/components/schemas/AuditExportJob"
+            },
+            "type": "array",
+            "title": "Exports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reviews",
+          "decisions",
+          "versions",
+          "exports"
+        ],
+        "title": "LineageResponse"
+      },
       "ModelPromoteRequest": {
         "properties": {
           "to_stage": {
@@ -11761,8 +12928,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1,
-                "minimum": 0
+                "maximum": 1.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -11934,15 +13101,15 @@
           },
           "roi_time_horizon_months": {
             "type": "integer",
-            "maximum": 120,
-            "minimum": 1,
+            "maximum": 120.0,
+            "minimum": 1.0,
             "title": "Roi Time Horizon Months",
             "default": 36
           },
           "top_n_hypotheses": {
             "type": "integer",
-            "maximum": 20,
-            "minimum": 1,
+            "maximum": 20.0,
+            "minimum": 1.0,
             "title": "Top N Hypotheses",
             "default": 5
           },
@@ -12365,6 +13532,124 @@
         "type": "object",
         "title": "ProcessingMetadata",
         "description": "Metadata about signal processing."
+      },
+      "PromoteSignalRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id",
+            "description": "Account ID the signal belongs to"
+          },
+          "signal_id": {
+            "type": "string",
+            "title": "Signal Id",
+            "description": "Pain signal ID to promote"
+          },
+          "value_path_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Path Category",
+            "description": "Value path classification: revenue_uplift, cost_savings, risk_reduction, blended"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "product_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Name"
+          },
+          "capability_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Id"
+          },
+          "capability_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capability Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "signal_id"
+        ],
+        "title": "PromoteSignalRequest",
+        "description": "Request to promote a pain signal to a value hypothesis."
+      },
+      "PromoteSignalResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "hypothesis_id": {
+            "type": "string",
+            "title": "Hypothesis Id"
+          },
+          "signal_id": {
+            "type": "string",
+            "title": "Signal Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "value_path_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Path Category"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "status",
+          "hypothesis_id",
+          "signal_id",
+          "account_id",
+          "value_path_category"
+        ],
+        "title": "PromoteSignalResponse"
       },
       "PromotionLogResponse": {
         "properties": {
@@ -13253,6 +14538,61 @@
         "title": "RetryProvisioningResponse",
         "description": "Response from retry provisioning request."
       },
+      "ReviewRequest": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "submitted",
+              "in_review",
+              "approved",
+              "changes_requested",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "subject_type": {
+            "type": "string",
+            "enum": [
+              "business_case",
+              "value_model"
+            ],
+            "title": "Subject Type"
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Submitted At"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          },
+          "immutable_audit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Immutable Audit Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_id",
+          "status",
+          "subject_type",
+          "submitted_at",
+          "lineage"
+        ],
+        "title": "ReviewRequest"
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -13264,7 +14604,7 @@
           "system"
         ],
         "title": "Role",
-        "description": "Business roles used across all layers.\n\nHierarchy (highest → lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
+        "description": "Business roles used across all layers.\n\nHierarchy (highest \u2192 lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
       },
       "SaveScenarioRequest": {
         "properties": {
@@ -13389,6 +14729,84 @@
         ],
         "title": "SignalListResponse",
         "description": "Response with list of signals for an account."
+      },
+      "SignalReviewRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id",
+            "description": "Account identifier for scope validation"
+          },
+          "review_status": {
+            "type": "string",
+            "title": "Review Status",
+            "description": "Review decision status: approved|rejected"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note",
+            "description": "Optional reviewer rationale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "review_status"
+        ],
+        "title": "SignalReviewRequest",
+        "description": "Request payload for reviewing a signal."
+      },
+      "SignalReviewResponse": {
+        "properties": {
+          "signal_id": {
+            "type": "string",
+            "title": "Signal Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "review_status": {
+            "type": "string",
+            "title": "Review Status"
+          },
+          "reviewed_by": {
+            "type": "string",
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "type": "string",
+            "title": "Reviewed At"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "signal_id",
+          "account_id",
+          "review_status",
+          "reviewed_by",
+          "reviewed_at"
+        ],
+        "title": "SignalReviewResponse",
+        "description": "Response payload for signal review mutations."
       },
       "StartAnalysisRequest": {
         "properties": {
@@ -14310,6 +15728,55 @@
         "title": "TierInfo",
         "description": "Tier information for public listing."
       },
+      "ToolCategoriesResponse": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/ToolCategoryItem"
+            },
+            "type": "array",
+            "title": "Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "categories"
+        ],
+        "title": "ToolCategoriesResponse",
+        "description": "Typed response model for categories listing."
+      },
+      "ToolCategory": {
+        "type": "string",
+        "enum": [
+          "knowledge",
+          "calculation",
+          "crm",
+          "generation",
+          "integration",
+          "utility"
+        ],
+        "title": "ToolCategory",
+        "description": "Categories of tools."
+      },
+      "ToolCategoryItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ToolCategoryItem",
+        "description": "Single tool category metadata item."
+      },
       "ToolInvokeRequest": {
         "properties": {
           "tool_name": {
@@ -14406,6 +15873,73 @@
         ],
         "title": "ToolListResponse",
         "description": "Tool list response."
+      },
+      "ToolSchemaExample": {
+        "properties": {
+          "input": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input"
+          },
+          "output": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Output"
+          }
+        },
+        "type": "object",
+        "title": "ToolSchemaExample",
+        "description": "Single tool example preserving arbitrary JSON-shaped payloads."
+      },
+      "ToolSchemaResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ToolCategory"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "input_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input Schema"
+          },
+          "output_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Output Schema"
+          },
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/ToolSchemaExample"
+            },
+            "type": "array",
+            "title": "Examples"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "title": "Timeout Seconds"
+          },
+          "requires_auth": {
+            "type": "boolean",
+            "title": "Requires Auth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "category",
+          "description",
+          "timeout_seconds",
+          "requires_auth"
+        ],
+        "title": "ToolSchemaResponse",
+        "description": "Typed response model for a single tool schema."
       },
       "UsageMetricsResponse": {
         "properties": {
@@ -14553,7 +16087,7 @@
           "email"
         ],
         "title": "UserModel",
-        "description": "Read-only representation of a user (returned by API — no password)."
+        "description": "Read-only representation of a user (returned by API \u2014 no password)."
       },
       "UserStatus": {
         "type": "string",
@@ -14625,11 +16159,11 @@
           },
           "confidence_adjustment": {
             "type": "number",
-            "maximum": 1,
-            "minimum": -1,
+            "maximum": 1.0,
+            "minimum": -1.0,
             "title": "Confidence Adjustment",
             "description": "Additive confidence adjustment",
-            "default": 0
+            "default": 0.0
           }
         },
         "type": "object",
@@ -14769,6 +16303,98 @@
         ],
         "title": "VerifyEmailResponse",
         "description": "Response from email verification."
+      },
+      "VersionDiff": {
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "title": "Version Id"
+          },
+          "compare_to_version_id": {
+            "type": "string",
+            "title": "Compare To Version Id"
+          },
+          "changed_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Changed Fields"
+          },
+          "change_count": {
+            "type": "integer",
+            "title": "Change Count"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version_id",
+          "compare_to_version_id",
+          "changed_fields",
+          "change_count",
+          "lineage"
+        ],
+        "title": "VersionDiff"
+      },
+      "VersionRecord": {
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "title": "Version Id"
+          },
+          "version_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "superseded"
+            ],
+            "title": "Version Status"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "object_type": {
+            "type": "string",
+            "enum": [
+              "business_case",
+              "value_model"
+            ],
+            "title": "Object Type",
+            "default": "business_case"
+          },
+          "snapshot": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Snapshot"
+          },
+          "immutable_audit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Immutable Audit Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version_id",
+          "version_status",
+          "lineage",
+          "created_at"
+        ],
+        "title": "VersionRecord"
       },
       "WebSocketStatusResponse": {
         "properties": {
@@ -15087,6 +16713,108 @@
         "title": "WorkflowInputs",
         "description": "Workflow inputs wrapper per spec."
       },
+      "WorkflowListItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "workflow_type": {
+            "type": "string",
+            "title": "Workflow Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "paused",
+              "interrupted",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "progress": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "default": 0.0
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "workflow_type",
+          "status"
+        ],
+        "title": "WorkflowListItem"
+      },
+      "WorkflowListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "WorkflowListResponse"
+      },
       "WorkflowPauseRequest": {
         "properties": {
           "user_id": {
@@ -15234,10 +16962,10 @@
           },
           "percent": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Percent",
-            "default": 0
+            "default": 0.0
           },
           "message": {
             "type": "string",
@@ -15377,9 +17105,9 @@
       },
       "WorkflowStatusResponse": {
         "properties": {
-          "workflow_instance_id": {
+          "id": {
             "type": "string",
-            "title": "Workflow Instance Id"
+            "title": "Id"
           },
           "workflow_type": {
             "type": "string",
@@ -15387,6 +17115,15 @@
           },
           "status": {
             "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "paused",
+              "interrupted",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
             "title": "Status"
           },
           "current_state": {
@@ -15411,12 +17148,12 @@
             ],
             "title": "Current Node"
           },
-          "progress_percentage": {
+          "progress": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0,
-            "title": "Progress Percentage",
-            "default": 0
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "default": 0.0
           },
           "started_at": {
             "anyOf": [
@@ -15506,7 +17243,7 @@
             ],
             "title": "Scheduler Status"
           },
-          "progress": {
+          "progress_meta": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkflowProgressSchema"
@@ -15519,12 +17256,71 @@
         },
         "type": "object",
         "required": [
-          "workflow_instance_id",
+          "id",
           "workflow_type",
           "status"
         ],
         "title": "WorkflowStatusResponse",
         "description": "Workflow status response - OpenAPI spec compliant.\n\nSpec requires:\n- workflow_instance_id: string\n- workflow_type: string\n- status: string\n- current_state: string\n- progress_percentage: number\n- started_at: datetime\n- completed_at: datetime\n- results: object"
+      },
+      "convert_hypothesisResult": {
+        "properties": {
+          "hypothesis_id": {
+            "type": "string",
+            "title": "Hypothesis Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Ids"
+          },
+          "value_model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Model Id"
+          },
+          "tree_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tree Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "hypothesis_id",
+          "account_id",
+          "tenant_id",
+          "evidence_ids",
+          "status"
+        ],
+        "title": "convert_hypothesisResult"
       },
       "layer4_agents__api__routes__audit__AuditLogResponse": {
         "properties": {

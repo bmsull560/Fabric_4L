@@ -9,7 +9,7 @@
     "/health": {
       "get": {
         "tags": [
-          "system"
+          "health"
         ],
         "summary": "Health Check",
         "operationId": "health_check_health_get",
@@ -180,10 +180,156 @@
         }
       }
     },
-    "/v1/extract/status/{job_id}": {
+    "/v1/extract/results/{job_id}": {
       "get": {
         "tags": [
           "extraction"
+        ],
+        "summary": "Get Extraction Results",
+        "description": "Get extracted entities for a specific extraction job.\n\nArgs:\n    job_id: Extraction job identifier\n    request: HTTP request for tenant context\n    \nReturns:\n    ExtractionEntitiesResponse with extracted entities\n    \nRaises:\n    HTTPException 404: Job not found for tenant\n    HTTPException 409: Extraction not complete",
+        "operationId": "get_extraction_results_v1_extract_results__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "full",
+              "title": "Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionResultsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/extract/{job_id}/entities": {
+      "get": {
+        "tags": [
+          "extraction"
+        ],
+        "summary": "Get Extraction Entities",
+        "description": "Backward-compatible alias for extraction results route.",
+        "operationId": "get_extraction_entities_v1_extract__job_id__entities_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "full",
+              "title": "Mode"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionResultsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/extract/status/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
         ],
         "summary": "Get Extraction Status",
         "operationId": "get_extraction_status_v1_extract_status__job_id__get",
@@ -225,7 +371,7 @@
     "/v1/extract/batch": {
       "post": {
         "tags": [
-          "extraction"
+          "jobs"
         ],
         "summary": "Extract Batch",
         "operationId": "extract_batch_v1_extract_batch_post",
@@ -268,7 +414,7 @@
     "/v1/extract/jobs/{job_id}/events": {
       "get": {
         "tags": [
-          "extraction"
+          "jobs"
         ],
         "summary": "Stream Job Events",
         "operationId": "stream_job_events_v1_extract_jobs__job_id__events_get",
@@ -299,6 +445,25 @@
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Metrics Endpoint",
+        "operationId": "metrics_endpoint_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           }
@@ -1276,6 +1441,70 @@
         ],
         "title": "CreateTypeRequest"
       },
+      "EntityProvenance": {
+        "properties": {
+          "extraction_job_id": {
+            "type": "string",
+            "title": "Extraction Job Id",
+            "description": "Extraction job identifier"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url",
+            "description": "Source URL if applicable"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id",
+            "description": "Trace identifier for observability"
+          }
+        },
+        "type": "object",
+        "required": [
+          "extraction_job_id"
+        ],
+        "title": "EntityProvenance"
+      },
+      "EntitySourceSpan": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "title": "Document Id",
+            "description": "Document identifier"
+          },
+          "start": {
+            "type": "integer",
+            "title": "Start",
+            "description": "Start position in document"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End",
+            "description": "End position in document"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_id",
+          "start",
+          "end"
+        ],
+        "title": "EntitySourceSpan"
+      },
       "ExtractAndIngestResponse": {
         "properties": {
           "job_id": {
@@ -1365,6 +1594,127 @@
         ],
         "title": "ExtractResponse",
         "description": "Response from extraction endpoint."
+      },
+      "ExtractedEntity": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "title": "Entity Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "source_span": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EntitySourceSpan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EntityProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_id",
+          "type",
+          "name",
+          "confidence"
+        ],
+        "title": "ExtractedEntity"
+      },
+      "ExtractionResultSummary": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "total_entities": {
+            "type": "integer",
+            "title": "Total Entities"
+          },
+          "returned_entities": {
+            "type": "integer",
+            "title": "Returned Entities"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "full"
+            ],
+            "title": "Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "total_entities",
+          "returned_entities",
+          "page",
+          "page_size",
+          "total_pages",
+          "mode"
+        ],
+        "title": "ExtractionResultSummary"
+      },
+      "ExtractionResultsResponse": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ExtractionResultSummary"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractedEntity"
+            },
+            "type": "array",
+            "title": "Entities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "title": "ExtractionResultsResponse"
       },
       "ExtractionStatusResponse": {
         "properties": {

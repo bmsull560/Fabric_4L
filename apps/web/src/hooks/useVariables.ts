@@ -64,7 +64,7 @@ export interface TestVariableBindingSourceTrace {
 
 export interface TestVariableBindingResponse {
   pass: boolean;
-  evaluated_value: unknown;
+  evaluated_value?: unknown;
   failure_class?: TestBindingFailureClass;
   diagnostics: TestVariableBindingDiagnostics[];
   source_trace: TestVariableBindingSourceTrace;

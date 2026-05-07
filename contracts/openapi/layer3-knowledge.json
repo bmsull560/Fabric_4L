@@ -14,6 +14,157 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Basic Health Check",
+        "description": "Perform a basic health check of the service and its dependencies.\n    \n    This endpoint checks:\n    - Neo4j database connectivity\n    - Overall service status\n    - Basic system metrics\n    - Schema validation status\n    \n    Returns a simplified health status suitable for load balancers and monitoring systems.\n    \n    **Response Headers:**\n    - `X-RateLimit-*`: Current rate limiting information\n    - `X-API-Version`: API version used\n    - `X-Supported-Versions`: Supported API versions\n    \n    **Status Codes:**\n    - `200`: Service is healthy\n    - `503`: Service or dependencies are unhealthy",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "status": "healthy",
+                  "version": "1.0.0",
+                  "timestamp": "2024-01-01T12:00:00.000Z",
+                  "uptime_seconds": 3600.0,
+                  "dependencies": [
+                    {
+                      "name": "neo4j",
+                      "status": "healthy",
+                      "response_time_ms": 15.5,
+                      "details": {
+                        "uri": "bolt://localhost:7687",
+                        "database": "neo4j"
+                      }
+                    }
+                  ],
+                  "metrics": {
+                    "uptime_seconds": 3600.0,
+                    "memory_usage_mb": 1024.5,
+                    "cpu_percent": 25.0,
+                    "active_connections": 10,
+                    "total_requests": 1500,
+                    "error_rate_percent": 0.1
+                  },
+                  "neo4j": {
+                    "status": "healthy",
+                    "database": "neo4j",
+                    "uri": "bolt://localhost:7687"
+                  },
+                  "schema_status": {
+                    "constraints": {
+                      "expected": 10,
+                      "found": 10,
+                      "missing": []
+                    },
+                    "indexes": {
+                      "expected": 15,
+                      "found": 15,
+                      "missing": []
+                    },
+                    "valid": true
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service or dependencies are unhealthy",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "unhealthy",
+                  "version": "1.0.0",
+                  "timestamp": "2024-01-01T12:00:00.000Z",
+                  "uptime_seconds": 3600.0,
+                  "dependencies": [
+                    {
+                      "name": "neo4j",
+                      "status": "unhealthy",
+                      "error": "Connection timeout",
+                      "details": {
+                        "uri": "bolt://localhost:7687",
+                        "database": "neo4j"
+                      }
+                    }
+                  ],
+                  "metrics": {
+                    "uptime_seconds": 3600.0,
+                    "memory_usage_mb": 1024.5,
+                    "cpu_percent": 25.0,
+                    "active_connections": 0,
+                    "total_requests": 1500,
+                    "error_rate_percent": 5.2
+                  },
+                  "neo4j": {
+                    "status": "unhealthy",
+                    "database": "neo4j",
+                    "uri": "bolt://localhost:7687",
+                    "error": "Connection timeout"
+                  },
+                  "schema_status": {
+                    "constraints": {
+                      "expected": 10,
+                      "found": 8,
+                      "missing": [
+                        "constraint_1",
+                        "constraint_2"
+                      ]
+                    },
+                    "indexes": {
+                      "expected": 15,
+                      "found": 15,
+                      "missing": []
+                    },
+                    "valid": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Ready",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/value-trees/{entity_id}": {
       "get": {
         "tags": [
@@ -363,7 +514,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_formula_v1_formulas_post"
+                "$ref": "#/components/schemas/CreateFormulaRequest"
               }
             }
           }
@@ -462,7 +613,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_update_formula_v1_formulas__formula_id__patch"
+                "$ref": "#/components/schemas/UpdateFormulaRequest"
               }
             }
           }
@@ -513,23 +664,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -588,7 +722,7 @@
                   "scenario_id": "scenario_abc123",
                   "original_value": 500000,
                   "adjusted_value": 600000,
-                  "delta_percentage": 20,
+                  "delta_percentage": 20.0,
                   "new_roi": 2.5,
                   "new_payback_months": 8.5,
                   "formula_used": "(total_value - implementation_cost) / implementation_cost",
@@ -1518,23 +1652,6 @@
         "summary": "List Pending Approvals",
         "description": "List all formulas currently pending review/approval.",
         "operationId": "list_pending_approvals_v1_formulas_approvals_pending_get",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1546,16 +1663,6 @@
                   },
                   "type": "array",
                   "title": "Response List Pending Approvals V1 Formulas Approvals Pending Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1601,23 +1708,6 @@
             "description": "Include retired versions"
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1670,7 +1760,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_formula_version_v1_formulas__formula_id__versions_post"
+                "$ref": "#/components/schemas/CreateVersionRequest"
               }
             }
           }
@@ -1720,23 +1810,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1787,7 +1860,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_submit_for_review_v1_formulas__formula_id__submit_post"
+                "$ref": "#/components/schemas/SubmitForReviewRequest"
               }
             }
           }
@@ -1842,7 +1915,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_approve_formula_v1_formulas__formula_id__approve_post"
+                "$ref": "#/components/schemas/ApproveRequest"
               }
             }
           }
@@ -1897,7 +1970,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_activate_formula_v1_formulas__formula_id__activate_post"
+                "$ref": "#/components/schemas/ActivateRequest"
               }
             }
           }
@@ -1952,7 +2025,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_deprecate_formula_v1_formulas__formula_id__deprecate_post"
+                "$ref": "#/components/schemas/DeprecateRequest"
               }
             }
           }
@@ -2014,23 +2087,6 @@
             "description": "Dependency direction: outgoing, incoming, or both"
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2091,23 +2147,6 @@
             "description": "Version to validate"
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2137,6 +2176,11 @@
         "summary": "Search Variables",
         "description": "Search variables by context.",
         "operationId": "search_variables_v1_variables_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "industry",
@@ -2241,23 +2285,6 @@
             "description": "Only active variables"
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2299,7 +2326,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_variable_v1_variables_post"
+                "$ref": "#/components/schemas/VariableCreateRequest"
               }
             }
           }
@@ -2333,6 +2360,11 @@
         "summary": "Get Variable",
         "description": "Get variable definition by ID.",
         "operationId": "get_variable_v1_variables__variable_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "variable_id",
@@ -2344,23 +2376,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2409,7 +2424,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_update_variable_v1_variables__variable_id__put"
+                "$ref": "#/components/schemas/VariableUpdateRequest"
               }
             }
           }
@@ -2464,7 +2479,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_resolve_variable_v1_variables__variable_id__resolve_post"
+                "$ref": "#/components/schemas/ResolveRequest"
               }
             }
           }
@@ -2498,6 +2513,11 @@
         "summary": "Validate Value",
         "description": "Validate value against variable rules.",
         "operationId": "validate_value_v1_variables__variable_id__validate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "variable_id",
@@ -2514,7 +2534,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_validate_value_v1_variables__variable_id__validate_post"
+                "$ref": "#/components/schemas/ValidateRequest"
               }
             }
           }
@@ -2548,23 +2568,6 @@
         "summary": "Get Variable Stats",
         "description": "Return aggregate statistics for the variable registry.",
         "operationId": "get_variable_stats_v1_variables_stats_get",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2575,18 +2578,13 @@
                 }
               }
             }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/variables/bindings": {
@@ -2594,23 +2592,6 @@
         "summary": "List Source Bindings",
         "description": "List data source binding configurations and their health status.",
         "operationId": "list_source_bindings_v1_variables_bindings_get",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2625,18 +2606,13 @@
                 }
               }
             }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/models": {
@@ -2760,23 +2736,6 @@
             "description": "Results to skip"
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Models retrieved successfully",
@@ -2791,6 +2750,9 @@
           "400": {
             "description": "Invalid filter or sort parameters"
           },
+          "500": {
+            "description": "Database error"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2800,9 +2762,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Database error"
           }
         }
       },
@@ -2818,7 +2777,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_model_v1_models_post"
+                "$ref": "#/components/schemas/ModelCreateRequest"
               }
             }
           }
@@ -2834,9 +2793,6 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid request data"
-          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2846,9 +2802,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Database error"
           }
         }
       }
@@ -2860,24 +2813,7 @@
         ],
         "summary": "Get Model Folder Counts",
         "description": "Returns folder counts for the sidebar navigation.",
-        "operationId": "get_model_folders_v1_models_folders_get",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
+        "operationId": "get_folder_counts_v1_models_folders_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2885,16 +2821,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FoldersResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2921,23 +2847,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Model retrieved successfully",
@@ -2952,6 +2861,9 @@
           "404": {
             "description": "Model not found"
           },
+          "500": {
+            "description": "Database error"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2961,9 +2873,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Database error"
           }
         }
       },
@@ -2985,23 +2894,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Model deleted successfully",
@@ -3013,11 +2905,14 @@
               }
             }
           },
+          "404": {
+            "description": "Model not found"
+          },
           "403": {
             "description": "Not authorized to delete this model"
           },
-          "404": {
-            "description": "Model not found"
+          "500": {
+            "description": "Database error"
           },
           "422": {
             "description": "Validation Error",
@@ -3028,9 +2923,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Database error"
           }
         }
       }
@@ -3090,10 +2982,10 @@
             "required": false,
             "schema": {
               "type": "number",
-              "maximum": 1,
-              "minimum": 0,
+              "maximum": 1.0,
+              "minimum": 0.0,
               "description": "Minimum confidence score",
-              "default": 0,
+              "default": 0.0,
               "title": "Confidence Min"
             },
             "description": "Minimum confidence score"
@@ -3817,8 +3709,8 @@
             "required": false,
             "schema": {
               "type": "number",
-              "maximum": 1,
-              "minimum": 0,
+              "maximum": 1.0,
+              "minimum": 0.0,
               "default": 0.5,
               "title": "Min Confidence"
             }
@@ -4358,6 +4250,149 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Semantic Search V1 Evidence Search Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evidence/links": {
+      "post": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "Link evidence to a value driver",
+        "description": "Create a graph relationship between Evidence and ValueDriver.\n\nEstablishes `HAS_EVIDENCE` from ValueDriver to Evidence node,\nenabling value traceability from driver tree back to proof points.",
+        "operationId": "link_evidence_to_driver_v1_evidence_links_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceLinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "Unlink evidence from a value driver",
+        "description": "Remove the graph relationship between Evidence and ValueDriver.",
+        "operationId": "unlink_evidence_from_driver_v1_evidence_links_delete",
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Evidence identifier",
+              "title": "Evidence Id"
+            },
+            "description": "Evidence identifier"
+          },
+          {
+            "name": "driver_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Value driver identifier",
+              "title": "Driver Id"
+            },
+            "description": "Value driver identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Unlink Evidence From Driver V1 Evidence Links Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "evidence"
+        ],
+        "summary": "List evidence links for a driver",
+        "description": "Return all Evidence nodes linked to a given ValueDriver.",
+        "operationId": "list_evidence_links_v1_evidence_links_get",
+        "parameters": [
+          {
+            "name": "driver_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Value driver identifier",
+              "title": "Driver Id"
+            },
+            "description": "Value driver identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Evidence Links V1 Evidence Links Get"
                 }
               }
             }
@@ -5340,23 +5375,6 @@
             "description": "Maximum results to return"
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5390,23 +5408,6 @@
         "summary": "List Benchmark Policies",
         "description": "List benchmark policy configurations.",
         "operationId": "list_benchmark_policies_v1_roi_benchmarks_policies_get",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5418,16 +5419,6 @@
                   },
                   "type": "array",
                   "title": "Response List Benchmark Policies V1 Roi Benchmarks Policies Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5461,23 +5452,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/Settings"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Settings"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5528,7 +5502,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put"
+                "$ref": "#/components/schemas/BenchmarkPolicyUpdate"
               }
             }
           }
@@ -5557,118 +5531,205 @@
         }
       }
     },
-    "/health": {
-      "get": {
-        "tags": [
-          "Health"
-        ],
-        "summary": "Basic Health Check",
-        "description": "Perform a basic health check of the service and its dependencies.\n    \n    This endpoint checks:\n    - Neo4j database connectivity\n    - Overall service status\n    - Basic system metrics\n    - Schema validation status\n    \n    Returns a simplified health status suitable for load balancers and monitoring systems.\n    \n    **Response Headers:**\n    - `X-RateLimit-*`: Current rate limiting information\n    - `X-API-Version`: API version used\n    - `X-Supported-Versions`: Supported API versions\n    \n    **Status Codes:**\n    - `200`: Service is healthy\n    - `503`: Service or dependencies are unhealthy",
-        "operationId": "health_check_health_get",
+    "/v1/roi/benchmarks/policies/seed": {
+      "post": {
+        "summary": "Seed Benchmark Policies",
+        "description": "Seed default benchmark policies if none exist. Idempotent.",
+        "operationId": "seed_benchmark_policies_v1_roi_benchmarks_policies_seed_post",
         "responses": {
           "200": {
-            "description": "Service is healthy",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                },
-                "example": {
-                  "status": "healthy",
-                  "version": "1.0.0",
-                  "timestamp": "2024-01-01T12:00:00.000Z",
-                  "uptime_seconds": 3600,
-                  "dependencies": [
-                    {
-                      "name": "neo4j",
-                      "status": "healthy",
-                      "response_time_ms": 15.5,
-                      "details": {
-                        "uri": "bolt://localhost:7687",
-                        "database": "neo4j"
-                      }
-                    }
-                  ],
-                  "metrics": {
-                    "uptime_seconds": 3600,
-                    "memory_usage_mb": 1024.5,
-                    "cpu_percent": 25,
-                    "active_connections": 10,
-                    "total_requests": 1500,
-                    "error_rate_percent": 0.1
+                  "items": {
+                    "$ref": "#/components/schemas/BenchmarkPolicy"
                   },
-                  "neo4j": {
-                    "status": "healthy",
-                    "database": "neo4j",
-                    "uri": "bolt://localhost:7687"
-                  },
-                  "schema_status": {
-                    "constraints": {
-                      "expected": 10,
-                      "found": 10,
-                      "missing": []
-                    },
-                    "indexes": {
-                      "expected": 15,
-                      "found": 15,
-                      "missing": []
-                    },
-                    "valid": true
-                  }
+                  "type": "array",
+                  "title": "Response Seed Benchmark Policies V1 Roi Benchmarks Policies Seed Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/v1/calculators/levers": {
+      "get": {
+        "tags": [
+          "calculators"
+        ],
+        "summary": "Get Value Levers",
+        "description": "Get value lever configuration for value calculations.\n\nReturns tenant-scoped lever configurations filtered by industry/company size.",
+        "operationId": "get_value_levers_v1_v1_calculators_levers_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeverConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeverConfigResponse"
                 }
               }
             }
           },
-          "503": {
-            "description": "Service or dependencies are unhealthy",
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
-                "example": {
-                  "status": "unhealthy",
-                  "version": "1.0.0",
-                  "timestamp": "2024-01-01T12:00:00.000Z",
-                  "uptime_seconds": 3600,
-                  "dependencies": [
-                    {
-                      "name": "neo4j",
-                      "status": "unhealthy",
-                      "error": "Connection timeout",
-                      "details": {
-                        "uri": "bolt://localhost:7687",
-                        "database": "neo4j"
-                      }
-                    }
-                  ],
-                  "metrics": {
-                    "uptime_seconds": 3600,
-                    "memory_usage_mb": 1024.5,
-                    "cpu_percent": 25,
-                    "active_connections": 0,
-                    "total_requests": 1500,
-                    "error_rate_percent": 5.2
-                  },
-                  "neo4j": {
-                    "status": "unhealthy",
-                    "database": "neo4j",
-                    "uri": "bolt://localhost:7687",
-                    "error": "Connection timeout"
-                  },
-                  "schema_status": {
-                    "constraints": {
-                      "expected": 10,
-                      "found": 8,
-                      "missing": [
-                        "constraint_1",
-                        "constraint_2"
-                      ]
-                    },
-                    "indexes": {
-                      "expected": 15,
-                      "found": 15,
-                      "missing": []
-                    },
-                    "valid": false
-                  }
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/v1/calculators/value-cases": {
+      "post": {
+        "tags": [
+          "calculators"
+        ],
+        "summary": "Create Value Case",
+        "description": "Create a new value case with scenarios and calculations.",
+        "operationId": "create_value_case_v1_v1_calculators_value_cases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValueCaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/v1/calculators/value-cases/{case_id}": {
+      "get": {
+        "tags": [
+          "calculators"
+        ],
+        "summary": "Get Value Case",
+        "description": "Get a value case by ID.",
+        "operationId": "get_value_case_v1_v1_calculators_value_cases__case_id__get",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "calculators"
+        ],
+        "summary": "Update Value Case",
+        "description": "Update an existing value case.",
+        "operationId": "update_value_case_v1_v1_calculators_value_cases__case_id__put",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValueCaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5696,7 +5757,7 @@
                   "status": "healthy",
                   "version": "1.0.0",
                   "timestamp": "2024-01-01T12:00:00.000Z",
-                  "uptime_seconds": 3600,
+                  "uptime_seconds": 3600.0,
                   "dependencies": [
                     {
                       "name": "neo4j",
@@ -5717,9 +5778,9 @@
                     }
                   ],
                   "metrics": {
-                    "uptime_seconds": 3600,
+                    "uptime_seconds": 3600.0,
                     "memory_usage_mb": 1024.5,
-                    "cpu_percent": 25,
+                    "cpu_percent": 25.0,
                     "active_connections": 10,
                     "total_requests": 1500,
                     "error_rate_percent": 0.1
@@ -5746,7 +5807,7 @@
                     "platform": "Windows-10-10.0.19041-SP0",
                     "python_version": "3.11.0",
                     "cpu_count": 8,
-                    "memory_total_gb": 16,
+                    "memory_total_gb": 16.0,
                     "disk_usage_gb": 250.5
                   },
                   "configuration": {
@@ -5763,6 +5824,252 @@
             }
           }
         }
+      }
+    },
+    "/v1/graphrag": {
+      "post": {
+        "tags": [
+          "compatibility"
+        ],
+        "summary": "Graph Rag Legacy Alias",
+        "operationId": "graph_rag_legacy_alias_v1_graphrag_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRAGQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphRAGResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/query/graph": {
+      "post": {
+        "tags": [
+          "compatibility"
+        ],
+        "summary": "Graph Rag Query Aliases",
+        "operationId": "graph_rag_query_aliases_v1_query_graph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRAGQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphRAGResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/query": {
+      "post": {
+        "tags": [
+          "compatibility"
+        ],
+        "summary": "Graph Rag Query Aliases",
+        "operationId": "graph_rag_query_aliases_v1_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRAGQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphRAGResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/query/graph/stream": {
+      "post": {
+        "tags": [
+          "compatibility"
+        ],
+        "summary": "Graph Rag Query Stream Alias",
+        "operationId": "graph_rag_query_stream_alias_v1_query_graph_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRAGQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/search": {
+      "post": {
+        "tags": [
+          "compatibility"
+        ],
+        "summary": "Hybrid Search Aliases",
+        "operationId": "hybrid_search_aliases_v1_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/v1/search/hybrid": {
+      "post": {
+        "tags": [
+          "compatibility"
+        ],
+        "summary": "Hybrid Search Aliases",
+        "operationId": "hybrid_search_aliases_v1_search_hybrid_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
       }
     },
     "/v1/schema/status": {
@@ -5977,706 +6284,6 @@
             "content": {
               "application/json": {
                 "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/graphrag": {
-      "post": {
-        "summary": "Graph Rag Legacy Alias",
-        "description": "Execute a GraphRAG query - backward-compatible alias for /v1/query/graph.\n\nThis endpoint exists for backward compatibility with existing clients and tests.\nNew implementations should use `/v1/query/graph` (preferred) or `/v1/query`.",
-        "operationId": "graph_rag_legacy_alias_v1_graphrag_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GraphRAGQuery"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GraphRAGResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/query": {
-      "post": {
-        "summary": "Graph Rag Query",
-        "description": "Execute a GraphRAG query with multi-hop traversal.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent queries. Results are cached for 60 seconds.\n\nNotes:\n- Preferred route: `/v1/query/graph`\n- Legacy route retained: `/v1/query` (deprecate later)\n- Backward-compatible alias: `/v1/graphrag`",
-        "operationId": "graph_rag_query_v1_query_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GraphRAGQuery"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GraphRAGResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/query/graph": {
-      "post": {
-        "summary": "Graph Rag Query",
-        "description": "Execute a GraphRAG query with multi-hop traversal.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent queries. Results are cached for 60 seconds.\n\nNotes:\n- Preferred route: `/v1/query/graph`\n- Legacy route retained: `/v1/query` (deprecate later)\n- Backward-compatible alias: `/v1/graphrag`",
-        "operationId": "graph_rag_query_v1_query_graph_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GraphRAGQuery"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GraphRAGResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/query/graph/stream": {
-      "post": {
-        "summary": "Graph Rag Query Stream",
-        "description": "Execute a streaming GraphRAG query with progressive results.\n\nUses Server-Sent Events (SSE) to stream results as they are discovered:\n- start: Query initialization\n- seed_entity: Initial matching entities found\n- context_node: Entities discovered during graph traversal\n- context_edge: Relationships discovered\n- progress: Periodic progress updates\n- result: Final aggregated result\n- complete: Stream completion\n\nExample usage with curl:\n    curl -N -H \"Accept: text/event-stream\"              -X POST http://localhost:8000/v1/query/graph/stream              -H \"Content-Type: application/json\"              -d '{\"query\": \"What capabilities enable automated invoice processing?\"}'",
-        "operationId": "graph_rag_query_stream_v1_query_graph_stream_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GraphRAGQuery"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/search": {
-      "post": {
-        "summary": "Hybrid Search",
-        "description": "DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.\n\nThis endpoint is deprecated in favor of the canonical entity browser API.\nSunset date: 2026-05-18 (30 days from deprecation).\n\nLegacy behavior: Execute hybrid search combining BM25, vector, and graph signals.\nUses request deduplication to prevent redundant computation.\n\nMigration guide:\n- For entity listing: Use GET /v1/entities with filter parameters\n- For text search: Use search_text query param on /v1/entities\n- For type filtering: Use entity_types query param on /v1/entities",
-        "operationId": "hybrid_search_v1_search_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SearchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SearchResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "deprecated": true
-      }
-    },
-    "/v1/search/hybrid": {
-      "post": {
-        "summary": "Deprecated: Use GET /v1/entities for entity listing",
-        "description": "DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.\n\nThis endpoint is deprecated in favor of the canonical entity browser API.\nSunset date: 2026-05-18 (30 days from deprecation).\n\nLegacy behavior: Execute hybrid search combining BM25, vector, and graph signals.\nUses request deduplication to prevent redundant computation.\n\nMigration guide:\n- For entity listing: Use GET /v1/entities with filter parameters\n- For text search: Use search_text query param on /v1/entities\n- For type filtering: Use entity_types query param on /v1/entities",
-        "operationId": "hybrid_search_v1_search_hybrid_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SearchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SearchResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "deprecated": true
-      }
-    },
-    "/v1/entity/{entity_id}/context": {
-      "get": {
-        "summary": "Get Entity Context",
-        "description": "Get neighborhood context around an entity.\n\nSupports field selection (?fields=id,name,type) to reduce payload size,\nand cursor-based pagination (?cursor=xyz&limit=50) for large neighborhoods.",
-        "operationId": "get_entity_context_v1_entity__entity_id__context_get",
-        "parameters": [
-          {
-            "name": "entity_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Entity Id"
-            }
-          },
-          {
-            "name": "hops",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 2,
-              "title": "Hops"
-            }
-          },
-          {
-            "name": "fields",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Comma-separated fields to include (e.g., 'id,name,type')",
-              "title": "Fields"
-            },
-            "description": "Comma-separated fields to include (e.g., 'id,name,type')"
-          },
-          {
-            "name": "cursor",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Pagination cursor for neighbors",
-              "title": "Cursor"
-            },
-            "description": "Pagination cursor for neighbors"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 500,
-              "minimum": 1,
-              "description": "Max neighbors to return",
-              "default": 100,
-              "title": "Limit"
-            },
-            "description": "Max neighbors to return"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Relationship Types"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityContextResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/entity/traverse": {
-      "post": {
-        "summary": "Traverse Value Tree",
-        "description": "Traverse the 4-layer value tree from an entity.",
-        "operationId": "traverse_value_tree_v1_entity_traverse_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ValueTreeTraversal"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/layer3_knowledge__api__models__ValueTreeResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/entities": {
-      "get": {
-        "summary": "List Entities",
-        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence—eliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
-        "operationId": "list_entities_v1_entities_get",
-        "parameters": [
-          {
-            "name": "search_text",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 200
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Search across name and description",
-              "title": "Search Text"
-            },
-            "description": "Search across name and description"
-          },
-          {
-            "name": "entity_types",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by entity types",
-              "title": "Entity Types"
-            },
-            "description": "Filter by entity types"
-          },
-          {
-            "name": "domains",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by domains",
-              "title": "Domains"
-            },
-            "description": "Filter by domains"
-          },
-          {
-            "name": "statuses",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by status: validated, pending, draft, deprecated",
-              "title": "Statuses"
-            },
-            "description": "Filter by status: validated, pending, draft, deprecated"
-          },
-          {
-            "name": "min_confidence",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "maximum": 1,
-                  "minimum": 0
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Minimum confidence",
-              "title": "Min Confidence"
-            },
-            "description": "Minimum confidence"
-          },
-          {
-            "name": "max_confidence",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "number",
-                  "maximum": 1,
-                  "minimum": 0
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Maximum confidence",
-              "title": "Max Confidence"
-            },
-            "description": "Maximum confidence"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "description": "Max results to return",
-              "default": 25,
-              "title": "Limit"
-            },
-            "description": "Max results to return"
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "description": "Results to skip",
-              "default": 0,
-              "title": "Offset"
-            },
-            "description": "Results to skip"
-          },
-          {
-            "name": "sort_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Field to sort by: name, updated_at, confidence, entity_type, status",
-              "default": "updated_at",
-              "title": "Sort By"
-            },
-            "description": "Field to sort by: name, updated_at, confidence, entity_type, status"
-          },
-          {
-            "name": "sort_order",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Sort direction: asc or desc",
-              "default": "desc",
-              "title": "Sort Order"
-            },
-            "description": "Sort direction: asc or desc"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityListResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/entities/{entity_id}": {
-      "get": {
-        "summary": "Get Entity Detail",
-        "description": "Get full entity detail for inspection/drawer views.\n\nReturns the canonical EntityDetail shape with all fields from EntitySummary\nplus extended data: relationships, provenance, validation state, and raw properties.\n\n**Path Parameters:**\n- `entity_id`: Canonical entity identifier\n\n**Query Parameters:**\n- `include_provenance`: Whether to include audit trail (default: true)\n- `include_relationships`: Whether to include related entities (default: true)\n\n**Response:** Returns EntityDetail with full canonical contract.",
-        "operationId": "get_entity_detail_v1_entities__entity_id__get",
-        "parameters": [
-          {
-            "name": "entity_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Entity Id"
-            }
-          },
-          {
-            "name": "include_provenance",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Include provenance chain",
-              "default": true,
-              "title": "Include Provenance"
-            },
-            "description": "Include provenance chain"
-          },
-          {
-            "name": "include_relationships",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Include related entities",
-              "default": true,
-              "title": "Include Relationships"
-            },
-            "description": "Include related entities"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityDetail"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/entities/query": {
-      "post": {
-        "summary": "Query Entities",
-        "description": "Advanced entity filtering with complex criteria.\n\nSupports complex filter combinations not easily expressed in query parameters.\nUses the same underlying logic as GET /v1/entities but with a request body.\n\n**Request Body:** EntityFilterRequest with full filter specification\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
-        "operationId": "query_entities_v1_entities_query_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EntityFilterRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EntityListResponse"
-                }
               }
             }
           },
@@ -7475,7 +7082,7 @@
                       "source": "cap-1",
                       "target": "uc-1",
                       "type": "ENABLES",
-                      "weight": 1
+                      "weight": 1.0
                     }
                   ],
                   "stats": {
@@ -7492,6 +7099,9 @@
               }
             }
           },
+          "503": {
+            "description": "Database unavailable"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -7501,9 +7111,6 @@
                 }
               }
             }
-          },
-          "503": {
-            "description": "Database unavailable"
           }
         }
       }
@@ -7582,6 +7189,9 @@
           "404": {
             "description": "Entity not found"
           },
+          "503": {
+            "description": "Database unavailable"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -7591,9 +7201,6 @@
                 }
               }
             }
-          },
-          "503": {
-            "description": "Database unavailable"
           }
         }
       }
@@ -7751,6 +7358,9 @@
           "400": {
             "description": "Invalid parameters - query or center_entity_id required"
           },
+          "500": {
+            "description": "Internal server error"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -7760,9 +7370,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Internal server error"
           }
         }
       }
@@ -8022,8 +7629,8 @@
           },
           "max_hops": {
             "type": "integer",
-            "maximum": 3,
-            "minimum": 1,
+            "maximum": 3.0,
+            "minimum": 1.0,
             "title": "Max Hops",
             "description": "Context size for each analysis",
             "default": 2
@@ -8491,28 +8098,6 @@
         "title": "BenchmarkPolicyUpdate",
         "description": "Update payload for a benchmark policy (all fields optional)."
       },
-      "Body_activate_formula_v1_formulas__formula_id__activate_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/ActivateRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_activate_formula_v1_formulas__formula_id__activate_post"
-      },
       "Body_apply_pack_v1_packs__pack_id__apply_post": {
         "properties": {
           "request": {
@@ -8535,94 +8120,6 @@
         ],
         "title": "Body_apply_pack_v1_packs__pack_id__apply_post"
       },
-      "Body_approve_formula_v1_formulas__formula_id__approve_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/ApproveRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_approve_formula_v1_formulas__formula_id__approve_post"
-      },
-      "Body_create_formula_v1_formulas_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/CreateFormulaRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_create_formula_v1_formulas_post"
-      },
-      "Body_create_formula_version_v1_formulas__formula_id__versions_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/CreateVersionRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_create_formula_version_v1_formulas__formula_id__versions_post"
-      },
-      "Body_create_model_v1_models_post": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ModelCreateRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "Body_create_model_v1_models_post"
-      },
       "Body_create_pack_v1_packs_post": {
         "properties": {
           "request": {
@@ -8644,50 +8141,6 @@
           "request"
         ],
         "title": "Body_create_pack_v1_packs_post"
-      },
-      "Body_create_variable_v1_variables_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/VariableCreateRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_create_variable_v1_variables_post"
-      },
-      "Body_deprecate_formula_v1_formulas__formula_id__deprecate_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/DeprecateRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_deprecate_formula_v1_formulas__formula_id__deprecate_post"
       },
       "Body_execute_pack_v1_packs__pack_id__execute_post": {
         "properties": {
@@ -8733,94 +8186,6 @@
         ],
         "title": "Body_fork_pack_v1_packs__pack_id__fork_post"
       },
-      "Body_resolve_variable_v1_variables__variable_id__resolve_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/ResolveRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_resolve_variable_v1_variables__variable_id__resolve_post"
-      },
-      "Body_submit_for_review_v1_formulas__formula_id__submit_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/SubmitForReviewRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_submit_for_review_v1_formulas__formula_id__submit_post"
-      },
-      "Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put": {
-        "properties": {
-          "update": {
-            "$ref": "#/components/schemas/BenchmarkPolicyUpdate"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "update"
-        ],
-        "title": "Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put"
-      },
-      "Body_update_formula_v1_formulas__formula_id__patch": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/UpdateFormulaRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_update_formula_v1_formulas__formula_id__patch"
-      },
       "Body_update_pack_v1_packs__pack_id__put": {
         "properties": {
           "request": {
@@ -8842,50 +8207,6 @@
           "request"
         ],
         "title": "Body_update_pack_v1_packs__pack_id__put"
-      },
-      "Body_update_variable_v1_variables__variable_id__put": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/VariableUpdateRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_update_variable_v1_variables__variable_id__put"
-      },
-      "Body_validate_value_v1_variables__variable_id__validate_post": {
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/ValidateRequest"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Settings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "request"
-        ],
-        "title": "Body_validate_value_v1_variables__variable_id__validate_post"
       },
       "BulkImportRequest": {
         "properties": {
@@ -8976,10 +8297,10 @@
           },
           "strength": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Strength",
-            "default": 1
+            "default": 1.0
           }
         },
         "type": "object",
@@ -9013,8 +8334,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
             "title": "Top K",
             "default": 20
           }
@@ -9162,7 +8483,7 @@
           },
           "min_community_size": {
             "type": "integer",
-            "minimum": 2,
+            "minimum": 2.0,
             "title": "Min Community Size",
             "default": 3
           },
@@ -9262,8 +8583,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 2030,
-                "minimum": 1900
+                "maximum": 2030.0,
+                "minimum": 1900.0
               },
               {
                 "type": "null"
@@ -9674,7 +8995,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -9687,7 +9008,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -9916,7 +9237,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10016,7 +9337,7 @@
           },
           "uptime_seconds": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Uptime Seconds",
             "description": "Service uptime in seconds"
           },
@@ -10184,7 +9505,7 @@
           "formula_shape": {
             "type": "string",
             "title": "Formula Shape",
-            "description": "Input → Calculation → Output structure"
+            "description": "Input \u2192 Calculation \u2192 Output structure"
           },
           "inputs": {
             "items": {
@@ -10455,66 +9776,6 @@
         ],
         "title": "EntityComparisonResponse"
       },
-      "EntityContextResponse": {
-        "properties": {
-          "entity_id": {
-            "type": "string",
-            "title": "Entity Id"
-          },
-          "center": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Center"
-          },
-          "neighbors": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Neighbors"
-          },
-          "relationships": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Relationships"
-          },
-          "entity_count": {
-            "type": "integer",
-            "title": "Entity Count"
-          },
-          "relationship_count": {
-            "type": "integer",
-            "title": "Relationship Count"
-          },
-          "pagination": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pagination",
-            "description": "Pagination info: {has_more, next_cursor, returned_count}"
-          }
-        },
-        "type": "object",
-        "required": [
-          "entity_id",
-          "center",
-          "neighbors",
-          "relationships",
-          "entity_count",
-          "relationship_count"
-        ],
-        "title": "EntityContextResponse"
-      },
       "EntityDetail": {
         "properties": {
           "id": {
@@ -10561,8 +9822,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Confidence 0-1"
           },
@@ -10766,8 +10027,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1,
-                "minimum": 0
+                "maximum": 1.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10780,8 +10041,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1,
-                "minimum": 0
+                "maximum": 1.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10850,15 +10111,15 @@
           },
           "limit": {
             "type": "integer",
-            "maximum": 100,
-            "minimum": 1,
+            "maximum": 100.0,
+            "minimum": 1.0,
             "title": "Limit",
             "description": "Max results to return",
             "default": 25
           },
           "offset": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Offset",
             "description": "Results to skip (for pagination)",
             "default": 0
@@ -10903,25 +10164,25 @@
           },
           "total_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Count",
             "description": "Total entities in database"
           },
           "filtered_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Filtered Count",
             "description": "Entities matching filters (before pagination)"
           },
           "limit": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Limit",
             "description": "Limit applied to this query"
           },
           "offset": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Offset",
             "description": "Offset applied to this query"
           },
@@ -10963,7 +10224,7 @@
         "properties": {
           "total_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Count",
             "description": "Total relationships (in + out)",
             "default": 0
@@ -11037,8 +10298,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Extraction confidence score (0.0 to 1.0)"
           },
@@ -11223,6 +10484,54 @@
         "title": "EvidenceLevel",
         "description": "Universal evidence hierarchy (Level 1 = highest)."
       },
+      "EvidenceLinkRequest": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id",
+            "description": "Evidence (case study) identifier"
+          },
+          "driver_id": {
+            "type": "string",
+            "title": "Driver Id",
+            "description": "Value driver identifier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "driver_id"
+        ],
+        "title": "EvidenceLinkRequest"
+      },
+      "EvidenceLinkResponse": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "title": "Evidence Id"
+          },
+          "driver_id": {
+            "type": "string",
+            "title": "Driver Id"
+          },
+          "linked": {
+            "type": "boolean",
+            "title": "Linked"
+          },
+          "linked_at": {
+            "type": "string",
+            "title": "Linked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "driver_id",
+          "linked",
+          "linked_at"
+        ],
+        "title": "EvidenceLinkResponse"
+      },
       "FeatureCreateRequest": {
         "properties": {
           "name": {
@@ -11355,8 +10664,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Confidence in result",
             "default": 0.92
@@ -11784,10 +11093,10 @@
           },
           "weight": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Weight",
             "description": "Edge weight/strength",
-            "default": 1
+            "default": 1.0
           },
           "properties": {
             "additionalProperties": true,
@@ -11824,8 +11133,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Confidence score (legacy: use 'confidence_score')",
             "default": 0.8
@@ -11865,8 +11174,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Confidence score (legacy: use 'confidence_score')",
             "default": 0.8
@@ -11948,24 +11257,24 @@
           },
           "max_hops": {
             "type": "integer",
-            "maximum": 5,
-            "minimum": 1,
+            "maximum": 5.0,
+            "minimum": 1.0,
             "title": "Max Hops",
             "description": "Maximum graph traversal hops",
             "default": 3
           },
           "max_results": {
             "type": "integer",
-            "maximum": 50,
-            "minimum": 1,
+            "maximum": 50.0,
+            "minimum": 1.0,
             "title": "Max Results",
             "description": "Maximum number of results",
             "default": 10
           },
           "confidence_threshold": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence Threshold",
             "description": "Minimum confidence score for results",
             "default": 0.7
@@ -12025,8 +11334,8 @@
           },
           "confidence_score": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence Score",
             "description": "Overall confidence score"
           },
@@ -12043,7 +11352,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -12114,13 +11423,13 @@
         "properties": {
           "total_nodes": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Nodes",
             "description": "Total number of nodes"
           },
           "total_edges": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Edges",
             "description": "Total number of edges"
           },
@@ -12134,17 +11443,17 @@
           },
           "communities": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Communities",
             "description": "Number of detected communities",
             "default": 0
           },
           "density": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Density",
             "description": "Graph density",
-            "default": 0
+            "default": 0.0
           }
         },
         "type": "object",
@@ -12156,43 +11465,17 @@
         "description": "Statistics for the knowledge graph."
       },
       "HTTPValidationError": {
-        "type": "object",
-        "title": "HTTPValidationError",
-        "required": [
-          "message",
-          "code",
-          "trace_id"
-        ],
-        "additionalProperties": false,
         "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message"
-          },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Machine-readable error code"
-          },
-          "trace_id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Request trace ID for support correlation"
-          },
-          "details": {
-            "anyOf": [
-              {
-                "type": "object",
-                "additionalProperties": true
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Optional sanitized error details"
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
           }
         },
-        "description": "Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients."
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "HealthResponse": {
         "properties": {
@@ -12221,7 +11504,7 @@
           },
           "uptime_seconds": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Uptime Seconds",
             "description": "Service uptime in seconds"
           },
@@ -12359,19 +11642,19 @@
           },
           "entities_loaded": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Entities Loaded",
             "description": "Number of entities loaded"
           },
           "relationships_loaded": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Relationships Loaded",
             "description": "Number of relationships loaded"
           },
           "triples_processed": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Triples Processed",
             "description": "Total RDF triples processed"
           },
@@ -12379,7 +11662,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -12420,6 +11703,67 @@
         ],
         "title": "IngestResponse",
         "description": "Response from RDF data ingestion."
+      },
+      "LeverConfigRequest": {
+        "properties": {
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "company_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Size"
+          },
+          "product_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Line"
+          }
+        },
+        "type": "object",
+        "title": "LeverConfigRequest"
+      },
+      "LeverConfigResponse": {
+        "properties": {
+          "levers": {
+            "items": {
+              "$ref": "#/components/schemas/ValueLever"
+            },
+            "type": "array",
+            "title": "Levers"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "levers",
+          "metadata"
+        ],
+        "title": "LeverConfigResponse"
       },
       "ModelCreateRequest": {
         "properties": {
@@ -12505,21 +11849,21 @@
           },
           "formula_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Formula Count",
             "description": "Number of formulas",
             "default": 0
           },
           "entity_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Entity Count",
             "description": "Number of entities",
             "default": 0
           },
           "driver_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Driver Count",
             "description": "Number of value drivers",
             "default": 0
@@ -12597,7 +11941,7 @@
           },
           "count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Count",
             "description": "Model count in folder"
           }
@@ -12623,19 +11967,19 @@
           },
           "total": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total",
             "description": "Total matching models"
           },
           "offset": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Offset",
             "description": "Current offset"
           },
           "limit": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 1.0,
             "title": "Limit",
             "description": "Page size"
           },
@@ -12709,21 +12053,21 @@
           },
           "formula_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Formula Count",
             "description": "Number of formulas",
             "default": 0
           },
           "entity_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Entity Count",
             "description": "Number of entities",
             "default": 0
           },
           "driver_count": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Driver Count",
             "description": "Number of value drivers",
             "default": 0
@@ -14132,70 +13476,70 @@
         "properties": {
           "annual_revenue": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Annual Revenue",
-            "default": 0
+            "default": 0.0
           },
           "num_employees": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Num Employees",
             "default": 0
           },
           "avg_salary": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Avg Salary",
-            "default": 75000
+            "default": 75000.0
           },
           "current_cost_annual": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Current Cost Annual",
-            "default": 0
+            "default": 0.0
           },
           "implementation_cost": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Implementation Cost",
-            "default": 0
+            "default": 0.0
           },
           "annual_license_cost": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Annual License Cost",
-            "default": 0
+            "default": 0.0
           },
           "training_cost": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Training Cost",
-            "default": 0
+            "default": 0.0
           },
           "productivity_gain_pct": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Productivity Gain Pct",
             "default": 0.1
           },
           "error_reduction_pct": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Error Reduction Pct",
             "default": 0.2
           },
           "time_savings_hours_per_week": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Time Savings Hours Per Week",
-            "default": 5
+            "default": 5.0
           },
           "affected_employees_pct": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Affected Employees Pct",
             "default": 0.25
           },
@@ -14208,15 +13552,15 @@
           },
           "time_horizon_months": {
             "type": "integer",
-            "maximum": 120,
-            "minimum": 1,
+            "maximum": 120.0,
+            "minimum": 1.0,
             "title": "Time Horizon Months",
             "default": 36
           },
           "discount_rate": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Discount Rate",
             "default": 0.1
           },
@@ -14408,70 +13752,70 @@
         "properties": {
           "annual_revenue": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Annual Revenue",
-            "default": 0
+            "default": 0.0
           },
           "num_employees": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Num Employees",
             "default": 0
           },
           "avg_salary": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Avg Salary",
-            "default": 75000
+            "default": 75000.0
           },
           "current_cost_annual": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Current Cost Annual",
-            "default": 0
+            "default": 0.0
           },
           "implementation_cost": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Implementation Cost",
-            "default": 0
+            "default": 0.0
           },
           "annual_license_cost": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Annual License Cost",
-            "default": 0
+            "default": 0.0
           },
           "training_cost": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Training Cost",
-            "default": 0
+            "default": 0.0
           },
           "productivity_gain_pct": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Productivity Gain Pct",
             "default": 0.1
           },
           "error_reduction_pct": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Error Reduction Pct",
             "default": 0.2
           },
           "time_savings_hours_per_week": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Time Savings Hours Per Week",
-            "default": 5
+            "default": 5.0
           },
           "affected_employees_pct": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Affected Employees Pct",
             "default": 0.25
           },
@@ -14484,15 +13828,15 @@
           },
           "time_horizon_months": {
             "type": "integer",
-            "maximum": 120,
-            "minimum": 1,
+            "maximum": 120.0,
+            "minimum": 1.0,
             "title": "Time Horizon Months",
             "default": 36
           },
           "discount_rate": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Discount Rate",
             "default": 0.1
           },
@@ -14528,6 +13872,19 @@
             "type": "array",
             "title": "Adjustments",
             "description": "Variable adjustments to apply"
+          },
+          "base_case_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Case Data",
+            "description": "Optional base case data (total_value, implementation_cost, etc.). If provided, bypasses repository lookup."
           }
         },
         "type": "object",
@@ -14695,8 +14052,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 50,
-            "minimum": 1,
+            "maximum": 50.0,
+            "minimum": 1.0,
             "title": "Top K",
             "description": "Number of results to return",
             "default": 10
@@ -14706,8 +14063,8 @@
               {
                 "additionalProperties": {
                   "type": "number",
-                  "maximum": 1,
-                  "minimum": 0
+                  "maximum": 1.0,
+                  "minimum": 0.0
                 },
                 "type": "object"
               },
@@ -14757,7 +14114,7 @@
           },
           "total_results": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Results",
             "description": "Total results found"
           },
@@ -14769,7 +14126,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -14811,26 +14168,26 @@
           },
           "bm25_score": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Bm25 Score",
             "description": "BM25 keyword similarity score"
           },
           "vector_score": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Vector Score",
             "description": "Vector similarity score"
           },
           "graph_score": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Graph Score",
             "description": "Graph traversal score"
           },
           "combined_score": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Combined Score",
             "description": "Combined relevance score"
           },
@@ -14842,8 +14199,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Result confidence"
           }
@@ -14898,8 +14255,8 @@
           },
           "limit": {
             "type": "integer",
-            "maximum": 50,
-            "minimum": 1,
+            "maximum": 50.0,
+            "minimum": 1.0,
             "title": "Limit",
             "description": "Max results",
             "default": 10
@@ -14915,7 +14272,7 @@
         "properties": {
           "uptime_seconds": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Uptime Seconds",
             "description": "Service uptime in seconds"
           },
@@ -14923,7 +14280,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -14936,8 +14293,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 100,
-                "minimum": 0
+                "maximum": 100.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -14948,20 +14305,20 @@
           },
           "active_connections": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Active Connections",
             "description": "Number of active connections"
           },
           "total_requests": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Requests",
             "description": "Total requests processed"
           },
           "error_rate_percent": {
             "type": "number",
-            "maximum": 100,
-            "minimum": 0,
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Error Rate Percent",
             "description": "Error rate percentage"
           }
@@ -15289,8 +14646,8 @@
           },
           "top_k": {
             "type": "integer",
-            "maximum": 50,
-            "minimum": 1,
+            "maximum": 50.0,
+            "minimum": 1.0,
             "title": "Top K",
             "default": 10
           },
@@ -15578,8 +14935,8 @@
           },
           "depth": {
             "type": "integer",
-            "maximum": 5,
-            "minimum": 1,
+            "maximum": 5.0,
+            "minimum": 1.0,
             "title": "Depth",
             "description": "Traversal depth used"
           },
@@ -16184,6 +15541,106 @@
         "title": "ValidationRule",
         "description": "Validation rule for variable."
       },
+      "ValueCaseRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "prospect_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prospect Id"
+          },
+          "levers": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Levers"
+          },
+          "scenarios": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Scenarios"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "levers",
+          "scenarios",
+          "metadata"
+        ],
+        "title": "ValueCaseRequest"
+      },
+      "ValueCaseResponse": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "levers": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Levers"
+          },
+          "scenarios": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Scenarios"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "account_id",
+          "created_at",
+          "updated_at",
+          "levers",
+          "scenarios",
+          "metadata"
+        ],
+        "title": "ValueCaseResponse"
+      },
       "ValueDriver": {
         "properties": {
           "id": {
@@ -16240,7 +15697,7 @@
           "weight": {
             "type": "number",
             "title": "Weight",
-            "default": 1
+            "default": 1.0
           }
         },
         "type": "object",
@@ -16251,6 +15708,61 @@
         ],
         "title": "ValueDriverSummary",
         "description": "Summary of value driver in pack."
+      },
+      "ValueLever": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "base_value": {
+            "type": "number",
+            "title": "Base Value"
+          },
+          "min_value": {
+            "type": "number",
+            "title": "Min Value"
+          },
+          "max_value": {
+            "type": "number",
+            "title": "Max Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "annual_impact": {
+            "type": "number",
+            "title": "Annual Impact"
+          },
+          "confidence": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "base_value",
+          "min_value",
+          "max_value",
+          "unit",
+          "annual_impact",
+          "confidence",
+          "category"
+        ],
+        "title": "ValueLever"
       },
       "ValuePackComparisonRequest": {
         "properties": {
@@ -16955,9 +16467,9 @@
           },
           "weight": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Weight",
-            "default": 1
+            "default": 1.0
           }
         },
         "type": "object",
@@ -16988,15 +16500,15 @@
           },
           "layer": {
             "type": "integer",
-            "maximum": 4,
-            "minimum": 1,
+            "maximum": 4.0,
+            "minimum": 1.0,
             "title": "Layer",
             "description": "Layer in value tree (1=Capability, 4=ValueDriver)"
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "default": 0.8
           },
@@ -17020,12 +16532,12 @@
         "properties": {
           "total_nodes": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Nodes"
           },
           "total_edges": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Total Edges"
           },
           "by_layer": {
@@ -17402,7 +16914,7 @@
           "avg_usage": {
             "type": "number",
             "title": "Avg Usage",
-            "default": 0
+            "default": 0.0
           }
         },
         "type": "object",
@@ -17635,9 +17147,9 @@
           },
           "deal_size_usd": {
             "type": "number",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Deal Size Usd",
-            "default": 0
+            "default": 0.0
           },
           "reason": {
             "type": "string",
@@ -17920,44 +17432,6 @@
         ],
         "title": "ValueTreeResponse",
         "description": "Complete value tree response."
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "title": "ErrorResponse",
-        "required": [
-          "message",
-          "code",
-          "trace_id"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Human-readable error message"
-          },
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Machine-readable error code"
-          },
-          "trace_id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Request trace ID for support correlation"
-          },
-          "details": {
-            "anyOf": [
-              {
-                "type": "object",
-                "additionalProperties": true
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Optional sanitized error details"
-          }
-        }
       }
     },
     "securitySchemes": {
