@@ -12,29 +12,16 @@ from sqlalchemy import text
 from value_fabric.shared.audit import AuditAction, AuditEmitter, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
-from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...config.settings import settings
 from ...database import get_db_from_context
 from ...engine.executor import WorkflowExecutor
 from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
+from ...contracts.tool_dto import ToolCategoriesResponse, ToolSchemaResponse
 from ...tools import create_default_registry
 from ...tools.registry import ToolCategory, ToolRegistry
 
-
-class get_tool_schemaResult(TypedDictModel):
-    category: Any
-    description: Any
-    examples: Any
-    input_schema: Any
-    name: Any
-    output_schema: Any
-    requires_auth: Any
-    timeout_seconds: Any
-
-class list_tool_categoriesResult(TypedDictModel):
-    categories: Any
 
 class _ToolGatewayUnavailable(RuntimeError):
     """Raised when governance tool-gateway dependencies are unavailable."""
@@ -158,7 +145,7 @@ async def get_tool_schema(
     tool_name: str,
     registry: ToolRegistry = Depends(get_tool_registry),
     ctx: RequestContext = Depends(require_authenticated),
-) -> dict[str, Any]:
+) -> ToolSchemaResponse:
     """Get detailed schema for a specific tool."""
     if not registry.has_tool(tool_name):
         raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
@@ -166,7 +153,7 @@ async def get_tool_schema(
     tool = registry.get(tool_name)
     schema = tool.get_schema()
 
-    return get_tool_schemaResult.model_validate({
+    return ToolSchemaResponse.model_validate({
         "name": schema.name,
         "category": schema.category.value,
         "description": schema.description,
@@ -548,10 +535,10 @@ async def list_export_audit_events(
 @router.get("/tools/categories")
 async def list_tool_categories(
     ctx: RequestContext = Depends(require_authenticated),
-) -> dict[str, Any]:
+) -> ToolCategoriesResponse:
     """List available tool categories."""
     categories = [
         {"id": cat.value, "name": cat.value.replace("_", " ").title()} for cat in ToolCategory
     ]
 
-    return list_tool_categoriesResult.model_validate({"categories": categories})
+    return ToolCategoriesResponse.model_validate({"categories": categories})
