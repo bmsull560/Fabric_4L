@@ -20,6 +20,7 @@
 import { useState, useCallback } from "react";
 import type { AgentMessage, AgentAction } from "@/components/workspace/RightRail";
 import { apiClient } from "@/api/client";
+import { parseAgentResponseEnvelope } from "@/lib/schemas/provenance";
 
 // ── System Prompts by Tab ────────────────────────────────────────────────────
 
@@ -183,21 +184,13 @@ export function useAgentStream({
             accountName,
             accountTier,
           },
-        })) as {
-          data?: {
-            content?: string;
-            metadata?: {
-              trace_id?: string;
-              workflow_id?: string;
-              tenant_id?: string;
-              audit_event_id?: string;
-            };
-          };
-        };
+        })) as { data?: unknown };
 
-        const data = response.data;
+        const envelope = parseAgentResponseEnvelope(response.data ?? {});
         const agentContent =
-          data?.content ?? "I received your message but couldn't generate a response.";
+          envelope.refusal_reason
+            ? `I can't help with that request: ${envelope.refusal_reason}`
+            : (envelope.content ?? "I received your message but couldn't generate a response.");
 
         const agentMsg: AgentMessage = {
           id: `a-${Date.now()}`,
@@ -205,10 +198,10 @@ export function useAgentStream({
           content: agentContent,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           metadata: {
-            traceId: data?.metadata?.trace_id,
-            workflowId: data?.metadata?.workflow_id,
-            tenantId: data?.metadata?.tenant_id,
-            auditEventId: data?.metadata?.audit_event_id,
+            traceId: undefined,
+            workflowId: undefined,
+            tenantId: envelope.tenant_scope?.tenant_id,
+            auditEventId: envelope.evidence_provenance_ids?.[0],
           },
         };
         setMessages((prev) => [...prev, agentMsg]);

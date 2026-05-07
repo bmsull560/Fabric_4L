@@ -458,3 +458,18 @@ See [Workflow Stalled Troubleshooting](../troubleshooting/workflow-stalled.md)
 ---
 
 *Last updated: 2026-04-19 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/reference/layer4-agents-api.md)*
+
+## Canonical agent response envelope (governance)
+
+Layer 4 AI-facing endpoints returning generated content (including `/api/v1/c1/stream` event payloads and `/v1/agent-stream/chat`) must include the canonical envelope defined in `contracts/jsonschema/agent-response-envelope.json`.
+
+Required fields:
+- `claim_citations[]` (claim + source mapping)
+- `evidence_provenance_ids[]` (stable provenance identifiers)
+- `policy_decision` (`allow`, `allow_with_redaction`, `needs_approval`, `deny`)
+- `tenant_scope` (`tenant_id` + scope classification)
+- `approval_required` (human gate flag)
+
+Conditional fields:
+- `refusal_reason` is present when `policy_decision=deny` or a refusal is emitted.
+- `content` may be null/empty when refusal or approval gate blocks direct answer emission.
