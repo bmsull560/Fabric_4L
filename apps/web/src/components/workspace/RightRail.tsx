@@ -81,6 +81,8 @@ interface RightRailProps {
   isStreaming?: boolean;
   /** AG-UI: Run metadata for observability */
   runMetadata?: RunMetadata | null;
+  isActionContextReady?: boolean;
+  missingActionContextMessage?: string;
 }
 
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
@@ -141,6 +143,8 @@ function AgentStream({
   steps,
   isStreaming,
   runMetadata,
+  isActionContextReady = true,
+  missingActionContextMessage,
 }: {
   messages: AgentMessage[];
   onSendMessage: (msg: string) => void;
@@ -149,6 +153,8 @@ function AgentStream({
   steps?: StepSnapshot[];
   isStreaming?: boolean;
   runMetadata?: RunMetadata | null;
+  isActionContextReady?: boolean;
+  missingActionContextMessage?: string;
 }) {
   const [input, setInput] = useState("");
 
@@ -256,8 +262,11 @@ function AgentStream({
       {/* Suggested actions */}
       {suggestedActions && suggestedActions.length > 0 && (
         <div className="px-4 py-2 border-t border-border flex flex-wrap gap-2">
+          {!isActionContextReady && missingActionContextMessage && (
+            <p className="w-full text-[11px] text-muted-foreground">{missingActionContextMessage}</p>
+          )}
           {suggestedActions.map((action, i) => (
-            <Btn key={i} variant="outline" onClick={action.onClick} className="text-[11px]">
+            <Btn key={i} variant="outline" onClick={action.onClick} disabled={!isActionContextReady} className="text-[11px]">
               {action.icon}
               {action.label}
             </Btn>
@@ -315,6 +324,8 @@ export default function RightRail({
   steps,
   isStreaming,
   runMetadata,
+  isActionContextReady,
+  missingActionContextMessage,
 }: RightRailProps) {
   return (
     <div className="flex flex-col h-full bg-background">
@@ -343,6 +354,8 @@ export default function RightRail({
           steps={steps}
           isStreaming={isStreaming}
           runMetadata={runMetadata}
+          isActionContextReady={isActionContextReady}
+          missingActionContextMessage={missingActionContextMessage}
         />
       )}
     </div>

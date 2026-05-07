@@ -69,6 +69,7 @@ class AgentStreamRequest(BaseModel):
     messages: list[AgentStreamMessage] = Field(..., min_length=1)
     active_tab: str = Field(..., alias="activeTab", min_length=1, description="Active UI tab key")
     account: AgentStreamAccountContext | None = Field(default=None)
+    context_envelope: dict[str, object] | None = Field(default=None, alias="contextEnvelope")
     entity_context: dict[str, object] | None = Field(default=None, alias="entityContext")
     selected_signal_id: str | None = Field(default=None, alias="selectedSignalId")
     selected_value_path: str | None = Field(default=None, alias="selectedValuePath")
@@ -228,6 +229,8 @@ async def agent_stream_chat(
         else None
     )
     entity_context = payload.entity_context or {}
+    if payload.context_envelope:
+        entity_context.setdefault("contextEnvelope", payload.context_envelope)
     entity_context.setdefault("accountId", account_id)
     entity_context.setdefault("activeTab", payload.active_tab)
     if payload.selected_signal_id:
