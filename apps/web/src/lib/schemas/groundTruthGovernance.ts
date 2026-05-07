@@ -123,28 +123,29 @@ export type MaturityLadderResponse = z.infer<typeof MaturityLadderResponseSchema
 export function parseTruthObjectListResponse(
   data: unknown
 ): TruthObjectListResponse {
-  return TruthObjectListResponseSchema.parse(data);
+  return TruthObjectListResponseSchema.parse(unwrapGovernanceEnvelope(data));
 }
 
 export function parseValidationEventListResponse(
   data: unknown
 ): ValidationEventResponse[] {
-  return ValidationEventListResponseSchema.parse(data);
+  return ValidationEventListResponseSchema.parse(unwrapGovernanceEnvelope(data));
 }
 
 export function parseFreshnessSummaryResponse(
   data: unknown
 ): FreshnessSummaryResponse {
-  return FreshnessSummaryResponseSchema.parse(data);
+  return FreshnessSummaryResponseSchema.parse(unwrapGovernanceEnvelope(data));
 }
 
 export function parseStaleTruthsResponse(
   data: unknown,
   params: { limit?: number; offset?: number } = {}
 ): StaleTruthsResponse {
-  const envelope = Array.isArray(data)
+  const normalized = unwrapGovernanceEnvelope(data);
+  const envelope = Array.isArray(normalized)
     ? { items: data }
-    : StaleTruthsEnvelopeSchema.parse(data);
+    : StaleTruthsEnvelopeSchema.parse(normalized);
 
   const items = z.array(TruthObjectSummarySchema).parse(envelope.items);
   const passthroughFields =
@@ -175,5 +176,22 @@ export function parseStaleTruthsResponse(
 }
 
 export function parseMaturityLadderResponse(data: unknown): MaturityLadderResponse {
-  return MaturityLadderResponseSchema.parse(data);
+  return MaturityLadderResponseSchema.parse(unwrapGovernanceEnvelope(data));
+}
+
+
+export const GovernanceEnvelopeSchema = z.object({
+  content: z.unknown().optional(),
+  claim_citations: z.array(z.object({ claim_id: z.string(), source_id: z.string() })).default([]),
+  evidence_provenance_ids: z.array(z.string()).default([]),
+  refusal_reason: z.string().nullable().optional(),
+  policy_decision: z.enum(["allow", "allow_with_redaction", "needs_approval", "deny"]),
+  tenant_scope: z.object({ tenant_id: z.string(), scope: z.enum(["tenant", "cross_tenant_blocked"]) }),
+  approval_required: z.boolean(),
+}).passthrough();
+
+export function unwrapGovernanceEnvelope(data: unknown): unknown {
+  const parsed = GovernanceEnvelopeSchema.safeParse(data);
+  if (!parsed.success) return data;
+  return parsed.data.content ?? data;
 }

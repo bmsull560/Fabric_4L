@@ -203,3 +203,40 @@ describe('Contract: C1 stream auth failures', () => {
     expect(err.code).toBe('NOT_FOUND');
   });
 });
+
+describe('Contract: C1 canonical envelope scenarios', () => {
+  const CanonicalEnvelopeSchema = z.object({
+    content: z.string().nullable().optional(),
+    claim_citations: z.array(z.object({ claim_id: z.string(), source_id: z.string() })),
+    evidence_provenance_ids: z.array(z.string()),
+    refusal_reason: z.string().nullable().optional(),
+    policy_decision: z.enum(['allow', 'allow_with_redaction', 'needs_approval', 'deny']),
+    tenant_scope: z.object({ tenant_id: z.string(), scope: z.enum(['tenant', 'cross_tenant_blocked']) }),
+    approval_required: z.boolean(),
+  });
+
+  it('supports refusal with citation + provenance + deny', () => {
+    const event = assertSchema(CanonicalEnvelopeSchema, {
+      content: null,
+      claim_citations: [{ claim_id: 'clm-1', source_id: 'src-2' }],
+      evidence_provenance_ids: ['prov-11'],
+      refusal_reason: 'Cross-tenant request blocked',
+      policy_decision: 'deny',
+      tenant_scope: { tenant_id: '550e8400-e29b-41d4-a716-446655440000', scope: 'cross_tenant_blocked' },
+      approval_required: false,
+    }, 'CanonicalEnvelope refusal');
+    expect(event.policy_decision).toBe('deny');
+  });
+
+  it('supports approval gate response with needs_approval', () => {
+    const event = assertSchema(CanonicalEnvelopeSchema, {
+      content: null,
+      claim_citations: [],
+      evidence_provenance_ids: [],
+      policy_decision: 'needs_approval',
+      tenant_scope: { tenant_id: '550e8400-e29b-41d4-a716-446655440000', scope: 'tenant' },
+      approval_required: true,
+    }, 'CanonicalEnvelope approval gate');
+    expect(event.approval_required).toBe(true);
+  });
+});
