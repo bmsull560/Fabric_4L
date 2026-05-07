@@ -4,37 +4,63 @@ import {
   Home,
   Building2,
   Radar,
+  Target,
   GitBranch,
-  Calculator,
   FileText,
   TrendingUp,
-  Lightbulb,
-  Settings,
+  FlaskConical,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { NAV_SCHEMA } from "@/navigation/navSchema";
 
 interface LeftNavigationProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-const navItems = [
-  { label: "Home", path: "/home", icon: Home },
-  { label: "Accounts", path: "/accounts", icon: Building2 },
-  { label: "Intelligence", path: "/intelligence", icon: Radar },
-  { label: "Hypothesis", path: "/hypothesis", icon: Lightbulb },
-  { label: "Driver Tree", path: "/drivers", icon: GitBranch },
-  { label: "Calculator", path: "/calculator", icon: Calculator },
-  { label: "Value Case", path: "/value-case", icon: FileText },
-  { label: "Value Realization", path: "/realization", icon: TrendingUp },
-];
+const NAV_ICONS = {
+  home: Home,
+  accounts: Building2,
+  intelligence: Radar,
+  "intel-signals": Radar,
+  "intel-opportunities": Target,
+  "intel-drivers": GitBranch,
+  "intel-evidence": FileText,
+  "intel-scenarios": FlaskConical,
+  "intel-business-case": FileText,
+  "intel-realization": TrendingUp,
+} as const;
 
 export function LeftNavigation({
   collapsed,
   onToggle,
 }: LeftNavigationProps) {
+  const { pathname } = useLocation();
+  const accountMatch = pathname.match(/\/(?:intelligence|studio|hypothesis|drivers|calculator|value-case|realization)\/([^/]+)/);
+  const accountId = accountMatch?.[1] || null;
+
+  const navItems = NAV_SCHEMA
+    .filter((item) => item.id === "home" || item.id === "accounts")
+    .map((item) => ({ ...item, path: item.path }))
+    .concat(
+      (NAV_SCHEMA.find((item) => item.id === "intelligence")?.children ?? [])
+        .filter((item) => [
+          "intel-signals",
+          "intel-opportunities",
+          "intel-drivers",
+          "intel-evidence",
+          "intel-scenarios",
+          "intel-business-case",
+          "intel-realization",
+        ].includes(item.id))
+        .map((item) => ({
+          ...item,
+          path: accountId ? item.path.replace(":accountId", accountId) : "/accounts",
+        }))
+    );
+
   return (
     <aside
       className={[
@@ -68,7 +94,7 @@ export function LeftNavigation({
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {navItems.map((item) => {
-          const Icon = item.icon;
+          const Icon = NAV_ICONS[item.id as keyof typeof NAV_ICONS] ?? Radar;
 
           return (
             <NavLink

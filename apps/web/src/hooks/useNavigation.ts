@@ -4,6 +4,8 @@
  */
 import { useNavigate, useLocation, type NavigateOptions, type To } from 'react-router-dom';
 import { getStatePath, type RouteState, type NavigationParams } from '@/navigation/navigationService';
+import { useWorkflowContext } from '@/hooks/useWorkflowContext';
+import { serializeWorkflowContextToQuery } from '@/workflow/context';
 
 interface NavigationOptions extends Omit<NavigateOptions, 'state'> {
   replace?: boolean;
@@ -22,6 +24,7 @@ interface NavigateToFunction {
 export function useNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
+  const workflowContext = useWorkflowContext();
 
   const buildQueryString = (query?: Record<string, string | number | undefined>): string => {
     if (!query) return '';
@@ -50,9 +53,9 @@ export function useNavigation() {
       const params = paramsOrOptions as NavigationParams | undefined;
       const opts = options;
       let path = getStatePath(state, params);
-      if (opts?.query) {
-        path += buildQueryString(opts.query);
-      }
+      const contextQuery = serializeWorkflowContextToQuery(workflowContext);
+      const mergedQuery = { ...contextQuery, ...(opts?.query ?? {}) };
+      path += buildQueryString(mergedQuery);
       navigate(path, opts);
     }
   };

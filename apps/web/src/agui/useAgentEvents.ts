@@ -36,6 +36,7 @@ import {
 import { sendAgentMessage } from "./AgentEventClient";
 import { getDefaultSuggestedActions } from "@/hooks/useAgentStream";
 import { useApplyWorkspacePageAction, type WorkspacePageActionContract } from "@/hooks/useWorkspaceCase";
+import { useWorkflowContext } from "@/hooks/useWorkflowContext";
 
 // ── Tab System Prompts (reused from useAgentStream) ─────────────────────────
 
@@ -165,6 +166,7 @@ export function useAgentEvents({
   const [metadata, setMetadata] = useState<RunMetadata | null>(null);
   const [structuredActions, setStructuredActions] = useState<AgentAction[]>([]);
   const applyWorkspacePageAction = useApplyWorkspacePageAction();
+  const workflowContext = useWorkflowContext();
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -395,7 +397,7 @@ export function useAgentEvents({
             conversationMessages,
             {
               activeTab,
-              accountId,
+              accountId: accountId ?? workflowContext.accountId,
               accountName,
               accountTier,
               selectedSignalId,
@@ -403,10 +405,11 @@ export function useAgentEvents({
               selectedDriverId,
               selectedEvidenceId,
               selectedValuePath,
-              selectedDriverTreeId,
-              selectedScenarioId,
-              selectedBusinessCaseId,
-              workspaceCaseId,
+              selectedDriverTreeId: selectedDriverTreeId ?? workflowContext.driverTreeId,
+              selectedScenarioId: selectedScenarioId ?? workflowContext.scenarioId,
+              selectedBusinessCaseId: selectedBusinessCaseId ?? workflowContext.businessCaseId,
+              workspaceCaseId: workspaceCaseId ?? workflowContext.workspaceCaseId,
+              workflowContext,
               entityContext,
             },
             abortRef.current?.signal,
@@ -423,7 +426,7 @@ export function useAgentEvents({
         }
       })();
     },
-    [activeTab, accountId, accountName, accountTier, selectedSignalId, selectedHypothesisId, selectedDriverId, selectedEvidenceId, selectedValuePath, selectedDriverTreeId, selectedScenarioId, selectedBusinessCaseId, workspaceCaseId, entityContext, messages, processEvent],
+    [activeTab, accountId, accountName, accountTier, selectedSignalId, selectedHypothesisId, selectedDriverId, selectedEvidenceId, selectedValuePath, selectedDriverTreeId, selectedScenarioId, selectedBusinessCaseId, workspaceCaseId, workflowContext, entityContext, messages, processEvent],
   );
 
   // ── Suggested Actions ─────────────────────────────────────────────────

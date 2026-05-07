@@ -30,6 +30,9 @@ import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { useAccountHypotheses } from "@/hooks/useHypotheses";
 import { useProducts } from "@/hooks/useProducts";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useNavigation } from "@/hooks";
+import { createNextAction } from "@/components/workspace/nextAction";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -151,6 +154,7 @@ export default function RealizationPage() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
+  const { navigateTo } = useNavigation();
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
 
   const { data: hypothesesData, isLoading: hypothesesLoading } = useAccountHypotheses(
@@ -161,6 +165,15 @@ export default function RealizationPage() {
 
   const hypotheses = hypothesesData?.hypotheses ?? [];
   const initiatives = useMemo(() => mapHypothesesToInitiatives(hypotheses), [hypotheses]);
+  const nextAction = accountId
+    ? createNextAction({
+        label: "Back to Signals",
+        target: "intelligence-signals",
+        params: { accountId },
+        disabled: initiatives.length === 0,
+        reason: "Create a realization plan after generating initiatives.",
+      })
+    : null;
 
   // Computed metrics
   const activeInitiatives = initiatives.filter((i) => i.status === "on_track" || i.status === "at_risk").length;
@@ -342,6 +355,14 @@ export default function RealizationPage() {
                 </SectionCard>
               );
             })}
+          </div>
+        )}
+        {nextAction && (
+          <div className="flex items-center justify-end gap-2">
+            {nextAction.disabled && <span className="text-xs text-muted-foreground">{nextAction.reason}</span>}
+            <Button disabled={nextAction.disabled} onClick={() => navigateTo(nextAction.target, nextAction.params)} data-testid="primary-forward-action">
+              {nextAction.label}
+            </Button>
           </div>
         )}
       </div>

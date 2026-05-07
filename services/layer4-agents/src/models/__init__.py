@@ -8,6 +8,19 @@ from .account import (
     EmbeddedOpportunity,
     SyncStatus,
 )
+from .company_knowledge import (
+    AuthorityWeight,
+    CompanyKnowledgeProfile,
+    CrawlStatus,
+    ICPProfile,
+    ICPSourceType,
+    KnowledgeSource,
+    PageType,
+    ProfileStatus,
+    ReviewStatus,
+    SourceType,
+    ValueExtractionRecord,
+)
 from .agent_state import (
     AgentState,
     BaseAgentState,
@@ -178,4 +191,16 @@ __all__ = [
     "SignalCategory",
     "TrendDirection",
     "ErrorCategory",
+    # Company Knowledge Models
+    "CompanyKnowledgeProfile",
+    "KnowledgeSource",
+    "ValueExtractionRecord",
+    "ICPProfile",
+    "ProfileStatus",
+    "SourceType",
+    "CrawlStatus",
+    "AuthorityWeight",
+    "PageType",
+    "ReviewStatus",
+    "ICPSourceType",
 ]

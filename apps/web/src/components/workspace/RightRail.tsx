@@ -23,7 +23,7 @@
  */
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { X, MessageSquare, Info, Send } from "lucide-react";
+import { X, MessageSquare, Info, Send, History } from "lucide-react";
 import { Btn } from "@/components/WfPrimitives";
 import { ProcessSteps } from "./ProcessSteps";
 import type { StepSnapshot } from "@/agui/events";
@@ -31,7 +31,7 @@ import type { RunMetadata } from "@/agui/events";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type RightRailMode = "detail" | "agent";
+export type RightRailMode = "detail" | "agent" | "audit";
 
 export interface DetailPanelProps {
   title: string;
@@ -81,6 +81,13 @@ interface RightRailProps {
   isStreaming?: boolean;
   /** AG-UI: Run metadata for observability */
   runMetadata?: RunMetadata | null;
+  auditEntries?: Array<{
+    id: string;
+    kind: string;
+    summary: string;
+    actor: string;
+    created_at: string;
+  }>;
 }
 
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
@@ -121,6 +128,18 @@ function ModeToggle({
           <MessageSquare size={12} className="inline mr-1" />
           Agent Stream
         </button>
+        <button
+          onClick={() => onModeChange("audit")}
+          className={cn(
+            "px-3 py-1 text-[11px] font-semibold rounded-md transition-colors",
+            mode === "audit"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <History size={12} className="inline mr-1" />
+          Audit
+        </button>
       </div>
       {onClose && (
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -149,6 +168,13 @@ function AgentStream({
   steps?: StepSnapshot[];
   isStreaming?: boolean;
   runMetadata?: RunMetadata | null;
+  auditEntries?: Array<{
+    id: string;
+    kind: string;
+    summary: string;
+    actor: string;
+    created_at: string;
+  }>;
 }) {
   const [input, setInput] = useState("");
 
@@ -315,6 +341,7 @@ export default function RightRail({
   steps,
   isStreaming,
   runMetadata,
+  auditEntries,
 }: RightRailProps) {
   return (
     <div className="flex flex-col h-full bg-background">
@@ -331,6 +358,23 @@ export default function RightRail({
           <p className="text-[12px] text-muted-foreground text-center">
             Select an item to view details.
           </p>
+        </div>
+      )}
+
+
+      {mode === "audit" && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <p className="text-[12px] font-semibold text-foreground">Workflow history</p>
+          {!auditEntries?.length ? (
+            <p className="text-[12px] text-muted-foreground">No workflow mutations recorded yet.</p>
+          ) : (
+            auditEntries.map((entry) => (
+              <div key={entry.id} className="rounded-md border border-border p-2">
+                <p className="text-[11px] text-foreground">{entry.summary}</p>
+                <p className="text-[10px] text-muted-foreground">{entry.kind} • {entry.actor} • {new Date(entry.created_at).toLocaleString()}</p>
+              </div>
+            ))
+          )}
         </div>
       )}
 

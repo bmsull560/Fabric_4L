@@ -6,6 +6,7 @@ calls L1 APIs for document processing.
 
 import asyncio
 import logging
+import os
 import time
 from typing import Any, Final
 
@@ -16,6 +17,9 @@ logger = logging.getLogger(__name__)
 # Job terminal states
 TERMINAL_STATES: Final[frozenset[str]] = frozenset({"completed", "failed", "cancelled"})
 
+TENANT_ID_HEADER = "X-Tenant-ID"
+SERVICE_AUTH_HEADER = "X-Service-Auth"
+
 
 class Layer1IngestionClient:
     """Client for Layer 1 Ingestion API.
@@ -24,6 +28,7 @@ class Layer1IngestionClient:
     - Create ingestion jobs
     - Poll for completion
     - Retrieve extraction results
+    - Create and execute website crawl targets
 
     Example:
         client = Layer1IngestionClient(
@@ -44,6 +49,7 @@ class Layer1IngestionClient:
         base_url: str = "http://layer1-ingestion:8000",
         api_key: str | None = None,
         timeout: float = 30.0,
+        tenant_id: str | None = None,
     ):
         """Initialize Layer 1 client.
 
@@ -51,10 +57,12 @@ class Layer1IngestionClient:
             base_url: Layer 1 API base URL
             api_key: API key for authentication
             timeout: Request timeout
+            tenant_id: Default tenant ID for service-to-service calls
         """
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
+        self._default_tenant_id = tenant_id
 
         headers = {}
         if api_key:
@@ -65,6 +73,17 @@ class Layer1IngestionClient:
             headers=headers,
             timeout=timeout,
         )
+
+    def _get_headers(self, tenant_id: str | None = None) -> dict[str, str]:
+        """Build request headers with tenant context for service calls."""
+        headers: dict[str, str] = {}
+        effective_tenant = tenant_id or self._default_tenant_id
+        if effective_tenant:
+            headers[TENANT_ID_HEADER] = effective_tenant
+            service_auth = os.getenv("SERVICE_AUTH_SECRET")
+            if service_auth:
+                headers[SERVICE_AUTH_HEADER] = service_auth
+        return headers
 
     async def create_job(
         self,
@@ -176,6 +195,122 @@ class Layer1IngestionClient:
         except httpx.HTTPError as e:
             logger.error(f"Failed to get extraction result: {e}")
             raise Layer1ClientError(f"Failed to get result: {e}") from e
+
+    # ========================================================================
+    # Website Crawl Target APIs
+    # ========================================================================
+
+    async def create_website_target(
+        self,
+        url: str,
+        name: str | None = None,
+        tenant_id: str | None = None,
+        extraction_config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a scraping target for a website.
+
+        Args:
+            url: Website URL to crawl
+            name: Human-readable name for the target
+            tenant_id: Tenant context (uses default if not provided)
+            extraction_config: Extraction configuration
+
+        Returns:
+            Created target details
+        """
+        payload: dict[str, Any] = {
+            "name": name or f"Company knowledge crawl: {url}",
+            "url": url,
+            "target_type": "single_page",
+            "source_category": "website",
+            "crawl_path": "browser",
+            "extraction_config": extraction_config
+            or {
+                "method": "ai_llm",
+                "llm_provider": "openai",
+                "max_depth": 2,
+                "follow_links": True,
+            },
+            "browser_config": {
+                "engine": "chromium",
+                "headless": True,
+                "javascript_enabled": True,
+            },
+            "tags": ["company-knowledge", "onboarding"],
+        }
+
+        try:
+            response = await self.client.post(
+                "/targets",
+                json=payload,
+                headers=self._get_headers(tenant_id),
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error("Failed to create website target: %s", e)
+            raise Layer1ClientError(f"Failed to create target: {e}") from e
+
+    async def execute_target(
+        self,
+        target_id: str,
+        tenant_id: str | None = None,
+        priority: int = 5,
+    ) -> dict[str, Any]:
+        """Trigger immediate execution of a scraping target.
+
+        Args:
+            target_id: Target identifier
+            tenant_id: Tenant context
+            priority: Execution priority (1-10)
+
+        Returns:
+            Execution response with job_id
+        """
+        payload = {"priority": priority}
+
+        try:
+            response = await self.client.post(
+                f"/targets/{target_id}/execute",
+                json=payload,
+                headers=self._get_headers(tenant_id),
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error("Failed to execute target: %s", e)
+            raise Layer1ClientError(f"Failed to execute target: {e}") from e
+
+    async def crawl_website(
+        self,
+        url: str,
+        tenant_id: str | None = None,
+        name: str | None = None,
+    ) -> dict[str, Any]:
+        """Convenience method to create and execute a website crawl target.
+
+        Args:
+            url: Website URL to crawl
+            tenant_id: Tenant context
+            name: Human-readable name
+
+        Returns:
+            Execution result with target_id and job_id
+        """
+        target = await self.create_website_target(
+            url=url,
+            name=name,
+            tenant_id=tenant_id,
+        )
+        target_id = target.get("id")
+        if not target_id:
+            raise Layer1ClientError("Target creation response missing 'id'")
+
+        execution = await self.execute_target(target_id, tenant_id=tenant_id)
+        return {
+            "target_id": target_id,
+            **execution,
+        }
 
     async def close(self) -> None:
         """Close HTTP client."""

@@ -5,8 +5,17 @@
  * Will show implementation costs, ongoing costs, and time-to-value.
  */
 import { DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigation } from "@/hooks";
+import { useParams } from "react-router-dom";
+import { createNextAction } from "@/components/workspace/nextAction";
 
 export default function SolutionCostTab() {
+  const { accountId } = useParams<{ accountId: string }>();
+  const { navigateTo } = useNavigation();
+  const nextAction = accountId
+    ? createNextAction({ label: "Model Scenarios", target: "calculator", params: { accountId } })
+    : null;
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -29,6 +38,13 @@ export default function SolutionCostTab() {
           Includes implementation, licensing, training, and ongoing operational costs.
         </p>
       </div>
+      {nextAction && (
+        <div className="flex justify-end">
+          <Button onClick={() => navigateTo(nextAction.target, nextAction.params)} data-testid="primary-forward-action">
+            {nextAction.label}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

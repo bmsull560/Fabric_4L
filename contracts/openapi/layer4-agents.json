@@ -3875,6 +3875,70 @@
         }
       }
     },
+    "/v1/integrations/salesforce/oauth/authorize": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Start Salesforce Oauth",
+        "description": "Generate the Salesforce OAuth authorize URL for the current tenant.",
+        "operationId": "start_salesforce_oauth_v1_integrations_salesforce_oauth_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesforceOAuthAuthorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesforceOAuthAuthorizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenant/context": {
+      "get": {
+        "tags": [
+          "tenant-context"
+        ],
+        "summary": "Get Tenant Context",
+        "description": "Return the canonical authenticated tenant context.\n\nThis endpoint exposes the validated request context together with the\ncurrent tenant metadata needed by onboarding and settings workflows.",
+        "operationId": "get_tenant_context_v1_tenant_context_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantContextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/tenants/current/settings": {
       "get": {
         "tags": [
@@ -8702,6 +8766,683 @@
           }
         }
       }
+    },
+    "/v1/company-knowledge/profiles": {
+      "post": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Create Profile",
+        "description": "Create a new draft company knowledge profile.",
+        "operationId": "create_profile_v1_company_knowledge_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyKnowledgeProfileCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/profiles/current": {
+      "get": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Get Current Profile",
+        "description": "Get the current tenant's active or latest draft profile.",
+        "operationId": "get_current_profile_v1_company_knowledge_profiles_current_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/profiles/{profile_id}": {
+      "get": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Get Profile",
+        "description": "Get a company knowledge profile by ID.",
+        "operationId": "get_profile_v1_company_knowledge_profiles__profile_id__get",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Update Profile",
+        "description": "Update sections of a company knowledge profile.",
+        "operationId": "update_profile_v1_company_knowledge_profiles__profile_id__patch",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompanyKnowledgeProfileUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/profiles/{profile_id}/approve": {
+      "post": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Approve Profile",
+        "description": "Approve a draft company knowledge profile.\n\nAfter approval, syncs the profile entities to Layer 3 Knowledge Graph\nas a background task.",
+        "operationId": "approve_profile_v1_company_knowledge_profiles__profile_id__approve_post",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileApproveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/sources": {
+      "post": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Add Knowledge Source",
+        "description": "Add a knowledge source to a profile.\n\nFor website sources, triggers a background crawl via Layer 1.",
+        "operationId": "add_knowledge_source_v1_company_knowledge_sources_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeSourceCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeSourceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "List Knowledge Sources",
+        "description": "List knowledge sources for the tenant.",
+        "operationId": "list_knowledge_sources_v1_company_knowledge_sources_get",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Id"
+            }
+          },
+          {
+            "name": "source_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SourceType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeSourceListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/extractions": {
+      "get": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "List Extraction Records",
+        "description": "List value extraction records with filtering.",
+        "operationId": "list_extraction_records_v1_company_knowledge_extractions_get",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Id"
+            }
+          },
+          {
+            "name": "source_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "name": "min_confidence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Confidence"
+            }
+          },
+          {
+            "name": "requires_review",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Requires Review"
+            }
+          },
+          {
+            "name": "review_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReviewStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Review Status"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueExtractionRecordListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/extractions/{record_id}/review": {
+      "post": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Review Extraction Record",
+        "description": "Review an extraction record: accept, reject, or modify.",
+        "operationId": "review_extraction_record_v1_company_knowledge_extractions__record_id__review_post",
+        "parameters": [
+          {
+            "name": "record_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Record Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValueExtractionReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValueExtractionRecordResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/icp": {
+      "get": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Get Icp For Current Profile",
+        "description": "Get the ICP profile for the current tenant's active knowledge profile.",
+        "operationId": "get_icp_for_current_profile_v1_company_knowledge_icp_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ICPProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Create Icp Profile",
+        "description": "Create an ICP profile linked to a company knowledge profile.",
+        "operationId": "create_icp_profile_v1_company_knowledge_icp_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ICPProfileCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ICPProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/icp/{icp_id}": {
+      "patch": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Update Icp Profile",
+        "description": "Update an ICP profile.",
+        "operationId": "update_icp_profile_v1_company_knowledge_icp__icp_id__patch",
+        "parameters": [
+          {
+            "name": "icp_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Icp Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ICPProfileUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ICPProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/company-knowledge/onboarding-status": {
+      "get": {
+        "tags": [
+          "Company Knowledge"
+        ],
+        "summary": "Get Onboarding Status",
+        "description": "Get aggregated onboarding progress for the current tenant.",
+        "operationId": "get_onboarding_status_v1_company_knowledge_onboarding_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9634,6 +10375,66 @@
         "title": "ActivityItemSchema",
         "description": "Activity timeline item from fetch_interaction_history tool."
       },
+      "ActorSummary": {
+        "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          },
+          "api_key_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Id"
+          },
+          "service_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Account Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "roles",
+          "permissions",
+          "api_key_id",
+          "service_account_id"
+        ],
+        "title": "ActorSummary"
+      },
       "AgentGovernanceMetadata": {
         "properties": {
           "trace_id": {
@@ -10201,6 +11002,16 @@
         ],
         "title": "AuthSessionResponse",
         "description": "Minimal authenticated session profile for compatibility smoke checks."
+      },
+      "AuthorityWeight": {
+        "type": "string",
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "AuthorityWeight",
+        "description": "How authoritative this source is considered."
       },
       "BatchEnrichRequest": {
         "properties": {
@@ -10976,6 +11787,384 @@
         "title": "CheckpointListResponse",
         "description": "Response containing checkpoint timeline."
       },
+      "CompanyKnowledgeProfileCreateRequest": {
+        "properties": {
+          "company_name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "type": "object",
+        "required": [
+          "company_name"
+        ],
+        "title": "CompanyKnowledgeProfileCreateRequest",
+        "description": "Request to create a draft company knowledge profile."
+      },
+      "CompanyKnowledgeProfileResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProfileStatus"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "confidence_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Score"
+          },
+          "identity": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity"
+          },
+          "product_catalog": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Catalog"
+          },
+          "target_customer": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Customer"
+          },
+          "personas": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personas"
+          },
+          "use_cases": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Cases"
+          },
+          "value_drivers": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Drivers"
+          },
+          "proof_points": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proof Points"
+          },
+          "trust_commercial": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Commercial"
+          },
+          "active_source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Active Source Ids"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "company_name",
+          "status",
+          "version",
+          "active_source_ids",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CompanyKnowledgeProfileResponse",
+        "description": "Full company knowledge profile response."
+      },
+      "CompanyKnowledgeProfileUpdateRequest": {
+        "properties": {
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "identity": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity"
+          },
+          "product_catalog": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Catalog"
+          },
+          "target_customer": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Customer"
+          },
+          "personas": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personas"
+          },
+          "use_cases": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Cases"
+          },
+          "value_drivers": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Drivers"
+          },
+          "proof_points": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proof Points"
+          },
+          "trust_commercial": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust Commercial"
+          },
+          "review_status": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Status"
+          }
+        },
+        "type": "object",
+        "title": "CompanyKnowledgeProfileUpdateRequest",
+        "description": "Request to update profile sections."
+      },
       "ComponentHealthInfo": {
         "properties": {
           "name": {
@@ -11198,6 +12387,17 @@
         ],
         "title": "ContextField",
         "description": "Single context field with provenance metadata."
+      },
+      "CrawlStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "in_progress",
+          "complete",
+          "failed"
+        ],
+        "title": "CrawlStatus",
+        "description": "Progress of a website crawl job."
       },
       "CreateAccountRequest": {
         "properties": {
@@ -12556,6 +13756,477 @@
         "title": "HealthStatusResponse",
         "description": "Complete health status response."
       },
+      "ICPProfileCreateRequest": {
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Industries"
+          },
+          "company_size": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Company Size"
+          },
+          "buyer_personas": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Buyer Personas"
+          },
+          "user_personas": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "User Personas"
+          },
+          "pain_points": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pain Points"
+          },
+          "trigger_events": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Trigger Events"
+          },
+          "qualification_criteria": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Qualification Criteria"
+          },
+          "disqualification_criteria": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Disqualification Criteria"
+          },
+          "competitive_context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competitive Context"
+          },
+          "buying_committee_structure": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buying Committee Structure"
+          },
+          "typical_sales_motion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Sales Motion"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/ICPSourceType",
+            "default": "manual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile_id"
+        ],
+        "title": "ICPProfileCreateRequest",
+        "description": "Request to create an ICP profile."
+      },
+      "ICPProfileResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "industries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Industries"
+          },
+          "company_size": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Company Size"
+          },
+          "buyer_personas": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Buyer Personas"
+          },
+          "user_personas": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "User Personas"
+          },
+          "pain_points": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pain Points"
+          },
+          "trigger_events": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Trigger Events"
+          },
+          "qualification_criteria": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Qualification Criteria"
+          },
+          "disqualification_criteria": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Disqualification Criteria"
+          },
+          "competitive_context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competitive Context"
+          },
+          "buying_committee_structure": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buying Committee Structure"
+          },
+          "typical_sales_motion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Sales Motion"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/ICPSourceType"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "profile_id",
+          "industries",
+          "company_size",
+          "buyer_personas",
+          "user_personas",
+          "pain_points",
+          "trigger_events",
+          "qualification_criteria",
+          "disqualification_criteria",
+          "source_type",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ICPProfileResponse",
+        "description": "ICP profile in API responses."
+      },
+      "ICPProfileUpdateRequest": {
+        "properties": {
+          "industries": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industries"
+          },
+          "company_size": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Size"
+          },
+          "buyer_personas": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Personas"
+          },
+          "user_personas": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Personas"
+          },
+          "pain_points": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pain Points"
+          },
+          "trigger_events": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Events"
+          },
+          "qualification_criteria": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualification Criteria"
+          },
+          "disqualification_criteria": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disqualification Criteria"
+          },
+          "competitive_context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competitive Context"
+          },
+          "buying_committee_structure": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buying Committee Structure"
+          },
+          "typical_sales_motion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typical Sales Motion"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ICPSourceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ICPProfileUpdateRequest",
+        "description": "Request to update an ICP profile."
+      },
+      "ICPSourceType": {
+        "type": "string",
+        "enum": [
+          "upload",
+          "paste",
+          "generated_from_website",
+          "manual"
+        ],
+        "title": "ICPSourceType",
+        "description": "How the ICP was provided."
+      },
       "IntegrationCreateRequest": {
         "properties": {
           "enabled": {
@@ -12778,6 +14449,235 @@
         ],
         "title": "IntegrationStatusResponse",
         "description": "Integration with sync status (response only)."
+      },
+      "KnowledgeSourceCreateRequest": {
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Hash"
+          },
+          "raw_storage_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Storage Path"
+          },
+          "authority_weight": {
+            "$ref": "#/components/schemas/AuthorityWeight",
+            "default": "medium"
+          },
+          "page_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extra_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile_id",
+          "source_type"
+        ],
+        "title": "KnowledgeSourceCreateRequest",
+        "description": "Request to add a new knowledge source."
+      },
+      "KnowledgeSourceListResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSourceResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "has_more",
+          "items"
+        ],
+        "title": "KnowledgeSourceListResponse",
+        "description": "Paginated knowledge sources."
+      },
+      "KnowledgeSourceResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Hash"
+          },
+          "raw_storage_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Storage Path"
+          },
+          "crawl_status": {
+            "$ref": "#/components/schemas/CrawlStatus"
+          },
+          "authority_weight": {
+            "$ref": "#/components/schemas/AuthorityWeight"
+          },
+          "page_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extra_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra Metadata"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "profile_id",
+          "source_type",
+          "crawl_status",
+          "authority_weight",
+          "extra_metadata",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "KnowledgeSourceResponse",
+        "description": "Knowledge source item in API responses."
       },
       "LineageRef": {
         "properties": {
@@ -13269,6 +15169,118 @@
         "title": "NodeMetrics",
         "description": "Metrics for a single node execution."
       },
+      "OnboardingStatusResponse": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "profile_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "sources_count": {
+            "type": "integer",
+            "title": "Sources Count"
+          },
+          "extractions_count": {
+            "type": "integer",
+            "title": "Extractions Count"
+          },
+          "extractions_pending_review": {
+            "type": "integer",
+            "title": "Extractions Pending Review"
+          },
+          "extractions_accepted": {
+            "type": "integer",
+            "title": "Extractions Accepted"
+          },
+          "extractions_rejected": {
+            "type": "integer",
+            "title": "Extractions Rejected"
+          },
+          "average_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Confidence"
+          },
+          "icp_present": {
+            "type": "boolean",
+            "title": "Icp Present"
+          },
+          "has_approved_profile": {
+            "type": "boolean",
+            "title": "Has Approved Profile"
+          },
+          "next_step": {
+            "type": "string",
+            "title": "Next Step",
+            "description": "Human-readable next action for the onboarding flow"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "sources_count",
+          "extractions_count",
+          "extractions_pending_review",
+          "extractions_accepted",
+          "extractions_rejected",
+          "icp_present",
+          "has_approved_profile",
+          "next_step"
+        ],
+        "title": "OnboardingStatusResponse",
+        "description": "Aggregated onboarding progress for a tenant."
+      },
       "OpportunitySchema": {
         "properties": {
           "provider_opportunity_id": {
@@ -13397,6 +15409,21 @@
         ],
         "title": "OutputDataInspectorResponse",
         "description": "Detailed inspection of output_data field."
+      },
+      "PageType": {
+        "type": "string",
+        "enum": [
+          "product",
+          "use_case",
+          "case_study",
+          "pricing",
+          "trust",
+          "blog",
+          "homepage",
+          "other"
+        ],
+        "title": "PageType",
+        "description": "Classification of a crawled / extracted page."
       },
       "PerformanceMetricsResponse": {
         "properties": {
@@ -13532,6 +15559,32 @@
         "type": "object",
         "title": "ProcessingMetadata",
         "description": "Metadata about signal processing."
+      },
+      "ProfileApproveRequest": {
+        "properties": {
+          "approved_by": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Approved By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "approved_by"
+        ],
+        "title": "ProfileApproveRequest",
+        "description": "Request to approve a draft profile."
+      },
+      "ProfileStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "needs_review",
+          "approved",
+          "archived"
+        ],
+        "title": "ProfileStatus",
+        "description": "Lifecycle status of a company knowledge profile."
       },
       "PromoteSignalRequest": {
         "properties": {
@@ -14430,6 +16483,36 @@
         "title": "RequestContext",
         "description": "Identity context carried by a single request.\n\n``RequestContext`` is deliberately shared by L1-L5 governance code.  It\npreserves tenant scoping and trace propagation while supporting legacy\ncallers that still pass ``source`` and newer middleware that passes the\nexplicit ``auth_source`` field."
       },
+      "RequestSummary": {
+        "properties": {
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "auth_source": {
+            "type": "string",
+            "title": "Auth Source"
+          },
+          "isolation_tier": {
+            "type": "string",
+            "title": "Isolation Tier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "auth_source",
+          "isolation_tier"
+        ],
+        "title": "RequestSummary"
+      },
       "ResumeFromCheckpointRequest": {
         "properties": {
           "checkpoint_id": {
@@ -14593,6 +16676,17 @@
         ],
         "title": "ReviewRequest"
       },
+      "ReviewStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "accepted",
+          "rejected",
+          "modified"
+        ],
+        "title": "ReviewStatus",
+        "description": "Human review state of an extraction record."
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -14605,6 +16699,37 @@
         ],
         "title": "Role",
         "description": "Business roles used across all layers.\n\nHierarchy (highest \u2192 lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
+      },
+      "SalesforceOAuthAuthorizeRequest": {
+        "properties": {
+          "return_to": {
+            "type": "string",
+            "title": "Return To",
+            "description": "Relative frontend path to return to after OAuth completes",
+            "default": "/context/integrations?provider=salesforce"
+          }
+        },
+        "type": "object",
+        "title": "SalesforceOAuthAuthorizeRequest",
+        "description": "Request to start Salesforce OAuth."
+      },
+      "SalesforceOAuthAuthorizeResponse": {
+        "properties": {
+          "authorize_url": {
+            "type": "string",
+            "title": "Authorize Url"
+          },
+          "state_expires_at": {
+            "type": "string",
+            "title": "State Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorize_url",
+          "state_expires_at"
+        ],
+        "title": "SalesforceOAuthAuthorizeResponse"
       },
       "SaveScenarioRequest": {
         "properties": {
@@ -14807,6 +16932,17 @@
         ],
         "title": "SignalReviewResponse",
         "description": "Response payload for signal review mutations."
+      },
+      "SourceType": {
+        "type": "string",
+        "enum": [
+          "website",
+          "icp",
+          "upload",
+          "manual"
+        ],
+        "title": "SourceType",
+        "description": "Origin of a knowledge source."
       },
       "StartAnalysisRequest": {
         "properties": {
@@ -15488,6 +17624,26 @@
         "title": "SyncTriggerResponse",
         "description": "Manual sync trigger response."
       },
+      "TenantContextResponse": {
+        "properties": {
+          "tenant": {
+            "$ref": "#/components/schemas/TenantSummary"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActorSummary"
+          },
+          "request": {
+            "$ref": "#/components/schemas/RequestSummary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant",
+          "actor",
+          "request"
+        ],
+        "title": "TenantContextResponse"
+      },
       "TenantCreateRequest": {
         "properties": {
           "name": {
@@ -15608,6 +17764,45 @@
         ],
         "title": "TenantStatus",
         "description": "Lifecycle status of a tenant."
+      },
+      "TenantSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "tier_id": {
+            "type": "string",
+            "title": "Tier Id"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Settings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "status",
+          "tier_id",
+          "settings"
+        ],
+        "title": "TenantSummary"
       },
       "TenantUpdateRequest": {
         "properties": {
@@ -16265,6 +18460,220 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ValueExtractionRecordListResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ValueExtractionRecordResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "has_more",
+          "items"
+        ],
+        "title": "ValueExtractionRecordListResponse",
+        "description": "Paginated extraction records."
+      },
+      "ValueExtractionRecordResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "page_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extracted": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extracted"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "requires_review": {
+            "type": "boolean",
+            "title": "Requires Review"
+          },
+          "review_status": {
+            "$ref": "#/components/schemas/ReviewStatus"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "extraction_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Version"
+          },
+          "llm_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Model"
+          },
+          "trace_span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Span Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source_id",
+          "tenant_id",
+          "profile_id",
+          "extracted",
+          "requires_review",
+          "review_status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ValueExtractionRecordResponse",
+        "description": "Extraction record in API responses."
+      },
+      "ValueExtractionReviewRequest": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ReviewStatus",
+            "description": "accepted | rejected | modified"
+          },
+          "user_edits": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Edits",
+            "description": "Modified extracted fields when action=modified"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "ValueExtractionReviewRequest",
+        "description": "Request to review an extraction record."
       },
       "VerifyEmailRequest": {
         "properties": {

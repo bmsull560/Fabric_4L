@@ -16,20 +16,14 @@ import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { QK } from "@/hooks/queryKeys";
 import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { useModels } from "@/hooks/useModels";
-import { useROIScenarioVersions, useSaveROIScenarioVersion, useUpdateROIScenarioVersion, type ScenarioState, type PersistedScenarioVersion } from "@/hooks/useROIScenarios";
+import { useROIScenarioVersions, useSaveROIScenarioVersion, useUpdateROIScenarioVersion, validateScenarioAssumptions, DEFAULT_SCENARIO_ASSUMPTIONS, type ScenarioState, type ScenarioAssumptionSet, type ScenarioName } from "@/hooks/useROIScenarios";
 import { useValueLevers } from "@/hooks/useCalculators";
 import { useBenchmarksList, useCalculateROI, useIndustryBenchmarks, type ROICalculationRequest } from "@/hooks/useROICalculator";
 import { useValuePacks } from "@/hooks/useValuePacks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigation } from "@/hooks";
+import { createNextAction } from "@/components/workspace/nextAction";
 
-const DEFAULT_SCENARIO: ScenarioState = {
-  deal_size: 120000,
-  implementation_cost: 60000,
-  annual_benefit: 100000,
-  time_horizon_years: 3,
-  discount_rate: 10,
-  ramp_months: 3,
-};
 
 function fmtCurrency(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
@@ -39,12 +33,14 @@ export default function CalcROITab() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
+  const { navigateTo } = useNavigation();
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
   const { data: caseId } = useCanonicalCaseId(accountId);
   const { data: valueModelTab } = useWorkspaceTabQuery<{ model_id?: string; value_model_id?: string; selected_model_id?: string }>(caseId ?? null, "value-model");
   const { data: models } = useModels({});
   const modelId = valueModelTab?.selected_model_id ?? valueModelTab?.value_model_id ?? valueModelTab?.model_id ?? models?.[0]?.id ?? null;
-  const [scenario, setScenario] = useState<ScenarioState>(DEFAULT_SCENARIO);
+  const [scenario, setScenario] = useState<ScenarioAssumptionSet>(DEFAULT_SCENARIO_ASSUMPTIONS);
+  const [activeScenario, setActiveScenario] = useState<ScenarioName>("expected");
 
   const queryClient = useQueryClient();
   const { data: leverData, isLoading: leversLoading, error: leverError } = useValueLevers({ industry: account?.industry ?? undefined });
@@ -64,14 +60,16 @@ export default function CalcROITab() {
 
   const updateScenarioMutation = useMutation({
     mutationKey: ["calculator", "roi", "scenario", "edit"],
-    mutationFn: async (next: Partial<ScenarioState>) => {
-      const updated = { ...scenario, ...next };
+    mutationFn: async ({ scenarioName, next }: { scenarioName: ScenarioName; next: Partial<ScenarioState> }) => {
+      const updated = { ...scenario, [scenarioName]: { ...scenario[scenarioName], ...next } };
       setScenario(updated);
       return updated;
     },
     onSuccess: async (updated) => {
       if (!accountId) return;
-      await recalcMutation.mutateAsync({ ...updated, account_id: accountId } as ROICalculationRequest);
+      const validationErrors = validateScenarioAssumptions(updated);
+      if (validationErrors.length) throw new Error(validationErrors.join("; "));
+      await recalcMutation.mutateAsync({ ...updated.expected, account_id: accountId } as ROICalculationRequest);
       await queryClient.invalidateQueries({ queryKey: QK.roi.list({ account_id: accountId }) });
       await queryClient.invalidateQueries({ queryKey: QK.roi.scenarioVersions(scenarioScope) });
       await queryClient.invalidateQueries({ queryKey: QK.roi.all });
@@ -100,6 +98,16 @@ export default function CalcROITab() {
 
   const calc = recalcMutation.data;
   const scenarioNames = Object.keys(calc?.scenarios ?? {});
+  const hasCompletedScenarios = scenarioNames.length > 0;
+  const nextAction = accountId
+    ? createNextAction({
+        label: "Generate Business Case",
+        target: "value-case",
+        params: { accountId },
+        disabled: !hasCompletedScenarios,
+        reason: "Run a scenario calculation first.",
+      })
+    : null;
 
   return (
     <CalculatorShell
@@ -129,22 +137,29 @@ export default function CalcROITab() {
 
         <SectionCard title="Scenario assumptions">
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries(scenario).map(([k, v]) => (
+            {(["conservative", "expected", "optimistic"] as ScenarioName[]).map((name) => (
+              <button key={name} onClick={() => setActiveScenario(name)} className={`rounded border px-2 py-1 text-xs ${activeScenario===name?"border-primary text-primary":"border-border"}`}>{name}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {Object.entries(scenario[activeScenario]).map(([k, v]) => (
               <label key={k} className="space-y-1">
                 <span className="text-xs text-muted-foreground">{k.replaceAll("_", " ")}</span>
-                <input type="number" value={v} onChange={(e) => updateScenarioMutation.mutate({ [k]: Number(e.target.value) } as Partial<ScenarioState>)} className="w-full rounded border border-border bg-background px-2 py-1 text-xs" />
+                <input type="number" value={v} onChange={(e) => updateScenarioMutation.mutate({ scenarioName: activeScenario, next: { [k]: Number(e.target.value) } as Partial<ScenarioState> })} className="w-full rounded border border-border bg-background px-2 py-1 text-xs" />
               </label>
             ))}
           </div>
+          <div className="mb-3 flex gap-2"></div>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
             <button onClick={() => saveScenarioMutation.mutate(`Version ${new Date().toLocaleString()}`)} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted" disabled={saveScenarioMutation.isPending}>
               <Save className="h-3.5 w-3.5" /> Save version
             </button>
-            <button onClick={() => recalcMutation.mutate({ ...scenario, account_id: accountId })} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted" disabled={recalcMutation.isPending}>
+            <button onClick={() => recalcMutation.mutate({ ...scenario.expected, account_id: accountId })} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted" disabled={recalcMutation.isPending}>
               {recalcMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />} Recalculate
             </button>
             {updateScenarioMutation.isPending && <span className="text-muted-foreground">Updating assumptions…</span>}
             {recalcMutation.isError && <span className="text-destructive">Failed to recalculate scenario.</span>}
+            {updateScenarioMutation.error instanceof Error && <span className="text-destructive">{updateScenarioMutation.error.message}</span>}
             {saveScenarioMutation.isError && <span className="text-destructive">Failed to persist scenario version.</span>}
           </div>
         </SectionCard>
@@ -187,6 +202,19 @@ export default function CalcROITab() {
             {!versionsQuery.data?.length && <p className="text-xs text-muted-foreground">No versions saved for this account/case/model.</p>}
           </div>
         </SectionCard>
+        {nextAction && (
+          <div className="flex items-center justify-end gap-2">
+            {nextAction.disabled && <span className="text-xs text-muted-foreground">{nextAction.reason}</span>}
+            <button
+              className="inline-flex items-center gap-1 rounded bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+              disabled={nextAction.disabled}
+              onClick={() => navigateTo(nextAction.target, nextAction.params)}
+              data-testid="primary-forward-action"
+            >
+              {nextAction.label}
+            </button>
+          </div>
+        )}
       </div>
     </CalculatorShell>
   );

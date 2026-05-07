@@ -12,13 +12,42 @@ export type ScenarioState = {
   ramp_months: number;
 };
 
+export type ScenarioName = "conservative" | "expected" | "optimistic";
+
+export type ScenarioAssumptionSet = Record<ScenarioName, ScenarioState>;
+
+export const DEFAULT_SCENARIO_ASSUMPTIONS: ScenarioAssumptionSet = {
+  conservative: { deal_size: 100000, implementation_cost: 70000, annual_benefit: 80000, time_horizon_years: 3, discount_rate: 11, ramp_months: 5 },
+  expected: { deal_size: 120000, implementation_cost: 60000, annual_benefit: 100000, time_horizon_years: 3, discount_rate: 10, ramp_months: 3 },
+  optimistic: { deal_size: 140000, implementation_cost: 50000, annual_benefit: 120000, time_horizon_years: 3, discount_rate: 9, ramp_months: 2 },
+};
+
+export function validateScenarioAssumptions(bundle: ScenarioAssumptionSet): string[] {
+  const errors: string[] = [];
+  for (const [name, assumptions] of Object.entries(bundle) as Array<[ScenarioName, ScenarioState]>) {
+    if (assumptions.deal_size <= 0) errors.push(`${name}: deal_size must be > 0`);
+    if (assumptions.implementation_cost < 0) errors.push(`${name}: implementation_cost must be >= 0`);
+    if (assumptions.annual_benefit < 0) errors.push(`${name}: annual_benefit must be >= 0`);
+    if (assumptions.time_horizon_years <= 0) errors.push(`${name}: time_horizon_years must be > 0`);
+    if (assumptions.discount_rate < 0 || assumptions.discount_rate > 100) errors.push(`${name}: discount_rate must be between 0 and 100`);
+    if (assumptions.ramp_months < 0 || assumptions.ramp_months > assumptions.time_horizon_years * 12) errors.push(`${name}: ramp_months must be within the time horizon`);
+  }
+  if (bundle.conservative.annual_benefit > bundle.expected.annual_benefit || bundle.expected.annual_benefit > bundle.optimistic.annual_benefit) {
+    errors.push("annual_benefit must be conservative <= expected <= optimistic");
+  }
+  if (bundle.conservative.implementation_cost < bundle.expected.implementation_cost || bundle.expected.implementation_cost < bundle.optimistic.implementation_cost) {
+    errors.push("implementation_cost must be conservative >= expected >= optimistic");
+  }
+  return errors;
+}
+
 export type PersistedScenarioVersion = {
   versionId: string;
   accountId: string;
   caseId: string;
   modelId: string;
   name: string;
-  assumptions: ScenarioState;
+  assumptions: ScenarioAssumptionSet;
   updatedAt: string;
 };
 
@@ -43,11 +72,13 @@ export function useROIScenarioVersions(scope: Scope) {
   });
 }
 
-export function useSaveROIScenarioVersion(scope: Scope, scenario: ScenarioState) {
+export function useSaveROIScenarioVersion(scope: Scope, scenario: ScenarioAssumptionSet) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["roi", "scenario", "save", scope.accountId ?? "", scope.caseId ?? "", scope.modelId ?? ""],
     mutationFn: async (name: string) => {
+      const validationErrors = validateScenarioAssumptions(scenario);
+      if (validationErrors.length) throw new Error(validationErrors.join("; "));
       const response = await apiPost<PersistedScenarioVersion>("l4", `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios`, {
         account_id: scope.accountId,
         model_id: scope.modelId,
@@ -66,7 +97,9 @@ export function useUpdateROIScenarioVersion(scope: Scope) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ["roi", "scenario", "update", scope.accountId ?? "", scope.caseId ?? "", scope.modelId ?? ""],
-    mutationFn: async ({ versionId, assumptions }: { versionId: string; assumptions: ScenarioState }) => {
+    mutationFn: async ({ versionId, assumptions }: { versionId: string; assumptions: ScenarioAssumptionSet }) => {
+      const validationErrors = validateScenarioAssumptions(assumptions);
+      if (validationErrors.length) throw new Error(validationErrors.join("; "));
       const response = await apiPatch<PersistedScenarioVersion>("l4", `/analysis/cases/${encodeURIComponent(scope.caseId ?? "")}/workspace/value-model/scenarios/${encodeURIComponent(versionId)}`, {
         account_id: scope.accountId,
         model_id: scope.modelId,

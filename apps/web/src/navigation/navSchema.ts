@@ -18,13 +18,15 @@ export const NAV_SCHEMA: NavSchemaNode[] = [
     id: "intelligence", label: "Intelligence", path: "/intelligence", tier: "standard", description: "Discover and validate prospect pain signals",
     children: [
       { id: "intel-signals", label: "Signals", path: "/intelligence/:accountId/signals", tier: "standard" },
-      { id: "intel-drivers", label: "Drivers", path: "/intelligence/:accountId/drivers", tier: "standard" },
+      { id: "intel-opportunities", label: "Opportunities / Value Paths", path: "/intelligence/:accountId/hypotheses", tier: "standard" },
+      { id: "intel-drivers", label: "Driver Tree", path: "/intelligence/:accountId/drivers", tier: "standard" },
       { id: "intel-evidence", label: "Evidence", path: "/intelligence/:accountId/evidence", tier: "standard" },
+      { id: "intel-scenarios", label: "Scenarios", path: "/intelligence/:accountId/roi", tier: "standard" },
+      { id: "intel-business-case", label: "Business Case", path: "/value-case/:accountId", tier: "standard" },
+      { id: "intel-realization", label: "Realization", path: "/realization/:accountId", tier: "standard" },
       { id: "intel-stakeholders", label: "Stakeholders", path: "/intelligence/:accountId/stakeholders", tier: "standard" },
       { id: "intel-enrichment", label: "Enrichment", path: "/intelligence/:accountId/enrichment", tier: "advanced" },
-      { id: "intel-hypotheses", label: "Hypotheses", path: "/intelligence/:accountId/hypotheses", tier: "advanced" },
       { id: "intel-competitive", label: "Competitive", path: "/intelligence/:accountId/competitive", tier: "advanced" },
-      { id: "intel-roi", label: "ROI", path: "/intelligence/:accountId/roi", tier: "advanced" },
       { id: "intel-evidence-library", label: "Evidence Library", path: "/intelligence/:accountId/evidence-library", tier: "advanced" },
     ],
   },
@@ -41,6 +43,13 @@ export const NAV_SCHEMA: NavSchemaNode[] = [
     ],
   },
 ];
+
+const ROUTE_ALIASES: Record<string, string> = {
+  "/hypothesis/:accountId": "/intelligence/:accountId/hypotheses",
+  "/drivers/:accountId": "/intelligence/:accountId/drivers",
+  "/drivers/:accountId/evidence": "/intelligence/:accountId/evidence",
+  "/calculator/:accountId": "/intelligence/:accountId/roi",
+};
 
 export interface BreadcrumbItem { label: string; path?: string }
 
@@ -60,6 +69,27 @@ function routeMatches(pattern: string, actual: string): boolean {
   return p.every((seg, i) => segmentMatches(seg, a[i] || ""));
 }
 
+function resolveAliasPath(pathname: string): string {
+  const aliasEntry = Object.entries(ROUTE_ALIASES).find(([alias]) => routeMatches(alias, pathname));
+  if (!aliasEntry) return pathname;
+
+  const [alias, canonical] = aliasEntry;
+  const aliasParts = alias.split("/").filter(Boolean);
+  const pathParts = pathname.split("/").filter(Boolean);
+  const replacements = new Map<string, string>();
+
+  aliasParts.forEach((seg, idx) => {
+    if (seg.startsWith(":")) replacements.set(seg, pathParts[idx] || "");
+  });
+
+  return canonical
+    .split("/")
+    .filter(Boolean)
+    .map((seg) => (seg.startsWith(":") ? replacements.get(seg) || seg : seg))
+    .join("/")
+    .replace(/^/, "/");
+}
+
 
 function isDynamicPrefixSegment(pathname: string): boolean {
   const actual = pathname.split("/").filter(Boolean);
@@ -77,6 +107,7 @@ function labelForSegment(segment: string): string {
 }
 
 export function resolveBreadcrumbs(pathname: string): BreadcrumbItem[] {
+  pathname = resolveAliasPath(pathname);
   const pathSegments = pathname.split("/").filter(Boolean);
   if (pathSegments.length === 0) return [{ label: "Value Fabric" }];
 

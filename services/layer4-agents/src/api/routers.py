@@ -10,6 +10,7 @@ from ..registry.api.routes import router as models_router
 from ..tenants.api import admin_router, api_keys_router, provisioning_router, registration_router, tenants_router, users_router
 from ..tenants.api.routes.oidc import router as oidc_router
 from .routes import accounts, agent_stream, analysis, prospects, signals, tools, workflows
+from .routes.company_knowledge import router as company_knowledge_router
 from .routes import audit as audit_router
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
@@ -71,3 +72,4 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(c1_router, prefix="/v1", tags=["c1"])
     app.include_router(frontend_compat_router, prefix="/v1")
     app.include_router(prospects.router, prefix="/v1")
+    app.include_router(company_knowledge_router, prefix="/v1")

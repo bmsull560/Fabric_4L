@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Percent,
+  Link,
 } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
@@ -210,7 +211,18 @@ export default function ROITab() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
+  type AssumptionSupportStatus = "supported" | "partial" | "unsupported" | "unreviewed";
+  type WorkspaceAssumption = {
+    id?: string;
+    statement?: string;
+    text?: string;
+    support_status?: AssumptionSupportStatus;
+    supportStatus?: AssumptionSupportStatus;
+    evidence_ids?: string[];
+    evidenceIds?: string[];
+  };
   const { data: evidenceData } = useWorkspaceTabQuery<{ evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }> }>(caseId ?? null, "evidence");
+  const { data: assumptionsData } = useWorkspaceTabQuery<{ assumptions: WorkspaceAssumption[] }>(caseId ?? null, "assumptions");
   const { data: templates } = useROITemplates();
   const { data: benchmarks } = useIndustryBenchmarks(account?.industry ?? null);
   const calculateROI = useCalculateROI();
@@ -227,6 +239,13 @@ export default function ROITab() {
 
   const result: ROICalculationResult | undefined = calculateROI.data;
   const acceptedEvidence = (evidenceData?.evidence ?? []).filter((item) => item.decision_status === "accepted");
+  const assumptions = assumptionsData?.assumptions ?? [];
+  const statusStyle: Record<AssumptionSupportStatus, string> = {
+    supported: "bg-emerald-100 text-emerald-700 border-emerald-300",
+    partial: "bg-amber-100 text-amber-700 border-amber-300",
+    unsupported: "bg-red-100 text-red-700 border-red-300",
+    unreviewed: "bg-muted text-muted-foreground border-border",
+  };
   const scenarios: Record<string, ScenarioResult> = result?.scenarios ?? {};
   const activeResult: ScenarioResult | undefined = scenarios[activeScenario];
 
@@ -301,6 +320,39 @@ export default function ROITab() {
             {acceptedEvidence.map((item) => (
               <div key={item.id} className="text-xs">{item.title} · Linkage ID: {item.provenance_id ?? item.id}</div>
             ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Assumption Support Trace" className="mb-4">
+        {!assumptions.length ? (
+          <div className="text-xs text-muted-foreground">No assumptions available for support tracing yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {assumptions.map((item, index) => {
+              const support = item.support_status ?? item.supportStatus ?? "unreviewed";
+              const linkedEvidence = (item.evidence_ids ?? item.evidenceIds ?? [])
+                .map((evidenceId) => acceptedEvidence.find((e) => e.id === evidenceId))
+                .filter(Boolean);
+              return (
+                <div key={item.id ?? `assumption-${index}`} className="rounded border border-border p-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-medium">{item.statement ?? item.text ?? "Untitled assumption"}</p>
+                    <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-semibold capitalize", statusStyle[support])}>{support}</span>
+                  </div>
+                  <div className="mt-1 space-y-1">
+                    {linkedEvidence.length ? linkedEvidence.map((evidence) => (
+                      <div key={evidence?.id} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Link size={10} />
+                        <span>{evidence?.title}</span>
+                        <span>·</span>
+                        <span>Artifact {evidence?.provenance_id ?? evidence?.id}</span>
+                      </div>
+                    )) : <div className="text-[10px] text-amber-600">No supporting evidence linked.</div>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </SectionCard>

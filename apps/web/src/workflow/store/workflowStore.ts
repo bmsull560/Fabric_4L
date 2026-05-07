@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ProspectInfo, EnrichedEntity } from '../types';
+import type { WorkflowContext } from '../context';
 import { WORKFLOW_STORAGE_KEY, SESSION_ID } from '../constants';
 
 /**
@@ -29,6 +30,7 @@ export interface WorkflowState {
   enrichedEntities: EnrichedEntity[];
   selectedTreeId: string | null;
   generatedCaseId: string | null;
+  workflowContext: Partial<WorkflowContext>;
 }
 
 export interface WorkflowActions {
@@ -46,6 +48,7 @@ export interface WorkflowActions {
   setSelectedTreeId: (id: string | null) => void;
   /** Store generated value case ID */
   setGeneratedCaseId: (id: string | null) => void;
+  setWorkflowContext: (context: Partial<WorkflowContext>) => void;
 }
 
 const initialState: WorkflowState = {
@@ -55,6 +58,7 @@ const initialState: WorkflowState = {
   enrichedEntities: [],
   selectedTreeId: null,
   generatedCaseId: null,
+  workflowContext: {},
 };
 
 export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
@@ -71,6 +75,7 @@ export const useWorkflowStore = create<WorkflowState & WorkflowActions>()(
       setEnrichedEntities: (entities) => set({ enrichedEntities: entities }),
       setSelectedTreeId: (id) => set({ selectedTreeId: id }),
       setGeneratedCaseId: (id) => set({ generatedCaseId: id }),
+      setWorkflowContext: (context) => set((state) => ({ workflowContext: { ...state.workflowContext, ...context } })),
     }),
     { name: WORKFLOW_STORAGE_KEY }
   )

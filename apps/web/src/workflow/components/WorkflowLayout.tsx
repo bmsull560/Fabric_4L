@@ -4,6 +4,7 @@ import { Radar, Building2, BrainCircuit, GitFork, Database, Calculator, FileText
 import { cn } from '@/lib/utils';
 import { useWorkflowStore } from '../store/workflowStore';
 import { WORKFLOW_STEPS } from '../types';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type IconName = 'Radar' | 'Building2' | 'BrainCircuit' | 'GitFork' | 'Database' | 'Calculator' | 'FileText';
 
@@ -18,13 +19,28 @@ function getIcon(name: string): LucideIcon {
 
 export function WorkflowLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation().pathname;
-  const { sessionId, initSession } = useWorkflowStore();
+  const { sessionId, initSession, prospect, setWorkflowContext } = useWorkflowStore();
 
   React.useEffect(() => {
     if (!sessionId) initSession();
   }, [sessionId, initSession]);
 
   const currentStepIndex = WORKFLOW_STEPS.findIndex(s => location === s.path || location.startsWith(s.path + '/'));
+
+  React.useEffect(() => {
+    if (!sessionId) return;
+    setWorkflowContext({
+      sessionId,
+      accountId: prospect?.companyId ?? '',
+      step: {
+        stepIndex: Math.max(0, currentStepIndex),
+        stepKey: WORKFLOW_STEPS[Math.max(0, currentStepIndex)]?.label ?? 'workflow',
+      },
+    });
+  }, [currentStepIndex, prospect?.companyId, sessionId, setWorkflowContext]);
+
+  const requiresAccountContext = currentStepIndex > 0;
+  const missingRequiredContext = requiresAccountContext && !prospect?.companyId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -66,6 +82,18 @@ export function WorkflowLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {missingRequiredContext ? (
+          <Alert className="mb-4 border-warning/60">
+            <AlertTitle>Missing workflow context</AlertTitle>
+            <AlertDescription>
+              This step requires a selected prospect account. Return to Prospect Setup to restart, or go to Accounts and pick an account.
+              <div className="mt-3 flex gap-3 text-sm">
+                <Link className="text-primary underline" to="/workflow/prospect">Go to Prospect Setup</Link>
+                <Link className="text-primary underline" to="/accounts">Open Accounts</Link>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {children}
       </main>
     </div>

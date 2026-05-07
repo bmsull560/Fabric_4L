@@ -109,6 +109,7 @@ export interface AgentEventClientOptions {
   selectedScenarioId?: string;
   selectedBusinessCaseId?: string;
   workspaceCaseId?: string;
+  workflowContext?: Record<string, unknown>;
   entityContext?: Record<string, unknown>;
 }
 
@@ -141,6 +142,7 @@ export async function* sendAgentMessage(
     selectedScenarioId: options.selectedScenarioId,
     selectedBusinessCaseId: options.selectedBusinessCaseId,
     workspaceCaseId: options.workspaceCaseId,
+    workflowContext: options.workflowContext,
     ...(options.entityContext ?? {}),
   };
 

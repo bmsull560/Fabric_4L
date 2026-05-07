@@ -14,11 +14,15 @@ import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useNavigation } from "@/hooks";
+import { Button } from "@/components/ui/button";
+import { createNextAction } from "@/components/workspace/nextAction";
 
 export default function AssumptionsTab() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
+  const { navigateTo } = useNavigation();
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
 
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
@@ -38,6 +42,12 @@ export default function AssumptionsTab() {
   if (!account) {
     return <ErrorState title="Account not found" description="Select a valid account to continue in this workspace." fullPage />;
   }
+  const nextAction = createNextAction({
+    label: "Model Scenarios",
+    target: "calculator",
+    params: { accountId },
+    disabled: false,
+  });
 
   return (
     <HypothesisShell
@@ -81,6 +91,11 @@ export default function AssumptionsTab() {
             <p className="text-xs text-muted-foreground/60 mt-2">
               Tracks validation status of key assumptions and surfaces risks to the business case.
             </p>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => navigateTo(nextAction.target, nextAction.params)} data-testid="primary-forward-action">
+              {nextAction.label}
+            </Button>
           </div>
         </SectionCard>
       </div>

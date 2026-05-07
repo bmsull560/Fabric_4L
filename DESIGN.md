@@ -58,6 +58,22 @@ TanStack Query is the default tool for server state. Hooks should expose domain-
 | Form state | Form-local state with schema-backed validation. | Show field errors, submission progress, and server rejection messages. |
 | Cross-route UI state | Existing Zustand stores only when local or URL state is insufficient. | Keep stores small and avoid duplicating server state. |
 
+### API Client Typing
+
+All new and refactored TanStack Query hooks must use the typed wrappers exported from `@/api/typedClient.ts` instead of calling `apiClient` directly. The wrappers require an explicit response-type generic and prevent the default `unknown` fallback that allows unsafe casts to propagate.
+
+| Wrapper | Use When |
+|---|---|
+| `apiGet<TResponse>(layer, path, config?)` | Fetching data |
+| `apiPost<TResponse>(layer, path, data?, config?)` | Creating resources or triggering actions |
+| `apiPut<TResponse>(layer, path, data?, config?)` | Full entity replacements |
+| `apiPatch<TResponse>(layer, path, data?, config?)` | Partial updates |
+| `apiDelete<TResponse>(layer, path, config?)` | Deletions |
+
+Prefer generated OpenAPI schema types (`layer1_ingestion`, `layer2_extraction`, `layer4_agents`, etc.) as the generic argument when the endpoint has a defined schema. Where the spec returns `unknown` or lacks a schema, define a local frontend interface and use it as the explicit generic rather than falling back to `unknown` or `Record<string, unknown>`.
+
+Runtime parsers (Zod, `safeParse`, manual mappers) must remain in place; the wrappers only remove compile-time `as` casts on API responses. The `src/hooks/` directory is guarded by `pnpm run check:no-raw-api-client-in-hooks` to prevent backsliding.
+
 ## Typography Rules
 
 Value Fabric uses a compact, data-oriented typography system. Use `Inter` for UI text unless an existing file already defines a compatible system stack. Reserve `JetBrains Mono` or system monospace fonts for code, identifiers, and technical data.

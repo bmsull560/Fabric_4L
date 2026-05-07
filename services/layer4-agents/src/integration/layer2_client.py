@@ -5,11 +5,15 @@ calls L2 APIs for financial document processing.
 """
 
 import logging
+import os
 from typing import Any
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+TENANT_ID_HEADER = "X-Tenant-ID"
+SERVICE_AUTH_HEADER = "X-Service-Auth"
 
 
 class Layer2ExtractionClient:
@@ -19,6 +23,7 @@ class Layer2ExtractionClient:
     - Extract from SEC filings
     - Transcribe earnings calls
     - Extract financial metrics
+    - Extract value attributes from website content for company knowledge
 
     Example:
         client = Layer2ExtractionClient(
@@ -37,6 +42,7 @@ class Layer2ExtractionClient:
         base_url: str = "http://layer2-extraction:8000",
         api_key: str | None = None,
         timeout: float = 60.0,
+        tenant_id: str | None = None,
     ):
         """Initialize Layer 2 client.
 
@@ -44,10 +50,12 @@ class Layer2ExtractionClient:
             base_url: Layer 2 API base URL
             api_key: API key for authentication
             timeout: Request timeout
+            tenant_id: Default tenant ID for service-to-service calls
         """
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
+        self._default_tenant_id = tenant_id
 
         headers = {}
         if api_key:
@@ -58,6 +66,17 @@ class Layer2ExtractionClient:
             headers=headers,
             timeout=timeout,
         )
+
+    def _get_headers(self, tenant_id: str | None = None) -> dict[str, str]:
+        """Build request headers with tenant context for service calls."""
+        headers: dict[str, str] = {}
+        effective_tenant = tenant_id or self._default_tenant_id
+        if effective_tenant:
+            headers[TENANT_ID_HEADER] = effective_tenant
+            service_auth = os.getenv("SERVICE_AUTH_SECRET")
+            if service_auth:
+                headers[SERVICE_AUTH_HEADER] = service_auth
+        return headers
 
     async def extract_filing(
         self,
@@ -284,6 +303,62 @@ class Layer2ExtractionClient:
         except httpx.HTTPError as e:
             logger.error(f"Failed to extract operational signals: {e}")
             raise Layer2ClientError(f"Failed to extract signals: {e}") from e
+
+    async def extract_value_attributes(
+        self,
+        content_id: str,
+        source_url: str,
+        markdown_content: str,
+        tenant_id: str | None = None,
+        extraction_config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Extract structured value attributes from website content.
+
+        Calls Layer 2 /v1/extract-and-ingest to extract entities
+        and auto-ingest them to the knowledge graph.
+
+        Args:
+            content_id: Layer 1 content identifier
+            source_url: URL of source document
+            markdown_content: Markdown content to extract from
+            tenant_id: Tenant context
+            extraction_config: Extraction configuration with entity_types,
+                              confidence_threshold, chunk_size, etc.
+
+        Returns:
+            Extraction and ingestion result
+        """
+        payload: dict[str, Any] = {
+            "content_id": content_id,
+            "source_url": source_url,
+            "markdown_content": markdown_content,
+            "extraction_config": extraction_config
+            or {
+                "entity_types": [
+                    "Capability",
+                    "UseCase",
+                    "Persona",
+                    "ValueDriver",
+                    "Product",
+                    "Industry",
+                ],
+                "confidence_threshold": 0.7,
+                "chunk_size": 4000,
+                "chunk_overlap": 200,
+            },
+        }
+
+        try:
+            response = await self.client.post(
+                "/v1/extract-and-ingest",
+                json=payload,
+                headers=self._get_headers(tenant_id),
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error("Failed to extract value attributes: %s", e)
+            raise Layer2ClientError(f"Failed to extract value attributes: {e}") from e
 
     async def close(self) -> None:
         """Close HTTP client."""
