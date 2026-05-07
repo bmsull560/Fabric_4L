@@ -75,6 +75,13 @@ fi
 
 echo -e "${GREEN}✓ .env.dev found${NC}"
 
+JWT_SECRET_VALUE="$(awk -F= '/^JWT_SECRET=/{print $2}' "$ENV_FILE" | tail -n 1 | tr -d '[:space:]')"
+if [[ -z "${JWT_SECRET_VALUE:-}" || "$JWT_SECRET_VALUE" == "CHANGE_ME_32_CHARS_MIN" ]]; then
+    echo -e "${RED}Error: JWT_SECRET must be set explicitly in .env.dev.${NC}"
+    echo "  Update JWT_SECRET in $ENV_FILE (copy from .env.example if needed)."
+    exit 1
+fi
+
 # Optional: check for LLM keys
 if grep -q "^OPENAI_API_KEY=$" "$ENV_FILE" 2>/dev/null; then
     echo -e "${YELLOW}⚠ OPENAI_API_KEY not set — ValuePilot will use heuristic mode${NC}"
