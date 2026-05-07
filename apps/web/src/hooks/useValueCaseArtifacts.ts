@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { useGenerateNarrative, type Narrative } from './useNarratives';
 
@@ -29,23 +30,10 @@ export interface ValueCaseArtifactVersion {
     metrics: ValueCaseArtifactsInput['roi_metrics'];
     risks: string[];
   };
-}
-
-const storageKey = (accountId: string) => `value-case-artifacts:${accountId}`;
-
-function loadArtifacts(accountId: string): ValueCaseArtifactVersion[] {
-  try {
-    const raw = window.localStorage.getItem(storageKey(accountId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as ValueCaseArtifactVersion[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveArtifacts(accountId: string, versions: ValueCaseArtifactVersion[]) {
-  window.localStorage.setItem(storageKey(accountId), JSON.stringify(versions));
+  lineage: {
+    narrative_id: string;
+    business_case_id: string;
+  };
 }
 
 export function useValueCaseArtifacts(accountId: string | null) {
@@ -57,7 +45,8 @@ export function useValueCaseArtifacts(accountId: string | null) {
     queryKey: QK.versions.detail(`value-case:${accountId ?? 'none'}`),
     queryFn: async () => {
       if (!accountId) return [];
-      return loadArtifacts(accountId);
+      const response = await apiClient.get('l4', `/v1/value-case/artifacts?account_id=${encodeURIComponent(accountId)}`);
+      return (response.data?.versions ?? []) as ValueCaseArtifactVersion[];
     },
     enabled: Boolean(accountId),
   });
@@ -79,14 +68,8 @@ export function useValueCaseArtifacts(accountId: string | null) {
         sections: ['executive_summary', 'stakeholder_mapping', 'roi_overview', 'risk_and_mitigation'],
       });
 
-      const existing = loadArtifacts(input.account_id);
-      const nextVersion = (existing[existing.length - 1]?.version ?? 0) + 1;
-
-      const artifact: ValueCaseArtifactVersion = {
-        id: `${input.account_id}-v${nextVersion}`,
+      const response = await apiClient.post('l4', '/v1/value-case/artifacts', {
         account_id: input.account_id,
-        version: nextVersion,
-        created_at: new Date().toISOString(),
         inputs: input,
         narrative: {
           id: narrative.id,
@@ -95,16 +78,12 @@ export function useValueCaseArtifacts(accountId: string | null) {
           created_at: narrative.created_at,
           updated_at: narrative.updated_at,
         },
-        business_case: {
-          summary: `Projected ${input.roi_metrics.roi} ROI with ${input.roi_metrics.payback} payback based on accepted evidence and assumptions.`,
-          metrics: input.roi_metrics,
-          risks: input.risk_notes,
+        lineage: {
+          narrative_id: narrative.id,
+          business_case_id: `bc-${input.account_id}`,
         },
-      };
-
-      const next = [...existing, artifact];
-      saveArtifacts(input.account_id, next);
-      return artifact;
+      });
+      return response.data as ValueCaseArtifactVersion;
     },
     onSuccess: (artifact) => {
       setSelectedVersionId(artifact.id);
