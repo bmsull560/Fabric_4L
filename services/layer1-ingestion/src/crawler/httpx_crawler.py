@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import ipaddress
 import re
+import socket
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -70,6 +72,13 @@ class HttpxCrawlerConfig:
     max_concurrent_requests: int = 20
     spa_script_threshold: int = 5  # Scripts to trigger SPA detection
     spa_content_ratio_threshold: float = 0.02
+    max_redirects: int = 5
+
+
+class SSRFProtectionError(ValueError):
+    """Raised when a crawler URL targets a prohibited network boundary."""
+
+    pass
 
 
 class HttpxCrawler:
@@ -99,6 +108,64 @@ class HttpxCrawler:
         self._client: httpx.AsyncClient | None = None
         self._semaphore: asyncio.Semaphore | None = None
         self.logger = logger.bind(crawler="HttpxCrawler")
+
+    async def _validate_public_url(self, url: str) -> str:
+        """Validate that a URL resolves only to public network addresses."""
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise SSRFProtectionError("Only http and https URLs are allowed")
+        if not parsed.hostname:
+            raise SSRFProtectionError("URL must include a hostname")
+        if parsed.username or parsed.password:
+            raise SSRFProtectionError("Credentials in crawler URLs are not allowed")
+
+        hostname = parsed.hostname.strip().rstrip(".")
+        if hostname.lower() in {"localhost", "localhost.localdomain"}:
+            raise SSRFProtectionError("Localhost crawler targets are not allowed")
+
+        try:
+            addresses = [ipaddress.ip_address(hostname)]
+        except ValueError:
+            loop = asyncio.get_running_loop()
+            try:
+                infos = await loop.getaddrinfo(
+                    hostname,
+                    parsed.port or (443 if parsed.scheme == "https" else 80),
+                    type=socket.SOCK_STREAM,
+                )
+            except socket.gaierror as exc:
+                raise SSRFProtectionError(f"Unable to resolve crawler target: {hostname}") from exc
+            addresses = [ipaddress.ip_address(info[-1][0]) for info in infos]
+
+        for address in addresses:
+            if (
+                address.is_private
+                or address.is_loopback
+                or address.is_link_local
+                or address.is_multicast
+                or address.is_reserved
+                or address.is_unspecified
+            ):
+                raise SSRFProtectionError(
+                    f"Crawler target resolves to prohibited address: {address}"
+                )
+
+        return url
+
+    async def _get_with_validated_redirects(self, url: str) -> httpx.Response:
+        """Fetch a URL while validating every redirect hop against SSRF rules."""
+        current_url = await self._validate_public_url(url)
+        for _ in range(self.config.max_redirects + 1):
+            response = await self._client.get(current_url, follow_redirects=False)
+            if response.status_code not in {301, 302, 303, 307, 308}:
+                return response
+
+            location = response.headers.get("location")
+            if not location:
+                return response
+            current_url = await self._validate_public_url(urljoin(current_url, location))
+
+        raise SSRFProtectionError("Too many redirects while fetching crawler target")
 
     async def __aenter__(self) -> HttpxCrawler:
         """Async context manager entry."""
@@ -162,8 +229,9 @@ class HttpxCrawler:
         start_time = time.monotonic()
 
         try:
+            url = await self._validate_public_url(url)
             async with self._semaphore:
-                response = await self._client.get(url)
+                response = await self._get_with_validated_redirects(url)
 
             fetch_time = int((time.monotonic() - start_time) * 1000)
 
@@ -239,6 +307,16 @@ class HttpxCrawler:
                 status_code=0,
                 fetch_time_ms=fetch_time,
                 error_type=f"network_error:{type(e).__name__}",
+            )
+
+        except SSRFProtectionError as e:
+            fetch_time = int((time.monotonic() - start_time) * 1000)
+            self.logger.warning("Blocked crawler request", url=url, reason=str(e))
+            return self._create_error_result(
+                url=url,
+                status_code=400,
+                fetch_time_ms=fetch_time,
+                error_type="ssrf_blocked",
             )
 
         except Exception as e:

@@ -28,11 +28,14 @@ from layer2_extraction.db.models import Base
 # Metadata for autogenerate support
 target_metadata = Base.metadata
 
-# Get database URL from environment
-DB_URL = os.getenv(
-    "DATABASE_URL",
-    f"postgresql://{os.getenv('POSTGRES_USER', 'valuefabric')}:{os.getenv('POSTGRES_PASSWORD', '')}@{os.getenv('POSTGRES_HOST', 'localhost')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB', 'valuefabric')}"
-)
+# Get database URL from environment (no fallback for security)
+DB_URL = os.getenv("DATABASE_URL")
+
+if not DB_URL:
+    raise ValueError(
+        "DATABASE_URL environment variable not configured. "
+        "Set DATABASE_URL to run migrations."
+    )
 
 
 def run_migrations_offline() -> None:

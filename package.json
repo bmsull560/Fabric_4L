@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "generate:api": "pnpm --filter ./apps/web run generate:types",
+    "check:api-types": "pnpm run generate:api && git diff --exit-code apps/web/src/api/generated",
     "lint": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run lint",
     "test": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run test",
     "typecheck": "pnpm --filter ./apps/web --filter ./packages/* --filter ./services/* -r run typecheck",

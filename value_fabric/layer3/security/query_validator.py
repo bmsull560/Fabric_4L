@@ -118,10 +118,10 @@ class QueryValidator:
         ...     print("Query rejected - missing tenant_id")
     """
     
-    # Pattern to match MATCH clauses for Entity nodes
-    # Captures: MATCH (e:Entity ...)
+    # Pattern to match MATCH clauses for domain nodes
+    # Captures: MATCH (e:NodeType ...) -> groups: (node_var, node_type, properties)
     _ENTITY_MATCH_PATTERN = re.compile(
-        r'MATCH\s*\(\s*(\w+)\s*:\s*Entity\s*(?:\{([^}]*)\})?\s*\)',
+        r'MATCH\s*\(\s*(\w+)\s*:\s*(Entity|UseCase|ValueDriver|Capability|Persona|Formula|Outcome|PROVEntity|DecisionTrace|DecisionStep)\s*(?:\{([^}]*)\})?\s*\)',
         re.IGNORECASE | re.DOTALL
     )
     
@@ -139,7 +139,7 @@ class QueryValidator:
     
     # Pattern to detect unscoped MATCH with WHERE
     _UNSCOPED_WHERE_PATTERN = re.compile(
-        r'MATCH\s*\(\s*\w+\s*:\s*Entity\s*\)\s*WHERE',
+        r'MATCH\s*\(\s*\w+\s*:\s*(?:Entity|UseCase|ValueDriver|Capability|Persona|Formula|Outcome|PROVEntity|DecisionTrace|DecisionStep)\s*\)\s*WHERE',
         re.IGNORECASE
     )
     
@@ -191,7 +191,7 @@ class QueryValidator:
         return self._findings
     
     def _check_entity_tenant_scoping(self, query: str, query_name: str) -> None:
-        """Check that all Entity MATCH clauses include tenant_id.
+        """Check that all domain MATCH clauses include tenant_id.
         
         Args:
             query: Cypher query
@@ -199,27 +199,27 @@ class QueryValidator:
         """
         matches = self._ENTITY_MATCH_PATTERN.findall(query)
         
-        for node_var, properties in matches:
+        for node_var, node_type, properties in matches:
             # Check if properties include tenant_id
             if not properties:
                 # No properties at all - definitely unscoped
                 self._findings.append(ValidationFinding(
                     severity=ValidationSeverity.ERROR,
-                    message=f"Entity MATCH (line ~{self._estimate_line(query, 'MATCH')}): "
+                    message=f"Domain MATCH (line ~{self._estimate_line(query, 'MATCH')}): "
                            f"Missing property map - must include {{tenant_id: $tenant_id}}",
                     line_number=self._estimate_line(query, 'MATCH'),
-                    pattern=f"MATCH ({node_var}:Entity)",
-                    suggestion=f"Change to: MATCH ({node_var}:Entity {{id: $id, tenant_id: $tenant_id}})"
+                    pattern=f"MATCH ({node_var}:{node_type})",
+                    suggestion=f"Change to: MATCH ({node_var}:{node_type} {{id: $id, tenant_id: $tenant_id}})"
                 ))
             elif not self._TENANT_ID_PATTERN.search(properties):
                 # Has properties but no tenant_id
                 self._findings.append(ValidationFinding(
                     severity=ValidationSeverity.ERROR,
-                    message=f"Entity MATCH (line ~{self._estimate_line(query, 'MATCH')}): "
+                    message=f"Domain MATCH (line ~{self._estimate_line(query, 'MATCH')}): "
                            f"Missing tenant_id in property map",
                     line_number=self._estimate_line(query, 'MATCH'),
-                    pattern=f"MATCH ({node_var}:Entity {{{properties}}})",
-                    suggestion=f"Add tenant_id: {node_var}:Entity {{{properties}, tenant_id: $tenant_id}}"
+                    pattern=f"MATCH ({node_var}:{node_type} {{{properties}}})",
+                    suggestion=f"Add tenant_id: {node_var}:{node_type} {{{properties}, tenant_id: $tenant_id}}"
                 ))
     
     def _check_delete_safety(self, query: str, query_name: str) -> None:
@@ -270,7 +270,7 @@ class QueryValidator:
                     severity=ValidationSeverity.WARNING,
                     message="WHERE clause may be missing tenant_id filter",
                     line_number=self._estimate_line(query, 'WHERE'),
-                    pattern="MATCH (n:Entity) WHERE ...",
+                    pattern="MATCH (n:NodeType) WHERE ...",
                     suggestion="Add AND n.tenant_id = $tenant_id to WHERE clause"
                 ))
     

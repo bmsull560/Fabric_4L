@@ -54,6 +54,10 @@ jobs:
             fi
           done
 
+      - name: Run production auth bypass prevention gate
+        run: |
+          python scripts/ci/check_auth_bypass.py
+
       - name: Run production stub / synthetic value scan
         run: |
           python scripts/ci/prod_stub_scan.py

@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
+from value_fabric.shared.security.config import is_production_like_environment
 
 if TYPE_CHECKING:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -169,8 +170,14 @@ async def get_checkpoint_saver() -> BaseCheckpointSaver | None:
     Returns:
         AsyncPostgresSaver instance or None if unavailable/unconfigured
     """
-    # Skip if no database URL configured (explicit opt-out)
+    environment = os.getenv("ENVIRONMENT") or os.getenv("ENV") or os.getenv("APP_ENV")
+
+    # Skip if no database URL configured (explicit opt-out in development/test only)
     if not os.getenv("CHECKPOINT_DATABASE_URL"):
+        if is_production_like_environment(environment):
+            raise CheckpointConnectionError(
+                "CHECKPOINT_DATABASE_URL is required in production-like environments"
+            )
         logger.debug("Checkpointing disabled: CHECKPOINT_DATABASE_URL not set")
         return None
 
@@ -178,9 +185,14 @@ async def get_checkpoint_saver() -> BaseCheckpointSaver | None:
         saver = await CheckpointConfig.create_saver()
         return saver
     except CheckpointConnectionError:
-        # Expected failure case - already logged
+        if is_production_like_environment(environment):
+            raise
         return None
     except Exception as e:
+        if is_production_like_environment(environment):
+            raise CheckpointConnectionError(
+                f"Failed to initialize production checkpoint saver: {e}"
+            ) from e
         # Unexpected failure - log for debugging but don't crash
         logger.warning(
             f"Checkpointing unavailable due to unexpected error: {type(e).__name__}: {e}"

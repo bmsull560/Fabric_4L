@@ -262,15 +262,15 @@ class TestCheckpointConfiguration:
                 assert "Database unavailable" in str(exc_info.value.__cause__)
 
     @pytest.mark.asyncio
-    async def test_factory_get_checkpoint_saver_returns_none_on_db_failure(self):
-        """Factory function get_checkpoint_saver() returns None on DB failure for graceful degradation.
+    async def test_factory_get_checkpoint_saver_returns_none_on_db_failure_in_development(self):
+        """Factory function get_checkpoint_saver() returns None on DB failure in development.
         
         Unlike CheckpointConfig.get_saver() which raises exceptions, the factory function
         is designed to silently fail and return None, allowing workflows to continue
         without checkpointing when the database is unavailable.
         """
         # Must set env var to trigger DB connection attempt
-        with patch.dict(os.environ, {"CHECKPOINT_DATABASE_URL": "postgresql://invalid:5432/test"}):
+        with patch.dict(os.environ, {"ENVIRONMENT": "development", "CHECKPOINT_DATABASE_URL": "postgresql://invalid:5432/test"}):
             with patch("src.config.checkpoint.CheckpointConfig.create_saver") as mock_create:
                 mock_create.side_effect = CheckpointConnectionError("Database unavailable")
                 
@@ -278,6 +278,29 @@ class TestCheckpointConfiguration:
                 
                 # Factory should gracefully return None instead of raising
                 assert result is None
+
+    @pytest.mark.asyncio
+    async def test_factory_get_checkpoint_saver_fails_closed_in_production(self):
+        """Production cannot silently disable durable workflow checkpoints."""
+        with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=True):
+            with pytest.raises(CheckpointConnectionError, match="CHECKPOINT_DATABASE_URL"):
+                await get_checkpoint_saver()
+
+    @pytest.mark.asyncio
+    async def test_production_workflow_requires_checkpoint_saver(self, mock_tool_registry, state_manager):
+        """Runtime execution fails closed in production without a checkpointer."""
+        controller = OrchestrationController(
+            tool_registry=mock_tool_registry,
+            state_manager=state_manager,
+            checkpoint_saver=None,
+        )
+        with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=False):
+            with pytest.raises(WorkflowExecutionError, match="checkpoint"):
+                await controller.execute_workflow(
+                    workflow_type=TEST_WORKFLOW_TYPE,
+                    input_data={"workflow_id": "wf-prod-no-checkpoint"},
+                    tenant_id="tenant-a",
+                )
 
 
 @pytest.mark.integration

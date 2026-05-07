@@ -313,11 +313,13 @@ async def health_check(request: Request):
 async def list_datasets(
     industry: Optional[str] = None,
     segment: Optional[str] = None,
+    ctx: Any = None,
 ):
     """List available benchmark datasets."""
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
-    datasets = await _benchmark_repo.list_datasets(industry=industry, segment=segment)
+    tenant_id = ctx.tenant_id if ctx and getattr(ctx, "tenant_id", None) else "system"
+    datasets = await _benchmark_repo.list_datasets(industry=industry, segment=segment, tenant_id=tenant_id)
     return [
         DatasetSummary(
             dataset_id=d.dataset_id,

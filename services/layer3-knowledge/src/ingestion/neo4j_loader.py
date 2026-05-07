@@ -597,13 +597,14 @@ class Neo4jLoader:
                 "source_id": source_id,
                 "extraction_job_id": extraction_job_id,
                 "loaded_at": loaded_at,
+                "tenant_id": effective_tenant_id,
             }
             # rel_type is validated against RELATIONSHIP_TYPES above — safe to
             # interpolate into the query string.
             query = f"""
             UNWIND $relationships AS rel
-            MATCH (source {{id: rel.source_id, tenant_id: '{effective_tenant_id}'}})
-            MATCH (target {{id: rel.target_id, tenant_id: '{effective_tenant_id}'}})
+            MATCH (source {{id: rel.source_id, tenant_id: $tenant_id}})
+            MATCH (target {{id: rel.target_id, tenant_id: $tenant_id}})
             MERGE (source)-[r:{rel_type} {{source_id: rel.source_id, target_id: rel.target_id}}]->(target)
             ON CREATE SET
                 r.source_id = $source_id,

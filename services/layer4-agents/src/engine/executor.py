@@ -208,6 +208,7 @@ class OrchestrationController:
             return
 
         self._shutdown = True
+        await self._mark_active_workflows_interrupted("controller shutdown")
 
         # Cancel active workflows
         for workflow_id, task in list(self._active_workflows.items()):
@@ -221,6 +222,25 @@ class OrchestrationController:
 
         self._started = False
         logger.info("OrchestrationController stopped")
+
+    async def _mark_active_workflows_interrupted(self, reason: str) -> None:
+        """Persist active workflow state before pod shutdown cancels tasks."""
+        interrupted_at = datetime.now(UTC)
+        for workflow_id in list(self._active_workflows):
+            state = await self.state_manager.load_state(workflow_id)
+            if not state or state.status in {
+                WorkflowStatus.COMPLETED,
+                WorkflowStatus.FAILED,
+                WorkflowStatus.CANCELLED,
+            }:
+                continue
+            state.status = WorkflowStatus.INTERRUPTED
+            state.metadata["interrupted_at"] = interrupted_at.isoformat()
+            state.metadata["interruption_reason"] = reason
+            state.errors.append(
+                f"Workflow interrupted by {reason} at {interrupted_at.isoformat()}"
+            )
+            await self.state_manager.save_state(workflow_id, state)
 
     async def resolve_model(self, tenant_id: UUID, provider: str = "openai") -> str:
         """Resolve the active production LLM model for a tenant.
@@ -310,6 +330,19 @@ class OrchestrationController:
             ConcurrencyLimitExceeded: If max concurrent workflows reached (P1-42)
             WorkflowTimeoutError: If workflow exceeds global timeout (P1-25)
         """
+        if self._shutdown:
+            raise WorkflowExecutionError("OrchestrationController is shutting down")
+
+        if self.checkpoint_saver is None:
+            import os
+            from value_fabric.shared.security.config import is_production_like_environment
+
+            environment = os.getenv("ENVIRONMENT") or os.getenv("ENV") or os.getenv("APP_ENV")
+            if is_production_like_environment(environment):
+                raise WorkflowExecutionError(
+                    "Production workflow execution requires a durable checkpoint saver"
+                )
+
         # P1-42: Check concurrent workflow limit
         active_count = len(self._active_workflows)
         if active_count >= self.max_concurrent:
@@ -1012,10 +1045,13 @@ class OrchestrationController:
             paused = await self.state_manager.load_state(workflow_id)
             if paused and paused.status == WorkflowStatus.PAUSED:
                 raise
+            if paused and paused.status == WorkflowStatus.INTERRUPTED:
+                raise
 
             if paused:
-                paused.status = WorkflowStatus.CANCELLED
-                paused.completed_at = datetime.now(UTC)
+                paused.status = WorkflowStatus.INTERRUPTED
+                paused.metadata["interrupted_at"] = datetime.now(UTC).isoformat()
+                paused.metadata["interruption_reason"] = "task cancellation"
                 await self.state_manager.save_state(workflow_id, paused)
             raise
         except (RuntimeError, ValueError, TimeoutError) as exc:

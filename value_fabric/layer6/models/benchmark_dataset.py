@@ -106,6 +106,9 @@ class BenchmarkDataset:
     # Provenance
     provenance_id: Optional[str] = None  # Links to L4 provenance tracking
     is_public: bool = False
+    
+    # Isolation
+    tenant_id: str = "system"
 
     def get_metric(self, name: str) -> Optional[BenchmarkMetric]:
         """Get metric by name."""

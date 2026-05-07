@@ -317,7 +317,7 @@ class ApiClient {
 
   // MANDATE 4: INPUT VALIDATION - All HTTP methods validate path starts with /
   // PERF: Request deduplication applied to GET requests
-  async get(layer: LayerKey, path: string, config?: AxiosRequestConfig): Promise<AxiosResponse> {
+  async get<T = unknown>(layer: LayerKey, path: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     const validatedPath = ApiPathSchema.parse(path);
     const requestKey = this.getRequestKey(layer, 'GET', validatedPath);
 
@@ -325,28 +325,28 @@ class ApiClient {
     const existing = this.inFlightRequests.get(requestKey);
     if (existing) {
       log.warn('Deduplicating identical in-flight GET request', { path: validatedPath, layer });
-      return existing.promise as Promise<AxiosResponse>;
+      return existing.promise as Promise<AxiosResponse<T>>;
     }
 
     return this.trackInFlight(requestKey, this.getClient(layer).get(validatedPath, config));
   }
 
-  async post(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse> {
+  async post<T = unknown>(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     const validatedPath = ApiPathSchema.parse(path);
     return this.getClient(layer).post(validatedPath, data, config);
   }
 
-  async put(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse> {
+  async put<T = unknown>(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     const validatedPath = ApiPathSchema.parse(path);
     return this.getClient(layer).put(validatedPath, data, config);
   }
 
-  async patch(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig) {
+  async patch<T = unknown>(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     const validatedPath = ApiPathSchema.parse(path);
     return this.getClient(layer).patch(validatedPath, data, config);
   }
 
-  async delete(layer: LayerKey, path: string, config?: AxiosRequestConfig): Promise<AxiosResponse> {
+  async delete<T = unknown>(layer: LayerKey, path: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     const validatedPath = ApiPathSchema.parse(path);
     return this.getClient(layer).delete(validatedPath, config);
   }

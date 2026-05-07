@@ -23,6 +23,8 @@ from typing import Any
 from neo4j import AsyncSession
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..schema.constraints import get_relationship_types
+
 
 class get_entity_contextResult(TypedDictModel):
     center: Any
@@ -33,6 +35,21 @@ class count_entity_relationshipsResult(TypedDictModel):
     incoming: int
     outgoing: int
     total: int
+
+_ALLOWED_RELATIONSHIP_TYPES = frozenset(get_relationship_types()) | {
+    rel.upper() for rel in get_relationship_types()
+}
+
+
+def _validate_relationship_types(relationship_types: list[str] | None) -> list[str]:
+    """Validate relationship filters before they reach Cypher."""
+    if not relationship_types:
+        return []
+
+    invalid = [rel for rel in relationship_types if rel not in _ALLOWED_RELATIONSHIP_TYPES]
+    if invalid:
+        raise ValueError(f"Invalid relationship type(s): {', '.join(invalid)}")
+    return list(dict.fromkeys(relationship_types))
 
 
 async def get_entity_by_id(
@@ -267,9 +284,10 @@ async def get_entity_context(
         "min_confidence": min_confidence,
     }
     
-    if relationship_types:
-        rel_types_str = ", ".join(f"'{r}'" for r in relationship_types)
-        rel_filter = f"AND ALL(r IN relationships(path) WHERE type(r) IN [{rel_types_str}])"
+    validated_relationship_types = _validate_relationship_types(relationship_types)
+    if validated_relationship_types:
+        rel_filter = "AND ALL(r IN relationships(path) WHERE type(r) IN $relationship_types)"
+        params["relationship_types"] = validated_relationship_types
     
     query = f"""
         MATCH path = (center {{id: $entity_id, tenant_id: $tenant_id}})-[*1..{hops}]-(connected {{tenant_id: $tenant_id}})

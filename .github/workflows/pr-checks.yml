@@ -163,6 +163,10 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
 
+      - name: Run Layer 3 Cypher scope gate
+        working-directory: ${{ github.workspace }}
+        run: python scripts/ci/check_layer3_cypher_scope.py services/layer3-knowledge/src
+
       - name: Run tests with coverage
         run: |
           uv run pytest tests/ -v --tb=short \

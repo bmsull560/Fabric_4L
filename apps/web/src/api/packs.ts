@@ -74,18 +74,18 @@ function adaptPackSummary(dto: PackSummaryDto | GetPackResponse): ValuePack {
 export async function listValuePackSummaries(filters: ValuePackFilters): Promise<ValuePack[]> {
   const query = buildQueryString(filters);
   const path = query.length > 0 ? `/packs?${query}` : '/packs';
-  const response = await apiClient.get('l3', path);
-  const data = response.data as ListPacksResponse;
+  const response = await apiClient.get<ListPacksResponse>('l3', path);
+  const data = response.data;
   const adapted = data.map(adaptPackSummary);
   return ValuePackListSchema.parse(adapted);
 }
 
 export async function getValuePackDetail(packId: string): Promise<ValuePack> {
-  const response = await apiClient.get('l3', `/packs/${packId}`);
-  return adaptPackSummary(response.data as GetPackResponse);
+  const response = await apiClient.get<GetPackResponse>('l3', `/packs/${packId}`);
+  return adaptPackSummary(response.data);
 }
 
 export async function applyValuePack(packId: string): Promise<ApplyValuePackResponse> {
-  const response = await apiClient.post('l3', `/packs/${packId}/apply`, {});
+  const response = await apiClient.post<unknown>('l3', `/packs/${packId}/apply`, {});
   return ApplyValuePackResponseSchema.parse(response.data);
 }

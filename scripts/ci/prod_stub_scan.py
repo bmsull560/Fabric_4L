@@ -82,6 +82,7 @@ ALLOWLIST: dict[str, str] = {
     "generated:contracts/openapi/layer3-knowledge.json:600": "Generated OpenAPI contract with illustrative example",
     # Scripts that migrate or lint code may reference patterns
     "scripts:scripts/ci/python_contract_lint.py:107": "Lint rule description mentioning security TODOs",
+    "scripts:scripts/ci/check_auth_bypass.py:1": "Auth bypass checking script contains bypass strings explicitly",
     # Legitimate PKCE / JWT canonicalization uses
     "other:services/api/app/core/security.py:65": "JWT base64url canonicalization for tamper detection (not token creation)",
     # Security test simulations

@@ -29,7 +29,7 @@ class BenchmarkRepository:
     async def _tx_save_dataset(tx, dataset: BenchmarkDataset) -> None:
         await tx.run(
             """
-            MERGE (d:BenchmarkDataset {dataset_id: $dataset_id})
+            MERGE (d:BenchmarkDataset {dataset_id: $dataset_id, tenant_id: $tenant_id})
             SET d.name = $name,
                 d.description = $description,
                 d.industry = $industry,
@@ -64,6 +64,7 @@ class BenchmarkRepository:
             MERGE (d)-[:HAS_METRIC]->(m)
             """,
             dataset_id=dataset.dataset_id,
+            tenant_id=dataset.tenant_id,
             name=dataset.name,
             description=dataset.description,
             industry=dataset.industry,
@@ -77,21 +78,22 @@ class BenchmarkRepository:
             metrics=[_metric_to_dict(m) for m in dataset.metrics.values()],
         )
 
-    async def get_dataset(self, dataset_id: str) -> BenchmarkDataset | None:
+    async def get_dataset(self, dataset_id: str, tenant_id: str = "system") -> BenchmarkDataset | None:
         """Retrieve a dataset by ID with all metrics."""
         async with self._driver.session() as session:
-            result = await session.execute_read(self._tx_get_dataset, dataset_id)
+            result = await session.execute_read(self._tx_get_dataset, dataset_id, tenant_id)
             return result
 
     @staticmethod
-    async def _tx_get_dataset(tx, dataset_id: str) -> BenchmarkDataset | None:
+    async def _tx_get_dataset(tx, dataset_id: str, tenant_id: str) -> BenchmarkDataset | None:
         records = await tx.run(
             """
-            MATCH (d:BenchmarkDataset {dataset_id: $dataset_id})
+            MATCH (d:BenchmarkDataset {dataset_id: $dataset_id, tenant_id: $tenant_id})
             OPTIONAL MATCH (d)-[:HAS_METRIC]->(m:BenchmarkMetric)
             RETURN d, collect(m) AS metrics
             """,
             dataset_id=dataset_id,
+            tenant_id=tenant_id,
         )
         record = await records.single()
         if not record:
@@ -99,25 +101,25 @@ class BenchmarkRepository:
         return _node_to_dataset(record["d"], record["metrics"])
 
     async def list_datasets(
-        self, industry: str | None = None, segment: str | None = None
+        self, industry: str | None = None, segment: str | None = None, tenant_id: str = "system"
     ) -> list[BenchmarkDataset]:
         """List datasets with optional filters."""
         async with self._driver.session() as session:
             result = await session.execute_read(
-                self._tx_list_datasets, industry, segment
+                self._tx_list_datasets, industry, segment, tenant_id
             )
             return result
 
     @staticmethod
     async def _tx_list_datasets(
-        tx, industry: str | None, segment: str | None
+        tx, industry: str | None, segment: str | None, tenant_id: str
     ) -> list[BenchmarkDataset]:
         query = """
             MATCH (d:BenchmarkDataset)
             OPTIONAL MATCH (d)-[:HAS_METRIC]->(m:BenchmarkMetric)
             RETURN d, collect(m) AS metrics
         """
-        conditions = []
+        conditions = ["d.tenant_id = $tenant_id"]
         if industry:
             conditions.append("d.industry = $industry")
         if segment:
@@ -128,26 +130,27 @@ class BenchmarkRepository:
                 "MATCH (d:BenchmarkDataset) WHERE " + " AND ".join(conditions),
             )
 
-        records = await tx.run(query, industry=industry, segment=segment)
+        records = await tx.run(query, industry=industry, segment=segment, tenant_id=tenant_id)
         datasets = []
         async for record in records:
             datasets.append(_node_to_dataset(record["d"], record["metrics"]))
         return datasets
 
-    async def delete_dataset(self, dataset_id: str) -> None:
+    async def delete_dataset(self, dataset_id: str, tenant_id: str = "system") -> None:
         """Delete a dataset and its metrics."""
         async with self._driver.session() as session:
-            await session.execute_write(self._tx_delete_dataset, dataset_id)
+            await session.execute_write(self._tx_delete_dataset, dataset_id, tenant_id)
 
     @staticmethod
-    async def _tx_delete_dataset(tx, dataset_id: str) -> None:
+    async def _tx_delete_dataset(tx, dataset_id: str, tenant_id: str) -> None:
         await tx.run(
             """
-            MATCH (d:BenchmarkDataset {dataset_id: $dataset_id})
+            MATCH (d:BenchmarkDataset {dataset_id: $dataset_id, tenant_id: $tenant_id})
             OPTIONAL MATCH (d)-[:HAS_METRIC]->(m:BenchmarkMetric)
             DETACH DELETE d, m
             """,
             dataset_id=dataset_id,
+            tenant_id=tenant_id,
         )
 
 
@@ -183,6 +186,7 @@ def _node_to_dataset(node: Any, metric_nodes: list[Any]) -> BenchmarkDataset:
         version=node.get("version", "1.0.0"),
         data_source=node.get("data_source"),
         is_public=node.get("is_public", False),
+        tenant_id=node.get("tenant_id", "system"),
     )
     if node.get("created_at"):
         dataset.created_at = datetime.fromisoformat(node["created_at"])

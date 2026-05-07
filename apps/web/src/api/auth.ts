@@ -25,6 +25,6 @@ export type RegisterResponse = z.infer<typeof RegisterResponseSchema>;
 
 export async function registerWithEmailPassword(payload: RegisterRequest): Promise<RegisterResponse> {
   const request = RegisterRequestSchema.parse(payload);
-  const response = await apiClient.post('l4', '/tenants/register', request) as { data: unknown };
+  const response = await apiClient.post<unknown>('l4', '/tenants/register', request);
   return RegisterResponseSchema.parse(response.data);
 }

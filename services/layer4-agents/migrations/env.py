@@ -6,13 +6,21 @@ Uses the DATABASE_URL_SYNC env var for the synchronous psycopg2 driver
 that Alembic requires (Alembic does not support asyncpg natively).
 """
 
+import logging
 import os
+import sys
 import time
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.exc import OperationalError
+
+# Module-level logger for migration retry messages
+logger = logging.getLogger(__name__)
+
+# Add src to path for imports (same pattern as layer2-extraction)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 # Import the declarative Base so Alembic can detect model changes
 from src.database import Base
@@ -24,14 +32,17 @@ from src.database import Base
 config = context.config
 
 # Override sqlalchemy.url from environment variable if set
-# Priority: LAYER4_DATABASE_URL > CHECKPOINT_DATABASE_URL > default
+# Priority: LAYER4_DATABASE_URL > CHECKPOINT_DATABASE_URL
+# NOTE: No fallback - explicit configuration required for security
 database_url_sync = os.environ.get(
     "LAYER4_DATABASE_URL",
-    os.environ.get(
-        "CHECKPOINT_DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/layer4_agents",
-    ),
+    os.environ.get("CHECKPOINT_DATABASE_URL"),
 )
+
+if not database_url_sync:
+    raise ValueError(
+        "Database URL not configured. Set LAYER4_DATABASE_URL or CHECKPOINT_DATABASE_URL environment variable."
+    )
 config.set_main_option("sqlalchemy.url", database_url_sync)
 
 # Interpret the config file for Python logging
@@ -114,7 +125,7 @@ def run_migrations_online() -> None:
             last_error = exc
             if attempt == attempts:
                 break
-            print(
+            logger.warning(
                 f"Alembic database connection failed on attempt {attempt}/{attempts}; "
                 f"retrying in {delay_seconds:.1f}s..."
             )

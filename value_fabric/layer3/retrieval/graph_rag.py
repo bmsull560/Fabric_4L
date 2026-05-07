@@ -14,6 +14,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
+from ..schema.constraints import get_entity_types, get_relationship_types
 from .vector_store import VectorStore
 
 
@@ -42,6 +43,34 @@ class GraphRAGEngine_traverse_value_treeResult(TypedDictModel):
     start_entity_id: Any
 
 logger = logging.getLogger(__name__)
+
+_ALLOWED_RELATIONSHIP_TYPES = frozenset(get_relationship_types()) | {
+    rel.upper() for rel in get_relationship_types()
+}
+_ALLOWED_ENTITY_TYPES = frozenset(get_entity_types())
+
+
+def _validate_hops(hops: int, *, max_hops: int = 5) -> int:
+    if not isinstance(hops, int) or not (1 <= hops <= max_hops):
+        raise ValueError(f"hops must be an integer between 1 and {max_hops}")
+    return hops
+
+
+def _validate_relationship_types(relationship_types: list[str] | None) -> list[str]:
+    if not relationship_types:
+        return []
+    invalid = [rel for rel in relationship_types if rel not in _ALLOWED_RELATIONSHIP_TYPES]
+    if invalid:
+        raise ValueError(f"Invalid relationship type(s): {', '.join(invalid)}")
+    return list(dict.fromkeys(relationship_types))
+
+
+def _validate_entity_type(entity_type: str | None) -> str | None:
+    if entity_type is None:
+        return None
+    if entity_type not in _ALLOWED_ENTITY_TYPES:
+        raise ValueError(f"Invalid entity_type: {entity_type}")
+    return entity_type
 
 
 def _serialize_neo4j_value(value: Any) -> Any:
@@ -274,15 +303,15 @@ class GraphRAGEngine:
             ValueError: If tenant_id is None or empty
         """
         tenant = self._resolve_tenant_id(tenant_id)
+        hops = _validate_hops(hops, max_hops=3)
+        validated_relationship_types = _validate_relationship_types(relationship_types)
 
         driver = await self._get_driver()
 
         # Build relationship type filter
         rel_filter = ""
-        if relationship_types:
-            "|".join(f"`{r}`" for r in relationship_types)
-            rel_types_str = ", ".join(f"'{r}'" for r in relationship_types)
-            rel_filter = f"AND type(r) IN [{rel_types_str}]"
+        if validated_relationship_types:
+            rel_filter = "AND ALL(rel IN r WHERE type(rel) IN $relationship_types)"
 
         scoped = self._tenant_builder(tenant).custom_tenant_query(
             f"""
@@ -297,6 +326,7 @@ class GraphRAGEngine:
             params={
                 "entity_id": entity_id,
                 "min_confidence": self.settings.graphrag_min_confidence,
+                "relationship_types": validated_relationship_types,
             },
             operation="graphrag_get_entity_context",
             labels=("*",),
@@ -492,14 +522,20 @@ class GraphRAGEngine:
         """Fallback full-text search using Neo4j indexes."""
         driver = await self._get_driver()
 
+        entity_type = _validate_entity_type(entity_type)
         if entity_type:
             # Search specific entity type
-            query = f"""
-            CALL db.index.fulltext.queryNodes('{entity_type.lower()}_fulltext', $query)
+            query = """
+            CALL db.index.fulltext.queryNodes($index_name, $query)
             YIELD node, score
             RETURN node, score
             LIMIT $limit
             """
+            params = {
+                "query": query_text,
+                "limit": max_results,
+                "index_name": f"{entity_type.lower()}_fulltext",
+            }
         else:
             # Search across all entity types
             query = """
@@ -520,11 +556,12 @@ class GraphRAGEngine:
             ORDER BY score DESC
             LIMIT $limit
             """
+            params = {"query": query_text, "limit": max_results}
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             scoped = self._tenant_builder(tenant_id).custom_tenant_query(
                 query,
-                params={"query": query_text, "limit": max_results},
+                params=params,
                 operation="graphrag_fulltext_search",
                 labels=("*",),
             )
@@ -547,6 +584,7 @@ class GraphRAGEngine:
     ) -> dict[str, Any]:
         """Expand context via graph traversal from seed entities."""
         driver = await self._get_driver()
+        max_hops = _validate_hops(max_hops, max_hops=5)
 
         seed_ids = [e["id"] for e in seed_entities]
         all_entities: dict[str, dict] = {e["id"]: e for e in seed_entities}
@@ -560,7 +598,7 @@ class GraphRAGEngine:
             query = f"""
             MATCH path = (seed)-[r*1..{max_hops}]-(connected)
             WHERE seed.id IN $seed_ids
-              AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
+              AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $_tenant_id)
             RETURN seed.id as seed_id,
                    nodes(path) as path_nodes,
                    relationships(path) as path_rels,
@@ -695,7 +733,7 @@ class GraphRAGEngine:
             Dict representing streaming event with event_type and data
         """
         tenant = self._resolve_tenant_id(tenant_id)
-        max_hops = max(max_hops or self.settings.graphrag_max_hops, 1)  # Ensure >= 1
+        max_hops = _validate_hops(max_hops or self.settings.graphrag_max_hops, max_hops=5)
         min_confidence = min_confidence or self.settings.graphrag_min_confidence
 
         # Start event
@@ -754,7 +792,7 @@ class GraphRAGEngine:
                 MATCH path = (seed)-[r*1..{current_hop}]-(connected)
                 WHERE seed.id IN $seed_ids
                   AND length(path) = {current_hop}
-                  AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
+                  AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $_tenant_id)
                   AND connected.id NOT IN $existing_ids
                 RETURN nodes(path) as path_nodes,
                        relationships(path) as path_rels,

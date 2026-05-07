@@ -4,7 +4,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
-from ..deps import industry_filter, segment_filter
+from ..deps import get_request_context, industry_filter, segment_filter
 from ..schemas import (
     ComparisonRequestPayload,
     ComparisonResponse,
@@ -21,30 +21,42 @@ router = APIRouter(prefix="/v1/benchmarks", tags=["benchmarks"])
 async def list_datasets(
     industry: str | None = Depends(industry_filter),
     segment: str | None = Depends(segment_filter),
+    ctx = Depends(get_request_context),
 ):
     from .. import main as handlers
-    return await handlers.list_datasets(industry=industry, segment=segment)
+    return await handlers.list_datasets(industry=industry, segment=segment, ctx=ctx)
 
 
 @router.get("/datasets/{dataset_id}", response_model=DatasetDetail)
-async def get_dataset(dataset_id: str):
+async def get_dataset(
+    dataset_id: str,
+    ctx = Depends(get_request_context),
+):
     from .. import main as handlers
-    return await handlers.get_dataset(dataset_id)
+    return await handlers.get_dataset(dataset_id, ctx=ctx)
 
 
 @router.post("/compare", response_model=ComparisonResponse)
-async def compare(payload: ComparisonRequestPayload):
+async def compare(
+    payload: ComparisonRequestPayload,
+    ctx = Depends(get_request_context),
+):
     from .. import main as handlers
-    return await handlers.compare(payload)
+    return await handlers.compare(payload, ctx=ctx)
 
 
 @router.post("/validate", response_model=ValidationResponse)
-async def validate(payload: ValidationRequestPayload):
+async def validate(
+    payload: ValidationRequestPayload,
+    ctx = Depends(get_request_context),
+):
     from .. import main as handlers
-    return await handlers.validate(payload)
+    return await handlers.validate(payload, ctx=ctx)
 
 
 @router.get("/industries")
-async def list_industries():
+async def list_industries(
+    ctx = Depends(get_request_context),
+):
     from .. import main as handlers
-    return await handlers.list_industries()
+    return await handlers.list_industries(ctx=ctx)

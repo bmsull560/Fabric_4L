@@ -10,7 +10,12 @@ import pytest
 import respx
 from httpx import Response
 
-from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import FastPathResult, HttpxCrawler, HttpxCrawlerConfig
+from value_fabric.layer1_ingestion.src.crawler.httpx_crawler import (
+    FastPathResult,
+    HttpxCrawler,
+    HttpxCrawlerConfig,
+    SSRFProtectionError,
+)
 
 
 class TestHttpxCrawlerBasic:
@@ -374,6 +379,51 @@ class TestErrorHandling:
         assert result.html == ""
         assert result.text_content == ""
         assert not result.is_spa_detected
+
+
+class TestSSRFProtection:
+    """Test SSRF network boundary enforcement."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://127.0.0.1/admin",
+            "http://10.0.0.1/",
+            "http://172.16.0.1/",
+            "http://192.168.1.10/",
+            "http://169.254.169.254/latest/meta-data/",
+            "http://[::1]/",
+            "ftp://example.com/file",
+            "http://localhost:8000/",
+        ],
+    )
+    async def test_validate_public_url_rejects_private_targets(self, url: str) -> None:
+        crawler = HttpxCrawler()
+        with pytest.raises(SSRFProtectionError):
+            await crawler._validate_public_url(url)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_fetch_blocks_private_ip(self) -> None:
+        async with HttpxCrawler() as crawler:
+            result = await crawler.fetch("http://169.254.169.254/latest/meta-data/")
+
+        assert result.status_code == 400
+        assert result.content_type == "ssrf_blocked"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_redirect_to_private_ip_is_blocked(self) -> None:
+        respx.get("https://example.com/redirect").mock(
+            return_value=Response(302, headers={"location": "http://127.0.0.1/admin"})
+        )
+
+        async with HttpxCrawler() as crawler:
+            result = await crawler.fetch("https://example.com/redirect")
+
+        assert result.status_code == 400
+        assert result.content_type == "ssrf_blocked"
 
 
 class TestFastPathResult:

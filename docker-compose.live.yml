@@ -125,7 +125,7 @@ services:
       LAYER1_API_PORT: 8000
       # Keep Docker readiness non-blocking during live-stack startup; full API checks run after the stack is ready.
       LAYER1_RELEASE_SMOKE_LIGHT_HEALTH: "true"
-      JWT_SECRET: dev-local-secret-do-not-use-in-production-minimum-32-chars
+      JWT_SECRET: ${JWT_SECRET:-live-local-secret-do-not-use-in-production-minimum-32-chars}
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
@@ -231,9 +231,8 @@ services:
     ports:
       - "8004:8000"
     environment:
-      DEV_AUTH_BYPASS: "true"
-      JWT_SECRET: dev-local-secret-do-not-use-in-production-minimum-32-chars
-      SERVICE_AUTH_SECRET: dev-local-service-auth-secret-do-not-use-in-production-32c
+      JWT_SECRET: ${JWT_SECRET:-live-local-secret-do-not-use-in-production-minimum-32-chars}
+      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-live-local-service-auth-secret-do-not-use-in-production-32c}
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents
       CHECKPOINT_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
       REDIS_URL: redis://redis:6379/0
@@ -278,9 +277,9 @@ services:
       DATABASE_URL_SYNC: postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth
       LAYER3_BASE_URL: http://layer3:8001
       LAYER3_SYNC_ENABLED: "true"
-      JWT_SECRET: dev-local-secret-do-not-use-in-production-minimum-32-chars
+      JWT_SECRET: ${JWT_SECRET:-live-local-secret-do-not-use-in-production-minimum-32-chars}
       JWT_ALGORITHM: HS256
-      SERVICE_AUTH_SECRET: dev-local-service-auth-secret-do-not-use-in-production-32c
+      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-live-local-service-auth-secret-do-not-use-in-production-32c}
       LOG_LEVEL: info
       API_PORT: 8005
       REDIS_URL: redis://redis:6379/0
