@@ -17,11 +17,12 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypeVar
 from uuid import uuid4
 
 # Third-party imports for health check
 import importlib
+import importlib.util
 
 from fastapi import BackgroundTasks, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
@@ -85,8 +86,13 @@ from layer2_extraction.integration.pending_ingestion_store import (
 )
 from layer2_extraction.metrics import get_metrics
 from layer2_extraction.models import (
+    Capability,
     ExtractionResult,
+    Feature,
+    Persona,
     Relationship,
+    UseCase,
+    ValueDriver,
 )
 from layer2_extraction.output.provenance import (
     ExtractionStep,
@@ -98,6 +104,15 @@ from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 logger = logging.getLogger(__name__)
 
 PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
+
+
+
+TEntity = TypeVar("TEntity")
+
+
+def _typed_entities(items: list[Any], expected_type: type[TEntity]) -> list[TEntity]:
+    """Return only entities matching the expected model type."""
+    return [item for item in items if isinstance(item, expected_type)]
 
 
 def _current_environment() -> str:
@@ -314,9 +329,9 @@ async def _set_pipeline_job(
     if retry_count is not None:
         job.retry_count = retry_count
     if last_error is not _UNSET:
-        job.last_error = last_error  # type: ignore[assignment]
+        job.last_error = last_error if isinstance(last_error, str) else None
     if next_retry_at is not _UNSET:
-        job.next_retry_at = next_retry_at  # type: ignore[assignment]
+        job.next_retry_at = next_retry_at.isoformat() if isinstance(next_retry_at, datetime) else None
     if completed_at is not None:
         job.completed_at = completed_at.isoformat() if completed_at else None
     # Persist to job store
@@ -783,11 +798,11 @@ async def run_extraction(
         result = ExtractionResult(
             job_id=job_id,
             source_url=source_url,
-            capabilities=deduplicated.get("capabilities", []),  # type: ignore[arg-type]
-            use_cases=deduplicated.get("use_cases", []),  # type: ignore[arg-type]
-            personas=deduplicated.get("personas", []),  # type: ignore[arg-type]
-            value_drivers=deduplicated.get("value_drivers", []),  # type: ignore[arg-type]
-            features=deduplicated.get("features", []),  # type: ignore[arg-type]
+            capabilities=_typed_entities(deduplicated.get("capabilities", []), Capability),
+            use_cases=_typed_entities(deduplicated.get("use_cases", []), UseCase),
+            personas=_typed_entities(deduplicated.get("personas", []), Persona),
+            value_drivers=_typed_entities(deduplicated.get("value_drivers", []), ValueDriver),
+            features=_typed_entities(deduplicated.get("features", []), Feature),
             chunks_processed=len(chunks),
         )
 
@@ -863,7 +878,7 @@ async def run_extraction(
         activity.add_step(step5)
 
         # Complete activity
-        activity.output_entities = [e.id for e in result.get_all_entities()]  # type: ignore[attr-defined]
+        activity.output_entities = [e.id for e in result.get_all_entities()]
         activity.output_relationships = [r.id for r in all_relationships]
         activity.complete(rdf_path=rdf_path)
 
