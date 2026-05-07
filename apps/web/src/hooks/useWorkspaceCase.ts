@@ -156,6 +156,16 @@ export function useGenerateWorkspaceIntelligence() {
   });
 }
 
+
+interface SignalReviewMutationResponse {
+  signal_id: string;
+  account_id: string;
+  review_status: "approved" | "rejected";
+  reviewed_by: string;
+  reviewed_at: string;
+  decision_note?: string | null;
+}
+
 export function useSignalReview() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -170,7 +180,7 @@ export function useSignalReview() {
       reviewStatus: 'approved' | 'rejected';
       decisionNote?: string;
     }) => {
-      const response = await apiPatch<unknown>('l4', `/v1/signals/${signalId}/review`, {
+      const response = await apiPatch<SignalReviewMutationResponse>('l4', `/v1/signals/${signalId}/review`, {
         account_id: accountId,
         review_status: reviewStatus,
         decision_note: decisionNote,
@@ -184,6 +194,8 @@ export function useSignalReview() {
         queryClient.invalidateQueries({ queryKey: QK.accounts.detail(vars.accountId) }),
         queryClient.invalidateQueries({ queryKey: QK.hypotheses.all }),
         queryClient.invalidateQueries({ queryKey: QK.evidence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.intelligence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.valueTrees.all }),
       ]);
     },
   });
@@ -304,6 +316,8 @@ export function useApplyWorkspacePageAction() {
         queryClient.invalidateQueries({ queryKey: ['workspace', 'tab', action.caseId] }),
         queryClient.invalidateQueries({ queryKey: QK.hypotheses.all }),
         queryClient.invalidateQueries({ queryKey: QK.evidence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.intelligence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.valueTrees.all }),
         queryClient.invalidateQueries({ queryKey: QK.accounts.detail(action.accountId) }),
       ]);
     },
