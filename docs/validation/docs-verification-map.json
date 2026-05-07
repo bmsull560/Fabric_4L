@@ -1,0 +1,48 @@
+{
+  "claims": [
+    {
+      "verification_id": "DOC-AUTH-001",
+      "doc": "docs/contract.md",
+      "claim": "Auth enforcement is required and validated through security gate contracts.",
+      "checks": [
+        {
+          "name": "security_gate_declares_auth_enforcement",
+          "command": "rg -n \"auth enforcement\" Makefile"
+        }
+      ]
+    },
+    {
+      "verification_id": "DOC-TENANT-001",
+      "doc": "docs/contract.md",
+      "claim": "Cross-tenant isolation checks run in CI to enforce tenant data boundaries.",
+      "checks": [
+        {
+          "name": "tenant_isolation_gate_target_exists",
+          "command": "make -n security-test-isolation"
+        }
+      ]
+    },
+    {
+      "verification_id": "DOC-PROBE-001",
+      "doc": "docs/validation/live_readiness_three_sprint_plan.md",
+      "claim": "Probe endpoints produce machine-validated CI artifacts.",
+      "checks": [
+        {
+          "name": "live_workflow_validator_supports_endpoint_probes",
+          "command": "python scripts/ci/validate_live_workflow_artifacts.py --help | rg -n -- --require-endpoint-probes"
+        }
+      ]
+    },
+    {
+      "verification_id": "DOC-DEPLOY-001",
+      "doc": "docs/troubleshooting/runbooks/infrastructure/release-checklist.md",
+      "claim": "Deployment command path is maintained and validated for kustomize release prep.",
+      "checks": [
+        {
+          "name": "make_verify_target_exists",
+          "command": "make -n verify >/dev/null"
+        }
+      ]
+    }
+  ]
+}
