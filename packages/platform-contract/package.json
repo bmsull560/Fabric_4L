@@ -7,14 +7,16 @@
     ".": "./src/typescript/index.ts",
     "./agent-result": "./src/typescript/agent-result.ts",
     "./stores": "./src/typescript/stores.ts",
-    "./routing": "./src/typescript/routing.ts"
+    "./routing": "./src/typescript/routing.ts",
+    "./generated": "./src/typescript/generated/index.ts"
   },
   "scripts": {
     "check": "npm run contract:test:ts",
     "contract:test:python": "pytest src/python/canonical -v --tb=short",
     "contract:test:ts": "tsc -p tsconfig.json --noEmit",
     "contract:test:diagnostics": "node ./scripts/run-diagnostic-contract-tests.mjs",
-    "contract:test": "npm run contract:test:python && npm run contract:test:ts && npm run contract:test:diagnostics"
+    "contract:test": "npm run contract:test:python && npm run contract:test:ts && npm run contract:test:diagnostics",
+    "generate:openapi-types": "node scripts/generate-openapi-types.mjs"
   },
   "devDependencies": {
     "typescript": "5.6.3"
