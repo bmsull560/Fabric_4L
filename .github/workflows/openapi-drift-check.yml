@@ -106,10 +106,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest schemathesis
+          pip install pytest schemathesis pyyaml
           pip install -r requirements.txt || true
 
-      - name: Run contract validation tests
+      - name: Run contract validation tests (with infra)
         run: |
-          pytest tests/contract/ -v --tb=short
+          bash scripts/run-openapi-contract-tests.sh
         # Hard fail - contract tests must pass

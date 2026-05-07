@@ -12,6 +12,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { server } from "@/test/mocks/server";
 import { createWrapperWithRouterPath } from "@/test-utils";
 import DriverTreePage from "./DriverTreePage";
 
@@ -45,6 +47,11 @@ vi.mock("@/pages/evidence/SolutionCostTab", () => ({
 describe("DriverTreePage account/loading guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    server.use(
+      http.get("/api/v1/agents/v1/hypotheses/account/:accountId", () =>
+        HttpResponse.json({ hypotheses: [], total: 0 })
+      )
+    );
   });
 
   it("renders AccountRequiredGuard when accountId is missing", () => {

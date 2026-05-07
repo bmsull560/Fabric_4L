@@ -2,7 +2,7 @@
  * Tests for useRoutePrefetch hook
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useRoutePrefetch } from "./useRoutePrefetch";
@@ -14,6 +14,9 @@ vi.mock("@/api/client", () => ({
     get: vi.fn(),
   },
 }));
+
+vi.mock("@/pages/EntityDetail", () => ({ default: () => null }));
+vi.mock("@/pages/BusinessCase", () => ({ default: () => null }));
 
 // Mock window.matchMedia
 const matchMediaMock = vi.fn().mockImplementation((query) => ({
@@ -38,6 +41,7 @@ describe("useRoutePrefetch", () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     // Reset matchMedia mock to default implementation
     matchMediaMock.mockImplementation((query) => ({
@@ -52,8 +56,8 @@ describe("useRoutePrefetch", () => {
     }));
 
     // Create fresh spies for each test
-    setTimeoutSpy = vi.spyOn(global, "setTimeout");
-    clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+    setTimeoutSpy = vi.spyOn(window, "setTimeout");
+    clearTimeoutSpy = vi.spyOn(window, "clearTimeout");
 
     // Create fresh QueryClient for each test
     queryClient = new QueryClient({
@@ -66,6 +70,7 @@ describe("useRoutePrefetch", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   function createWrapper() {
@@ -75,37 +80,35 @@ describe("useRoutePrefetch", () => {
   }
 
   it("should prefetch account detail after debounce delay", async () => {
-    setTimeoutSpy.mockImplementation((callback: () => void) => {
-      callback();
-      return 1 as unknown as NodeJS.Timeout;
-    });
-
     (apiClient.get as any).mockResolvedValue({ data: { id: "acc-001", name: "Test Account" } });
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
 
     result.current.prefetchAccountDetail("acc-001");
 
-    await waitFor(() => {
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
     });
+
+    expect(apiClient.get).toHaveBeenCalledWith("l4", "/accounts/acc-001");
   });
 
   it("should prefetch business case detail after debounce delay", async () => {
-    setTimeoutSpy.mockImplementation((callback: () => void) => {
-      callback();
-      return 1 as unknown as NodeJS.Timeout;
-    });
-
     (apiClient.get as any).mockResolvedValue({ data: { id: "case-001", name: "Test Case" } });
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
 
     result.current.prefetchBusinessCaseDetail("case-001");
 
-    await waitFor(() => {
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 150);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
     });
+
+    expect(apiClient.get).toHaveBeenCalledWith("l4", "/workflows/case-001/result");
   });
 
   it("should cancel pending prefetch", () => {
@@ -151,11 +154,6 @@ describe("useRoutePrefetch", () => {
   });
 
   it("should handle prefetch failures silently", async () => {
-    setTimeoutSpy.mockImplementation((callback: () => void) => {
-      callback();
-      return 1 as unknown as NodeJS.Timeout;
-    });
-
     (apiClient.get as any).mockRejectedValue(new Error("Network error"));
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
@@ -163,26 +161,31 @@ describe("useRoutePrefetch", () => {
     // Should not throw
     expect(() => result.current.prefetchAccountDetail("acc-001")).not.toThrow();
 
-    await waitFor(() => {
-      expect(setTimeoutSpy).toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
     });
+
+    expect(setTimeoutSpy).toHaveBeenCalled();
+    expect(apiClient.get).toHaveBeenCalledWith("l4", "/accounts/acc-001");
   });
 
   it("should deduplicate prefetches for the same ID", async () => {
-    setTimeoutSpy.mockImplementation((callback: () => void) => {
-      callback();
-      return 1 as unknown as NodeJS.Timeout;
-    });
-
     (apiClient.get as any).mockResolvedValue({ data: { id: "acc-001" } });
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
 
     result.current.prefetchAccountDetail("acc-001");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+
     result.current.prefetchAccountDetail("acc-001");
 
-    await waitFor(() => {
-      expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
     });
+
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
   });
 });

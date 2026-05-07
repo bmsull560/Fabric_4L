@@ -28,7 +28,7 @@ describe('Auth Component', () => {
 
     it('should require password', () => {
       // Test password requirement
-      const isValidPassword = (password: string) => password && password.length >= 8;
+      const isValidPassword = (password: string) => password.length >= 8;
       
       expect(isValidPassword('validpass123')).toBe(true);
       expect(isValidPassword('')).toBe(false);

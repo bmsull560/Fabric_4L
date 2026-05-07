@@ -850,6 +850,7 @@ jobs:
       - name: Run runtime contract marker suite
         env:
           RUN_RUNTIME_CONTRACTS: "1"
+          CONTRACT_TEST_STRICT: "1"
           L1_URL: http://localhost:8001
           L2_URL: http://localhost:8002
           L3_URL: http://localhost:8003

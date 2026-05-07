@@ -654,7 +654,7 @@ describe("IngestionJobs", () => {
       });
 
       const retryButton = screen.getByText("Retry Failed").closest("button");
-      expect(retryButton).not.toBeDisabled();
+      await waitFor(() => expect(retryButton).not.toBeDisabled());
     });
 
     it("filters out invalid UUIDs when retrying batch", async () => {

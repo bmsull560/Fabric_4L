@@ -259,6 +259,12 @@ jobs:
           pip install pyyaml
           python3 scripts/ci/k8s_preflight.py --verbose
 
+      - name: Run K8s Tests
+        run: |
+          pip install pytest pyyaml
+          python3 scripts/ensure-pytest-collection.py tests/k8s 150
+          pytest tests/k8s -v
+
   k8s-server-dry-run:
     name: K8s Server Dry Run (Required)
     runs-on: ubuntu-latest

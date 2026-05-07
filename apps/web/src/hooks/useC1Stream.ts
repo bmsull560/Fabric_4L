@@ -40,7 +40,7 @@ interface UseC1StreamOptions {
  * ```tsx
  * const { state, sendQuery, handleSliderChange } = useC1Stream({
  *   businessCaseId: 'bc-123',
- *   businessCaseData: { /* fetched from business-case API; do not hardcode */ }
+ *   businessCaseData: { fetchedFromApi: true }
  * });
  * 
  * // Send a natural language query

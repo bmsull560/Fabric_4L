@@ -91,6 +91,8 @@ export function parseWorkflowSseMessageJson(
 
 interface RawWorkflow {
   id?: string;
+  workflow_id?: string;
+  workflow_instance_id?: string;
   name?: string;
   workflow_type?: string;
   status?: unknown;
@@ -134,14 +136,14 @@ const WorkflowTypesResponseSchema = z
   .passthrough();
 
 function normalizeWorkflow(raw: RawWorkflow): Workflow | null {
-  const normalizedIdText = String(raw.id || "").trim();
+  const normalizedIdText = String(raw.id || raw.workflow_id || raw.workflow_instance_id || "").trim();
   if (!normalizedIdText) {
     return null;
   }
 
   const normalizedName = raw.name || raw.workflow_type || "workflow";
   const normalizedProgress = normalizeWorkflowProgress(
-    raw.progress ?? 0
+    raw.progress ?? raw.progress_percentage ?? 0
   );
 
   return {

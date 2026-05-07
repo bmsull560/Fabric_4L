@@ -13,6 +13,8 @@ Note:
 """
 
 import os
+import urllib.request
+import urllib.error
 
 import pytest
 from httpx import AsyncClient
@@ -31,6 +33,37 @@ def _get_env_url(env_var: str, default: str) -> str:
     """
     url = os.getenv(env_var, default)
     return url.rstrip("/")
+
+@pytest.fixture(scope="session", autouse=True)
+def check_services_availability():
+    """Check if required services are running, otherwise skip tests.
+    Prevents massive traceback dumps when backend infrastructure is missing.
+    """
+    if os.getenv("CONTRACT_TEST_MODE") == "mock":
+        return
+
+    # We only check health endpoints if this is an environment where we expect real APIs.
+    urls_to_check = [
+        f"{_get_env_url('LAYER3_API_URL', DEFAULT_LAYER3_URL)}/health",
+        f"{_get_env_url('LAYER4_API_URL', DEFAULT_LAYER4_URL)}/health",
+        f"{_get_env_url('LAYER5_API_URL', DEFAULT_LAYER5_URL)}/api/v1/health"
+    ]
+
+    missing_services = []
+    for url in urls_to_check:
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=2) as response:
+                if response.status != 200:
+                    missing_services.append(url)
+        except (urllib.error.URLError, ConnectionError):
+            missing_services.append(url)
+
+    if missing_services:
+        if os.getenv("CONTRACT_TEST_STRICT") == "1":
+            pytest.fail(f"CONTRACT_TEST_STRICT=1 but required services are unavailable. Missing: {missing_services}")
+        else:
+            pytest.skip(f"Required contract services are unavailable. Skipping tests instead of failing. Missing: {missing_services}")
 
 
 @pytest.fixture

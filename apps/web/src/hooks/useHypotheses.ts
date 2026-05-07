@@ -21,11 +21,14 @@ export interface ValueHypothesis {
   account_id: string;
   product_id: string;
   signal_id: string;
+  signal_name?: string;
   capability_id?: string;
   hypothesis_text: string;
   capability_name?: string;
   value_path_category?: string;
   confidence: number;
+  confidence_score?: number;
+  estimated_impact_usd?: number;
   status: HypothesisStatus;
   evidence_ids: string[];
   feedback?: string;

@@ -82,3 +82,71 @@ async def test_get_dataset_propagates_tenant(isolated_client: AsyncClient, mock_
     assert kwargs.get("tenant_id") == hostile_tenant
     
     app.dependency_overrides.clear()
+
+@pytest.mark.asyncio
+async def test_hostile_cross_tenant_access_blocked(isolated_client: AsyncClient, monkeypatch):
+    """Verify a hostile tenant cannot access another tenant's benchmark data via the API."""
+    from src.models.benchmark_dataset import BenchmarkDataset
+    import src.api.main as main_module
+    
+    # Create a mock repo that simulates returning data ONLY for a specific tenant
+    mock_repo = AsyncMock()
+    
+    target_dataset = BenchmarkDataset(
+        dataset_id="secret-dataset-1",
+        tenant_id="victim-tenant",
+        name="Victim Data",
+        industry="Tech",
+        segment="Enterprise",
+        description="Confidential data",
+        geography="Global"
+    )
+    
+    async def simulated_get_dataset(dataset_id, tenant_id="system"):
+        if dataset_id == "secret-dataset-1" and tenant_id == "victim-tenant":
+            return target_dataset
+        return None
+        
+    mock_repo.get_dataset = AsyncMock(side_effect=simulated_get_dataset)
+    monkeypatch.setattr(main_module, "_benchmark_repo", mock_repo)
+    
+    # Simulate a request from a hostile tenant
+    app.dependency_overrides[get_request_context] = lambda: RequestContext(
+        tenant_id="hostile-attacker-tenant",
+        user_id="00000000-0000-0000-0000-000000000000",
+        org_id="00000000-0000-0000-0000-000000000000",
+        roles=["admin"],
+        permissions=[],
+        auth_source="mock",
+        tenant_role="admin",
+        isolation_tier="shared",
+        request_id="test"
+    )
+    
+    # The attacker tries to get the victim's dataset
+    response = await isolated_client.get("/v1/benchmarks/datasets/secret-dataset-1")
+    
+    # Because the repo mock honors the tenant_id check (returning None if mismatch), the API should return 404
+    assert response.status_code == 404
+    
+    # Try the compare endpoint
+    compare_payload = {
+        "dataset_id": "secret-dataset-1",
+        "metric": "revenue",
+        "company_value": "100",
+        "industry": "Tech"
+    }
+    response_compare = await isolated_client.post("/v1/benchmarks/compare", json=compare_payload)
+    assert response_compare.status_code == 404
+    
+    # Try the validate endpoint
+    validate_payload = {
+        "dataset_id": "secret-dataset-1",
+        "metric": "revenue",
+        "value": "100",
+        "tolerance_percent": 10
+    }
+    response_validate = await isolated_client.post("/v1/benchmarks/validate", json=validate_payload)
+    assert response_validate.status_code == 404
+    
+    app.dependency_overrides.clear()

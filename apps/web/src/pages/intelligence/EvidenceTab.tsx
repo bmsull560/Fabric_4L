@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { FileText, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
@@ -7,45 +7,130 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useCaseStudies, type CaseStudy } from "@/hooks/useEvidence";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 type VerificationState = "verified" | "partial" | "unverified";
-interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string }
-const VERIFICATION_CONFIG: Record<VerificationState, { icon: typeof CheckCircle2; color: string }> = { verified: { icon: CheckCircle2, color: "text-green-600" }, partial: { icon: AlertCircle, color: "text-orange-600" }, unverified: { icon: AlertCircle, color: "text-muted-foreground" } };
+
+interface EvidenceItem {
+  id: string;
+  title: string;
+  type: string;
+  source: string;
+  matchScore: number;
+  verification: VerificationState;
+  linkedSignals: string[];
+  excerpt: string;
+}
+
+const VERIFICATION_CONFIG: Record<
+  VerificationState,
+  { icon: typeof CheckCircle2; color: string }
+> = {
+  verified: { icon: CheckCircle2, color: "text-green-600" },
+  partial: { icon: AlertCircle, color: "text-orange-600" },
+  unverified: { icon: AlertCircle, color: "text-muted-foreground" },
+};
+
+function mapCaseStudyToEvidenceItem(cs: CaseStudy): EvidenceItem {
+  // Derive a match score from outcome data if available
+  const outcomes = cs.outcomes ?? [];
+  const avgImprovement =
+    outcomes.length > 0
+      ? Math.round(
+          outcomes.reduce((sum, o) => sum + (o.improvement_pct ?? 0), 0) /
+            outcomes.length
+        )
+      : 0;
+  const matchScore = Math.min(100, Math.max(50, 60 + avgImprovement));
+
+  // Derive verification state from data richness
+  let verification: VerificationState = "unverified";
+  if (outcomes.length > 0 && cs.published_date) {
+    verification = "verified";
+  } else if (outcomes.length > 0 || cs.published_date) {
+    verification = "partial";
+  }
+
+  return {
+    id: cs.id,
+    title: cs.title,
+    type: cs.evidence_type ?? "case_study",
+    source: cs.company_name ?? "Unknown",
+    matchScore,
+    verification,
+    linkedSignals: cs.pain_signals_addressed ?? [],
+    excerpt:
+      cs.summary ??
+      (cs.content ? cs.content.slice(0, 200) + (cs.content.length > 200 ? "…" : "") : "No summary available."),
+  };
+}
 
 function useEvidenceTabState() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
-  const { data: caseId } = useCanonicalCaseId(accountId ?? null);
-  const { data, isLoading, error } = useWorkspaceTabQuery<{ evidence: EvidenceItem[] }>(caseId ?? null, "evidence");
-  const persistTab = usePersistWorkspaceTab("evidence");
-  const validateClaim = useValidateEvidenceClaim();
+
+  // Load real case studies filtered by account industry
+  const { data: caseStudiesData, isLoading, error } = useCaseStudies({
+    industry: account?.industry || undefined,
+    limit: 50,
+  });
+
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
 
-  useEffect(() => { if (caseId && data) persistTab.mutate({ caseId, payload: data }); }, [caseId, data]);
+  const evidence = useMemo(() => {
+    const items = caseStudiesData?.items ?? [];
+    return items.map(mapCaseStudyToEvidenceItem);
+  }, [caseStudiesData]);
 
-  const evidence = data?.evidence ?? [];
-  const verified = useMemo(() => evidence.filter((e) => e.verification === "verified").length, [evidence]);
-  const avgMatch = evidence.length ? Math.round(evidence.reduce((s, e) => s + e.matchScore, 0) / evidence.length) : 0;
+  const verified = useMemo(
+    () => evidence.filter((e) => e.verification === "verified").length,
+    [evidence]
+  );
+  const avgMatch = evidence.length
+    ? Math.round(evidence.reduce((s, e) => s + e.matchScore, 0) / evidence.length)
+    : 0;
 
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "evidence", accountName: account?.name ?? "Account", accountId: accountId ?? undefined });
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } =
+    useAgentEvents({
+      activeTab: "evidence",
+      accountName: account?.name ?? "Account",
+      accountId: accountId ?? undefined,
+    });
 
   return {
-    account, accountLoading, caseId, evidence, isLoading, error, verified, avgMatch,
-    selectedEvidence, setSelectedEvidence, railMode, setRailMode,
-    messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
-    validateClaim,
+    account,
+    accountLoading,
+    evidence,
+    isLoading,
+    error,
+    verified,
+    avgMatch,
+    selectedEvidence,
+    setSelectedEvidence,
+    railMode,
+    setRailMode,
+    messages,
+    sendMessage,
+    suggestedActions,
+    steps,
+    isStreaming,
+    metadata,
   };
 }
 
 export function EvidenceTabContent() {
   const { accountId } = useParams<{ accountId: string }>();
   const {
-    evidence, isLoading, error, verified, avgMatch,
-    selectedEvidence, setSelectedEvidence,
+    evidence,
+    isLoading,
+    error,
+    verified,
+    avgMatch,
+    selectedEvidence,
+    setSelectedEvidence,
   } = useEvidenceTabState();
 
   if (!accountId) {
@@ -59,7 +144,9 @@ export function EvidenceTabContent() {
     <>
       {evidence.length === 0 ? (
         <SectionCard title="Evidence Library">
-          <div className="text-sm text-muted-foreground">No evidence has been returned for this case.</div>
+          <div className="text-sm text-muted-foreground">
+            No evidence found for this account's industry. Try importing case studies or broadening filters.
+          </div>
         </SectionCard>
       ) : (
         <>
@@ -85,10 +172,13 @@ export function EvidenceTabContent() {
                     <FileText size={14} />
                     <div className="flex-1">
                       <div className="text-xs font-medium">{item.title}</div>
-                      <div className="text-[10px] text-muted-foreground">{item.linkedSignals.join(" · ")}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {item.linkedSignals.join(" · ")}
+                      </div>
                     </div>
                     <span className={cn("flex items-center gap-1 text-[10px] font-semibold", vc.color)}>
-                      <Icon size={10} />{item.matchScore}%
+                      <Icon size={10} />
+                      {item.matchScore}%
                     </span>
                     <ChevronRight size={12} />
                   </button>
@@ -104,8 +194,17 @@ export function EvidenceTabContent() {
 
 export default function EvidenceTab() {
   const {
-    account, accountLoading, selectedEvidence, railMode, setRailMode,
-    messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
+    account,
+    accountLoading,
+    selectedEvidence,
+    railMode,
+    setRailMode,
+    messages,
+    sendMessage,
+    suggestedActions,
+    steps,
+    isStreaming,
+    metadata,
   } = useEvidenceTabState();
 
   const { accountId } = useParams<{ accountId: string }>();

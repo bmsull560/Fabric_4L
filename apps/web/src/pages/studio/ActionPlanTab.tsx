@@ -1,24 +1,19 @@
 /**
  * Action Plan Tab — Enhanced with DIL hooks
  *
- * Primary data: workspace case recommendations (existing)
- * DIL enrichment: value hypotheses + product portfolio for richer context
+ * Primary data: synthesized from validated hypotheses + product portfolio
+ * DIL enrichment: value hypotheses + product capabilities for recommendation generation
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, Lightbulb, Package, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Lightbulb, Package, Sparkles, ArrowRight } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
+import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import {
-  useCanonicalCaseId,
-  usePersistWorkspaceTab,
-  useWorkspaceTabQuery,
-  useGenerateWorkspaceIntelligence,
-} from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +56,54 @@ const GROUNDING_LABELS: Record<string, { class: string; text: string }> = {
   fact: { class: "bg-emerald-50 text-emerald-700 border border-emerald-200", text: "Fact" },
 };
 
+// ── Recommendation Synthesis ───────────────────────────────────────────────────
+
+function synthesizeRecommendations(
+  hypotheses: ValueHypothesis[],
+  products: Product[]
+): Recommendation[] {
+  return hypotheses.map((h) => {
+    const impact = h.estimated_impact_usd ?? 0;
+    const confidenceScore = h.confidence_score ?? h.confidence ?? 0.5;
+
+    // Priority: revenue uplift + high confidence = critical
+    let priority: Recommendation["priority"] = "medium";
+    if (h.value_path_category === "revenue_uplift" && confidenceScore >= 0.75) {
+      priority = "critical";
+    } else if (confidenceScore >= 0.7 || h.value_path_category === "revenue_uplift") {
+      priority = "high";
+    }
+
+    // Confidence label
+    let confidence: Recommendation["confidence"] = "low";
+    if (confidenceScore >= 0.8) confidence = "high";
+    else if (confidenceScore >= 0.5) confidence = "medium";
+
+    // Find a matching product by capability or fallback to first product
+    const matchingProduct = products.find((p) =>
+      p.capabilities?.some(
+        (c: Record<string, unknown>) =>
+          (c.name as string | undefined)?.toLowerCase() ===
+          (h.capability_name ?? "").toLowerCase()
+      )
+    );
+    const productName = matchingProduct?.name ?? products[0]?.name ?? "Our Solution";
+
+    return {
+      id: h.id,
+      title: h.hypothesis_text,
+      priority,
+      projectedValue: impact >= 1000 ? `$${(impact / 1000).toFixed(1)}K` : `$${impact.toLocaleString()}`,
+      confidence,
+      horizon: h.value_path_category === "cost_savings" ? "0–6 months" : "6–12 months",
+      prospectPain: h.signal_name ?? "Identified pain signal",
+      rootDriver: h.capability_name ?? "Value driver",
+      ourCapability: productName,
+      grounding_type: h.status === "validated" ? "evidence_backed" : "assumption",
+    };
+  });
+}
+
 // ── Hypothesis Card ────────────────────────────────────────────────────────────
 function HypothesisCard({ h }: { h: ValueHypothesis }) {
   return (
@@ -76,7 +119,7 @@ function HypothesisCard({ h }: { h: ValueHypothesis }) {
               {h.status}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              {Math.round(h.confidence * 100)}% confidence
+              {Math.round((h.confidence_score ?? h.confidence ?? 0.5) * 100)}% confidence
             </span>
           </div>
         </div>
@@ -102,30 +145,32 @@ function ProductBadge({ p }: { p: Product }) {
 export default function ActionPlanTab() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
-  const { data: caseId } = useCanonicalCaseId(accountId ?? null);
-  const { data, isLoading, error } = useWorkspaceTabQuery<{
-    recommendations: Recommendation[];
-  }>(caseId ?? null, "action-plan");
-  const persistTab = usePersistWorkspaceTab("action-plan");
+  const { navigateTo } = useNavigation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
 
   // DIL data
-  const { data: hypothesesData } = useAccountHypotheses(accountId ?? null, { status: "validated" });
+  const { data: hypothesesData, isLoading: hypothesesLoading } = useAccountHypotheses(
+    accountId ?? null,
+    { status: "validated" }
+  );
   const { data: productsData } = useProducts();
 
-  useEffect(() => {
-    if (caseId && data) persistTab.mutate({ caseId, payload: data });
-  }, [caseId, data]);
-
-  const recommendations = data?.recommendations ?? [];
   const hypotheses = hypothesesData?.hypotheses ?? [];
   const products = (productsData as ProductListResponse | undefined)?.products ?? [];
+
+  const hasGenerated = recommendations.length > 0;
+
+  const handleGenerate = () => {
+    const generated = synthesizeRecommendations(hypotheses, products);
+    setRecommendations(generated);
+  };
 
   const totalValue = useMemo(
     () =>
       recommendations.reduce(
-        (sum, rec) => sum + Number((rec.projectedValue || "").replace(/[^\d.-]/g, "")),
+        (sum, rec) => sum + Number((rec.projectedValue || "").replace(/[^\d.]/g, "")),
         0
       ),
     [recommendations]
@@ -134,29 +179,15 @@ export default function ActionPlanTab() {
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "action-plan",
     accountName: account?.name ?? "Account",
+    accountId: accountId ?? undefined,
   });
-
-  const generateMutation = useGenerateWorkspaceIntelligence();
-
-  useEffect(() => {
-    if (caseId && recommendations.length === 0 && !isLoading && !generateMutation.isPending) {
-      generateMutation.mutate(caseId);
-    }
-  }, [caseId, recommendations.length, isLoading]);
 
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  if (accountLoading || isLoading || generateMutation.isPending) {
-    return (
-      <CenteredLoader
-        message={generateMutation.isPending ? "Generating action plan..." : "Loading action plan…"}
-      />
-    );
-  }
-  if (error || generateMutation.isError) {
-    return <div className="p-6 text-sm text-destructive">Failed to load action plan.</div>;
+  if (accountLoading || hypothesesLoading) {
+    return <CenteredLoader message="Loading action plan…" />;
   }
 
   if (!account) {
@@ -178,9 +209,9 @@ export default function ActionPlanTab() {
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
-            steps={steps}
-            isStreaming={isStreaming}
-            runMetadata={metadata}
+          steps={steps}
+          isStreaming={isStreaming}
+          runMetadata={metadata}
         />
       }
     >
@@ -222,14 +253,23 @@ export default function ActionPlanTab() {
               +{hypotheses.length - 6} more hypotheses
             </p>
           )}
+          {!hasGenerated && (
+            <div className="mt-4">
+              <Btn variant="primary" onClick={handleGenerate}>
+                <Sparkles size={12} /> Generate Recommendations from Hypotheses
+              </Btn>
+            </div>
+          )}
         </SectionCard>
       )}
 
-      {/* Recommendations (existing workspace data) */}
+      {/* Recommendations */}
       {recommendations.length === 0 ? (
         <SectionCard title="Recommendations">
           <div className="text-sm text-muted-foreground">
-            No action-plan outputs available for this case yet.
+            {hypotheses.length === 0
+              ? "No validated hypotheses available. Promote and validate signals in the Intelligence workspace to generate recommendations."
+              : "Click 'Generate Recommendations from Hypotheses' above to synthesize action items."}
           </div>
         </SectionCard>
       ) : (
@@ -276,7 +316,16 @@ export default function ActionPlanTab() {
                     <p>
                       <b>Capability:</b> {rec.ourCapability}
                     </p>
-                    <Btn variant="primary">Accept → Value Model</Btn>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Btn
+                        variant="primary"
+                        onClick={() =>
+                          navigateTo("calculator", { accountId }, { query: { hypothesisId: rec.id } })
+                        }
+                      >
+                        Model Impact <ArrowRight size={12} />
+                      </Btn>
+                    </div>
                   </div>
                 )}
               </SectionCard>
