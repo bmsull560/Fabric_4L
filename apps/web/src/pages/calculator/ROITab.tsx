@@ -14,29 +14,13 @@ import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { QK } from "@/hooks/queryKeys";
+import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useModels } from "@/hooks/useModels";
+import { useROIScenarioVersions, useSaveROIScenarioVersion, useUpdateROIScenarioVersion, type ScenarioState, type PersistedScenarioVersion } from "@/hooks/useROIScenarios";
 import { useValueLevers } from "@/hooks/useCalculators";
 import { useBenchmarksList, useCalculateROI, useIndustryBenchmarks, type ROICalculationRequest } from "@/hooks/useROICalculator";
 import { useValuePacks } from "@/hooks/useValuePacks";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-type ScenarioState = {
-  deal_size: number;
-  implementation_cost: number;
-  annual_benefit: number;
-  time_horizon_years: number;
-  discount_rate: number;
-  ramp_months: number;
-};
-
-type PersistedScenarioVersion = {
-  versionId: string;
-  accountId: string;
-  caseId: string;
-  modelId: string;
-  name: string;
-  assumptions: ScenarioState;
-  updatedAt: string;
-};
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const DEFAULT_SCENARIO: ScenarioState = {
   deal_size: 120000,
@@ -47,8 +31,6 @@ const DEFAULT_SCENARIO: ScenarioState = {
   ramp_months: 3,
 };
 
-const STORAGE_KEY = "vf.roi.scenario_versions.v1";
-
 function fmtCurrency(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
 }
@@ -58,8 +40,10 @@ export default function CalcROITab() {
   const accountId = params.accountId ?? null;
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
-  const [caseId, setCaseId] = useState("case-default");
-  const [modelId, setModelId] = useState("model-default");
+  const { data: caseId } = useCanonicalCaseId(accountId);
+  const { data: valueModelTab } = useWorkspaceTabQuery<{ model_id?: string; value_model_id?: string; selected_model_id?: string }>(caseId ?? null, "value-model");
+  const { data: models } = useModels({});
+  const modelId = valueModelTab?.selected_model_id ?? valueModelTab?.value_model_id ?? valueModelTab?.model_id ?? models?.[0]?.id ?? null;
   const [scenario, setScenario] = useState<ScenarioState>(DEFAULT_SCENARIO);
 
   const queryClient = useQueryClient();
@@ -69,42 +53,14 @@ export default function CalcROITab() {
   const { data: packs } = useValuePacks({});
   const recalcMutation = useCalculateROI();
 
-  const scenarioKey = useMemo(
-    () => ["calculator", "roi", "scenario", accountId ?? "", caseId, modelId] as const,
+  const scenarioScope = useMemo(
+    () => ({ tenantId: null, accountId, caseId: caseId ?? null, modelId }),
     [accountId, caseId, modelId]
   );
 
-  const versionsQuery = useQuery<PersistedScenarioVersion[]>({
-    queryKey: scenarioKey,
-    enabled: Boolean(accountId),
-    queryFn: async () => {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const all: PersistedScenarioVersion[] = raw ? JSON.parse(raw) : [];
-      return all.filter((entry) => entry.accountId === accountId && entry.caseId === caseId && entry.modelId === modelId);
-    },
-  });
-
-  const saveScenarioMutation = useMutation({
-    mutationKey: ["calculator", "roi", "scenario", "save"],
-    mutationFn: async (name: string) => {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const all: PersistedScenarioVersion[] = raw ? JSON.parse(raw) : [];
-      const entry: PersistedScenarioVersion = {
-        versionId: `sv_${Date.now()}`,
-        accountId: accountId ?? "",
-        caseId,
-        modelId,
-        name,
-        assumptions: scenario,
-        updatedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([entry, ...all]));
-      return entry;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: scenarioKey });
-    },
-  });
+  const versionsQuery = useROIScenarioVersions(scenarioScope);
+  const saveScenarioMutation = useSaveROIScenarioVersion(scenarioScope, scenario);
+  const updateRemoteVersionMutation = useUpdateROIScenarioVersion(scenarioScope);
 
   const updateScenarioMutation = useMutation({
     mutationKey: ["calculator", "roi", "scenario", "edit"],
@@ -116,11 +72,15 @@ export default function CalcROITab() {
     onSuccess: async (updated) => {
       if (!accountId) return;
       await recalcMutation.mutateAsync({ ...updated, account_id: accountId } as ROICalculationRequest);
-      queryClient.invalidateQueries({ queryKey: QK.roi.list({ account_id: accountId }) });
-      queryClient.invalidateQueries({ queryKey: QK.roi.all });
+      await queryClient.invalidateQueries({ queryKey: QK.roi.list({ account_id: accountId }) });
+      await queryClient.invalidateQueries({ queryKey: QK.roi.scenarioVersions(scenarioScope) });
+      await queryClient.invalidateQueries({ queryKey: QK.roi.all });
+      const latest = versionsQuery.data?.[0];
+      if (latest?.versionId) {
+        await updateRemoteVersionMutation.mutateAsync({ versionId: latest.versionId, assumptions: updated });
+      }
     },
   });
-
   useEffect(() => {
     const latest = versionsQuery.data?.[0];
     if (latest) {
