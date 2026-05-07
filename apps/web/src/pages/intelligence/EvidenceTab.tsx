@@ -7,7 +7,7 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { useCaseStudies, type CaseStudy } from "@/hooks/useEvidence";
+import { useCaseStudies, useLinkEvidence, useUnlinkEvidence, type CaseStudy } from "@/hooks/useEvidence";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
@@ -101,6 +101,9 @@ function useEvidenceTabState() {
   const evidenceLinks = linkData?.evidence_links ?? [];
   const driverOptions = driverData?.drivers ?? [];
 
+  const linkMutation = useLinkEvidence();
+  const unlinkMutation = useUnlinkEvidence();
+
   const evidence = useMemo(() => {
     const items = caseStudiesData?.items ?? [];
     return items.map(mapCaseStudyToEvidenceItem);
@@ -136,6 +139,7 @@ function useEvidenceTabState() {
       },
     ];
     persistLinks.mutate({ caseId, payload: { evidence_links: nextLinks } });
+    linkMutation.mutate({ evidence_id: selectedEvidence.id, driver_id: selectedDriverId });
   };
 
   const unlinkEvidence = (link: EvidenceLink) => {
@@ -148,6 +152,7 @@ function useEvidenceTabState() {
         ),
       },
     });
+    unlinkMutation.mutate({ evidence_id: link.evidence_id, driver_id: link.driver_id });
   };
 
   return {
@@ -166,7 +171,7 @@ function useEvidenceTabState() {
     evidenceLinks,
     attachEvidence,
     unlinkEvidence,
-    isAttachingEvidence: persistLinks.isPending,
+    isAttachingEvidence: persistLinks.isPending || linkMutation.isPending,
     railMode,
     setRailMode,
     messages,

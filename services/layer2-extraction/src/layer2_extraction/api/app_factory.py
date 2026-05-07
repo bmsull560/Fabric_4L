@@ -13,13 +13,14 @@ from ..shared_bootstrap import (
     resolve_cors_policy,
 )
 from ..metrics import MetricsMiddleware, initialize_metrics
-from . import routes
 from .websocket import websocket_router
 
 logger = logging.getLogger(__name__)
 
 
 def create_app(*, lifespan, rate_limiter=None):
+    from .routes import audit, extraction, health, jobs, ontology
+
     app = create_fabric_app(
         service_name="layer2-extraction",
         title="Value Fabric - Extraction Pipeline",
@@ -41,10 +42,9 @@ def create_app(*, lifespan, rate_limiter=None):
     install_metrics_middleware(app, metrics=initialize_metrics(), middleware_factory=MetricsMiddleware, logger=logger)
 
     app.include_router(websocket_router, prefix="/v1")
-    app.include_router(routes.system.router)
-    app.include_router(routes.extraction.router)
-    app.include_router(routes.jobs.router)
-    app.include_router(routes.health.router)
-    app.include_router(routes.ontology.router)
-    app.include_router(routes.audit.router)
+    app.include_router(extraction.router)
+    app.include_router(jobs.router)
+    app.include_router(health.router)
+    app.include_router(ontology.router)
+    app.include_router(audit.router)
     return app

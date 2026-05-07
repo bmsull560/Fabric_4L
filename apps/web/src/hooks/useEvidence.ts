@@ -49,6 +49,9 @@ export type {
   ProductStats,
 } from "@/lib/schemas/evidence";
 
+// Legacy alias used by workflow/pages/Evidence.tsx
+export type CaseStudyEvidence = CaseStudy;
+
 export interface CaseStudyOutcomeInput {
   metric: string;
   before_value?: string | null;
@@ -306,5 +309,87 @@ export function useEvidenceSearch() {
       });
       return parseEvidenceSearchResponse(response.data);
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Evidence-to-Driver Linking
+// ---------------------------------------------------------------------------
+
+export interface EvidenceLinkItem {
+  evidence_id: string;
+  evidence_title: string;
+  driver_id: string;
+  linked_at: string;
+}
+
+export interface LinkEvidenceRequest {
+  evidence_id: string;
+  driver_id: string;
+}
+
+export interface LinkEvidenceResponse {
+  evidence_id: string;
+  driver_id: string;
+  linked: boolean;
+  linked_at: string;
+}
+
+export interface UnlinkEvidenceResponse {
+  evidence_id: string;
+  driver_id: string;
+  deleted: number;
+}
+
+export interface EvidenceLinkListResponse {
+  driver_id: string;
+  links: Array<{
+    evidence_id: string;
+    evidence_title: string;
+    evidence_type: string;
+  }>;
+}
+
+export function useLinkEvidence() {
+  const queryClient = useQueryClient();
+  return useMutation<LinkEvidenceResponse, EvidenceApiError, LinkEvidenceRequest>({
+    mutationFn: async params => {
+      const response = await apiClient.post("l3", "/v1/evidence/links", params);
+      return response.data as LinkEvidenceResponse;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.evidence.all });
+    },
+  });
+}
+
+export function useUnlinkEvidence() {
+  const queryClient = useQueryClient();
+  return useMutation<UnlinkEvidenceResponse, EvidenceApiError, { evidence_id: string; driver_id: string }>({
+    mutationFn: async params => {
+      const response = await apiClient.delete("l3", "/v1/evidence/links", {
+        params: {
+          evidence_id: params.evidence_id,
+          driver_id: params.driver_id,
+        },
+      });
+      return response.data as UnlinkEvidenceResponse;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.evidence.all });
+    },
+  });
+}
+
+export function useEvidenceLinks(driverId: string | null) {
+  return useQuery<EvidenceLinkListResponse, EvidenceApiError>({
+    queryKey: ["evidence", "links", driverId],
+    queryFn: async () => {
+      const response = await apiClient.get("l3", "/v1/evidence/links", {
+        params: { driver_id: driverId },
+      });
+      return response.data as EvidenceLinkListResponse;
+    },
+    enabled: !!driverId,
   });
 }

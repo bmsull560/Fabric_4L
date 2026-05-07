@@ -115,9 +115,9 @@ export interface AgentEventClientOptions {
 /**
  * Send a message to the agent and yield AG-UI events.
  *
- * Currently wraps the existing POST `/agent-stream/chat` endpoint.
- * When the backend adds SSE support, this function can switch to
- * streaming mode without changing the consumer API.
+ * Uses the SSE streaming endpoint `/agent-stream/chat/stream`.
+ * Falls back to the legacy POST `/agent-stream/chat` endpoint if
+ * SSE is unavailable (e.g., older backend deployment).
  */
 export async function* sendAgentMessage(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
@@ -128,7 +128,79 @@ export async function* sendAgentMessage(
   const now = () => new Date().toISOString();
   const steps = TAB_STEP_TEMPLATES[options.activeTab] ?? DEFAULT_STEPS;
 
-  // ── RUN_STARTED ─────────────────────────────────────────────────────────
+  // ── Build request body ────────────────────────────────────────────────
+  const entityContext = {
+    accountId: options.accountId,
+    activeTab: options.activeTab,
+    selectedSignalId: options.selectedSignalId,
+    selectedHypothesisId: options.selectedHypothesisId,
+    selectedDriverId: options.selectedDriverId,
+    selectedEvidenceId: options.selectedEvidenceId,
+    selectedValuePath: options.selectedValuePath,
+    selectedDriverTreeId: options.selectedDriverTreeId,
+    selectedScenarioId: options.selectedScenarioId,
+    selectedBusinessCaseId: options.selectedBusinessCaseId,
+    workspaceCaseId: options.workspaceCaseId,
+    ...(options.entityContext ?? {}),
+  };
+
+  const body = {
+    messages,
+    activeTab: options.activeTab,
+    account: {
+      accountId: options.accountId,
+      accountName: options.accountName,
+      accountTier: options.accountTier,
+    },
+    entityContext,
+    selectedSignalId: options.selectedSignalId,
+    selectedValuePath: options.selectedValuePath,
+    selectedDriverTreeId: options.selectedDriverTreeId,
+    selectedScenarioId: options.selectedScenarioId,
+    selectedBusinessCaseId: options.selectedBusinessCaseId,
+  };
+
+  // ── Try SSE streaming first ───────────────────────────────────────────
+  try {
+    const prefix = import.meta.env.VITE_L4_PREFIX || "/agents";
+    const base = import.meta.env.VITE_API_BASE || "/api/v1";
+    const url = `${base}${prefix}/agent-stream/chat/stream`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Tenant-ID": localStorage.getItem("tenantId") || "default",
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+
+    if (response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
+      // Backend supports SSE — consume the stream
+      const stream = streamAgentEventsFromResponse(response, signal);
+      for await (const event of stream) {
+        yield event;
+      }
+      return;
+    }
+
+    // If SSE endpoint returns 404 or non-SSE, fall through to legacy mode
+    if (response.status !== 404) {
+      // Unexpected error from SSE endpoint
+      const text = await response.text().catch(() => "Unknown error");
+      throw new Error(`SSE endpoint error (${response.status}): ${text}`);
+    }
+  } catch (error) {
+    // 404 or network error — fall back to legacy POST endpoint
+    if (import.meta.env.DEV) {
+      log.info("SSE stream unavailable, falling back to legacy POST", {
+        errorCode: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // ── Legacy fallback: synthesize events from single POST response ──────
   yield {
     type: AgentEventType.RUN_STARTED,
     timestamp: now(),
@@ -137,8 +209,6 @@ export async function* sendAgentMessage(
     expectedSteps: steps,
   };
 
-  // ── Emit STEP_STARTED for all steps (pending → active progression) ────
-  // We emit the first step as active immediately
   for (let i = 0; i < steps.length; i++) {
     yield {
       type: AgentEventType.STEP_STARTED,
@@ -148,9 +218,6 @@ export async function* sendAgentMessage(
       label: steps[i].label,
       index: i,
     };
-
-    // Simulate step completion for all but the last step
-    // (the last step completes when we get the response)
     if (i < steps.length - 1) {
       yield {
         type: AgentEventType.STEP_FINISHED,
@@ -162,38 +229,8 @@ export async function* sendAgentMessage(
     }
   }
 
-  // ── Call the backend ──────────────────────────────────────────────────
   try {
-    const entityContext = {
-      accountId: options.accountId,
-      activeTab: options.activeTab,
-      selectedSignalId: options.selectedSignalId,
-      selectedHypothesisId: options.selectedHypothesisId,
-      selectedDriverId: options.selectedDriverId,
-      selectedEvidenceId: options.selectedEvidenceId,
-      selectedValuePath: options.selectedValuePath,
-      selectedDriverTreeId: options.selectedDriverTreeId,
-      selectedScenarioId: options.selectedScenarioId,
-      selectedBusinessCaseId: options.selectedBusinessCaseId,
-      workspaceCaseId: options.workspaceCaseId,
-      ...(options.entityContext ?? {}),
-    };
-
-    const response = (await apiClient.post("l4", "/agent-stream/chat", {
-      messages,
-      activeTab: options.activeTab,
-      account: {
-        accountId: options.accountId,
-        accountName: options.accountName,
-        accountTier: options.accountTier,
-      },
-      entityContext,
-      selectedSignalId: options.selectedSignalId,
-      selectedValuePath: options.selectedValuePath,
-      selectedDriverTreeId: options.selectedDriverTreeId,
-      selectedScenarioId: options.selectedScenarioId,
-      selectedBusinessCaseId: options.selectedBusinessCaseId,
-    })) as {
+    const response = (await apiClient.post("l4", "/agent-stream/chat", body)) as {
       data?: {
         content?: string;
         metadata?: {
@@ -218,7 +255,6 @@ export async function* sendAgentMessage(
       auditEventId: data?.metadata?.audit_event_id,
     };
 
-    // ── Finish the last step ──────────────────────────────────────────
     const lastStep = steps[steps.length - 1];
     yield {
       type: AgentEventType.STEP_FINISHED,
@@ -228,9 +264,7 @@ export async function* sendAgentMessage(
       status: "done",
     };
 
-    // ── TEXT_MESSAGE sequence ────────────────────────────────────────────
     const messageId = `msg-${Date.now()}`;
-
     yield {
       type: AgentEventType.TEXT_MESSAGE_START,
       timestamp: now(),
@@ -238,7 +272,6 @@ export async function* sendAgentMessage(
       messageId,
       role: "agent",
     };
-
     yield {
       type: AgentEventType.TEXT_MESSAGE_CONTENT,
       timestamp: now(),
@@ -246,15 +279,12 @@ export async function* sendAgentMessage(
       messageId,
       delta: content,
     };
-
     yield {
       type: AgentEventType.TEXT_MESSAGE_END,
       timestamp: now(),
       runId,
       messageId,
     };
-
-    // ── RUN_FINISHED ──────────────────────────────────────────────────
     yield {
       type: AgentEventType.RUN_FINISHED,
       timestamp: now(),
@@ -263,8 +293,6 @@ export async function* sendAgentMessage(
     };
   } catch (error) {
     if (signal?.aborted) return;
-
-    // ── Mark remaining steps as error ─────────────────────────────────
     const lastStep = steps[steps.length - 1];
     yield {
       type: AgentEventType.STEP_FINISHED,
@@ -273,8 +301,6 @@ export async function* sendAgentMessage(
       stepId: lastStep.id,
       status: "error",
     };
-
-    // ── RUN_ERROR ─────────────────────────────────────────────────────
     yield {
       type: AgentEventType.RUN_ERROR,
       timestamp: now(),
@@ -282,6 +308,56 @@ export async function* sendAgentMessage(
       message: error instanceof Error ? error.message : "Agent request failed",
       retryable: true,
     };
+  }
+}
+
+/**
+ * Consume AG-UI events from an already-opened fetch Response.
+ */
+async function* streamAgentEventsFromResponse(
+  response: Response,
+  signal?: AbortSignal
+): AsyncGenerator<AgentEvent, void, unknown> {
+  if (!response.body) {
+    yield {
+      type: AgentEventType.RUN_ERROR,
+      timestamp: new Date().toISOString(),
+      message: "Streaming not supported",
+      retryable: false,
+    };
+    return;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      if (signal?.aborted) return;
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+        try {
+          const event = parseAgentEventJson(trimmed.slice(6));
+          yield event;
+        } catch {
+          if (import.meta.env.DEV) {
+            log.warn("Malformed SSE chunk");
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
   }
 }
 

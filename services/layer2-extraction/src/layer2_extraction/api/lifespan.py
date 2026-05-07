@@ -10,8 +10,8 @@ from fastapi import FastAPI
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
-from ..startup_dependencies import verify_startup_dependencies
 from ..shared_bootstrap import validate_production_safety
+from ..startup_dependencies import verify_startup_dependencies
 
 logger = logging.getLogger(__name__)
 

@@ -120,17 +120,6 @@ class DeferredRateLimiter:
 
 _live_rate_limiter = DeferredRateLimiter()
 
-
-lifespan = create_lifespan(
-    is_production_like=_is_production_like,
-    current_environment=_current_environment,
-    pending_ingestion_retry_loop=lambda: _pending_ingestion_retry_loop(),
-    ws_manager=_ws_manager,
-    rate_limiter_proxy=_live_rate_limiter,
-)
-
-app = create_app(lifespan=lifespan, rate_limiter=_live_rate_limiter)
-
 # Extraction configuration constants
 DEFAULT_CHUNK_SIZE = 2000
 DEFAULT_CHUNK_OVERLAP = 200
@@ -1455,6 +1444,17 @@ class extract_batchResult(TypedDictModel):
     job_ids: Any
     status: str
     total_jobs: Any
+
+
+lifespan = create_lifespan(
+    is_production_like=_is_production_like,
+    current_environment=_current_environment,
+    pending_ingestion_retry_loop=lambda: _pending_ingestion_retry_loop(),
+    ws_manager=_ws_manager,
+    rate_limiter_proxy=_live_rate_limiter,
+)
+
+app = create_app(lifespan=lifespan, rate_limiter=_live_rate_limiter)
 
 
 if __name__ == "__main__":

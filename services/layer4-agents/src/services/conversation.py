@@ -123,6 +123,12 @@ WORKFLOW_INTENTS: dict[str, str] = {
     "competitive_intel": "competitive_analysis",
 }
 
+# Intents that map directly to agent tools
+MUTATION_INTENTS: dict[str, str] = {
+    "promote_signal": "promote_signal",
+    "validate_hypothesis": "validate_hypothesis",
+}
+
 
 class ConversationService:
     """Orchestrates the ValuePilot conversation pipeline.
@@ -137,11 +143,141 @@ class ConversationService:
         orchestration_controller: Any | None = None,
         c1_enabled: bool = False,
         context_gatherer: Any | None = None,
+        intent_classifier: Any | None = None,
+        tool_registry: Any | None = None,
     ) -> None:
         self.conversation_agent = conversation_agent
         self.orchestration_controller = orchestration_controller
         self.c1_enabled = c1_enabled
         self.context_gatherer = context_gatherer
+        self.intent_classifier = intent_classifier
+        self.tool_registry = tool_registry
+
+    # Expected steps for streaming mode
+    STREAMING_STEPS = [
+        {"id": "guardrails", "label": "Checking safety guardrails"},
+        {"id": "classify", "label": "Classifying intent"},
+        {"id": "gather", "label": "Gathering account context"},
+        {"id": "generate", "label": "Generating response"},
+    ]
+
+    async def handle_message_streaming(
+        self,
+        *,
+        user_message: str,
+        messages: list[dict[str, str]],
+        active_tab: str,
+        account_id: str | None = None,
+        account_name: str = "this account",
+        account_tier: str | None = None,
+        entity_context: dict[str, Any] | None = None,
+        tenant_id: str = "unknown",
+        trace_id: str | None = None,
+    ):
+        """Async generator that yields AG-UI events as the pipeline progresses.
+
+        Yields dicts shaped like AG-UI events:
+          {type: "RUN_STARTED", ...}
+          {type: "STEP_STARTED", ...}
+          {type: "STEP_FINISHED", ...}
+          {type: "TEXT_MESSAGE_START", ...}
+          {type: "TEXT_MESSAGE_CONTENT", ...}
+          {type: "TEXT_MESSAGE_END", ...}
+          {type: "RUN_FINISHED", ...}
+          {type: "RUN_ERROR", ...}
+        """
+        trace_id = trace_id or str(uuid.uuid4())
+        workflow_id = str(uuid.uuid4())
+        run_id = f"run-{trace_id[:8]}"
+        now = lambda: datetime.now(UTC).isoformat()
+
+        # ── RUN_STARTED ──
+        yield {
+            "type": "RUN_STARTED",
+            "timestamp": now(),
+            "runId": run_id,
+            "description": f"Processing request for {account_name}",
+            "expectedSteps": self.STREAMING_STEPS,
+        }
+
+        try:
+            # ── Guardrails ──
+            yield {"type": "STEP_STARTED", "timestamp": now(), "runId": run_id, "stepId": "guardrails", "label": "Checking safety guardrails"}
+            guardrail = self._detect_guardrail_violation(user_message, messages)
+            yield {"type": "STEP_FINISHED", "timestamp": now(), "runId": run_id, "stepId": "guardrails", "status": "done" if not guardrail else "error"}
+
+            if guardrail:
+                yield {"type": "TEXT_MESSAGE_START", "timestamp": now(), "runId": run_id, "messageId": "msg-1", "role": "agent"}
+                yield {"type": "TEXT_MESSAGE_CONTENT", "timestamp": now(), "runId": run_id, "messageId": "msg-1", "delta": guardrail["message"]}
+                yield {"type": "TEXT_MESSAGE_END", "timestamp": now(), "runId": run_id, "messageId": "msg-1"}
+                yield {
+                    "type": "RUN_FINISHED",
+                    "timestamp": now(),
+                    "runId": run_id,
+                    "metadata": {"traceId": trace_id, "workflowId": workflow_id, "tenantId": tenant_id, "intent": "refusal", "confidence": 1.0},
+                }
+                return
+
+            # ── Classify ──
+            yield {"type": "STEP_STARTED", "timestamp": now(), "runId": run_id, "stepId": "classify", "label": "Classifying intent"}
+            gate_context = self._build_gate_context()
+            intent_result = await self._classify_intent(user_message, gate_context)
+            intent = intent_result.get("intent", "general_question")
+            confidence = intent_result.get("confidence", 0.0)
+            entities = intent_result.get("entities", {})
+            yield {"type": "STEP_FINISHED", "timestamp": now(), "runId": run_id, "stepId": "classify", "status": "done"}
+
+            # ── Gather ──
+            yield {"type": "STEP_STARTED", "timestamp": now(), "runId": run_id, "stepId": "gather", "label": "Gathering account context"}
+            context_data = await self._gather_context(
+                intent=intent,
+                entities=entities,
+                account_id=account_id,
+                entity_context=entity_context or {},
+                gate_context=gate_context,
+                tenant_id=tenant_id,
+            )
+            yield {"type": "STEP_FINISHED", "timestamp": now(), "runId": run_id, "stepId": "gather", "status": "done"}
+
+            # ── Generate ──
+            yield {"type": "STEP_STARTED", "timestamp": now(), "runId": run_id, "stepId": "generate", "label": "Generating response"}
+            response_content = await self._generate_response(
+                user_message=user_message,
+                messages=messages,
+                active_tab=active_tab,
+                intent=intent,
+                context_data=context_data,
+                workflow_result=None,
+                account_name=account_name,
+                gate_context=gate_context,
+                tenant_id=tenant_id,
+                entities=entities,
+            )
+            yield {"type": "STEP_FINISHED", "timestamp": now(), "runId": run_id, "stepId": "generate", "status": "done"}
+
+            # ── Text message ──
+            message_id = f"msg-{trace_id[:8]}"
+            yield {"type": "TEXT_MESSAGE_START", "timestamp": now(), "runId": run_id, "messageId": message_id, "role": "agent"}
+            yield {"type": "TEXT_MESSAGE_CONTENT", "timestamp": now(), "runId": run_id, "messageId": message_id, "delta": response_content}
+            yield {"type": "TEXT_MESSAGE_END", "timestamp": now(), "runId": run_id, "messageId": message_id}
+
+            # ── RUN_FINISHED ──
+            yield {
+                "type": "RUN_FINISHED",
+                "timestamp": now(),
+                "runId": run_id,
+                "metadata": {
+                    "traceId": trace_id,
+                    "workflowId": workflow_id,
+                    "tenantId": tenant_id,
+                    "intent": intent,
+                    "confidence": confidence,
+                },
+            }
+
+        except Exception as e:
+            logger.error("Streaming pipeline error: %s", e, exc_info=True)
+            yield {"type": "RUN_ERROR", "timestamp": now(), "runId": run_id, "message": str(e), "retryable": True}
 
     async def handle_message(
         self,
@@ -238,6 +374,8 @@ class ConversationService:
             workflow_result=workflow_result,
             account_name=account_name,
             gate_context=gate_context,
+            tenant_id=tenant_id,
+            entities=entities,
         )
 
         # Step 5: Emit audit event
@@ -289,7 +427,8 @@ class ConversationService:
         message: str,
         gate_context: dict[str, Any],
     ) -> dict[str, Any]:
-        """Classify user intent using ConversationAgent or fallback heuristics."""
+        """Classify user intent using ConversationAgent, LLM, or fallback heuristics."""
+        # Strategy 1: GATE ConversationAgent
         if self.conversation_agent:
             try:
                 return await self.conversation_agent.execute(
@@ -297,9 +436,16 @@ class ConversationService:
                     gate_context,
                 )
             except Exception:
-                logger.warning("ConversationAgent intent classification failed, using heuristic")
+                logger.warning("ConversationAgent intent classification failed, trying LLM")
 
-        # Heuristic fallback when agent is not available
+        # Strategy 2: LLM-based classifier
+        if self.intent_classifier:
+            try:
+                return await self.intent_classifier.classify(message)
+            except Exception:
+                logger.warning("LLM intent classification failed, using heuristic")
+
+        # Strategy 3: Heuristic fallback
         return self._heuristic_classify(message)
 
     async def _gather_context(
@@ -399,6 +545,53 @@ class ConversationService:
             logger.warning("Workflow delegation failed for intent=%s", intent)
             return None
 
+    async def _execute_mutation_tool(
+        self,
+        *,
+        intent: str,
+        entities: dict[str, Any],
+        context_data: dict[str, Any],
+        tenant_id: str,
+    ) -> dict[str, Any] | None:
+        """Execute a mutation tool if intent matches and registry is available."""
+        if not self.tool_registry:
+            return None
+
+        tool_name = MUTATION_INTENTS.get(intent)
+        if not tool_name:
+            return None
+
+        account_id = context_data.get("account", {}).get("id") or entities.get("account_id")
+
+        try:
+            if tool_name == "promote_signal":
+                signal_id = entities.get("signal_id")
+                if not signal_id or not account_id:
+                    return {"success": False, "error": "Missing signal_id or account_id"}
+                return await self.tool_registry.promote_signal(
+                    tenant_id=tenant_id,
+                    account_id=str(account_id),
+                    signal_id=str(signal_id),
+                    value_path_category=entities.get("value_path_category"),
+                )
+
+            if tool_name == "validate_hypothesis":
+                hypothesis_id = entities.get("hypothesis_id")
+                new_status = entities.get("new_status")
+                if not hypothesis_id or not new_status:
+                    return {"success": False, "error": "Missing hypothesis_id or new_status"}
+                return await self.tool_registry.validate_hypothesis(
+                    tenant_id=tenant_id,
+                    hypothesis_id=str(hypothesis_id),
+                    new_status=str(new_status),
+                    feedback=entities.get("feedback", ""),
+                )
+        except Exception as e:
+            logger.warning("Mutation tool %s failed: %s", tool_name, e)
+            return {"success": False, "error": str(e)}
+
+        return None
+
     async def _generate_response(
         self,
         *,
@@ -410,14 +603,39 @@ class ConversationService:
         workflow_result: dict[str, Any] | None,
         account_name: str,
         gate_context: dict[str, Any],
+        tenant_id: str = "default",
+        entities: dict[str, Any] | None = None,
     ) -> str:
         """Generate the response content.
 
         Priority:
-        1. ConversationAgent.execute(chat) if agent + tool_gateway available
-        2. C1 proxy with enriched system prompt if C1 enabled
-        3. Context-aware heuristic response (no LLM)
+        1. Execute mutation tool if intent matches
+        2. ConversationAgent.execute(chat) if agent + tool_gateway available
+        3. C1 proxy with enriched system prompt if C1 enabled
+        4. Context-aware heuristic response (no LLM)
         """
+        # Strategy 0: Mutation tool execution
+        tool_result = None
+        if intent in MUTATION_INTENTS:
+            tool_result = await self._execute_mutation_tool(
+                intent=intent,
+                entities=entities or {},
+                context_data=context_data,
+                tenant_id=tenant_id,
+            )
+            if tool_result:
+                context_data = {**context_data, "tool_result": tool_result}
+                if tool_result.get("success"):
+                    return self._append_workflow_notice(
+                        f"✅ {tool_result.get('message', 'Action completed successfully.')}",
+                        workflow_result,
+                    )
+                else:
+                    return self._append_workflow_notice(
+                        f"❌ I couldn't complete that action: {tool_result.get('error', 'Unknown error')}",
+                        workflow_result,
+                    )
+
         # Strategy 1: Full agent pipeline (uses generate_section tool via GATE)
         if self.conversation_agent and gate_context.get("tool_gateway"):
             try:
