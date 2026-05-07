@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { L4_ANALYSIS_PREFIX } from '@/lib/apiConfig';
 
 const CASE_STORAGE_PREFIX = 'vf.workspace.case';
 
@@ -24,7 +25,7 @@ export async function getOrCreateCanonicalCaseId(accountId: string): Promise<str
   const stored = getStoredCaseId(accountId);
   if (stored) return stored;
 
-  const lookup = await apiClient.get<CaseListResponse>('l4', `/analysis/cases?account_id=${encodeURIComponent(accountId)}`);
+  const lookup = await apiClient.get<CaseListResponse>('l4', `${L4_ANALYSIS_PREFIX}/cases?account_id=${encodeURIComponent(accountId)}`);
   const items = Array.isArray(lookup.data) ? lookup.data : (lookup.data?.items ?? []);
   const existing = (items[0] ?? {}) as CaseRecord;
   const existingCaseId = existing.case_id || existing.id;
@@ -33,7 +34,7 @@ export async function getOrCreateCanonicalCaseId(accountId: string): Promise<str
     return existingCaseId;
   }
 
-  const created = await apiClient.post<CaseRecord>('l4', '/analysis/cases', {
+  const created = await apiClient.post<CaseRecord>('l4', `${L4_ANALYSIS_PREFIX}/cases`, {
     account_id: accountId,
     title: `Account ${accountId} workspace`,
   });
@@ -44,12 +45,12 @@ export async function getOrCreateCanonicalCaseId(accountId: string): Promise<str
 }
 
 export async function fetchWorkspaceTab<TData>(caseId: string, tabKey: string): Promise<TData> {
-  const response = await apiClient.get<TData>('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`);
+  const response = await apiClient.get<TData>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/${tabKey}`);
   return response.data;
 }
 
 export async function persistWorkspaceTab(caseId: string, tabKey: string, payload: unknown): Promise<unknown> {
-  const response = await apiClient.put<unknown>('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
+  const response = await apiClient.put<unknown>('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/${tabKey}`, payload);
   return response.data;
 }
 
@@ -124,7 +125,7 @@ export function useValidateEvidenceClaim() {
 export function useGenerateWorkspaceIntelligence() {
   return useMutation({
     mutationFn: async (caseId: string) => {
-      const response = await apiClient.post('l4', `/analysis/cases/${caseId}/workspace/generate`, {});
+      const response = await apiClient.post('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/workspace/generate`, {});
       return response.data as {
         case_id: string;
         account_id: string;

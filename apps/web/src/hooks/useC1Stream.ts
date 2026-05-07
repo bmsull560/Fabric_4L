@@ -165,7 +165,7 @@ When sliders change, the system will recalculate metrics via the formula API.`,
    */
   const handleSliderChange = useCallback(async (adjustment: { name: string; value: number; original_value: number }) => {
     try {
-      const result = await evaluateWhatIf(businessCaseId, [adjustment]);
+      const result = await evaluateWhatIf(businessCaseId, [adjustment], businessCaseData);
 
       // Update components with new values based on label patterns
       setState(prev => {

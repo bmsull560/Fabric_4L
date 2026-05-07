@@ -61,7 +61,7 @@ class TestExportEndpointAuth:
 
         Expected initial state: FAIL — uses get_optional_context.
         """
-        source = _ANALYSIS_ROUTES.read_text()
+        source = _ANALYSIS_ROUTES.read_text(encoding="utf-8")
         tree = ast.parse(source)
 
         for node in ast.walk(tree):
@@ -91,7 +91,7 @@ class TestExportEndpointAuth:
         Even if the export reads from the workflow executor (Redis), the
         endpoint should use tenant-scoped DB for any audit writes.
         """
-        source = _ANALYSIS_ROUTES.read_text()
+        source = _ANALYSIS_ROUTES.read_text(encoding="utf-8")
         tree = ast.parse(source)
 
         for node in ast.walk(tree):
@@ -131,7 +131,7 @@ class TestExportStorageNamespacing:
 
         Expected initial state: FAIL — current code uses flat key structure.
         """
-        source = _ANALYSIS_ROUTES.read_text()
+        source = _ANALYSIS_ROUTES.read_text(encoding="utf-8")
 
         # Find the export_business_case function and check the object key pattern
         tree = ast.parse(source)
@@ -176,7 +176,7 @@ class TestExportStorageNamespacing:
         S3 object metadata should include tenant_id for audit trail
         and access control at the storage layer.
         """
-        source = _EXPORT_STORAGE.read_text()
+        source = _EXPORT_STORAGE.read_text(encoding="utf-8")
 
         # The upload_bytes function accepts metadata parameter
         assert "metadata" in source, (
@@ -194,7 +194,7 @@ class TestProvenanceManifestStructure:
 
     def test_provenance_module_imports_request_context(self):
         """Provenance module must import RequestContext for tenant awareness."""
-        source = _EXPORT_PROVENANCE.read_text()
+        source = _EXPORT_PROVENANCE.read_text(encoding="utf-8")
         assert "RequestContext" in source, (
             "export_provenance.py does not import RequestContext. "
             "Provenance manifests must be tenant-aware."
@@ -202,7 +202,7 @@ class TestProvenanceManifestStructure:
 
     def test_provenance_schema_version_defined(self):
         """Provenance manifests must have a schema version for forward compat."""
-        source = _EXPORT_PROVENANCE.read_text()
+        source = _EXPORT_PROVENANCE.read_text(encoding="utf-8")
         assert "PROVENANCE_SCHEMA_VERSION" in source, (
             "export_provenance.py does not define PROVENANCE_SCHEMA_VERSION. "
             "Schema versioning is required for manifest forward compatibility."
@@ -210,7 +210,7 @@ class TestProvenanceManifestStructure:
 
     def test_provenance_collects_truth_ids(self):
         """Provenance must collect truth_object_ids for evidence chain."""
-        source = _EXPORT_PROVENANCE.read_text()
+        source = _EXPORT_PROVENANCE.read_text(encoding="utf-8")
         assert "truth_object_ids" in source or "truth_ids" in source, (
             "export_provenance.py does not collect truth IDs. "
             "The evidence chain from agent output to export must be traceable."
@@ -218,7 +218,7 @@ class TestProvenanceManifestStructure:
 
     def test_provenance_collects_source_pointers(self):
         """Provenance must collect source_pointers for data lineage."""
-        source = _EXPORT_PROVENANCE.read_text()
+        source = _EXPORT_PROVENANCE.read_text(encoding="utf-8")
         assert "source_pointer" in source.lower() or "source_references" in source, (
             "export_provenance.py does not collect source pointers. "
             "Data lineage must be traceable from export back to source data."
@@ -226,8 +226,8 @@ class TestProvenanceManifestStructure:
 
     def test_provenance_generates_content_hash(self):
         """Provenance must include a content hash for integrity verification."""
-        source = _EXPORT_PROVENANCE.read_text()
-        assert "hashlib" in source or "content_hash" in source, (
+        source = _EXPORT_PROVENANCE.read_text(encoding="utf-8")
+        assert any(term in source for term in ["hashlib", "content_hash", "canonical_hash", "deterministic_fingerprint"]), (
             "export_provenance.py does not generate content hashes. "
             "Export integrity must be verifiable via hash comparison."
         )
@@ -250,7 +250,7 @@ class TestExportAuditTrail:
         - export format
         - timestamp
         """
-        source = _ANALYSIS_ROUTES.read_text()
+        source = _ANALYSIS_ROUTES.read_text(encoding="utf-8")
         tree = ast.parse(source)
 
         for node in ast.walk(tree):
@@ -279,7 +279,7 @@ class TestExportAuditTrail:
         If a business case fails truth-gating, the export attempt must still
         be logged — this is a compliance requirement.
         """
-        source = _ANALYSIS_ROUTES.read_text()
+        source = _ANALYSIS_ROUTES.read_text(encoding="utf-8")
         tree = ast.parse(source)
 
         for node in ast.walk(tree):

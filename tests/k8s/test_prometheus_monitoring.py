@@ -29,7 +29,8 @@ class TestPrometheusConfigMap:
         config = k8s_base_dir / "monitoring-prometheus.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         assert doc.get("kind") == "ConfigMap"
         assert doc.get("metadata", {}).get("name") == "prometheus-config"
@@ -43,7 +44,8 @@ class TestPrometheusConfigMap:
         config = k8s_base_dir / "monitoring-prometheus.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         prometheus_yml = yaml.safe_load(doc["data"]["prometheus.yml"])
         
@@ -56,7 +58,8 @@ class TestPrometheusConfigMap:
         config = k8s_base_dir / "monitoring-prometheus.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         prometheus_yml = yaml.safe_load(doc["data"]["prometheus.yml"])
         
@@ -75,7 +78,8 @@ class TestPrometheusConfigMap:
         config = k8s_base_dir / "monitoring-prometheus.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         prometheus_yml = yaml.safe_load(doc["data"]["prometheus.yml"])
         
@@ -92,7 +96,8 @@ class TestPrometheusScrapeConfigs:
         config = k8s_base_dir / "monitoring-prometheus.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         prometheus_yml = yaml.safe_load(doc["data"]["prometheus.yml"])
         return prometheus_yml.get("scrape_configs", [])
@@ -198,7 +203,8 @@ class TestPrometheusAlertingRules:
         config = k8s_base_dir / "monitoring-prometheus.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         rules_yml = yaml.safe_load(doc["data"]["rules.yml"])
         return rules_yml.get("groups", [])
@@ -359,7 +365,8 @@ class TestAlertmanagerConfig:
         config = k8s_base_dir / "monitoring-alertmanager.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         data = doc.get("data", {})
         alertmanager_yml = yaml.safe_load(data.get("alertmanager.yml", ""))
@@ -374,7 +381,8 @@ class TestAlertmanagerConfig:
         config = k8s_base_dir / "monitoring-alertmanager.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         data = doc.get("data", {})
         alertmanager_yml = yaml.safe_load(data.get("alertmanager.yml", ""))
@@ -392,7 +400,8 @@ class TestAlertmanagerConfig:
         config = k8s_base_dir / "monitoring-alertmanager.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         data = doc.get("data", {})
         alertmanager_yml = yaml.safe_load(data.get("alertmanager.yml", ""))
@@ -405,7 +414,8 @@ class TestAlertmanagerConfig:
         config = k8s_base_dir / "monitoring-alertmanager.yml"
         
         with open(config) as f:
-            doc = yaml.safe_load(f)
+            docs = list(yaml.safe_load_all(f))
+            doc = next((d for d in docs if d and d.get('kind') == 'ConfigMap'), {})
         
         data = doc.get("data", {})
         alertmanager_yml = yaml.safe_load(data.get("alertmanager.yml", ""))

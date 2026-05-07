@@ -81,6 +81,7 @@ data:
             annotations:
               summary: "Dependency health check failing"
               description: "{{ $labels.namespace }}/{{ $labels.component }} reported unhealthy for >3m"
+              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/dependency-down.md"
 
       - name: value-fabric-slo
         rules:
@@ -96,6 +97,7 @@ data:
             annotations:
               summary: "HTTP 5xx rate spike"
               description: "5xx ratio is above 5% for 5 minutes"
+              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/error-rate.md"
 
           - alert: LatencySLOBreachP95
             expr: |
@@ -111,6 +113,7 @@ data:
             annotations:
               summary: "P95 latency SLO breach"
               description: "{{ $labels.job }} p95 latency is above 1 second for 10 minutes"
+              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/latency-slo.md"
 
       - name: value-fabric-saturation
         rules:
@@ -122,6 +125,7 @@ data:
             annotations:
               summary: "High CPU saturation"
               description: "{{ $labels.job }} process CPU usage is above 80%"
+              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/cpu-saturation.md"
 
           - alert: ServiceMemorySaturation
             expr: process_resident_memory_bytes{job=~"layer[1-6]-.*"} > 1.5e+09
@@ -131,6 +135,7 @@ data:
             annotations:
               summary: "High memory saturation"
               description: "{{ $labels.job }} resident memory is above 1.5GiB"
+              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/memory-saturation.md"
 
           - alert: DiskQueueDepthHigh
             expr: rate(node_disk_io_time_weighted_seconds_total[5m]) > 0.8
@@ -140,6 +145,7 @@ data:
             annotations:
               summary: "Disk queue depth saturation"
               description: "Node disk queue depth is elevated for 10 minutes"
+              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/disk-queue.md"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

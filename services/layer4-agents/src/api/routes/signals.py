@@ -93,6 +93,23 @@ class SignalStreamEvent(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict, description="Event payload")
 
 
+class SignalReviewRequest(BaseModel):
+    """Request to review a signal."""
+
+    review_status: str = Field(..., description="Review status: approved, rejected, unreviewed")
+    review_notes: str | None = Field(default=None, description="Optional review notes")
+    reviewed_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat(), description="ISO timestamp of review")
+
+
+class SignalReviewResponse(BaseModel):
+    """Response from signal review."""
+
+    signal_id: str = Field(..., description="Signal identifier")
+    review_status: str = Field(..., description="Updated review status")
+    review_notes: str | None = Field(default=None, description="Review notes")
+    reviewed_at: str = Field(..., description="ISO timestamp of review")
+
+
 # ============================================================================
 # API Endpoints
 # ============================================================================
@@ -280,6 +297,94 @@ async def get_signal_by_id(
         status_code=501,
         detail="Signal retrieval by ID - implement in Layer 3 integration",
     )
+
+
+@router.patch("/signals/{signal_id}/review", response_model=SignalReviewResponse)
+async def review_signal(
+    signal_id: str,
+    request: SignalReviewRequest,
+    ctx: RequestContext = Depends(require_authenticated),
+    audit: AuditEmitter = Depends(AuditEmitter),
+) -> SignalReviewResponse:
+    """Review a signal — approve or reject for downstream value modeling.
+
+    Persists review_status, review_notes, and reviewed_at on the
+    PainSignal node in the knowledge graph.
+
+    Args:
+        signal_id: Signal identifier
+        request: Review decision and optional notes
+        ctx: Request context with tenant_id
+        audit: Audit emitter for compliance logging
+
+    Returns:
+        SignalReviewResponse with persisted review state
+    """
+    from fastapi import Request as FastApiRequest
+    from starlette.requests import Request as StarletteRequest
+
+    # Obtain Neo4j driver from app state (same pattern as analysis routes)
+    http_request: StarletteRequest | None = None
+    for dep in [d for d in (ctx.__dict__.get("_request") or []) if hasattr(d, "app")]:
+        http_request = dep
+        break
+
+    if http_request is None:
+        raise HTTPException(status_code=500, detail="Internal error: request context not available")
+
+    neo4j_driver = getattr(http_request.app.state, "neo4j_driver", None)
+    if neo4j_driver is None:
+        raise HTTPException(status_code=503, detail="Neo4j driver not available")
+
+    try:
+        async with neo4j_driver.session() as session:
+            result = await session.run(
+                """
+                MATCH (ps:PainSignal {id: $signal_id, tenant_id: $tenant_id})
+                SET ps.review_status = $review_status,
+                    ps.review_notes = $review_notes,
+                    ps.reviewed_at = $reviewed_at,
+                    ps.updated_at = datetime()
+                RETURN ps.id AS signal_id, ps.review_status AS review_status,
+                       ps.review_notes AS review_notes, ps.reviewed_at AS reviewed_at
+                """,
+                {
+                    "signal_id": signal_id,
+                    "tenant_id": ctx.tenant_id,
+                    "review_status": request.review_status,
+                    "review_notes": request.review_notes,
+                    "reviewed_at": request.reviewed_at,
+                },
+            )
+            record = await result.single()
+            if record is None:
+                raise HTTPException(status_code=404, detail=f"Signal {signal_id} not found")
+
+            await audit.emit(
+                AuditAction.UPDATE,
+                resource_type="signal",
+                resource_id=signal_id,
+                outcome=AuditOutcome.SUCCESS,
+                metadata={
+                    "review_status": request.review_status,
+                    "trace_id": ctx.trace_id,
+                },
+            )
+
+            return SignalReviewResponse(
+                signal_id=record["signal_id"],
+                review_status=record["review_status"],
+                review_notes=record["review_notes"],
+                reviewed_at=record["reviewed_at"],
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Failed to review signal: {e}",
+            extra={"tenant_id": ctx.tenant_id, "signal_id": signal_id},
+        )
+        raise HTTPException(status_code=500, detail=f"Failed to review signal: {str(e)}")
 
 
 # ============================================================================

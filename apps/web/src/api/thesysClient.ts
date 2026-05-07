@@ -170,11 +170,13 @@ export async function* streamC1Response(
  */
 export async function evaluateWhatIf(
   baseCaseId: string,
-  adjustments: Array<{ name: string; value: number; original_value: number }>
+  adjustments: Array<{ name: string; value: number; original_value: number }>,
+  baseCaseData?: Record<string, unknown>
 ): Promise<WhatIfResult> {
   const response = await apiClient.post<WhatIfResult>('l3', '/formulas/scenario', {
     base_case_id: baseCaseId,
     adjustments,
+    base_case_data: baseCaseData,
   });
 
   return response.data;

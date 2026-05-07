@@ -5,7 +5,7 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
-import { usePromoteSignal } from "@/hooks/useHypotheses";
+import { usePromoteSignal, useReviewSignal } from "@/hooks/useHypotheses";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
@@ -56,6 +56,7 @@ export default function SignalsTab() {
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
   const promoteMutation = usePromoteSignal();
+  const reviewMutation = useReviewSignal();
   const { navigateTo } = useNavigation();
   const [selectedValuePath, setSelectedValuePath] = useState<ValuePathCategory | ''>('');
 
@@ -66,15 +67,33 @@ export default function SignalsTab() {
     persistTab.mutate({ caseId, payload });
   };
 
-  const setSignalReview = (signalId: string, review_status: Signal["review_status"]) => {
+  const setSignalReview = async (signalId: string, review_status: Signal["review_status"]) => {
+    const reviewed_at = new Date().toISOString();
     const nextSignals = signals.map((signal) =>
       signal.id === signalId
-        ? { ...signal, review_status, reviewed_at: new Date().toISOString() }
+        ? { ...signal, review_status, reviewed_at }
         : signal,
     );
     persistSignals(nextSignals);
     const updated = nextSignals.find((signal) => signal.id === signalId) ?? null;
     setSelectedSignal(updated);
+
+    // Persist to backend
+    try {
+      await reviewMutation.mutateAsync({
+        signalId,
+        data: { review_status: review_status ?? "unreviewed", reviewed_at },
+      });
+    } catch (err) {
+      // Revert local state on backend failure so user sees the truth
+      const reverted = signals.map((signal) =>
+        signal.id === signalId
+          ? { ...signal, review_status: signal.review_status, reviewed_at: signal.reviewed_at }
+          : signal,
+      );
+      persistSignals(reverted);
+      setSelectedSignal(reverted.find((s) => s.id === signalId) ?? null);
+    }
   };
 
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({

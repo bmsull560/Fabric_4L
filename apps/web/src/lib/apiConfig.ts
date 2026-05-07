@@ -16,7 +16,7 @@ export const L5_PREFIX = import.meta.env.VITE_L5_PREFIX || '/truths';
 export const L6_PREFIX = import.meta.env.VITE_L6_PREFIX || '/benchmarks';
 
 // Special prefixes
-export const L4_ANALYSIS_PREFIX = '/analysis';
+export const L4_ANALYSIS_PREFIX = '/v1';
 
 // Re-export layer prefixes for consistency
 export const LAYER_PREFIXES = {

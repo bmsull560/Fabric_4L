@@ -276,3 +276,30 @@ export function usePromoteSignal() {
     },
   });
 }
+
+export interface SignalReviewRequest {
+  review_status: "approved" | "rejected" | "unreviewed";
+  review_notes?: string;
+  reviewed_at?: string;
+}
+
+export interface SignalReviewResponse {
+  signal_id: string;
+  review_status: string;
+  review_notes: string | null;
+  reviewed_at: string;
+}
+
+export function useReviewSignal() {
+  const queryClient = useQueryClient();
+  return useMutation<SignalReviewResponse, HypothesisApiError, { signalId: string; data: SignalReviewRequest }>({
+    mutationFn: async ({ signalId, data }) => {
+      const response = await apiClient.patch('l4', `/v1/signals/${signalId}/review`, data);
+      return response.data as SignalReviewResponse;
+    },
+    onSuccess: (_data, { signalId }) => {
+      queryClient.invalidateQueries({ queryKey: QK.hypotheses.all });
+      queryClient.invalidateQueries({ queryKey: ['workspace', 'tab'] });
+    },
+  });
+}

@@ -30,7 +30,7 @@ describe('BusinessCase', () => {
 
   it('renders with business case data', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+      http.get('/api/v1/agents/v1/cases/:caseId', () => {
         return HttpResponse.json({
           case_id: 'test-case-123',
           title: 'Test Business Case',
@@ -74,7 +74,7 @@ describe('BusinessCase', () => {
 
   it('shows error state when case fails to load', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+      http.get('/api/v1/agents/v1/cases/:caseId', () => {
         return HttpResponse.json({ error: 'Case not found' }, { status: 404 });
       })
     );
@@ -107,7 +107,7 @@ describe('BusinessCase', () => {
 
   it('renders export button when document_url is present', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+      http.get('/api/v1/agents/v1/cases/:caseId', () => {
         return HttpResponse.json({
           case_id: 'test-case-123',
           title: 'Test',
@@ -136,7 +136,7 @@ describe('BusinessCase', () => {
 
   it('disables export button when document_url is absent', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+      http.get('/api/v1/agents/v1/cases/:caseId', () => {
         return HttpResponse.json({
           case_id: 'test-case-123',
           title: 'Test',
@@ -164,7 +164,7 @@ describe('BusinessCase', () => {
 
   it('renders page header with breadcrumbs', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+      http.get('/api/v1/agents/v1/cases/:caseId', () => {
         return HttpResponse.json({
           case_id: 'test-case-123',
           title: 'Test',
