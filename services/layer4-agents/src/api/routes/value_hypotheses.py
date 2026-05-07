@@ -271,9 +271,11 @@ async def validate_hypothesis(
     if not result:
         raise HTTPException(status_code=404, detail="Hypothesis not found")
 
-    promoted_artifacts = None
-    if body.new_status == "validated":
-        promoted_artifacts = await engine.promote_validated_hypothesis(tenant_id, hypothesis_id)
+    promoted_artifacts = await engine.orchestrate_post_validation(
+        tenant_id,
+        hypothesis_id,
+        new_status=body.new_status,
+    )
 
     return validate_hypothesisResult.model_validate({
         "status": "updated",
@@ -364,4 +366,3 @@ async def rank_hypotheses(
         "count": len(ranked),
         "hypotheses": ranked,
     })
-

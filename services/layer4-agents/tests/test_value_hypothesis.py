@@ -482,6 +482,20 @@ class TestHypothesisCRUD:
         assert result is None
 
     @pytest.mark.asyncio
+    async def test_post_validation_orchestration_returns_driver_linkage(self):
+        driver = make_mock_driver([[{
+            "driver": {"id": "driver_h1", "name": "Ops Efficiency"},
+            "lever": {"id": "lever_h1", "name": "Ops Efficiency"},
+            "linkage_id": "vh:h1:driver:driver_h1",
+        }]])
+        engine = ValueHypothesisEngine(driver)
+        result = await engine.orchestrate_post_validation(TENANT_ID, "h1", new_status="validated")
+        assert result is not None
+        assert result["created"] is True
+        assert result["drivers"][0]["id"] == "driver_h1"
+        assert result["linkages"][0]["hypothesis_id"] == "h1"
+
+    @pytest.mark.asyncio
     async def test_delete_hypothesis(self):
         driver = make_mock_driver([[{"deleted": 1}]])
         engine = ValueHypothesisEngine(driver)

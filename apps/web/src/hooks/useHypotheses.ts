@@ -74,6 +74,7 @@ export interface ValidateHypothesisRequest {
 export interface PromotedArtifacts {
   drivers?: Array<Record<string, unknown>>;
   levers?: Array<Record<string, unknown>>;
+  linkages?: Array<{ hypothesis_id: string; driver_id: string; linkage_id: string }>;
   created?: boolean;
 }
 
