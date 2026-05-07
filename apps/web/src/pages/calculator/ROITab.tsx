@@ -4,7 +4,7 @@
  * Workspace tab for the Calculator workspace.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { Calculator, Loader2, RefreshCcw, Save } from "lucide-react";
 import CalculatorShell from "@/components/workspace/CalculatorShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
@@ -18,6 +18,7 @@ import { useValueLevers } from "@/hooks/useCalculators";
 import { useBenchmarksList, useCalculateROI, useIndustryBenchmarks, type ROICalculationRequest } from "@/hooks/useROICalculator";
 import { useValuePacks } from "@/hooks/useValuePacks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 
 type ScenarioState = {
   deal_size: number;
@@ -56,11 +57,31 @@ function fmtCurrency(value: number): string {
 export default function CalcROITab() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
+  const location = useLocation();
+  const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
+  const getSelection = useWorkspaceSelectionStore((state) => state.getSelection);
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
-  const [caseId, setCaseId] = useState("case-default");
-  const [modelId, setModelId] = useState("model-default");
+  const [caseId, setCaseId] = useState<string | null>(null);
+  const [modelId, setModelId] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioState>(DEFAULT_SCENARIO);
+
+
+  useEffect(() => {
+    if (!accountId) return;
+    const params = new URLSearchParams(location.search);
+    const queryModelId = params.get("value_model_id") || null;
+    const queryTreeId = params.get("tree_id") || null;
+    if (queryModelId || queryTreeId) {
+      setSelection(accountId, { valueModelId: queryModelId, treeId: queryTreeId });
+      if (queryModelId) setModelId(queryModelId);
+      if (queryTreeId) setCaseId(queryTreeId);
+      return;
+    }
+    const persisted = getSelection(accountId);
+    if (persisted.valueModelId) setModelId(persisted.valueModelId);
+    if (persisted.treeId) setCaseId(persisted.treeId);
+  }, [accountId, location.search, getSelection, setSelection]);
 
   const queryClient = useQueryClient();
   const { data: leverData, isLoading: leversLoading, error: leverError } = useValueLevers({ industry: account?.industry ?? undefined });
@@ -70,7 +91,7 @@ export default function CalcROITab() {
   const recalcMutation = useCalculateROI();
 
   const scenarioKey = useMemo(
-    () => ["calculator", "roi", "scenario", accountId ?? "", caseId, modelId] as const,
+    () => ["calculator", "roi", "scenario", accountId ?? "", caseId ?? "case-default", modelId ?? "model-default"] as const,
     [accountId, caseId, modelId]
   );
 
@@ -80,7 +101,7 @@ export default function CalcROITab() {
     queryFn: async () => {
       const raw = localStorage.getItem(STORAGE_KEY);
       const all: PersistedScenarioVersion[] = raw ? JSON.parse(raw) : [];
-      return all.filter((entry) => entry.accountId === accountId && entry.caseId === caseId && entry.modelId === modelId);
+      return all.filter((entry) => entry.accountId === accountId && entry.caseId === (caseId ?? "case-default") && entry.modelId === (modelId ?? "model-default"));
     },
   });
 
@@ -92,8 +113,8 @@ export default function CalcROITab() {
       const entry: PersistedScenarioVersion = {
         versionId: `sv_${Date.now()}`,
         accountId: accountId ?? "",
-        caseId,
-        modelId,
+        caseId: caseId ?? "case-default",
+        modelId: modelId ?? "model-default",
         name,
         assumptions: scenario,
         updatedAt: new Date().toISOString(),
@@ -158,6 +179,7 @@ export default function CalcROITab() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">ROI Calculator</h2>
             <p className="text-sm text-muted-foreground">Scenario assumptions, value levers, and traceable formula outcomes.</p>
+            <p className="text-xs text-muted-foreground">Selected tree: {caseId ?? "None"} · Selected model: {modelId ?? "None"}</p>
           </div>
         </div>
 

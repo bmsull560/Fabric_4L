@@ -10,6 +10,7 @@
  */
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 import {
   Lightbulb,
   Sparkles,
@@ -157,6 +158,7 @@ function HypothesisCard({
 export default function HypothesesTab() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading, error: accountError, refetch: refetchAccount } = useAccount(accountId ?? null);
   const {
@@ -415,7 +417,17 @@ export default function HypothesesTab() {
                     {
                       onSuccess: (result) => {
                         const createdId = result.value_model_id ?? result.tree_id;
-                        navigate(`/drivers/${result.account_id}/evidence`, {
+                        setSelection(result.account_id, {
+                          valueModelId: result.value_model_id ?? null,
+                          treeId: result.tree_id ?? null,
+                        });
+                        const query = new URLSearchParams();
+                        if (result.tree_id) query.set("tree_id", result.tree_id);
+                        if (result.value_model_id) query.set("value_model_id", result.value_model_id);
+                        navigate({
+                          pathname: `/drivers/${result.account_id}/evidence`,
+                          search: query.toString() ? `?${query.toString()}` : "",
+                        }, {
                           state: {
                             hypothesisId: result.hypothesis_id,
                             accountId: result.account_id,
