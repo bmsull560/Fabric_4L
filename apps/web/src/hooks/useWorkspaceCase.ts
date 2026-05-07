@@ -156,3 +156,82 @@ export function useReviewSignalMutation() {
     },
   });
 }
+
+export type WorkspacePageActionOperation =
+  | 'signal_review'
+  | 'evidence_attach'
+  | 'hypothesis_convert'
+  | 'scenario_update';
+
+export interface WorkspacePageActionContract {
+  entityType: 'signal' | 'evidence' | 'hypothesis' | 'scenario';
+  entityId: string;
+  accountId: string;
+  caseId: string;
+  tenantId?: string;
+  intendedOperation: WorkspacePageActionOperation;
+  payload?: Record<string, unknown>;
+  runMetadataIds?: {
+    runId?: string;
+    traceId?: string;
+    workflowId?: string;
+    auditEventId?: string;
+    toolCallId?: string;
+  };
+}
+
+export function useApplyWorkspacePageAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (action: WorkspacePageActionContract) => {
+      const auditEnvelope = {
+        run_metadata_ids: action.runMetadataIds,
+        tenant_id: action.tenantId,
+        case_id: action.caseId,
+      };
+      switch (action.intendedOperation) {
+        case 'signal_review':
+          return (
+            await apiClient.patch('l4', `/v1/signals/${action.entityId}/review`, {
+              account_id: action.accountId,
+              review_status: action.payload?.reviewStatus,
+              decision_note: action.payload?.decisionNote,
+              ...auditEnvelope,
+            })
+          ).data;
+        case 'evidence_attach':
+          return (
+            await apiClient.post('l4', `/v1/hypotheses/${String(action.payload?.hypothesisId ?? '')}/attach-evidence`, {
+              evidence_id: action.entityId,
+              account_id: action.accountId,
+              ...auditEnvelope,
+            })
+          ).data;
+        case 'hypothesis_convert':
+          return (
+            await apiClient.post('l4', `/v1/hypotheses/${action.entityId}/validate`, {
+              new_status: 'converted',
+              feedback: action.payload?.feedback,
+              ...auditEnvelope,
+            })
+          ).data;
+        case 'scenario_update':
+          return (
+            await apiClient.patch('l4', `/analysis/cases/${action.caseId}/workspace/value-model/scenarios/${action.entityId}`, {
+              account_id: action.accountId,
+              updates: action.payload,
+              ...auditEnvelope,
+            })
+          ).data;
+      }
+    },
+    onSuccess: async (_result, action) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workspace', 'tab', action.caseId] }),
+        queryClient.invalidateQueries({ queryKey: QK.hypotheses.all }),
+        queryClient.invalidateQueries({ queryKey: QK.evidence.all }),
+        queryClient.invalidateQueries({ queryKey: QK.accounts.detail(action.accountId) }),
+      ]);
+    },
+  });
+}
