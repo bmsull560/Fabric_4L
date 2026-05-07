@@ -457,3 +457,55 @@ async def stream_signals_to_websocket(
 
     # Execute with streaming
     await agent.execute(task, context)
+
+class EvidenceDecisionRequest(BaseModel):
+    account_id: str
+    case_id: str
+    decision: str = Field(..., description="accepted|rejected|attached_to_driver")
+    driver_id: str | None = None
+    decision_note: str | None = None
+
+
+class EvidenceDecisionResponse(BaseModel):
+    evidence_id: str
+    account_id: str
+    case_id: str
+    decision: str
+    driver_id: str | None = None
+    reviewed_by: str | None = None
+    reviewed_at: str
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    confidence: float = 0.0
+
+
+_EVIDENCE_DECISIONS: dict[tuple[str, str, str], dict[str, Any]] = {}
+
+
+
+@router.post("/evidence/{evidence_id}/decisions", response_model=EvidenceDecisionResponse)
+async def decide_evidence(
+    evidence_id: str,
+    request: EvidenceDecisionRequest,
+    ctx: RequestContext = Depends(require_authenticated),
+) -> EvidenceDecisionResponse:
+    if request.decision not in {"accepted", "rejected", "attached_to_driver"}:
+        raise HTTPException(status_code=400, detail="decision must be accepted, rejected, or attached_to_driver")
+
+    reviewed_at = datetime.now(UTC).isoformat()
+    record = {
+        "evidence_id": evidence_id,
+        "account_id": request.account_id,
+        "case_id": request.case_id,
+        "decision": request.decision,
+        "driver_id": request.driver_id,
+        "reviewed_by": ctx.user_id,
+        "reviewed_at": reviewed_at,
+        "provenance": {
+            "tenant_id": str(ctx.tenant_id),
+            "scope": {"account_id": request.account_id, "case_id": request.case_id},
+            "source": "layer4-agents",
+        },
+        "confidence": 0.9 if request.decision == "accepted" else 0.75,
+    }
+    _EVIDENCE_DECISIONS[(str(ctx.tenant_id), request.account_id, evidence_id)] = record
+    return EvidenceDecisionResponse(**record)

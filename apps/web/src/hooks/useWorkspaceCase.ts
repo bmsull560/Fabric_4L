@@ -125,7 +125,7 @@ export function useGenerateWorkspaceIntelligence() {
   });
 }
 
-export function useReviewSignalMutation() {
+export function useSignalReview() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -149,6 +149,7 @@ export function useReviewSignalMutation() {
     onSuccess: async (_result, vars) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['workspace', 'tab'] }),
+        queryClient.invalidateQueries({ queryKey: QK.intelligenceDecisions.all }),
         queryClient.invalidateQueries({ queryKey: QK.accounts.detail(vars.accountId) }),
         queryClient.invalidateQueries({ queryKey: QK.hypotheses.all }),
         queryClient.invalidateQueries({ queryKey: QK.evidence.all }),
@@ -156,6 +157,48 @@ export function useReviewSignalMutation() {
     },
   });
 }
+
+
+
+export function useEvidenceDecisionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      evidenceId,
+      accountId,
+      caseId,
+      decision,
+      driverId,
+      decisionNote,
+    }: {
+      evidenceId: string;
+      accountId: string;
+      caseId: string;
+      decision: 'accepted' | 'rejected' | 'attached_to_driver';
+      driverId?: string;
+      decisionNote?: string;
+    }) => {
+      const response = await apiClient.post('l4', `/v1/evidence/${evidenceId}/decisions`, {
+        account_id: accountId,
+        case_id: caseId,
+        decision,
+        driver_id: driverId,
+        decision_note: decisionNote,
+      });
+      return response.data;
+    },
+    onSuccess: async (_result, vars) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['workspace', 'tab', vars.caseId, 'evidence'] }),
+        queryClient.invalidateQueries({ queryKey: ['workspace', 'tab', vars.caseId, 'drivers'] }),
+        queryClient.invalidateQueries({ queryKey: QK.intelligenceDecisions.all }),
+        queryClient.invalidateQueries({ queryKey: QK.calculators.all }),
+      ]);
+    },
+  });
+}
+
+export const useReviewSignalMutation = useSignalReview;
 
 export type WorkspacePageActionOperation =
   | 'signal_review'
