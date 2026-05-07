@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { apiGet, apiPost } from '@/api/typedClient';
 import type { l4 } from '@/api/generated';
 import { createLogger } from '@/lib/telemetry';
@@ -256,9 +257,54 @@ export interface CreateAccountParams {
   region?: string;
   segment?: string;
   company_size?: number;
+  annual_revenue?: number;
+  headquarters?: string;
+  website?: string;
   owner_id?: string;
   owner_name?: string;
   owner_email?: string;
+}
+
+export const createAccountPayloadSchema = z.object({
+  id: z.string().uuid().optional(),
+  provider: z.enum(['salesforce', 'hubspot', 'manual']),
+  provider_record_id: z.string().min(1).max(100),
+  name: z.string().min(1).max(255),
+  domain: z.string().max(255).optional(),
+  industry: z.string().max(100).optional(),
+  region: z.string().max(100).optional(),
+  company_size: z.number().int().min(0).optional(),
+  annual_revenue: z.number().min(0).optional(),
+  headquarters: z.string().max(255).optional(),
+  website: z.string().max(255).optional(),
+  owner_id: z.string().max(100).optional(),
+  owner_name: z.string().max(255).optional(),
+  owner_email: z.string().max(255).optional(),
+  stage: z.string().max(50).optional(),
+  segment: z.string().max(100).optional(),
+});
+
+export type CreateAccountPayload = z.infer<typeof createAccountPayloadSchema>;
+
+export function buildCreateAccountPayload(params: CreateAccountParams): CreateAccountPayload {
+  return createAccountPayloadSchema.parse({
+    ...(params.id ? { id: params.id } : {}),
+    provider: params.provider,
+    provider_record_id: params.provider_record_id,
+    name: params.name,
+    domain: params.domain,
+    industry: params.industry,
+    stage: params.stage || 'prospect',
+    region: params.region,
+    segment: params.segment,
+    company_size: params.company_size,
+    annual_revenue: params.annual_revenue,
+    headquarters: params.headquarters,
+    website: params.website,
+    owner_id: params.owner_id,
+    owner_name: params.owner_name,
+    owner_email: params.owner_email,
+  });
 }
 
 export interface CreateAccountResponse {
@@ -279,21 +325,7 @@ export function useCreateAccount() {
 
   return useMutation<CreateAccountResponse, AccountApiError, CreateAccountParams>({
     mutationFn: async (params) => {
-      const response = await apiPost<CreateAccountApiResponse>('l4', '/accounts', {
-        id: params.id,
-        provider: params.provider,
-        provider_record_id: params.provider_record_id,
-        name: params.name,
-        domain: params.domain,
-        industry: params.industry,
-        stage: params.stage || 'prospect',
-        region: params.region,
-        segment: params.segment,
-        company_size: params.company_size,
-        owner_id: params.owner_id,
-        owner_name: params.owner_name,
-        owner_email: params.owner_email,
-      });
+      const response = await apiPost<CreateAccountApiResponse>('l4', '/accounts', buildCreateAccountPayload(params));
       const data = response.data;
       return 'account' in data ? data : { account: data };
     },
