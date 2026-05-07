@@ -1,20 +1,16 @@
-import type { layer1_ingestion, layer2_extraction, layer4_agents } from '@fabric/platform-contract/generated';
+/**
+ * Canonical API DTOs and defensive parsers.
+ *
+ * These types describe the shapes produced by runtime parsers, not raw
+ * Axios responses.  Where a generated OpenAPI schema is authoritative we
+ * derive from it; otherwise we declare the minimal frontend contract.
+ */
 
-export type ApiEntityResultDto = {
-  id?: string;
-  entity_id?: string;
-  name?: string;
-  title?: string;
-  entity_type?: string;
-  type?: string;
-  confidence_score?: number;
-  confidence?: number;
-  description?: string;
-  properties?: Record<string, unknown>;
-  data?: Record<string, unknown>;
-}
+// =============================================================================
+// INGESTION DTOs
+// =============================================================================
 
-export type ApiIngestionJobDto = layer1_ingestion.components["schemas"]["JobSummary"] & {
+export type ApiIngestionJobDto = {
   id?: string;
   status?: string;
   created_at?: string;
@@ -27,11 +23,15 @@ export type ApiIngestionJobDto = layer1_ingestion.components["schemas"]["JobSumm
   };
 }
 
-export type ApiIngestionAggregationDto = layer1_ingestion.components["schemas"]["ComplianceSummaryResponse"] & {
+export type ApiIngestionAggregationDto = {
   by_status?: Record<string, number>;
   total_records_extracted?: number;
   total_execution_time_ms?: number;
 }
+
+// =============================================================================
+// WORKFLOW / BUSINESS-CASE DTOs
+// =============================================================================
 
 export type ApiWorkflowStepDto = {
   agent?: string;
@@ -60,13 +60,17 @@ export type ApiBusinessCaseNarrativeOutputDto = {
   executive_summary?: string;
 }
 
-export type ApiWorkflowResultDto = layer4_agents.components["schemas"]["BusinessCaseResponse"] & {
+export type ApiWorkflowResultDto = {
   output?: {
     company_name?: string;
   };
   steps?: ApiWorkflowStepDto[];
   completed_at?: string;
 }
+
+// =============================================================================
+// EXTRACTION DTOs
+// =============================================================================
 
 export type ApiProgressLogDto = {
   timestamp?: string;
@@ -80,7 +84,7 @@ export type ApiExtractedEntityDto = {
   name?: string;
 }
 
-export type ApiExtractionJobDto = layer2_extraction.components["schemas"]["ExtractionStatusResponse"] & {
+export type ApiExtractionJobDto = {
   id?: string;
   status?: string;
   progress_percent_complete?: number;
@@ -93,7 +97,92 @@ export type ApiExtractionJobDto = layer2_extraction.components["schemas"]["Extra
   configuration?: {
     url?: string;
   };
-};
+}
+
+// =============================================================================
+// INGESTION JOB DETAIL DTOs
+// =============================================================================
+
+export type ApiJobProgressDto = {
+  total_pages?: number;
+  processed_pages: number;
+  failed_pages: number;
+  current_url?: string;
+  current_stage: string;
+  percent_complete: number;
+}
+
+export type ApiJobResultsDto = {
+  raw_content_count: number;
+  extracted_record_count: number;
+  storage_bytes_used: number;
+  output_location?: string;
+}
+
+export type ApiJobResourcesDto = {
+  browser_sessions_used: number;
+  proxy_requests_made: number;
+  llm_tokens_consumed: number;
+  compute_time_ms: number;
+}
+
+export type ApiJobStageDto = {
+  stage: string;
+  status: string;
+  started_at?: string;
+  completed_at?: string;
+  duration_ms?: number;
+  error_message?: string;
+}
+
+export type ApiJobErrorDto = {
+  id: string;
+  stage: string;
+  error_code: string;
+  error_message: string;
+  url?: string;
+  retryable: boolean;
+  retry_count: number;
+  occurred_at: string;
+  resolved_at?: string;
+}
+
+export type ApiJobDetailDto = {
+  id: string;
+  target_id: string;
+  tenant_id: string;
+  configuration: Record<string, unknown>;
+  status: string;
+  priority: number;
+  scheduled_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  updated_at?: string;
+  estimated_duration_ms?: number;
+  progress: ApiJobProgressDto;
+  results: ApiJobResultsDto;
+  resources: ApiJobResourcesDto;
+  triggered_by: string;
+  correlation_id?: string;
+  created_at: string;
+  created_by: string;
+  stages: ApiJobStageDto[];
+  errors: ApiJobErrorDto[];
+}
+
+export type ApiComplianceLogDto = {
+  id: string;
+  event_type: string;
+  severity: string;
+  request_url?: string;
+  request_timestamp: string;
+  response_action_taken?: string;
+  created_at: string;
+}
+
+// =============================================================================
+// DEFENSIVE PARSERS
+// =============================================================================
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -104,27 +193,7 @@ const asString = (value: unknown): string | undefined =>
 const asNumber = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
-const asStringRecord = (value: unknown): Record<string, unknown> | undefined =>
-  isRecord(value) ? value : undefined;
-
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
-
-export const parseEntityResults = (value: unknown): ApiEntityResultDto[] =>
-  asArray(value)
-    .filter(isRecord)
-    .map((item): ApiEntityResultDto => ({
-      id: asString(item.id),
-      entity_id: asString(item.entity_id),
-      name: asString(item.name),
-      title: asString(item.title),
-      entity_type: asString(item.entity_type),
-      type: asString(item.type),
-      confidence_score: asNumber(item.confidence_score),
-      confidence: asNumber(item.confidence),
-      description: asString(item.description),
-      properties: asStringRecord(item.properties),
-      data: asStringRecord(item.data),
-    }));
 
 export const parseIngestionJobs = (value: unknown): ApiIngestionJobDto[] =>
   asArray(value)
@@ -215,84 +284,3 @@ export const parseExtractionJob = (value: unknown): ApiExtractionJobDto => {
     configuration: isRecord(value.configuration) ? { url: asString(value.configuration.url) } : undefined,
   };
 };
-
-// =============================================================================
-// INGESTION JOB DETAIL DTOs
-// =============================================================================
-
-export type ApiJobProgressDto = {
-  total_pages?: number;
-  processed_pages: number;
-  failed_pages: number;
-  current_url?: string;
-  current_stage: string;
-  percent_complete: number;
-}
-
-export type ApiJobResultsDto = {
-  raw_content_count: number;
-  extracted_record_count: number;
-  storage_bytes_used: number;
-  output_location?: string;
-}
-
-export type ApiJobResourcesDto = {
-  browser_sessions_used: number;
-  proxy_requests_made: number;
-  llm_tokens_consumed: number;
-  compute_time_ms: number;
-}
-
-export type ApiJobStageDto = {
-  stage: string;
-  status: string;
-  started_at?: string;
-  completed_at?: string;
-  duration_ms?: number;
-  error_message?: string;
-}
-
-export type ApiJobErrorDto = {
-  id: string;
-  stage: string;
-  error_code: string;
-  error_message: string;
-  url?: string;
-  retryable: boolean;
-  retry_count: number;
-  occurred_at: string;
-  resolved_at?: string;
-}
-
-export type ApiJobDetailDto = {
-  id: string;
-  target_id: string;
-  tenant_id: string;
-  configuration: Record<string, unknown>;
-  status: string;
-  priority: number;
-  scheduled_at?: string;
-  started_at?: string;
-  completed_at?: string;
-  updated_at?: string;
-  estimated_duration_ms?: number;
-  progress: ApiJobProgressDto;
-  results: ApiJobResultsDto;
-  resources: ApiJobResourcesDto;
-  triggered_by: string;
-  correlation_id?: string;
-  created_at: string;
-  created_by: string;
-  stages: ApiJobStageDto[];
-  errors: ApiJobErrorDto[];
-}
-
-export type ApiComplianceLogDto = {
-  id: string;
-  event_type: string;
-  severity: string;
-  request_url?: string;
-  request_timestamp: string;
-  response_action_taken?: string;
-  created_at: string;
-}
