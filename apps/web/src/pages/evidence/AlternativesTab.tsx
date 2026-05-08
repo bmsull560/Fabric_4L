@@ -40,7 +40,7 @@ export default function AlternativesTab() {
       </div>
       {nextAction && (
         <div className="flex justify-end">
-          <Button onClick={() => navigateTo(`/drivers/${accountId}/solution-cost`)} data-testid="primary-forward-action">
+          <Button onClick={() => navigateTo(nextAction.target, nextAction.params, nextAction.query)} data-testid="primary-forward-action">
             {nextAction.label}
           </Button>
         </div>

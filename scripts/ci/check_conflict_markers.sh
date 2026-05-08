@@ -3,8 +3,9 @@ set -euo pipefail
 
 # Scan tracked source files for unresolved merge conflict markers.
 # Restricting to source-like files avoids expected marker-like strings in lockfiles or binaries.
+# Pattern requires git conflict markers: <<<<<<< HEAD, =======, >>>>>>> branch-name
 
-PATTERN='^(<<<<<<< .+|=======$|>>>>>>> .+)$'
+PATTERN='^(<<<<<<< .+|=======\s*$|>>>>>>> .+)$'
 
 mapfile -t files < <(git ls-files \
   '*.py' '*.pyi' '*.sh' '*.bash' '*.zsh' \

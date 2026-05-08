@@ -19,7 +19,7 @@ export function useWorkflowContext(): Partial<WorkflowContext> {
       accountId: accountId ?? undefined,
       sessionId: sessionId ?? undefined,
       step: {
-        stepIndex: stepIndex ? Number(stepIndex) : workflowContext.step?.stepIndex ?? 0,
+        stepIndex: stepIndex !== null ? Number(stepIndex) : workflowContext.step?.stepIndex ?? 0,
         stepKey: workflowContext.step?.stepKey ?? "unknown",
         activeTab: activeTab ?? undefined,
       },

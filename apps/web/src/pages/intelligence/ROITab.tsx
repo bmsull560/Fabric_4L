@@ -13,12 +13,9 @@ import {
   Calculator,
   DollarSign,
   TrendingUp,
-  Clock,
-  BarChart3,
   Loader2,
   ChevronDown,
   ChevronUp,
-  Percent,
   Link,
 } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
@@ -35,13 +32,10 @@ import {
   useROITemplates,
   useIndustryBenchmarks,
   type ROICalculationResult,
-  type ROICalculationRequest,
   type ScenarioResult,
   type AnnualProjection,
   type ROITemplate,
 } from "@/hooks/useROICalculator";
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatCurrency(val: number): string {
   if (Math.abs(val) >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
@@ -51,14 +45,16 @@ function formatCurrency(val: number): string {
 
 function scenarioColor(scenario: string): string {
   switch (scenario) {
-    case "conservative": return "text-amber-600";
-    case "moderate":     return "text-primary";
-    case "aggressive":   return "text-green-600";
-    default:             return "text-muted-foreground";
+    case "conservative":
+      return "text-amber-600";
+    case "moderate":
+      return "text-primary";
+    case "aggressive":
+      return "text-green-600";
+    default:
+      return "text-muted-foreground";
   }
 }
-
-// ── Input Form ───────────────────────────────────────────────────────────────
 
 interface ROIInputs {
   deal_size: number;
@@ -69,6 +65,18 @@ interface ROIInputs {
   ramp_months: number;
 }
 
+type AssumptionSupportStatus = "supported" | "partial" | "unsupported" | "unreviewed";
+
+type WorkspaceAssumption = {
+  id?: string;
+  statement?: string;
+  text?: string;
+  support_status?: AssumptionSupportStatus;
+  supportStatus?: AssumptionSupportStatus;
+  evidence_ids?: string[];
+  evidenceIds?: string[];
+};
+
 const DEFAULT_INPUTS: ROIInputs = {
   deal_size: 100000,
   implementation_cost: 50000,
@@ -76,6 +84,13 @@ const DEFAULT_INPUTS: ROIInputs = {
   time_horizon_years: 3,
   discount_rate: 10,
   ramp_months: 3,
+};
+
+const STATUS_STYLE: Record<AssumptionSupportStatus, string> = {
+  supported: "border-success/30 bg-success/10 text-success",
+  partial: "border-warning/30 bg-warning/10 text-warning",
+  unsupported: "border-destructive/30 bg-destructive/10 text-destructive",
+  unreviewed: "border-border bg-muted text-muted-foreground",
 };
 
 function InputField({
@@ -105,19 +120,17 @@ function InputField({
         <input
           type="number"
           value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(event) => onChange(Number(event.target.value))}
           min={min}
           max={max}
           step={step ?? 1}
-          className="w-full px-2 py-1 rounded border border-border bg-background text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded border border-border bg-background px-2 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
         />
         {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
       </div>
     </div>
   );
 }
-
-// ── Scenario Card ────────────────────────────────────────────────────────────
 
 function ScenarioCard({
   label,
@@ -133,14 +146,12 @@ function ScenarioCard({
   return (
     <div
       className={cn(
-        "rounded-md border p-3 space-y-2 transition-colors",
-        isActive ? "border-primary bg-primary/5" : "border-border"
+        "space-y-2 rounded-md border p-3 transition-colors",
+        isActive ? "border-primary bg-primary/5" : "border-border",
       )}
     >
       <div className="flex items-center justify-between">
-        <span className={cn("text-xs font-bold", scenarioColor(label.toLowerCase()))}>
-          {label}
-        </span>
+        <span className={cn("text-xs font-bold", scenarioColor(label.toLowerCase()))}>{label}</span>
         <span className="text-lg font-bold">{Math.round(result.total_roi_pct)}%</span>
       </div>
       <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -165,8 +176,6 @@ function ScenarioCard({
   );
 }
 
-// ── Year Projection Table ────────────────────────────────────────────────────
-
 function ProjectionTable({ projections }: { projections: AnnualProjection[] }) {
   if (!projections.length) return null;
 
@@ -175,26 +184,31 @@ function ProjectionTable({ projections }: { projections: AnnualProjection[] }) {
       <table className="w-full text-[10px]">
         <thead>
           <tr className="border-b border-border">
-            <th className="text-left py-1.5 font-semibold text-muted-foreground">Year</th>
-            <th className="text-right py-1.5 font-semibold text-muted-foreground">Benefit</th>
-            <th className="text-right py-1.5 font-semibold text-muted-foreground">Cost</th>
-            <th className="text-right py-1.5 font-semibold text-muted-foreground">Net</th>
-            <th className="text-right py-1.5 font-semibold text-muted-foreground">Cumulative</th>
+            <th className="py-1.5 text-left font-semibold text-muted-foreground">Year</th>
+            <th className="py-1.5 text-right font-semibold text-muted-foreground">Benefit</th>
+            <th className="py-1.5 text-right font-semibold text-muted-foreground">Cost</th>
+            <th className="py-1.5 text-right font-semibold text-muted-foreground">Net</th>
+            <th className="py-1.5 text-right font-semibold text-muted-foreground">Cumulative</th>
           </tr>
         </thead>
         <tbody>
-          {projections.map((p) => {
-            const net = p.benefit - p.cost;
+          {projections.map((projection) => {
+            const net = projection.benefit - projection.cost;
             return (
-              <tr key={p.year} className="border-b border-border/50">
-                <td className="py-1.5 font-semibold">Year {p.year}</td>
-                <td className="text-right text-green-600">{formatCurrency(p.benefit)}</td>
-                <td className="text-right text-red-500">{formatCurrency(p.cost)}</td>
+              <tr key={projection.year} className="border-b border-border/50">
+                <td className="py-1.5 font-semibold">Year {projection.year}</td>
+                <td className="text-right text-green-600">{formatCurrency(projection.benefit)}</td>
+                <td className="text-right text-red-500">{formatCurrency(projection.cost)}</td>
                 <td className={cn("text-right font-semibold", net >= 0 ? "text-green-600" : "text-red-500")}>
                   {formatCurrency(net)}
                 </td>
-                <td className={cn("text-right font-semibold", p.cumulative_net >= 0 ? "text-green-600" : "text-red-500")}>
-                  {formatCurrency(p.cumulative_net)}
+                <td
+                  className={cn(
+                    "text-right font-semibold",
+                    projection.cumulative_net >= 0 ? "text-green-600" : "text-red-500",
+                  )}
+                >
+                  {formatCurrency(projection.cumulative_net)}
                 </td>
               </tr>
             );
@@ -205,28 +219,17 @@ function ProjectionTable({ projections }: { projections: AnnualProjection[] }) {
   );
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
-
 export default function ROITab() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
-<<<<<<< ours
-  type AssumptionSupportStatus = "supported" | "partial" | "unsupported" | "unreviewed";
-  type WorkspaceAssumption = {
-    id?: string;
-    statement?: string;
-    text?: string;
-    support_status?: AssumptionSupportStatus;
-    supportStatus?: AssumptionSupportStatus;
-    evidence_ids?: string[];
-    evidenceIds?: string[];
-  };
-  const { data: evidenceData } = useWorkspaceTabQuery<{ evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }> }>(caseId ?? null, "evidence");
-  const { data: assumptionsData } = useWorkspaceTabQuery<{ assumptions: WorkspaceAssumption[] }>(caseId ?? null, "assumptions");
-=======
-  const { data: evidenceData } = useWorkspaceTabQuery<{ evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }> }>(caseId ?? null, "evidence");
->>>>>>> theirs
+  const { data: evidenceData } = useWorkspaceTabQuery<{
+    evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }>;
+  }>(caseId ?? null, "evidence");
+  const { data: assumptionsData } = useWorkspaceTabQuery<{ assumptions: WorkspaceAssumption[] }>(
+    caseId ?? null,
+    "assumptions",
+  );
   const { data: templates } = useROITemplates();
   const { data: benchmarks } = useIndustryBenchmarks(account?.industry ?? null);
   const calculateROI = useCalculateROI();
@@ -243,16 +246,7 @@ export default function ROITab() {
 
   const result: ROICalculationResult | undefined = calculateROI.data;
   const acceptedEvidence = (evidenceData?.evidence ?? []).filter((item) => item.decision_status === "accepted");
-<<<<<<< ours
   const assumptions = assumptionsData?.assumptions ?? [];
-  const statusStyle: Record<AssumptionSupportStatus, string> = {
-    supported: "bg-emerald-100 text-emerald-700 border-emerald-300",
-    partial: "bg-amber-100 text-amber-700 border-amber-300",
-    unsupported: "bg-red-100 text-red-700 border-red-300",
-    unreviewed: "bg-muted text-muted-foreground border-border",
-  };
-=======
->>>>>>> theirs
   const scenarios: Record<string, ScenarioResult> = result?.scenarios ?? {};
   const activeResult: ScenarioResult | undefined = scenarios[activeScenario];
 
@@ -273,9 +267,7 @@ export default function ROITab() {
       account={{
         accountName: account.name,
         industry: account.industry ?? "Unknown",
-        revenue: account.annual_revenue
-          ? `$${account.annual_revenue.toLocaleString()}`
-          : "N/A",
+        revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
       }}
       rightRail={
         <RightRail
@@ -305,17 +297,15 @@ export default function ROITab() {
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-muted-foreground">
-                Calculate ROI to view results and benchmarks.
-              </div>
+              <div className="text-xs text-muted-foreground">Calculate ROI to view results and benchmarks.</div>
             )
           }
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
-            steps={steps}
-            isStreaming={isStreaming}
-            runMetadata={metadata}
+          steps={steps}
+          isStreaming={isStreaming}
+          runMetadata={metadata}
         />
       }
     >
@@ -325,13 +315,14 @@ export default function ROITab() {
         ) : (
           <div className="space-y-1">
             {acceptedEvidence.map((item) => (
-              <div key={item.id} className="text-xs">{item.title} · Linkage ID: {item.provenance_id ?? item.id}</div>
+              <div key={item.id} className="text-xs">
+                {item.title} · Linkage ID: {item.provenance_id ?? item.id}
+              </div>
             ))}
           </div>
         )}
       </SectionCard>
 
-<<<<<<< ours
       <SectionCard title="Assumption Support Trace" className="mb-4">
         {!assumptions.length ? (
           <div className="text-xs text-muted-foreground">No assumptions available for support tracing yet.</div>
@@ -340,23 +331,34 @@ export default function ROITab() {
             {assumptions.map((item, index) => {
               const support = item.support_status ?? item.supportStatus ?? "unreviewed";
               const linkedEvidence = (item.evidence_ids ?? item.evidenceIds ?? [])
-                .map((evidenceId) => acceptedEvidence.find((e) => e.id === evidenceId))
-                .filter(Boolean);
+                .map((evidenceId) => acceptedEvidence.find((evidence) => evidence.id === evidenceId))
+                .filter((evidence): evidence is NonNullable<typeof evidence> => Boolean(evidence));
               return (
                 <div key={item.id ?? `assumption-${index}`} className="rounded border border-border p-2">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs font-medium">{item.statement ?? item.text ?? "Untitled assumption"}</p>
-                    <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-semibold capitalize", statusStyle[support])}>{support}</span>
+                    <span
+                      className={cn(
+                        "rounded border px-1.5 py-0.5 text-[10px] font-semibold capitalize",
+                        STATUS_STYLE[support],
+                      )}
+                    >
+                      {support}
+                    </span>
                   </div>
                   <div className="mt-1 space-y-1">
-                    {linkedEvidence.length ? linkedEvidence.map((evidence) => (
-                      <div key={evidence?.id} className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Link size={10} />
-                        <span>{evidence?.title}</span>
-                        <span>·</span>
-                        <span>Artifact {evidence?.provenance_id ?? evidence?.id}</span>
-                      </div>
-                    )) : <div className="text-[10px] text-amber-600">No supporting evidence linked.</div>}
+                    {linkedEvidence.length ? (
+                      linkedEvidence.map((evidence) => (
+                        <div key={evidence.id} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Link size={10} />
+                          <span>{evidence.title}</span>
+                          <span>·</span>
+                          <span>Artifact {evidence.provenance_id ?? evidence.id}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-[10px] text-warning">No supporting evidence linked.</div>
+                    )}
                   </div>
                 </div>
               );
@@ -365,15 +367,12 @@ export default function ROITab() {
         )}
       </SectionCard>
 
-=======
->>>>>>> theirs
-      {/* Input form */}
       <SectionCard title="ROI Calculator" className="mb-4">
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="mb-4 grid grid-cols-3 gap-4">
           <InputField
             label="Deal Size (ACV)"
             value={inputs.deal_size}
-            onChange={(v) => setInputs((p) => ({ ...p, deal_size: v }))}
+            onChange={(value) => setInputs((prev) => ({ ...prev, deal_size: value }))}
             prefix="$"
             min={0}
             step={10000}
@@ -381,7 +380,7 @@ export default function ROITab() {
           <InputField
             label="Implementation Cost"
             value={inputs.implementation_cost}
-            onChange={(v) => setInputs((p) => ({ ...p, implementation_cost: v }))}
+            onChange={(value) => setInputs((prev) => ({ ...prev, implementation_cost: value }))}
             prefix="$"
             min={0}
             step={5000}
@@ -389,28 +388,27 @@ export default function ROITab() {
           <InputField
             label="Annual Benefit"
             value={inputs.annual_benefit}
-            onChange={(v) => setInputs((p) => ({ ...p, annual_benefit: v }))}
+            onChange={(value) => setInputs((prev) => ({ ...prev, annual_benefit: value }))}
             prefix="$"
             min={0}
             step={5000}
           />
         </div>
 
-        {/* Advanced toggle */}
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground mb-3"
+          className="mb-3 flex items-center gap-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
         >
           {showAdvanced ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           Advanced Settings
         </button>
 
         {showAdvanced && (
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="mb-4 grid grid-cols-3 gap-4">
             <InputField
               label="Time Horizon"
               value={inputs.time_horizon_years}
-              onChange={(v) => setInputs((p) => ({ ...p, time_horizon_years: v }))}
+              onChange={(value) => setInputs((prev) => ({ ...prev, time_horizon_years: value }))}
               suffix="years"
               min={1}
               max={10}
@@ -418,7 +416,7 @@ export default function ROITab() {
             <InputField
               label="Discount Rate"
               value={inputs.discount_rate}
-              onChange={(v) => setInputs((p) => ({ ...p, discount_rate: v }))}
+              onChange={(value) => setInputs((prev) => ({ ...prev, discount_rate: value }))}
               suffix="%"
               min={0}
               max={50}
@@ -426,7 +424,7 @@ export default function ROITab() {
             <InputField
               label="Ramp-up Period"
               value={inputs.ramp_months}
-              onChange={(v) => setInputs((p) => ({ ...p, ramp_months: v }))}
+              onChange={(value) => setInputs((prev) => ({ ...prev, ramp_months: value }))}
               suffix="months"
               min={0}
               max={24}
@@ -434,7 +432,6 @@ export default function ROITab() {
           </div>
         )}
 
-        {/* Calculate button */}
         <button
           onClick={() => {
             calculateROI.mutate({
@@ -449,31 +446,21 @@ export default function ROITab() {
           }}
           disabled={calculateROI.isPending}
           className={cn(
-            "inline-flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold transition-colors",
+            "inline-flex items-center gap-2 rounded-md px-4 py-2 text-xs font-semibold transition-colors",
             "bg-primary text-primary-foreground hover:bg-primary/90",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
+            "disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
-          {calculateROI.isPending ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            <Calculator size={14} />
-          )}
+          {calculateROI.isPending ? <Loader2 size={14} className="animate-spin" /> : <Calculator size={14} />}
           {calculateROI.isPending ? "Calculating…" : "Calculate ROI"}
         </button>
       </SectionCard>
 
-      {/* Results */}
       {result && (
         <>
-          {/* Scenario cards */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="mb-4 grid grid-cols-3 gap-4">
             {["conservative", "moderate", "aggressive"].map((scenario) => (
-              <button
-                key={scenario}
-                onClick={() => setActiveScenario(scenario)}
-                className="text-left"
-              >
+              <button key={scenario} onClick={() => setActiveScenario(scenario)} className="text-left">
                 <ScenarioCard
                   label={scenario.charAt(0).toUpperCase() + scenario.slice(1)}
                   result={scenarios[scenario]}
@@ -483,29 +470,15 @@ export default function ROITab() {
             ))}
           </div>
 
-          {/* Key metrics for active scenario */}
           {activeResult && (
-            <div className="grid grid-cols-4 gap-4 mb-4">
-              <MetricCard
-                label="ROI"
-                value={`${Math.round(activeResult.total_roi_pct)}%`}
-              />
-              <MetricCard
-                label="NPV"
-                value={formatCurrency(activeResult.npv)}
-              />
-              <MetricCard
-                label="Payback Period"
-                value={`${activeResult.payback_months} mo`}
-              />
-              <MetricCard
-                label="Multiplier"
-                value={`${activeResult.multiplier}x`}
-              />
+            <div className="mb-4 grid grid-cols-4 gap-4">
+              <MetricCard label="ROI" value={`${Math.round(activeResult.total_roi_pct)}%`} />
+              <MetricCard label="NPV" value={formatCurrency(activeResult.npv)} />
+              <MetricCard label="Payback Period" value={`${activeResult.payback_months} mo`} />
+              <MetricCard label="Multiplier" value={`${activeResult.multiplier}x`} />
             </div>
           )}
 
-          {/* Year-by-year projections */}
           {result.annual_projections && result.annual_projections.length > 0 && (
             <SectionCard title="Multi-Year Projections" className="mb-4">
               <ProjectionTable projections={result.annual_projections} />
@@ -514,31 +487,30 @@ export default function ROITab() {
         </>
       )}
 
-      {/* Templates */}
       {templates && templates.length > 0 && (
         <SectionCard title="Saved Templates">
           <div className="space-y-1">
-            {templates.map((tpl: ROITemplate) => (
+            {templates.map((template: ROITemplate) => (
               <button
-                key={tpl.id}
+                key={template.id}
                 onClick={() => {
-                  if (tpl.defaults) {
+                  if (template.defaults) {
                     setInputs({
-                      deal_size: tpl.defaults.deal_size ?? DEFAULT_INPUTS.deal_size,
-                      implementation_cost: tpl.defaults.implementation_cost ?? DEFAULT_INPUTS.implementation_cost,
-                      annual_benefit: tpl.defaults.annual_benefit ?? DEFAULT_INPUTS.annual_benefit,
-                      time_horizon_years: tpl.defaults.time_horizon_years ?? DEFAULT_INPUTS.time_horizon_years,
-                      discount_rate: (tpl.defaults.discount_rate ?? 0.10) * 100,
-                      ramp_months: tpl.defaults.ramp_months ?? DEFAULT_INPUTS.ramp_months,
+                      deal_size: template.defaults.deal_size ?? DEFAULT_INPUTS.deal_size,
+                      implementation_cost: template.defaults.implementation_cost ?? DEFAULT_INPUTS.implementation_cost,
+                      annual_benefit: template.defaults.annual_benefit ?? DEFAULT_INPUTS.annual_benefit,
+                      time_horizon_years: template.defaults.time_horizon_years ?? DEFAULT_INPUTS.time_horizon_years,
+                      discount_rate: (template.defaults.discount_rate ?? 0.1) * 100,
+                      ramp_months: template.defaults.ramp_months ?? DEFAULT_INPUTS.ramp_months,
                     });
                   }
                 }}
-                className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-left hover:bg-muted/50"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-muted/50"
               >
                 <Calculator size={12} className="text-muted-foreground" />
                 <div className="flex-1">
-                  <div className="text-xs font-medium">{tpl.name}</div>
-                  <div className="text-[10px] text-muted-foreground">{tpl.description}</div>
+                  <div className="text-xs font-medium">{template.name}</div>
+                  <div className="text-[10px] text-muted-foreground">{template.description}</div>
                 </div>
               </button>
             ))}
@@ -546,13 +518,12 @@ export default function ROITab() {
         </SectionCard>
       )}
 
-      {/* Empty state */}
       {!result && !calculateROI.isPending && (
         <SectionCard title="Financial Projections">
-          <div className="text-center py-8">
-            <DollarSign size={32} className="mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground mb-2">
-              Enter your parameters above and click "Calculate ROI" to generate projections.
+          <div className="py-8 text-center">
+            <DollarSign size={32} className="mx-auto mb-3 text-muted-foreground" />
+            <p className="mb-2 text-sm text-muted-foreground">
+              Enter your parameters above and click &quot;Calculate ROI&quot; to generate projections.
             </p>
             <p className="text-xs text-muted-foreground">
               Three scenarios (conservative, moderate, aggressive) with NPV, IRR, and payback analysis.

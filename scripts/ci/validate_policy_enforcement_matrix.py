@@ -18,6 +18,10 @@ def main() -> int:
         print(f"FAIL: missing matrix document: {MATRIX_PATH.relative_to(ROOT)}")
         return 1
 
+    if not POLICY_DIR.exists():
+        print(f"FAIL: policy directory does not exist: {POLICY_DIR.relative_to(ROOT)}")
+        return 1
+
     policy_files = {
         str(path.relative_to(ROOT))
         for path in sorted(POLICY_DIR.iterdir())

@@ -6,23 +6,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { Calculator, Loader2, RefreshCcw, Save } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import CalculatorShell from "@/components/workspace/CalculatorShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import { ValueLeversCalculator } from "@/components/calculator/ValueLeversCalculator";
 import { useAgentEvents } from "@/agui";
+import { useNavigation } from "@/hooks";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { createNextAction } from "@/components/workspace/nextAction";
 import { QK } from "@/hooks/queryKeys";
 import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { useModels } from "@/hooks/useModels";
-import { useROIScenarioVersions, useSaveROIScenarioVersion, useUpdateROIScenarioVersion, validateScenarioAssumptions, DEFAULT_SCENARIO_ASSUMPTIONS, type ScenarioState, type ScenarioAssumptionSet, type ScenarioName } from "@/hooks/useROIScenarios";
-import { useBenchmarksList, useCalculateROI, useIndustryBenchmarks, type ROICalculationRequest } from "@/hooks/useROICalculator";
-import { useValuePacks } from "@/hooks/useValuePacks";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigation } from "@/hooks";
-import { createNextAction } from "@/components/workspace/nextAction";
-import { ValueLeversCalculator } from "@/components/calculator/ValueLeversCalculator";
+import {
+  useROIScenarioVersions,
+  useSaveROIScenarioVersion,
+  useUpdateROIScenarioVersion,
+  validateScenarioAssumptions,
+  DEFAULT_SCENARIO_ASSUMPTIONS,
+  type ScenarioState,
+  type ScenarioAssumptionSet,
+  type ScenarioName,
+} from "@/hooks/useROIScenarios";
+import {
+  useBenchmarksList,
+  useCalculateROI,
+  useIndustryBenchmarks,
+  type ROICalculationRequest,
+} from "@/hooks/useROICalculator";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 
 function fmtCurrency(value: number): string {
@@ -38,13 +51,26 @@ export default function CalcROITab() {
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
   const { navigateTo } = useNavigation();
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
-  const { data: caseId } = useCanonicalCaseId(accountId);
-  const { data: valueModelTab } = useWorkspaceTabQuery<{ model_id?: string; value_model_id?: string; selected_model_id?: string }>(caseId ?? null, "value-model");
-  const { data: models } = useModels({});
-  const modelId = valueModelTab?.selected_model_id ?? valueModelTab?.value_model_id ?? valueModelTab?.model_id ?? models?.[0]?.id ?? null;
+  const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioAssumptionSet>(DEFAULT_SCENARIO_ASSUMPTIONS);
   const [activeScenario, setActiveScenario] = useState<ScenarioName>("expected");
+  const { data: canonicalCaseId } = useCanonicalCaseId(accountId);
+  const { data: valueModelTab } = useWorkspaceTabQuery<{
+    model_id?: string;
+    value_model_id?: string;
+    selected_model_id?: string;
+  }>(canonicalCaseId ?? null, "value-model");
+  const { data: models } = useModels({});
 
+  const fallbackModelId =
+    valueModelTab?.selected_model_id ??
+    valueModelTab?.value_model_id ??
+    valueModelTab?.model_id ??
+    models?.[0]?.id ??
+    null;
+  const effectiveCaseId = selectedTreeId ?? canonicalCaseId ?? null;
+  const effectiveModelId = selectedModelId ?? fallbackModelId;
 
   useEffect(() => {
     if (!accountId) return;
@@ -53,24 +79,23 @@ export default function CalcROITab() {
     const queryTreeId = params.get("tree_id") || null;
     if (queryModelId || queryTreeId) {
       setSelection(accountId, { valueModelId: queryModelId, treeId: queryTreeId });
-      if (queryModelId) setModelId(queryModelId);
-      if (queryTreeId) setCaseId(queryTreeId);
+      setSelectedModelId(queryModelId);
+      setSelectedTreeId(queryTreeId);
       return;
     }
     const persisted = getSelection(accountId);
-    if (persisted.valueModelId) setModelId(persisted.valueModelId);
-    if (persisted.treeId) setCaseId(persisted.treeId);
+    setSelectedModelId(persisted.valueModelId);
+    setSelectedTreeId(persisted.treeId);
   }, [accountId, location.search, getSelection, setSelection]);
 
   const queryClient = useQueryClient();
   const { data: assumptions, isLoading: assumptionsLoading } = useIndustryBenchmarks(account?.industry ?? null);
   const { data: allAssumptions } = useBenchmarksList();
-  const { data: packs } = useValuePacks({});
   const recalcMutation = useCalculateROI();
 
   const scenarioScope = useMemo(
-    () => ({ tenantId: null, accountId, caseId: caseId ?? null, modelId }),
-    [accountId, caseId, modelId]
+    () => ({ tenantId: null, accountId, caseId: effectiveCaseId, modelId: effectiveModelId }),
+    [accountId, effectiveCaseId, effectiveModelId]
   );
 
   const versionsQuery = useROIScenarioVersions(scenarioScope);
@@ -98,6 +123,7 @@ export default function CalcROITab() {
       }
     },
   });
+
   useEffect(() => {
     const latest = versionsQuery.data?.[0];
     if (latest) {
@@ -135,7 +161,19 @@ export default function CalcROITab() {
         industry: account?.industry ?? "Unknown",
         revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
       }}
-      rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="roi" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}
+      rightRail={
+        <RightRail
+          mode={railMode}
+          onModeChange={setRailMode}
+          activeTab="roi"
+          messages={messages}
+          onSendMessage={sendMessage}
+          suggestedActions={suggestedActions}
+          steps={steps}
+          isStreaming={isStreaming}
+          runMetadata={metadata}
+        />
+      }
     >
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -145,7 +183,9 @@ export default function CalcROITab() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">ROI Calculator</h2>
             <p className="text-sm text-muted-foreground">Scenario assumptions, value levers, and traceable formula outcomes.</p>
-            <p className="text-xs text-muted-foreground">Selected tree: {caseId ?? "None"} · Selected model: {modelId ?? "None"}</p>
+            <p className="text-xs text-muted-foreground">
+              Selected tree: {selectedTreeId ?? "None"} · Selected model: {selectedModelId ?? "None"}
+            </p>
           </div>
         </div>
 
@@ -158,23 +198,46 @@ export default function CalcROITab() {
         <SectionCard title="Scenario assumptions">
           <div className="grid grid-cols-2 gap-3">
             {(["conservative", "expected", "optimistic"] as ScenarioName[]).map((name) => (
-              <button key={name} onClick={() => setActiveScenario(name)} className={`rounded border px-2 py-1 text-xs ${activeScenario===name?"border-primary text-primary":"border-border"}`}>{name}</button>
+              <button
+                key={name}
+                onClick={() => setActiveScenario(name)}
+                className={`rounded border px-2 py-1 text-xs ${activeScenario === name ? "border-primary text-primary" : "border-border"}`}
+              >
+                {name}
+              </button>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries(scenario[activeScenario]).map(([k, v]) => (
-              <label key={k} className="space-y-1">
-                <span className="text-xs text-muted-foreground">{k.replaceAll("_", " ")}</span>
-                <input type="number" value={v} onChange={(e) => updateScenarioMutation.mutate({ scenarioName: activeScenario, next: { [k]: Number(e.target.value) } as Partial<ScenarioState> })} className="w-full rounded border border-border bg-background px-2 py-1 text-xs" />
+            {Object.entries(scenario[activeScenario]).map(([key, value]) => (
+              <label key={key} className="space-y-1">
+                <span className="text-xs text-muted-foreground">{key.replaceAll("_", " ")}</span>
+                <input
+                  type="number"
+                  value={value}
+                  onChange={(e) =>
+                    updateScenarioMutation.mutate({
+                      scenarioName: activeScenario,
+                      next: { [key]: Number(e.target.value) } as Partial<ScenarioState>,
+                    })
+                  }
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-xs"
+                />
               </label>
             ))}
           </div>
-          <div className="mb-3 flex gap-2"></div>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-            <button onClick={() => saveScenarioMutation.mutate(`Version ${new Date().toLocaleString()}`)} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted" disabled={saveScenarioMutation.isPending}>
+            <button
+              onClick={() => saveScenarioMutation.mutate(`Version ${new Date().toLocaleString()}`)}
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted"
+              disabled={saveScenarioMutation.isPending}
+            >
               <Save className="h-3.5 w-3.5" /> Save version
             </button>
-            <button onClick={() => recalcMutation.mutate({ ...scenario.expected, account_id: accountId })} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted" disabled={recalcMutation.isPending}>
+            <button
+              onClick={() => recalcMutation.mutate({ ...scenario.expected, account_id: accountId })}
+              className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 hover:bg-muted"
+              disabled={recalcMutation.isPending}
+            >
               {recalcMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />} Recalculate
             </button>
             {updateScenarioMutation.isPending && <span className="text-muted-foreground">Updating assumptions…</span>}
@@ -187,8 +250,8 @@ export default function CalcROITab() {
         <ValueLeversCalculator
           accountId={accountId}
           industry={account?.industry ?? undefined}
-          companySize={account?.employee_count ? (account.employee_count > 5000 ? "Enterprise" : "SMB") : undefined}
-          initialCaseId={caseId ?? null}
+          companySize={account?.employees ? (account.employees > 5000 ? "Enterprise" : "SMB") : undefined}
+          initialCaseId={effectiveCaseId}
         />
 
         <SectionCard title="Trace / explain">
@@ -204,7 +267,11 @@ export default function CalcROITab() {
         <SectionCard title="Saved scenario versions (reload/resume)">
           <div className="space-y-2">
             {(versionsQuery.data ?? []).map((version) => (
-              <button key={version.versionId} onClick={() => setScenario(version.assumptions)} className="w-full rounded border border-border p-2 text-left text-xs hover:bg-muted">
+              <button
+                key={version.versionId}
+                onClick={() => setScenario(version.assumptions)}
+                className="w-full rounded border border-border p-2 text-left text-xs hover:bg-muted"
+              >
                 <div className="font-medium">{version.name}</div>
                 <div className="text-muted-foreground">{version.accountId} / {version.caseId} / {version.modelId}</div>
               </button>
@@ -212,6 +279,7 @@ export default function CalcROITab() {
             {!versionsQuery.data?.length && <p className="text-xs text-muted-foreground">No versions saved for this account/case/model.</p>}
           </div>
         </SectionCard>
+
         {nextAction && (
           <div className="flex items-center justify-end gap-2">
             {nextAction.disabled && <span className="text-xs text-muted-foreground">{nextAction.reason}</span>}

@@ -214,6 +214,7 @@ export async function* sendAgentMessage(
   const contextEnvelope = buildRightRailContextEnvelope(options);
 
   const entityContext = {
+    ...(options.entityContext ?? {}),
     accountId: options.accountId,
     activeTab: options.activeTab,
     selectedSignalId: options.selectedSignalId,
@@ -226,7 +227,6 @@ export async function* sendAgentMessage(
     selectedBusinessCaseId: options.selectedBusinessCaseId,
     workspaceCaseId: options.workspaceCaseId,
     workflowContext: options.workflowContext,
-    ...(options.entityContext ?? {}),
     contextEnvelope,
   };
 

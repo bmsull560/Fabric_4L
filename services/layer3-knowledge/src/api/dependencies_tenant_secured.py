@@ -184,7 +184,7 @@ class Neo4jTenantSessionSecured:
 
 async def get_neo4j_secured(
     request: Request,
-    context: RequestContext | None = Depends(_require_request_context_provider()),
+    context: RequestContext | None = Depends(_require_request_context_provider),
 ) -> Neo4jTenantSessionSecured:
     """FastAPI dependency for secured, tenant-scoped Neo4j sessions.
     
@@ -239,7 +239,7 @@ async def get_neo4j_secured(
 
 async def get_neo4j_with_validation(
     request: Request,
-    context: RequestContext | None = Depends(_require_request_context_provider()),
+    context: RequestContext | None = Depends(_require_request_context_provider),
 ) -> Neo4jTenantSessionSecured:
     """Alias for get_neo4j_secured - explicit validation naming.
     

@@ -74,6 +74,7 @@ export default function ValueCasePage() {
     if (idx <= 0) return null;
     return versions[idx - 1] ?? null;
   }, [versions, selectedVersion]);
+
   const nextAction = accountId
     ? createNextAction({
         label: "Create Realization Plan",
@@ -209,7 +210,9 @@ export default function ValueCasePage() {
         {generateArtifact.isError && (
           <SectionCard title="Generation failed">
             <div className="flex items-center justify-between gap-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-              <p className="text-sm text-foreground flex items-center gap-2"><AlertCircle className="h-4 w-4 text-destructive" /> Unable to generate value case. Retry with the same inputs.</p>
+              <p className="text-sm text-foreground flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive" /> Unable to generate value case. Retry with the same inputs.
+              </p>
               <Button variant="outline" onClick={handleGenerate}>Retry</Button>
             </div>
           </SectionCard>
@@ -271,6 +274,7 @@ export default function ValueCasePage() {
             </div>
           )}
         </SectionCard>
+
         <SectionCard title="Claim-to-Evidence Trace Panel" subtitle="Maps each value-case metric to supporting assumptions and evidence artifacts.">
           {!(assumptionsTab.data?.assumptions?.length) ? (
             <p className="text-sm text-muted-foreground">No assumptions available yet.</p>
@@ -293,6 +297,7 @@ export default function ValueCasePage() {
             </div>
           )}
         </SectionCard>
+
         {nextAction && (
           <div className="flex items-center justify-end gap-2">
             {nextAction.disabled && <span className="text-xs text-muted-foreground">{nextAction.reason}</span>}
