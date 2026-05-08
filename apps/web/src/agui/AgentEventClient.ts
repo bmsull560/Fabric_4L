@@ -226,8 +226,8 @@ export async function* sendAgentMessage(
     selectedBusinessCaseId: options.selectedBusinessCaseId,
     workspaceCaseId: options.workspaceCaseId,
     workflowContext: options.workflowContext,
-    contextEnvelope,
     ...(options.entityContext ?? {}),
+    contextEnvelope,
   };
 
   const body = {

@@ -74,7 +74,6 @@ export default function ValueCasePage() {
     if (idx <= 0) return null;
     return versions[idx - 1] ?? null;
   }, [versions, selectedVersion]);
-
   const nextAction = accountId
     ? createNextAction({
         label: "Create Realization Plan",
@@ -272,7 +271,6 @@ export default function ValueCasePage() {
             </div>
           )}
         </SectionCard>
-
         <SectionCard title="Claim-to-Evidence Trace Panel" subtitle="Maps each value-case metric to supporting assumptions and evidence artifacts.">
           {!(assumptionsTab.data?.assumptions?.length) ? (
             <p className="text-sm text-muted-foreground">No assumptions available yet.</p>
@@ -295,7 +293,6 @@ export default function ValueCasePage() {
             </div>
           )}
         </SectionCard>
-
         {nextAction && (
           <div className="flex items-center justify-end gap-2">
             {nextAction.disabled && <span className="text-xs text-muted-foreground">{nextAction.reason}</span>}

@@ -126,16 +126,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.rate_limiter.set_endpoint_limit("/v1/similarity", 50, 60)
         logger.info("Rate limiting configured for all endpoints")
 
+    @staticmethod
+    def _apply_rate_limit_headers(response: Response, rate_limit_info: dict[str, int], *, remaining: int | None = None) -> None:
+        remaining_value = rate_limit_info["remaining"] if remaining is None else remaining
+        response.headers["X-RateLimit-Limit"] = str(rate_limit_info["limit"])
+        response.headers["X-RateLimit-Remaining"] = str(remaining_value)
+        response.headers["X-RateLimit-Reset"] = str(rate_limit_info["reset"])
+
     async def dispatch(self, request: Request, call_next) -> Response:
         if not self.enabled:
             return await call_next(request)
 
         is_allowed, rate_limit_info = await self.rate_limiter.is_allowed(request)
-        response = await call_next(request)
-        response.headers["X-RateLimit-Limit"] = str(rate_limit_info["limit"])
-        response.headers["X-RateLimit-Remaining"] = str(rate_limit_info["remaining"])
-        response.headers["X-RateLimit-Reset"] = str(rate_limit_info["reset"])
-
         if not is_allowed:
             logger.warning(
                 "Rate limit exceeded",
@@ -155,11 +157,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 },
             )
             response.headers["Retry-After"] = str(rate_limit_info["retry_after"])
-            response.headers["X-RateLimit-Limit"] = str(rate_limit_info["limit"])
-            response.headers["X-RateLimit-Remaining"] = "0"
-            response.headers["X-RateLimit-Reset"] = str(rate_limit_info["reset"])
+            self._apply_rate_limit_headers(response, rate_limit_info, remaining=0)
             return response
 
+        response = await call_next(request)
+        self._apply_rate_limit_headers(response, rate_limit_info)
         return response
 
     def enable(self) -> None:

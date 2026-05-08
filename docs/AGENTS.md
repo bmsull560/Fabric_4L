@@ -117,7 +117,11 @@ Before opening a PR, run:
 make verify
 ```
 
-This runs: lint → type-check → unit tests → contract tests → build.
+This runs: conflict-marker scan → lint → type-check → unit tests → contract tests → build.
+
+### Troubleshooting: merge conflict marker failures
+
+If `make verify` fails in `check-conflict-markers`, open the reported `file:line` entries and remove unresolved Git merge markers (`<<<<<<<`, `=======`, `>>>>>>>`) by completing or redoing the merge, then rerun `make verify`.
 
 For agent/skill changes, also run:
 

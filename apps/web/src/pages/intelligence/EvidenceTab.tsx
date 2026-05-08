@@ -13,6 +13,7 @@ import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 type VerificationState = "verified" | "partial" | "unverified";
+<<<<<<< ours
 
 interface EvidenceItem {
   id: string;
@@ -83,6 +84,10 @@ function mapCaseStudyToEvidenceItem(cs: CaseStudy): EvidenceItem {
       (cs.content ? cs.content.slice(0, 200) + (cs.content.length > 200 ? "…" : "") : "No summary available."),
   };
 }
+=======
+interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string; decision_status?: "accepted"|"rejected"|"attached_to_driver"; attached_driver_id?: string; provenance_id?: string; confidence?: number; decision_note?: string }
+const VERIFICATION_CONFIG: Record<VerificationState, { icon: typeof CheckCircle2; color: string }> = { verified: { icon: CheckCircle2, color: "text-green-600" }, partial: { icon: AlertCircle, color: "text-orange-600" }, unverified: { icon: AlertCircle, color: "text-muted-foreground" } };
+>>>>>>> theirs
 
 function useEvidenceTabState() {
   const { accountId } = useParams<{ accountId: string }>();
@@ -193,6 +198,7 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
   const { accountId } = useParams<{ accountId: string }>();
   const ownedState = useEvidenceTabState();
   const {
+<<<<<<< ours
     evidence,
     isLoading,
     error,
@@ -205,6 +211,12 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
     persistTab,
     data,
   } = providedState ?? ownedState;
+=======
+    evidence, isLoading, error, verified, avgMatch,
+    selectedEvidence, setSelectedEvidence,
+    caseId, evidenceDecision, persistTab, data,
+  } = useEvidenceTabState();
+>>>>>>> theirs
 
   const [optimisticDecision, setOptimisticDecision] = useState<Record<string, EvidenceItem["decision_status"]>>({});
   const [modifyNote, setModifyNote] = useState("");
@@ -300,7 +312,11 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
           <div className="flex gap-2">
           <Btn variant="primary" className="h-8" onClick={() => runDecision(selectedEvidence.id, "accepted")} disabled={evidenceDecision.isPending}>Accept</Btn>
           <Btn variant="outline" className="h-8" onClick={() => runDecision(selectedEvidence.id, "rejected")} disabled={evidenceDecision.isPending}>Reject</Btn>
+<<<<<<< ours
           <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver")} disabled={evidenceDecision.isPending}>Attach to Driver</Btn>
+=======
+          <Btn variant="ghost" className="h-8" onClick={() => runDecision(selectedEvidence.id, "attached_to_driver", "driver-auto")} disabled={evidenceDecision.isPending}>Modify</Btn>
+>>>>>>> theirs
           </div>
           <input
             value={modifyNote}

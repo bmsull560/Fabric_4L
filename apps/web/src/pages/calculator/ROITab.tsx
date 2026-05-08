@@ -4,7 +4,7 @@
  * Workspace tab for the Calculator workspace.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { Calculator, Loader2, RefreshCcw, Save } from "lucide-react";
 import CalculatorShell from "@/components/workspace/CalculatorShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
@@ -17,14 +17,13 @@ import { QK } from "@/hooks/queryKeys";
 import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { useModels } from "@/hooks/useModels";
 import { useROIScenarioVersions, useSaveROIScenarioVersion, useUpdateROIScenarioVersion, validateScenarioAssumptions, DEFAULT_SCENARIO_ASSUMPTIONS, type ScenarioState, type ScenarioAssumptionSet, type ScenarioName } from "@/hooks/useROIScenarios";
-import { useValueLevers } from "@/hooks/useCalculators";
 import { useBenchmarksList, useCalculateROI, useIndustryBenchmarks, type ROICalculationRequest } from "@/hooks/useROICalculator";
 import { useValuePacks } from "@/hooks/useValuePacks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@/hooks";
 import { createNextAction } from "@/components/workspace/nextAction";
 import { ValueLeversCalculator } from "@/components/calculator/ValueLeversCalculator";
-
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 
 function fmtCurrency(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
@@ -33,6 +32,9 @@ function fmtCurrency(value: number): string {
 export default function CalcROITab() {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? null;
+  const location = useLocation();
+  const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
+  const getSelection = useWorkspaceSelectionStore((state) => state.getSelection);
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
   const { navigateTo } = useNavigation();
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
@@ -42,6 +44,23 @@ export default function CalcROITab() {
   const modelId = valueModelTab?.selected_model_id ?? valueModelTab?.value_model_id ?? valueModelTab?.model_id ?? models?.[0]?.id ?? null;
   const [scenario, setScenario] = useState<ScenarioAssumptionSet>(DEFAULT_SCENARIO_ASSUMPTIONS);
   const [activeScenario, setActiveScenario] = useState<ScenarioName>("expected");
+
+
+  useEffect(() => {
+    if (!accountId) return;
+    const params = new URLSearchParams(location.search);
+    const queryModelId = params.get("value_model_id") || null;
+    const queryTreeId = params.get("tree_id") || null;
+    if (queryModelId || queryTreeId) {
+      setSelection(accountId, { valueModelId: queryModelId, treeId: queryTreeId });
+      if (queryModelId) setModelId(queryModelId);
+      if (queryTreeId) setCaseId(queryTreeId);
+      return;
+    }
+    const persisted = getSelection(accountId);
+    if (persisted.valueModelId) setModelId(persisted.valueModelId);
+    if (persisted.treeId) setCaseId(persisted.treeId);
+  }, [accountId, location.search, getSelection, setSelection]);
 
   const queryClient = useQueryClient();
   const { data: assumptions, isLoading: assumptionsLoading } = useIndustryBenchmarks(account?.industry ?? null);
@@ -126,6 +145,7 @@ export default function CalcROITab() {
           <div>
             <h2 className="text-lg font-semibold text-foreground">ROI Calculator</h2>
             <p className="text-sm text-muted-foreground">Scenario assumptions, value levers, and traceable formula outcomes.</p>
+            <p className="text-xs text-muted-foreground">Selected tree: {caseId ?? "None"} · Selected model: {modelId ?? "None"}</p>
           </div>
         </div>
 

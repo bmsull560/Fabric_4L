@@ -133,7 +133,7 @@ def _build_adapter(kind: str, config: CacheConfig | None = None) -> CachePort:
     if kind == "legacy":
         return LegacyCacheAdapter(InMemoryLegacyCache(config=config))  # type: ignore[arg-type]
     if kind == "aiocache":
-        return AiocacheCacheAdapter(config=config)
+        return AiocacheCacheAdapter(config=config, allow_memory_fallback=True)
     raise AssertionError(f"unknown adapter kind: {kind}")
 
 
@@ -257,6 +257,7 @@ async def test_cache_factory_keeps_legacy_default_and_requires_explicit_aiocache
     aiocache_adapter = build_cache_port(
         provider=CacheProviderName.AIOCACHE,
         config=CacheConfig(key_prefix="oss1:factory:aiocache:"),
+        allow_aiocache_memory_fallback=True,
     )
     try:
         assert isinstance(default_adapter, LegacyCacheAdapter)
@@ -272,7 +273,8 @@ async def test_shadow_cache_comparator_reports_no_mismatches_for_equal_cacheport
         InMemoryLegacyCache(config=CacheConfig(default_ttl=30, max_ttl=30, key_prefix="oss1:shadow:"))
     )  # type: ignore[arg-type]
     shadow = AiocacheCacheAdapter(
-        config=CacheConfig(default_ttl=30, max_ttl=30, key_prefix="oss1:shadow:")
+        config=CacheConfig(default_ttl=30, max_ttl=30, key_prefix="oss1:shadow:"),
+        allow_memory_fallback=True,
     )
     comparator = ShadowCacheComparator(primary=primary, shadow=shadow)
     try:
@@ -287,3 +289,36 @@ async def test_shadow_cache_comparator_reports_no_mismatches_for_equal_cacheport
         assert comparator.mismatches == []
     finally:
         await shadow.close()
+
+
+@pytest.mark.unit
+def test_aiocache_adapter_fails_closed_without_backend_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    with pytest.raises(ValueError, match="requires an explicit cache backend"):
+        AiocacheCacheAdapter(config=CacheConfig(key_prefix="oss1:fail-closed:"))
+
+
+@pytest.mark.unit
+def test_aiocache_adapter_disallows_memory_fallback_in_production_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    with pytest.raises(ValueError, match="MEMORY fallback is disabled by default"):
+        AiocacheCacheAdapter(
+            config=CacheConfig(key_prefix="oss1:production:"),
+            allow_memory_fallback=True,
+        )
+
+
+@pytest.mark.unit
+def test_aiocache_adapter_allows_memory_fallback_with_explicit_opt_in_for_test_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    adapter = AiocacheCacheAdapter(
+        config=CacheConfig(key_prefix="oss1:test-env:"),
+        allow_memory_fallback=True,
+    )
+    try:
+        assert adapter._cache is not None  # type: ignore[attr-defined]
+    finally:
+        # Close the internal backend for completeness.
+        asyncio.run(adapter.close())

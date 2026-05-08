@@ -1,4 +1,4 @@
-import { chromium } from '@playwright/test';
+import { chromium, type ConsoleMessage, type Page, type Request } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -50,10 +50,36 @@ const ROUTES: { path: string; from: string }[] = [
   {path:'/intelligence',from:'edge-case'},{path:'/studio',from:'edge-case'},
 ];
 
-async function seed(page: any, tier='admin'){
-  const user={id:'audit-001',email:'audit@test.com',role:tier,tenantId:'tenant-audit',tenantSlug:'audit'};
+type UserTier = 'standard' | 'advanced' | 'admin';
+
+interface AuditUser {
+  id: string;
+  email: string;
+  role: UserTier;
+  tenantId: string;
+  tenantSlug: string;
+}
+
+interface RouteAuditSummary {
+  health: number;
+  verdict: string;
+  ceTotal: number;
+  nfTotal: number;
+  pass: number;
+  partial: number;
+  fail: number;
+  blocked: number;
+  risks: string[];
+}
+
+function isErrorWithMessage(value: unknown): value is { message: string } {
+  return typeof value === 'object' && value !== null && 'message' in value && typeof (value as { message: unknown }).message === 'string';
+}
+
+async function seed(page: Page, tier: UserTier = 'admin'){
+  const user: AuditUser = {id:'audit-001',email:'audit@test.com',role:tier,tenantId:'tenant-audit',tenantSlug:'audit'};
   await page.goto(`${BASE_URL}/login`,{waitUntil:'domcontentloaded',timeout:15000});
-  await page.evaluate((u: any)=>{
+  await page.evaluate((u: AuditUser)=>{
     const payload={exp:Math.floor(Date.now()/1000)+86400,iat:Math.floor(Date.now()/1000),sub:u.id,tenant_id:u.tenantId};
     const token=`header.${btoa(JSON.stringify(payload))}.signature`;
     localStorage.setItem('accessToken',token);
@@ -65,14 +91,22 @@ async function seed(page: any, tier='admin'){
 
 function safe(s: string){return s.replace(/[^a-z0-9_-]/gi,'_').replace(/_+/g,'_');}
 
-async function audit(page: any, routePath: string, from: string): Promise<R>{
+type ConsoleErrorHandler = (message: ConsoleMessage) => void;
+type RequestFailureHandler = (request: Request) => void;
+
+async function audit(page: Page, routePath: string, from: string): Promise<R>{
   const ce: string[]=[]; const nf: string[]=[]; const notes: string[]=[];
-  const onC=(m: any)=>{if(m.type()==='error')ce.push(m.text());};
-  const onF=(r: any)=>{if(r.failure())nf.push(`${r.method()} ${r.url()} — ${r.failure().errorText}`);};
+  const onC: ConsoleErrorHandler=(m)=>{if(m.type()==='error')ce.push(m.text());};
+  const onF: RequestFailureHandler=(r)=>{
+    const failure = r.failure();
+    if(failure){
+      nf.push(`${r.method()} ${r.url()} — ${failure.errorText}`);
+    }
+  };
   page.on('console',onC); page.on('requestfailed',onF);
   try{
     await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'domcontentloaded',timeout:15000});
-  }catch(e: any){notes.push(`nav fail:${e.message}`);}
+  }catch(e: unknown){notes.push(`nav fail:${isErrorWithMessage(e) ? e.message : String(e)}`);}
   await page.waitForTimeout(400);
   const title=await page.title().catch(()=>'?');
   const h1=await page.locator('h1').first().textContent().catch(()=>'');
@@ -125,9 +159,11 @@ async function main(){
   if(!backOk)risks.push('Back nav broken');
   if(!reloadOk)risks.push('Nested reload broken');
 
+  const summary: RouteAuditSummary = { health, verdict, ceTotal, nfTotal, pass, partial, fail, blocked, risks };
+
   let md=`# Playwright Route & Hook Audit Report\n**Date:** ${new Date().toISOString().split('T')[0]} **Base:** ${BASE_URL}\n\n`;
-  md+=`## 1. Executive Summary\n- Health score: ${health}%\n- Verdict: ${verdict}\n- Console errors: ${ceTotal} | Network failures: ${nfTotal}\n`;
-  md+=`### Top 5 Risks\n`;risks.slice(0,5).forEach((r,i)=>md+=`${i+1}. ${r}\n`);
+  md+=`## 1. Executive Summary\n- Health score: ${summary.health}%\n- Verdict: ${summary.verdict}\n- Console errors: ${summary.ceTotal} | Network failures: ${summary.nfTotal}\n`;
+  md+=`### Top 5 Risks\n`;summary.risks.slice(0,5).forEach((r,i)=>md+=`${i+1}. ${r}\n`);
   md+=`### Top 5 Fixes\n1. Fix P0 hook null-checks on route params\n2. Add ErrorBoundary to all lazy tabs\n3. Handle API 401/403 with visible UI\n4. Preserve account/tenant context on refresh\n5. Fix responsive overflow & mobile nav\n\n`;
   md+=`## 2. Route Inventory\n| Route | From | Title | Heading | Status | CE | NF | Notes |\n|-------|------|-------|---------|--------|----|----|-------|\n`;
   for(const r of results){md+=`| ${r.path} | ${r.from} | ${r.title.substring(0,28)} | ${r.heading.substring(0,28)} | ${r.status} | ${r.ce.length} | ${r.nf.length} | ${r.notes.join('; ').substring(0,60).replace(/\|/g,'\\|')} |\n`;}

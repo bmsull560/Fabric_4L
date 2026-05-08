@@ -120,13 +120,18 @@ async def graph_rag_query_stream_impl(query: GraphRAGQuery, graph_rag: Any) -> S
                 }
                 yield f"data: {json.dumps(event_data)}\\n\\n"
         except Exception as exc:
-            logger.error("Streaming GraphRAG query failed: %s", exc)
+            logger.error("Streaming GraphRAG query failed", exc_info=True)
+            trace_id = None
+            if isinstance(exc, Exception):
+                trace_id = getattr(exc, "trace_id", None) or getattr(exc, "correlation_id", None)
             error_event = {
                 "event_type": "error",
-                "data": {"message": str(exc)},
+                "data": {"message": "Streaming query failed"},
                 "timestamp": datetime.utcnow().isoformat(),
                 "progress_percent": 100.0,
             }
+            if trace_id:
+                error_event["data"]["trace_id"] = trace_id
             yield f"data: {json.dumps(error_event)}\\n\\n"
 
     return StreamingResponse(

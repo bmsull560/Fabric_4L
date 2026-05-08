@@ -37,6 +37,8 @@ jobs:
           mkdir -p ${ARTIFACT_DIR}/{arch,security,chaos,smoke,agent,state,obs,readiness,release}
       - name: Validate policy schema
         run: make gates-validate-policy POLICY_FILE=${POLICY_FILE}
+      - name: Validate policy enforcement matrix coverage
+        run: python scripts/ci/validate_policy_enforcement_matrix.py
       - uses: actions/upload-artifact@v4
         with:
           name: setup-artifacts

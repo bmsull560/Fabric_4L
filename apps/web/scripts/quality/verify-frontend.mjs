@@ -16,6 +16,7 @@ const mode = process.env.FRONTEND_VERIFY_MODE || "standard";
 
 const gates = [
   ["Workflow matrix", ["pnpm", ["run", "test:workflow-matrix"]]],
+  ["Frontend hygiene", ["pnpm", ["run", "test:frontend-hygiene"]]],
   ["TypeScript", ["pnpm", ["run", "check"]]],
   ["Contract tests", ["pnpm", ["run", "test:contracts"]]],
   ["Trust-boundary parser guard", ["pnpm", ["run", "test:trust-boundaries"]]],

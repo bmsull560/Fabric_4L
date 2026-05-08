@@ -30,6 +30,7 @@ def build_cache_port(
     redis_url: str | None = None,
     config: CacheConfig | None = None,
     namespace: str | None = None,
+    allow_aiocache_memory_fallback: bool = False,
 ) -> CachePort:
     """Build a CachePort implementation without changing legacy defaults.
 
@@ -40,6 +41,8 @@ def build_cache_port(
         redis_url: Redis URL used only when constructing a legacy RedisCache.
         config: Cache configuration shared by compatible providers.
         namespace: aiocache namespace used only by the aiocache provider.
+        allow_aiocache_memory_fallback: Explicit non-production-only opt-in for
+            aiocache in-memory fallback when ``aiocache_backend`` is not provided.
 
     Returns:
         A CachePort-compatible provider.
@@ -65,6 +68,7 @@ def build_cache_port(
             cache=aiocache_backend,
             config=config,
             namespace=namespace,
+            allow_memory_fallback=allow_aiocache_memory_fallback,
         )
 
     raise ValueError(f"Unsupported cache provider: {provider}")

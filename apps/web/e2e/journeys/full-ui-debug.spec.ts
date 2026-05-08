@@ -4,12 +4,14 @@
  *
  * Run: cd frontend && pnpm exec playwright test e2e/journeys/full-ui-debug.spec.ts --project=journeys --reporter=list
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
 import { setUserTier, seedAuthState, clearUserTier, clearAuthState } from '../fixtures';
+
+type RouteStatus = 'ok' | '404' | 'error' | 'redirect' | 'timeout' | 'crash';
 
 interface RouteResult {
   path: string;
-  status: 'ok' | '404' | 'error' | 'redirect' | 'timeout' | 'crash';
+  status: RouteStatus;
   finalUrl: string;
   consoleErrors: string[];
   pageErrors: string[];
@@ -40,10 +42,16 @@ const ALL_ROUTES = [
   { path: '/studio', tier: 'standard' as const, scoped: true },
 ];
 
+type ConsoleErrorHandler = (message: ConsoleMessage) => void;
+
+function isErrorWithName(value: unknown): value is { name: string } {
+  return typeof value === 'object' && value !== null && 'name' in value && typeof (value as { name: unknown }).name === 'string';
+}
+
 async function diagnoseRoute(page: Page, route: typeof ALL_ROUTES[number]): Promise<RouteResult> {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
-  const onConsole = (msg: any) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); };
+  const onConsole: ConsoleErrorHandler = (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); };
   const onPageError = (err: Error) => pageErrors.push(err.message);
   page.on('console', onConsole);
   page.on('pageerror', onPageError);
@@ -92,8 +100,8 @@ async function diagnoseRoute(page: Page, route: typeof ALL_ROUTES[number]): Prom
     // Screenshot
     const safe = route.path.replace(/[^a-z0-9]/gi, '_');
     await page.screenshot({ path: `e2e-results/debug-${safe}-${status}.png`, fullPage: false });
-  } catch (e: any) {
-    status = e.name?.includes('Timeout') ? 'timeout' : 'error';
+  } catch (e: unknown) {
+    status = isErrorWithName(e) && e.name.includes('Timeout') ? 'timeout' : 'error';
     finalUrl = page.url();
   }
 
@@ -103,7 +111,7 @@ async function diagnoseRoute(page: Page, route: typeof ALL_ROUTES[number]): Prom
   return { path: route.path, status, finalUrl, consoleErrors: consoleErrors.slice(0, 5), pageErrors: pageErrors.slice(0, 5), hasSidebar, hasHeader };
 }
 
-test.describe('Full UI Debug', () => {
+test.describe('Full UI Debug @debug', () => {
   test.setTimeout(120000);
 
   test('diagnose all routes and print report', async ({ page }) => {

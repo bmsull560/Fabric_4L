@@ -21,6 +21,7 @@ import AlternativesTab from "@/pages/evidence/AlternativesTab";
 import SolutionCostTab from "@/pages/evidence/SolutionCostTab";
 import { TreePine, ArrowRight } from "lucide-react";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
+<<<<<<< ours
 import { useWorkflowSessionContext } from "@/hooks/useWorkflowSessionContext";
 
 interface PromotedDriver {
@@ -33,6 +34,8 @@ interface PromotedDriver {
   confidence?: number;
   capability_id?: string;
 }
+=======
+>>>>>>> theirs
 
 export default function DriverTreePage() {
   const params = useParams<{ accountId: string; tab?: string }>();

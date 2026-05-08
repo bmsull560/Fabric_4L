@@ -10,6 +10,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import logging
+import os
 from typing import Any
 
 from aiocache import Cache
@@ -26,6 +27,7 @@ class AiocacheCacheAdapter:
     """CachePort-compatible adapter backed by an aiocache cache instance."""
 
     provider_name = "aiocache"
+    _NON_PROD_ENVS = {"development", "dev", "local", "test", "testing", "ci", "debug"}
 
     def __init__(
         self,
@@ -33,12 +35,24 @@ class AiocacheCacheAdapter:
         config: CacheConfig | None = None,
         *,
         namespace: str | None = None,
+        allow_memory_fallback: bool = False,
     ) -> None:
         self.config = config or CacheConfig()
         self.namespace = namespace
-        # Default to MEMORY backend if no cache provided - explicit for production safety
+        # Fail closed by default when no backend is supplied.
+        # MEMORY is allowed only with explicit opt-in in non-production-like environments.
         if cache is None:
-            logger.warning("No cache backend provided, defaulting to MEMORY cache. This is not suitable for production.")
+            env_name = (os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "development").strip().lower()
+            if not allow_memory_fallback or env_name not in self._NON_PROD_ENVS:
+                raise ValueError(
+                    "AiocacheCacheAdapter requires an explicit cache backend. "
+                    "MEMORY fallback is disabled by default; it can only be enabled with "
+                    "allow_memory_fallback=True in local/test/debug environments."
+                )
+            logger.warning(
+                "No aiocache backend provided; using in-memory fallback for non-production environment '%s'.",
+                env_name,
+            )
         self._cache = cache or Cache(Cache.MEMORY, namespace=namespace)
         # _known_keys tracks keys set through this adapter instance only.
         # LIMITATION: This becomes stale if keys expire via TTL, are deleted externally,

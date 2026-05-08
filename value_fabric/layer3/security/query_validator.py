@@ -68,6 +68,12 @@ class ValidationSeverity(str, Enum):
     INFO = "info"          # Informational only
 
 
+class QueryRisk(str, Enum):
+    READ = "read"
+    WRITE = "write"
+    ADMIN = "admin"
+
+
 @dataclass
 class ValidationFinding:
     """A single validation finding.
@@ -142,6 +148,12 @@ class QueryValidator:
         r'MATCH\s*\(\s*\w+\s*:\s*(?:Entity|UseCase|ValueDriver|Capability|Persona|Formula|Outcome|PROVEntity|DecisionTrace|DecisionStep)\s*\)\s*WHERE',
         re.IGNORECASE
     )
+
+    _DOMAIN_LABEL_PATTERN = r"(Entity|UseCase|ValueDriver|Capability|Persona|Formula|Outcome|PROVEntity|DecisionTrace|DecisionStep)"
+    _NODE_TOKEN_PATTERN = re.compile(r"\(\s*(\w+)\s*:\s*" + _DOMAIN_LABEL_PATTERN + r"(?:\s*:[^)]+)?\s*(?:\{([^}]*)\})?\s*\)", re.IGNORECASE | re.DOTALL)
+    _WHERE_TENANT_PATTERN = re.compile(r"\b(\w+)\.tenant_id\s*=\s*(?:\$tenant_id|\"[^\"]*\"|'[^']*')", re.IGNORECASE)
+    _ADMIN_PATTERN = re.compile(r"\b(CREATE|DROP)\s+(CONSTRAINT|INDEX|DATABASE|USER|ROLE)\b|\bCALL\s+db\.", re.IGNORECASE)
+    _WRITE_PATTERN = re.compile(r"\b(CREATE|MERGE|SET|DELETE|DETACH\s+DELETE|REMOVE)\b", re.IGNORECASE)
     
     def __init__(self, fail_closed: bool = True):
         """Initialize validator.
@@ -189,6 +201,51 @@ class QueryValidator:
                 )
         
         return self._findings
+
+    @classmethod
+    def classify_risk(cls, query: str) -> QueryRisk:
+        if cls._ADMIN_PATTERN.search(query):
+            return QueryRisk.ADMIN
+        if cls._WRITE_PATTERN.search(query):
+            return QueryRisk.WRITE
+        return QueryRisk.READ
+
+    def validate_structural_tenant_scope(self, query: str, query_name: str | None = None) -> list[ValidationFinding]:
+        """AST-like structural validation supporting multiline/aliases/subqueries.
+
+        This is intentionally parser-like (token + clause analysis) so we can
+        handle aliased variables and nested CALL blocks during migration.
+        """
+        findings: list[ValidationFinding] = []
+        where_scoped_aliases = {
+            m.group(1).lower()
+            for m in self._WHERE_TENANT_PATTERN.finditer(query)
+        }
+        for match in self._NODE_TOKEN_PATTERN.finditer(query):
+            alias = match.group(1)
+            props = match.group(3) or ""
+            has_tenant_in_props = bool(self._TENANT_ID_PATTERN.search(props))
+            has_tenant_in_where = alias.lower() in where_scoped_aliases
+            if not has_tenant_in_props and not has_tenant_in_where:
+                findings.append(
+                    ValidationFinding(
+                        severity=ValidationSeverity.ERROR,
+                        message=(
+                            f"Domain node alias '{alias}' is not tenant-scoped in "
+                            "properties or WHERE predicate"
+                        ),
+                        line_number=self._estimate_line(query, alias),
+                        pattern=match.group(0),
+                        suggestion=f"Add {{tenant_id: $tenant_id}} or WHERE {alias}.tenant_id = $tenant_id",
+                    )
+                )
+        if self.fail_closed and any(f.severity == ValidationSeverity.ERROR for f in findings):
+            name = query_name or "query"
+            raise UnscopedQueryError(
+                f"Query '{name}' failed structural tenant validation: "
+                + "; ".join(f.message for f in findings if f.severity == ValidationSeverity.ERROR)
+            )
+        return findings
     
     def _check_entity_tenant_scoping(self, query: str, query_name: str) -> None:
         """Check that all domain MATCH clauses include tenant_id.

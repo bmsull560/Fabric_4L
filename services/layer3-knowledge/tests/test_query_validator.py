@@ -383,3 +383,37 @@ class TestQueryValidatorEdgeCases:
         
         assert len(findings) == 0
 
+    def test_alias_where_tenant_filter_passes_structural_validation(self, validator):
+        query = """
+            MATCH (n:Entity)
+            WHERE n.tenant_id = $tenant_id AND n.id = $id
+            RETURN n
+        """
+        findings = validator.validate_structural_tenant_scope(query)
+        assert findings == []
+
+    def test_multiline_nested_subquery_requires_tenant_scope(self, validator):
+        query = """
+            MATCH (root:Entity {tenant_id: $tenant_id})
+            CALL {
+              WITH root
+              MATCH (child:Capability)
+              RETURN child
+            }
+            RETURN root
+        """
+        with pytest.raises(UnscopedQueryError):
+            validator.validate_structural_tenant_scope(query)
+
+    def test_delete_with_alias_missing_tenant_fails_structural_validation(self, validator):
+        query = """
+            MATCH (victim:Entity)
+            WITH victim
+            DETACH DELETE victim
+        """
+        with pytest.raises(UnscopedQueryError):
+            validator.validate_structural_tenant_scope(query)
+
+    def test_write_query_risk_classification(self, validator):
+        query = "MATCH (n:Entity {tenant_id: $tenant_id}) SET n.name = $name RETURN n"
+        assert QueryValidator.classify_risk(query).value == "write"

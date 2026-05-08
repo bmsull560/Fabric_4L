@@ -33,6 +33,17 @@ except ImportError:
 logger = logging.getLogger(__name__)
 _request_context_provider: RequestContextProvider | None = get_request_context
 
+# QueryValidator entrypoints and risk profile for security audits.
+QUERY_VALIDATION_ENTRYPOINTS: tuple[tuple[str, str], ...] = (
+    ("Neo4jTenantSessionSecured.run", "read/write/admin"),
+    ("ValidatedNeo4jSession.run", "read/write/admin"),
+)
+
+# Highest-risk paths (write/admin) must use approved templates or structural validation.
+APPROVED_QUERY_TEMPLATES: tuple[str, ...] = (
+    "MATCH (e:Entity {id: $id, tenant_id: $tenant_id}) DETACH DELETE e",
+)
+
 
 def _require_request_context_provider() -> RequestContextProvider:
     if _request_context_provider is None:
@@ -135,6 +146,13 @@ class Neo4jTenantSessionSecured:
         # Validate query for tenant scoping
         if self._strict:
             try:
+                risk = QueryValidator.classify_risk(query)
+                normalized = " ".join(query.split())
+                if risk in {"write", "admin"}:
+                    if normalized in APPROVED_QUERY_TEMPLATES:
+                        self._validator.validate(query, query_name="neo4j.run.template")
+                    else:
+                        self._validator.validate_structural_tenant_scope(query, query_name="neo4j.run.structural")
                 findings = self._validator.validate(query, query_name="neo4j.run")
                 if findings:
                     errors = [f for f in findings if f.severity.value == "error"]

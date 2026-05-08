@@ -359,3 +359,33 @@ test.describe('Feature', () => {
 ### Critical Journey Guard
 
 Run `pnpm test:e2e:guard` before committing E2E changes. The guard fails if the mobile navigation or backend My Models CRUD journeys are converted back to `test.skip`, `test.fixme`, or a backend skip-valve pattern. Backend-integrated runs also seed deterministic E2E data automatically when `PLAYWRIGHT_BACKEND_URL` is set.
+
+
+## Journey Inclusion Rules and Ownership
+
+- **Canonical CI journeys:** `apps/web/e2e/journeys/j1-*.spec.ts` through `j5-*.spec.ts` are the primary business gate aligned with `journeys/CANONICAL_JOURNEYS.md`.
+- **Foundational auth gate:** `j0-auth-session.spec.ts` remains required because all canonical journeys depend on session integrity.
+- **Depth variants:** files with `-deep.spec.ts` extend canonical journeys with stronger invariants; they should be scheduled in extended/overnight CI, not removed.
+- **Integrated realism variants:** backend-coupled specs (`*-backend-integrated.spec.ts` or tests tagged `@backend`) run in backend-enabled pipelines only.
+- **Adversarial coverage:** adversarial journey files (for example `j22-adversarial-e2e.spec.ts`) are security/resilience extensions and should run in dedicated resilience suites.
+- **Debug-only diagnostics:** any diagnostic spec must include `@debug` in `test.describe(...)` or test title and is excluded from normal CI via grep filters.
+
+### Required CI filtering
+
+Use tag filters to keep routine CI deterministic and production-signal focused:
+
+```bash
+pnpm test:e2e --grep-invert "@debug"
+```
+
+For backend-integrated runs:
+
+```bash
+pnpm test:e2e --grep "@backend" --grep-invert "@debug"
+```
+
+### Ownership expectations
+
+- **Journey owners:** each canonical journey (`J1`–`J5`) must have a clear owner in the corresponding product area (Discover, Intelligence, Model/Deliver, Governance, Security).
+- **When adding new specs:** map the spec to an existing canonical journey first; only create a new family when the workflow cannot be represented as an extension.
+- **Overlap policy:** when multiple specs assert the same workflow, keep one canonical happy-path spec and move additional checks into `-deep`, `@backend`, or `@debug` variants.

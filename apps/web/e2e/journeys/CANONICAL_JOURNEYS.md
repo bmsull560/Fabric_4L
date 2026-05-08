@@ -72,3 +72,32 @@ This journey validates that the platform correctly enforces RBAC and tier-based 
 **Key Invariants:**
 - Route guards must strictly enforce tier requirements.
 - API requests to restricted endpoints must return 403/401 if bypassed at the UI layer.
+
+
+## Journey Inventory (Current Specs)
+
+| Spec file | Feature area | Classification | Mode | Unique assertions | Canonical alignment |
+|---|---|---|---|---|---|
+| `j0-auth-session.spec.ts` | Auth/session lifecycle | happy path | mocked | redirect-to-login guard, persisted session after reload, token-expiry cleanup | Foundational precondition for J1–J5 |
+| `j1-ingestion-to-value-tree.spec.ts` | Ingestion → value tree | happy path | mocked + backend-aware | ingestion submission, job lifecycle, value-tree node visibility | **Canonical J1 primary** |
+| `j2-intelligence-workspace.spec.ts` | Signals synthesis workspace | happy path | mocked | agent stream state transitions, cross-tab signal persistence | **Canonical J2 primary** |
+| `j3-value-studio-deliverable.spec.ts` | Value studio deliverables | happy path | mocked | model edit impacts narrative/export affordances | **Canonical J3 primary** |
+| `j4-governance-trust.spec.ts` | Governance evidence/audit | happy path | mocked | provenance/trace + audit-log visibility | **Canonical J4 primary** |
+| `j5-tier-gated-security.spec.ts` | Tier/RBAC gating | happy path + adversarial | mocked | restricted-route redirects, tier-specific nav exposure | **Canonical J5 primary** |
+| `j1-golden-path-deep.spec.ts` | J1 deep reliability checks | deep | mocked | defensive checks for NaN/undefined regressions, richer ingestion-state assertions | J1 deep variant |
+| `j1-golden-path-backend-integrated.spec.ts` | J1 backend realism | deep | integrated | fail-closed backend contract expectations for J1 chain | J1 integrated variant |
+| `j7-calculation-evidence-deep.spec.ts` + `j7-value-realization-and-calculation.spec.ts` | Value realization/calculation | happy path + deep | mocked | unit normalization (weekly/monthly/annual), currency consistency | Consolidated under J3-adjacent value-model coverage |
+| `j8-approval-review-deep.spec.ts` + `j8-approval-review-gates.spec.ts` | Approval/review gates | happy path + deep | mocked | approval gate enforcement across integrations/hand-offs | Consolidated governance extension of J4 |
+| `j9-agent-grounding-deep.spec.ts` + `j9-agent-grounding-governance.spec.ts` | Agent grounding/trust | deep | mocked | grounding evidence and governance-aware refusal/trace behavior | Consolidated trust extension of J4 |
+| `j10-layer-ui-validation.spec.ts` + `j10-layer-ui-validation-deep.spec.ts` | UI contract drift detection | happy path + deep | mocked | cross-layer data-shape resilience and PII redaction checks | Consolidated cross-cutting quality suite |
+| `j11-golden-path-business-lifecycle.spec.ts` | End-to-end business lifecycle | deep | integrated (@backend) | approval-to-export-to-CRM and post-sale realization chain | Integrated super-journey spanning J1–J5 |
+| `j12`–`j24` (excluding debug specs) | Domain extensions (resilience, narrative, CRM, personas, admin, adversarial) | happy path/deep/adversarial | mostly mocked; some backend-aware | scenario-specific assertions tied to feature module outcomes | Non-canonical extensions mapped to closest J1–J5 journey |
+| `debug-sidebar.spec.ts`, `debug-ui.spec.ts`, `full-ui-debug.spec.ts` | Diagnostics only | debug | mocked/manual | route/surface diagnostics and exploratory smoke output | **Excluded from normal CI via `@debug` tag** |
+
+## Consolidation Decisions
+
+- Canonical ownership remains with `j1`–`j5` files (plus `j0` auth preflight) for required CI journey coverage.
+- Overlapping variants are retained only as explicit depth modes:
+  - `*-deep.spec.ts` = deeper assertions and regression probes.
+  - `*-backend-integrated.spec.ts` and `@backend` tests = integrated fail-closed backend realism.
+- Diagnostic scripts are explicitly tagged `@debug` and must be excluded from normal CI runs.

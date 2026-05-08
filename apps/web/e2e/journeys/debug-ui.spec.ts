@@ -10,7 +10,7 @@
 
 import { test, expect } from '@playwright/test';
 
-test.describe('UI End-User Satisfaction', () => {
+test.describe('UI End-User Satisfaction @debug', () => {
   test('login and explore core pages successfully', async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on('console', msg => {

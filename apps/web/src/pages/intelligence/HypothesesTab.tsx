@@ -487,6 +487,7 @@ export default function HypothesesTab() {
                           valueModelId: result.value_model_id ?? null,
                           treeId: result.tree_id ?? null,
                         });
+<<<<<<< ours
                         if (caseId) {
                           await Promise.all([
                             queryClient.prefetchQuery({
@@ -503,6 +504,8 @@ export default function HypothesesTab() {
                             }),
                           ]);
                         }
+=======
+>>>>>>> theirs
                         const query = new URLSearchParams();
                         if (result.tree_id) query.set("tree_id", result.tree_id);
                         if (result.value_model_id) query.set("value_model_id", result.value_model_id);

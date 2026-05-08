@@ -1,9 +1,15 @@
 /**
  * ValueModelTab - persisted account value model.
  */
+<<<<<<< ours
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { BarChart3, Calculator, Link2 } from "lucide-react";
+=======
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { BarChart3 } from "lucide-react";
+>>>>>>> theirs
 import CalculatorShell from "@/components/workspace/CalculatorShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
@@ -12,6 +18,7 @@ import { useValueCase, type ValueCaseResponse } from "@/hooks/useCalculators";
 import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
+<<<<<<< ours
 import { LoadingState, ErrorState, EmptyState } from "@/components/states";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
@@ -25,6 +32,11 @@ interface PersistedValueModel {
 function currency(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
 }
+=======
+import { LoadingState, ErrorState } from "@/components/states";
+import { SectionCard, MetricCard } from "@/components/WfPrimitives";
+import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
+>>>>>>> theirs
 
 export default function CalcValueModelTab() {
   const params = useParams<{ accountId: string }>();
@@ -35,7 +47,27 @@ export default function CalcValueModelTab() {
   const [activeTreeId, setActiveTreeId] = useState<string | null>(null);
   const [activeValueModelId, setActiveValueModelId] = useState<string | null>(null);
   const { data: account, isLoading: accountLoading } = useAccount(accountId);
+<<<<<<< ours
   const { navigateTo } = useNavigation();
+=======
+
+  useEffect(() => {
+    if (!accountId) return;
+    const params = new URLSearchParams(location.search);
+    const queryTreeId = params.get("tree_id") || null;
+    const queryValueModelId = params.get("value_model_id") || null;
+    if (queryTreeId || queryValueModelId) {
+      setSelection(accountId, { treeId: queryTreeId, valueModelId: queryValueModelId });
+      setActiveTreeId(queryTreeId);
+      setActiveValueModelId(queryValueModelId);
+      return;
+    }
+    const persisted = getSelection(accountId);
+    setActiveTreeId(persisted.treeId);
+    setActiveValueModelId(persisted.valueModelId);
+  }, [accountId, location.search, getSelection, setSelection]);
+
+>>>>>>> theirs
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
 
   useEffect(() => {
@@ -138,7 +170,17 @@ export default function CalcValueModelTab() {
         </div>
 
         <div className="rounded border border-border p-3 text-xs text-muted-foreground">
+<<<<<<< ours
           Active selection: Tree {activeTreeId ?? "None"}; Value model {activeValueModelId ?? "None"}
+=======
+          Active selection · Tree: {activeTreeId ?? "None"} · Value model: {activeValueModelId ?? "None"}
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <MetricCard label="Hard Savings" value="—" />
+          <MetricCard label="Strategic Value" value="—" />
+          <MetricCard label="Total Annual Value" value="—" />
+>>>>>>> theirs
         </div>
 
         {isLoading ? (

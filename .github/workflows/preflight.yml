@@ -23,12 +23,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for merge conflicts
-        run: |
-          if grep -r "<<<<<<< HEAD" --include="*.py" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.md" --include="*.yml" --include="*.yaml" .; then
-            echo "Merge conflict markers found!"
-            exit 1
-          fi
+      - name: Check for merge conflict markers
+        run: bash scripts/ci/check_conflict_markers.sh
 
       - name: Verify lockfile freshness
         run: |

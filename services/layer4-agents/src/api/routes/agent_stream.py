@@ -341,6 +341,8 @@ async def agent_stream_chat_sse(
     )
 
     entity_context = payload.entity_context or {}
+    if payload.context_envelope:
+        entity_context.setdefault("contextEnvelope", payload.context_envelope)
     entity_context.setdefault("accountId", account_id)
     entity_context.setdefault("activeTab", payload.active_tab)
     if payload.selected_signal_id:

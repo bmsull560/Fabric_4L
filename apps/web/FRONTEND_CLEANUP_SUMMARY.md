@@ -1,149 +1,68 @@
-# Frontend Clean-Up Summary
+# Frontend Cleanup Rationale: Navigation Path Centralization
 
-**Date:** 2026-05-06 (updated from 2026-05-02)  
-**Scope:** Frontend-only (TypeScript/React)  
-**Status:** Phase 1 Complete (corrected 2026-05-06)
+## ADR-Style Rationale
 
----
+### Context
+Frontend routing logic had drifted into multiple files with ad-hoc path construction patterns (string concatenation, local helper duplication, and mixed route-building conventions). This increased maintenance cost and made route contract compliance harder to enforce consistently.
 
-## Changes Made
+### Decision
+Adopt a **single navigation path-construction pattern** centered on the navigation service APIs (`getStatePath`, `buildPath`, and shared workspace-path resolution helpers), and route all workspace/account path assembly through that layer instead of per-component string composition.
 
-### 1. Centralized Navigation Service (CONTRACT.md §2.6)
+### Why This Pattern
+- **Contract consistency:** Aligns frontend navigation with route-state conventions rather than per-file URL construction.
+- **Change isolation:** Route-shape changes can be made in one place instead of across many components.
+- **Duplication reduction:** Removes repeated workspace path helper logic from layout and routing modules.
+- **Static enforcement compatibility:** Centralized patterns are easier to check with CI policy gates.
 
-**New File:** `src/navigation/navigationService.ts` (~200 lines)
-
-- Centralized route state definitions for 60+ route states
-- Replaced URL string concatenation with `buildPath()` function
-- Provides `getStatePath()` for declarative navigation
-- Exports `resolveWorkspacePath()` for workspace path resolution
-
-**Impact:**
-- Eliminates raw URL concatenation: `"/path/" + id` → `getStatePath('state', { id })`
-- Provides foundation for migrating from imperative `useNavigate()` to state-based navigation
-- Single source of truth for route paths
-
-### 2. Updated Navigation Helpers
-
-**File:** `src/navigation/navHelpers.ts`
-
-- Removed 25 lines of URL concatenation code
-- Now re-exports `resolveWorkspacePath` from navigationService
-
-### 3. Updated Account Routing
-
-**File:** `src/navigation/accountRouting.ts`
-
-- Refactored `resolveWorkspaceRoutePath()` to use `getStatePath()`
-- Refactored `resolveAccountScopedWorkspacePath()` to use centralized path building
-- Eliminated template literal URL construction
-
-### 4. Updated Layout Component
-
-**File:** `src/components/layout/Layout.tsx`
-
-- Removed 22-line local `resolveWorkspacePath()` function (duplicate)
-- Now imports from centralized `navigationService`
-- Reduced code duplication
+### Consequences
+- New routing code should prefer navigation service helpers over direct URL interpolation.
+- Legacy wrappers may remain temporarily where they preserve compatibility; migration should proceed through focused follow-up changes rather than broad rewrites.
+- Cleanup documentation should record architectural intent and enforcement links, not point-in-time claim snapshots.
 
 ---
 
-## Code Removed
-
-| Location | Lines | Description |
-|----------|-------|-------------|
-| `navHelpers.ts` | ~25 | URL concatenation patterns |
-| `accountRouting.ts` | ~8 | Template literal path building |
-| `Layout.tsx` | ~22 | Duplicate `resolveWorkspacePath` function |
-| **Total** | **~55** | Deprecated URL concatenation patterns |
+## Scope of This Cleanup Record
+- Frontend-only navigation/path-construction pattern standardization.
+- This document is an architectural rationale record, **not** a live status dashboard.
 
 ---
 
-## Pre-Existing Clean-Up
+## Current Enforcement / Status Sources
+For current pass/fail state, use CI runs and canonical check definitions:
 
-The following was already completed per `DEAD_CODE_SWEEP_REPORT.md`:
+- GitHub Actions PR pipeline: `.github/workflows/pr-checks.yml`
+- GitHub Actions test pipeline: `.github/workflows/test.yml`
+- Frontend script definitions (type/lint/test/a11y/e2e): `apps/web/package.json`
 
-- ✅ `pages/value-studio/_deprecated/` - 2,592 lines removed
-- ✅ `pages/Home.tsx` - Orphan page removed
-- ✅ `pages/OntologyBrowser.tsx` - Orphan page removed
-
----
-
-## Remaining Work (Out of Scope)
-
-The following deprecated patterns remain and can be addressed in future clean-up:
-
-### 1. Imperative Navigation (2 instances in 2 wrapper files)
-
-**Pattern:** `useNavigate()` from react-router-dom  
-**Contract:** §2.6 - should use `navigate()` from navigation service with state IDs
-
-**Current Status:**
-- `src/hooks/useNavigation.ts` - Wrapper that encapsulates useNavigate for state-based navigation
-- `src/hooks/useRoutePrefetch.ts` - Uses useNavigate internally for route prefetching
-
-**Note:** Both are wrapper/helper files that encapsulate the imperative useNavigate pattern. Page components should use `useNavigation()` hook or `getStatePath()` from navigationService instead.
-
-### 2. Inline Tool Definitions (claim not verified)
-
-**Pattern:** Tools defined as lambdas in agent config  
-**Contract:** §2.4 - should use ToolRegistry with JSON Schema
-
-**Status:** Claim of 19 instances not verified on 2026-05-06. Requires targeted audit of agent configuration files.
-
-### 3. URL Concatenation in Components (0 instances)
-
-**Status:** Verified on 2026-05-06 - No URL concatenation patterns found in component files. All path building uses centralized navigation services (navigationService, navSchema, accountRouting).
+These files are the source of truth for current check coverage and execution.
 
 ---
 
-## Verification
+## Future Cleanup Doc Template
+Use this template for subsequent frontend cleanup write-ups.
 
-```bash
-# TypeScript validation for new navigation files
-npx tsc --noEmit --skipLibCheck src/navigation/*.ts
-# Exit code: 0 ✅
+```md
+# Frontend Cleanup: <short title>
 
-# Full type check (has pre-existing errors in client.ts)
-pnpm tsc --noEmit
-# Note: Pre-existing merge conflict markers in client.ts
+<<<<<<< ours
+### 2. Inline Tool Definitions (verification pending)
+=======
+## Rationale (ADR-style)
+- **Context:** <what inconsistency or technical debt existed>
+- **Decision:** <pattern adopted>
+- **Why:** <why this pattern vs alternatives>
+- **Consequences:** <what changes for future contributors>
+>>>>>>> theirs
+
+## Scope
+- **In scope:** <areas/files/patterns intentionally addressed>
+- **Out of scope:** <explicitly deferred items>
+
+## Enforcement Link
+- **CI / policy source of truth:** <repo path(s) to workflow/job/script>
+
+## Ownership & Sunset
+- **Owner:** <team or role>
+- **Sunset / Revisit trigger:** <date, milestone, or condition>
 ```
 
----
-
-## Compliance Score Impact
-
-| Contract Section | Before | After | Change |
-|-----------------|--------|-------|--------|
-| §2.6 UI State (URL concatenation) | ~34 instances | 0 instances | -100% |
-| §2.6 UI State (in navigation layer) | ~20 lines | 0 lines | -100% |
-| §2.6 UI State (imperative useNavigate) | 82 instances | 2 instances (wrappers) | -98% |
-
----
-
-## Migration Path for Remaining useNavigate() Calls
-
-To complete the migration from `useNavigate()` to state-based navigation:
-
-1. Import `getStatePath` from `@/navigation/navigationService`
-2. Replace:
-   ```tsx
-   const navigate = useNavigate();
-   navigate(`/path/${id}`);
-   ```
-3. With:
-   ```tsx
-   import { getStatePath } from '@/navigation/navigationService';
-   navigate(getStatePath('stateId', { param: id }));
-   ```
-
-Or use the navigation hook pattern:
-```tsx
-import { useNavigation } from '@/hooks/useNavigation';
-const { navigateTo } = useNavigation();
-navigateTo('stateId', { param: id });
-```
-
----
-
-*Summary created: 2026-05-02*  
-*No production deployment requiring backward compatibility*

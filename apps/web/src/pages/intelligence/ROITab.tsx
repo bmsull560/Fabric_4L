@@ -211,6 +211,7 @@ export default function ROITab() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
+<<<<<<< ours
   type AssumptionSupportStatus = "supported" | "partial" | "unsupported" | "unreviewed";
   type WorkspaceAssumption = {
     id?: string;
@@ -223,6 +224,9 @@ export default function ROITab() {
   };
   const { data: evidenceData } = useWorkspaceTabQuery<{ evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }> }>(caseId ?? null, "evidence");
   const { data: assumptionsData } = useWorkspaceTabQuery<{ assumptions: WorkspaceAssumption[] }>(caseId ?? null, "assumptions");
+=======
+  const { data: evidenceData } = useWorkspaceTabQuery<{ evidence: Array<{ id: string; title: string; decision_status?: string; provenance_id?: string }> }>(caseId ?? null, "evidence");
+>>>>>>> theirs
   const { data: templates } = useROITemplates();
   const { data: benchmarks } = useIndustryBenchmarks(account?.industry ?? null);
   const calculateROI = useCalculateROI();
@@ -239,6 +243,7 @@ export default function ROITab() {
 
   const result: ROICalculationResult | undefined = calculateROI.data;
   const acceptedEvidence = (evidenceData?.evidence ?? []).filter((item) => item.decision_status === "accepted");
+<<<<<<< ours
   const assumptions = assumptionsData?.assumptions ?? [];
   const statusStyle: Record<AssumptionSupportStatus, string> = {
     supported: "bg-emerald-100 text-emerald-700 border-emerald-300",
@@ -246,6 +251,8 @@ export default function ROITab() {
     unsupported: "bg-red-100 text-red-700 border-red-300",
     unreviewed: "bg-muted text-muted-foreground border-border",
   };
+=======
+>>>>>>> theirs
   const scenarios: Record<string, ScenarioResult> = result?.scenarios ?? {};
   const activeResult: ScenarioResult | undefined = scenarios[activeScenario];
 
@@ -324,6 +331,7 @@ export default function ROITab() {
         )}
       </SectionCard>
 
+<<<<<<< ours
       <SectionCard title="Assumption Support Trace" className="mb-4">
         {!assumptions.length ? (
           <div className="text-xs text-muted-foreground">No assumptions available for support tracing yet.</div>
@@ -357,6 +365,8 @@ export default function ROITab() {
         )}
       </SectionCard>
 
+=======
+>>>>>>> theirs
       {/* Input form */}
       <SectionCard title="ROI Calculator" className="mb-4">
         <div className="grid grid-cols-3 gap-4 mb-4">

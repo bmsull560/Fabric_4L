@@ -31,6 +31,31 @@ const VITE_PROXY_L6_URL = process.env.VITE_PROXY_L6_URL || "http://localhost:800
 
 type LogSource = "browserConsole" | "networkRequests" | "sessionReplay";
 
+interface ManusLogPayload {
+  consoleLogs?: unknown[];
+  networkRequests?: unknown[];
+  sessionEvents?: unknown[];
+}
+
+interface HmrLikePayload {
+  type?: string;
+  event?: string;
+  [key: string]: unknown;
+}
+
+function isManusLogPayload(value: unknown): value is ManusLogPayload {
+  if (typeof value !== "object" || value === null) return false;
+  const payload = value as Record<string, unknown>;
+  const isUnknownArray = (candidate: unknown): candidate is unknown[] => candidate === undefined || Array.isArray(candidate);
+  return isUnknownArray(payload.consoleLogs)
+    && isUnknownArray(payload.networkRequests)
+    && isUnknownArray(payload.sessionEvents);
+}
+
+function isHmrLikePayload(value: unknown): value is HmrLikePayload {
+  return typeof value === "object" && value !== null;
+}
+
 function ensureLogDir() {
   if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -111,13 +136,22 @@ function vitePluginManusDebugCollector(): Plugin {
     },
 
     configureServer(server: ViteDevServer) {
+      server.ws.on("connection", () => {
+        server.ws.on("manus:hmr", (rawPayload: unknown) => {
+          if (!isHmrLikePayload(rawPayload)) {
+            return;
+          }
+          const payloadType = typeof rawPayload.type === "string" ? rawPayload.type : "unknown";
+          writeToLogFile("sessionReplay", [{ source: "hmr", payloadType }]);
+        });
+      });
       // POST /__manus__/logs: Browser sends logs (written directly to files)
       server.middlewares.use("/__manus__/logs", (req, res, next) => {
         if (req.method !== "POST") {
           return next();
         }
 
-        const handlePayload = (payload: any) => {
+        const handlePayload = (payload: ManusLogPayload) => {
           // Write logs directly to files
           if (payload.consoleLogs?.length > 0) {
             writeToLogFile("browserConsole", payload.consoleLogs);
@@ -136,6 +170,9 @@ function vitePluginManusDebugCollector(): Plugin {
         const reqBody = (req as { body?: unknown }).body;
         if (reqBody && typeof reqBody === "object") {
           try {
+            if (!isManusLogPayload(reqBody)) {
+              throw new Error("Invalid manus log payload shape");
+            }
             handlePayload(reqBody);
           } catch (e) {
             res.writeHead(400, { "Content-Type": "application/json" });
@@ -151,7 +188,10 @@ function vitePluginManusDebugCollector(): Plugin {
 
         req.on("end", () => {
           try {
-            const payload = JSON.parse(body);
+            const payload: unknown = JSON.parse(body);
+            if (!isManusLogPayload(payload)) {
+              throw new Error("Invalid manus log payload shape");
+            }
             handlePayload(payload);
           } catch (e) {
             res.writeHead(400, { "Content-Type": "application/json" });

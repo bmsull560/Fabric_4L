@@ -11,9 +11,11 @@ const SCR = path.join(OUT, 'screenshots');
 fs.mkdirSync(OUT, { recursive: true });
 fs.mkdirSync(SCR, { recursive: true });
 
+type RouteStatus = 'Pass'|'Partial'|'Fail'|'Blocked';
+
 interface R {
   path: string; from: string; title: string; heading: string;
-  status: 'Pass'|'Partial'|'Fail'|'Blocked';
+  status: RouteStatus;
   shot: string; ce: string[]; cw: string[]; nf: string[]; li: string[]; hi: string[]; notes: string[]; vp: string;
 }
 
@@ -75,17 +77,42 @@ async function clear(page:Page){
   try{await page.evaluate(()=>{localStorage.clear();});}catch{}
 }
 
+interface SummaryMetadata {
+  health: number;
+  verdict: string;
+  ce: number;
+  nf: number;
+  risks: string[];
+}
+
+interface AuditMeta {
+  date: string;
+  base: string;
+  backOk: boolean;
+  forwardOk: boolean;
+  reloadOk: boolean;
+  loginFocusOk: boolean;
+}
+
+type ConsoleHandler = (message: ConsoleMessage) => void;
+type RequestFailureHandler = (request: Request) => void;
+type ResponseFailureHandler = (response: Response) => void;
+
+function isErrorWithMessage(value: unknown): value is { message: string } {
+  return typeof value === 'object' && value !== null && 'message' in value && typeof (value as { message: unknown }).message === 'string';
+}
+
 function safe(s:string){return s.replace(/[^a-z0-9_-]/gi,'_').replace(/_+/g,'_');}
 
 async function audit(page:Page,routePath:string,from:string,vpName:string,vp:{w:number;h:number}):Promise<R>{
   const ce:string[]=[];const cw:string[]=[];const nf:string[]=[];const li:string[]=[];const hi:string[]=[];const notes:string[]=[];
-  const onC=(m:ConsoleMessage)=>{const t=m.type();const x=m.text();if(t==='error')ce.push(x);else if(t==='warning')cw.push(x);};
-  const onF=(r:Request)=>{const f=r.failure();if(f)nf.push(`${r.method()} ${r.url()} — ${f.errorText}`);};
-  const onR=(r:Response)=>{const s=r.status();if(s>=400&&!r.url().includes('localhost:3001'))nf.push(`${r.request().method()} ${r.url()} — HTTP ${s}`);};
+  const onC: ConsoleHandler=(m)=>{const t=m.type();const x=m.text();if(t==='error')ce.push(x);else if(t==='warning')cw.push(x);};
+  const onF: RequestFailureHandler=(r)=>{const f=r.failure();if(f)nf.push(`${r.method()} ${r.url()} — ${f.errorText}`);};
+  const onR: ResponseFailureHandler=(r)=>{const s=r.status();if(s>=400&&!r.url().includes('localhost:3001'))nf.push(`${r.request().method()} ${r.url()} — HTTP ${s}`);};
   page.on('console',onC);page.on('requestfailed',onF);page.on('response',onR);
   await page.setViewportSize({width:vp.w,height:vp.h});
   try{await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'load',timeout:15000});}
-  catch(e:any){notes.push(`nav timeout:${e.message}`);try{await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'domcontentloaded',timeout:10000});}catch(e2:any){notes.push(`load fallback:${e2.message}`);}}
+  catch(e: unknown){notes.push(`nav timeout:${isErrorWithMessage(e) ? e.message : String(e)}`);try{await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'domcontentloaded',timeout:10000});}catch(e2: unknown){notes.push(`load fallback:${isErrorWithMessage(e2) ? e2.message : String(e2)}`);}}
   await page.waitForTimeout(800);
   const title=await page.title().catch(()=>'?');
   const h1=await page.locator('h1').first().textContent().catch(()=>'');
@@ -102,7 +129,7 @@ async function audit(page:Page,routePath:string,from:string,vpName:string,vp:{w:
   if(spin)notes.push('spinner>1.5s');
   const final=new URL(page.url()).pathname;
   if(final!==routePath&&!routePath.startsWith('/nonexistent'))notes.push(`redirect:${routePath}→${final}`);
-  let status:R['status']='Pass';
+  let status:RouteStatus='Pass';
   if(ce.length||nf.length)status='Partial';
   if(ce.some(e=>/crash|undefined|null|Cannot read|not a function/i.test(e)))status='Fail';
   if(notes.some(n=>n.includes('fallback:')))status='Blocked';
@@ -110,7 +137,7 @@ async function audit(page:Page,routePath:string,from:string,vpName:string,vp:{w:
   return {path:routePath,from,title,heading,status,shot,ce,cw,nf,li,hi,notes,vp:vpName};
 }
 
-function mdReport(rs:R[],summary:any,meta:any):string{
+function mdReport(rs:R[],summary:SummaryMetadata,meta:AuditMeta):string{
   let md=`# Playwright Route & Hook Audit Report\n**Date:** ${meta.date} **Base:** ${meta.base}\n\n`;
   md+=`## 1. Executive Summary\n- Health score: ${summary.health}%\n- Verdict: ${summary.verdict}\n- Console errors: ${summary.ce} | Network failures: ${summary.nf}\n`;
   md+=`### Top 5 Risks\n`;summary.risks.slice(0,5).forEach((r:string,i:number)=>md+=`${i+1}. ${r}\n`);

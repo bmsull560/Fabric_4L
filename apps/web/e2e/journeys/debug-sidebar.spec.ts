@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('debug sidebar', async ({ page }) => {
+test('debug sidebar @debug', async ({ page }) => {
   const consoleLogs: string[] = [];
   page.on('console', msg => consoleLogs.push(`[${msg.type()}] ${msg.text()}`));
   page.on('pageerror', err => consoleLogs.push(`[PAGE_ERROR] ${err.message}`));
