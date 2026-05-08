@@ -29,7 +29,7 @@ interface Signal {
   reviewed_by?: string;
 }
 
-type SignalReviewStatus = Exclude<Signal["review_status"], "pending_review" | undefined>;
+type SignalReviewStatus = Extract<Signal["review_status"], "approved" | "rejected">;
 
 const CATEGORY_COLORS: Record<string, string> = {
   Operational: "bg-red-500",

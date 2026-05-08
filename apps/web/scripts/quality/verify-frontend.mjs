@@ -13,33 +13,39 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(__dirname, "..", "..");
 const mode = process.env.FRONTEND_VERIFY_MODE || "standard";
+const pnpmCommand = "pnpm";
 
 const gates = [
-  ["Workflow matrix", ["pnpm", ["run", "test:workflow-matrix"]]],
-  ["Frontend hygiene", ["pnpm", ["run", "test:frontend-hygiene"]]],
-  ["TypeScript", ["pnpm", ["run", "check"]]],
-  ["Contract tests", ["pnpm", ["run", "test:contracts"]]],
-  ["Trust-boundary parser guard", ["pnpm", ["run", "test:trust-boundaries"]]],
-  ["Unit/component tests", ["pnpm", ["run", "test"]]],
-  ["Critical E2E guard", ["pnpm", ["run", "test:e2e:guard"]]],
-  ["Production build", ["pnpm", ["run", "build"]]],
-  ["Bundle budget", ["pnpm", ["run", "test:bundle-budget"]]],
+  ["Workflow matrix", [pnpmCommand, ["run", "test:workflow-matrix"]]],
+  ["Frontend hygiene", [pnpmCommand, ["run", "test:frontend-hygiene"]]],
+  ["TypeScript", [pnpmCommand, ["run", "check"]]],
+  ["Contract tests", [pnpmCommand, ["run", "test:contracts"]]],
+  ["Trust-boundary parser guard", [pnpmCommand, ["run", "test:trust-boundaries"]]],
+  ["Unit/component tests", [pnpmCommand, ["run", "test"]]],
+  ["Critical E2E guard", [pnpmCommand, ["run", "test:e2e:guard"]]],
+  ["Production build", [pnpmCommand, ["run", "build"]]],
+  ["Bundle budget", [pnpmCommand, ["run", "test:bundle-budget"]]],
 ];
 
 if (mode === "full") {
   gates.splice(5, 0, [
     "P0 workflow validation",
-    ["pnpm", ["run", "test:e2e:validation:p0"]],
+    [pnpmCommand, ["run", "test:e2e:validation:p0"]],
   ]);
   gates.splice(6, 0, [
     "Broad workflow validation",
-    ["pnpm", ["run", "test:e2e:validation"]],
+    [pnpmCommand, ["run", "test:e2e:validation"]],
   ]);
 }
 
 for (const [label, [command, args]] of gates) {
   console.log(`\n## ${label}`);
-  const result = spawnSync(command, args, {
+  const spawnCommand = process.platform === "win32" ? "cmd.exe" : command;
+  const spawnArgs =
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", `${command} ${args.join(" ")}`]
+      : args;
+  const result = spawnSync(spawnCommand, spawnArgs, {
     cwd: webRoot,
     stdio: "inherit",
     shell: false,

@@ -1095,7 +1095,6 @@ async def update_workspace_tab(
     else:
         record.data = payload
 
-    await db.commit()
     return {"case_id": case_id, "tab": tab_key, "updated": True, "data": payload}
 
 
@@ -1196,8 +1195,6 @@ async def generate_workspace_intelligence(
                 tenant_id=tenant_id,
                 data=data,
             ))
-
-    await db.commit()
 
     return {
         "case_id": case_id,

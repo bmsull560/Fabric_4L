@@ -143,6 +143,7 @@ export const WorkflowCreateResponseSchema = z.object({
 });
 
 export const WorkflowStatusResponseSchema = z.object({
+  id: z.string().min(1),
   workflow_instance_id: z.string().min(1),
   workflow_type: z.string().min(1),
   status: WorkflowStatusEnum,
@@ -410,6 +411,7 @@ export const fixtures = {
   }),
 
   workflowStatus: (overrides?: Partial<z.infer<typeof WorkflowStatusResponseSchema>>): z.infer<typeof WorkflowStatusResponseSchema> => ({
+    id: 'wf-inst-001',
     workflow_instance_id: 'wf-inst-001',
     workflow_type: 'roi_calculator',
     status: 'running',

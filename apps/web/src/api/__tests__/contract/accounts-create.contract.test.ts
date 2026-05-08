@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { buildCreateAccountPayload, createAccountPayloadSchema } from '@/hooks/useAccounts';
+import { ApiErrorSchema, assertCanonicalSchema, assertSchema } from './_helpers';
 
 const backendCreateAccountRequestSchema = z.object({
   id: z.string().uuid().optional(),
@@ -71,6 +72,45 @@ describe('Contract: POST /accounts create payload', () => {
     });
 
     expect(() => createAccountPayloadSchema.parse(payload)).not.toThrow();
-    expect(() => backendCreateAccountRequestSchema.parse(payload)).not.toThrow();
+    expect(() =>
+      assertCanonicalSchema(
+        backendCreateAccountRequestSchema,
+        'layer4-agents.json',
+        '#/components/schemas/CreateAccountRequest',
+        payload,
+        'CreateAccountRequest'
+      )
+    ).not.toThrow();
+  });
+});
+
+describe('Contract: accounts create auth failures', () => {
+  it('401 unauthenticated account creation matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      {
+        message: 'Authentication required',
+        code: 'AUTHENTICATION_ERROR',
+        trace_id: 'trace-account-create-401',
+      },
+      'ApiError (401 account create)'
+    );
+
+    expect(err.code).toBe('AUTHENTICATION_ERROR');
+    expect(err.trace_id).toBeTruthy();
+  });
+
+  it('403 cross-tenant account creation matches ApiError shape', () => {
+    const err = assertSchema(
+      ApiErrorSchema,
+      {
+        message: 'Tenant is not authorized to create this account',
+        code: 'AUTHORIZATION_ERROR',
+        trace_id: 'trace-account-create-403',
+      },
+      'ApiError (403 account create)'
+    );
+
+    expect(err.code).toBe('AUTHORIZATION_ERROR');
   });
 });

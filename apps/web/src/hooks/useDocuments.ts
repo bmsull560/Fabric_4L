@@ -50,6 +50,15 @@ export interface BusinessCase {
   diff_summary?: Record<string, unknown>;
 }
 
+function normalizeBusinessCase(data: l4.components['schemas']['BusinessCaseResponse']): BusinessCase {
+  return {
+    ...data,
+    created_at: data.created_at ?? undefined,
+    document_url: data.document_url ?? undefined,
+    recommendations: data.recommendations ?? [],
+  };
+}
+
 // Constants for document operations
 // EXPORT_POLL_INTERVAL_MS removed — use POLL_INTERVALS.exportStatus from usePolling
 const ALLOWED_SCHEMES = ['http:', 'https:', 'blob:', 'data:'];
@@ -113,13 +122,7 @@ export function useBusinessCase(businessCaseId: string | null) {
     queryFn: async () => {
       if (!businessCaseId) throw new Error('No business case ID provided');
       const response = await apiGet<l4.components['schemas']['BusinessCaseResponse']>('l4', `${L4_ANALYSIS_PREFIX}/cases/${businessCaseId}`);
-      const data = response.data;
-      return {
-        ...data,
-        created_at: data.created_at ?? undefined,
-        document_url: data.document_url ?? undefined,
-        recommendations: data.recommendations ?? [],
-      };
+      return normalizeBusinessCase(response.data);
     },
     enabled: !!businessCaseId,
     staleTime: STALE_TIME.detail,
@@ -141,7 +144,7 @@ export function useRegenerateBusinessCase() {
           },
         }
       );
-      return { ...response.data, recommendations: response.data.recommendations ?? [] };
+      return normalizeBusinessCase(response.data);
     },
   });
 }

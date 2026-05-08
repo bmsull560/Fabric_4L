@@ -60,12 +60,12 @@ describe('OpenAPI drift: tracked schemas have canonical mappings', () => {
 
   it('checked-in OpenAPI fixtures keep expected base-path version prefixes', () => {
     const expectedPrefixes: Record<string, Array<`/${string}`>> = {
-      'layer1-ingestion.json': ['/api/v1', '/api', '/v1', '/health'],
-      'layer2-extraction.json': ['/v1', '/health'],
-      'layer3-knowledge.json': ['/v1', '/health', '/graph', '/entities'],
-      'layer4-agents.json': ['/v1', '/', '/health', '/metrics', '/auth'],
-      'layer5-ground-truth.json': ['/api/v1'],
-      'layer6-benchmarks.json': ['/v1', '/health'],
+      'layer1-ingestion.json': ['/api/v1', '/api', '/v1', '/health', '/ready', '/metrics'],
+      'layer2-extraction.json': ['/v1', '/health', '/ready', '/metrics'],
+      'layer3-knowledge.json': ['/v1', '/health', '/ready', '/metrics', '/graph', '/entities'],
+      'layer4-agents.json': ['/v1', '/', '/health', '/ready', '/metrics', '/auth'],
+      'layer5-ground-truth.json': ['/api/v1', '/health', '/ready', '/metrics'],
+      'layer6-benchmarks.json': ['/v1', '/health', '/ready', '/metrics'],
     };
 
     for (const [specFile, allowedPrefixes] of Object.entries(expectedPrefixes)) {

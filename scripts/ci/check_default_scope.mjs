@@ -3,10 +3,16 @@
 import { execFileSync } from 'node:child_process';
 
 const blockedSegments = ['/archive/', '/prototypes/'];
+const pnpmArgs = ['-r', 'list', '--depth', '-1', '--json'];
 
-const output = execFileSync('pnpm', ['-r', 'list', '--depth', '-1', '--json'], {
-  encoding: 'utf8',
-});
+const output =
+  process.platform === 'win32'
+    ? execFileSync('cmd.exe', ['/d', '/s', '/c', `pnpm ${pnpmArgs.join(' ')}`], {
+        encoding: 'utf8',
+      })
+    : execFileSync('pnpm', pnpmArgs, {
+        encoding: 'utf8',
+      });
 
 const packages = JSON.parse(output);
 const leaked = packages.filter((pkg) => {
