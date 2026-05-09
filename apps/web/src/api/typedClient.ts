@@ -15,7 +15,9 @@ export async function apiGet<TResponse>(
   path: string,
   config?: AxiosRequestConfig
 ): Promise<AxiosResponse<TResponse>> {
-  return apiClient.get<TResponse>(layer, path, config);
+  return config === undefined
+    ? apiClient.get<TResponse>(layer, path)
+    : apiClient.get<TResponse>(layer, path, config);
 }
 
 export async function apiPost<TResponse>(
@@ -24,7 +26,9 @@ export async function apiPost<TResponse>(
   data?: unknown,
   config?: AxiosRequestConfig
 ): Promise<AxiosResponse<TResponse>> {
-  return apiClient.post<TResponse>(layer, path, data, config);
+  return config === undefined
+    ? apiClient.post<TResponse>(layer, path, data)
+    : apiClient.post<TResponse>(layer, path, data, config);
 }
 
 export async function apiPut<TResponse>(
@@ -33,7 +37,9 @@ export async function apiPut<TResponse>(
   data?: unknown,
   config?: AxiosRequestConfig
 ): Promise<AxiosResponse<TResponse>> {
-  return apiClient.put<TResponse>(layer, path, data, config);
+  return config === undefined
+    ? apiClient.put<TResponse>(layer, path, data)
+    : apiClient.put<TResponse>(layer, path, data, config);
 }
 
 export async function apiPatch<TResponse>(
@@ -42,7 +48,9 @@ export async function apiPatch<TResponse>(
   data?: unknown,
   config?: AxiosRequestConfig
 ): Promise<AxiosResponse<TResponse>> {
-  return apiClient.patch<TResponse>(layer, path, data, config);
+  return config === undefined
+    ? apiClient.patch<TResponse>(layer, path, data)
+    : apiClient.patch<TResponse>(layer, path, data, config);
 }
 
 export async function apiDelete<TResponse>(
@@ -50,5 +58,7 @@ export async function apiDelete<TResponse>(
   path: string,
   config?: AxiosRequestConfig
 ): Promise<AxiosResponse<TResponse>> {
-  return apiClient.delete<TResponse>(layer, path, config);
+  return config === undefined
+    ? apiClient.delete<TResponse>(layer, path)
+    : apiClient.delete<TResponse>(layer, path, config);
 }

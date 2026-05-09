@@ -144,6 +144,9 @@ export default function CalcROITab() {
   const calc = recalcMutation.data;
   const scenarioNames = Object.keys(calc?.scenarios ?? {});
   const hasCompletedScenarios = scenarioNames.length > 0;
+  const loadedAssumptionSetCount = Array.isArray(allAssumptions?.benchmarks)
+    ? allAssumptions.benchmarks.length
+    : 0;
   const nextAction = accountId
     ? createNextAction({
         label: "Generate Business Case",
@@ -259,7 +262,7 @@ export default function CalcROITab() {
             <p className="text-muted-foreground">Changed assumptions are reflected in scenario outputs and benchmarks.</p>
             <p>Total NPV: <span className="font-semibold">{calc ? fmtCurrency(calc.npv) : "—"}</span></p>
             <p>Benchmark ROI ({account.industry ?? "Industry"}): <span className="font-semibold">{assumptions ? `${Math.round(assumptions.avg_roi_pct)}%` : assumptionsLoading ? "Loading…" : "N/A"}</span></p>
-            <p>Loaded assumption sets: <span className="font-semibold">{allAssumptions?.benchmarks.length ?? 0}</span></p>
+            <p>Loaded assumption sets: <span className="font-semibold">{loadedAssumptionSetCount}</span></p>
             <p>Calculated scenarios: <span className="font-semibold">{scenarioNames.join(", ") || "None yet"}</span></p>
           </div>
         </SectionCard>

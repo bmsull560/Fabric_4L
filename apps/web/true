@@ -1,0 +1,332 @@
+[
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/accessibility.a11y.spec.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/utils.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/client.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/agui/AgentEventClient.context.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/agui/eventSchemas.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/agui/useAgentEvents.context.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/ProspectSetup.behavior.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/WfPrimitives.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/auth/auth.component.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/contexts/AuthContext.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/formatters.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/graph-utils.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/telemetry.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useAccounts.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useAuth.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useBenchmarks.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useBilling.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useCompetitiveIntel.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useDocuments.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useFormulaDependents.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useFormulas.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useFormulaVersions.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useGraphQuery.comprehensive.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useGraphQuery.integration.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useGraphQuery.performance.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useGraphQuery.property.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useGraphQuery.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useHealthMonitor.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useIngestion.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useIntelligence.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useJobStream.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useL5Governance.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useModels.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useOpportunities.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/usePlatformSettings.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useProvenance.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useROICalculator.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useROIScenarios.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useRoutePrefetch.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useValuePacks.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useVariables.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useWizard.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useWorkflows.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useWorkspaceCase.pageActions.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useWorkspaceCase.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/hooks/useWorkspacePageActions.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/navigation/accountRouting.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/navigation/navSchema.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/routes/criticalFlows.smoke.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/Accounts.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/AgentWorkflows.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/BusinessCase.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/BusinessCaseList.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/DecisionTrace.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/EntityBrowser.contract.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/ExtractionEngine.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/FormulaBuilder.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/formulaBuilderLogic.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/GovernancePages.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/GraphExplorer.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/IngestionJobs.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/MyModels.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/ValuePacks.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/workspaceForwardActions.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/stores/entityStore.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/stores/ingestionJobsStore.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/stores/ingestionStore.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/stores/narrativeStore.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/stores/ontologyStore.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/stores/userTierStore.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/services/authClient.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/services/sessionService.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/client.url.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/calculator/ValueLeversCalculator.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/layout/GlobalLayout.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/states/states.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/ui/virtual-list.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/ui/virtual-list.visual.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/components/workspace/AccountPickerModal.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/quality/trustBoundaryGuard.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/schemas/competitiveIntel.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/schemas/evidence.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/schemas/groundTruthGovernance.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/schemas/healthMonitor.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/schemas/integrations.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/schemas/products.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/schemas/provenance.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/validation/input-validation.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/lib/validation/schemas.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/admin/AdminPages.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/drivers/DriverTreePage.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/intelligence/EvidenceAcceptanceFlow.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/intelligence/HypothesisValidationToDriverFlow.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/intelligence/SignalsTab.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/value-pilot/pages/ProspectSetup.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/workflow/pages/ProspectSetup.submission.test.tsx"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/accounts-create.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/agent-stream.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/benchmarks.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/extraction.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/formulas.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/governance.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/graph.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/ground-truth.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/intelligence.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/openapi-drift.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/valuepacks.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/workflows.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/api/__tests__/contract/workspace.contract.test.ts"
+  },
+  {
+    "file": "C:/Users/BBB/Fabric_4L/apps/web/src/pages/FormulaBuilder/components/ScenarioPanel.test.tsx"
+  }
+]

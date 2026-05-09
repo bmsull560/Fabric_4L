@@ -68,28 +68,11 @@ export default function DriverTreePage() {
     }
   }, [accountId, location.search, getSelection, setSelection]);
 
-  if (!accountId) {
-    return <AccountRequiredGuard accountId={accountId} />;
-  }
-
-  if (accountLoading) {
-    return <LoadingState message="Loading driver tree…" fullPage />;
-  }
-
-  if (!account) {
-    clearWorkflowContext();
-    return <ErrorState title="Account not found." description="Select a valid account to continue in this workspace." fullPage />;
-  }
-
-  if (staleReason === "case-closed" || staleReason === "entity-deleted") {
-    return (
-      <ErrorState
-        title="Saved workflow context is stale"
-        description="The saved case or entity is no longer available. Start from the current account workspace."
-        fullPage
-      />
-    );
-  }
+  useEffect(() => {
+    if (accountId && !accountLoading && !account) {
+      clearWorkflowContext();
+    }
+  }, [accountId, accountLoading, account, clearWorkflowContext]);
 
   const accountName = account?.name ?? "Account";
   const industry = account?.industry ?? "Unknown";
@@ -123,6 +106,28 @@ export default function DriverTreePage() {
 
   const driverTabIsLoading = hypothesesLoading || driversQuery.isLoading || linksQuery.isLoading;
   const driverTabError = driversQuery.error ?? linksQuery.error;
+
+  if (!accountId) {
+    return <AccountRequiredGuard accountId={accountId} />;
+  }
+
+  if (accountLoading) {
+    return <LoadingState message="Loading driver tree…" fullPage />;
+  }
+
+  if (!account) {
+    return <ErrorState title="Account not found." description="Select a valid account to continue in this workspace." fullPage />;
+  }
+
+  if (staleReason === "case-closed" || staleReason === "entity-deleted") {
+    return (
+      <ErrorState
+        title="Saved workflow context is stale"
+        description="The saved case or entity is no longer available. Start from the current account workspace."
+        fullPage
+      />
+    );
+  }
 
   const TreesTab = () => (
     <div className="space-y-6">

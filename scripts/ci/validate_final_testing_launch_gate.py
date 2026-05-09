@@ -155,6 +155,7 @@ def main() -> int:
         check_blocker_taxonomy(),
         check_environment_gate_separation(),
         check_secret_hygiene(),
+        run_command("core_ga_launch_evidence_guard", [sys.executable, "scripts/ci/validate_core_ga_launch_evidence.py"]),
         run_command("production_readiness_foundations", [sys.executable, "scripts/ci/validate_production_readiness_plan.py"]),
         run_command("platform_contract_lint", [sys.executable, "scripts/ci/platform_contract_lint.py"]),
         run_command("dependabot_coverage", [sys.executable, "scripts/ci/check_dependabot_coverage.py"]),

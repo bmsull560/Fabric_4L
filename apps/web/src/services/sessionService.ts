@@ -282,7 +282,14 @@ export class SessionService {
   redirectToLogin(): void {
     const loc = this.environment.location;
     if (!loc || loc.pathname === '/login') return;
-    loc.replace('/login'); // navigation-guardrail: ignore - service boundary auth redirect
+    try {
+      loc.replace('/login'); // navigation-guardrail: ignore - service boundary auth redirect
+    } catch (error) {
+      log.warn('Login redirect failed after unauthorized response', {
+        route: loc.pathname,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   handleUnauthorized(context: { traceId?: string | null; route?: string } = {}): void {

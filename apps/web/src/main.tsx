@@ -6,6 +6,7 @@ import "./index.css";
 import { I18nProvider } from "./i18n";
 import { STALE_TIME } from "./hooks/useApiShared";
 import { logError } from "./lib/telemetry";
+import { installAnalytics } from "./lib/analytics";
 
 // ReactQueryDevtools is only included in development builds.
 // Vite's tree-shaking drops this import entirely in production,
@@ -44,6 +45,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+installAnalytics();
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>

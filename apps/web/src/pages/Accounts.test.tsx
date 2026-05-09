@@ -5,6 +5,7 @@ import { createWrapperWithRouterPath } from "@/test-utils";
 import AccountsPage from "./Accounts";
 
 const mockUseAccounts = vi.fn();
+const mockUseAccount = vi.fn();
 const mockUseAccountFilterOptions = vi.fn();
 const mockUseAccountSyncStatus = vi.fn();
 const mockUseSyncAccounts = vi.fn();
@@ -14,7 +15,7 @@ const mockUseRoutePrefetch = vi.fn();
 
 vi.mock("@/hooks", () => ({
   useAccounts: (...args: unknown[]) => mockUseAccounts(...args),
-  useAccount: vi.fn(() => ({ data: null, isLoading: false, error: null })),
+  useAccount: (...args: unknown[]) => mockUseAccount(...args),
   useAccountFilterOptions: () => mockUseAccountFilterOptions(),
   useAccountSyncStatus: () => mockUseAccountSyncStatus(),
   useSyncAccounts: () => mockUseSyncAccounts(),
@@ -33,8 +34,8 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("@/stores/accountContextStore", () => ({
-  useAccountContextStore: vi.fn((selector: (state: { setAccountId: (id: string) => void }) => unknown) =>
-    selector({ setAccountId: vi.fn() })
+  useAccountContextStore: vi.fn((selector: (state: { setSelectedAccountId: (id: string) => void }) => unknown) =>
+    selector({ setSelectedAccountId: vi.fn() })
   ),
 }));
 
@@ -49,6 +50,7 @@ describe("Accounts page empty state action", () => {
     vi.clearAllMocks();
 
     mockUseParams.mockReturnValue({});
+    mockUseAccount.mockReturnValue({ data: null, isLoading: false, error: null });
     mockUseAccounts.mockReturnValue({
       data: { items: [], total: 0 },
       isLoading: false,
@@ -73,5 +75,34 @@ describe("Accounts page empty state action", () => {
     await user.click(screen.getByRole("button", { name: "Add account" }));
 
     expect(screen.getByTestId("account-intake-modal")).toHaveTextContent("open");
+  });
+
+  it("renders account rows and detail panel when provider data drifts at runtime", async () => {
+    const account = {
+      id: "acct-synthetic-alpha",
+      name: "Acct Synthetic Alpha",
+      domain: "synthetic.example",
+      provider: "synthetic",
+      provider_record_id: "synthetic-1",
+      sync_status: "synced",
+      created_at: "2026-05-01T00:00:00Z",
+      updated_at: "2026-05-01T00:00:00Z",
+      opportunities: [],
+    };
+
+    mockUseParams.mockReturnValue({ id: account.id });
+    mockUseAccounts.mockReturnValue({
+      data: { items: [account], total: 1 },
+      isLoading: false,
+      error: null,
+    });
+    mockUseAccount.mockReturnValue({ data: account, isLoading: false, error: null });
+
+    const wrapper = createWrapperWithRouterPath(`/accounts/${account.id}`);
+
+    render(<AccountsPage />, { wrapper });
+
+    expect(screen.getAllByText("Acct Synthetic Alpha").length).toBeGreaterThan(0);
+    expect(screen.getByText("External CRM")).toBeInTheDocument();
   });
 });

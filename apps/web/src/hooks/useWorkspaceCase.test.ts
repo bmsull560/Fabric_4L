@@ -69,7 +69,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleSignalsResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/signals', undefined);
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/signals');
   });
 
   it('should fetch drivers tab data successfully', async () => {
@@ -84,7 +84,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleDriversResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/drivers', undefined);
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/drivers');
   });
 
   it('should fetch evidence tab data successfully', async () => {
@@ -99,7 +99,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleEvidenceResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/evidence', undefined);
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/evidence');
   });
 
   it('should fetch stakeholders tab data successfully', async () => {
@@ -114,7 +114,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleStakeholdersResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/stakeholders', undefined);
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/stakeholders');
   });
 
   it('should not fetch when caseId is null', async () => {
@@ -249,8 +249,7 @@ describe('useCanonicalCaseId', () => {
       {
         account_id: 'acc-123',
         title: 'Account acc-123 workspace',
-      },
-      undefined,
+      }
     );
   });
 
@@ -298,8 +297,7 @@ describe('useGenerateWorkspaceIntelligence', () => {
     expect(apiClient.post).toHaveBeenCalledWith(
       'l4',
       '/v1/cases/case-123/workspace/generate',
-      {},
-      undefined,
+      {}
     );
   });
 });
@@ -328,8 +326,7 @@ describe('usePersistWorkspaceTab', () => {
     expect(apiClient.put).toHaveBeenCalledWith(
       'l4',
       '/v1/cases/case-123/workspace/signals',
-      payload,
-      undefined,
+      payload
     );
     expect(result.current.persistState).toBe('saved');
   });

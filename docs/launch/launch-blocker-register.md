@@ -6,9 +6,15 @@ This register is the authoritative pre-launch risk ledger for final testing. It 
 
 | Area | Current Position | Rationale |
 |---|---|---|
-| Repository-owned launch package | Ready for validation | Required launch-gate documents and local validators are expected to run without live services. |
+| Repository-owned launch package | Local validation passed on 2026-05-08 | Required launch-gate documents and local validators ran successfully after Core GA path hardening. |
 | Live production readiness | Not yet claimed | SSO, telemetry, billing, rollback, notification, performance, and full E2E validation require a proper launch environment. |
 | Go/no-go rule | Evidence-driven | Missing evidence is treated as an explicit launch decision, not as implied readiness. |
+
+## 2026-05-08 Local Hardening Evidence
+
+The Core GA deterministic clickpath `account -> signals -> evidence -> driver -> calculator -> business case` was hardened and validated locally. The repository-owned final-testing gate passed, the Journey 24 launch E2E passed in deterministic CI data mode, the frontend production build passed, and targeted Layer 4 agent/workflow contract and tenant-isolation tests passed.
+
+This evidence does not close environment-dependent P0/P1 items. Live provider, SSO/OIDC, billing, rollback, alert receiver, telemetry dashboard, performance smoke, and staging SLO evidence remain required before Core GA or paid GA approval.
 
 ## P0 Launch Blocker
 
@@ -28,6 +34,10 @@ This register is the authoritative pre-launch risk ledger for final testing. It 
 | P1-003 | Billing and metering provider validation requires live or provider sandbox integration. | Billing owner | Meter event proof, invoice or usage aggregation sample, idempotency check, and reconciliation owner sign-off. | REQUIRES_ENVIRONMENT | Blocks paid launch unless billing is removed from launch scope. |
 | P1-004 | Performance and reliability smoke test requires production-like capacity assumptions. | Performance owner | Smoke-test command, timing output, error-rate summary, and release-candidate SHA. | REQUIRES_ENVIRONMENT | Blocks launch if thresholds fail or are not approved by release owner. |
 | P1-005 | Dependency automation coverage must remain complete. | Build owner | `python3 scripts/ci/check_dependabot_coverage.py` passes. | REQUIRED_PASS | Blocks final testing if manifests are uncovered without waiver. |
+| P1-006 | Full frontend test report artifact retention remains open after local shard-4 isolation. | Frontend owner / CI owner | Local command transcript from `pnpm --dir apps/web run test` completed successfully on 2026-05-08; retained frontend-test-report or CI timing artifact is still required if the release process requires attached evidence. | OPEN | Local full-suite execution is passing, but the missing retained report artifact must not be represented as attached release evidence until it exists. |
+| P1-007 | Broad security suite report is not yet attached from the intended CI profile. | Security owner | CI artifact from `pytest tests/security` with environment descriptor and any failures classified. | OPEN | Blocks Core GA sign-off unless passed in CI or explicitly waived by Security. |
+| P1-008 | Journey SLO report is not yet attached. | Test owner / Observability owner | `apps/web/tmp/journey-slo-report.json` or CI/staging artifact referenced by `JOURNEY_SLO_REPORT_PATH`, then `pnpm --dir apps/web run test:journey-slo-gate`, proving success rate, latency, and non-empty response thresholds. | OPEN | Blocks Core GA go/no-go until SLO evidence exists or is explicitly waived. |
+| P1-009 | Live LLM provider validation is not yet attached. | AI platform owner | Redacted live/provider-sandbox bundle proving grounded citations, fact/assumption labeling, refusal behavior, prompt-injection resistance, cost tracking, and traceability. | REQUIRES_ENVIRONMENT | Blocks Core GA if launch scope includes live LLM workflows and evidence is missing. |
 
 ## P2 Follow-Up
 

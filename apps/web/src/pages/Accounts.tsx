@@ -66,12 +66,29 @@ const PROVIDER_COLORS: Record<CRMProvider, { bg: string; text: string; border: s
   manual: { bg: "bg-slate-50", text: "text-slate-700", border: "border-slate-200" },
 };
 
+const DEFAULT_PROVIDER_STYLE = PROVIDER_COLORS.manual;
+
+function getProviderStyle(provider: string) {
+  return PROVIDER_COLORS[provider as CRMProvider] ?? DEFAULT_PROVIDER_STYLE;
+}
+
+function getProviderLabel(provider: string) {
+  if (provider === "salesforce") return "Salesforce";
+  if (provider === "hubspot") return "HubSpot";
+  if (provider === "manual") return "Manual";
+  return "External CRM";
+}
+
 const SYNC_STATUS_COLORS: Record<SyncStatus, "completed" | "processing" | "failed"> = {
   synced: "completed",
   pending: "processing",
   failed: "failed",
   stale: "processing",
 };
+
+function getSyncStatusBadge(status: string): "completed" | "processing" | "failed" {
+  return SYNC_STATUS_COLORS[status as SyncStatus] ?? "processing";
+}
 
 
 interface FilterChipProps {
@@ -258,7 +275,7 @@ function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: Accoun
     );
   }
 
-  const providerStyle = PROVIDER_COLORS[account.provider];
+  const providerStyle = getProviderStyle(account.provider);
   const totalOpportunityValue =
     account.opportunities?.reduce((sum, opp) => sum + (opp.value || 0), 0) || 0;
 
@@ -276,7 +293,7 @@ function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: Accoun
                 providerStyle.border
               )}
             >
-              {account.provider === "salesforce" ? "Salesforce" : "HubSpot"}
+              {getProviderLabel(account.provider)}
             </span>
             <h3 className="text-[16px] font-bold text-foreground leading-tight">{account.name}</h3>
             <p className="text-[12px] text-muted-foreground mt-0.5">{account.domain}</p>
@@ -294,7 +311,7 @@ function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: Accoun
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {/* Sync Status */}
         <div className="flex items-center gap-2">
-          <StatusBadge status={SYNC_STATUS_COLORS[account.sync_status]} />
+          <StatusBadge status={getSyncStatusBadge(account.sync_status)} />
           <span className="text-[12px] text-muted-foreground">Synced {formatDate(account.last_synced_at)}</span>
         </div>
 
@@ -629,47 +646,51 @@ function Accounts() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {accounts.map((account) => (
-                        <TableRow
-                          key={account.id}
-                          className={cn(
-                            "cursor-pointer",
-                            selectedAccountId === account.id && "bg-primary/5"
-                          )}
-                          onClick={() => handleSelectAccount(account.id)}
-                          onMouseEnter={() => prefetchAccountDetail(account.id)}
-                          onFocus={() => prefetchAccountDetail(account.id)}
-                        >
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={cn(
-                                  "w-8 h-8 rounded-lg flex items-center justify-center",
-                                  PROVIDER_COLORS[account.provider].bg,
-                                  PROVIDER_COLORS[account.provider].text
-                                )}
-                              >
-                                <Building2 size={14} />
-                              </div>
-                              <div>
-                                <p className="font-medium text-[13px]">{account.name}</p>
-                                <p className="text-[11px] text-muted-foreground">{account.domain}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-[12px]">{account.industry || "—"}</TableCell>
-                          <TableCell className="text-[12px] uppercase">{account.region || "—"}</TableCell>
-                          <TableCell className="text-[12px]">{account.segment || "—"}</TableCell>
-                          <TableCell>
-                            <StatusBadge status={SYNC_STATUS_COLORS[account.sync_status]} />
-                          </TableCell>
-                          <TableCell className="text-right text-[13px] font-medium">
-                            {formatCurrency(
-                              account.opportunities?.reduce((sum, o) => sum + (o.value || 0), 0) || 0
+                      {accounts.map((account) => {
+                        const providerStyle = getProviderStyle(account.provider);
+
+                        return (
+                          <TableRow
+                            key={account.id}
+                            className={cn(
+                              "cursor-pointer",
+                              selectedAccountId === account.id && "bg-primary/5"
                             )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            onClick={() => handleSelectAccount(account.id)}
+                            onMouseEnter={() => prefetchAccountDetail(account.id)}
+                            onFocus={() => prefetchAccountDetail(account.id)}
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={cn(
+                                    "w-8 h-8 rounded-lg flex items-center justify-center",
+                                    providerStyle.bg,
+                                    providerStyle.text
+                                  )}
+                                >
+                                  <Building2 size={14} />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-[13px]">{account.name}</p>
+                                  <p className="text-[11px] text-muted-foreground">{account.domain}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-[12px]">{account.industry || "—"}</TableCell>
+                            <TableCell className="text-[12px] uppercase">{account.region || "—"}</TableCell>
+                            <TableCell className="text-[12px]">{account.segment || "—"}</TableCell>
+                            <TableCell>
+                              <StatusBadge status={getSyncStatusBadge(account.sync_status)} />
+                            </TableCell>
+                            <TableCell className="text-right text-[13px] font-medium">
+                              {formatCurrency(
+                                account.opportunities?.reduce((sum, o) => sum + (o.value || 0), 0) || 0
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
 
