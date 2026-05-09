@@ -12,6 +12,7 @@ import logging
 import sys
 from pathlib import Path
 from types import ModuleType
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,19 @@ else:
     FAIL_SAFE_MODE = True
     RESERVED_TENANT_KEYWORDS = frozenset({"system", "admin", "internal"})
 
+    try:
+        from sqlalchemy.orm import DeclarativeBase
+
+        class Base(DeclarativeBase):
+            """Fail-safe declarative base for model imports in constrained tests."""
+
+    except Exception:  # pragma: no cover - only used if SQLAlchemy is unavailable
+        class Base:  # type: ignore[no-redef]
+            """Minimal fallback so fail-safe imports do not hide auth regressions."""
+
+    class TenantContextError(Exception):
+        """Raised when tenant context is missing or invalid in fail-safe mode."""
+
     _tenant_validation_metrics: dict[str, int] = {
         "validations_total": 0,
         "validation_failures": 0,
@@ -55,13 +69,13 @@ else:
         if tenant_id is None:
             _tenant_validation_metrics["validation_failures"] += 1
             _tenant_validation_metrics["missing_context_errors"] += 1
-            raise ValueError("tenant_id is required in fail-safe mode")
+            raise TenantContextError("tenant_id is required in fail-safe mode")
 
         normalized = str(tenant_id).strip().lower()
         if not normalized:
             _tenant_validation_metrics["validation_failures"] += 1
             _tenant_validation_metrics["empty_tenant_errors"] += 1
-            raise ValueError("tenant_id must not be empty")
+            raise TenantContextError("tenant_id must not be empty")
 
         if normalized in RESERVED_TENANT_KEYWORDS:
             return normalized
@@ -71,7 +85,7 @@ else:
         except ValueError as exc:
             _tenant_validation_metrics["validation_failures"] += 1
             _tenant_validation_metrics["uuid_format_errors"] += 1
-            raise ValueError("tenant_id must be a valid UUID") from exc
+            raise TenantContextError("tenant_id must be a valid UUID") from exc
 
     AUDIT_AVAILABLE = False
     emit_audit_event = None
@@ -108,6 +122,29 @@ else:
             )
         except Exception as e:  # pragma: no cover
             logger.debug("Tenant context audit emission failed (non-critical): %s", e)
+
+    async def get_db_from_context(*args, **kwargs):
+        """Fail closed when the canonical tenant-enforced DB dependency is unavailable."""
+        raise RuntimeError(
+            "Canonical Layer 4 get_db_from_context is unavailable; "
+            f"refusing to create an unscoped database session: {_CANONICAL_IMPORT_ERROR!r}"
+        )
+
+    async def get_db_with_optional_tenant(*args, **kwargs):
+        """Fail closed when optional tenant-aware DB dependency cannot delegate."""
+        raise RuntimeError(
+            "Canonical Layer 4 get_db_with_optional_tenant is unavailable; "
+            f"refusing to create an unscoped database session: {_CANONICAL_IMPORT_ERROR!r}"
+        )
+
+    @asynccontextmanager
+    async def get_tiered_db_session(*args, **kwargs):
+        """Fail closed when tier-aware DB sessions cannot delegate."""
+        raise RuntimeError(
+            "Canonical Layer 4 get_tiered_db_session is unavailable; "
+            f"refusing to create an unscoped database session: {_CANONICAL_IMPORT_ERROR!r}"
+        )
+        yield  # pragma: no cover
 
 
 def __getattr__(name: str):

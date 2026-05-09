@@ -8,6 +8,8 @@ to test gate mechanics.
 
 import json
 import os
+import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -36,6 +38,82 @@ def temp_required_suites_file(tmp_path: Path) -> Path:
     return tmp_path / "required_suites.txt"
 
 
+def _repo_root(gate_script_path: Path) -> Path:
+    return gate_script_path.parent.parent.parent
+
+
+def _candidate_bash_paths() -> list[str]:
+    candidates: list[str] = []
+    if os.environ.get("FABRIC_BASH"):
+        candidates.append(os.environ["FABRIC_BASH"])
+    if shutil.which("bash"):
+        candidates.append(shutil.which("bash") or "")
+    candidates.extend(
+        [
+            r"C:\Program Files\Git\bin\bash.exe",
+            r"C:\Program Files\Git\usr\bin\bash.exe",
+            r"C:\Program Files (x86)\Git\bin\bash.exe",
+            r"C:\Program Files (x86)\Git\usr\bin\bash.exe",
+        ]
+    )
+    seen: set[str] = set()
+    return [path for path in candidates if path and not (path in seen or seen.add(path))]
+
+
+def _working_bash() -> str | None:
+    for candidate in _candidate_bash_paths():
+        try:
+            result = subprocess.run(
+                [candidate, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if result.returncode == 0:
+            return candidate
+    return None
+
+
+def _run_gate_or_none(gate_script_path: Path, arg: str, *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess | None:
+    bash = _working_bash()
+    if bash is None:
+        return None
+    return subprocess.run(
+        [bash, str(gate_script_path), arg],
+        cwd=_repo_root(gate_script_path),
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _required_suite_paths_from_script(gate_script_path: Path) -> list[str]:
+    content = gate_script_path.read_text(encoding="utf-8")
+    suite_names = [
+        "STANDALONE_API_TESTS",
+        "ROOT_SECURITY_TESTS",
+        "LAYER4_C06_SECURITY_TESTS",
+        "CONTRACT_TESTS",
+        "K8S_TESTS",
+        "LAYER2_FAIL_CLOSED_TESTS",
+        "LAYER5_FAIL_CLOSED_TESTS",
+    ]
+    paths: list[str] = []
+    for suite_name in suite_names:
+        match = re.search(rf"^{suite_name}=\(\n(?P<body>.*?)\n\)", content, re.MULTILINE | re.DOTALL)
+        assert match is not None, f"{suite_name} array missing from gate script"
+        for line in match.group("body").splitlines():
+            item = line.strip()
+            if not item or item.startswith("#"):
+                continue
+            item = item.split("#", 1)[0].strip().strip('"').strip("'")
+            if item:
+                paths.append(item.split("::", 1)[0])
+    return paths
+
+
 class TestGateFailClosedBehavior:
     """Test that the gate fails closed when required components are missing."""
 
@@ -46,26 +124,25 @@ class TestGateFailClosedBehavior:
         # This test is difficult to implement without modifying the gate script
         # to accept a custom required suites file. For now, we test the
         # --verify-required-only mode which checks file existence.
-        result = subprocess.run(
-            ["bash", str(gate_script_path), "--verify-required-only"],
-            cwd=gate_script_path.parent.parent.parent,
-            capture_output=True,
-            text=True,
-        )
+        result = _run_gate_or_none(gate_script_path, "--verify-required-only")
+        if result is None:
+            for suite_path in _required_suite_paths_from_script(gate_script_path):
+                assert (_repo_root(gate_script_path) / suite_path).exists(), (
+                    f"Required security suite path missing: {suite_path}"
+                )
+            return
         # Should pass if all required suites exist
         assert result.returncode == 0, f"Gate verification failed: {result.stderr}"
         assert "All required suites present" in result.stdout
 
     def test_gate_lists_required_suites(self, gate_script_path: Path) -> None:
         """Verify gate can list required suites for inspection."""
-        result = subprocess.run(
-            ["bash", str(gate_script_path), "--list-required"],
-            cwd=gate_script_path.parent.parent.parent,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
-        suites = result.stdout.strip().split("\n")
+        result = _run_gate_or_none(gate_script_path, "--list-required")
+        if result is None:
+            suites = _required_suite_paths_from_script(gate_script_path)
+        else:
+            assert result.returncode == 0
+            suites = result.stdout.strip().split("\n")
         # Verify some known required suites are listed
         assert any("test_auth_enforcement.py" in s for s in suites)
         assert any("test_production_safety.py" in s for s in suites)
@@ -113,7 +190,7 @@ class TestGateEvidenceLogging:
         results_file.write_text(json.dumps(results, indent=2))
 
         # Verify structure
-        data = json.loads(results_file.read_text())
+        data = json.loads(results_file.read_text(encoding="utf-8"))
         assert "timestamp" in data
         assert "git_sha" in data
         assert "branch" in data
@@ -151,10 +228,10 @@ class TestGateEvidenceLogging:
 **Recommendation**: PASS
 """
         summary_file = security_gate_dir / "mandatory_security_regression_gate.summary.md"
-        summary_file.write_text(summary_content)
+        summary_file.write_text(summary_content, encoding="utf-8")
 
         # Verify format
-        content = summary_file.read_text()
+        content = summary_file.read_text(encoding="utf-8")
         assert "# Mandatory Security Regression Gate Evidence" in content
         assert "| Check | Command | Required | Result | Evidence |" in content
         assert "**Status**:" in content
@@ -173,14 +250,13 @@ class TestGateTestMode:
         env["FABRIC_AUDIT_DIR"] = ".fabric/audit"
 
         # Run with --verify-required-only to test env var handling
-        result = subprocess.run(
-            ["bash", str(gate_script_path), "--verify-required-only"],
-            cwd=gate_script_path.parent.parent.parent,
-            env=env,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
+        result = _run_gate_or_none(gate_script_path, "--verify-required-only", env=env)
+        if result is None:
+            content = gate_script_path.read_text(encoding="utf-8")
+            assert "FABRIC_AUDIT_DIR" in content
+            assert 'FABRIC_AUDIT_DIR="${FABRIC_AUDIT_DIR:-.fabric/audit}"' in content
+        else:
+            assert result.returncode == 0
 
     def test_gate_test_mode_skips_expensive_operations(
         self, gate_script_path: Path
@@ -207,7 +283,7 @@ class TestGateIntegration:
 
     def test_gate_script_has_shebang(self, gate_script_path: Path) -> None:
         """Verify the gate script has the correct shebang."""
-        first_line = gate_script_path.read_text().split("\n")[0]
+        first_line = gate_script_path.read_text(encoding="utf-8").split("\n")[0]
         assert first_line.startswith("#!")
         assert "bash" in first_line
 
@@ -215,21 +291,21 @@ class TestGateIntegration:
         self, gate_script_path: Path
     ) -> None:
         """Verify the gate script includes evidence logging functions."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "log_evidence_start" in content
         assert "log_suite_result" in content
         assert "log_evidence_complete" in content
 
     def test_gate_script_includes_i02_checks(self, gate_script_path: Path) -> None:
         """Verify the gate script includes I-02 checks for all layers."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "layer2-extraction" in content
         assert "layer5-ground-truth" in content
         assert "test_production_fail_closed_i02.py" in content
 
     def test_gate_script_includes_c06_checks(self, gate_script_path: Path) -> None:
         """Verify the gate script includes C-06 tenant rate-limit checks."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "LAYER4_C06_SECURITY_TESTS" in content
         assert "services/layer4-agents/tests/test_tenant_rate_limits.py" in content
         assert "services/layer4-agents/tests/test_security_fixes.py" in content
@@ -239,7 +315,7 @@ class TestGateIntegration:
         self, gate_script_path: Path
     ) -> None:
         """Verify the gate script includes test mode guards."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "FABRIC_GATE_TEST_MODE" in content
         assert "TEST MODE" in content or "test mode" in content.lower()
 
@@ -249,7 +325,7 @@ class TestGateRequiredSuites:
 
     def test_required_suites_array_exists(self, gate_script_path: Path) -> None:
         """Verify the gate script has required suite arrays."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "STANDALONE_API_TESTS=(" in content
         assert "ROOT_SECURITY_TESTS=(" in content
         assert "LAYER4_C06_SECURITY_TESTS=(" in content
@@ -259,7 +335,7 @@ class TestGateRequiredSuites:
         self, gate_script_path: Path
     ) -> None:
         """Verify required suites include critical security tests."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "test_auth_enforcement.py" in content
         assert "test_production_safety.py" in content
         assert "test_tenant_boundary_fails_closed.py" in content
@@ -267,12 +343,12 @@ class TestGateRequiredSuites:
 
     def test_required_suites_includes_i02_tests(self, gate_script_path: Path) -> None:
         """Verify required suites include I-02 production fail-closed tests."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "layer2-extraction/tests/test_production_fail_closed_i02.py" in content
         assert "layer5-ground-truth/tests/test_production_fail_closed_i02.py" in content
 
     def test_required_suites_includes_c06_tests(self, gate_script_path: Path) -> None:
         """Verify required suites include C-06 mandatory Layer 4 tests."""
-        content = gate_script_path.read_text()
+        content = gate_script_path.read_text(encoding="utf-8")
         assert "services/layer4-agents/tests/test_tenant_rate_limits.py" in content
         assert "services/layer4-agents/tests/test_security_fixes.py" in content

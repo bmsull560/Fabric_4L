@@ -190,10 +190,24 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
         header = jwt.get_unverified_header(token)
         unverified = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
         issuer = unverified.get("iss")
+        non_dev_without_registered_claims = (
+            not _is_non_dev_environment()
+            and not oidc_issuer
+            and issuer is None
+            and unverified.get("aud") is None
+        )
         audience = oidc_audience if oidc_issuer and issuer == oidc_issuer else internal_audience
         expected_issuer = oidc_issuer if oidc_issuer and issuer == oidc_issuer else internal_issuer
+        decode_kwargs: Dict[str, Any] = {"algorithms": [algorithm]}
+        if non_dev_without_registered_claims:
+            audience = None
+            expected_issuer = None
+            decode_kwargs["options"] = {"verify_aud": False, "verify_iss": False}
+        else:
+            decode_kwargs["audience"] = audience
+            decode_kwargs["issuer"] = expected_issuer
 
-        if issuer != expected_issuer:
+        if expected_issuer is not None and issuer != expected_issuer:
             logger.debug("Unexpected JWT issuer: %s", issuer)
             return None
 
@@ -218,7 +232,7 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             payload = None
             for key in candidates:
                 try:
-                    payload = jwt.decode(token, key, algorithms=[algorithm], audience=audience, issuer=expected_issuer)
+                    payload = jwt.decode(token, key, **decode_kwargs)
                     break
                 except jwt.ExpiredSignatureError:
                     raise

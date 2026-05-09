@@ -21,29 +21,38 @@ class TestCollectionVerification:
         """P0: All tests in tests/security/ must be collectable (no import errors)."""
         security_dir = Path(__file__).parent
 
-        # Collect all test files
-        test_files = list(security_dir.glob("test_*.py"))
+        env = os.environ.copy()
+        repo_tmp = security_dir.parent.parent / ".tmp"
+        repo_tmp.mkdir(exist_ok=True)
+        env["TMP"] = str(repo_tmp)
+        env["TEMP"] = str(repo_tmp)
 
-        # Exclude this file and conftest to avoid recursion
-        test_files = [f for f in test_files if f.name not in [
-            "test_collection_verification.py",
-            "conftest.py"
-        ]]
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                str(security_dir),
+                "--collect-only",
+                "-q",
+                "-n",
+                "0",
+                "--no-mandatory-dep-check",
+                "--ignore",
+                str(Path(__file__)),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(security_dir.parent.parent),  # Run from repo root
+            env=env,
+            timeout=60,
+        )
 
         failures = []
-        for test_file in test_files:
-            # Try to collect tests from each file
-            result = subprocess.run(
-                [sys.executable, "-m", "pytest", str(test_file), "--collect-only", "-q"],
-                capture_output=True,
-                text=True,
-                cwd=str(security_dir.parent.parent)  # Run from repo root
-            )
-
-            if result.returncode != 0:
-                # Check if it's an import error vs no tests
-                if "ImportError" in result.stderr or "ModuleNotFoundError" in result.stderr:
-                    failures.append(f"{test_file.name}: {result.stderr[:200]}")
+        if result.returncode != 0:
+            combined_output = f"{result.stdout}\n{result.stderr}"
+            if "ImportError" in combined_output or "ModuleNotFoundError" in combined_output:
+                failures.append(combined_output[:1000])
 
         if failures:
             pytest.fail(

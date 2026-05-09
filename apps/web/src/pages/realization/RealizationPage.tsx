@@ -260,6 +260,53 @@ export default function RealizationPage() {
                 No initiatives yet. Promote and validate signals in the Intelligence workspace, then model impact in the Calculator to generate trackable initiatives.
               </p>
             </div>
+            <div className="mt-4 rounded-lg border border-border bg-muted/20 p-4">
+              <div className="flex items-center gap-2">
+                <ArrowRight className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Realization workflow</h3>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                The Action Plan turns validated signals, evidence, and calculator outputs into trackable customer outcomes.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs font-semibold text-foreground">Projected Value</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Approved initiatives become the value target that realization work is measured against.
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs font-semibold text-foreground">Baseline</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Customer-approved starting metrics are captured before rollout begins.
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs font-semibold text-foreground">Actual Value</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Actuals record realized value during execution and compare it with the target.
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs font-semibold text-foreground">Outcomes</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Outcome tracking keeps owners, metrics, milestones, and risks visible.
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs font-semibold text-foreground">Renewal Narrative</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Realized value becomes customer-facing proof for renewal and expansion reviews.
+                  </p>
+                </div>
+                <div className="rounded-md border bg-background p-3">
+                  <p className="text-xs font-semibold text-foreground">Next Step</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Generate initiatives from validated signals to create the first action plan.
+                  </p>
+                </div>
+              </div>
+            </div>
           </SectionCard>
         ) : (
           <div className="space-y-4">

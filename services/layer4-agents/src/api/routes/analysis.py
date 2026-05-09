@@ -1,6 +1,7 @@
 """Analysis API routes for quick ROI and whitespace calculations."""
 
 import json
+import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -19,7 +20,13 @@ from ..common.audit import emit_and_persist_audit
 from ..common.db import get_route_db
 from ..common.errors import normalize_exception
 from ...engine.executor import WorkflowExecutor
-from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
+from ...models.agent_state import (
+    BusinessCaseAgentState,
+    BusinessCaseInputData,
+    ROIInputData,
+    WhitespaceInputData,
+    WorkflowStatus,
+)
 from ...models.business_case_record import BusinessCaseRecord
 from ...models.saved_scenario import SavedBusinessCaseScenario
 from ...models.workspace_tab_data import WorkspaceTabData
@@ -49,6 +56,11 @@ class generate_workspace_intelligenceResult(TypedDictModel):
     stats: dict[str, Any]
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+E2E_SEED_PRIVILEGED_REASON = "playwright-backend-validation-seed"
+E2E_DRAFT_CASE_ID = "case-draft-001"
+E2E_APPROVED_CASE_ID = "case-e2e-approved-001"
 
 
 def _get_neo4j_driver(request: Request) -> Any:
@@ -154,6 +166,14 @@ class BusinessCaseResponse(BaseModel):
     case_metadata: dict[str, Any] = Field(default_factory=dict)
     revision_history: list[dict[str, Any]] = Field(default_factory=list)
     diff_summary: dict[str, Any] = Field(default_factory=dict)
+
+
+class BusinessCaseLifecycleSeedRequest(BaseModel):
+    """Non-production deterministic lifecycle seed payload for backend E2E validation."""
+
+    account_id: UUID
+    draft_case_id: str = E2E_DRAFT_CASE_ID
+    approved_case_id: str = E2E_APPROVED_CASE_ID
 
 
 def _compute_case_diff(previous: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
@@ -308,6 +328,122 @@ async def _require_tenant_account(db: AsyncSession, account_id: UUID, context: R
             detail=f"Account not found: {account_id}",
         )
     return account
+
+
+def _require_validation_seed_allowed(http_request: Request, context: RequestContext) -> None:
+    """Fail closed unless this is an authenticated, non-production seed request."""
+    if settings.environment == "production":
+        raise HTTPException(status_code=403, detail="Validation seeding is disabled in production")
+    if not context.tenant_id:
+        raise HTTPException(status_code=403, detail="Validation seeding requires tenant context")
+    reason = http_request.headers.get("X-Privileged-Reason", "").strip()
+    if reason != E2E_SEED_PRIVILEGED_REASON:
+        raise HTTPException(status_code=403, detail="Validation seeding requires privileged reason")
+
+
+def _seeded_business_case_output(
+    *,
+    case_id: str,
+    account_id: UUID,
+    tenant_id: str,
+    lifecycle_status: str,
+    document_url: str | None,
+) -> dict[str, Any]:
+    """Build canonical workflow output for deterministic business-case lifecycle evidence."""
+    approved = lifecycle_status == "approved"
+    title = (
+        "Meridian Automation Business Case"
+        if approved
+        else "Draft Meridian Business Case"
+    )
+    approval_history = [
+        {
+            "event": "submitted",
+            "actor": "e2e-admin-user",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "outcome": "pending_approval",
+        }
+    ]
+    if approved:
+        approval_history.append(
+            {
+                "event": "approved",
+                "actor": "e2e-reviewer-user",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "outcome": "approved",
+            }
+        )
+
+    recommendations = [
+        "Approve phased automation rollout for Meridian Automotive with ROI governance checkpoints.",
+        "Use traceable claims and linked evidence before executive export.",
+        "Push approved ROI summary to CRM for sales follow-up.",
+        "Convert approved business case into post-sale realization action plan and track outcomes.",
+    ]
+
+    return {
+        "assemble_document": {
+            "title": title,
+            "executive_summary": (
+                "Executive summary: Meridian Automotive can capture validated automation value "
+                "through a governed rollout with evidence-backed claims, approval history, "
+                "CRM follow-up, and post-sale realization tracking."
+            ),
+            "total_estimated_value": 1_850_000.0 if approved else 0.0,
+            "implementation_cost_estimate": 420_000.0 if approved else 0.0,
+            "roi_ratio": 4.4 if approved else 0.0,
+            "payback_months": 9 if approved else 0,
+            "confidence_score": 0.86 if approved else 0.42,
+            "recommendations": recommendations if approved else recommendations[:2],
+            "status": lifecycle_status,
+            "document_url": document_url,
+            "page_count": 12 if approved else 0,
+            "file_size_bytes": 245_760 if approved else 0,
+            "truth_references": [
+                {
+                    "truth_object_id": "truth-meridian-automation-001",
+                    "claim": "Automation reduces quote-to-cash cycle time",
+                    "source": "Meridian validation workspace evidence",
+                    "confidence": 0.88,
+                }
+            ],
+            "remediation_items": []
+            if approved
+            else [{"code": "APPROVAL_REQUIRED", "message": "Draft must be approved before export"}],
+            "case_metadata": {
+                "tenant_id": tenant_id,
+                "account_id": str(account_id),
+                "approval_history": approval_history,
+                "export_allowed": approved,
+                "crm_push_available": approved,
+                "realization_conversion_available": approved,
+                "seed_source": E2E_SEED_PRIVILEGED_REASON,
+            },
+        },
+        "verify_truth_requirements": {
+            "passed": approved,
+            "truth_references": [
+                {
+                    "truth_object_id": "truth-meridian-automation-001",
+                    "claim": "Automation reduces quote-to-cash cycle time",
+                }
+            ],
+            "remediation_items": []
+            if approved
+            else [{"code": "APPROVAL_REQUIRED", "message": "Approval is required"}],
+        },
+        "generate_sdes": {
+            "status": "seeded",
+            "lineage": {
+                "case_id": case_id,
+                "account_id": str(account_id),
+                "tenant_id": tenant_id,
+            },
+        },
+        "synthesize_narrative": {
+            "narrative": "Approved value case with renewal narrative and realization action plan."
+        },
+    }
 
 
 @router.post("/analysis/roi", response_model=ROIAnalysisResponse)
@@ -544,7 +680,10 @@ async def regenerate_business_case(
 
 @router.get("/cases/{case_id}", response_model=BusinessCaseResponse)
 async def get_business_case(
-    case_id: str, executor: WorkflowExecutor = Depends(get_executor)
+    case_id: str,
+    executor: WorkflowExecutor = Depends(get_executor),
+    db: AsyncSession = Depends(get_route_db),
+    context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
     """Get a generated business case by ID."""
     result = await executor.get_result(case_id)
@@ -552,11 +691,25 @@ async def get_business_case(
     if not result:
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
 
+    record = await db.get(BusinessCaseRecord, case_id)
+    if record and record.account_id:
+        await _require_tenant_account(db, record.account_id, context)
+    else:
+        result_tenant = result.get("metadata", {}).get("tenant_id")
+        if result_tenant and str(result_tenant) != str(context.tenant_id):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Business case {case_id} does not belong to the current tenant",
+            )
+
     output = result.get("output", {})
     assemble_data = output.get("assemble_document", {})
     truth_gate = output.get("verify_truth_requirements", {})
     sdes_bundle = output.get("generate_sdes", {})
     narrative_data = output.get("synthesize_narrative", {})
+    case_metadata = dict(assemble_data.get("case_metadata", {}))
+    if record and record.account_id:
+        case_metadata["account_id"] = str(record.account_id)
 
     return BusinessCaseResponse(
         case_id=case_id,
@@ -569,12 +722,136 @@ async def get_business_case(
         confidence_score=assemble_data.get("confidence_score", 0.0),
         recommendations=assemble_data.get("recommendations", []),
         created_at=result.get("created_at"),
-        status=result.get("status", "unknown"),
+        status=assemble_data.get("status", record.status if record else result.get("status", "unknown")),
+        document_url=assemble_data.get("document_url", record.document_url if record else None),
+        page_count=assemble_data.get("page_count", 0),
+        file_size_bytes=assemble_data.get("file_size_bytes", 0),
         truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
         remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
         sdes=sdes_bundle,
-        case_metadata=assemble_data.get("case_metadata", {}),
+        case_metadata=case_metadata,
     )
+
+
+@router.post("/validation/seed/business-case-lifecycle")
+async def seed_business_case_lifecycle(
+    payload: BusinessCaseLifecycleSeedRequest,
+    http_request: Request,
+    executor: WorkflowExecutor = Depends(get_executor),
+    db: AsyncSession = Depends(get_route_db),
+    context: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    """Seed deterministic business-case lifecycle state for non-production E2E validation."""
+    _require_validation_seed_allowed(http_request, context)
+    await _require_tenant_account(db, payload.account_id, context)
+
+    tenant_id = str(context.tenant_id)
+    now = datetime.now(UTC)
+    cases = [
+        {
+            "case_id": payload.draft_case_id,
+            "status": "draft",
+            "document_url": None,
+        },
+        {
+            "case_id": payload.approved_case_id,
+            "status": "approved",
+            "document_url": "/exports/meridian-business-case.pdf",
+        },
+    ]
+
+    business_case_service = BusinessCaseService(db)
+    seeded_cases: list[dict[str, Any]] = []
+    audit_events_requested = 0
+
+    for case in cases:
+        case_id = str(case["case_id"])
+        lifecycle_status = str(case["status"])
+        document_url = case["document_url"]
+        output_data = _seeded_business_case_output(
+            case_id=case_id,
+            account_id=payload.account_id,
+            tenant_id=tenant_id,
+            lifecycle_status=lifecycle_status,
+            document_url=document_url,
+        )
+        metadata = {
+            "workflow_id": case_id,
+            "workflow_type": "business_case",
+            "tenant_id": tenant_id,
+            "user_id": context.user_id,
+            "account_id": str(payload.account_id),
+            "seeded": True,
+            "seed_source": E2E_SEED_PRIVILEGED_REASON,
+            "lifecycle_status": lifecycle_status,
+        }
+
+        await business_case_service.upsert_case_record(
+            case_id=case_id,
+            workflow_id=case_id,
+            account_id=payload.account_id,
+            opportunity_id=None,
+            status=lifecycle_status,
+            document_url=document_url,
+            tenant_id=tenant_id,
+        )
+
+        state = BusinessCaseAgentState(
+            workflow_id=case_id,
+            status=WorkflowStatus.COMPLETED,
+            current_node="seeded_validation_lifecycle",
+            input_data={"account_id": str(payload.account_id)},
+            output_data=output_data,
+            metadata=metadata,
+            started_at=now,
+            completed_at=now,
+            document_url=document_url,
+        )
+        await executor.state_manager.save_state(case_id, state)
+        if hasattr(executor, "_workflow_metadata"):
+            executor._workflow_metadata[case_id] = metadata
+
+        audit_actions = [AuditAction.BUSINESS_CASE_GENERATED, AuditAction.WORKFLOW_COMPLETED]
+        if lifecycle_status == "approved":
+            audit_actions.append(AuditAction.BUSINESS_CASE_APPROVED)
+
+        for audit_action in audit_actions:
+            try:
+                await emit_and_persist_audit(
+                    action=audit_action,
+                    context=context,
+                    resource_type="BusinessCase",
+                    resource_id=case_id,
+                    details={
+                        "case_id": case_id,
+                        "account_id": str(payload.account_id),
+                        "lifecycle_status": lifecycle_status,
+                        "seed_source": E2E_SEED_PRIVILEGED_REASON,
+                    },
+                )
+                audit_events_requested += 1
+            except Exception:
+                # Audit persistence must be visible in logs but must not create
+                # a fail-open auth path or leave partial lifecycle state hidden.
+                logger.exception("Seed lifecycle audit emission failed for case %s", case_id)
+
+        seeded_cases.append(
+            {
+                "case_id": case_id,
+                "workflow_id": case_id,
+                "status": lifecycle_status,
+                "document_url": document_url,
+                "account_id": str(payload.account_id),
+            }
+        )
+
+    return {
+        "seeded": True,
+        "tenant_id": tenant_id,
+        "cases": seeded_cases,
+        "audit_events_requested": audit_events_requested,
+        "required_seed_rows_blocked": [],
+    }
 
 @router.get("/cases/{case_id}/export")
 async def export_business_case(

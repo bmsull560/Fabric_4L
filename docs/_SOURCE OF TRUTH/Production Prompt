@@ -1,0 +1,265 @@
+Continue from the current state.
+
+Do not update launch evidence, blocker docs, or production-readiness language unless all required gates pass.
+
+Primary Objective:
+Drive the repository from the current partially stabilized state to enterprise-grade production SaaS readiness while preserving fail-closed security, tenant isolation, auditability, and operational integrity.
+
+Core Principles:
+
+No weakening of security assertions.
+No broad auth bypass.
+No tenant isolation bypass.
+No silent fallback behavior.
+No “green by suppression.”
+All compatibility shims must delegate to canonical implementations.
+Preserve fail-closed behavior for auth, OIDC, secrets, and tenant enforcement.
+Prefer architectural convergence over accumulating drift adapters.
+
+Execution Model:
+For every cycle:
+
+Fix the immediate bounded blocker safely.
+Re-run targeted tests.
+Re-run bounded suite.
+Re-classify remaining failures.
+Identify architectural patterns causing repeated drift.
+Reduce future drift while fixing current blockers.
+
+Current Immediate Blockers:
+
+RLS migration coverage
+NULL tenant visibility
+RLS DB enforcement source checks
+OIDC config drift
+OIDC role mapping drift
+
+Immediate Next Step:
+Resolve the above blocker wave while preserving strict tenant enforcement and fail-closed OIDC behavior.
+
+After Immediate Blockers Pass:
+
+STEP 2 — Tenant Isolation Hardening
+Goal:
+Establish tenant isolation as a provable platform invariant.
+
+Required work:
+
+Audit every DB access path:
+get_db
+get_db_from_context
+async session factories
+Celery/background tasks
+websocket execution paths
+graph/Neo4j access
+vector retrieval paths
+Eliminate any unscoped session creation.
+Verify all ORM models include tenant scoping where required.
+Ensure all RLS migrations:
+ENABLE ROW LEVEL SECURITY
+FORCE ROW LEVEL SECURITY where appropriate
+deny NULL tenant leakage
+Validate Neo4j tenant filtering on all graph traversals.
+Add contract tests for:
+cross-tenant reads
+cross-tenant writes
+missing tenant context
+NULL tenant rows
+async propagation
+websocket propagation
+tool execution propagation
+
+Validation:
+
+python -m pytest tests/security -k "tenant or rls or isolation" -n 0 -vv
+
+STEP 3 — Authentication / Authorization Convergence
+Goal:
+Eliminate auth contract drift across services.
+
+Required work:
+
+Standardize JWT decode interfaces.
+Standardize OIDC provider config contracts.
+Ensure RBAC defaults to least privilege.
+Remove duplicate auth helper implementations.
+Ensure websocket auth uses canonical middleware.
+Ensure service-to-service auth uses validated secrets.
+Ensure all routes fail closed without middleware.
+Add explicit auth contract tests for:
+expired tokens
+malformed tokens
+missing claims
+role escalation attempts
+websocket reconnect flows
+service-secret rotation
+
+Validation:
+
+python -m pytest tests/security -k "auth or oidc or jwt or rbac" -n 0 -vv
+
+STEP 4 — Secrets / Environment / Configuration Hardening
+Goal:
+Remove environment-coupled drift and ensure deterministic startup/security behavior.
+
+Required work:
+
+Standardize config loading across layers.
+Separate:
+production startup
+local dev
+CI/test mode
+Ensure partial production secret config fails closed.
+Prevent accidental secret fallback defaults.
+Remove runtime imports from source-inspection tests.
+Stabilize Infisical/Vault integration contracts.
+Ensure all required env vars are documented and validated.
+Add startup validation matrix tests.
+
+Validation:
+
+python -m pytest tests/security -k "config or startup or secrets" -n 0 -vv
+
+STEP 5 — Governance Middleware & Audit Integrity
+Goal:
+Guarantee all requests are observable, attributable, and enforce governance phases consistently.
+
+Required work:
+
+Verify all middleware phases execute in order.
+Ensure audit events emit for:
+auth failures
+tenant resolution
+privilege changes
+tool execution
+admin actions
+security violations
+Ensure audit failures are logged but do not bypass security.
+Verify request IDs propagate cross-service.
+Validate governance hooks:
+_pre_auth
+_post_auth
+_pre_rls
+_post_rls
+
+Validation:
+
+python -m pytest tests/security -k "audit or governance or middleware" -n 0 -vv
+
+STEP 6 — Graph / Tool / Agent Security Hardening
+Goal:
+Ensure all agentic and graph execution surfaces are constrained and tenant-safe.
+
+Required work:
+
+Prevent Cypher write operations from user-accessible paths.
+Validate tool sandboxing.
+Validate prompt delimiter enforcement.
+Validate graph query allowlists.
+Ensure agent memory access is tenant-scoped.
+Ensure tool execution propagates tenant + auth context.
+Add hostile prompt-injection tests.
+Validate websocket streaming isolation.
+
+Validation:
+
+python -m pytest tests/security -k "graph or tool or agent or cypher or prompt" -n 0 -vv
+
+STEP 7 — Operational Production Readiness
+Goal:
+Achieve reproducible deployability and observability.
+
+Required work:
+
+Validate K8s manifests:
+multi-doc parsing
+security contexts
+non-root enforcement
+readiness/liveness
+network policies
+Validate Prometheus metrics exposure.
+Validate structured logging.
+Validate alert routing.
+Validate rollback procedures.
+Validate disaster recovery artifacts.
+Validate CI production gate scripts.
+Validate staging parity with production overlays.
+
+Validation:
+
+python -m pytest tests/security -k "k8s or metrics or deploy or production" -n 0 -vv
+
+STEP 8 — Performance / Resilience / Chaos Readiness
+Goal:
+Prove the platform behaves safely under stress and partial failure.
+
+Required work:
+
+Add connection pool exhaustion tests.
+Add Redis outage tests.
+Add Neo4j outage tests.
+Add LLM provider degradation tests.
+Add websocket reconnect/load tests.
+Add timeout/cancellation propagation tests.
+Add chaos smoke workflows.
+Validate circuit breakers and retries.
+
+Validation:
+
+python -m pytest tests/performance -n 0 -vv
+
+STEP 9 — Enterprise SaaS Compliance Readiness
+Goal:
+Prepare for enterprise procurement/security review.
+
+Required work:
+
+Validate audit retention behavior.
+Validate tenant deletion/export flows.
+Validate encryption boundaries.
+Validate secret rotation.
+Validate SSO/OIDC evidence.
+Validate billing isolation.
+Validate evidence artifacts for:
+security
+telemetry
+rollback
+performance
+DR
+SLOs
+Ensure all launch evidence artifacts are reproducible.
+
+STEP 10 — Final GA Readiness Gate
+Only after all suites pass:
+
+Run full security suite.
+Run full integration suite.
+Run full E2E suite.
+Run launch evidence generators.
+Run production-readiness gates.
+Generate final blocker matrix.
+Confirm:
+no unresolved tenant-isolation blockers
+no auth drift
+no NULL tenant visibility
+no fail-open behavior
+no skipped critical tests
+no environment-only passing conditions
+
+Final Deliverable Per Cycle:
+
+Files changed
+Tests run/results
+Remaining blockers
+Architectural drift identified
+Security posture impact
+Whether production readiness improved, regressed, or remained blocked
+
+Do not:
+
+mark evidence complete prematurely
+weaken security checks
+add broad bypasses
+suppress failing tests
+introduce unscoped DB access
+silently disable OIDC/auth/security enforcement

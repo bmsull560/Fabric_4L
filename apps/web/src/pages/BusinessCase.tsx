@@ -4,16 +4,17 @@
  */
 import { useState } from "react";
 import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
 
 export default function BusinessCase() {
+  const { caseId } = useParams<{ caseId: string }>();
   const [searchParams] = useSearchParams();
   const { navigateTo } = useNavigation();
-  const businessCaseId = searchParams.get("id");
+  const businessCaseId = caseId ?? searchParams.get("id");
 
   const { data: businessCase, isLoading, error } = useBusinessCase(businessCaseId);
   const exportMutation = useBusinessCaseExport();

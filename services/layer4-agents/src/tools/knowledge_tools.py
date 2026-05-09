@@ -23,10 +23,8 @@ from ..models.tool_schemas import (
     TraverseTreeInput,
     TraverseTreeOutput,
 )
-from ..shared.domain.context import (
-    TenantContextError,
-    get_current_tenant_context,
-)
+from ..shared.domain import context as tenant_context
+from ..shared.domain.context import TenantContextError
 from ..services.llm_provider import get_openai_provider
 from .registry import BaseTool
 
@@ -167,7 +165,7 @@ class QueryGraphTool(BaseTool):
         
         # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
         try:
-            tenant_ctx = get_current_tenant_context()
+            tenant_ctx = tenant_context.get_current_tenant_context()
             tenant_ctx.assert_valid()
         except TenantContextError as e:
             logger.warning(f"Tenant context error in query_graph: {e}")
@@ -311,7 +309,7 @@ class SemanticSearchTool(BaseTool):
         
         # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
         try:
-            tenant_ctx = get_current_tenant_context()
+            tenant_ctx = tenant_context.get_current_tenant_context()
             tenant_ctx.assert_valid()
         except TenantContextError as e:
             logger.warning(f"Tenant context error in semantic_search: {e}")
@@ -418,7 +416,7 @@ class GetEntityTool(BaseTool):
         """
         # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
         try:
-            tenant_ctx = get_current_tenant_context()
+            tenant_ctx = tenant_context.get_current_tenant_context()
             tenant_ctx.assert_valid()
         except TenantContextError as e:
             logger.warning(f"Tenant context error in get_entity: {e}")
@@ -523,7 +521,7 @@ class GetRelationshipsTool(BaseTool):
         """
         # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
         try:
-            tenant_ctx = get_current_tenant_context()
+            tenant_ctx = tenant_context.get_current_tenant_context()
             tenant_ctx.assert_valid()
         except TenantContextError as e:
             logger.warning(f"Tenant context error in get_relationships: {e}")
@@ -619,7 +617,7 @@ class TraverseTreeTool(BaseTool):
         """
         # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
         try:
-            tenant_ctx = get_current_tenant_context()
+            tenant_ctx = tenant_context.get_current_tenant_context()
             tenant_ctx.assert_valid()
         except TenantContextError as e:
             logger.warning(f"Tenant context error in traverse_tree: {e}")
@@ -707,7 +705,7 @@ class FindPathsTool(BaseTool):
         """
         # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
         try:
-            tenant_ctx = get_current_tenant_context()
+            tenant_ctx = tenant_context.get_current_tenant_context()
             tenant_ctx.assert_valid()
         except TenantContextError as e:
             logger.warning(f"Tenant context error in find_paths: {e}")

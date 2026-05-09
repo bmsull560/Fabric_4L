@@ -22,6 +22,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.params import Depends as DependsParam
 
 from value_fabric.shared.audit import emit_audit_event
 from value_fabric.shared.audit.models import AuditAction, AuditOutcome, PrivilegedAccessDetails
@@ -127,6 +128,10 @@ async def require_tenant_context(
     This is different from require_tenant which returns the tenant_id UUID.
     This function returns the full RequestContext after validating tenant_id is present.
     """
+    if isinstance(ctx, DependsParam):
+        ctx = None
+    if isinstance(context, DependsParam):
+        context = None
     if context is not None:
         ctx = context
 
