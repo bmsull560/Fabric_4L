@@ -243,6 +243,9 @@ const ROUTE_TIER_MAP: Record<string, UserTier> = {
   '/deliver/cases': 'standard',
   '/deliver/cases/:caseId': 'standard',
   '/deliver/cases/:caseId/export': 'standard',
+  '/deliverables/cases': 'standard',
+  '/deliverables/cases/:caseId': 'standard',
+  '/deliverables/cases/:caseId/export': 'standard',
 
   // Interactive Tools
   '/deliver/calculators': 'advanced',

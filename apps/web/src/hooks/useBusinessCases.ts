@@ -38,7 +38,7 @@ export interface BusinessCaseListItem {
   id: string;
   name: string;
   company: string;
-  status: 'draft' | 'active' | 'archived';
+  status: 'draft' | 'active' | 'approved' | 'archived';
   totalValue: string;
   useCaseCount: number;
   confidence: number;
@@ -48,7 +48,7 @@ export interface BusinessCaseListItem {
 }
 
 export interface BusinessCaseFilters {
-  status?: 'draft' | 'active' | 'archived' | 'all';
+  status?: 'draft' | 'active' | 'approved' | 'archived' | 'all';
   search?: string;
   company?: string;
 }
@@ -141,9 +141,12 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
 
   // Transform workflow data to BusinessCaseListItem format
   interface WorkflowItem {
+    id?: string;
     workflow_id: string;
     name?: string;
     status?: string;
+    lifecycle_status?: string;
+    case_metadata?: Record<string, unknown>;
     company_name?: string;
     total_value?: number;
     use_case_count?: number;
@@ -153,18 +156,32 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
     owner?: string;
   }
   const rawData = response.data;
-  const items = (Array.isArray(rawData.items) ? rawData.items as WorkflowItem[] : []).map((workflow) => ({
-    id: workflow.workflow_id,
-    name: workflow.name || `Case ${workflow.workflow_id}`,
-    company: workflow.company_name || 'Unknown Company',
-    status: (workflow.status === 'completed' ? 'active' : workflow.status || 'draft') as BusinessCaseListItem['status'],
-    totalValue: formatCompactCurrency(workflow.total_value ?? 0),
-    useCaseCount: workflow.use_case_count ?? 0,
-    confidence: Math.round((workflow.confidence ?? 0.8) * 100),
-    createdAt: workflow.created_at || new Date().toISOString(),
-    updatedAt: workflow.updated_at || workflow.created_at || new Date().toISOString(),
-    owner: workflow.owner || 'System',
-  }));
+  const items = (Array.isArray(rawData.items) ? rawData.items as WorkflowItem[] : []).map((workflow) => {
+    const workflowId = String(workflow.workflow_id ?? workflow.id ?? '');
+    const statusSource = String(workflow.lifecycle_status ?? workflow.case_metadata?.lifecycle_status ?? workflow.status ?? 'draft').toLowerCase();
+    const status = (
+      statusSource === 'approved' || statusSource === 'completed'
+        ? 'approved'
+        : statusSource === 'archived'
+          ? 'archived'
+          : statusSource === 'active'
+            ? 'active'
+            : 'draft'
+    ) as BusinessCaseListItem['status'];
+
+    return {
+      id: workflowId,
+      name: workflow.name || `Case ${workflowId}`,
+      company: workflow.company_name || String(workflow.case_metadata?.account_name ?? 'Unknown Company'),
+      status,
+      totalValue: formatCompactCurrency(workflow.total_value ?? Number(workflow.case_metadata?.total_value ?? 0)),
+      useCaseCount: workflow.use_case_count ?? Number(workflow.case_metadata?.use_case_count ?? 0),
+      confidence: Math.round((workflow.confidence ?? Number(workflow.case_metadata?.confidence ?? 0.8)) * 100),
+      createdAt: workflow.created_at || new Date().toISOString(),
+      updatedAt: workflow.updated_at || workflow.created_at || new Date().toISOString(),
+      owner: workflow.owner || 'System',
+    };
+  });
 
   return items;
 }

@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from value_fabric.shared.identity.context import get_request_context
+from value_fabric.shared.identity.context import RequestContext, get_request_context
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..models.tool_schemas import ToolCategory, ToolSchema

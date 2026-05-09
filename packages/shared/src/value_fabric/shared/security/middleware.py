@@ -43,7 +43,7 @@ SQL_INJECTION_PATTERNS = [
     r"(\b(OR|AND)\s+['\"]\w+['\"]\s*=\s*['\"]\w+['\"])",
     r"(--(?:\s|$)|\/\*|\*\/)",
     r"(\b(LOAD_FILE|INTO\s+OUTFILE|DUMPFILE)\b)",
-    r"(\b(WAITFOR\s+DELAY|BENCHMARK|SLEEP)\b)",
+    r"(\bWAITFOR\s+DELAY\b|\bBENCHMARK\s*\(|\bSLEEP\s*\()",
 ]
 
 XSS_PATTERNS = [

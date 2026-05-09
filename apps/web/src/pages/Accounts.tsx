@@ -399,6 +399,22 @@ function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: Accoun
           </div>
         )}
 
+        <div className="rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-[12px] font-semibold text-foreground">
+            <Activity size={14} />
+            Value Realization
+          </div>
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            {account.name} is ready for baseline metrics, outcome tracking, actual value capture, and renewal narrative planning once an approved business case is converted.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+            <span className="rounded-md bg-muted/40 px-2 py-1 text-muted-foreground">Baseline metrics</span>
+            <span className="rounded-md bg-muted/40 px-2 py-1 text-muted-foreground">Outcomes</span>
+            <span className="rounded-md bg-muted/40 px-2 py-1 text-muted-foreground">Actual value</span>
+            <span className="rounded-md bg-muted/40 px-2 py-1 text-muted-foreground">Renewal narrative</span>
+          </div>
+        </div>
+
         {/* Opportunities List */}
         {account.opportunities && account.opportunities.length > 0 && (
           <div className="pt-2">
@@ -435,7 +451,7 @@ function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: Accoun
           </Btn>
           <Btn
             variant="outline"
-            onClick={() => accountId && refreshAccount.mutate(accountId)}
+            onClick={() => refreshAccount.mutate(account.id)}
             disabled={refreshAccount.isPending}
           >
             {refreshAccount.isPending ? (
@@ -488,6 +504,7 @@ function Accounts() {
   // Sync URL account ID to global store so sidebar/workspace links resolve correctly
   useEffect(() => {
     if (urlAccountId) {
+      setSelectedAccountId(urlAccountId);
       setGlobalAccountId(urlAccountId);
     }
   }, [urlAccountId, setGlobalAccountId]);

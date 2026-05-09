@@ -3,6 +3,7 @@ import { apiGet, apiPost, apiPut, apiPatch } from '@/api/typedClient';
 import type { l4 } from '@/api/generated';
 import { L4_ANALYSIS_PREFIX } from '@/lib/apiConfig';
 import { QK } from './queryKeys';
+import { resolveBackendAccountId } from './useAccounts';
 
 const CASE_STORAGE_PREFIX = 'vf.workspace.case';
 
@@ -28,7 +29,8 @@ export async function getOrCreateCanonicalCaseId(accountId: string): Promise<str
   const stored = getStoredCaseId(accountId);
   if (stored) return stored;
 
-  const lookup = await apiGet<l4.components['schemas']['CaseListResponse']>('l4', `${L4_ANALYSIS_PREFIX}/cases?account_id=${encodeURIComponent(accountId)}`);
+  const backendAccountId = await resolveBackendAccountId(accountId);
+  const lookup = await apiGet<l4.components['schemas']['CaseListResponse']>('l4', `${L4_ANALYSIS_PREFIX}/cases?account_id=${encodeURIComponent(backendAccountId)}`);
   const items = lookup.data.items;
   const existingCaseId = items[0]?.case_id;
   if (existingCaseId) {
@@ -37,7 +39,7 @@ export async function getOrCreateCanonicalCaseId(accountId: string): Promise<str
   }
 
   const created = await apiPost<l4.components['schemas']['CreateCaseResponse']>('l4', `${L4_ANALYSIS_PREFIX}/cases`, {
-    account_id: accountId,
+    account_id: backendAccountId,
     title: `Account ${accountId} workspace`,
   });
   const createdCaseId = created.data.case_id;

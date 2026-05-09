@@ -6,19 +6,21 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
+from value_fabric.shared.identity.jwt import encode_jwt
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...config.settings import settings
 from ..common.audit import emit_and_persist_audit
 from ..common.db import get_route_db
 from ..common.errors import normalize_exception
+from ..security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import (
     BusinessCaseAgentState,
@@ -176,6 +178,16 @@ class BusinessCaseLifecycleSeedRequest(BaseModel):
     approved_case_id: str = E2E_APPROVED_CASE_ID
 
 
+class ValidationSessionRequest(BaseModel):
+    """Non-production browser session payload for backend-integrated Playwright validation."""
+
+    user_id: str = Field(default="e2e-admin-user", min_length=1)
+    email: str = Field(default="e2e@valuefabric.test", min_length=3)
+    role: str = Field(default="admin", min_length=1)
+    tenant_slug: str = Field(default="e2e-test", min_length=1)
+    expires_in_seconds: int = Field(default=3600, ge=60, le=86400)
+
+
 def _compute_case_diff(previous: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
     prev_total = float(previous.get("total_estimated_value", 0.0) or 0.0)
     curr_total = float(current.get("total_estimated_value", 0.0) or 0.0)
@@ -195,11 +207,11 @@ def _compute_case_diff(previous: dict[str, Any], current: dict[str, Any]) -> dic
 
 def get_executor() -> WorkflowExecutor:
     """Get workflow executor instance."""
-    from ..main import workflow_executor
+    from ..startup import runtime_state
 
-    if workflow_executor is None:
+    if runtime_state.workflow_executor is None:
         raise HTTPException(status_code=503, detail="Workflow executor not initialized")
-    return workflow_executor
+    return runtime_state.workflow_executor
 
 
 def _is_smoke_mode(http_request: Request, *, body_mode: str | None = None) -> bool:
@@ -339,6 +351,64 @@ def _require_validation_seed_allowed(http_request: Request, context: RequestCont
     reason = http_request.headers.get("X-Privileged-Reason", "").strip()
     if reason != E2E_SEED_PRIVILEGED_REASON:
         raise HTTPException(status_code=403, detail="Validation seeding requires privileged reason")
+
+
+@router.post("/validation/session")
+async def issue_validation_session(
+    payload: ValidationSessionRequest,
+    response: Response,
+    http_request: Request,
+    context: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    """Issue a non-production browser session for backend-integrated Playwright validation.
+
+    The endpoint is deliberately gated by the same service-authenticated,
+    privileged, non-production boundary as deterministic seed data. It uses the
+    canonical JWT and CSRF cookie mechanics, and returns only non-secret UI
+    metadata.
+    """
+    _require_validation_seed_allowed(http_request, context)
+
+    token = encode_jwt(
+        tenant_id=context.tenant_id,
+        user_id=payload.user_id,
+        roles=[payload.role],
+        expires_in_seconds=payload.expires_in_seconds,
+    )
+    csrf_token = issue_csrf_token()
+    secure_cookie = http_request.url.scheme == "https"
+
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=secure_cookie,
+        samesite="strict",
+        max_age=payload.expires_in_seconds,
+        path="/",
+    )
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=csrf_token,
+        httponly=False,
+        secure=secure_cookie,
+        samesite="strict",
+        max_age=payload.expires_in_seconds,
+        path="/",
+    )
+
+    return {
+        "authenticated": True,
+        "expires_in": payload.expires_in_seconds,
+        "user": {
+            "id": payload.user_id,
+            "email": payload.email,
+            "role": payload.role,
+            "tenantId": str(context.tenant_id),
+            "tenantSlug": payload.tenant_slug,
+        },
+        "tenant_id": str(context.tenant_id),
+    }
 
 
 def _seeded_business_case_output(
@@ -565,7 +635,6 @@ async def generate_business_case(
     request: BusinessCaseRequest,
     background_tasks: BackgroundTasks,
     http_request: Request,
-    executor: WorkflowExecutor = Depends(get_executor),
     db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
@@ -582,6 +651,28 @@ async def generate_business_case(
         }
     """
     try:
+        try:
+            raw_body = await http_request.json()
+        except Exception:
+            raw_body = {}
+        if _is_workspace_case_create_body(raw_body):
+            workspace_case = await _create_workspace_case_record(
+                CreateCaseRequest.model_validate(raw_body),
+                db,
+                context,
+            )
+            return BusinessCaseResponse(
+                case_id=workspace_case.case_id,
+                title=workspace_case.title or "Case Workspace",
+                status=workspace_case.status,
+                created_at=workspace_case.created_at,
+                case_metadata={
+                    "account_id": workspace_case.account_id,
+                    "workspace_case": True,
+                },
+            )
+
+        executor = get_executor()
         account_service = AccountService(db)
         account = await account_service.get_account(request.account_id, tenant_id=str(context.tenant_id))
         if not account:
@@ -1065,6 +1156,61 @@ class CreateCaseResponse(BaseModel):
     created_at: str
 
 
+def _parse_case_account_uuid(account_id: str) -> UUID:
+    """Parse account identifiers used by case workspace routes."""
+    try:
+        return UUID(account_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="account_id must be a UUID") from exc
+
+
+def _isoformat_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
+def _is_workspace_case_create_body(body: Any) -> bool:
+    """Disambiguate the legacy workspace create payload from business-case generation."""
+    if not isinstance(body, dict):
+        return False
+    generation_keys = {"sections", "output_format", "custom_inputs", "opportunity_id"}
+    return "account_id" in body and "title" in body and not generation_keys.intersection(body)
+
+
+async def _create_workspace_case_record(
+    request: CreateCaseRequest,
+    db: AsyncSession,
+    context: RequestContext,
+) -> CreateCaseResponse:
+    account_uuid = _parse_case_account_uuid(request.account_id)
+    tenant_id = str(context.tenant_id)
+    account = await AccountService(db).get_account(account_uuid, tenant_id=tenant_id)
+    if account is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Account not found: {request.account_id}")
+
+    case_id = str(uuid4())
+    now = datetime.now(UTC).isoformat()
+    record = BusinessCaseRecord(
+        case_id=case_id,
+        account_id=account_uuid,
+        workflow_id=case_id,
+        status="created",
+        tenant_id=tenant_id,
+    )
+    db.add(record)
+
+    return CreateCaseResponse(
+        case_id=case_id,
+        account_id=request.account_id,
+        title=request.title,
+        status="created",
+        created_at=now,
+    )
+
+
 class SaveScenarioRequest(BaseModel):
     """Persist a business-case what-if scenario."""
 
@@ -1124,12 +1270,18 @@ async def list_cases(
 
     Returns all cases associated with the specified account.
     """
-    from sqlalchemy import select
+    account_uuid = _parse_case_account_uuid(account_id)
+    tenant_id = str(context.tenant_id)
 
-    from ...models.business_case_record import BusinessCaseRecord
+    account = await AccountService(db).get_account(account_uuid, tenant_id=tenant_id)
+    if account is None:
+        return CaseListResponse(items=[], total=0)
 
     result = await db.execute(
-        select(BusinessCaseRecord).where(BusinessCaseRecord.account_id == account_id)
+        select(BusinessCaseRecord).where(
+            BusinessCaseRecord.account_id == account_uuid,
+            BusinessCaseRecord.tenant_id == tenant_id,
+        )
     )
     records = result.scalars().all()
 
@@ -1139,8 +1291,8 @@ async def list_cases(
             account_id=str(r.account_id) if r.account_id else None,
             title=getattr(r, 'title', None),
             status=r.status,
-            created_at=getattr(r, 'created_at', None),
-            updated_at=getattr(r, 'updated_at', None),
+            created_at=_isoformat_or_none(getattr(r, 'created_at', None)),
+            updated_at=_isoformat_or_none(getattr(r, 'updated_at', None)),
         )
         for r in records
     ]
@@ -1158,27 +1310,7 @@ async def create_case(
 
     Creates a case workspace for the specified account.
     """
-    from ...models.business_case_record import BusinessCaseRecord
-
-    case_id = str(uuid4())
-    now = datetime.now(UTC).isoformat()
-
-    record = BusinessCaseRecord(
-        case_id=case_id,
-        account_id=UUID(request.account_id) if request.account_id else None,
-        workflow_id=case_id,
-        status="created",
-        tenant_id=str(context.tenant_id) if context.tenant_id else "default",
-    )
-    db.add(record)
-
-    return CreateCaseResponse(
-        case_id=case_id,
-        account_id=request.account_id,
-        title=request.title,
-        status="created",
-        created_at=now,
-    )
+    return await _create_workspace_case_record(request, db, context)
 
 
 @router.get("/cases/{case_id}/scenarios", response_model=list[SavedScenarioSummary])
@@ -1307,7 +1439,21 @@ async def get_workspace_evidence(
     evidence_items = payload.get("evidence", [])
     if not isinstance(evidence_items, list):
         raise HTTPException(status_code=500, detail="Invalid persisted evidence payload shape")
-    return WorkspaceEvidenceResponse(evidence=[WorkspaceEvidenceItem.model_validate(item) for item in evidence_items])
+    normalized_items: list[dict[str, Any]] = []
+    for item in evidence_items:
+        if not isinstance(item, dict):
+            continue
+        normalized_items.append(
+            {
+                **item,
+                "title": item.get("title") or item.get("claim") or item.get("id") or "Evidence",
+                "type": item.get("type") or "evidence",
+                "verification": item.get("verification") or item.get("validation_status") or "unverified",
+                "linkedSignals": item.get("linkedSignals") or item.get("linked_signals") or [],
+                "excerpt": item.get("excerpt") or item.get("claim") or "",
+            }
+        )
+    return WorkspaceEvidenceResponse(evidence=[WorkspaceEvidenceItem.model_validate(item) for item in normalized_items])
 
 
 

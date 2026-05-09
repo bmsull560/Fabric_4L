@@ -64,6 +64,76 @@ function generateTestToken(userId: string, tenantId: string): string {
   return `header.${base64Payload}.signature`;
 }
 
+function isBackendIntegratedLiveMode(): boolean {
+  return process.env.PLAYWRIGHT_LIVE_MODE === 'true' && Boolean(process.env.PLAYWRIGHT_BACKEND_URL);
+}
+
+function liveFrontendOrigin(page: Page): string {
+  const configured = process.env.PLAYWRIGHT_LIVE_FRONTEND_URL || process.env.PLAYWRIGHT_BASE_URL;
+  if (configured) {
+    return new URL(configured).origin;
+  }
+  return new URL(page.url()).origin;
+}
+
+function normalizeLiveUser(user: TestUserInfo): TestUserInfo {
+  if (user.tenantId !== DEFAULT_TEST_USER.tenantId) {
+    return user;
+  }
+  return {
+    ...user,
+    tenantId: BACKEND_E2E_TENANT_ID,
+    tenantSlug: 'e2e-test',
+  };
+}
+
+function seedBrowserSessionScript(u: TestUserInfo) {
+  const payload = {
+    exp: Math.floor(Date.now() / 1000) + 86400,
+    iat: Math.floor(Date.now() / 1000),
+    sub: u.id,
+    tenant_id: u.tenantId,
+  };
+  const base64Payload = btoa(JSON.stringify(payload));
+  const token = `header.${base64Payload}.signature`;
+
+  localStorage.setItem('accessToken', token);
+  localStorage.setItem('userInfo', JSON.stringify(u));
+  localStorage.setItem('tenantId', u.tenantId);
+  sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user: u, tenantId: u.tenantId }));
+}
+
+async function seedBackendIntegratedSession(page: Page, user: TestUserInfo): Promise<TestUserInfo> {
+  const serviceSecret = process.env.SERVICE_AUTH_SECRET;
+  if (!serviceSecret) {
+    throw new Error('SERVICE_AUTH_SECRET is required for backend-integrated Playwright auth seeding.');
+  }
+
+  const frontendOrigin = liveFrontendOrigin(page);
+  const requestUser = normalizeLiveUser(user);
+  const response = await page.request.post(`${frontendOrigin}/api/v1/agents/validation/session`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Tenant-ID': requestUser.tenantId,
+      'X-Service-Auth': serviceSecret,
+      'X-Privileged-Reason': 'playwright-backend-validation-seed',
+    },
+    data: {
+      user_id: requestUser.id,
+      email: requestUser.email,
+      role: requestUser.role,
+      tenant_slug: requestUser.tenantSlug,
+    },
+  });
+
+  if (!response.ok()) {
+    throw new Error(`Backend-integrated validation session request failed: ${response.status()} ${await response.text()}`);
+  }
+
+  const payload = await response.json();
+  return payload.user as TestUserInfo;
+}
+
 /**
  * Seed authenticated session in localStorage.
  * Must be called before any route navigation that requires auth.
@@ -75,6 +145,17 @@ export async function seedAuthState(
   page: Page,
   user: TestUserInfo = DEFAULT_TEST_USER
 ): Promise<void> {
+  const liveMode = isBackendIntegratedLiveMode();
+  const seededUser = liveMode ? await seedBackendIntegratedSession(page, user) : user;
+
+  if (liveMode) {
+    await page.addInitScript(seedBrowserSessionScript, seededUser);
+    await ensureSameOrigin(page);
+    await page.evaluate(seedBrowserSessionScript, seededUser);
+    await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
+    return;
+  }
+
   await ensureSameOrigin(page);
 
   await page.evaluate((u) => {
@@ -97,7 +178,7 @@ export async function seedAuthState(
     // helpers, but seed the canonical session metadata key so AuthProvider and
     // ProtectedRoute treat the journey page as authenticated.
     sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user: u, tenantId: u.tenantId }));
-  }, user);
+  }, seededUser);
 
   // AuthProvider reads sessionStorage on mount. If ensureSameOrigin loaded the
   // app at /login before storage was seeded, reload once so the provider observes

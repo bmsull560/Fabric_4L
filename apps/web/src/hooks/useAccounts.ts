@@ -96,6 +96,9 @@ export class AccountApiError extends BaseApiError {
 
 
 const log = createLogger('useAccounts');
+const BACKEND_ACCOUNT_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SEMANTIC_ACCOUNT_ID_PATTERN = /^acct-[a-z0-9][a-z0-9-]*$/i;
 
 export interface AccountFilters {
   provider?: CRMProvider | 'all';
@@ -153,6 +156,51 @@ async function fetchAccounts(filters: AccountFilters): Promise<AccountListRespon
   };
 }
 
+export function isBackendAccountUuid(accountId: string): boolean {
+  return BACKEND_ACCOUNT_UUID_PATTERN.test(accountId);
+}
+
+export function isSemanticAccountId(accountId: string): boolean {
+  return SEMANTIC_ACCOUNT_ID_PATTERN.test(accountId);
+}
+
+function findAccountByRouteId(accounts: Account[], accountId: string): Account | undefined {
+  const semanticTokens = accountId
+    .replace(/^acct-/i, '')
+    .split('-')
+    .filter((token) => token && !/^\d+$/.test(token));
+
+  return accounts.find((account) =>
+    account.id === accountId ||
+    account.provider_record_id === accountId ||
+    account.name.toLowerCase() === accountId.toLowerCase() ||
+    (semanticTokens.length > 0 && semanticTokens.every((token) => account.name.toLowerCase().includes(token.toLowerCase())))
+  );
+}
+
+export async function resolveBackendAccountId(accountId: string): Promise<string> {
+  if (isBackendAccountUuid(accountId) || !isSemanticAccountId(accountId)) {
+    return accountId;
+  }
+
+  try {
+    const searched = await fetchAccounts({ search: accountId, page_size: 100 });
+    const searchMatch = findAccountByRouteId(searched.items, accountId);
+    if (searchMatch) return searchMatch.id;
+  } catch (error) {
+    log.warn('Account route ID search failed; falling back to tenant-scoped account list', {
+      accountId,
+      error,
+    });
+  }
+
+  const listed = await fetchAccounts({ page_size: 100 });
+  const listMatch = findAccountByRouteId(listed.items, accountId);
+  if (listMatch) return listMatch.id;
+
+  throw new AccountApiError(`Account not found for route identifier ${accountId}`, 404);
+}
+
 export function useAccounts(filters: AccountFilters = {}) {
   return useQuery<AccountListResponse, AccountApiError>({
     queryKey: QK.accounts.list(filters),
@@ -164,7 +212,8 @@ export function useAccounts(filters: AccountFilters = {}) {
 }
 
 async function fetchAccount(accountId: string): Promise<Account> {
-  const response = await apiGet<Account>('l4', `/accounts/${accountId}`);
+  const backendAccountId = await resolveBackendAccountId(accountId);
+  const response = await apiGet<Account>('l4', `/accounts/${backendAccountId}`);
   return response.data;
 }
 

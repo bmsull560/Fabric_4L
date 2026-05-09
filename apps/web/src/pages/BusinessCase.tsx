@@ -3,12 +3,24 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircle2, FileText, Send, TrendingUp } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
+
+function metadataString(metadata: Record<string, unknown> | undefined, keys: string[]): string {
+  for (const key of keys) {
+    const value = metadata?.[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return "";
+}
+
+function metadataBoolean(metadata: Record<string, unknown> | undefined, keys: string[]): boolean {
+  return keys.some((key) => metadata?.[key] === true);
+}
 
 export default function BusinessCase() {
   const { caseId } = useParams<{ caseId: string }>();
@@ -137,6 +149,24 @@ export default function BusinessCase() {
     );
   }
 
+  const normalizedStatus = businessCase.status.toLowerCase();
+  const isApproved = ["approved", "active", "completed"].includes(normalizedStatus);
+  const hasExportDocument = Boolean(businessCase.document_url);
+  const exportState = isApproved && hasExportDocument ? "Export PDF ready" : "Export PDF disabled until approval and document generation complete";
+  const accountRouteId =
+    metadataString(businessCase.case_metadata, ["external_account_id", "provider_record_id", "account_route_id"]) ||
+    metadataString(businessCase.case_metadata, ["account_id"]);
+  const crmReady = isApproved && metadataBoolean(businessCase.case_metadata, [
+    "crm_push_ready",
+    "crm_push_available",
+    "crm_sync_ready",
+  ]);
+  const realizationReady = isApproved && metadataBoolean(businessCase.case_metadata, [
+    "realization_conversion_ready",
+    "realization_conversion_available",
+    "post_sale_realization_ready",
+  ]);
+
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
@@ -177,6 +207,32 @@ export default function BusinessCase() {
           <span>{exportMutation.error.message}</span>
         </div>
       )}
+
+      <SectionCard title="Business Case Lifecycle" className="mb-5">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <FileText size={13} />
+              Business Case
+            </div>
+            <p className="mt-2 text-[13px] text-foreground">{businessCase.case_id}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <CheckCircle2 size={13} />
+              Approval Status
+            </div>
+            <p className="mt-2 text-[13px] font-semibold text-foreground">{isApproved ? "Approved" : "Draft"}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Download size={13} />
+              Export Gate
+            </div>
+            <p className="mt-2 text-[13px] text-foreground">{exportState}</p>
+          </div>
+        </div>
+      </SectionCard>
 
       {/* Hero ROI card */}
       <div className="bg-gradient-to-br from-blue-700 to-blue-900 rounded-xl p-6 mb-6 text-white shadow-lg">
@@ -221,6 +277,43 @@ export default function BusinessCase() {
       <SectionCard title="Executive Summary">
         <div className="prose prose-sm max-w-none text-neutral-700 text-[13px] leading-relaxed whitespace-pre-wrap">
           {businessCase.summary}
+        </div>
+      </SectionCard>
+      <SectionCard title="Post-Approval Actions" className="mt-5">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-[12px] font-semibold text-foreground">
+              <Send size={14} />
+              CRM Push
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+              {crmReady
+                ? "Approved case is ready to push to CRM as a renewal or expansion proof package."
+                : "CRM push is held until the business case is approved and export metadata is ready."}
+            </p>
+            <Btn variant="ghost" className="mt-3" disabled={!crmReady}>
+              Push to CRM
+            </Btn>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-[12px] font-semibold text-foreground">
+              <TrendingUp size={14} />
+              Value Realization
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+              {realizationReady
+                ? "Convert this approved business case into post-sale realization tracking for baseline, actuals, outcomes, and renewal narrative."
+                : "Realization conversion becomes available after approval and case handoff metadata are ready."}
+            </p>
+            <Btn
+              variant="ghost"
+              className="mt-3"
+              disabled={!realizationReady || !accountRouteId}
+              onClick={() => accountRouteId && navigateTo("realization", { accountId: accountRouteId })}
+            >
+              Convert to Value Realization
+            </Btn>
+          </div>
         </div>
       </SectionCard>
       {businessCase.diff_summary && (

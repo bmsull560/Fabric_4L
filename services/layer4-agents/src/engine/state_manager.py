@@ -349,11 +349,12 @@ class StateManager:
             while True:
                 cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
                 for key in keys:
+                    key_text = key.decode("utf-8") if isinstance(key, bytes | bytearray) else str(key)
                     # Skip history keys
-                    if _HISTORY_KEY_SUFFIX.encode() in key:
+                    if _HISTORY_KEY_SUFFIX in key_text or not key_text.startswith(f"{_WORKFLOW_KEY_PREFIX}:"):
                         continue
                     
-                    workflow_id = key.decode().replace(f"{_WORKFLOW_KEY_PREFIX}:", "")
+                    workflow_id = key_text.removeprefix(f"{_WORKFLOW_KEY_PREFIX}:")
                     try:
                         state = await self.load_state(workflow_id)
                         if state and state.status.value in active_statuses:

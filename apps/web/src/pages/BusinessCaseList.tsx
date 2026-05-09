@@ -74,6 +74,12 @@ const STATUS_CONFIG: Record<BusinessCaseListItem['status'], {
     bgColor: "bg-emerald-50",
     icon: <CheckCircle2 size={12} />,
   },
+  approved: {
+    label: "Approved",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-50",
+    icon: <CheckCircle2 size={12} />,
+  },
   archived: {
     label: "Archived",
     color: "text-muted-foreground",
@@ -208,7 +214,7 @@ function BusinessCaseListContent() {
   // Validation helpers for URL params (used only during initialization)
   const validateStatus = (val: string | null): BusinessCaseFilters['status'] => {
     if (!val) return 'all';
-    const validStatuses: BusinessCaseFilters['status'][] = ['all', 'active', 'draft', 'archived'];
+    const validStatuses: BusinessCaseFilters['status'][] = ['all', 'active', 'approved', 'draft', 'archived'];
     return validStatuses.includes(val as BusinessCaseFilters['status']) ? val as BusinessCaseFilters['status'] : 'all';
   };
 
@@ -315,7 +321,7 @@ function BusinessCaseListContent() {
 
   const stats = useMemo(() => {
     const total = cases.length;
-    const active = cases.filter(c => c.status === 'active').length;
+    const active = cases.filter(c => c.status === 'active' || c.status === 'approved').length;
     const draft = cases.filter(c => c.status === 'draft').length;
     const totalValue = cases.reduce((sum, c) => sum + parseCurrency(c.totalValue), 0);
     return { total, active, draft, totalValue };
@@ -426,6 +432,7 @@ function BusinessCaseListContent() {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>

@@ -283,11 +283,11 @@ class WorkflowPauseResponse(BaseModel):
 
 def get_executor() -> OrchestrationController:
     """Get workflow executor instance."""
-    from .main import workflow_executor
+    from ..startup import runtime_state
 
-    if workflow_executor is None:
+    if runtime_state.workflow_executor is None:
         raise HTTPException(status_code=503, detail="Workflow executor not initialized")
-    return workflow_executor
+    return runtime_state.workflow_executor
 
 
 @router.post("/workflows", response_model=WorkflowCreateResponse, status_code=201)
@@ -531,13 +531,18 @@ async def get_workflow_result(
             detail=f"Workflow {workflow_id} not complete (status: {status.get('status')})",
         )
 
-    return get_workflow_resultResult.model_validate({
+    result = await executor.get_result(workflow_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} result not found")
+
+    response = get_workflow_resultResult.model_validate({
         "workflow_id": workflow_id,
         "status": status.get("status"),
-        "output": status.get("output"),
+        "output": result.get("output"),
         "errors": status.get("errors", []),
         "completed_at": status.get("completed_at"),
     })
+    return response.model_dump(mode="json")
 
 
 @router.delete("/workflows/{workflow_id}")

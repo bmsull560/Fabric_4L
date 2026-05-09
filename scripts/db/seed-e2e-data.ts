@@ -43,6 +43,7 @@ const E2E_ADMIN_USER_ID = 'e2e-admin-user';
 const E2E_REVIEWER_USER_ID = 'e2e-reviewer-user';
 const E2E_READ_ONLY_USER_ID = 'e2e-read-only-user';
 const E2E_SALES_USER_ID = 'e2e-sales-user';
+const MERIDIAN_BACKEND_ACCOUNT_UUID = '00000000-0000-4000-e2e0-000000000101';
 const DRAFT_BUSINESS_CASE_ID = 'case-draft-001';
 const APPROVED_BUSINESS_CASE_ID = 'case-e2e-approved-001';
 
@@ -54,6 +55,7 @@ interface SeedReportRow {
   method: string;
   persistenceVerified: string;
   status: SeedStatus;
+  required?: boolean;
 }
 
 interface BackendEndpointProbe {
@@ -70,6 +72,7 @@ interface BackendEndpointProbe {
 const HEADERS: Record<string, string> = {
   'Content-Type': 'application/json',
   'X-Tenant-ID': E2E_TENANT_ID,
+  'X-Service-Auth': process.env.SERVICE_AUTH_SECRET ?? '',
   'X-User-ID': E2E_ADMIN_USER_ID,
   'X-User-Role': 'super_admin',
   'X-Role': 'super_admin',
@@ -153,8 +156,8 @@ async function runBackendPreflight(): Promise<boolean> {
   console.log('[0/7] Backend contract preflight...');
   const probes = [
     await probeBackendEndpoint('Backend health', 'GET', '/health', [200], true),
-    await probeBackendEndpoint('Account read route', 'GET', `/v1/accounts/${MERIDIAN_FIXTURE.account.id}`, [200, 404], true),
-    await probeBackendEndpoint('Analysis case list route', 'GET', `/v1/analysis/cases?account_id=${MERIDIAN_FIXTURE.account.id}`, [200], true),
+    await probeBackendEndpoint('Account read route', 'GET', `/v1/accounts/${MERIDIAN_BACKEND_ACCOUNT_UUID}`, [200, 404], true),
+    await probeBackendEndpoint('Case list route', 'GET', `/v1/cases?account_id=${MERIDIAN_BACKEND_ACCOUNT_UUID}`, [200], true),
     await probeBackendEndpoint('Tenant settings route', 'GET', '/v1/tenant/settings', [200, 404, 405], false),
   ];
 
@@ -175,26 +178,27 @@ async function runBackendPreflight(): Promise<boolean> {
 }
 
 function recordSeed(row: SeedReportRow): void {
-  reportRows.push(row);
+  reportRows.push({ required: true, ...row });
 }
 
 function printSeedReport(): void {
   console.log('\n# Backend Seed Data Report');
   console.log('');
-  console.log('| Seed Area | Records Created | Method | Persistence Verified | Status |');
-  console.log('|---|---|---|---|---|');
+  console.log('| Seed Area | Required | Records Created | Method | Persistence Verified | Status |');
+  console.log('|---|---|---|---|---|---|');
   for (const row of reportRows) {
     console.log(
-      `| ${row.seedArea} | ${row.recordsCreated} | ${row.method} | ${row.persistenceVerified} | ${row.status} |`,
+      `| ${row.seedArea} | ${row.required === false ? 'optional' : 'required'} | ${row.recordsCreated} | ${row.method} | ${row.persistenceVerified} | ${row.status} |`,
     );
   }
 }
 
 function aggregateSeedStatus(): SeedStatus {
-  if (reportRows.some((row) => row.status === 'blocked')) {
+  const requiredRows = reportRows.filter((row) => row.required !== false);
+  if (requiredRows.some((row) => row.status === 'blocked')) {
     return 'blocked';
   }
-  if (reportRows.some((row) => row.status === 'partial' || row.status === 'missing')) {
+  if (requiredRows.some((row) => row.status === 'partial' || row.status === 'missing')) {
     return 'partial';
   }
   return 'present';
@@ -206,7 +210,9 @@ function writeSeedReportJson(): void {
   }
 
   const aggregateStatus = aggregateSeedStatus();
-  const requiredRowsPresent = reportRows.every((row) => row.status === 'present');
+  const requiredRows = reportRows.filter((row) => row.required !== false);
+  const optionalRows = reportRows.filter((row) => row.required === false);
+  const requiredRowsPresent = requiredRows.every((row) => row.status === 'present');
   const payload = {
     generatedAt: new Date().toISOString(),
     backendUrl: BASE_URL,
@@ -224,7 +230,8 @@ function writeSeedReportJson(): void {
       sales: E2E_SALES_USER_ID,
     },
     fixture: {
-      accountId: MERIDIAN_FIXTURE.account.id,
+      externalAccountId: MERIDIAN_FIXTURE.account.id,
+      backendAccountUuid: MERIDIAN_BACKEND_ACCOUNT_UUID,
       caseId: MERIDIAN_FIXTURE.case.id,
       accountName: MERIDIAN_FIXTURE.account.name,
     },
@@ -232,6 +239,16 @@ function writeSeedReportJson(): void {
       requiredProbeCount: backendEndpointProbes.filter((probe) => probe.required).length,
       failedRequiredProbeCount: backendEndpointProbes.filter((probe) => probe.required && !probe.ok).length,
       probes: backendEndpointProbes,
+    },
+    requiredRows: {
+      total: requiredRows.length,
+      present: requiredRows.filter((row) => row.status === 'present').length,
+      blocked: requiredRows.filter((row) => row.status === 'blocked').length,
+      partial: requiredRows.filter((row) => row.status === 'partial' || row.status === 'missing').length,
+    },
+    optionalRows: {
+      total: optionalRows.length,
+      warning: optionalRows.filter((row) => row.status !== 'present').length,
     },
     rows: reportRows,
   };
@@ -247,13 +264,23 @@ async function verifyAccountExists(accountId: string): Promise<boolean> {
 }
 
 async function verifyCaseExists(accountId: string): Promise<boolean> {
-  const result = await api('GET', `/v1/analysis/cases?account_id=${accountId}`);
+  const result = await api('GET', `/v1/cases?account_id=${accountId}`);
   return result.status === 200 && Array.isArray((result.data as any)?.items);
 }
 
 async function verifyWorkspaceTab(caseId: string, tabKey: string): Promise<boolean> {
-  const result = await api('GET', `/v1/analysis/cases/${caseId}/workspace/${tabKey}`);
+  const result = await api('GET', `/v1/cases/${caseId}/workspace/${tabKey}`);
   return result.status === 200 && result.data !== null;
+}
+
+async function verifyWorkspaceTabItems(caseId: string, tabKey: string, expectedCount: number): Promise<boolean> {
+  const result = await api('GET', `/v1/cases/${caseId}/workspace/${tabKey}`);
+  if (result.status !== 200 || result.data === null) {
+    return false;
+  }
+  const payload = result.data as any;
+  const items = Array.isArray(payload?.[tabKey]) ? payload[tabKey] : [];
+  return items.length === expectedCount;
 }
 
 async function seedBusinessCaseLifecycle(accountId: string): Promise<boolean> {
@@ -306,49 +333,61 @@ async function verifyWorkflowListIncludes(...workflowIds: string[]): Promise<boo
   return workflowIds.every((workflowId) => observed.has(workflowId));
 }
 
-async function attemptCrossTenantVerification(): Promise<boolean> {
+async function attemptCrossTenantVerification(accountId: string): Promise<boolean> {
   const betaHeaders = {
     ...HEADERS,
     'X-Tenant-ID': E2E_TENANT_BETA_ID,
     'X-User-ID': E2E_REVIEWER_USER_ID,
   };
-  const result = await api('GET', `/v1/accounts/${MERIDIAN_FIXTURE.account.id}`, undefined, betaHeaders);
+  const result = await api('GET', `/v1/accounts/${accountId}`, undefined, betaHeaders);
   return [401, 403, 404].includes(result.status);
 }
 
-async function upsertAccount(account: typeof MERIDIAN_FIXTURE.account) {
-  // Try to get existing account first
-  const existing = await api('GET', `/v1/accounts/${account.id}`);
+async function upsertAccount(account: typeof MERIDIAN_FIXTURE.account): Promise<string> {
+  const existing = await api('GET', `/v1/accounts/${MERIDIAN_BACKEND_ACCOUNT_UUID}`);
   if (existing.status === 200) {
     console.log(`  ✓ Account "${account.name}" already exists`);
-    return;
+    return String((existing.data as any)?.id ?? MERIDIAN_BACKEND_ACCOUNT_UUID);
   }
 
-  // Create via the accounts endpoint
-  const result = await api('POST', '/v1/accounts/search', {
-    query: account.name,
-    limit: 1,
-  });
-
-  // If search doesn't find it, we need to create it via direct DB seeding
-  // The accounts API may not have a direct POST /accounts endpoint (CRM-sourced)
-  // Fall back to the sync endpoint with manual provider
-  console.log(`  → Seeding account "${account.name}" via API...`);
-  const createResult = await api('POST', '/v1/accounts/sync', {
+  console.log(`  → Seeding account "${account.name}" via API with deterministic backend UUID...`);
+  const createResult = await api('POST', '/v1/accounts', {
+    id: MERIDIAN_BACKEND_ACCOUNT_UUID,
     provider: 'manual',
-    accounts: [account],
+    provider_record_id: account.id,
+    name: account.name,
+    domain: account.domain,
+    industry: account.industry,
+    region: account.region,
+    company_size: account.company_size,
+    annual_revenue: account.annual_revenue,
+    website: `https://${account.domain}`,
+    owner_id: 'owner-meridian-e2e',
+    owner_name: account.owner_name,
+    stage: account.stage,
+    segment: account.segment,
   });
 
   if (createResult.status >= 200 && createResult.status < 300) {
     console.log(`  ✓ Account "${account.name}" created`);
-  } else {
-    console.log(`  ⚠ Account sync returned ${createResult.status} — may need direct DB seed`);
+    return String((createResult.data as any)?.id ?? MERIDIAN_BACKEND_ACCOUNT_UUID);
   }
+
+  if (createResult.status === 409) {
+    const conflict = await api('GET', `/v1/accounts/${MERIDIAN_BACKEND_ACCOUNT_UUID}`);
+    if (conflict.status === 200) {
+      console.log(`  ✓ Account "${account.name}" already exists after conflict check`);
+      return String((conflict.data as any)?.id ?? MERIDIAN_BACKEND_ACCOUNT_UUID);
+    }
+  }
+
+  console.log(`  ⚠ Account create returned ${createResult.status}`);
+  throw new Error(`Unable to seed account ${account.name}: status ${createResult.status}`);
 }
 
 async function ensureCase(accountId: string, caseData: typeof MERIDIAN_FIXTURE.case) {
   // Check if case already exists
-  const existing = await api('GET', `/v1/analysis/cases?account_id=${accountId}`);
+  const existing = await api('GET', `/v1/cases?account_id=${accountId}`);
   const items = Array.isArray((existing.data as any)?.items)
     ? (existing.data as any).items
     : [];
@@ -359,7 +398,7 @@ async function ensureCase(accountId: string, caseData: typeof MERIDIAN_FIXTURE.c
   }
 
   // Create case
-  const result = await api('POST', '/v1/analysis/cases', {
+  const result = await api('POST', '/v1/cases', {
     account_id: accountId,
     title: caseData.title,
   });
@@ -377,17 +416,19 @@ async function seedWorkspaceTab(
   caseId: string,
   tabKey: string,
   data: unknown[],
-) {
+): Promise<boolean> {
   const result = await api(
     'PUT',
-    `/v1/analysis/cases/${caseId}/workspace/${tabKey}`,
+    `/v1/cases/${caseId}/workspace/${tabKey}`,
     { [tabKey]: data },
   );
 
   if (result.status >= 200 && result.status < 300) {
     console.log(`  ✓ Workspace tab "${tabKey}" seeded (${(data as unknown[]).length} items)`);
+    return true;
   } else {
     console.log(`  ⚠ Workspace tab "${tabKey}" seed returned ${result.status}`);
+    return false;
   }
 }
 
@@ -415,19 +456,19 @@ async function main() {
 
   // Step 1: Seed account
   console.log('\n[1/7] Seeding account...');
-  await upsertAccount(MERIDIAN_FIXTURE.account);
+  const backendAccountId = await upsertAccount(MERIDIAN_FIXTURE.account);
   recordSeed({
     seedArea: 'Tenant Alpha account',
     recordsCreated: '1 account',
-    method: 'API /v1/accounts/sync (manual provider fallback)',
-    persistenceVerified: (await verifyAccountExists(MERIDIAN_FIXTURE.account.id)) ? 'yes' : 'no',
-    status: (await verifyAccountExists(MERIDIAN_FIXTURE.account.id)) ? 'present' : 'partial',
+    method: 'API /v1/accounts with deterministic UUID and provider_record_id',
+    persistenceVerified: (await verifyAccountExists(backendAccountId)) ? 'yes' : 'no',
+    status: (await verifyAccountExists(backendAccountId)) ? 'present' : 'partial',
   });
 
   // Step 2: Ensure case exists
   console.log('\n[2/7] Ensuring case workspace...');
   const caseId = await ensureCase(
-    MERIDIAN_FIXTURE.account.id,
+    backendAccountId,
     MERIDIAN_FIXTURE.case,
   );
 
@@ -438,58 +479,56 @@ async function main() {
   recordSeed({
     seedArea: 'Analysis workspace case',
     recordsCreated: '1 case workspace',
-    method: 'API /v1/analysis/cases',
-    persistenceVerified: (await verifyCaseExists(MERIDIAN_FIXTURE.account.id)) ? 'yes' : 'no',
-    status: (await verifyCaseExists(MERIDIAN_FIXTURE.account.id)) ? 'present' : 'partial',
+    method: 'API /v1/cases',
+    persistenceVerified: (await verifyCaseExists(backendAccountId)) ? 'yes' : 'no',
+    status: (await verifyCaseExists(backendAccountId)) ? 'present' : 'partial',
   });
 
   // Step 3: Seed workspace tabs (intelligence)
   console.log('\n[3/7] Seeding intelligence workspace...');
-  await seedWorkspaceTab(caseId, 'signals', MERIDIAN_FIXTURE.workspace.signals);
-  await seedWorkspaceTab(caseId, 'drivers', MERIDIAN_FIXTURE.workspace.drivers);
-  await seedWorkspaceTab(caseId, 'evidence', MERIDIAN_FIXTURE.workspace.evidence);
-  await seedWorkspaceTab(caseId, 'stakeholders', MERIDIAN_FIXTURE.workspace.stakeholders);
+  const signalsWriteOk = await seedWorkspaceTab(caseId, 'signals', MERIDIAN_FIXTURE.workspace.signals);
+  const driversWriteOk = await seedWorkspaceTab(caseId, 'drivers', MERIDIAN_FIXTURE.workspace.drivers);
+  const evidenceWriteOk = await seedWorkspaceTab(caseId, 'evidence', MERIDIAN_FIXTURE.workspace.evidence);
+  const stakeholdersWriteOk = await seedWorkspaceTab(caseId, 'stakeholders', MERIDIAN_FIXTURE.workspace.stakeholders);
+  const intelligenceWorkspaceVerified =
+    signalsWriteOk &&
+    driversWriteOk &&
+    evidenceWriteOk &&
+    stakeholdersWriteOk &&
+    (await verifyWorkspaceTabItems(caseId, 'signals', MERIDIAN_FIXTURE.workspace.signals.length)) &&
+    (await verifyWorkspaceTabItems(caseId, 'drivers', MERIDIAN_FIXTURE.workspace.drivers.length)) &&
+    (await verifyWorkspaceTabItems(caseId, 'evidence', MERIDIAN_FIXTURE.workspace.evidence.length)) &&
+    (await verifyWorkspaceTabItems(caseId, 'stakeholders', MERIDIAN_FIXTURE.workspace.stakeholders.length));
   recordSeed({
     seedArea: 'Signals / drivers / evidence / stakeholders',
     recordsCreated: `${MERIDIAN_FIXTURE.workspace.signals.length + MERIDIAN_FIXTURE.workspace.drivers.length + MERIDIAN_FIXTURE.workspace.evidence.length + MERIDIAN_FIXTURE.workspace.stakeholders.length} workspace records`,
-    method: 'API /v1/analysis/cases/{caseId}/workspace/*',
-    persistenceVerified:
-      (await verifyWorkspaceTab(caseId, 'signals')) &&
-      (await verifyWorkspaceTab(caseId, 'drivers')) &&
-      (await verifyWorkspaceTab(caseId, 'evidence')) &&
-      (await verifyWorkspaceTab(caseId, 'stakeholders'))
-        ? 'yes'
-        : 'partial',
-    status:
-      (await verifyWorkspaceTab(caseId, 'signals')) &&
-      (await verifyWorkspaceTab(caseId, 'drivers')) &&
-      (await verifyWorkspaceTab(caseId, 'evidence')) &&
-      (await verifyWorkspaceTab(caseId, 'stakeholders'))
-        ? 'present'
-        : 'partial',
+    method: 'API /v1/cases/{caseId}/workspace/*',
+    persistenceVerified: intelligenceWorkspaceVerified
+      ? 'writes accepted and expected item counts verified'
+      : `writes signals=${signalsWriteOk}; drivers=${driversWriteOk}; evidence=${evidenceWriteOk}; stakeholders=${stakeholdersWriteOk}`,
+    status: intelligenceWorkspaceVerified ? 'present' : 'partial',
   });
 
   // Step 4: Seed value studio tabs
   console.log('\n[4/7] Seeding value studio workspace...');
-  await seedWorkspaceTab(caseId, 'value-model', MERIDIAN_FIXTURE.workspace.valueModel);
-  await seedWorkspaceTab(caseId, 'narrative', MERIDIAN_FIXTURE.workspace.narrative);
-  await seedWorkspaceTab(caseId, 'action-plan', MERIDIAN_FIXTURE.workspace.actionPlan);
+  const valueModelWriteOk = await seedWorkspaceTab(caseId, 'value-model', MERIDIAN_FIXTURE.workspace.valueModel);
+  const narrativeWriteOk = await seedWorkspaceTab(caseId, 'narrative', MERIDIAN_FIXTURE.workspace.narrative);
+  const actionPlanWriteOk = await seedWorkspaceTab(caseId, 'action-plan', MERIDIAN_FIXTURE.workspace.actionPlan);
+  const valueStudioVerified =
+    valueModelWriteOk &&
+    narrativeWriteOk &&
+    actionPlanWriteOk &&
+    (await verifyWorkspaceTabItems(caseId, 'value-model', MERIDIAN_FIXTURE.workspace.valueModel.length)) &&
+    (await verifyWorkspaceTabItems(caseId, 'narrative', MERIDIAN_FIXTURE.workspace.narrative.length)) &&
+    (await verifyWorkspaceTabItems(caseId, 'action-plan', MERIDIAN_FIXTURE.workspace.actionPlan.length));
   recordSeed({
     seedArea: 'Value model / narrative / action plan',
     recordsCreated: `${MERIDIAN_FIXTURE.workspace.valueModel.length + MERIDIAN_FIXTURE.workspace.narrative.length + MERIDIAN_FIXTURE.workspace.actionPlan.length} workspace records`,
-    method: 'API /v1/analysis/cases/{caseId}/workspace/*',
-    persistenceVerified:
-      (await verifyWorkspaceTab(caseId, 'value-model')) &&
-      (await verifyWorkspaceTab(caseId, 'narrative')) &&
-      (await verifyWorkspaceTab(caseId, 'action-plan'))
-        ? 'yes'
-        : 'partial',
-    status:
-      (await verifyWorkspaceTab(caseId, 'value-model')) &&
-      (await verifyWorkspaceTab(caseId, 'narrative')) &&
-      (await verifyWorkspaceTab(caseId, 'action-plan'))
-        ? 'present'
-        : 'partial',
+    method: 'API /v1/cases/{caseId}/workspace/*',
+    persistenceVerified: valueStudioVerified
+      ? 'writes accepted and expected item counts verified'
+      : `writes value-model=${valueModelWriteOk}; narrative=${narrativeWriteOk}; action-plan=${actionPlanWriteOk}`,
+    status: valueStudioVerified ? 'present' : 'partial',
   });
 
   // Step 5: Seed platform settings
@@ -506,17 +545,18 @@ async function main() {
     method: 'API /v1/tenant/settings',
     persistenceVerified: settingsResult.status >= 200 && settingsResult.status < 300 ? 'yes' : `status ${settingsResult.status}`,
     status: settingsResult.status >= 200 && settingsResult.status < 300 ? 'present' : 'partial',
+    required: false,
   });
 
   // Step 6: Verification
   console.log('\n[6/7] Verifying seed data...');
   const verifyAccount = await api(
     'GET',
-    `/v1/accounts/${MERIDIAN_FIXTURE.account.id}`,
+    `/v1/accounts/${backendAccountId}`,
   );
   const verifyCase = await api(
     'GET',
-    `/v1/analysis/cases?account_id=${MERIDIAN_FIXTURE.account.id}`,
+    `/v1/cases?account_id=${backendAccountId}`,
   );
 
   const accountOk = verifyAccount.status === 200;
@@ -528,11 +568,11 @@ async function main() {
     seedArea: 'Tenant Beta isolation check',
     recordsCreated: `users reserved: ${E2E_REVIEWER_USER_ID}, ${E2E_READ_ONLY_USER_ID}, ${E2E_SALES_USER_ID}`,
     method: 'Cross-tenant read probe with alternate tenant header',
-    persistenceVerified: (await attemptCrossTenantVerification()) ? 'denied as expected' : 'not verified',
-    status: (await attemptCrossTenantVerification()) ? 'present' : 'partial',
+    persistenceVerified: (await attemptCrossTenantVerification(backendAccountId)) ? 'denied as expected' : 'not verified',
+    status: (await attemptCrossTenantVerification(backendAccountId)) ? 'present' : 'partial',
   });
   console.log('\n[7/7] Seeding business-case lifecycle for backend-integrated golden path...');
-  const lifecycleSeeded = await seedBusinessCaseLifecycle(MERIDIAN_FIXTURE.account.id);
+  const lifecycleSeeded = await seedBusinessCaseLifecycle(backendAccountId);
   const draftVerified = await verifyBusinessCase(DRAFT_BUSINESS_CASE_ID, 'draft', false);
   const approvedVerified = await verifyBusinessCase(APPROVED_BUSINESS_CASE_ID, 'approved', true);
   const workflowResultsVerified =
@@ -571,7 +611,7 @@ async function main() {
   printSeedReport();
   writeSeedReportJson();
 
-  if (STRICT_SEED && reportRows.some((row) => row.status !== 'present')) {
+  if (STRICT_SEED && reportRows.some((row) => row.required !== false && row.status !== 'present')) {
     console.error('Strict seed verification failed: one or more required seed areas are not present.');
     process.exit(1);
   }

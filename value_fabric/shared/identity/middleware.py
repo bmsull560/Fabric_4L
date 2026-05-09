@@ -7,12 +7,12 @@ Replaces:
 Resolution order (first match wins):
   1. ``Authorization: Bearer <JWT>`` — verified with HMAC-SHA256; extracts
      tenant_id, user_id, roles from claims.
-  2. ``X-API-Key`` header — HMAC-SHA256 verified against stored hash; the DB
+  2. ``vf_session`` httpOnly cookie — browser session JWT issued by OIDC or
+     non-production validation-session flows.
+  3. ``X-API-Key`` header — HMAC-SHA256 verified against stored hash; the DB
      record provides tenant_id, user_id, role, permissions.
-  3. ``X-Tenant-ID`` header (UUID) — accepted *only* for internal
+  4. ``X-Tenant-ID`` header (UUID) — accepted *only* for internal
      service-to-service calls; grants the ``system`` role.
-  4. Query param ``tenant_id`` — only when ``ALLOW_TENANT_QUERY_PARAM=true``
-     (dev/test fallback).
 
 On success, a ``RequestContext`` is stored in the ``ContextVar`` so all
 downstream code can call ``get_request_context()`` or ``require_context()``.
@@ -46,6 +46,7 @@ except ImportError:
     jwt = None  # type: ignore
 
 from .context import (
+    AUTH_SOURCE_SERVICE_ACCOUNT,
     RequestContext,
     clear_current_context,
     get_current_context,
@@ -60,6 +61,7 @@ from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LI
 
 logger = logging.getLogger(__name__)
 _LEGACY_TEST_TENANT_ID_RE = re.compile(r"^tenant-[a-z0-9]+(?:-[a-z0-9]+)*$")
+SESSION_COOKIE_NAME = "vf_session"
 
 
 def decode_jwt(token: str):
@@ -291,6 +293,8 @@ def _build_context_from_role(
     api_key_id: Optional[str] = None,
     source: str,
     raw: dict,
+    service_account_id: Optional[str] = None,
+    service_account_scopes: Optional[list[str]] = None,
 ) -> RequestContext:
     """Build a RequestContext, computing effective permissions from roles."""
     roles = normalize_role_claims(roles)
@@ -310,6 +314,8 @@ def _build_context_from_role(
         permissions=frozenset(permissions),
         source=source,
         raw=raw,
+        service_account_id=service_account_id,
+        service_account_scopes=service_account_scopes or [],
     )
 
 
@@ -532,7 +538,58 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # 2. X-API-Key header
+        # 2. Browser session cookie. This is the canonical OIDC/session path
+        # for frontend requests; invalid cookies fail closed rather than
+        # falling through to weaker identity sources.
+        session_token = request.cookies.get(SESSION_COOKIE_NAME)
+        if session_token:
+            try:
+                claims = decode_jwt(session_token)
+            except HTTPException:
+                raise
+            except Exception as exc:
+                if jwt is not None and isinstance(exc, jwt.InvalidTokenError):
+                    logger.warning("Session cookie JWT validation failed: invalid token")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid session.",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    ) from exc
+                logger.error("Session cookie JWT decode unexpected error", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication failed.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                ) from exc
+            if claims is not None:
+                try:
+                    if isinstance(claims, dict):
+                        ctx = extract_context_from_jwt(claims)
+                    else:
+                        ctx = _build_context_from_role(
+                            claims.tenant_id,
+                            user_id=getattr(claims, "user_id", None) or getattr(claims, "sub", None),
+                            roles=list(getattr(claims, "roles", []) or []),
+                            api_key_id=getattr(claims, "api_key_id", None),
+                            source="jwt",
+                            raw=getattr(claims, "extra_claims", {}) or {},
+                        )
+                    validate_context_consistency(ctx, request.headers.get(TENANT_ID_HEADER))
+                    return ctx
+                except ValueError as exc:
+                    logger.warning("Session cookie tenant context rejected: %s", exc)
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Tenant context mismatch.",
+                    ) from exc
+            logger.warning("Session cookie JWT decode returned None")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid session.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # 3. X-API-Key header
         raw_api_key = request.headers.get("X-API-Key")
         if raw_api_key and self._api_key_resolver is not None:
             record = await self._api_key_resolver(raw_api_key)
@@ -605,8 +662,10 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 tenant_id,
                 user_id="service",
                 roles=[Role.SYSTEM.value],
-                source="header",
+                source=AUTH_SOURCE_SERVICE_ACCOUNT,
                 raw={},
+                service_account_id="service-auth-header",
+                service_account_scopes=["tenant:seed", "system:internal"],
             )
 
         # P0 FIX: Query param tenant authentication removed entirely — never trust client-supplied identity
