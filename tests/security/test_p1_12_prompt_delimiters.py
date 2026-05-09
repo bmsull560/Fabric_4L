@@ -6,6 +6,10 @@ to prevent prompt injection attacks.
 
 import pytest
 import inspect
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class TestPromptInjectionDelimiters:
@@ -34,9 +38,16 @@ class TestPromptInjectionDelimiters:
 
     def test_extraction_routes_has_delimiters(self):
         """Extraction routes must wrap all user fields in delimiters."""
-        from layer2_extraction.api.routes import extraction
-
-        source = inspect.getsource(extraction)
+        source = (
+            REPO_ROOT
+            / "services"
+            / "layer2-extraction"
+            / "src"
+            / "layer2_extraction"
+            / "api"
+            / "routes"
+            / "extraction.py"
+        ).read_text(encoding="utf-8")
 
         # Should have delimiters around user input
         assert "<<<USER_INPUT>>>" in source, "Must use delimiters for user input"

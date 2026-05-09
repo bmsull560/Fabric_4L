@@ -546,7 +546,7 @@ describe("IngestionJobs", () => {
 
     await userEvent.click(screen.getByText("New Job"));
 
-    expect(mockSetLocation).toHaveBeenCalledWith("/home", undefined);
+    expect(mockSetLocation).toHaveBeenCalledWith("/home?wfStep=0", undefined);
   });
 
   it("shows mutation error when cancel fails", async () => {

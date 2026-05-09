@@ -35,7 +35,14 @@ def _get_nested_claim(claims: dict, path: str) -> Any:
     current: Any = claims
     for part in parts:
         if isinstance(current, dict):
-            current = current.get(part)
+            if part in current:
+                current = current.get(part)
+            else:
+                lowered = part.lower()
+                current = next(
+                    (value for key, value in current.items() if str(key).lower() == lowered),
+                    None,
+                )
         else:
             return None
     return current
@@ -64,12 +71,16 @@ def _match_claim_value(actual_value: Any, expected_value: str) -> bool:
         return bool(compiled.search(str(actual_value)))
 
     if isinstance(actual_value, list):
-        return expected_value in [str(v) for v in actual_value]
+        return expected_value.lower() in [str(v).lower() for v in actual_value]
 
-    return str(actual_value) == expected_value
+    return str(actual_value).lower() == expected_value.lower()
 
 
-def map_role_from_claims(claims: dict, claim_mapping: Dict[str, str], default_role: str) -> str:
+def map_role_from_claims(
+    claims: dict,
+    claim_mapping: Optional[Dict[str, str]] = None,
+    default_role: str = "user",
+) -> str:
     """Map OIDC claims to the highest-privilege VF role.
 
     claim_mapping keys may use dot notation for nested claims.
@@ -79,21 +90,31 @@ def map_role_from_claims(claims: dict, claim_mapping: Dict[str, str], default_ro
     Values are the target VF Role strings.
     """
     matched_roles: List[str] = []
+    claim_mapping = claim_mapping or {}
+
+    if not claim_mapping:
+        role_claim = claims.get("role")
+        if isinstance(role_claim, str) and role_claim in _ROLE_PRIVILEGE:
+            return role_claim
+
+        groups = claims.get("groups")
+        group_values = [groups] if isinstance(groups, str) else list(groups or [])
+        normalized_groups = {str(group).strip().lower() for group in group_values}
+        if "admin" in normalized_groups or "tenant_admin" in normalized_groups:
+            return Role.TENANT_ADMIN.value
+
+        return default_role
 
     for key, role in claim_mapping.items():
         if "=" in key:
             claim_path, expected_value = key.split("=", 1)
         else:
             claim_path = key
-            expected_value = None
+            expected_value = role
 
         actual_value = _get_nested_claim(claims, claim_path)
-        if expected_value is None:
-            if actual_value:
-                matched_roles.append(role)
-        else:
-            if _match_claim_value(actual_value, expected_value):
-                matched_roles.append(role)
+        if _match_claim_value(actual_value, expected_value):
+            matched_roles.append(role)
 
     if not matched_roles:
         return default_role
@@ -110,11 +131,17 @@ class OIDCClient:
 
     def __init__(self, http_client: Optional[httpx.AsyncClient] = None) -> None:
         self._http = http_client or httpx.AsyncClient(timeout=30.0, follow_redirects=True)
+        self._http_client = self._http
 
     async def discover(self, issuer_url: str) -> dict:
         """Fetch OpenID Provider metadata from well-known endpoint."""
         well_known = issuer_url.rstrip("/") + "/.well-known/openid-configuration"
-        response = await self._http.get(well_known)
+        try:
+            response = await self._http_client.get(well_known)
+        except httpx.HTTPStatusError as exc:
+            if getattr(exc.response, "status_code", 0) < 500:
+                raise
+            response = await self._http_client.get(well_known)
         response.raise_for_status()
         return response.json()
 
@@ -135,7 +162,7 @@ class OIDCClient:
         else:
             metadata = await self.discover(cache_key)
             jwks_uri = self._get_jwks_uri(cache_key, metadata)
-            response = await self._http.get(jwks_uri)
+            response = await self._http_client.get(jwks_uri)
             response.raise_for_status()
             jwks_data = response.json()
             _JWKS_CACHE[cache_key] = {"jwks": jwks_data, "fetched_at": now}
@@ -194,8 +221,10 @@ class OIDCClient:
         client_id: str,
         redirect_uri: str,
         state: str,
-        nonce: str,
-        scopes: List[str],
+        nonce: Optional[str] = None,
+        scopes: Optional[List[str]] = None,
+        code_challenge: Optional[str] = None,
+        code_challenge_method: Optional[str] = None,
     ) -> str:
         """Construct the OIDC authorization endpoint URL."""
         auth_endpoint = metadata["authorization_endpoint"]
@@ -204,9 +233,14 @@ class OIDCClient:
             "client_id": client_id,
             "redirect_uri": redirect_uri,
             "state": state,
-            "nonce": nonce,
-            "scope": " ".join(scopes),
+            "scope": " ".join(scopes or ["openid", "profile", "email"]),
         }
+        if nonce:
+            params["nonce"] = nonce
+        if code_challenge:
+            params["code_challenge"] = code_challenge
+        if code_challenge_method:
+            params["code_challenge_method"] = code_challenge_method
         sep = "&" if "?" in auth_endpoint else "?"
         return auth_endpoint + sep + urlencode(params)
 
@@ -217,17 +251,21 @@ class OIDCClient:
         redirect_uri: str,
         client_id: str,
         client_secret: str,
+        code_verifier: Optional[str] = None,
     ) -> dict:
         """Exchange an authorization code for tokens."""
-        response = await self._http.post(
+        data = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": redirect_uri,
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }
+        if code_verifier:
+            data["code_verifier"] = code_verifier
+        response = await self._http_client.post(
             token_endpoint,
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": redirect_uri,
-                "client_id": client_id,
-                "client_secret": client_secret,
-            },
+            data=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         response.raise_for_status()
@@ -243,7 +281,7 @@ class OIDCClient:
         Returns:
             User claims dictionary
         """
-        response = await self._http.get(
+        response = await self._http_client.get(
             userinfo_endpoint,
             headers={"Authorization": f"Bearer {access_token}"},
         )

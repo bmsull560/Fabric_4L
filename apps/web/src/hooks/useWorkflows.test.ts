@@ -91,7 +91,7 @@ describe('useActiveWorkflows', () => {
     // Should filter out empty ID workflows
     const workflows = result.current.data?.items || [];
     const badWorkflow = workflows.find(w => w.id === 'wf-bad');
-    expect(badWorkflow?.status).toBe('pending'); // Unknown status normalized to pending
+    expect(badWorkflow?.status).toBe('created'); // Unknown status normalized to created
     expect(badWorkflow?.progress).toBe(0); // Invalid progress normalized to 0
   });
 
@@ -122,7 +122,7 @@ describe('useWorkflowHistory', () => {
     expect(result.current.data?.total).toBe(3);
     expect(result.current.data?.items[2]).toMatchObject({
       id: 'wf-3',
-      status: 'completed',
+      status: 'succeeded',
       progress: 100,
     });
   });

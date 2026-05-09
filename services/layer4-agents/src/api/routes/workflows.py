@@ -371,7 +371,7 @@ async def _filter_and_paginate_workflows(
     workflow_type: str | None,
 ) -> dict[str, Any]:
     """Shared helper: filter and paginate workflows for a tenant."""
-    all_active = await executor.list_active_workflows(tenant_id=tenant_id)
+    all_active = await executor.list_workflows(tenant_id=tenant_id)
 
     if status:
         status_lower = status.lower()

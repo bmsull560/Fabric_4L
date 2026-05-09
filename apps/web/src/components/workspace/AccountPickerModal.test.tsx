@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AccountPickerModal from "./AccountPickerModal";
 import type { Account, AccountListResponse } from "@/hooks/useAccounts";
+import { useWorkflowSessionStore } from "@/stores/workflowSessionStore";
+import { useWorkflowStore } from "@/workflow/store/workflowStore";
 
 const mockNavigate = vi.fn();
 const mockSetSelectedAccountId = vi.fn();
@@ -64,6 +66,8 @@ function renderModal(ui: React.ReactElement) {
 describe("AccountPickerModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useWorkflowSessionStore.getState().clearContext();
+    useWorkflowStore.getState().reset();
   });
 
   it("renders loading skeleton when accounts are loading", () => {
@@ -107,6 +111,6 @@ describe("AccountPickerModal", () => {
     renderModal(<AccountPickerModal workspace="intelligence" />);
 
     await user.click(screen.getByRole("button", { name: "Manage Accounts" }));
-    expect(mockNavigate).toHaveBeenCalledWith("/accounts", undefined);
+    expect(mockNavigate).toHaveBeenCalledWith("/accounts?wfStep=0", undefined);
   });
 });

@@ -83,7 +83,7 @@ def _find_depends_calls(filepath: Path, dep_name: str) -> list[dict]:
 
     Returns a list of dicts with keys: line, function, dep_name.
     """
-    source = filepath.read_text()
+    source = filepath.read_text(encoding="utf-8")
     tree = ast.parse(source)
     results = []
 
@@ -117,7 +117,7 @@ def _find_optional_context_in_write_routes(filepath: Path) -> list[dict]:
     Scans for FastAPI route decorators followed by function defs that include
     ``Depends(get_optional_context)`` in their signature.
     """
-    source = filepath.read_text()
+    source = filepath.read_text(encoding="utf-8")
     results = []
 
     # Regex approach: find @router.<method> followed by async def with get_optional_context
@@ -173,7 +173,7 @@ def _load_context_module():
     import importlib.util
     import types
 
-    identity_dir = _PROJECT_ROOT / "services" / "shared" / "identity"
+    identity_dir = _PROJECT_ROOT / "value_fabric" / "shared" / "identity"
 
     # Create a minimal package so relative imports work
     pkg = types.ModuleType("identity")
@@ -262,7 +262,7 @@ class TestNoDeprecatedGetDb:
         """
         # Read the source to verify the guard clause exists
         db_module = _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "database.py"
-        source = db_module.read_text()
+        source = db_module.read_text(encoding="utf-8")
 
         # The function must check for missing context/tenant_id
         assert "if not context or not context.tenant_id" in source or \
@@ -323,9 +323,9 @@ class TestGovernanceMiddlewareContextReset:
     def test_dispatch_resets_context_at_start(self):
         """Verify the dispatch method sets context to None before resolution."""
         middleware_file = (
-            _PROJECT_ROOT / "services" / "shared" / "identity" / "middleware.py"
+            _PROJECT_ROOT / "value_fabric" / "shared" / "identity" / "middleware.py"
         )
-        source = middleware_file.read_text()
+        source = middleware_file.read_text(encoding="utf-8")
 
         # The dispatch method must call _current_context.set(None) before
         # any identity resolution
@@ -348,9 +348,9 @@ class TestGovernanceMiddlewareContextReset:
         cleaned up to prevent leakage to the next request.
         """
         middleware_file = (
-            _PROJECT_ROOT / "services" / "shared" / "identity" / "middleware.py"
+            _PROJECT_ROOT / "value_fabric" / "shared" / "identity" / "middleware.py"
         )
-        source = middleware_file.read_text()
+        source = middleware_file.read_text(encoding="utf-8")
 
         # Must have a finally block that resets the context
         dispatch_start = source.find("async def dispatch")
@@ -435,7 +435,7 @@ class TestImportConsistency:
         for filepath in sorted(_L4_ROUTES_DIR.glob("*.py")):
             if filepath.name.startswith("__"):
                 continue
-            source = filepath.read_text()
+            source = filepath.read_text(encoding="utf-8")
 
             # Check for deprecated imports
             if "from ...tenant.context" in source or "from ..tenant.context" in source:
@@ -457,7 +457,7 @@ class TestImportConsistency:
         for filepath in sorted(_L4_ROUTES_DIR.glob("*.py")):
             if filepath.name.startswith("__"):
                 continue
-            source = filepath.read_text()
+            source = filepath.read_text(encoding="utf-8")
 
             uses_get_db = "Depends(get_db)" in source
             uses_get_db_from_context = "Depends(get_db_from_context)" in source

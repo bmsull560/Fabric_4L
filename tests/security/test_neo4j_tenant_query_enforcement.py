@@ -124,18 +124,25 @@ class TestNeo4jTenantQueryEnforcement:
 
     def test_cypher_query_patterns_include_tenant_filtering(self):
         """Verify source code contains tenant_id filtering in MATCH patterns."""
-        import inspect
-        
-        try:
-            from value_fabric.layer3.api import main
-        except ImportError:
-            pytest.skip("Layer 3 not available")
-        
-        # Get source code
-        source = inspect.getsource(main)
-        
+        from pathlib import Path
         # Count tenant_id occurrences in MATCH patterns
         import re
+
+        candidate_roots = [
+            Path("value_fabric/layer3"),
+            Path("services/layer3-knowledge/src"),
+        ]
+        source_parts: list[str] = []
+        for root in candidate_roots:
+            if root.exists():
+                for path in root.rglob("*.py"):
+                    if "__pycache__" not in path.parts:
+                        source_parts.append(path.read_text(encoding="utf-8"))
+
+        if not source_parts:
+            pytest.skip("Layer 3 source not available")
+
+        source = "\n".join(source_parts)
         tenant_patterns = re.findall(r"MATCH.*?tenant_id.*?\$tenant_id", source, re.DOTALL)
         
         # Sprint 5 should have at least 10 tenant-scoped query patterns

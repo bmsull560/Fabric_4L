@@ -5,7 +5,6 @@ automatic reconnection support and event replay.
 """
 
 import logging
-import os
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
@@ -45,18 +44,17 @@ def _extract_tenant_from_token(token: str | None) -> tuple[str, str]:
     if not JWT_AVAILABLE:
         raise WebSocketAuthError("JWT validation unavailable")
 
-    jwt_secret = os.environ.get("JWT_SECRET")
-    if not jwt_secret:
-        logger.error("JWT_SECRET environment variable not set")
-        raise WebSocketAuthError("Server configuration error: JWT validation unavailable")
-
     try:
-        payload = decode_jwt(token, jwt_secret)
+        payload = decode_jwt(token)
         if not payload:
             raise WebSocketAuthError("Invalid token: empty payload")
-        
-        tenant_id = payload.get("tenant_id")
-        user_id = payload.get("sub")
+
+        if isinstance(payload, dict):
+            tenant_id = payload.get("tenant_id")
+            user_id = payload.get("sub") or payload.get("user_id")
+        else:
+            tenant_id = getattr(payload, "tenant_id", None)
+            user_id = getattr(payload, "sub", None) or getattr(payload, "user_id", None)
         
         if not tenant_id or not isinstance(tenant_id, str):
             raise WebSocketAuthError("Invalid token: missing or invalid tenant_id claim")

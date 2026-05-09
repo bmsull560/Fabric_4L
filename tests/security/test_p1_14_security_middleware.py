@@ -14,10 +14,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LAYER_CONFIG_SOURCES = {
-    "l1": REPO_ROOT / "services" / "layer1-ingestion" / "src" / "layer1_ingestion" / "api" / "main.py",
-    "l2": REPO_ROOT / "services" / "layer2-extraction" / "src" / "layer2_extraction" / "api" / "main.py",
-    "l3": REPO_ROOT / "services" / "layer3-knowledge" / "src" / "layer3_knowledge" / "api" / "main.py",
-    "l4": REPO_ROOT / "services" / "layer4-agents" / "src" / "layer4_agents" / "api" / "main.py",
+    "l1": REPO_ROOT / "services" / "layer1-ingestion" / "src" / "api" / "app_monolith.py",
+    "l2": REPO_ROOT / "services" / "layer2-extraction" / "src" / "layer2_extraction" / "api" / "app_factory.py",
+    "l3": REPO_ROOT / "services" / "layer3-knowledge" / "src" / "api" / "app_monolith.py",
+    "l4": REPO_ROOT / "services" / "layer4-agents" / "src" / "api" / "middleware.py",
+}
+LAYER_CONFIG_TARGETS = {
+    "l1": "_security_config_l1",
+    "l2": "security_config",
+    "l3": "_security_config_l3",
+    "l4": "security_config",
 }
 
 
@@ -33,7 +39,7 @@ def _literal_string_set(node: ast.AST) -> set[str]:
 def _security_config_call(layer: str) -> ast.Call:
     source = LAYER_CONFIG_SOURCES[layer]
     tree = ast.parse(source.read_text(encoding="utf-8"))
-    target_name = f"_security_config_{layer}"
+    target_name = LAYER_CONFIG_TARGETS[layer]
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):

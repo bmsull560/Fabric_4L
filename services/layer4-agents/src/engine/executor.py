@@ -617,8 +617,11 @@ class OrchestrationController:
         # Get scheduler status
         scheduler_status = await self.scheduler.get_task_status(f"wf-{workflow_id}")
 
-        # Get metadata
-        metadata = self._workflow_metadata.get(workflow_id, {})
+        # Prefer in-memory metadata when present, but fall back to persisted
+        # state metadata so completed workflows remain tenant-scoped after
+        # process restarts and deterministic seed runs.
+        metadata = dict(state.metadata or {})
+        metadata.update(self._workflow_metadata.get(workflow_id, {}))
 
         return OrchestrationController_get_workflow_statusResult.model_validate({
             "workflow_id": workflow_id,
@@ -881,6 +884,39 @@ class OrchestrationController:
                 active.append(status)
 
         return active
+
+    async def list_workflows(
+        self,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List persisted workflows for API consumers, including completed ones.
+
+        This does not replace ``list_active_workflows`` because recovery should
+        continue to scan only active workflow states.
+        """
+        workflows: list[dict[str, Any]] = []
+        workflow_ids = await self.state_manager.list_workflows()
+
+        for workflow_id in workflow_ids:
+            state = await self.state_manager.load_state(workflow_id)
+            if not state or state.metadata.get("archived"):
+                continue
+
+            status = await self.get_workflow_status(workflow_id)
+            if not status:
+                continue
+
+            workflow_tenant = status.get("tenant_id")
+            if tenant_id and str(workflow_tenant) != str(tenant_id):
+                continue
+
+            workflows.append(status)
+
+        return sorted(
+            workflows,
+            key=lambda item: str(item.get("completed_at") or item.get("started_at") or ""),
+            reverse=True,
+        )
 
     def get_cluster_health(self) -> dict[str, Any]:
         """Get orchestration cluster health.

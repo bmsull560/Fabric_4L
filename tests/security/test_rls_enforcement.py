@@ -113,6 +113,15 @@ def _extract_model_tables_with_tenant_id() -> Set[str]:
     return tables
 
 
+def _function_source(source: str, function_name: str) -> str:
+    """Return source for a function from a parsed Python module."""
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+            return ast.get_source_segment(source, node) or ""
+    pytest.fail(f"{function_name} function not found in database.py")
+
+
 # ---------------------------------------------------------------------------
 # Tests: Migration Coverage
 # ---------------------------------------------------------------------------
@@ -154,9 +163,9 @@ class TestDatabaseModuleStructure:
     """Verify the L4 database module enforces tenant context correctly."""
 
     def test_get_db_sets_empty_tenant_context(self):
-        """Confirm that ``get_db`` sets ``app.tenant_id`` to empty string.
+        """Confirm that ``get_db`` explicitly clears tenant context.
 
-        get_db sets app.tenant_id = '' which is the admin bypass pattern.
+        get_db clears app.tenant_id to '' via _clear_local_tenant_context.
         This means it relies on PostgreSQL admin_role to access data,
         bypassing RLS entirely.  This is acceptable for health checks but
         dangerous for business endpoints — which is why S2-A and S2-B tests
@@ -170,17 +179,19 @@ class TestDatabaseModuleStructure:
                 if node.name == "get_db":
                     func_source = ast.get_source_segment(source, node) or ""
 
-                    # get_db sets tenant_id to empty string (admin bypass)
-                    assert "app.tenant_id" in func_source, (
-                        "get_db does not set app.tenant_id at all. "
-                        "Even the deprecated path should explicitly clear "
-                        "tenant context to prevent leakage from a prior request."
+                    assert "_clear_local_tenant_context" in func_source, (
+                        "get_db does not call _clear_local_tenant_context. "
+                        "Even the deprecated path must explicitly clear tenant "
+                        "context to prevent leakage from a prior request."
                     )
 
-                    # Verify it sets to empty string, not a real tenant
-                    assert "= ''" in func_source or '= ""' in func_source, (
-                        "get_db sets app.tenant_id but not to empty string. "
-                        "The admin bypass pattern requires empty string."
+                    clear_source = _function_source(source, "_clear_local_tenant_context")
+                    assert "app.tenant_id" in clear_source, (
+                        "_clear_local_tenant_context does not set app.tenant_id."
+                    )
+                    assert "set_config('app.tenant_id', '', true)" in clear_source, (
+                        "_clear_local_tenant_context must set app.tenant_id to "
+                        "empty string transaction-locally."
                     )
                     return
 
@@ -197,9 +208,17 @@ class TestDatabaseModuleStructure:
                 if node.name == "get_db_from_context":
                     func_source = ast.get_source_segment(source, node) or ""
 
-                    assert "app.tenant_id" in func_source, (
-                        "get_db_from_context does not set app.tenant_id. "
+                    assert "_set_local_tenant_context" in func_source, (
+                        "get_db_from_context does not call _set_local_tenant_context. "
                         "This means even the 'correct' dependency doesn't enforce RLS."
+                    )
+                    set_source = _function_source(source, "_set_local_tenant_context")
+                    assert "app.tenant_id" in set_source, (
+                        "_set_local_tenant_context does not set app.tenant_id."
+                    )
+                    assert "set_config('app.tenant_id', :tenant_id, true)" in set_source, (
+                        "_set_local_tenant_context must use transaction-local "
+                        "tenant context via set_config(..., true)."
                     )
                     return
 

@@ -78,6 +78,7 @@ class TestResolveCorsPolicy:
 class TestValidateProductionSafety:
     def test_passes_with_valid_config(self, monkeypatch):
         monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.delenv("ALLOW_DEV_AUTH_BYPASS", raising=False)
         monkeypatch.setenv("JWT_SECRET", "x" * 48)
         monkeypatch.setenv("DATABASE_URL", "postgresql://app_fabric:pass@db.internal:5432/fabric")
         monkeypatch.setenv("CREDENTIALS_MASTER_KEY", "x" * 48)

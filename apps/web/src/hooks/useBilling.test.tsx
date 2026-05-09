@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useBilling, useEntitlements, useFeatureCheck, billingKeys } from './useBilling';
 import { apiClient } from '@/api/client';
@@ -15,10 +15,19 @@ vi.mock('@/api/client', () => ({
 // Type for mocked apiClient
 const mockGet = apiClient.get as Mock;
 const mockPost = apiClient.post as Mock;
+const originalLocation = window.location;
 
 describe('useBilling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: true,
+      value: originalLocation,
+    });
   });
 
   it('should fetch subscription data', async () => {

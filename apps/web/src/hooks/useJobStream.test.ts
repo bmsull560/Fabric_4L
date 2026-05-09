@@ -40,7 +40,7 @@ describe('useJobStream', () => {
     const { result } = renderHook(() => useJobStream(null), { wrapper });
 
     expect(result.current.progress).toBe(0);
-    expect(result.current.status).toBe('pending');
+    expect(result.current.status).toBe('created');
     expect(result.current.logs).toHaveLength(0);
     expect(result.current.entities).toHaveLength(0);
     expect(result.current.isConnected).toBe(false);
@@ -199,8 +199,13 @@ describe('useJobStream', () => {
 
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 2000 });
 
+    const es = await getEventSourceOrThrow();
+    act(() => {
+      es._emitMessage({ type: 'status', data: 'EXTRACTING' });
+    });
+
     // Should be streaming when connected and job status is EXTRACTING (maps to 'running')
-    expect(result.current.isStreaming).toBe(true);
+    await waitFor(() => expect(result.current.isStreaming).toBe(true));
   });
 
   it('cleans up on unmount', async () => {

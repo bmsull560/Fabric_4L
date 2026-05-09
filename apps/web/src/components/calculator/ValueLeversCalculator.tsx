@@ -19,18 +19,20 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
   const updateCase = useUpdateValueCase();
   const [leverValues, setLeverValues] = useState<Record<string, { valA: number; valB: number }>>({});
   const initializedConfigRef = useRef<string | null>(null);
+  const levers = useMemo(() => leverConfig?.levers ?? [], [leverConfig?.levers]);
 
   useEffect(() => {
-    if (leverConfig && initializedConfigRef.current !== leverConfig.metadata.version) {
-      initializedConfigRef.current = leverConfig.metadata.version;
-      setLeverValues(leverConfig.levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}));
+    const version = leverConfig?.metadata?.version ?? "default";
+    if (leverConfig && initializedConfigRef.current !== version) {
+      initializedConfigRef.current = version;
+      setLeverValues(levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}));
     }
-  }, [leverConfig]);
+  }, [leverConfig, levers]);
 
   useEffect(() => {
     if (!existingCase) return;
     const next: Record<string, { valA: number; valB: number }> = {};
-    existingCase.levers.forEach((lever) => {
+    (existingCase.levers ?? []).forEach((lever) => {
       next[lever.lever_id] = { valA: lever.scenario_a, valB: lever.scenario_b };
     });
     setLeverValues(next);
@@ -39,10 +41,10 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
   const totals = useMemo(() => {
     if (!leverConfig) return { A: 0, B: 0 };
     return {
-      A: leverConfig.levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valA || l.min_value) / l.base_value), 0),
-      B: leverConfig.levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valB || l.base_value) / l.base_value), 0),
+      A: levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valA || l.min_value) / l.base_value), 0),
+      B: levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valB || l.base_value) / l.base_value), 0),
     };
-  }, [leverConfig, leverValues]);
+  }, [leverConfig, leverValues, levers]);
 
   const handleSave = useCallback(async () => {
     if (!leverConfig) return;
@@ -68,7 +70,7 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
   return <SectionCard title="Value Levers">
     {isLoading ? <div className="text-sm text-muted-foreground">Loading value levers...</div> : error ? <div className="text-sm text-destructive">Failed to load value levers.</div> : (
       <div className="space-y-3">
-        {(leverConfig?.levers ?? []).map((lever) => (
+        {levers.map((lever) => (
           <div key={lever.id} className="rounded border border-border p-3">
             <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold">{lever.name}</span><span className="text-xs text-muted-foreground">{lever.confidence}% confidence</span></div>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -78,7 +80,7 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
             <ProgressBar value={lever.confidence} max={100} size="sm" />
           </div>
         ))}
-        <div className="flex gap-2"><button onClick={() => leverConfig && setLeverValues(leverConfig.levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}))} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><RotateCcw className="h-3 w-3" />Reset</button><button onClick={handleSave} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><Save className="h-3 w-3" />Save</button></div>
+        <div className="flex gap-2"><button onClick={() => leverConfig && setLeverValues(levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}))} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><RotateCcw className="h-3 w-3" />Reset</button><button onClick={handleSave} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><Save className="h-3 w-3" />Save</button></div>
       </div>
     )}
   </SectionCard>;

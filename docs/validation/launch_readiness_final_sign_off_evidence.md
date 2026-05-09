@@ -10,6 +10,29 @@ Fabric_4L now has a formal final-testing launch sign-off package that separates 
 
 The local validation run completed successfully for all repository-owned launch checks. This result means the codebase is structurally ready to enter final testing from a repository perspective. It does **not** mean live production readiness has been proven. The launch-critical gates that require real providers, production-like infrastructure, live telemetry, billing integration, rollback execution, and browser-driven end-to-end validation remain explicitly marked **REQUIRES_ENVIRONMENT**.
 
+## 2026-05-08 Core GA Local Hardening Update
+
+The launch-critical deterministic path `account -> signals -> evidence -> driver -> calculator -> business case` was hardened for local repository validation. Fixes focused on runtime contract drift and UI fail-closed behavior in the Account, Driver Tree, ROI Calculator, and Value Levers surfaces, plus a safe analytics bootstrap path that avoids malformed build-time placeholders.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Repository final-testing launch gate | PASS | `python scripts/ci/validate_final_testing_launch_gate.py` |
+| Frontend typecheck | PASS | `pnpm --dir apps/web run check` |
+| Frontend production build | PASS | `pnpm --dir apps/web run build` |
+| Full frontend Vitest suite | PASS | `pnpm --dir apps/web run test` |
+| Journey 24 launch E2E | PASS | `pnpm --dir apps/web run test:e2e:journey-launch` |
+| Account provider drift regression | PASS | `cmd /c node_modules\\.bin\\vitest.cmd run src/pages/Accounts.test.tsx --reporter=verbose --pool=forks --poolOptions.forks.singleFork=true` from `apps/web` |
+| Targeted Layer 4 agent/workflow tests | PASS | `python -m pytest services/layer4-agents/tests/test_agent_grounding_and_refusal.py services/layer4-agents/tests/test_agent_tool_result_contracts.py services/layer4-agents/tests/test_workflow_canonical_contract.py services/layer4-agents/tests/test_workflow_tenant_isolation.py -q -n 0 -p no:cacheprovider` |
+
+Known limitations remain:
+
+| Item | Status | Required Follow-Up |
+|---|---|---|
+| Full frontend Vitest suite | PASS LOCALLY | `pnpm --dir apps/web run test` completed successfully on 2026-05-08 after shard-4 isolation; this local evidence does not prove live production readiness. |
+| Broad `tests/security` suite | NOT COMPLETED LOCALLY | Prior broad run was environment-dependent/noisy and timed out; security owner should run the intended CI profile. |
+| Journey SLO gate | REQUIRES_ARTIFACT | `apps/web/tmp/journey-slo-report.json` or configured `JOURNEY_SLO_REPORT_PATH` must be produced from a synthetic monitor run. |
+| Live production readiness | REQUIRES_ENVIRONMENT | Staging/live evidence remains required for SSO/OIDC, billing, live LLM provider validation, rollback, telemetry, alert receiver, and performance smoke. |
+
 ## Repository-Owned Evidence Completed
 
 | Evidence Area | Artifact | Result | Interpretation |

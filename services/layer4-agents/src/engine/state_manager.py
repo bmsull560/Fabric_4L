@@ -233,6 +233,42 @@ class StateManager:
         else:
             self._memory_store.pop(key, None)
 
+    async def list_workflows(self) -> list[str]:
+        """List all persisted workflow IDs without changing recovery semantics.
+
+        ``list_active_workflows`` is intentionally status-filtered for pod
+        recovery. This method supports tenant-scoped API listing where completed
+        validation workflows must remain visible through canonical state.
+        """
+        workflow_ids: list[str] = []
+        prefix = f"{_WORKFLOW_KEY_PREFIX}:"
+
+        if self.redis:
+            cursor = 0
+            while True:
+                cursor, keys = await self.redis.scan(
+                    cursor=cursor,
+                    match=f"{prefix}*",
+                    count=100,
+                )
+                for key in keys:
+                    key_text = key.decode("utf-8") if isinstance(key, bytes | bytearray) else str(key)
+                    if _HISTORY_KEY_SUFFIX in key_text or not key_text.startswith(prefix):
+                        continue
+                    workflow_ids.append(key_text.removeprefix(prefix))
+                if cursor == 0:
+                    break
+        else:
+            now = datetime.now(UTC).timestamp()
+            for key, stored in list(self._memory_store.items()):
+                if _HISTORY_KEY_SUFFIX in key or not key.startswith(prefix):
+                    continue
+                if stored.get("expires", 0) <= now:
+                    continue
+                workflow_ids.append(key.removeprefix(prefix))
+
+        return sorted(set(workflow_ids))
+
     async def record_history(
         self, workflow_id: str, node_id: str, input_data: dict, output_data: dict, duration_ms: int
     ) -> None:
