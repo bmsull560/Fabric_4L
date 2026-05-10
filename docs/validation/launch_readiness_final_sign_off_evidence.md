@@ -23,12 +23,16 @@ The launch-critical deterministic path `account -> signals -> evidence -> driver
 | Journey 24 launch E2E | PASS | `pnpm --dir apps/web run test:e2e:journey-launch` |
 | Account provider drift regression | PASS | `cmd /c node_modules\\.bin\\vitest.cmd run src/pages/Accounts.test.tsx --reporter=verbose --pool=forks --poolOptions.forks.singleFork=true` from `apps/web` |
 | Targeted Layer 4 agent/workflow tests | PASS | `python -m pytest services/layer4-agents/tests/test_agent_grounding_and_refusal.py services/layer4-agents/tests/test_agent_tool_result_contracts.py services/layer4-agents/tests/test_workflow_canonical_contract.py services/layer4-agents/tests/test_workflow_tenant_isolation.py -q -n 0 -p no:cacheprovider` |
+| J11 backend-integrated business lifecycle | PASS - J11 ONLY | `cmd /c node_modules\\.bin\\playwright.cmd test --project=backend-integrated e2e/journeys/j11-golden-path-business-lifecycle.spec.ts`; retained artifact `artifacts/live-workflow-validation/playwright/j11-junit.xml`; seed artifact `artifacts/live-workflow-validation/seed-report.json` |
+| Full J1+J11 backend-integrated pair | PASS - LOCAL DOCKER-BACKED | `cmd /c node_modules\\.bin\\playwright.cmd test --project=backend-integrated e2e/journeys/j1-golden-path-backend-integrated.spec.ts e2e/journeys/j11-golden-path-business-lifecycle.spec.ts`; retained artifact `artifacts/live-workflow-validation/playwright/junit.xml`; seed artifact `artifacts/live-workflow-validation/seed-report.json` |
 
 Known limitations remain:
 
 | Item | Status | Required Follow-Up |
 |---|---|---|
 | Full frontend Vitest suite | PASS LOCALLY | `pnpm --dir apps/web run test` completed successfully on 2026-05-08 after shard-4 isolation; this local evidence does not prove live production readiness. |
+| J11 backend-integrated business lifecycle | PASS J11 ONLY | The retained J11 artifact proves the seeded business lifecycle route/account/auth/session path for J11 only. Full backend-integrated J1+J11, J1 workflow evidence, production readiness, paid GA, and live/staging evidence remain open. |
+| Full backend-integrated J1+J11 pair | PASS LOCALLY | The retained local Docker-backed pair artifact has `20` tests, `0` failures, and `0` errors. This closes the local backend-integrated pair evidence line only; CI/staging reproducibility, production readiness, paid GA, and live/staging evidence remain open. |
 | Broad `tests/security` suite | NOT COMPLETED LOCALLY | Prior broad run was environment-dependent/noisy and timed out; security owner should run the intended CI profile. |
 | Journey SLO gate | REQUIRES_ARTIFACT | `apps/web/tmp/journey-slo-report.json` or configured `JOURNEY_SLO_REPORT_PATH` must be produced from a synthetic monitor run. |
 | Live production readiness | REQUIRES_ENVIRONMENT | Staging/live evidence remains required for SSO/OIDC, billing, live LLM provider validation, rollback, telemetry, alert receiver, and performance smoke. |

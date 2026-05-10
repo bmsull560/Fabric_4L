@@ -17,6 +17,8 @@ This document converts the remaining Core GA launch-readiness gaps into executab
 | Journey 24 deterministic launch path | PASS | `pnpm --dir apps/web run test:e2e:journey-launch` | Covers local deterministic `account -> signals -> evidence -> driver -> calculator -> business case` path. |
 | Account provider drift regression | PASS | `cmd /c node_modules\\.bin\\vitest.cmd run src/pages/Accounts.test.tsx --reporter=verbose --pool=forks --poolOptions.forks.singleFork=true` from `apps/web` | Confirms runtime provider drift fails closed instead of crashing the account page. |
 | Targeted Layer 4 agent/workflow tests | PASS | `python -m pytest services/layer4-agents/tests/test_agent_grounding_and_refusal.py services/layer4-agents/tests/test_agent_tool_result_contracts.py services/layer4-agents/tests/test_workflow_canonical_contract.py services/layer4-agents/tests/test_workflow_tenant_isolation.py -q -n 0 -p no:cacheprovider` | 45 tests passed locally with test secrets and SQLite temp DB. |
+| J11 backend-integrated business lifecycle | PASS - J11 ONLY | `artifacts/live-workflow-validation/playwright/j11-junit.xml`; seed precondition artifact `artifacts/live-workflow-validation/seed-report.json` | Proves J11 seeded business lifecycle route/account/auth/session path only; full backend-integrated J1+J11 remains open. |
+| Full J1+J11 backend-integrated pair | PASS - LOCAL DOCKER-BACKED | `artifacts/live-workflow-validation/playwright/junit.xml`; seed artifact `artifacts/live-workflow-validation/seed-report.json` | Proves the local Docker-backed backend-integrated J1 golden path plus J11 business lifecycle path; does not close CI/staging reproducibility or production readiness. |
 
 ## 2. CI-Only / Environment-Dependent Items
 
@@ -32,6 +34,7 @@ This document converts the remaining Core GA launch-readiness gaps into executab
 | Alert receiver | REQUIRES_ENVIRONMENT | SRE owner | Alert receiver provider test | Provider delivery proof, escalation route, acknowledgement record, and backup receiver proof. |
 | Performance smoke | REQUIRES_ENVIRONMENT | Performance owner | Production-like smoke/performance job | Command output, environment shape, release-candidate SHA, latency/error-rate output, and saturation notes. |
 | Production-like E2E rehearsal | REQUIRES_ENVIRONMENT | Test owner | Browser E2E rehearsal with real auth, services, persisted stores, and release candidate SHA | Screenshots/transcript, logs, release-candidate SHA, and blocker classification for any failures. |
+| Full backend-integrated J1+J11 pair | PASS LOCALLY - CI/staging reproducibility still open | Test owner / Product workflow owner | Backend-integrated live-stack Playwright run in approved CI/staging environment | Local retained JUnit `artifacts/live-workflow-validation/playwright/junit.xml` has zero failures/errors for the full pair. CI/staging rerun with release-candidate SHA remains required before production-readiness claims. |
 
 ## 3. Known Warnings That Are Not Current Launch Blockers
 
@@ -49,6 +52,7 @@ This document converts the remaining Core GA launch-readiness gaps into executab
 | Full frontend test report with timing | Local command transcript from `pnpm --dir apps/web run test`; CI artifact attached to release candidate if required by release policy | Frontend/CI owner | Closed locally; keep as release traceability if CI artifact retention is required. |
 | Security suite report | CI artifact attached to release candidate | Security owner | Core GA sign-off or explicit waiver. |
 | Journey SLO report | `apps/web/tmp/journey-slo-report.json` locally, or CI/staging artifact referenced by `JOURNEY_SLO_REPORT_PATH` | Test/Observability owner | Core GA go/no-go. |
+| Backend-integrated business lifecycle reports | `artifacts/live-workflow-validation/playwright/junit.xml`; `artifacts/live-workflow-validation/playwright/j11-junit.xml`; seed report `artifacts/live-workflow-validation/seed-report.json` | Test/Product workflow owner | Local J1+J11 pair and J11-only evidence accounting; still not sufficient for production readiness without CI/staging reproducibility. |
 | Live LLM provider validation bundle | Redacted staging/live evidence bundle | AI platform owner | Core GA go/no-go. |
 | SSO/OIDC validation evidence | Redacted staging/live evidence bundle | Identity owner | Enterprise Core GA go/no-go. |
 | Billing validation evidence | Provider sandbox/live evidence bundle | Billing owner | Paid GA go/no-go. |

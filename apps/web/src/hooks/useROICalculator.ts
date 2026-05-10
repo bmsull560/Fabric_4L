@@ -190,6 +190,11 @@ async function fetchBenchmarkDetail(benchmarkId: string): Promise<Benchmark> {
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
 
+type ROIQueryOptions = {
+  enabled?: boolean;
+  retry?: typeof RETRY_CONFIG.maxRetries | false;
+};
+
 export function useROITemplates() {
   return useQuery<ROITemplate[], ROIApiError>({
     queryKey: QK.roi.templates(),
@@ -224,26 +229,27 @@ export function useROICalculation(calcId: string | null) {
   });
 }
 
-export function useIndustryBenchmarks(industry: string | null) {
+export function useIndustryBenchmarks(industry: string | null, options: ROIQueryOptions = {}) {
   return useQuery<IndustryBenchmark, ROIApiError>({
     queryKey: QK.roi.assumptionsByIndustry(industry || ''),
     queryFn: async () => {
       if (!industry) throw new ROIApiError('No industry provided');
       return withApiError(fetchBenchmarks(industry), ROIApiError);
     },
-    enabled: !!industry,
+    enabled: (options.enabled ?? true) && !!industry,
     staleTime: STALE_TIME.reference,
-    retry: RETRY_CONFIG.maxRetries,
+    retry: options.retry ?? RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
 }
 
-export function useBenchmarksList() {
+export function useBenchmarksList(options: ROIQueryOptions = {}) {
   return useQuery<BenchmarkListResponse, ROIApiError>({
     queryKey: QK.roi.assumptionsList(),
     queryFn: () => withApiError(fetchBenchmarksList(), ROIApiError),
+    enabled: options.enabled ?? true,
     staleTime: STALE_TIME.list,
-    retry: RETRY_CONFIG.maxRetries,
+    retry: options.retry ?? RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
 }

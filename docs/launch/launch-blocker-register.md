@@ -16,6 +16,18 @@ The Core GA deterministic clickpath `account -> signals -> evidence -> driver ->
 
 This evidence does not close environment-dependent P0/P1 items. Live provider, SSO/OIDC, billing, rollback, alert receiver, telemetry dashboard, performance smoke, and staging SLO evidence remain required before Core GA or paid GA approval.
 
+## 2026-05-09/2026-05-10 Backend-Integrated Evidence Accounting
+
+J11 backend-integrated business lifecycle validation passed as a J11-only retained Playwright artifact.
+
+| Evidence | Result | Artifact | Scope |
+|---|---|---|---|
+| J11 business lifecycle backend-integrated Playwright run | PASS - 5 tests passed | `artifacts/live-workflow-validation/playwright/j11-junit.xml` | J11 business lifecycle only. |
+| Deterministic backend seed validation | PASS - `aggregateStatus=present`, `requiredRowsPresent=true` | `artifacts/live-workflow-validation/seed-report.json` | J11 seed preconditions only. |
+| Full J1+J11 backend-integrated Playwright pair | PASS - 20 tests passed | `artifacts/live-workflow-validation/playwright/junit.xml` | Local Docker-backed backend-integrated J1 golden path plus J11 business lifecycle. |
+
+The local Docker-backed backend-integrated J1+J11 evidence line is now closed by the retained `junit.xml` artifact. This does not prove production readiness, paid GA readiness, CI reproducibility, or staging/live provider readiness. P0-001 remains environment-dependent until the release-candidate rehearsal is reproduced in the approved CI/staging or production-like environment with release SHA, logs, and owner sign-off.
+
 ## P0 Launch Blocker
 
 | ID | Item | Owner | Required Evidence | Current Status | Decision Rule |

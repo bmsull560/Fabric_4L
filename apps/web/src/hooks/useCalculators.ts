@@ -137,10 +137,14 @@ async function updateValueCase(
 
 // ── Query Hooks ────────────────────────────────────────────────────────────
 
-export function useValueLevers(filters: LeverConfigRequest = {}) {
+export function useValueLevers(
+  filters: LeverConfigRequest = {},
+  options: { enabled?: boolean } = {}
+) {
   return useQuery<LeverConfigResponse, CalculatorsApiError>({
     queryKey: QK.calculators.levers(filters),
     queryFn: () => withApiError(fetchValueLevers(filters), CalculatorsApiError),
+    enabled: options.enabled ?? true,
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,

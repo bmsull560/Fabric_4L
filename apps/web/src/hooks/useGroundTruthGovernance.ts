@@ -110,13 +110,17 @@ async function fetchMaturityLadder(): Promise<MaturityLadderResponse> {
   return parseMaturityLadderResponse(response.data);
 }
 
-export function useTruths(filters: TruthListFilters = {}) {
+export function useTruths(
+  filters: TruthListFilters = {},
+  options: { enabled?: boolean; retry?: typeof RETRY_CONFIG.maxRetries | false } = {}
+) {
   return useQuery<TruthObjectListResponse, GroundTruthGovernanceApiError>({
     queryKey: QK.groundTruth.list(filters),
     queryFn: () =>
       withApiError(fetchTruths(filters), GroundTruthGovernanceApiError),
     staleTime: STALE_TIME.list,
-    retry: RETRY_CONFIG.maxRetries,
+    enabled: options.enabled ?? true,
+    retry: options.retry ?? RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
 }

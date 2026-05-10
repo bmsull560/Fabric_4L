@@ -63,6 +63,7 @@ logger = logging.getLogger(__name__)
 E2E_SEED_PRIVILEGED_REASON = "playwright-backend-validation-seed"
 E2E_DRAFT_CASE_ID = "case-draft-001"
 E2E_APPROVED_CASE_ID = "case-e2e-approved-001"
+E2E_APPROVED_CASE_ALIASES = ["case-meridian-e2e-001"]
 
 
 def _get_neo4j_driver(request: Request) -> Any:
@@ -176,6 +177,7 @@ class BusinessCaseLifecycleSeedRequest(BaseModel):
     account_id: UUID
     draft_case_id: str = E2E_DRAFT_CASE_ID
     approved_case_id: str = E2E_APPROVED_CASE_ID
+    approved_case_aliases: list[str] = Field(default_factory=lambda: E2E_APPROVED_CASE_ALIASES.copy())
 
 
 class ValidationSessionRequest(BaseModel):
@@ -850,6 +852,15 @@ async def seed_business_case_lifecycle(
             "document_url": "/exports/meridian-business-case.pdf",
         },
     ]
+    for alias_case_id in payload.approved_case_aliases:
+        if alias_case_id and alias_case_id not in {str(case["case_id"]) for case in cases}:
+            cases.append(
+                {
+                    "case_id": alias_case_id,
+                    "status": "approved",
+                    "document_url": "/exports/meridian-business-case.pdf",
+                }
+            )
 
     business_case_service = BusinessCaseService(db)
     seeded_cases: list[dict[str, Any]] = []

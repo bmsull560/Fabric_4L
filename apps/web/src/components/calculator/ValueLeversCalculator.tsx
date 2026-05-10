@@ -9,12 +9,17 @@ export interface ValueLeversCalculatorProps {
   industry?: string;
   companySize?: string;
   initialCaseId?: string | null;
+  loadExistingCase?: boolean;
   onSaved?: (valueCase: ValueCaseResponse) => void;
 }
 
-export function ValueLeversCalculator({ accountId, industry, companySize, initialCaseId = null, onSaved }: ValueLeversCalculatorProps) {
-  const { data: leverConfig, isLoading, error } = useValueLevers({ industry, company_size: companySize });
-  const { data: existingCase } = useValueCase(initialCaseId);
+export function ValueLeversCalculator({ accountId, industry, companySize, initialCaseId = null, loadExistingCase = true, onSaved }: ValueLeversCalculatorProps) {
+  const canLoadLevers = Boolean(industry && companySize);
+  const { data: leverConfig, isLoading, error } = useValueLevers(
+    { industry, company_size: companySize },
+    { enabled: canLoadLevers }
+  );
+  const { data: existingCase } = useValueCase(loadExistingCase ? initialCaseId : null);
   const createCase = useCreateValueCase();
   const updateCase = useUpdateValueCase();
   const [leverValues, setLeverValues] = useState<Record<string, { valA: number; valB: number }>>({});
@@ -63,12 +68,20 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
     onSaved?.(saved);
   }, [accountId, createCase, initialCaseId, leverConfig, leverValues, onSaved, totals.A, totals.B, updateCase]);
 
-  if (!industry || !companySize) {
+  if (!canLoadLevers) {
     return <div className="rounded border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-800">Select an account with industry and company size before loading value levers.</div>;
   }
 
   return <SectionCard title="Value Levers">
-    {isLoading ? <div className="text-sm text-muted-foreground">Loading value levers...</div> : error ? <div className="text-sm text-destructive">Failed to load value levers.</div> : (
+    {isLoading ? <div className="text-sm text-muted-foreground">Loading value levers...</div> : error ? (
+      <div className="space-y-2 rounded border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="font-medium">Value lever catalog unavailable</div>
+        <p>
+          Scenario assumptions remain editable while the lever catalog service is degraded.
+          Recalculate ROI from the assumption set, then attach lever-level evidence when the catalog is available.
+        </p>
+      </div>
+    ) : (
       <div className="space-y-3">
         {levers.map((lever) => (
           <div key={lever.id} className="rounded border border-border p-3">

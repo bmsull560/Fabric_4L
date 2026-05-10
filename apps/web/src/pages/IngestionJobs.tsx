@@ -50,7 +50,7 @@ const STATUS_OPTIONS: { value: JobStatusFilter; label: string }[] = [
   { value: 'all', label: 'All Status' },
   { value: 'pending', label: 'Pending' },
   { value: 'processing', label: 'Processing' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'completed', label: 'Processed' },
   { value: 'failed', label: 'Failed' },
 ];
 
@@ -131,6 +131,7 @@ export default function IngestionJobs() {
 
   const jobs = listData?.jobs ?? [];
   const apiPagination = listData?.pagination ?? { page: 1, limit: paginationState.limit, total: 0, totalPages: 1 };
+  const latestJob = jobs[0];
 
   const { navigateTo } = useNavigation();
 
@@ -253,6 +254,23 @@ export default function IngestionJobs() {
       <div className="flex-1 grid grid-cols-[1fr_320px] gap-4 min-h-0">
         {/* Left Column: Filters + Job Queue */}
         <div className="flex flex-col gap-4 min-h-0">
+          {latestJob && (
+            <div className="bg-card border border-border rounded-lg px-3 py-2 flex items-center gap-2">
+              <Info size={14} className="text-primary shrink-0" />
+              <p className="text-[12px] text-muted-foreground">
+                Latest ingestion job:
+                {' '}<span className="font-semibold text-foreground">{latestJob.domain}</span>
+                {' '}is
+                {' '}<span className="font-semibold text-foreground">
+                  {latestJob.status.charAt(0).toUpperCase() + latestJob.status.slice(1)}
+                </span>
+                {' '}with
+                {' '}<span className="font-semibold text-foreground">{latestJob.progress}%</span>
+                {' '}progress from Layer 1.
+              </p>
+            </div>
+          )}
+
           {/* Filter Controls */}
           <div className="bg-card border border-border rounded-lg p-3 flex items-center gap-3 flex-wrap">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Filter Controls</span>

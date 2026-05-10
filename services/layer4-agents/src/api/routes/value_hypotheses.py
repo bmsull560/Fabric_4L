@@ -119,7 +119,7 @@ class PromoteSignalResponse(TypedDictModel):
 
 def _get_neo4j_driver(request: Request):
     """Get Neo4j driver from app state."""
-    return request.app.state.neo4j_driver
+    return getattr(request.app.state, "neo4j_driver", None)
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +231,12 @@ async def get_account_hypotheses(
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
     driver = _get_neo4j_driver(request)
+    if driver is None:
+        # Account workspaces should render a safe empty hypothesis state when
+        # graph-backed hypothesis generation is unavailable in a validation
+        # stack. Auth and tenant resolution have already succeeded above.
+        return {"hypotheses": [], "total": 0}
+
     engine = ValueHypothesisEngine(driver)
 
     return await engine.get_account_hypotheses(

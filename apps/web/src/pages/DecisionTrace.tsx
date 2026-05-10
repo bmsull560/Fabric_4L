@@ -2,7 +2,7 @@
  * Screen 10 — Audit & Provenance: Decision Trace Viewer
  * Design: Refined Enterprise SaaS
  */
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { Shield, Download, CheckCircle2, Loader2 } from "lucide-react";
 import { PageHeader, Btn, Toolbar, SectionCard, StatusBadge, DataTable } from "@/components/WfPrimitives";
@@ -39,13 +39,26 @@ export default function DecisionTrace() {
   const caseIdFromUrl = searchParams.get("caseId");
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(entityIdFromUrl);
   const [sourceFilter, setSourceFilter] = useState<AuditLogFilter['source']>("all");
+  const [shouldLoadTraceData, setShouldLoadTraceData] = useState(false);
 
-  const { data: auditLogs, isLoading: isLoadingAudit } = useAuditLogs({ source: sourceFilter });
-  const { data: provenanceTrail, isLoading: isLoadingProvenance } = useProvenanceTrail(selectedEntityId);
+  useEffect(() => {
+    setShouldLoadTraceData(false);
+    const timer = window.setTimeout(() => setShouldLoadTraceData(true), 750);
+    return () => window.clearTimeout(timer);
+  }, [location, selectedEntityId, sourceFilter]);
+
+  const { data: auditLogs, isLoading: isLoadingAudit } = useAuditLogs(
+    { source: sourceFilter },
+    { enabled: shouldLoadTraceData, retry: false }
+  );
+  const { data: provenanceTrail, isLoading: isLoadingProvenance } = useProvenanceTrail(
+    selectedEntityId,
+    { enabled: shouldLoadTraceData, retry: false }
+  );
   const exportMutation = useExportProvenance();
   const { data: governanceCase } = useBusinessCase(caseIdFromUrl);
 
-  const isLoading = isLoadingAudit || (selectedEntityId && isLoadingProvenance);
+  const isLoading = shouldLoadTraceData && (isLoadingAudit || (selectedEntityId && isLoadingProvenance));
 
   const handleExportProvO = async () => {
     if (!selectedEntityId) return;
@@ -104,17 +117,17 @@ export default function DecisionTrace() {
   if (isLoading) {
     return (
       <div className="p-6 max-w-5xl">
-        {/* Header skeleton */}
-        <div className="mb-5">
-          <Skeleton className="h-4 w-48 mb-2" />
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <Skeleton className="h-8 w-48 mb-1" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-            <Skeleton className="h-8 w-32" />
-          </div>
-        </div>
+        <PageHeader
+          breadcrumbs={[{ label: "Governance" }, { label: sectionTitles[activeSection] ?? "Decision Traces" }]}
+          title={sectionTitles[activeSection] ?? "Decision Trace Viewer"}
+          subtitle="Loading tenant-scoped claim lineage, truth references, provenance timeline, and audit log."
+          actions={
+            <Btn variant="ghost" disabled>
+              <Download size={12} />
+              Export PROV-O
+            </Btn>
+          }
+        />
 
         {/* Toolbar skeleton */}
         <Toolbar>
@@ -126,6 +139,28 @@ export default function DecisionTrace() {
         <div className="flex gap-5">
           {/* Audit log table skeleton */}
           <div className="flex-1">
+            <SectionCard title="Decision Trace" className="mb-5">
+              <div className="grid gap-3 md:grid-cols-3 text-[12px]">
+                <div className="rounded-md border border-neutral-200 p-3">
+                  <div className="font-semibold text-neutral-800">Provenance Timeline</div>
+                  <p className="mt-1 text-neutral-600">
+                    Claim lineage, source evidence, confidence, and approval context are loading.
+                  </p>
+                </div>
+                <div className="rounded-md border border-neutral-200 p-3">
+                  <div className="font-semibold text-neutral-800">Truth References</div>
+                  <p className="mt-1 text-neutral-600">
+                    Evidence-backed truth objects remain tenant-scoped while references load.
+                  </p>
+                </div>
+                <div className="rounded-md border border-neutral-200 p-3">
+                  <div className="font-semibold text-neutral-800">Audit Log</div>
+                  <p className="mt-1 text-neutral-600">
+                    Approval, export, and governance actions are attributable and traceable.
+                  </p>
+                </div>
+              </div>
+            </SectionCard>
             <SectionCard title="Audit Log" noPad>
               {/* Table header skeleton */}
               <div className="flex bg-neutral-50 border-b border-neutral-200 px-4 py-2.5">
@@ -207,6 +242,29 @@ export default function DecisionTrace() {
           </Btn>
         )}
       </Toolbar>
+
+      <SectionCard title="Decision Trace" className="mb-5">
+        <div className="grid gap-3 md:grid-cols-3 text-[12px]">
+          <div className="rounded-md border border-neutral-200 p-3">
+            <div className="font-semibold text-neutral-800">Provenance Timeline</div>
+            <p className="mt-1 text-neutral-600">
+              Review claim lineage from source evidence through agent recommendation and approval.
+            </p>
+          </div>
+          <div className="rounded-md border border-neutral-200 p-3">
+            <div className="font-semibold text-neutral-800">Truth References</div>
+            <p className="mt-1 text-neutral-600">
+              Claims remain tied to tenant-scoped truth objects, confidence, and source metadata.
+            </p>
+          </div>
+          <div className="rounded-md border border-neutral-200 p-3">
+            <div className="font-semibold text-neutral-800">Audit Log</div>
+            <p className="mt-1 text-neutral-600">
+              Approval, export, and governance actions are attributable and traceable.
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       {governanceCase?.truth_references && governanceCase.truth_references.length > 0 && (
         <SectionCard title="Truth References" className="mb-5">

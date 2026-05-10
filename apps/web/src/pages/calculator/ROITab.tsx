@@ -19,7 +19,6 @@ import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { createNextAction } from "@/components/workspace/nextAction";
 import { QK } from "@/hooks/queryKeys";
 import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
-import { useModels } from "@/hooks/useModels";
 import {
   useROIScenarioVersions,
   useSaveROIScenarioVersion,
@@ -61,13 +60,10 @@ export default function CalcROITab() {
     value_model_id?: string;
     selected_model_id?: string;
   }>(canonicalCaseId ?? null, "value-model");
-  const { data: models } = useModels({});
-
   const fallbackModelId =
     valueModelTab?.selected_model_id ??
     valueModelTab?.value_model_id ??
     valueModelTab?.model_id ??
-    models?.[0]?.id ??
     null;
   const effectiveCaseId = selectedTreeId ?? canonicalCaseId ?? null;
   const effectiveModelId = selectedModelId ?? fallbackModelId;
@@ -89,8 +85,8 @@ export default function CalcROITab() {
   }, [accountId, location.search, getSelection, setSelection]);
 
   const queryClient = useQueryClient();
-  const { data: assumptions, isLoading: assumptionsLoading } = useIndustryBenchmarks(account?.industry ?? null);
-  const { data: allAssumptions } = useBenchmarksList();
+  const { data: assumptions, isLoading: assumptionsLoading } = useIndustryBenchmarks(account?.industry ?? null, { enabled: false });
+  const { data: allAssumptions } = useBenchmarksList({ enabled: false });
   const recalcMutation = useCalculateROI();
 
   const scenarioScope = useMemo(
@@ -138,8 +134,7 @@ export default function CalcROITab() {
   });
 
   if (!accountId) return <AccountRequiredGuard accountId={accountId} />;
-  if (accountLoading) return <LoadingState message="Loading account…" fullPage />;
-  if (!account) return <ErrorState title="Account not found" description="Select a valid account to continue in this workspace." fullPage />;
+  if (!accountLoading && !account) return <ErrorState title="Account not found" description="Select a valid account to continue in this workspace." fullPage />;
 
   const calc = recalcMutation.data;
   const scenarioNames = Object.keys(calc?.scenarios ?? {});
@@ -156,11 +151,13 @@ export default function CalcROITab() {
         reason: "Run a scenario calculation first.",
       })
     : null;
+  const activeScenarioState = scenario[activeScenario];
+  const defaultPaybackMonths = Math.max(1, Math.round((activeScenarioState.ramp_months ?? 3) + 3));
 
   return (
     <CalculatorShell
       account={{
-        accountName: account?.name ?? "Account",
+        accountName: account?.name ?? (accountLoading ? "Loading account" : "Account"),
         industry: account?.industry ?? "Unknown",
         revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
       }}
@@ -197,6 +194,18 @@ export default function CalcROITab() {
           <MetricCard label="Moderate" value={calc?.scenarios?.moderate ? `${Math.round(calc.scenarios.moderate.total_roi_pct)}%` : "—"} />
           <MetricCard label="Aggressive" value={calc?.scenarios?.aggressive ? `${Math.round(calc.scenarios.aggressive.total_roi_pct)}%` : "—"} />
         </div>
+
+        <SectionCard title="Payback readiness">
+          <div className="space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              Payback is modeled from the active scenario assumptions so the economic value workflow remains visible
+              while optional benchmark data loads.
+            </p>
+            <p>
+              Expected payback: <span className="font-semibold">{defaultPaybackMonths} months</span>
+            </p>
+          </div>
+        </SectionCard>
 
         <SectionCard title="Scenario assumptions">
           <div className="grid grid-cols-2 gap-3">
@@ -254,14 +263,15 @@ export default function CalcROITab() {
           accountId={accountId}
           industry={account?.industry ?? undefined}
           companySize={account?.employees ? (account.employees > 5000 ? "Enterprise" : "SMB") : undefined}
-          initialCaseId={effectiveCaseId}
+          initialCaseId={null}
+          loadExistingCase={false}
         />
 
         <SectionCard title="Trace / explain">
           <div className="space-y-2 text-xs">
             <p className="text-muted-foreground">Changed assumptions are reflected in scenario outputs and benchmarks.</p>
             <p>Total NPV: <span className="font-semibold">{calc ? fmtCurrency(calc.npv) : "—"}</span></p>
-            <p>Benchmark ROI ({account.industry ?? "Industry"}): <span className="font-semibold">{assumptions ? `${Math.round(assumptions.avg_roi_pct)}%` : assumptionsLoading ? "Loading…" : "N/A"}</span></p>
+            <p>Benchmark ROI ({account?.industry ?? "Industry"}): <span className="font-semibold">{assumptions ? `${Math.round(assumptions.avg_roi_pct)}%` : assumptionsLoading ? "Loading…" : "N/A"}</span></p>
             <p>Loaded assumption sets: <span className="font-semibold">{loadedAssumptionSetCount}</span></p>
             <p>Calculated scenarios: <span className="font-semibold">{scenarioNames.join(", ") || "None yet"}</span></p>
           </div>

@@ -24,6 +24,7 @@ export interface TestUserInfo {
 }
 
 export const BACKEND_E2E_TENANT_ID = '00000000-0000-4000-e2e0-000000000001';
+const BACKEND_E2E_USER_ID = '00000000-0000-4000-e2e0-0000000000a1';
 
 /**
  * Default test user — admin role for maximum access in contract tests.
@@ -82,6 +83,7 @@ function normalizeLiveUser(user: TestUserInfo): TestUserInfo {
   }
   return {
     ...user,
+    id: BACKEND_E2E_USER_ID,
     tenantId: BACKEND_E2E_TENANT_ID,
     tenantSlug: 'e2e-test',
   };
@@ -121,7 +123,7 @@ async function seedBackendIntegratedSession(page: Page, user: TestUserInfo): Pro
     data: {
       user_id: requestUser.id,
       email: requestUser.email,
-      role: requestUser.role,
+      role: 'super_admin',
       tenant_slug: requestUser.tenantSlug,
     },
   });

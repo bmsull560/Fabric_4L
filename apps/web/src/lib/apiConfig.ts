@@ -19,8 +19,10 @@ export const L4_PREFIX = import.meta.env.VITE_LAYER4_ROUTE_PREFIX || import.meta
 export const L5_PREFIX = import.meta.env.VITE_LAYER5_ROUTE_PREFIX || import.meta.env.VITE_L5_PREFIX || '/truths';
 export const L6_PREFIX = import.meta.env.VITE_LAYER6_ROUTE_PREFIX || import.meta.env.VITE_L6_PREFIX || '/benchmarks';
 
-// Special prefixes
-export const L4_ANALYSIS_PREFIX = '/v1';
+// Special prefixes. The frontend Layer 4 client already routes through
+// /api/v1/agents and the Vite gateway rewrites that to backend /v1.
+// Do not add another /v1 here, or browser calls become /v1/v1/*.
+export const L4_ANALYSIS_PREFIX = '';
 
 // Re-export layer prefixes for consistency
 export const LAYER_PREFIXES = {

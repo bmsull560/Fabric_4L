@@ -10,6 +10,7 @@ import { AccountScopedRedirect } from "@/components/routing/AccountScopedRedirec
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { useCreateAccount } from "@/hooks/useAccounts";
 import { SettingsLayout } from "@/app/settings/SettingsLayout";
+import CommandCenter from "@/pages/CommandCenter";
 
 // Settings pages — Personal
 const PersonalProfile = lazy(() => import("@/app/settings/pages/PersonalProfile").then(m => ({ default: m.PersonalProfile })));
@@ -50,7 +51,6 @@ const Login = lazy(() => import("@/pages/Login"));
 const Signup = lazy(() => import("@/pages/Signup"));
 const ValueNarrativeHome = lazy(() => import("@/pages/ValueNarrativeHome"));
 const Accounts = lazy(() => import("@/pages/Accounts"));
-const CommandCenter = lazy(() => import("@/pages/CommandCenter"));
 
 // ── Workspace Tab Pages ───────────────────────────────────────────────────────
 const SignalsTab = lazy(() => import("@/pages/intelligence/SignalsTab"));
@@ -221,6 +221,14 @@ export const router = createBrowserRouter([
       },
       {
         path: "/command-center",
+        element: (
+          <ProtectedRoute>
+            <CommandCenter />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/context/command-center",
         element: (
           <ProtectedRoute>
             <CommandCenter />
@@ -477,7 +485,7 @@ export const router = createBrowserRouter([
       { path: "/context/ontology/entities", element: <ProtectedRoute requiredTier="advanced"><EntityBrowser /></ProtectedRoute> },
       { path: "/context/ontology/entities/:entityId", element: <ProtectedRoute requiredTier="advanced"><EntityDetail /></ProtectedRoute> },
       { path: "/context/ontology/graph", element: <ProtectedRoute requiredTier="advanced"><GraphExplorer /></ProtectedRoute> },
-      { path: "/context/ingestion/jobs", element: <ProtectedRoute requiredTier="advanced"><IngestionJobs /></ProtectedRoute> },
+      { path: "/context/ingestion/jobs", element: <ProtectedRoute><IngestionJobs /></ProtectedRoute> },
       { path: "/context/extraction", element: <ProtectedRoute requiredTier="advanced"><ExtractionEngine /></ProtectedRoute> },
       { path: "/context/integrations", element: <ProtectedRoute requiredTier="admin"><Integrations /></ProtectedRoute> },
       { path: "/context/sources", element: <ProtectedRoute requiredTier="admin"><SourceConfiguration /></ProtectedRoute> },

@@ -29,6 +29,11 @@ const BASE_URL =
   process.env.PLAYWRIGHT_BACKEND_URL ??
   'http://localhost:8004';
 
+const LIVE_FRONTEND_URL =
+  process.env.PLAYWRIGHT_LIVE_FRONTEND_URL ??
+  process.env.PLAYWRIGHT_BASE_URL ??
+  '';
+
 const REPORT_JSON =
   process.argv.find((a) => a.startsWith('--report-json='))?.split('=')[1] ??
   process.env.SEED_REPORT_JSON ??
@@ -114,6 +119,66 @@ async function api(
   }
 
   return { status: res.status, data };
+}
+
+async function frontendApi(
+  method: string,
+  path: string,
+  body?: unknown,
+  headers: Record<string, string> = HEADERS,
+): Promise<{ status: number; data: unknown }> {
+  if (!LIVE_FRONTEND_URL) {
+    return { status: 0, data: { error: 'PLAYWRIGHT_LIVE_FRONTEND_URL is not configured' } };
+  }
+  const url = `${LIVE_FRONTEND_URL.replace(/\/$/, '')}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+  return { status: res.status, data };
+}
+
+function cookieHeaderFromSetCookie(setCookie: string | null): string {
+  if (!setCookie) {
+    return '';
+  }
+  return setCookie
+    .split(/,(?=\s*[^;,]+=)/)
+    .map((cookie) => cookie.split(';')[0]?.trim())
+    .filter(Boolean)
+    .join('; ');
+}
+
+async function issueValidationSessionCookieHeader(): Promise<string> {
+  if (!LIVE_FRONTEND_URL) {
+    return '';
+  }
+
+  const url = `${LIVE_FRONTEND_URL.replace(/\/$/, '')}/api/v1/agents/validation/session`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: HEADERS,
+    body: JSON.stringify({
+      tenant_id: E2E_TENANT_ID,
+      user_id: E2E_ADMIN_USER_ID,
+      email: 'e2e-admin@valuefabric.test',
+      name: 'E2E Validation Admin',
+      role: 'super_admin',
+      tenant_slug: 'e2e-validation',
+    }),
+  });
+  if (!res.ok) {
+    console.log(`  ⚠ Validation session issuer returned ${res.status}`);
+    return '';
+  }
+  return cookieHeaderFromSetCookie(res.headers.get('set-cookie'));
 }
 
 
@@ -331,6 +396,32 @@ async function verifyWorkflowListIncludes(...workflowIds: string[]): Promise<boo
   const items = Array.isArray((result.data as any)?.items) ? (result.data as any).items : [];
   const observed = new Set(items.map((item: any) => String(item.id ?? item.workflow_id ?? '')));
   return workflowIds.every((workflowId) => observed.has(workflowId));
+}
+
+async function seedLayer1IngestionEvidence(): Promise<boolean> {
+  const cookieHeader = await issueValidationSessionCookieHeader();
+  const headers = cookieHeader ? { ...HEADERS, Cookie: cookieHeader } : HEADERS;
+  const seedResult = await frontendApi('POST', '/api/v1/ingest/validation/seed/job', {
+    domain: MERIDIAN_FIXTURE.account.domain,
+    url: `https://${MERIDIAN_FIXTURE.account.domain}`,
+    status: 'COMPLETED',
+  }, headers);
+  if (seedResult.status < 200 || seedResult.status >= 300) {
+    const detail =
+      seedResult.data && typeof seedResult.data === 'object'
+        ? JSON.stringify(seedResult.data).slice(0, 240)
+        : String(seedResult.data ?? '');
+    console.log(`  ⚠ Layer 1 ingestion seed returned ${seedResult.status}${detail ? `: ${detail}` : ''}`);
+    return false;
+  }
+
+  const seeded = seedResult.data as any;
+  return (
+    seeded?.seeded === true &&
+    String(seeded?.domain ?? '').toLowerCase() === MERIDIAN_FIXTURE.account.domain &&
+    String(seeded?.status ?? '').toUpperCase() === 'COMPLETED' &&
+    Number(seeded?.progress_percent_complete ?? 0) === 100
+  );
 }
 
 async function attemptCrossTenantVerification(accountId: string): Promise<boolean> {
@@ -598,6 +689,18 @@ async function main() {
       ? 'draft, approved, workflow result, workflow list, export gate metadata, approval history, and audit emission metadata verified'
       : `draft=${draftVerified}; approved=${approvedVerified}; workflowResults=${workflowResultsVerified}; workflowList=${workflowListVerified}`,
     status: lifecycleVerified ? 'present' : 'blocked',
+  });
+
+  console.log('\n[8/8] Seeding Layer 1 ingestion evidence for backend-integrated golden path...');
+  const layer1IngestionSeeded = await seedLayer1IngestionEvidence();
+  recordSeed({
+    seedArea: 'Layer 1 ingestion job evidence',
+    recordsCreated: '1 deterministic completed ingestion job',
+    method: 'API /api/v1/ingest/validation/seed/job through frontend proxy to Layer 1',
+    persistenceVerified: layer1IngestionSeeded
+      ? 'tenant-scoped Layer 1 target/job persisted with completed status and 100% progress'
+      : 'Layer 1 validation seed endpoint did not verify completed job state',
+    status: layer1IngestionSeeded ? 'present' : 'blocked',
   });
 
   console.log('\n══════════════════════════════════════════════════════════');

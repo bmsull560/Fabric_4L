@@ -33,51 +33,57 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _create_gin_index_if_column_exists(index_name: str, table_name: str, column_name: str) -> None:
+    """Create a GIN index only when the JSONB column exists in this schema revision."""
+    op.execute(
+        f"""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = '{table_name}'
+                  AND column_name = '{column_name}'
+            ) THEN
+                EXECUTE 'CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} USING GIN ({column_name})';
+            END IF;
+        END $$;
+        """
+    )
+
+
 def upgrade() -> None:
-    """Add GIN indexes for JSONB fields."""
-    
-    # scraping_targets table
-    op.execute("CREATE INDEX idx_scraping_targets_extraction_config_gin ON scraping_targets USING GIN (extraction_config)")
-    op.execute("CREATE INDEX idx_scraping_targets_browser_config_gin ON scraping_targets USING GIN (browser_config)")
-    op.execute("CREATE INDEX idx_scraping_tags_gin ON scraping_targets USING GIN (tags)")
-    
-    # scraping_jobs table
-    op.execute("CREATE INDEX idx_scraping_jobs_configuration_gin ON scraping_jobs USING GIN (configuration)")
-    
-    # raw_content table
-    op.execute("CREATE INDEX idx_raw_content_metadata_gin ON raw_content USING GIN (metadata)")
-    op.execute("CREATE INDEX idx_raw_content_source_headers_gin ON raw_content USING GIN (source_headers)")
-    op.execute("CREATE INDEX idx_raw_content_meta_og_tags_gin ON raw_content USING GIN (meta_og_tags)")
-    op.execute("CREATE INDEX idx_raw_content_meta_structured_data_gin ON raw_content USING GIN (meta_structured_data)")
-    op.execute("CREATE INDEX idx_raw_content_capture_interactions_gin ON raw_content USING GIN (capture_interactions)")
-    
-    # extracted_data table
-    op.execute("CREATE INDEX idx_extracted_data_data_gin ON extracted_data USING GIN (data)")
-    op.execute("CREATE INDEX idx_extracted_data_validation_errors_gin ON extracted_data USING GIN (validation_errors)")
-    op.execute("CREATE INDEX idx_extracted_data_validation_required_present_gin ON extracted_data USING GIN (validation_required_fields_present)")
-    op.execute("CREATE INDEX idx_extracted_data_validation_required_missing_gin ON extracted_data USING GIN (validation_required_fields_missing)")
-    op.execute("CREATE INDEX idx_extracted_data_post_redacted_fields_gin ON extracted_data USING GIN (post_redacted_fields)")
-    op.execute("CREATE INDEX idx_extracted_data_post_normalized_fields_gin ON extracted_data USING GIN (post_normalized_fields)")
-    op.execute("CREATE INDEX idx_extracted_data_post_enriched_fields_gin ON extracted_data USING GIN (post_enriched_fields)")
-    op.execute("CREATE INDEX idx_extracted_data_ontology_concept_ids_gin ON extracted_data USING GIN (ontology_concept_ids)")
-    op.execute("CREATE INDEX idx_extracted_data_ontology_relationship_ids_gin ON extracted_data USING GIN (ontology_relationship_ids)")
-    
-    # compliance_logs table
-    op.execute("CREATE INDEX idx_compliance_logs_robots_txt_check_gin ON compliance_logs USING GIN (robots_txt_check)")
-    op.execute("CREATE INDEX idx_compliance_logs_rate_limit_event_gin ON compliance_logs USING GIN (rate_limit_event)")
-    op.execute("CREATE INDEX idx_compliance_logs_pii_detection_gin ON compliance_logs USING GIN (pii_detection)")
-    op.execute("CREATE INDEX idx_compliance_logs_domain_policy_gin ON compliance_logs USING GIN (domain_policy)")
-    op.execute("CREATE INDEX idx_compliance_logs_request_headers_gin ON compliance_logs USING GIN (request_headers)")
-    op.execute("CREATE INDEX idx_compliance_logs_metadata_gin ON compliance_logs USING GIN (metadata)")
-    
-    # job_errors table
-    op.execute("CREATE INDEX idx_job_errors_metadata_gin ON job_errors USING GIN (metadata)")
-    
-    # job_stage_details table
-    op.execute("CREATE INDEX idx_job_stage_details_metadata_gin ON job_stage_details USING GIN (metadata)")
-    
-    # proxy_pools table
-    op.execute("CREATE INDEX idx_proxy_pools_proxies_gin ON proxy_pools USING GIN (proxies)")
+    """Add GIN indexes for JSONB fields that exist in the active schema."""
+
+    for index_name, table_name, column_name in [
+        ("idx_scraping_targets_extraction_config_gin", "scraping_targets", "extraction_config"),
+        ("idx_scraping_targets_browser_config_gin", "scraping_targets", "browser_config"),
+        ("idx_scraping_tags_gin", "scraping_targets", "tags"),
+        ("idx_scraping_jobs_configuration_gin", "scraping_jobs", "configuration"),
+        ("idx_raw_content_source_headers_gin", "raw_content", "source_headers"),
+        ("idx_raw_content_meta_og_tags_gin", "raw_content", "meta_og_tags"),
+        ("idx_raw_content_meta_structured_data_gin", "raw_content", "meta_structured_data"),
+        ("idx_raw_content_capture_interactions_gin", "raw_content", "capture_interactions"),
+        ("idx_extracted_data_data_gin", "extracted_data", "data"),
+        ("idx_extracted_data_validation_errors_gin", "extracted_data", "validation_errors"),
+        ("idx_extracted_data_validation_required_present_gin", "extracted_data", "validation_required_fields_present"),
+        ("idx_extracted_data_validation_required_missing_gin", "extracted_data", "validation_required_fields_missing"),
+        ("idx_extracted_data_post_redacted_fields_gin", "extracted_data", "post_redacted_fields"),
+        ("idx_extracted_data_post_normalized_fields_gin", "extracted_data", "post_normalized_fields"),
+        ("idx_extracted_data_post_enriched_fields_gin", "extracted_data", "post_enriched_fields"),
+        ("idx_extracted_data_ontology_concept_ids_gin", "extracted_data", "ontology_concept_ids"),
+        ("idx_extracted_data_ontology_relationship_ids_gin", "extracted_data", "ontology_relationship_ids"),
+        ("idx_compliance_logs_robots_txt_check_gin", "compliance_logs", "robots_txt_check"),
+        ("idx_compliance_logs_rate_limit_event_gin", "compliance_logs", "rate_limit_event"),
+        ("idx_compliance_logs_pii_detection_gin", "compliance_logs", "pii_detection"),
+        ("idx_compliance_logs_domain_policy_gin", "compliance_logs", "domain_policy"),
+        ("idx_compliance_logs_request_headers_gin", "compliance_logs", "request_headers"),
+        ("idx_compliance_logs_metadata_gin", "compliance_logs", "metadata"),
+        ("idx_job_stage_details_metadata_gin", "job_stage_details", "metadata"),
+        ("idx_proxy_pools_proxies_gin", "proxy_pools", "proxies"),
+    ]:
+        _create_gin_index_if_column_exists(index_name, table_name, column_name)
 
 
 def downgrade() -> None:
@@ -92,7 +98,6 @@ def downgrade() -> None:
     op.drop_index('idx_scraping_jobs_configuration_gin', table_name='scraping_jobs')
     
     # raw_content
-    op.drop_index('idx_raw_content_metadata_gin', table_name='raw_content')
     op.drop_index('idx_raw_content_source_headers_gin', table_name='raw_content')
     op.drop_index('idx_raw_content_meta_og_tags_gin', table_name='raw_content')
     op.drop_index('idx_raw_content_meta_structured_data_gin', table_name='raw_content')
@@ -118,8 +123,6 @@ def downgrade() -> None:
     op.drop_index('idx_compliance_logs_metadata_gin', table_name='compliance_logs')
     
     # job_errors
-    op.drop_index('idx_job_errors_metadata_gin', table_name='job_errors')
-    
     # job_stage_details
     op.drop_index('idx_job_stage_details_metadata_gin', table_name='job_stage_details')
     

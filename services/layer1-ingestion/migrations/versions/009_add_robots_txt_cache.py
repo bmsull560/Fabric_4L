@@ -35,30 +35,30 @@ depends_on: Union[str, None] = None
 
 def upgrade() -> None:
     """Create robots_txt_cache table with indexes."""
-    
-    op.create_table(
-        'robots_txt_cache',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, server_default=sa.text('gen_random_uuid()')),
-        sa.Column('domain', sa.String(length=255), nullable=False),
-        sa.Column('url', sa.Text(), nullable=True),
-        sa.Column('content', sa.Text(), nullable=True),
-        sa.Column('rules', postgresql.JSONB(astext_type=sa.Text()), nullable=True, server_default=sa.text("'{}'::jsonb")),
-        sa.Column('fetched_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('http_status', sa.Integer(), nullable=True),
-        sa.Column('is_valid', sa.Boolean(), nullable=True, server_default=sa.true()),
-        sa.Column('parse_error', sa.Text(), nullable=True),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('domain')
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS robots_txt_cache (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            tenant_id UUID NOT NULL,
+            domain VARCHAR(255) NOT NULL,
+            url TEXT,
+            content TEXT,
+            rules JSONB DEFAULT '{}'::jsonb,
+            fetched_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            http_status INTEGER,
+            is_valid BOOLEAN DEFAULT true,
+            parse_error TEXT,
+            UNIQUE (tenant_id, domain)
+        )
+        """
     )
-    
-    # Create indexes for common query patterns
-    op.create_index('idx_robots_txt_cache_domain', 'robots_txt_cache', ['domain'], unique=True)
-    op.create_index('idx_robots_txt_cache_expires_at', 'robots_txt_cache', ['expires_at'])
-    op.create_index('idx_robots_txt_cache_is_valid', 'robots_txt_cache', ['is_valid'])
-    
-    # GIN index on rules JSONB for efficient rule queries
-    op.execute("CREATE INDEX idx_robots_txt_cache_rules_gin ON robots_txt_cache USING GIN (rules)")
+    op.execute("ALTER TABLE robots_txt_cache ADD COLUMN IF NOT EXISTS tenant_id UUID")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_robots_txt_cache_domain ON robots_txt_cache (domain)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_robots_txt_cache_tenant_domain ON robots_txt_cache (tenant_id, domain)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_robots_txt_cache_expires_at ON robots_txt_cache (expires_at)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_robots_txt_cache_is_valid ON robots_txt_cache (is_valid)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_robots_txt_cache_rules_gin ON robots_txt_cache USING GIN (rules)")
 
 
 def downgrade() -> None:

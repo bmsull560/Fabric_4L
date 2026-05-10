@@ -25,21 +25,31 @@ depends_on: Union[str, None] = None
 
 def upgrade() -> None:
     """Add source_category column to scraping_targets."""
-    op.add_column(
-        "scraping_targets",
-        sa.Column("source_category", sa.String(length=50), nullable=True),
+    op.execute(
+        "ALTER TABLE scraping_targets ADD COLUMN IF NOT EXISTS source_category VARCHAR(50)"
     )
-    op.create_index(
-        "idx_scraping_targets_org_source_category",
-        "scraping_targets",
-        ["organization_id", "source_category"],
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'scraping_targets'
+                  AND column_name = 'tenant_id'
+            ) THEN
+                EXECUTE 'CREATE INDEX IF NOT EXISTS idx_scraping_targets_tenant_source_category ON scraping_targets (tenant_id, source_category)';
+            ELSE
+                EXECUTE 'CREATE INDEX IF NOT EXISTS idx_scraping_targets_org_source_category ON scraping_targets (organization_id, source_category)';
+            END IF;
+        END $$;
+        """
     )
 
 
 def downgrade() -> None:
     """Remove source_category column from scraping_targets."""
-    op.drop_index(
-        "idx_scraping_targets_org_source_category",
-        table_name="scraping_targets",
-    )
+    op.drop_index("idx_scraping_targets_tenant_source_category", table_name="scraping_targets", if_exists=True)
+    op.drop_index("idx_scraping_targets_org_source_category", table_name="scraping_targets", if_exists=True)
     op.drop_column("scraping_targets", "source_category")

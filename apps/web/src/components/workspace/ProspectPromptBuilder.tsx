@@ -230,6 +230,7 @@ type BuilderAction =
   | { type: "SELECT_COMPANY"; company: CompanyOption }
   | { type: "SYNC_SELECTED_COMPANY"; company?: CompanyOption }
   | { type: "ENABLE_SECTION"; section: SectionKey }
+  | { type: "SET_COMPANY_FIELD"; field: "companyName" | "companyDomain"; value: string }
   | { type: "SET_MODE"; mode: PromptMode }
   | { type: "SET_PRIMARY_DELIVERABLE"; deliverable: DeliverableType }
   | { type: "SET_ENRICHMENT_DEPTH"; enrichmentDepth: EnrichmentDepth }
@@ -509,6 +510,22 @@ function builderReducer(state: BuilderState, action: BuilderAction): BuilderStat
         visibleSections,
         promptText: serializeDraft(nextDraft, visibleSections, state.primaryDeliverable),
         statusMessage: `${sectionTitle(action.section)} added to the prompt.`,
+        successMessage: "",
+        errorMessage: "",
+      }
+    }
+    case "SET_COMPANY_FIELD": {
+      const nextDraft: ProspectSetupDraft = {
+        ...state.draft,
+        [action.field]: action.value,
+      }
+      const visibleSections = { ...state.visibleSections, company: true }
+      return {
+        ...state,
+        draft: nextDraft,
+        visibleSections,
+        selectedCompany: undefined,
+        promptText: serializeDraft(nextDraft, visibleSections, state.primaryDeliverable),
         successMessage: "",
         errorMessage: "",
       }
@@ -1674,6 +1691,32 @@ export function ProspectPromptBuilder({
                     {state.attachments.length} attachment{state.attachments.length > 1 ? "s" : ""}
                   </Badge>
                 ) : null}
+              </div>
+              <div className="mb-3 grid gap-3 rounded-2xl border border-border/60 bg-muted/20 p-3 sm:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">Company name</span>
+                  <input
+                    type="text"
+                    value={state.draft.companyName}
+                    onChange={(event) =>
+                      dispatch({ type: "SET_COMPANY_FIELD", field: "companyName", value: event.target.value })
+                    }
+                    placeholder="Company name"
+                    className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">Website</span>
+                  <input
+                    type="text"
+                    value={state.draft.companyDomain}
+                    onChange={(event) =>
+                      dispatch({ type: "SET_COMPANY_FIELD", field: "companyDomain", value: event.target.value })
+                    }
+                    placeholder="Website"
+                    className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                </label>
               </div>
             </div>
 

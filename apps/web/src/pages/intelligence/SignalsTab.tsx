@@ -29,6 +29,16 @@ interface Signal {
   reviewed_by?: string;
 }
 
+type RawSignal = Partial<Signal> & {
+  text?: string;
+  title?: string;
+  label?: string;
+  severity?: string;
+  source?: string;
+  confidence_score?: number;
+  impact_value?: string;
+};
+
 type SignalReviewStatus = Extract<Signal["review_status"], "approved" | "rejected">;
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -40,6 +50,36 @@ const CATEGORY_COLORS: Record<string, string> = {
   Risk: "bg-pink-500",
 };
 
+function titleCaseCategory(value: string | undefined): string {
+  if (!value) return "Operational";
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizeConfidence(value: unknown): number {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  const percent = numeric > 0 && numeric <= 1 ? numeric * 100 : numeric;
+  return Math.max(0, Math.min(100, Math.round(percent)));
+}
+
+function normalizeSignal(signal: RawSignal, index: number): Signal {
+  const confidence = normalizeConfidence(signal.confidence ?? signal.confidence_score);
+  return {
+    id: String(signal.id ?? `signal-${index + 1}`),
+    name: String(signal.name ?? signal.title ?? signal.text ?? signal.label ?? `Signal ${index + 1}`),
+    category: titleCaseCategory(signal.category),
+    confidence,
+    impact: String(signal.impact ?? signal.impact_value ?? signal.severity ?? "Medium"),
+    trend: signal.trend ?? signal.source,
+    review_status: signal.review_status ?? "unreviewed",
+    review_notes: signal.review_notes,
+    reviewed_at: signal.reviewed_at,
+    reviewed_by: signal.reviewed_by,
+  };
+}
+
 export default function SignalsTab() {
   const queryClient = useQueryClient();
   const params = useParams<{ accountId: string }>();
@@ -50,10 +90,7 @@ export default function SignalsTab() {
   const persistTab = usePersistWorkspaceTab("signals");
 
   const signals = useMemo(
-    () => (data?.signals ?? []).map((signal) => ({
-      ...signal,
-      review_status: signal.review_status ?? "unreviewed" as const,
-    })),
+    () => (data?.signals ?? []).map((signal, index) => normalizeSignal(signal as RawSignal, index)),
     [data],
   );
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);

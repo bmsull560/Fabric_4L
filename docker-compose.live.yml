@@ -109,8 +109,8 @@ services:
   # ---------------------------------------------------------------------------
   layer1:
     build:
-      context: ./services/layer1-ingestion
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./services/layer1-ingestion/Dockerfile.live
       args:
         INSTALL_PLAYWRIGHT_BROWSERS: "false"
     container_name: vf-live-layer1
@@ -127,6 +127,7 @@ services:
       # Keep Docker readiness non-blocking during live-stack startup; full API checks run after the stack is ready.
       LAYER1_RELEASE_SMOKE_LIGHT_HEALTH: "true"
       JWT_SECRET: ${JWT_SECRET:-live-local-secret-do-not-use-in-production-minimum-32-chars}
+      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-live-local-service-auth-secret-do-not-use-in-production-32c}
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
@@ -140,8 +141,8 @@ services:
 
   layer1-worker:
     build:
-      context: ./services/layer1-ingestion
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./services/layer1-ingestion/Dockerfile.live
       args:
         INSTALL_PLAYWRIGHT_BROWSERS: "false"
     container_name: vf-live-layer1-worker

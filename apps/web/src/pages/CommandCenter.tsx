@@ -18,6 +18,7 @@ export default function CommandCenter() {
   const [profile, setProfile] = useState("Default");
   const [ontology, setOntology] = useState("SaaS / B2B");
   const [depth, setDepth] = useState("3");
+  const [submissionNotice, setSubmissionNotice] = useState<{ domain: string; jobId: string } | null>(null);
 
   // UI state: Zustand
   const { domainInput, setDomainInput } = useIngestionUIStore();
@@ -27,7 +28,7 @@ export default function CommandCenter() {
   const { data: kpiData = { totalDomains: 0, pagesSynthesized: 0, sourcesAnalyzed: 0, avgProcessingTime: 0 } } = useIngestionStats();
   const submitDomain = useSubmitDomain();
 
-  const isLoading = jobsLoading || submitDomain.isPending;
+  const isSubmittingDomain = submitDomain.isPending;
 
   return (
     <div className="p-6 max-w-5xl">
@@ -49,25 +50,40 @@ export default function CommandCenter() {
           />
           <Btn
             variant="primary"
-            onClick={() => domainInput && submitDomain.mutate(
-              {
-                domain: domainInput,
-                profile: showAdvanced ? profile : undefined,
-                ontology: showAdvanced ? ontology : undefined,
-                depth: showAdvanced ? depth : undefined,
-              },
-              {
-                onSuccess: () => setDomainInput(''),
-                onError: (err) => toast.error(`Ingestion failed: ${err instanceof Error ? err.message : 'Unknown error'}`),
-              }
-            )}
-            disabled={isLoading || !domainInput}
+            onClick={() => {
+              const domain = domainInput.trim();
+              if (!domain) return;
+              submitDomain.mutate(
+                {
+                  domain,
+                  profile: showAdvanced ? profile : undefined,
+                  ontology: showAdvanced ? ontology : undefined,
+                  depth: showAdvanced ? depth : undefined,
+                },
+                {
+                  onSuccess: (jobId) => {
+                    setSubmissionNotice({ domain, jobId });
+                    setDomainInput('');
+                  },
+                  onError: (err) => toast.error(`Ingestion failed: ${err instanceof Error ? err.message : 'Unknown error'}`),
+                }
+              );
+            }}
+            disabled={isSubmittingDomain || !domainInput}
           >
             {submitDomain.isPending ? <Loader2 size={13} className="animate-spin" /> : <>
               Synthesize <ArrowRight size={13} className="inline ml-1"/>
             </>}
           </Btn>
         </div>
+
+        {submissionNotice && (
+          <div role="status" className="mx-4 mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-900">
+            Ingestion job submitted for <span className="font-semibold">{submissionNotice.domain}</span>.
+            Processing is queued in Layer 1 job <span className="font-mono">{submissionNotice.jobId.slice(0, 8)}...</span>;
+            track status and completion in Ingestion Jobs.
+          </div>
+        )}
 
         {/* Advanced config toggle */}
         <button

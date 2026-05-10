@@ -12,6 +12,7 @@ Provides endpoints for:
 
 import json
 import os
+import hmac
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,7 +54,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..shared.config import is_production_like_environment, settings
-from ..shared.database import get_db_from_context_sync
+from ..shared.database import get_db_from_context_sync, get_db_session
 from ..shared.models import (
     AuthenticationType,
     BrowserEngine,
@@ -81,6 +82,8 @@ from ..shared.models import (
     create_scraping_job,
     create_scraping_target,
 )
+
+E2E_SEED_PRIVILEGED_REASON = "playwright-backend-validation-seed"
 
 try:
     from ..shared.tasks import cleanup_old_content, process_scraping_job
@@ -458,6 +461,43 @@ app.include_router(compatibility_routes.router)
 router = APIRouter(prefix="/api/v1/ingestion")
 
 
+class ValidationIngestionJobSeedRequest(BaseModel):
+    """Non-production deterministic ingestion evidence for backend-integrated Playwright."""
+
+    domain: str = Field(default="meridian-auto.com", min_length=3)
+    url: str | None = None
+    status: JobStatus = JobStatus.COMPLETED
+
+
+def _require_validation_seed_allowed(request: Request) -> tuple[UUID, UUID]:
+    """Require service-authenticated, non-production validation seeding."""
+
+    if is_production_like_environment(settings.environment):
+        raise HTTPException(status_code=403, detail="Validation seeding is disabled in production-like environments")
+
+    expected_secret = os.getenv("SERVICE_AUTH_SECRET", "").strip()
+    provided_secret = request.headers.get("X-Service-Auth", "").strip()
+    if not expected_secret or not hmac.compare_digest(provided_secret, expected_secret):
+        raise HTTPException(status_code=403, detail="Validation seeding requires service authentication")
+
+    reason = request.headers.get("X-Privileged-Reason", "").strip()
+    if reason != E2E_SEED_PRIVILEGED_REASON:
+        raise HTTPException(status_code=403, detail="Validation seeding requires privileged reason")
+
+    tenant_header = request.headers.get("X-Tenant-ID", "").strip()
+    if not tenant_header:
+        raise HTTPException(status_code=403, detail="Validation seeding requires tenant context")
+    try:
+        tenant_id = UUID(tenant_header)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid X-Tenant-ID header format") from exc
+
+    # Layer 1 persistence requires UUID users. This seed identity is local-only
+    # and never grants browser access by itself; browser auth still uses vf_session.
+    user_id = UUID("00000000-0000-4000-e2e0-0000000000a1")
+    return tenant_id, user_id
+
+
 # =============================================================================
 # DEPENDENCY: ORGANIZATION ID (Multi-tenancy)
 # =============================================================================
@@ -805,6 +845,7 @@ class JobSummary(BaseModel):
 
     id: UUID
     target_id: UUID
+    configuration: dict[str, Any]
     status: str
     priority: int
     progress_percent_complete: int
@@ -1082,6 +1123,108 @@ class ProxyPoolResponse(BaseModel):
 # =============================================================================
 # API ENDPOINTS - ScrapingTarget
 # =============================================================================
+
+
+@router.post("/validation/seed/job")
+async def seed_validation_ingestion_job(
+    payload: ValidationIngestionJobSeedRequest,
+    request: Request,
+) -> dict[str, Any]:
+    """Seed deterministic Layer 1 job evidence for backend-integrated validation.
+
+    This endpoint is non-production only, service-auth gated, and writes
+    tenant-scoped Layer 1 records through the canonical persistence models.
+    It exists to prove the live frontend can read real Layer 1 job state
+    without requiring external crawling or mocks during Playwright validation.
+    """
+
+    tenant_id, user_id = _require_validation_seed_allowed(request)
+    domain = payload.domain.strip().lower()
+    url = payload.url or f"https://{domain}"
+    now = datetime.now(UTC)
+
+    with get_db_session(tenant_id=tenant_id, require_tenant=True) as db:
+        target = (
+            db.query(ScrapingTarget)
+            .filter(ScrapingTarget.organization_id == tenant_id, ScrapingTarget.url == url)
+            .first()
+        )
+        if target is None:
+            target = create_scraping_target(
+                tenant_id=tenant_id,
+                name=domain,
+                url=url,
+                target_type=TargetType.SINGLE_PAGE,
+                source_category=SourceCategory.API,
+                created_by=user_id,
+                extraction_config={"crawl_path": CrawlPath.FAST.value, "seed_source": E2E_SEED_PRIVILEGED_REASON},
+                compliance={"robots_txt": "validated", "seeded": True},
+                tags=["backend-integrated", "j1", "seeded"],
+            )
+            target.last_success_at = now
+            target.success_count = 1
+            db.add(target)
+            db.flush()
+
+        job = (
+            db.query(ScrapingJob)
+            .filter(
+                ScrapingJob.organization_id == tenant_id,
+                ScrapingJob.target_id == target.id,
+                ScrapingJob.configuration["url"].astext == url,
+            )
+            .order_by(ScrapingJob.created_at.desc())
+            .first()
+        )
+        if job is None:
+            job = create_scraping_job(
+                tenant_id=tenant_id,
+                target_id=target.id,
+                created_by=user_id,
+                configuration={
+                    "url": url,
+                    "domain": domain,
+                    "crawl_path": CrawlPath.FAST.value,
+                    "seed_source": E2E_SEED_PRIVILEGED_REASON,
+                },
+                triggered_by=TriggeredBy.API,
+                correlation_id="j1-backend-integrated-seed",
+            )
+            db.add(job)
+            db.flush()
+
+        job.status = payload.status.value
+        job.started_at = job.started_at or now
+        job.completed_at = now if payload.status == JobStatus.COMPLETED else job.completed_at
+        job.progress_total_pages = 7
+        job.progress_processed_pages = 7 if payload.status == JobStatus.COMPLETED else 1
+        job.progress_failed_pages = 0
+        job.progress_current_url = url
+        job.progress_stage = PipelineStage.NOTIFICATION.value if payload.status == JobStatus.COMPLETED else PipelineStage.INIT.value
+        job.progress_percent_complete = 100 if payload.status == JobStatus.COMPLETED else 10
+        job.results_raw_content_count = 7 if payload.status == JobStatus.COMPLETED else 0
+        job.results_extracted_record_count = 5 if payload.status == JobStatus.COMPLETED else 0
+        job.results_storage_bytes_used = 8192 if payload.status == JobStatus.COMPLETED else 0
+        job.results_output_location = f"s3://layer1-raw-html/{tenant_id}/{domain}/seeded.json"
+        job.resources_compute_time_ms = 2200
+        job.resources_browser_sessions_used = 0
+        job.resources_proxy_requests_made = 0
+        job.resources_llm_tokens_consumed = 0
+        target.last_success_at = now
+        target.success_count = max(int(target.success_count or 0), 1)
+        db.flush()
+        db.refresh(job)
+
+        return {
+            "seeded": True,
+            "tenant_id": str(tenant_id),
+            "target_id": str(target.id),
+            "job_id": str(job.id),
+            "domain": domain,
+            "url": url,
+            "status": job.status,
+            "progress_percent_complete": job.progress_percent_complete,
+        }
 
 
 @router.get("/targets", response_model=TargetListResponse)
@@ -1930,6 +2073,7 @@ async def list_jobs(
             JobSummary(
                 id=j.id,
                 target_id=j.target_id,
+                configuration=j.configuration or {},
                 status=j.status,
                 priority=j.priority,
                 progress_percent_complete=j.progress_percent_complete,

@@ -1,9 +1,9 @@
 """SQLAlchemy models for the Layer 1 ingestion service.
 
-The active schema is the spec-compliant post-003 migration shape.  The
-database column is ``organization_id`` for historical migration compatibility,
-while ORM callers may continue to use ``tenant_id`` through SQLAlchemy
-synonyms.
+The active migration chain normalizes tenant ownership to a physical
+``tenant_id`` column.  Older call sites may continue to use
+``organization_id`` through SQLAlchemy synonyms while new code uses
+``tenant_id`` directly.
 """
 
 from __future__ import annotations
@@ -159,12 +159,12 @@ class PIIStatus(str, PyEnum):
 
 class TenantScoped:
     @declared_attr
-    def organization_id(cls):
+    def tenant_id(cls):
         return Column(UUID(as_uuid=True), nullable=False, index=True)
 
     @declared_attr
-    def tenant_id(cls):
-        return synonym("organization_id")
+    def organization_id(cls):
+        return synonym("tenant_id")
 
 
 class ScrapingTarget(TenantScoped, Base):
@@ -200,8 +200,8 @@ class ScrapingTarget(TenantScoped, Base):
     extracted_data = relationship("ExtractedData", back_populates="target")
 
     __table_args__ = (
-        Index("idx_scraping_targets_org_status", "organization_id", "status"),
-        Index("idx_scraping_targets_created", "organization_id", "created_at"),
+        Index("idx_scraping_targets_tenant_status", "tenant_id", "status"),
+        Index("idx_scraping_targets_created", "tenant_id", "created_at"),
     )
 
 
@@ -245,7 +245,7 @@ class ScrapingJob(TenantScoped, Base):
     queue_items = relationship("CrawlQueueItem", back_populates="job", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index("idx_scraping_jobs_org_status", "organization_id", "status"),
+        Index("idx_scraping_jobs_tenant_status", "tenant_id", "status"),
         Index("idx_scraping_jobs_target", "target_id", "created_at"),
         Index("idx_scraping_jobs_status_created", "status", "created_at"),
     )
@@ -347,8 +347,8 @@ class RawContent(TenantScoped, Base):
 
     __table_args__ = (
         Index("idx_raw_content_job_status", "job_id", "processing_status"),
-        Index("idx_raw_content_org_domain", "organization_id", "source_domain"),
-        Index("idx_raw_content_hash", "organization_id", "content_hash"),
+        Index("idx_raw_content_tenant_domain", "tenant_id", "source_domain"),
+        Index("idx_raw_content_hash", "tenant_id", "content_hash"),
     )
 
 
@@ -394,7 +394,7 @@ class ExtractedData(TenantScoped, Base):
 
     __table_args__ = (
         Index("idx_extracted_data_job", "job_id", "created_at"),
-        Index("idx_extracted_data_org_quality", "organization_id", "validation_data_quality_score"),
+        Index("idx_extracted_data_tenant_quality", "tenant_id", "validation_data_quality_score"),
     )
 
 
@@ -426,7 +426,7 @@ class ComplianceLog(TenantScoped, Base):
     target = relationship("ScrapingTarget")
 
     __table_args__ = (
-        Index("idx_compliance_logs_org_event", "organization_id", "event_type"),
+        Index("idx_compliance_logs_tenant_event", "tenant_id", "event_type"),
         Index("idx_compliance_logs_timestamp", "created_at"),
         Index("idx_compliance_logs_job", "job_id", "created_at"),
     )
@@ -446,7 +446,7 @@ class ProxyPool(TenantScoped, Base):
     updated_at = Column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
 
     __table_args__ = (
-        Index("idx_proxy_pools_org", "organization_id", "created_at"),
+        Index("idx_proxy_pools_tenant", "tenant_id", "created_at"),
     )
 
 
@@ -472,7 +472,7 @@ class CrawlQueueItem(TenantScoped, Base):
     job = relationship("ScrapingJob", back_populates="queue_items")
 
     __table_args__ = (
-        Index("idx_crawl_queue_org_job_status", "organization_id", "job_id", "status"),
+        Index("idx_crawl_queue_tenant_job_status", "tenant_id", "job_id", "status"),
         Index("idx_crawl_queue_next_retry", "status", "next_retry_at"),
         Index("idx_crawl_queue_domain_priority", "domain", "priority"),
     )
@@ -493,7 +493,7 @@ class RobotsTxtCache(TenantScoped, Base):
     parse_error = Column(Text, nullable=True)
 
     __table_args__ = (
-        Index("idx_robots_txt_cache_org", "organization_id", "domain"),
+        Index("idx_robots_txt_cache_tenant", "tenant_id", "domain"),
     )
 
 

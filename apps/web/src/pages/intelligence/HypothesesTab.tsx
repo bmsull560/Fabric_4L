@@ -276,6 +276,27 @@ export default function HypothesesTab() {
         />
       }
     >
+      <section className="mb-6 rounded-lg border border-border bg-card p-4">
+        <h2 className="text-sm font-semibold text-foreground">Hypothesis Review and Approval</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Review expected value hypotheses, edit assumptions, and approve validated opportunities before converting them into driver trees.
+        </p>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="rounded-md border border-border/70 p-3">
+            <h3 className="text-xs font-semibold text-foreground">Expected Value</h3>
+            <p className="mt-1 text-[11px] text-muted-foreground">Estimated impact and confidence are tracked before approval.</p>
+          </div>
+          <div className="rounded-md border border-border/70 p-3">
+            <h3 className="text-xs font-semibold text-foreground">Edit Assumptions</h3>
+            <p className="mt-1 text-[11px] text-muted-foreground">Reviewers can refine signal fit, value path, and evidence context.</p>
+          </div>
+          <div className="rounded-md border border-border/70 p-3">
+            <h3 className="text-xs font-semibold text-foreground">Approve for Driver Tree</h3>
+            <p className="mt-1 text-[11px] text-muted-foreground">Approved hypotheses become the bridge into value drivers and calculation.</p>
+          </div>
+        </div>
+      </section>
+
       {/* Header metrics */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <MetricCard label="Total Hypotheses" value={String(hypotheses.length)} />

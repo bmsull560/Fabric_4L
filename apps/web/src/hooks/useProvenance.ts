@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiGet } from "@/api/typedClient";
 import type { l3 } from "@/api/generated";
 import { QK } from "./queryKeys";
-import { STALE_TIME } from "./useApiShared";
+import { RETRY_CONFIG, STALE_TIME } from "./useApiShared";
 import {
   parseAuditLogResponse,
   parseProvenanceTrail,
@@ -28,7 +28,10 @@ export interface AuditLogFilter {
   agent?: string;
 }
 
-export function useProvenanceTrail(entityId: string | null) {
+export function useProvenanceTrail(
+  entityId: string | null,
+  options: { enabled?: boolean; retry?: typeof RETRY_CONFIG.maxRetries | false } = {}
+) {
   return useQuery({
     queryKey: QK.provenance.trail(entityId || ""),
     queryFn: async () => {
@@ -39,12 +42,17 @@ export function useProvenanceTrail(entityId: string | null) {
       );
       return parseProvenanceTrail(response.data);
     },
-    enabled: !!entityId,
+    enabled: Boolean(entityId) && (options.enabled ?? true),
     staleTime: STALE_TIME.activity,
+    retry: options.retry ?? RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
   });
 }
 
-export function useAuditLogs(filters: AuditLogFilter = {}) {
+export function useAuditLogs(
+  filters: AuditLogFilter = {},
+  options: { enabled?: boolean; retry?: typeof RETRY_CONFIG.maxRetries | false } = {}
+) {
   return useQuery({
     queryKey: QK.provenance.audit(filters),
     queryFn: async () => {
@@ -63,6 +71,9 @@ export function useAuditLogs(filters: AuditLogFilter = {}) {
       return parseAuditLogResponse(response.data);
     },
     staleTime: STALE_TIME.poll,
+    enabled: options.enabled ?? true,
+    retry: options.retry ?? RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
   });
 }
 
