@@ -82,11 +82,16 @@ artifacts/live-workflow-validation/backend-integrated-reproducibility-summary.js
 
 For CI/staging evidence, pass `--environment ci` or `--environment staging` and provide an explicit release-candidate SHA through `--release-candidate-sha`, `RELEASE_CANDIDATE_SHA`, or `GITHUB_SHA`. A local run may fall back to `git rev-parse HEAD`, but the summary is marked `TOOLING_ONLY` and does not close CI/staging reproducibility.
 
+CI evidence additionally requires CI metadata such as `CI=true` or `GITHUB_ACTIONS=true` plus a run identifier such as `GITHUB_RUN_ID`, `CI_PIPELINE_ID`, `BUILD_BUILDID`, or `BUILDKITE_BUILD_ID`.
+
+Staging evidence additionally requires an evidence run identifier and evidence URL through `--evidence-run-id` and `--evidence-url`, or equivalent staging environment variables (`STAGING_EVIDENCE_RUN_ID` / `STAGING_EVIDENCE_URL`, `STAGING_DEPLOYMENT_ID` / `STAGING_DEPLOYMENT_URL`, or `STAGING_RUN_ID` / `STAGING_URL`).
+
 If Playwright reports a retry/flaky result, the runner fails unless `--retry-classification` is provided. A classified retry can be retained as evidence with residual risk, but it is not the same as a clean deterministic PASS.
 
 The script can produce reproducibility evidence, but CI/staging reproducibility remains open until it is executed in the approved CI/staging or production-like environment with:
 
 - release-candidate SHA
+- approved CI/staging metadata
 - retained artifacts
 - logs
 - redacted environment metadata
@@ -207,6 +212,7 @@ A CI or staging reproduction is valid only when the evidence bundle includes:
 
 - release-candidate commit SHA
 - exact command sequence or CI job URL
+- approved CI/staging run identifier and evidence URL or job URL
 - retained seed report
 - retained J1, J11, and J1+J11 JUnit XML artifacts
 - JUnit results with `failures=0`, `errors=0`, `skipped=0`, and pair `tests=20`

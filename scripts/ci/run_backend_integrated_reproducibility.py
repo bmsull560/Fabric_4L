@@ -31,6 +31,10 @@ DEFAULT_COMPOSE_FILES = [
     REPO_ROOT / ".tmp" / "docker-compose.j11.override.yml",
 ]
 REQUIRED_SERVICES = ["postgres", "redis", "neo4j", "minio", "layer1", "layer4", "frontend"]
+CI_RUN_ID_KEYS = ("GITHUB_RUN_ID", "CI_PIPELINE_ID", "BUILD_BUILDID", "BUILDKITE_BUILD_ID")
+CI_JOB_URL_KEYS = ("GITHUB_SERVER_URL", "CI_JOB_URL", "BUILD_BUILDURI", "BUILDKITE_BUILD_URL")
+STAGING_RUN_ID_KEYS = ("STAGING_EVIDENCE_RUN_ID", "STAGING_DEPLOYMENT_ID", "STAGING_RUN_ID")
+STAGING_URL_KEYS = ("STAGING_EVIDENCE_URL", "STAGING_DEPLOYMENT_URL", "STAGING_URL")
 SECRET_KEY_PATTERN = re.compile(r"(SECRET|TOKEN|PASSWORD|PASSWD|KEY|AUTH)", re.IGNORECASE)
 FLAKE_OUTPUT_PATTERN = re.compile(r"\b(?:flaky|retry|retries|passed on retry)\b", re.IGNORECASE)
 SECRET_VALUE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -136,6 +140,77 @@ def resolve_release_candidate_sha(explicit: str | None, *, evidence_environment:
     raise PhaseError(
         "release-candidate SHA is required; pass --release-candidate-sha or set RELEASE_CANDIDATE_SHA/GITHUB_SHA"
     )
+
+
+def first_nonempty_env(env: dict[str, str], keys: tuple[str, ...]) -> tuple[str | None, str | None]:
+    for key in keys:
+        value = env.get(key)
+        if value and value.strip():
+            return key, value.strip()
+    return None, None
+
+
+def validate_approved_environment(
+    *,
+    args: argparse.Namespace,
+    env: dict[str, str],
+    evidence_environment: str,
+    release_sha_source: str,
+) -> dict[str, Any]:
+    """Return redacted evidence-environment metadata or fail closed.
+
+    Local runs are allowed for tooling validation, but only CI/staging runs with
+    explicit SHA metadata can be reviewed as external reproducibility evidence.
+    """
+
+    if evidence_environment == "local":
+        return {
+            "approvedForGateClosure": False,
+            "reason": "local_tooling_only",
+        }
+
+    if release_sha_source == "local_git_rev_parse_tooling_only":
+        raise PhaseError("CI/staging evidence cannot use local git rev-parse SHA fallback")
+
+    if evidence_environment == "ci":
+        ci_marker = env.get("GITHUB_ACTIONS") or env.get("CI")
+        run_id_key, run_id = first_nonempty_env(env, CI_RUN_ID_KEYS)
+        job_url_key, job_url = first_nonempty_env(env, CI_JOB_URL_KEYS)
+        if not ci_marker:
+            raise PhaseError("CI evidence requires CI metadata such as CI=true or GITHUB_ACTIONS=true")
+        if not run_id:
+            raise PhaseError(f"CI evidence requires one run identifier: {', '.join(CI_RUN_ID_KEYS)}")
+        return {
+            "approvedForGateClosure": True,
+            "environment": "ci",
+            "ciMarkerPresent": True,
+            "runIdKey": run_id_key,
+            "runId": run_id,
+            "jobUrlKey": job_url_key,
+            "jobUrl": job_url,
+        }
+
+    if evidence_environment == "staging":
+        evidence_run_id = args.evidence_run_id or first_nonempty_env(env, STAGING_RUN_ID_KEYS)[1]
+        evidence_url = args.evidence_url or first_nonempty_env(env, STAGING_URL_KEYS)[1]
+        if not evidence_run_id:
+            raise PhaseError(
+                "staging evidence requires --evidence-run-id or one of "
+                f"{', '.join(STAGING_RUN_ID_KEYS)}"
+            )
+        if not evidence_url:
+            raise PhaseError(
+                "staging evidence requires --evidence-url or one of "
+                f"{', '.join(STAGING_URL_KEYS)}"
+            )
+        return {
+            "approvedForGateClosure": True,
+            "environment": "staging",
+            "evidenceRunId": evidence_run_id,
+            "evidenceUrl": evidence_url,
+        }
+
+    raise PhaseError(f"unsupported evidence environment: {evidence_environment}")
 
 
 def base_env(args: argparse.Namespace, artifact_dir: Path) -> dict[str, str]:
@@ -378,6 +453,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--skip-stack-start", action="store_true", help="Use an already-running approved stack")
     parser.add_argument(
+        "--evidence-run-id",
+        help="Required staging evidence run/deployment identifier unless provided by staging environment variables.",
+    )
+    parser.add_argument(
+        "--evidence-url",
+        help="Required staging evidence/deployment URL unless provided by staging environment variables.",
+    )
+    parser.add_argument(
         "--retry-classification",
         help="Required when Playwright reports a retry/flaky result; recorded without hiding residual risk.",
     )
@@ -408,6 +491,7 @@ def main() -> int:
         "composeFiles": [str(path) for path in compose_files],
         "requiredServices": REQUIRED_SERVICES,
         "skipStackStart": args.skip_stack_start,
+        "approvedEnvironment": {"approvedForGateClosure": False, "reason": "not_evaluated"},
         "environment": {},
         "phases": phases,
         "artifacts": {},
@@ -423,6 +507,12 @@ def main() -> int:
         summary["releaseCandidateSha"] = release_sha
         summary["releaseCandidateShaSource"] = release_sha_source
         summary["environment"] = printable_env_delta(env)
+        summary["approvedEnvironment"] = validate_approved_environment(
+            args=args,
+            env=env,
+            evidence_environment=evidence_environment,
+            release_sha_source=release_sha_source,
+        )
         artifact_dir.mkdir(parents=True, exist_ok=True)
         playwright_dir.mkdir(parents=True, exist_ok=True)
 
@@ -498,6 +588,7 @@ def main() -> int:
             playwright_outputs=playwright_outputs,
             retry_classification=args.retry_classification,
         )
+        summary["validatorStatus"] = {"status": "RUNNING"}
         run_validator_phase(
             name="validate core GA launch evidence",
             script="scripts/ci/validate_core_ga_launch_evidence.py",
@@ -521,6 +612,8 @@ def main() -> int:
         return 0
     except PhaseError as exc:
         summary["error"] = str(exc)
+        if any(phase["name"].startswith("validate ") and phase["returnCode"] != 0 for phase in phases):
+            summary["validatorStatus"] = {"status": "FAIL"}
         print(f"\nERROR: {exc}", file=sys.stderr)
         return 1
     finally:

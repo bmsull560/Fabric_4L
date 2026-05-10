@@ -45,8 +45,8 @@ journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approv
     await authedPage.goto('/workflow/prospect', { waitUntil: 'domcontentloaded' });
     await expect(authedPage).toHaveURL(/\/workflow\/prospect(?:[?#].*)?$/);
 
-    const companyInput = authedPage.getByPlaceholder(/company name/i);
-    const domainInput = authedPage.getByPlaceholder(/website/i);
+    const companyInput = authedPage.getByLabel(/company name/i);
+    const domainInput = authedPage.getByLabel(/website/i);
     const promptInput = authedPage.getByRole('textbox', { name: /new value case prompt/i });
     const launchButton = authedPage.getByRole('button', { name: /launch intelligence/i });
 
