@@ -99,6 +99,25 @@ The script can produce reproducibility evidence, but CI/staging reproducibility 
 
 The manual commands below remain the fallback for local troubleshooting and for environments that need to run the phases one at a time.
 
+## Approved GitHub Actions Workflow
+
+Use `.github/workflows/backend-integrated-reproducibility.yml` for the approved CI evidence path. Dispatch it manually with the release-candidate SHA that contains the reproducibility runner hardening:
+
+```bash
+gh workflow run backend-integrated-reproducibility.yml \
+  -f release_candidate_sha=<release-candidate-sha>
+```
+
+If retry/flaky evidence is expected and already classified, include:
+
+```bash
+gh workflow run backend-integrated-reproducibility.yml \
+  -f release_candidate_sha=<release-candidate-sha> \
+  -f retry_classification="<root cause and retained-artifact classification>"
+```
+
+The workflow checks out the requested SHA, injects GitHub Actions CI metadata, creates a runtime-only compose override under `.tmp/`, invokes the hardened runner with `--environment ci`, captures Docker service logs, and uploads `artifacts/live-workflow-validation/**`. The workflow output is not owner sign-off by itself; retain the artifact bundle and record owner sign-off before closing CI/staging reproducibility.
+
 ## Reproduction Commands
 
 Run Docker and seed commands from the repository root.
