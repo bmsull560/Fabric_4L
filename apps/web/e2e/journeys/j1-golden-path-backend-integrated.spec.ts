@@ -43,15 +43,21 @@ journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approv
 
   journeyTest('GP-BI-001: user can create a new account through prospect setup form', async ({ authedPage }) => {
     await authedPage.goto('/workflow/prospect', { waitUntil: 'domcontentloaded' });
-    await expectAnyVisible(authedPage, [/start a new value case/i, /search company/i], 'prospect setup form');
+    await expect(authedPage).toHaveURL(/\/workflow\/prospect(?:[?#].*)?$/);
 
     const companyInput = authedPage.getByPlaceholder(/company name/i);
-    await expect(companyInput).toBeVisible({ timeout: 5000 });
+    const domainInput = authedPage.getByPlaceholder(/website/i);
+    const promptInput = authedPage.getByRole('textbox', { name: /new value case prompt/i });
+    const launchButton = authedPage.getByRole('button', { name: /launch intelligence/i });
+
+    await expect(companyInput).toBeVisible({ timeout: 10000 });
+    await expect(domainInput).toBeVisible({ timeout: 10000 });
+    await expect(promptInput).toBeVisible({ timeout: 10000 });
+    await expect(launchButton).toBeVisible({ timeout: 10000 });
+
     await companyInput.fill('Meridian Automotive');
     await companyInput.blur();
 
-    const domainInput = authedPage.getByPlaceholder(/website/i);
-    await expect(domainInput).toBeVisible({ timeout: 5000 });
     await domainInput.fill('meridian-auto.com');
     await domainInput.blur();
 

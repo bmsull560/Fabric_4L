@@ -71,14 +71,18 @@ Mock flags must be absent or false. A mock-enabled run is not valid backend-inte
 Use the dedicated reproducibility runner for CI/staging wiring:
 
 ```powershell
-python scripts/ci/run_backend_integrated_reproducibility.py --release-candidate-sha <sha>
+python scripts/ci/run_backend_integrated_reproducibility.py --release-candidate-sha <sha> --environment ci
 ```
 
-The runner starts the Docker-backed validation services unless `--skip-stack-start` is provided, runs the seed guard, runs deterministic seeding, executes J1-only, J11-only, and the J1+J11 pair, then verifies the retained seed and JUnit artifacts. It writes a machine-readable summary to:
+The runner starts the Docker-backed validation services unless `--skip-stack-start` is provided, runs the seed guard, runs deterministic seeding, executes J1-only, J11-only, and the J1+J11 pair, verifies the retained seed and JUnit artifacts, detects retry/flaky output, and runs the launch evidence validators. It writes a machine-readable summary to:
 
 ```text
 artifacts/live-workflow-validation/backend-integrated-reproducibility-summary.json
 ```
+
+For CI/staging evidence, pass `--environment ci` or `--environment staging` and provide an explicit release-candidate SHA through `--release-candidate-sha`, `RELEASE_CANDIDATE_SHA`, or `GITHUB_SHA`. A local run may fall back to `git rev-parse HEAD`, but the summary is marked `TOOLING_ONLY` and does not close CI/staging reproducibility.
+
+If Playwright reports a retry/flaky result, the runner fails unless `--retry-classification` is provided. A classified retry can be retained as evidence with residual risk, but it is not the same as a clean deterministic PASS.
 
 The script can produce reproducibility evidence, but CI/staging reproducibility remains open until it is executed in the approved CI/staging or production-like environment with:
 
@@ -205,6 +209,8 @@ A CI or staging reproduction is valid only when the evidence bundle includes:
 - exact command sequence or CI job URL
 - retained seed report
 - retained J1, J11, and J1+J11 JUnit XML artifacts
+- JUnit results with `failures=0`, `errors=0`, `skipped=0`, and pair `tests=20`
+- retry/flaky status showing no retries, or explicit retry classification with residual risk
 - retained Playwright HTML and test-results directories
 - Docker compose or staging deployment service health output
 - sanitized frontend, Layer 1, and Layer 4 logs for the validation window

@@ -14,6 +14,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -31,6 +32,7 @@ DEFAULT_COMPOSE_FILES = [
 ]
 REQUIRED_SERVICES = ["postgres", "redis", "neo4j", "minio", "layer1", "layer4", "frontend"]
 SECRET_KEY_PATTERN = re.compile(r"(SECRET|TOKEN|PASSWORD|PASSWD|KEY|AUTH)", re.IGNORECASE)
+FLAKE_OUTPUT_PATTERN = re.compile(r"\b(?:flaky|retry|retries|passed on retry)\b", re.IGNORECASE)
 SECRET_VALUE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("url credentials", re.compile(r"(?i)(postgresql|postgres|mysql|redis|mongodb)://[^\s@]+:[^\s@]+@")),
     ("authorization header", re.compile(r"(?i)(Authorization\s*[:=]\s*)\S+")),
@@ -103,10 +105,24 @@ def parse_junit(path: Path) -> dict[str, int]:
     return totals
 
 
-def resolve_release_candidate_sha(explicit: str | None) -> str:
+def infer_environment(explicit: str | None) -> str:
+    if explicit:
+        return explicit
+    if os.environ.get("GITHUB_ACTIONS") or os.environ.get("CI"):
+        return "ci"
+    return "local"
+
+
+def resolve_release_candidate_sha(explicit: str | None, *, evidence_environment: str) -> tuple[str, str]:
     for candidate in (explicit, os.environ.get("RELEASE_CANDIDATE_SHA"), os.environ.get("GITHUB_SHA")):
         if candidate and candidate.strip():
-            return candidate.strip()
+            return candidate.strip(), "explicit_or_environment"
+
+    if evidence_environment in {"ci", "staging"}:
+        raise PhaseError(
+            "release-candidate SHA is required for CI/staging evidence; "
+            "pass --release-candidate-sha or set RELEASE_CANDIDATE_SHA/GITHUB_SHA"
+        )
 
     result = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -116,7 +132,7 @@ def resolve_release_candidate_sha(explicit: str | None) -> str:
         check=False,
     )
     if result.returncode == 0 and result.stdout.strip():
-        return result.stdout.strip()
+        return result.stdout.strip(), "local_git_rev_parse_tooling_only"
     raise PhaseError(
         "release-candidate SHA is required; pass --release-candidate-sha or set RELEASE_CANDIDATE_SHA/GITHUB_SHA"
     )
@@ -161,6 +177,11 @@ def printable_env_delta(env: dict[str, str]) -> dict[str, str]:
         visible[key] = "[REDACTED]" if SECRET_KEY_PATTERN.search(key) else env[key]
     visible["MSW"] = "<unset>"
     visible["MOCKS_ENABLED"] = "<unset>"
+    visible["CI"] = env.get("CI", "<unset>")
+    visible["GITHUB_ACTIONS"] = env.get("GITHUB_ACTIONS", "<unset>")
+    visible["GITHUB_RUN_ID"] = env.get("GITHUB_RUN_ID", "<unset>")
+    visible["GITHUB_SERVER_URL"] = env.get("GITHUB_SERVER_URL", "<unset>")
+    visible["GITHUB_REPOSITORY"] = env.get("GITHUB_REPOSITORY", "<unset>")
     return visible
 
 
@@ -171,7 +192,7 @@ def run_phase(
     cwd: Path,
     env: dict[str, str],
     phases: list[dict[str, Any]],
-) -> None:
+) -> str:
     print(f"\n## {name}")
     print("$ " + " ".join(command))
     started = now_iso()
@@ -195,10 +216,16 @@ def run_phase(
             "startedAt": started,
             "finishedAt": now_iso(),
             "returnCode": result.returncode,
+            "retryOrFlakyOutputDetected": bool(FLAKE_OUTPUT_PATTERN.search(output)),
         }
     )
     if result.returncode != 0:
         raise PhaseError(f"{name} failed with exit code {result.returncode}")
+    return output
+
+
+def run_validator_phase(*, name: str, script: str, env: dict[str, str], phases: list[dict[str, Any]]) -> None:
+    run_phase(name=name, command=["python", script], cwd=REPO_ROOT, env=env, phases=phases)
 
 
 def docker_command(compose_files: list[Path]) -> list[str]:
@@ -266,9 +293,65 @@ def verify_junit(path: Path, *, expected_tests: int | None = None) -> dict[str, 
     counts = parse_junit(path)
     if counts["failures"] != 0 or counts["errors"] != 0:
         raise PhaseError(f"{path} must have failures=0 and errors=0, got {counts}")
+    if counts["skipped"] != 0:
+        raise PhaseError(f"{path} must have skipped=0, got {counts['skipped']}")
     if expected_tests is not None and counts["tests"] != expected_tests:
         raise PhaseError(f"{path} must have tests={expected_tests}, got {counts['tests']}")
     return {"path": str(path), **counts}
+
+
+def ensure_under_artifact_dir(path: Path, artifact_dir: Path) -> None:
+    resolved = path.resolve()
+    root = artifact_dir.resolve()
+    if resolved != root and root not in resolved.parents:
+        raise PhaseError(f"refusing to reset artifact outside artifact dir: {path}")
+
+
+def reset_artifacts(paths: list[Path], *, artifact_dir: Path) -> None:
+    for path in paths:
+        ensure_under_artifact_dir(path, artifact_dir)
+        if path.is_dir():
+            shutil.rmtree(path)
+        elif path.exists():
+            path.unlink()
+
+
+def scan_retry_artifacts(output_path: Path) -> list[str]:
+    if not output_path.exists():
+        return []
+    retry_paths: list[str] = []
+    for child in output_path.rglob("*"):
+        if re.search(r"(?:^|[-_/])retry\d*(?:$|[-_/])", child.as_posix(), re.IGNORECASE):
+            retry_paths.append(str(child))
+    return sorted(retry_paths)
+
+
+def evaluate_retry_status(
+    *,
+    playwright_outputs: list[dict[str, Any]],
+    retry_classification: str | None,
+) -> dict[str, Any]:
+    detections: list[dict[str, Any]] = []
+    for item in playwright_outputs:
+        output_detected = bool(FLAKE_OUTPUT_PATTERN.search(item.get("output", "")))
+        artifact_detected = bool(item.get("retryArtifacts"))
+        if output_detected or artifact_detected:
+            detections.append(
+                {
+                    "phase": item["phase"],
+                    "outputDetected": output_detected,
+                    "retryArtifacts": item.get("retryArtifacts", []),
+                }
+            )
+    status = "none"
+    if detections:
+        if not retry_classification:
+            raise PhaseError(
+                "retry/flaky evidence detected but no --retry-classification was provided; "
+                "classify the retry before using this as CI/staging evidence"
+            )
+        status = "classified"
+    return {"status": status, "classification": retry_classification, "detections": detections}
 
 
 def write_summary(path: Path, payload: dict[str, Any]) -> None:
@@ -279,6 +362,11 @@ def write_summary(path: Path, payload: dict[str, Any]) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run backend-integrated J1/J11 reproducibility evidence")
     parser.add_argument("--release-candidate-sha", help="Release-candidate commit SHA to record in evidence")
+    parser.add_argument(
+        "--environment",
+        choices=["local", "ci", "staging"],
+        help="Execution environment. Local runs are recorded as TOOLING_ONLY and cannot close CI/staging evidence.",
+    )
     parser.add_argument("--artifact-dir", default=str(DEFAULT_ARTIFACT_DIR), help="Artifact root")
     parser.add_argument("--frontend-url", default="http://localhost:3001", help="Frontend URL for Playwright")
     parser.add_argument("--backend-url", default="http://127.0.0.1:8004", help="Layer 4 backend URL for seeding")
@@ -289,6 +377,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Docker compose file. Can be provided multiple times.",
     )
     parser.add_argument("--skip-stack-start", action="store_true", help="Use an already-running approved stack")
+    parser.add_argument(
+        "--retry-classification",
+        help="Required when Playwright reports a retry/flaky result; recorded without hiding residual risk.",
+    )
     return parser
 
 
@@ -301,11 +393,15 @@ def main() -> int:
     playwright_dir = artifact_dir / "playwright"
     summary_path = artifact_dir / "backend-integrated-reproducibility-summary.json"
     compose_files = [Path(p).resolve() for p in args.compose_files] if args.compose_files else DEFAULT_COMPOSE_FILES
+    evidence_environment = infer_environment(args.environment)
     phases: list[dict[str, Any]] = []
     summary: dict[str, Any] = {
         "generatedAt": now_iso(),
         "status": "FAIL",
         "releaseCandidateSha": None,
+        "releaseCandidateShaSource": None,
+        "evidenceEnvironment": evidence_environment,
+        "evidenceScope": "TOOLING_ONLY" if evidence_environment == "local" else "CI_STAGING_CANDIDATE",
         "artifactDir": str(artifact_dir),
         "frontendUrl": args.frontend_url,
         "backendUrl": args.backend_url,
@@ -315,12 +411,17 @@ def main() -> int:
         "environment": {},
         "phases": phases,
         "artifacts": {},
+        "retryFlakeStatus": {"status": "not_evaluated"},
+        "validatorStatus": {"status": "not_run"},
     }
 
     try:
-        release_sha = resolve_release_candidate_sha(args.release_candidate_sha)
+        release_sha, release_sha_source = resolve_release_candidate_sha(
+            args.release_candidate_sha, evidence_environment=evidence_environment
+        )
         env = base_env(args, artifact_dir)
         summary["releaseCandidateSha"] = release_sha
+        summary["releaseCandidateShaSource"] = release_sha_source
         summary["environment"] = printable_env_delta(env)
         artifact_dir.mkdir(parents=True, exist_ok=True)
         playwright_dir.mkdir(parents=True, exist_ok=True)
@@ -369,7 +470,9 @@ def main() -> int:
             ),
         ]
 
+        playwright_outputs: list[dict[str, Any]] = []
         for name, specs, junit_path, html_path, output_path, expected_tests, artifact_key in runs:
+            reset_artifacts([junit_path, html_path, output_path], artifact_dir=artifact_dir)
             run_env = env.copy()
             run_env.update(
                 {
@@ -381,10 +484,38 @@ def main() -> int:
             command, cwd = guard_command("test")
             run_phase(name=f"{name} guard", command=command, cwd=cwd, env=run_env, phases=phases)
             command, cwd = playwright_command(specs)
-            run_phase(name=name, command=command, cwd=cwd, env=run_env, phases=phases)
+            output = run_phase(name=name, command=command, cwd=cwd, env=run_env, phases=phases)
+            playwright_outputs.append(
+                {
+                    "phase": name,
+                    "output": output,
+                    "retryArtifacts": scan_retry_artifacts(output_path),
+                }
+            )
             summary["artifacts"][artifact_key] = verify_junit(junit_path, expected_tests=expected_tests)
 
+        summary["retryFlakeStatus"] = evaluate_retry_status(
+            playwright_outputs=playwright_outputs,
+            retry_classification=args.retry_classification,
+        )
+        run_validator_phase(
+            name="validate core GA launch evidence",
+            script="scripts/ci/validate_core_ga_launch_evidence.py",
+            env=env,
+            phases=phases,
+        )
+        run_validator_phase(
+            name="validate final testing launch gate",
+            script="scripts/ci/validate_final_testing_launch_gate.py",
+            env=env,
+            phases=phases,
+        )
+        summary["validatorStatus"] = {"status": "PASS"}
         summary["status"] = "PASS"
+        if summary["retryFlakeStatus"]["status"] == "classified":
+            summary["status"] = "PASS_WITH_CLASSIFIED_RETRY"
+        if evidence_environment == "local":
+            summary["status"] = "TOOLING_ONLY_PASS"
         print("\n## Evidence summary")
         print(json.dumps(summary["artifacts"], indent=2, sort_keys=True))
         return 0
