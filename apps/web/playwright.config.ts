@@ -142,7 +142,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     url: BASE_URL,
-    reuseExistingServer: !CI,
+    reuseExistingServer: LIVE_MODE || !CI,
     timeout: 120000,
   },
 
