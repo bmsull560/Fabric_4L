@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -36,6 +37,9 @@ from ...services.account_service import AccountService
 from ...services.business_case_service import BusinessCaseService
 from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
+from ...tenants.models.api_key import APIKey
+from ...tenants.models.tenant import IsolationTier, Tenant, TenantStatus
+from ...tenants.models.user import User
 
 
 class export_business_caseResult(TypedDictModel):
@@ -64,6 +68,49 @@ E2E_SEED_PRIVILEGED_REASON = "playwright-backend-validation-seed"
 E2E_DRAFT_CASE_ID = "case-draft-001"
 E2E_APPROVED_CASE_ID = "case-e2e-approved-001"
 E2E_APPROVED_CASE_ALIASES = ["case-meridian-e2e-001"]
+E2E_TENANT_SLUG = "tenant-e2e-001"
+E2E_TENANT_NAME = "E2E Validation Tenant"
+E2E_SERVICE_ACCOUNT_ID = "svc-playwright-backend-validation"
+E2E_AUTH_SEED_SOURCE = "backend-integrated-auth-context"
+E2E_VALIDATION_USER_IDS = {
+    "admin": UUID("00000000-0000-4000-e2e0-000000000201"),
+    "reviewer": UUID("00000000-0000-4000-e2e0-000000000202"),
+    "read_only": UUID("00000000-0000-4000-e2e0-000000000203"),
+    "sales": UUID("00000000-0000-4000-e2e0-000000000204"),
+}
+E2E_VALIDATION_USERS = [
+    {
+        "id": E2E_VALIDATION_USER_IDS["admin"],
+        "email": "e2e-admin@valuefabric.test",
+        "display_name": "E2E Validation Admin",
+        "role": "super_admin",
+    },
+    {
+        "id": E2E_VALIDATION_USER_IDS["reviewer"],
+        "email": "e2e-reviewer@valuefabric.test",
+        "display_name": "E2E Validation Reviewer",
+        "role": "analyst",
+    },
+    {
+        "id": E2E_VALIDATION_USER_IDS["read_only"],
+        "email": "e2e-readonly@valuefabric.test",
+        "display_name": "E2E Validation Read Only",
+        "role": "read_only",
+    },
+    {
+        "id": E2E_VALIDATION_USER_IDS["sales"],
+        "email": "e2e-sales@valuefabric.test",
+        "display_name": "E2E Validation Sales",
+        "role": "analyst",
+    },
+]
+E2E_ACCOUNT_MAPPINGS = [
+    {
+        "provider_record_id": "acct-meridian-001",
+        "backend_uuid": "00000000-0000-4000-e2e0-000000000101",
+        "label": "Meridian Automotive",
+    }
+]
 
 
 def _get_neo4j_driver(request: Request) -> Any:
@@ -178,6 +225,37 @@ class BusinessCaseLifecycleSeedRequest(BaseModel):
     draft_case_id: str = E2E_DRAFT_CASE_ID
     approved_case_id: str = E2E_APPROVED_CASE_ID
     approved_case_aliases: list[str] = Field(default_factory=lambda: E2E_APPROVED_CASE_ALIASES.copy())
+
+
+class ValidationSeededApiKey(BaseModel):
+    """Pre-hashed API key metadata for deterministic non-production validation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key_id: str = Field(..., min_length=3, max_length=64)
+    name: str = Field(default="E2E backend-integrated validation service key", min_length=1, max_length=100)
+    key_hash: str = Field(..., pattern=r"^[a-f0-9]{64}$")
+    prefix: str = Field(..., min_length=4, max_length=16)
+    role: str = Field(default="system", min_length=1, max_length=30)
+    permissions: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ValidationAuthContextSeedRequest(BaseModel):
+    """Non-production deterministic auth-context seed payload.
+
+    The payload intentionally accepts only non-secret metadata and optional
+    pre-hashed API key material. Raw secrets are rejected by ``extra=forbid``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: UUID | None = None
+    tenant_slug: str = Field(default=E2E_TENANT_SLUG, min_length=1, max_length=63)
+    tenant_name: str = Field(default=E2E_TENANT_NAME, min_length=1, max_length=200)
+    service_account_id: str = Field(default=E2E_SERVICE_ACCOUNT_ID, min_length=1, max_length=128)
+    api_key: ValidationSeededApiKey | None = None
+    account_mappings: list[dict[str, str]] = Field(default_factory=lambda: E2E_ACCOUNT_MAPPINGS.copy())
 
 
 class ValidationSessionRequest(BaseModel):
@@ -353,6 +431,200 @@ def _require_validation_seed_allowed(http_request: Request, context: RequestCont
     reason = http_request.headers.get("X-Privileged-Reason", "").strip()
     if reason != E2E_SEED_PRIVILEGED_REASON:
         raise HTTPException(status_code=403, detail="Validation seeding requires privileged reason")
+
+
+def _context_tenant_uuid(context: RequestContext) -> UUID:
+    """Return the authenticated tenant UUID or fail closed."""
+    try:
+        return UUID(str(context.tenant_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Validation seeding requires UUID tenant context") from exc
+
+
+async def _upsert_validation_tenant(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    tenant_name: str,
+    tenant_slug: str,
+    actor: str | None,
+) -> Tenant:
+    tenant = await db.get(Tenant, tenant_id)
+    now = datetime.now(UTC)
+    settings_payload = {
+        "isolation_tier": IsolationTier.SHARED.value,
+        "seeded": True,
+        "seed_source": E2E_AUTH_SEED_SOURCE,
+        "backend_integrated_validation": True,
+    }
+    if tenant is None:
+        tenant = Tenant(
+            id=tenant_id,
+            name=tenant_name,
+            slug=tenant_slug,
+            status=TenantStatus.ACTIVE.value,
+            settings=settings_payload,
+            status_changed_at=now,
+            status_reason="backend-integrated validation seed",
+            status_changed_by=actor or E2E_SERVICE_ACCOUNT_ID,
+        )
+        db.add(tenant)
+    else:
+        tenant.name = tenant_name
+        tenant.slug = tenant_slug
+        tenant.status = TenantStatus.ACTIVE.value
+        tenant.settings = {**(tenant.settings or {}), **settings_payload}
+        tenant.updated_at = now
+    return tenant
+
+
+async def _upsert_validation_users(db: AsyncSession, *, tenant_id: UUID) -> list[dict[str, str]]:
+    seeded: list[dict[str, str]] = []
+    now = datetime.now(UTC)
+    for user_data in E2E_VALIDATION_USERS:
+        user_id = user_data["id"]
+        user = await db.get(User, user_id)
+        if user is None:
+            user = User(
+                id=user_id,
+                tenant_id=tenant_id,
+                email=str(user_data["email"]),
+                display_name=str(user_data["display_name"]),
+                role=str(user_data["role"]),
+                status="active",
+            )
+            db.add(user)
+        else:
+            if user.tenant_id != tenant_id:
+                raise HTTPException(status_code=409, detail=f"Seeded user tenant mismatch: {user_id}")
+            user.email = str(user_data["email"])
+            user.display_name = str(user_data["display_name"])
+            user.role = str(user_data["role"])
+            user.status = "active"
+            user.updated_at = now
+        seeded.append(
+            {
+                "id": str(user_id),
+                "email": str(user_data["email"]),
+                "role": str(user_data["role"]),
+                "status": "active",
+            }
+        )
+    return seeded
+
+
+async def _upsert_validation_api_key(
+    db: AsyncSession,
+    *,
+    tenant_id: UUID,
+    service_account_id: str,
+    api_key_payload: ValidationSeededApiKey,
+) -> dict[str, Any]:
+    if not re.fullmatch(r"[a-f0-9]{64}", api_key_payload.key_hash):
+        raise HTTPException(status_code=422, detail="Seeded API key hash must be HMAC-SHA256 hex")
+
+    metadata = {
+        **api_key_payload.metadata,
+        "seeded": True,
+        "seed_source": E2E_AUTH_SEED_SOURCE,
+        "service_account_id": service_account_id,
+        "raw_secret_persisted": False,
+    }
+    key = await db.get(APIKey, api_key_payload.key_id)
+    if key is None:
+        key = APIKey(
+            key_id=api_key_payload.key_id,
+            tenant_id=tenant_id,
+            user_id=None,
+            name=api_key_payload.name,
+            key_hash=api_key_payload.key_hash,
+            prefix=api_key_payload.prefix,
+            role=api_key_payload.role,
+            permissions=api_key_payload.permissions or None,
+            enabled=True,
+            metadata_=metadata,
+        )
+        db.add(key)
+    else:
+        if key.tenant_id != tenant_id:
+            raise HTTPException(status_code=409, detail=f"Seeded API key tenant mismatch: {key.key_id}")
+        key.name = api_key_payload.name
+        key.key_hash = api_key_payload.key_hash
+        key.prefix = api_key_payload.prefix
+        key.role = api_key_payload.role
+        key.permissions = api_key_payload.permissions or None
+        key.enabled = True
+        key.metadata_ = metadata
+
+    return {
+        "key_id": key.key_id,
+        "prefix": key.prefix,
+        "role": key.role,
+        "permissions": key.permissions or [],
+        "raw_secret_persisted": False,
+    }
+
+
+@router.post("/validation/seed/auth-context")
+async def seed_validation_auth_context(
+    payload: ValidationAuthContextSeedRequest,
+    http_request: Request,
+    db: AsyncSession = Depends(get_route_db),
+    context: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    """Seed deterministic auth context for backend-integrated validation.
+
+    This endpoint is non-production only and persists no raw secrets. It is
+    designed to make local/CI backend-integrated tests reproducible while
+    keeping runtime secrets sourced exclusively from environment or a secret
+    manager.
+    """
+    _require_validation_seed_allowed(http_request, context)
+    tenant_id = _context_tenant_uuid(context)
+    if payload.tenant_id is not None and payload.tenant_id != tenant_id:
+        raise HTTPException(status_code=403, detail="Validation seed tenant mismatch")
+
+    await _upsert_validation_tenant(
+        db,
+        tenant_id=tenant_id,
+        tenant_name=payload.tenant_name,
+        tenant_slug=payload.tenant_slug,
+        actor=context.service_account_id or str(context.user_id or E2E_SERVICE_ACCOUNT_ID),
+    )
+    seeded_users = await _upsert_validation_users(db, tenant_id=tenant_id)
+    seeded_api_key = None
+    if payload.api_key is not None:
+        seeded_api_key = await _upsert_validation_api_key(
+            db,
+            tenant_id=tenant_id,
+            service_account_id=payload.service_account_id,
+            api_key_payload=payload.api_key,
+        )
+
+    await db.flush()
+    return {
+        "seeded": True,
+        "tenant": {
+            "id": str(tenant_id),
+            "slug": payload.tenant_slug,
+            "name": payload.tenant_name,
+            "status": TenantStatus.ACTIVE.value,
+        },
+        "users": seeded_users,
+        "role_bindings": [
+            {"user_id": user["id"], "role": user["role"], "tenant_id": str(tenant_id)}
+            for user in seeded_users
+        ],
+        "service_account": {
+            "id": payload.service_account_id,
+            "tenant_id": str(tenant_id),
+            "auth_source": "service_account",
+            "metadata_seeded": True,
+        },
+        "api_key": seeded_api_key,
+        "account_mappings": payload.account_mappings,
+        "raw_secret_persisted": False,
+    }
 
 
 @router.post("/validation/session")

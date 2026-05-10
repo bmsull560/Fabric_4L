@@ -66,6 +66,30 @@ Required non-production secrets and service settings must match the Docker stack
 
 Mock flags must be absent or false. A mock-enabled run is not valid backend-integrated evidence.
 
+## Preferred CI/Staging Runner
+
+Use the dedicated reproducibility runner for CI/staging wiring:
+
+```powershell
+python scripts/ci/run_backend_integrated_reproducibility.py --release-candidate-sha <sha>
+```
+
+The runner starts the Docker-backed validation services unless `--skip-stack-start` is provided, runs the seed guard, runs deterministic seeding, executes J1-only, J11-only, and the J1+J11 pair, then verifies the retained seed and JUnit artifacts. It writes a machine-readable summary to:
+
+```text
+artifacts/live-workflow-validation/backend-integrated-reproducibility-summary.json
+```
+
+The script can produce reproducibility evidence, but CI/staging reproducibility remains open until it is executed in the approved CI/staging or production-like environment with:
+
+- release-candidate SHA
+- retained artifacts
+- logs
+- redacted environment metadata
+- owner sign-off
+
+The manual commands below remain the fallback for local troubleshooting and for environments that need to run the phases one at a time.
+
 ## Reproduction Commands
 
 Run Docker and seed commands from the repository root.

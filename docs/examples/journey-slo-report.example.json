@@ -1,0 +1,17 @@
+{
+  "template_only": true,
+  "evidence_status": "NOT_EVIDENCE",
+  "source": "template",
+  "required_window_minutes": 15,
+  "instructions": "This file documents the expected Journey SLO report shape only. Do not use it as launch evidence.",
+  "account_signals_evidence_driver_calculator_business_case": {
+    "successRate": 0,
+    "p95LatencySeconds": 999,
+    "nonEmptyRatio": 0,
+    "windowMinutes": 15,
+    "sampleCount": 0,
+    "monitorRunId": "template-only",
+    "releaseCandidateSha": "template-only",
+    "environment": "template"
+  }
+}

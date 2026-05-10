@@ -22,6 +22,7 @@
 // ---------------------------------------------------------------------------
 
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { dirname } from 'node:path';
 
 const BASE_URL =
@@ -51,6 +52,10 @@ const E2E_SALES_USER_ID = 'e2e-sales-user';
 const MERIDIAN_BACKEND_ACCOUNT_UUID = '00000000-0000-4000-e2e0-000000000101';
 const DRAFT_BUSINESS_CASE_ID = 'case-draft-001';
 const APPROVED_BUSINESS_CASE_ID = 'case-e2e-approved-001';
+const E2E_TENANT_SLUG = 'tenant-e2e-001';
+const E2E_VALIDATION_API_KEY_ID = 'vf_e2e_backend_integrated_validation';
+const E2E_VALIDATION_API_KEY = process.env.E2E_VALIDATION_API_KEY ?? '';
+const API_KEY_HMAC_SECRET = process.env.API_KEY_HMAC_SECRET ?? '';
 
 type SeedStatus = 'present' | 'partial' | 'missing' | 'blocked';
 
@@ -218,7 +223,7 @@ async function probeBackendEndpoint(
 }
 
 async function runBackendPreflight(): Promise<boolean> {
-  console.log('[0/7] Backend contract preflight...');
+  console.log('[0/9] Backend contract preflight...');
   const probes = [
     await probeBackendEndpoint('Backend health', 'GET', '/health', [200], true),
     await probeBackendEndpoint('Account read route', 'GET', `/v1/accounts/${MERIDIAN_BACKEND_ACCOUNT_UUID}`, [200, 404], true),
@@ -244,6 +249,69 @@ async function runBackendPreflight(): Promise<boolean> {
 
 function recordSeed(row: SeedReportRow): void {
   reportRows.push({ required: true, ...row });
+}
+
+function buildValidationApiKeyPayload(): Record<string, unknown> | undefined {
+  if (!E2E_VALIDATION_API_KEY) {
+    return undefined;
+  }
+  if (!API_KEY_HMAC_SECRET) {
+    throw new Error('E2E_VALIDATION_API_KEY was provided but API_KEY_HMAC_SECRET is missing');
+  }
+  return {
+    key_id: E2E_VALIDATION_API_KEY_ID,
+    name: 'E2E backend-integrated validation service key',
+    key_hash: createHmac('sha256', API_KEY_HMAC_SECRET).update(E2E_VALIDATION_API_KEY).digest('hex'),
+    prefix: E2E_VALIDATION_API_KEY.slice(0, 12),
+    role: 'system',
+    permissions: [],
+    metadata: {
+      service_account_id: 'svc-playwright-backend-validation',
+      validation_only: true,
+      raw_secret_persisted: false,
+    },
+  };
+}
+
+async function seedAuthContext(): Promise<boolean> {
+  const result = await api('POST', '/v1/validation/seed/auth-context', {
+    tenant_id: E2E_TENANT_ID,
+    tenant_slug: E2E_TENANT_SLUG,
+    tenant_name: 'E2E Validation Tenant',
+    service_account_id: 'svc-playwright-backend-validation',
+    api_key: buildValidationApiKeyPayload(),
+    account_mappings: [
+      {
+        provider_record_id: MERIDIAN_FIXTURE.account.id,
+        backend_uuid: MERIDIAN_BACKEND_ACCOUNT_UUID,
+        label: MERIDIAN_FIXTURE.account.name,
+      },
+    ],
+  });
+
+  const data = result.data as any;
+  const users = Array.isArray(data?.users) ? data.users : [];
+  const serviceAccountSeeded = data?.service_account?.metadata_seeded === true;
+  const apiKeyOk = E2E_VALIDATION_API_KEY ? data?.api_key?.raw_secret_persisted === false : true;
+  const ok =
+    result.status >= 200 &&
+    result.status < 300 &&
+    data?.seeded === true &&
+    data?.raw_secret_persisted === false &&
+    users.length >= 4 &&
+    serviceAccountSeeded &&
+    apiKeyOk;
+
+  if (ok) {
+    console.log('  ✓ Auth context seeded through Layer 4 validation boundary');
+  } else {
+    const detail =
+      data && typeof data === 'object'
+        ? JSON.stringify(data).slice(0, 240)
+        : String(data ?? '');
+    console.log(`  ⚠ Auth context seed returned ${result.status}${detail ? `: ${detail}` : ''}`);
+  }
+  return ok;
 }
 
 function printSeedReport(): void {
@@ -545,8 +613,23 @@ async function main() {
   }
   console.log('  ✓ Backend preflight passed');
 
-  // Step 1: Seed account
-  console.log('\n[1/7] Seeding account...');
+  // Step 1: Seed deterministic auth context
+  console.log('\n[1/9] Seeding auth context...');
+  const authContextSeeded = await seedAuthContext();
+  recordSeed({
+    seedArea: 'Tenant / users / service identity auth context',
+    recordsCreated: E2E_VALIDATION_API_KEY
+      ? '1 tenant, 4 users, 4 role bindings, 1 service identity, 1 hashed API key'
+      : '1 tenant, 4 users, 4 role bindings, 1 service identity metadata record',
+    method: 'API /v1/validation/seed/auth-context with service-auth gated validation boundary',
+    persistenceVerified: authContextSeeded
+      ? 'seeded without raw secret persistence'
+      : 'auth context seed did not verify tenant/user/service metadata',
+    status: authContextSeeded ? 'present' : 'blocked',
+  });
+
+  // Step 2: Seed account
+  console.log('\n[2/9] Seeding account...');
   const backendAccountId = await upsertAccount(MERIDIAN_FIXTURE.account);
   recordSeed({
     seedArea: 'Tenant Alpha account',
@@ -556,8 +639,8 @@ async function main() {
     status: (await verifyAccountExists(backendAccountId)) ? 'present' : 'partial',
   });
 
-  // Step 2: Ensure case exists
-  console.log('\n[2/7] Ensuring case workspace...');
+  // Step 3: Ensure case exists
+  console.log('\n[3/9] Ensuring case workspace...');
   const caseId = await ensureCase(
     backendAccountId,
     MERIDIAN_FIXTURE.case,
@@ -575,8 +658,8 @@ async function main() {
     status: (await verifyCaseExists(backendAccountId)) ? 'present' : 'partial',
   });
 
-  // Step 3: Seed workspace tabs (intelligence)
-  console.log('\n[3/7] Seeding intelligence workspace...');
+  // Step 4: Seed workspace tabs (intelligence)
+  console.log('\n[4/9] Seeding intelligence workspace...');
   const signalsWriteOk = await seedWorkspaceTab(caseId, 'signals', MERIDIAN_FIXTURE.workspace.signals);
   const driversWriteOk = await seedWorkspaceTab(caseId, 'drivers', MERIDIAN_FIXTURE.workspace.drivers);
   const evidenceWriteOk = await seedWorkspaceTab(caseId, 'evidence', MERIDIAN_FIXTURE.workspace.evidence);
@@ -600,8 +683,8 @@ async function main() {
     status: intelligenceWorkspaceVerified ? 'present' : 'partial',
   });
 
-  // Step 4: Seed value studio tabs
-  console.log('\n[4/7] Seeding value studio workspace...');
+  // Step 5: Seed value studio tabs
+  console.log('\n[5/9] Seeding value studio workspace...');
   const valueModelWriteOk = await seedWorkspaceTab(caseId, 'value-model', MERIDIAN_FIXTURE.workspace.valueModel);
   const narrativeWriteOk = await seedWorkspaceTab(caseId, 'narrative', MERIDIAN_FIXTURE.workspace.narrative);
   const actionPlanWriteOk = await seedWorkspaceTab(caseId, 'action-plan', MERIDIAN_FIXTURE.workspace.actionPlan);
@@ -622,8 +705,8 @@ async function main() {
     status: valueStudioVerified ? 'present' : 'partial',
   });
 
-  // Step 5: Seed platform settings
-  console.log('\n[5/7] Seeding platform settings...');
+  // Step 6: Seed platform settings
+  console.log('\n[6/9] Seeding platform settings...');
   const settingsResult = await api('PATCH', '/v1/tenant/settings', MERIDIAN_FIXTURE.settings);
   if (settingsResult.status >= 200 && settingsResult.status < 300) {
     console.log('  ✓ Platform settings seeded');
@@ -639,8 +722,8 @@ async function main() {
     required: false,
   });
 
-  // Step 6: Verification
-  console.log('\n[6/7] Verifying seed data...');
+  // Step 7: Verification
+  console.log('\n[7/9] Verifying seed data...');
   const verifyAccount = await api(
     'GET',
     `/v1/accounts/${backendAccountId}`,
@@ -662,7 +745,7 @@ async function main() {
     persistenceVerified: (await attemptCrossTenantVerification(backendAccountId)) ? 'denied as expected' : 'not verified',
     status: (await attemptCrossTenantVerification(backendAccountId)) ? 'present' : 'partial',
   });
-  console.log('\n[7/7] Seeding business-case lifecycle for backend-integrated golden path...');
+  console.log('\n[8/9] Seeding business-case lifecycle for backend-integrated golden path...');
   const lifecycleSeeded = await seedBusinessCaseLifecycle(backendAccountId);
   const draftVerified = await verifyBusinessCase(DRAFT_BUSINESS_CASE_ID, 'draft', false);
   const approvedVerified = await verifyBusinessCase(APPROVED_BUSINESS_CASE_ID, 'approved', true);
@@ -691,7 +774,7 @@ async function main() {
     status: lifecycleVerified ? 'present' : 'blocked',
   });
 
-  console.log('\n[8/8] Seeding Layer 1 ingestion evidence for backend-integrated golden path...');
+  console.log('\n[9/9] Seeding Layer 1 ingestion evidence for backend-integrated golden path...');
   const layer1IngestionSeeded = await seedLayer1IngestionEvidence();
   recordSeed({
     seedArea: 'Layer 1 ingestion job evidence',

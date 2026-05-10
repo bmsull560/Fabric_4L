@@ -1,0 +1,72 @@
+{
+  "template_only": true,
+  "evidence_status": "NOT_EVIDENCE",
+  "source": "template",
+  "instructions": "This file documents the expected Live LLM provider evidence shape only. Do not use it as launch evidence.",
+  "release_candidate_sha": "template-only",
+  "environment": "template",
+  "provider_configuration": {
+    "provider": "openai",
+    "model": "template-only",
+    "credential_source": "secret-manager-required",
+    "credentials_redacted": true,
+    "live_provider_called": false,
+    "provider_reachable": false
+  },
+  "mock_controls": {
+    "VITE_USE_MOCKS": false,
+    "VITE_ENABLE_MOCK_FALLBACK": false,
+    "MSW": false,
+    "MOCKS_ENABLED": false,
+    "mock_fallback_disabled": true
+  },
+  "workflow_context": {
+    "tenant_id": "template-tenant",
+    "account_id": "template-account",
+    "workflow_id": "template-workflow",
+    "trace_id": "template-trace"
+  },
+  "required_checks": {
+    "grounded_citations": {
+      "status": "NOT_EVIDENCE",
+      "citation_ids": [],
+      "notes": "Real evidence must show cited tenant-scoped source IDs."
+    },
+    "fact_assumption_labeling": {
+      "status": "NOT_EVIDENCE",
+      "labels_present": []
+    },
+    "unsupported_claim_refusal": {
+      "status": "NOT_EVIDENCE",
+      "refusal_observed": false
+    },
+    "prompt_injection_resistance": {
+      "status": "NOT_EVIDENCE",
+      "attack_cases_executed": 0,
+      "unsafe_instruction_followed": null
+    },
+    "cost_token_tracking": {
+      "status": "NOT_EVIDENCE",
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "cost_usd": 0,
+      "cost_metric_recorded": false
+    },
+    "traceability": {
+      "status": "NOT_EVIDENCE",
+      "tenant_trace_present": false,
+      "account_trace_present": false,
+      "workflow_trace_present": false
+    }
+  },
+  "redaction": {
+    "raw_prompts_contain_customer_data": false,
+    "provider_credentials_present": false,
+    "secrets_redacted": true
+  },
+  "owner_signoff": {
+    "required": true,
+    "signed_off": false,
+    "owner": "AI platform owner"
+  }
+}
