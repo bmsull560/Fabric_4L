@@ -1,0 +1,76 @@
+import path from "node:path";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./test/setup.ts"],
+    include: [
+      "src/api/client.test.ts",
+      "src/api/__tests__/client.url.test.ts",
+      "src/auth/auth.component.test.ts",
+      "src/contexts/AuthContext.test.tsx",
+      "src/hooks/useAuth.test.ts",
+      "src/hooks/useComments.test.tsx",
+      "src/hooks/useNotifications.test.tsx",
+      "src/hooks/useTasks.test.tsx",
+      "src/hooks/useWorkflows.test.ts",
+      "src/hooks/useWorkspaceCase.test.ts",
+      "src/hooks/useWorkspaceCase.pageActions.test.tsx",
+      "src/lib/quality/trustBoundaryGuard.test.ts",
+      "src/lib/validation/input-validation.test.ts",
+      "src/lib/validation/schemas.test.ts",
+      "src/services/authClient.test.ts",
+      "src/services/sessionService.test.ts",
+    ],
+    env: {
+      VITEST: "true",
+    },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json", "html"],
+      reportsDirectory: "coverage/critical",
+      all: true,
+      include: [
+        "src/api/client.ts",
+        "src/api/auth.ts",
+        "src/api/typedClient.ts",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/useAuth.ts",
+        "src/hooks/useComments.ts",
+        "src/hooks/useNotifications.ts",
+        "src/hooks/useTasks.ts",
+        "src/hooks/useWorkflows.ts",
+        "src/hooks/useWorkspaceCase.ts",
+        "src/lib/quality/trustBoundaryGuard.ts",
+        "src/lib/validation/**/*.ts",
+        "src/schemas/auth.ts",
+        "src/services/authClient.ts",
+        "src/services/sessionService.ts",
+      ],
+      exclude: [
+        "node_modules/",
+        "test/",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "**/*.test.*",
+        "**/*.spec.*",
+      ],
+      thresholds: {
+        lines: 60,
+        functions: 60,
+        branches: 50,
+        statements: 60,
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      "@shared": path.resolve(__dirname, "shared"),
+    },
+  },
+});
