@@ -238,6 +238,13 @@ export const QK = {
     filters: ["accounts", "filters"] as const,
   },
 
+  tasks: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
+    all: ["tasks"] as const,
+    list: (filters: { accountId?: string; status?: string }) =>
+      ["tasks", "list", stableKey(filters)] as const,
+  },
+
   integrations: {
     layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["integrations"] as const,

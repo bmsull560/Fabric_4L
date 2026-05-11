@@ -51,6 +51,7 @@ const Login = lazy(() => import("@/pages/Login"));
 const Signup = lazy(() => import("@/pages/Signup"));
 const ValueNarrativeHome = lazy(() => import("@/pages/ValueNarrativeHome"));
 const Accounts = lazy(() => import("@/pages/Accounts"));
+const TasksPage = lazy(() => import("@/pages/TasksPage"));
 
 // ── Workspace Tab Pages ───────────────────────────────────────────────────────
 const SignalsTab = lazy(() => import("@/pages/intelligence/SignalsTab"));
@@ -233,6 +234,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <Accounts />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/tasks",
+        element: (
+          <ProtectedRoute>
+            <TasksPage />
           </ProtectedRoute>
         ),
       },

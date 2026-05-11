@@ -77,6 +77,13 @@ export {
   type SyncStatus,
   type AccountSyncStatusInfo,
 } from "./useAccounts";
+export {
+  useTasks,
+  useCreateTask,
+  useUpdateTask,
+  type TaskRecord,
+  type TaskStatus,
+} from "./useTasks";
 
 // ── Utility Hooks ─────────────────────────────────────────────────────────────
 
