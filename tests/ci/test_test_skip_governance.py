@@ -51,6 +51,14 @@ def test_registered_non_expired_skip_passes(tmp_path: Path) -> None:
     assert report["register_errors"] == []
     assert report["unregistered"] == []
     assert report["forbidden"] == []
+    assert report["summary"] == {
+        "total_registered_markers": 1,
+        "total_detected_markers": 1,
+        "expired_register_entries": 0,
+        "unregistered_markers": 0,
+        "forbidden_markers": 0,
+        "matched_register_entries": 1,
+    }
 
 
 def test_expired_register_entry_fails(tmp_path: Path) -> None:
@@ -62,6 +70,7 @@ def test_expired_register_entry_fails(tmp_path: Path) -> None:
         TODAY,
     )
     assert any("expired" in error for error in report["register_errors"])
+    assert report["expired_register_entries"] == 1
 
 
 def test_malformed_register_entry_fails(tmp_path: Path) -> None:

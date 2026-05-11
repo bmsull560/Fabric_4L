@@ -1,3 +1,10 @@
+metadata:
+  migration_follow_up:
+    id: split-shared-skip-expiry-2026-06-30
+    owner: '@platform-quality'
+    due_on: '2026-06-15'
+    reason: Initial migration registered existing skip markers under one shared expiry.
+    required_action: Split the 2026-06-30 entries into owned remediation buckets before expiry.
 entries:
 - id: skip-001-apps-web-e2e-accessibility-keyboard-flow-spec-ts
   path_pattern: apps/web/e2e/accessibility/keyboard-flow.spec.ts

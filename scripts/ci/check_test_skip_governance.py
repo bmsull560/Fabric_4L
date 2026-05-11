@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -221,7 +222,26 @@ def evaluate(
             fnmatch.fnmatch(root_path, entry.path_pattern) for root_path in scan_roots
         )
     ]
+    expired_entries = [
+        error
+        for error in register_errors
+        if " expired on " in error
+    ]
+    summary = {
+        "total_registered_markers": len(register),
+        "total_detected_markers": len(findings),
+        "expired_register_entries": len(expired_entries),
+        "unregistered_markers": len(unregistered),
+        "forbidden_markers": len(forbidden),
+        "matched_register_entries": len(matched_ids),
+    }
     return {
+        "summary": summary,
+        "total_registered_markers": summary["total_registered_markers"],
+        "expired_register_entries": summary["expired_register_entries"],
+        "unregistered_markers": summary["unregistered_markers"],
+        "forbidden_markers": summary["forbidden_markers"],
+        "matched_register_entries": summary["matched_register_entries"],
         "register_errors": register_errors,
         "findings": [finding.__dict__ for finding in findings],
         "unregistered": [finding.__dict__ for finding in unregistered],
@@ -230,6 +250,29 @@ def evaluate(
         "registered_entries": len(register),
         "matched_entries": len(matched_ids),
     }
+
+
+def _write_github_step_summary(path: Path, report: dict[str, Any]) -> None:
+    summary = report["summary"]
+    lines = [
+        "### Test Skip Governance",
+        "",
+        "| Metric | Count |",
+        "| --- | ---: |",
+        f"| Total registered markers | {summary['total_registered_markers']} |",
+        f"| Expired register entries | {summary['expired_register_entries']} |",
+        f"| Unregistered markers | {summary['unregistered_markers']} |",
+        f"| Forbidden markers | {summary['forbidden_markers']} |",
+        f"| Matched register entries | {summary['matched_register_entries']} |",
+        "",
+    ]
+    if report["register_errors"] or report["unregistered"] or report["forbidden"]:
+        lines.append("Result: fail-closed violation detected.")
+    else:
+        lines.append("Result: all detected skip/fixme/xfail markers are governed.")
+    lines.append("")
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write("\n".join(lines))
 
 
 def main() -> int:
@@ -247,12 +290,16 @@ def main() -> int:
     if args.write_report:
         args.write_report.parent.mkdir(parents=True, exist_ok=True)
         args.write_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    if summary_path := os.environ.get("GITHUB_STEP_SUMMARY"):
+        _write_github_step_summary(Path(summary_path), report)
 
     print(
         "test skip governance: "
         f"{len(report['findings'])} marker(s), "
         f"{len(report['unregistered'])} unregistered, "
         f"{len(report['forbidden'])} forbidden, "
+        f"{report['expired_register_entries']} expired, "
+        f"{report['matched_register_entries']} matched, "
         f"{len(report['register_errors'])} register error(s)"
     )
     for key in ("register_errors", "unregistered", "forbidden"):
