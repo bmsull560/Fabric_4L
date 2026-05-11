@@ -34,6 +34,8 @@ def test_backend_integrated_reproducibility_workflow_invokes_hardened_runner():
 def test_backend_integrated_reproducibility_workflow_provides_ci_metadata_and_secret_preflight():
     content = workflow_text()
 
+    assert "Install Python validation dependencies" in content
+    assert "python -m pip install PyYAML" in content
     assert "RELEASE_CANDIDATE_SHA: ${{ inputs.release_candidate_sha }}" in content
     assert "GITHUB_RUN_ID" not in content or "${{ github.run_id }}" in content or "github.run_id" in content
     assert "Validate required runtime secrets" in content
