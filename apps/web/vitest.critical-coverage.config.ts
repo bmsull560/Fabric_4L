@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: ["./test/setup.ts"],
     include: [
       "src/api/client.test.ts",
+      "src/api/auth.test.ts",
       "src/api/__tests__/client.url.test.ts",
       "src/auth/auth.component.test.ts",
       "src/contexts/AuthContext.test.tsx",
