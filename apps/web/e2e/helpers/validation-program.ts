@@ -325,6 +325,105 @@ export async function expectSeededBusinessCaseWorkflowResults(
   }
 }
 
+type IngestionReadinessOptions = {
+  domain: string;
+  description: string;
+  jobId?: string;
+  terminal?: boolean;
+  timeoutMs?: number;
+};
+
+type ObservedIngestionJob = {
+  id: string;
+  domain: string;
+  status: string;
+  progress: number;
+};
+
+const TERMINAL_INGESTION_STATUSES = new Set(['COMPLETED', 'PARTIAL_SUCCESS', 'FAILED', 'CANCELLED']);
+
+function normalizeDomain(value: string): string {
+  return value
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/$/, '')
+    .toLowerCase();
+}
+
+function extractIngestionJobs(payload: unknown): ObservedIngestionJob[] {
+  const data = payload && typeof payload === 'object' && 'data' in payload
+    ? (payload as { data?: unknown }).data
+    : undefined;
+  if (!Array.isArray(data)) return [];
+
+  return data.map((item): ObservedIngestionJob => {
+    const record = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+    const configuration = record.configuration && typeof record.configuration === 'object'
+      ? record.configuration as Record<string, unknown>
+      : {};
+    const domain = String(configuration.url ?? configuration.domain ?? '');
+    return {
+      id: String(record.id ?? ''),
+      domain,
+      status: String(record.status ?? '').toUpperCase(),
+      progress: Number(record.progress_percent_complete ?? 0),
+    };
+  }).filter((job) => job.id);
+}
+
+export async function expectIngestionJobReady(
+  page: Page,
+  {
+    domain,
+    description,
+    jobId,
+    terminal = false,
+  timeoutMs = 45000,
+  }: IngestionReadinessOptions,
+): Promise<ObservedIngestionJob> {
+  const targetDomain = normalizeDomain(domain);
+  let lastObserved = 'no jobs observed';
+  let readyJob: ObservedIngestionJob | null = null;
+
+  await expect.poll(async () => {
+    const response = await page.request.get('/api/v1/ingest/jobs?limit=100&sort_by=created_at&sort_order=desc');
+    if (!response.ok()) {
+      lastObserved = `GET /api/v1/ingest/jobs returned ${response.status()} ${await response.text()}`;
+      readyJob = null;
+      return null;
+    }
+
+    const jobs = extractIngestionJobs(await response.json());
+    const candidates = jobs.filter((job) => {
+      const domainMatches = normalizeDomain(job.domain).includes(targetDomain);
+      const idMatches = jobId ? job.id === jobId : true;
+      return domainMatches && idMatches;
+    });
+
+    lastObserved = candidates.length > 0
+      ? candidates.map((job) => `${job.id}:${job.status}:${job.progress}%:${job.domain}`).join(', ')
+      : jobs.slice(0, 5).map((job) => `${job.id}:${job.status}:${job.progress}%:${job.domain}`).join(', ');
+
+    const ready = candidates.find((job) => {
+      if (!terminal) {
+        return job.status.length > 0;
+      }
+      return TERMINAL_INGESTION_STATUSES.has(job.status) && job.progress >= 100;
+    });
+
+    readyJob = ready ?? null;
+    return readyJob;
+  }, {
+    message: `${description} did not become ready. Last observed: ${lastObserved}`,
+    timeout: timeoutMs,
+    intervals: [500, 1000, 2000, 5000],
+  }).not.toBeNull();
+
+  if (!readyJob) {
+    throw new Error(`${description} readiness completed without an observed job. Last observed: ${lastObserved}`);
+  }
+  return readyJob;
+}
+
 export async function attemptOptionalAction(page: Page, actionName: RegExp): Promise<boolean> {
   const action = page.getByRole('button', { name: actionName }).or(page.getByRole('link', { name: actionName })).first();
   try {

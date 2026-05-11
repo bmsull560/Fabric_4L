@@ -25,6 +25,7 @@ import {
   expectEnabledAction,
   expectTenantContext,
   expectNoCrossTenantLeakage,
+  expectIngestionJobReady,
   expectSeededBusinessCaseWorkflowResults,
   requireBackendOrThrow,
 } from '../helpers/validation-program';
@@ -33,6 +34,7 @@ import {
 const SEED_ACCOUNT_ID = 'acct-meridian-001';
 const SEED_CASE_ID = 'case-meridian-e2e-001';
 const SEED_TENANT_ID = '00000000-0000-4000-e2e0-000000000001';
+const SEED_DOMAIN = 'meridian-auto.com';
 const SEEDED_BUSINESS_CASE_IDS = ['case-draft-001', 'case-e2e-approved-001', SEED_CASE_ID];
 
 journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approved Business Case', () => {
@@ -93,20 +95,48 @@ journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approv
     const domainInput = authedPage.getByPlaceholder(/domain|website/i)
       .or(authedPage.getByPlaceholder(/enter.*domain/i));
     await expect(domainInput).toBeVisible({ timeout: 5000 });
-    await domainInput.fill('meridian-auto.com');
+    await domainInput.fill(SEED_DOMAIN);
     await domainInput.blur();
 
     const ingestBtn = authedPage.getByRole('button', { name: /synthesize|submit|ingest|analyze|start/i }).first();
     await expect(ingestBtn).toBeVisible({ timeout: 5000 });
+    const executeResponse = authedPage.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'POST' &&
+        /\/api\/v1\/ingest\/targets\/[^/]+\/execute$/.test(url.pathname);
+    }, { timeout: 20000 });
     await ingestBtn.click();
 
+    const response = await executeResponse;
+    expect(response.ok(), `Layer 1 target execute returned ${response.status()} ${await response.text()}`).toBe(true);
+    const payload = await response.json() as { job_id?: string };
+    expect(payload.job_id, 'Layer 1 target execute response must include job_id').toBeTruthy();
+    await expectIngestionJobReady(authedPage, {
+      domain: SEED_DOMAIN,
+      jobId: payload.job_id,
+      description: 'GP-BI-003 submitted ingestion job',
+      terminal: false,
+      timeoutMs: 20000,
+    });
+
     await expect(
-      authedPage.getByText(/ingestion|processing|job|submitted/i).first(),
+      authedPage.getByText(/ingestion job submitted/i).first(),
     ).toBeVisible({ timeout: 10000 });
   });
 
   journeyTest('GP-BI-004: user can monitor ingestion job progress until completion', async ({ authedPage }) => {
+    await expectIngestionJobReady(authedPage, {
+      domain: SEED_DOMAIN,
+      description: 'GP-BI-004 completed Meridian ingestion job',
+      terminal: true,
+    });
+
     await authedPage.goto('/context/ingestion/jobs', { waitUntil: 'domcontentloaded' });
+    const refreshButton = authedPage.getByRole('button', { name: /refresh/i }).first();
+    if (await refreshButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await refreshButton.click();
+    }
+
     await expectAnyVisible(
       authedPage,
       [/ingestion jobs/i, /completed/i, /meridian/i, /progress/i],
@@ -115,7 +145,7 @@ journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approv
 
     // Verify the seeded ingestion job is visible
     await expect(
-      authedPage.getByText(/meridian-auto.com/i).first(),
+      authedPage.getByText(/meridian-auto\.com/i).first(),
     ).toBeVisible({ timeout: 10000 });
 
     await expect(
