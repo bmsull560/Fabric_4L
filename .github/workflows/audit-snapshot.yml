@@ -1,5 +1,8 @@
 name: audit-snapshot
 
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: '0 6 * * 1'

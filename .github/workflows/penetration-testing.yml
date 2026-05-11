@@ -1,5 +1,10 @@
 name: Penetration Testing
 
+permissions:
+  contents: read
+  issues: write
+  security-events: write
+
 on:
   # Weekly scheduled run (Mondays at 2 AM UTC)
   schedule:

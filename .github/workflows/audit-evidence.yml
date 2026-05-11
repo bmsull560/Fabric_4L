@@ -1,5 +1,8 @@
 name: Audit Evidence Collection
 
+permissions:
+  contents: read
+
 on:
   # Monthly collection for compliance (1st of month at 1 AM UTC)
   schedule:

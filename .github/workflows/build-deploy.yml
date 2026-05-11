@@ -1,5 +1,8 @@
 name: Build and Deploy
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -41,6 +44,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+      security-events: write
     strategy:
       matrix:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]

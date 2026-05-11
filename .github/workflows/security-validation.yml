@@ -1,5 +1,8 @@
 name: Security Validation
 
+permissions:
+  contents: read
+
 on:
   # PR trigger for security-critical paths
   pull_request:

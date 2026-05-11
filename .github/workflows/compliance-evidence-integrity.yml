@@ -1,5 +1,8 @@
 name: Compliance Evidence Integrity
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     paths:

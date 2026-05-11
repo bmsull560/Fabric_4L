@@ -2,6 +2,9 @@
 # Runs on every PR to verify security fixes are intact.
 name: Security Gate
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main, develop]

@@ -1,5 +1,8 @@
 name: Smoke Gate
 
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: '0 2 * * *'  # Daily at 2 AM UTC

@@ -1,5 +1,8 @@
 name: Generated API Freshness
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main, develop]

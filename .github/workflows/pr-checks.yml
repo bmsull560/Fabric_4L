@@ -8,6 +8,9 @@
 #   3) records verification results in the PR description before merge.
 name: PR Checks
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main]

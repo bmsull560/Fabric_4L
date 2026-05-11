@@ -1,5 +1,8 @@
 name: Regenerate Python SDK
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]

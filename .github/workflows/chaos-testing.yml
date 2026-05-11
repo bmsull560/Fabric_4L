@@ -1,5 +1,8 @@
 name: Chaos Engineering Tests
 
+permissions:
+  contents: read
+
 on:
   # Weekly scheduled run (Sundays at 3 AM UTC - before Monday deployments)
   schedule:
