@@ -276,7 +276,6 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
 
-<<<<<<< ours
       - name: Type check Layer 2 API imports
         run: uv run mypy src/layer2_extraction/api --follow-imports=normal --no-incremental
 
@@ -284,12 +283,6 @@ jobs:
         run: |
           if rg -n "^(from|import) layer2_extraction\..*# type: ignore(\[[^]]+\])?$" src/layer2_extraction/api; then
             echo "Disallowed type: ignore on layer2_extraction imports in api package"
-=======
-      - name: Guard Layer 2 API import ignores
-        run: |
-          if rg -n "^from layer2_extraction\..*# type: ignore" src/layer2_extraction/api; then
-            echo "Disallowed broad type: ignore on layer2_extraction imports in api package"
->>>>>>> theirs
             exit 1
           fi
 
