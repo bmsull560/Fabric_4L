@@ -305,10 +305,13 @@ The third live-readiness loop hardens the validation gate for CI and operator co
 | `artifact-manifest.json` | Durable inventory of files generated beneath the artifact root. | Yes | Yes |
 | `docker-compose.live.resolved.yml` | Resolved compose configuration used by the gate. | Yes | Yes |
 | `endpoint-probes.tsv` | Frontend and backend endpoint status codes. | No | Yes |
+| `redacted-environment-metadata.json` | Validation mode, release SHA, live URLs, mock-disabled flags, and configured remote service names without secret values. | Yes | Yes |
 | `seed-report.json` | Strict deterministic seed contract and backend preflight details. | Only when seed is requested | Required when seed is requested |
 | `playwright/html`, `playwright/junit.xml`, and trace ZIP files | Browser validation evidence. | Only when Playwright is requested | Required when Playwright is requested |
 
 The deterministic seed runner now performs a backend contract preflight before mutating data. Required probes include `/health`, the account read route, and the analysis case list route. Optional probes, such as tenant settings discovery, are recorded in the seed report but do not independently block seeding unless the strict seed report later records a required seed area as missing or blocked. This preserves the fail-closed rule: a full live validation cannot be promoted as **PASS** from partial seed data or missing browser artifacts.
+
+For an already deployed Bunnyshell or equivalent live stack, use the runner's remote mode instead of local Docker Compose container inspection. The remote mode requires `PLAYWRIGHT_LIVE_FRONTEND_URL`, `PLAYWRIGHT_BACKEND_URL`, and `LIVE_SERVICE_HEALTH_URLS` entries in `name=url` format for each required service. By default, remote validation requires health probes for `layer1`, `layer2`, `layer3`, `layer4`, `layer5`, `layer6`, `postgres`, `redis`, `neo4j`, and `minio`; if the data stores are only reachable through a controlled proxy, provide those proxied health URLs rather than exposing raw store credentials or ports.
 
 ## Fourth-loop CI gate, artifact schema, and marginal-value stop criteria
 

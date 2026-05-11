@@ -16,8 +16,13 @@ BACKEND_URL="${PLAYWRIGHT_BACKEND_URL:-http://localhost:8004}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-360}"
 RUN_LIVE_SEED="${RUN_LIVE_SEED:-false}"
 RUN_LIVE_PLAYWRIGHT="${RUN_LIVE_PLAYWRIGHT:-false}"
+LIVE_SERVICE_HEALTH_URLS="${LIVE_SERVICE_HEALTH_URLS:-}"
+REQUIRED_REMOTE_SERVICE_NAMES="${REQUIRED_REMOTE_SERVICE_NAMES:-layer1,layer2,layer3,layer4,layer5,layer6,postgres,redis,neo4j,minio}"
+LIVE_ENVIRONMENT_NAME="${LIVE_ENVIRONMENT_NAME:-}"
+RELEASE_CANDIDATE_SHA="${RELEASE_CANDIDATE_SHA:-${GITHUB_SHA:-}}"
 CONFIG_ONLY="false"
 START_STACK="true"
+REMOTE_STACK="false"
 FINALIZED="false"
 
 usage() {
@@ -27,6 +32,7 @@ Usage: scripts/ci/run_live_workflow_validation.sh [options]
 Options:
   --config-only       Validate docker-compose.live.yml and frontend guardrails only.
   --no-start          Do not start or rebuild containers; probe the currently running stack.
+  --remote            Probe an already deployed remote live stack by URL instead of docker-compose containers.
   --seed              Run the guarded live seed step after services become healthy.
   --playwright        Run the guarded live Playwright P0 suite after services become healthy.
   --help              Show this help text.
@@ -37,6 +43,10 @@ Environment overrides:
   ARTIFACT_DIR=artifacts/live-workflow-validation
   PLAYWRIGHT_LIVE_FRONTEND_URL=http://localhost:3001
   PLAYWRIGHT_BACKEND_URL=http://localhost:8004
+  LIVE_SERVICE_HEALTH_URLS="layer1=https://.../health,layer2=https://.../health"
+  REQUIRED_REMOTE_SERVICE_NAMES=layer1,layer2,layer3,layer4,layer5,layer6,postgres,redis,neo4j,minio
+  LIVE_ENVIRONMENT_NAME=bunnyshell-fabric-live
+  RELEASE_CANDIDATE_SHA=<full-sha>
   HEALTH_TIMEOUT_SECONDS=360
   RUN_LIVE_SEED=true|false
   RUN_LIVE_PLAYWRIGHT=true|false
@@ -51,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-start)
       START_STACK="false"
+      ;;
+    --remote)
+      START_STACK="false"
+      REMOTE_STACK="true"
       ;;
     --seed)
       RUN_LIVE_SEED="true"
@@ -80,6 +94,7 @@ COMPOSE_CONFIG_FILE="$ARTIFACT_DIR/docker-compose.live.resolved.yml"
 CONTAINER_STATUS_FILE="$ARTIFACT_DIR/container-status.txt"
 HEALTH_STATUS_FILE="$ARTIFACT_DIR/container-health.jsonl"
 ENDPOINT_PROBES_FILE="$ARTIFACT_DIR/endpoint-probes.tsv"
+ENVIRONMENT_METADATA_FILE="$ARTIFACT_DIR/redacted-environment-metadata.json"
 SERVICE_LOG_DIR="$ARTIFACT_DIR/service-logs"
 SEED_REPORT_JSON="$ARTIFACT_DIR/seed-report.json"
 PLAYWRIGHT_ARTIFACT_DIR="$ARTIFACT_DIR/playwright"
@@ -91,6 +106,8 @@ exec > >(tee "$LOG_FILE") 2>&1
 cd "$ROOT_DIR"
 
 services=(postgres redis neo4j minio layer1 layer2 layer3 layer4 layer5 layer6 frontend)
+remote_service_names=()
+remote_service_urls=()
 
 section() {
   printf '\n## %s\n' "$1"
@@ -103,6 +120,98 @@ sanitize_stream() {
     s#((?:password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key)\s*[=:]\s*)\S+#$1[REDACTED]#ig;
     s#(^\s*[A-Z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|ACCESS_KEY|PRIVATE_KEY)[A-Z0-9_]*:\s*)\S+#$1[REDACTED]#ig;
   '
+}
+
+write_environment_metadata() {
+  VALIDATION_MODE="$([[ "$REMOTE_STACK" == "true" ]] && echo remote-live || echo compose-live)" \
+  ENVIRONMENT_METADATA_FILE="$ENVIRONMENT_METADATA_FILE" \
+  LIVE_ENVIRONMENT_NAME="$LIVE_ENVIRONMENT_NAME" \
+  RELEASE_CANDIDATE_SHA="$RELEASE_CANDIDATE_SHA" \
+  FRONTEND_URL="$FRONTEND_URL" \
+  BACKEND_URL="$BACKEND_URL" \
+  RUN_LIVE_SEED="$RUN_LIVE_SEED" \
+  RUN_LIVE_PLAYWRIGHT="$RUN_LIVE_PLAYWRIGHT" \
+  REQUIRED_REMOTE_SERVICE_NAMES="$REQUIRED_REMOTE_SERVICE_NAMES" \
+  REMOTE_SERVICE_NAMES="${remote_service_names[*]:-}" \
+  GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" \
+  GITHUB_RUN_ATTEMPT="${GITHUB_RUN_ATTEMPT:-}" \
+  GITHUB_SERVER_URL="${GITHUB_SERVER_URL:-}" \
+  GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" \
+  node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const githubRunUrl = process.env.GITHUB_RUN_ID && process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY
+  ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+  : '';
+const splitList = (value) => (value || '').split(/[\s,]+/).map((item) => item.trim()).filter(Boolean);
+const payload = {
+  generatedAt: new Date().toISOString(),
+  validationMode: process.env.VALIDATION_MODE,
+  liveEnvironmentName: process.env.LIVE_ENVIRONMENT_NAME || '',
+  releaseCandidateSha: process.env.RELEASE_CANDIDATE_SHA || '',
+  githubRunUrl,
+  githubRunAttempt: process.env.GITHUB_RUN_ATTEMPT || '',
+  frontendUrl: process.env.FRONTEND_URL,
+  backendUrl: process.env.BACKEND_URL,
+  seedRequested: process.env.RUN_LIVE_SEED === 'true',
+  playwrightRequested: process.env.RUN_LIVE_PLAYWRIGHT === 'true',
+  mocksDisabled: true,
+  mockFlags: {
+    VITE_USE_MOCKS: 'false',
+    VITE_ENABLE_MOCK_FALLBACK: 'false',
+  },
+  requiredRemoteServiceNames: splitList(process.env.REQUIRED_REMOTE_SERVICE_NAMES),
+  configuredRemoteServiceNames: splitList(process.env.REMOTE_SERVICE_NAMES),
+};
+fs.mkdirSync(path.dirname(process.env.ENVIRONMENT_METADATA_FILE), { recursive: true });
+fs.writeFileSync(process.env.ENVIRONMENT_METADATA_FILE, `${JSON.stringify(payload, null, 2)}
+`);
+NODE
+}
+
+parse_remote_service_health_urls() {
+  remote_service_names=()
+  remote_service_urls=()
+  if [[ -z "$LIVE_SERVICE_HEALTH_URLS" ]]; then
+    fail "BLOCKED" "LIVE_SERVICE_HEALTH_URLS is required in --remote mode"
+  fi
+
+  local entry name url
+  while IFS= read -r entry; do
+    entry="${entry#"${entry%%[![:space:]]*}"}"
+    entry="${entry%"${entry##*[![:space:]]}"}"
+    [[ -z "$entry" ]] && continue
+    if [[ "$entry" != *=* ]]; then
+      fail "BLOCKED" "remote service health entry must use name=url format: $entry"
+    fi
+    name="${entry%%=*}"
+    url="${entry#*=}"
+    if [[ -z "$name" || -z "$url" ]]; then
+      fail "BLOCKED" "remote service health entry must include non-empty name and URL: $entry"
+    fi
+    if [[ ! "$url" =~ ^https?:// ]]; then
+      fail "BLOCKED" "remote service health URL for $name must be http(s): $url"
+    fi
+    remote_service_names+=("$name")
+    remote_service_urls+=("$url")
+  done < <(printf '%s\n' "$LIVE_SERVICE_HEALTH_URLS" | tr ',' '\n')
+
+  local required found candidate
+  while IFS= read -r required; do
+    required="${required#"${required%%[![:space:]]*}"}"
+    required="${required%"${required##*[![:space:]]}"}"
+    [[ -z "$required" ]] && continue
+    found="false"
+    for candidate in "${remote_service_names[@]}"; do
+      if [[ "$candidate" == "$required" ]]; then
+        found="true"
+        break
+      fi
+    done
+    if [[ "$found" != "true" ]]; then
+      fail "BLOCKED" "required remote service health URL is missing: $required"
+    fi
+  done < <(printf '%s\n' "$REQUIRED_REMOTE_SERVICE_NAMES" | tr ',' '\n')
 }
 
 write_summary() {
@@ -128,11 +237,13 @@ write_summary() {
 | container_status | ${CONTAINER_STATUS_FILE} |
 | health_status | ${HEALTH_STATUS_FILE} |
 | endpoint_probes | ${ENDPOINT_PROBES_FILE} |
+| environment_metadata | ${ENVIRONMENT_METADATA_FILE} |
 | service_logs | ${SERVICE_LOG_DIR} |
 | seed_report_json | ${SEED_REPORT_JSON} |
 | playwright_artifacts | ${PLAYWRIGHT_ARTIFACT_DIR} |
 
 SUMMARY
+  write_environment_metadata
   write_machine_summary "$status" "$detail"
   write_artifact_manifest "$status"
   # Refresh after manifest generation so required artifactPresence flags reflect the final evidence set.
@@ -142,7 +253,7 @@ SUMMARY
 write_machine_summary() {
   local status="$1"
   local detail="$2"
-  STATUS="$status" DETAIL="$detail"   SUMMARY_JSON_FILE="$SUMMARY_JSON_FILE"   LOG_FILE="$LOG_FILE" SUMMARY_FILE="$SUMMARY_FILE"   ARTIFACT_MANIFEST_FILE="$ARTIFACT_MANIFEST_FILE"   COMPOSE_FILE="$COMPOSE_FILE" COMPOSE_CONFIG_FILE="$COMPOSE_CONFIG_FILE"   CONTAINER_STATUS_FILE="$CONTAINER_STATUS_FILE" HEALTH_STATUS_FILE="$HEALTH_STATUS_FILE"   ENDPOINT_PROBES_FILE="$ENDPOINT_PROBES_FILE" SERVICE_LOG_DIR="$SERVICE_LOG_DIR"   SEED_REPORT_JSON="$SEED_REPORT_JSON" PLAYWRIGHT_ARTIFACT_DIR="$PLAYWRIGHT_ARTIFACT_DIR"   FRONTEND_URL="$FRONTEND_URL" BACKEND_URL="$BACKEND_URL"   RUN_LIVE_SEED="$RUN_LIVE_SEED" RUN_LIVE_PLAYWRIGHT="$RUN_LIVE_PLAYWRIGHT"   node <<'NODE'
+  STATUS="$status" DETAIL="$detail"   SUMMARY_JSON_FILE="$SUMMARY_JSON_FILE"   LOG_FILE="$LOG_FILE" SUMMARY_FILE="$SUMMARY_FILE"   ARTIFACT_MANIFEST_FILE="$ARTIFACT_MANIFEST_FILE"   COMPOSE_FILE="$COMPOSE_FILE" COMPOSE_CONFIG_FILE="$COMPOSE_CONFIG_FILE"   CONTAINER_STATUS_FILE="$CONTAINER_STATUS_FILE" HEALTH_STATUS_FILE="$HEALTH_STATUS_FILE"   ENDPOINT_PROBES_FILE="$ENDPOINT_PROBES_FILE" ENVIRONMENT_METADATA_FILE="$ENVIRONMENT_METADATA_FILE" SERVICE_LOG_DIR="$SERVICE_LOG_DIR"   SEED_REPORT_JSON="$SEED_REPORT_JSON" PLAYWRIGHT_ARTIFACT_DIR="$PLAYWRIGHT_ARTIFACT_DIR"   FRONTEND_URL="$FRONTEND_URL" BACKEND_URL="$BACKEND_URL"   RUN_LIVE_SEED="$RUN_LIVE_SEED" RUN_LIVE_PLAYWRIGHT="$RUN_LIVE_PLAYWRIGHT"   node <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
 const exists = (p) => Boolean(p) && fs.existsSync(p);
@@ -164,6 +275,7 @@ const payload = {
     containerStatus: process.env.CONTAINER_STATUS_FILE,
     healthStatus: process.env.HEALTH_STATUS_FILE,
     endpointProbes: process.env.ENDPOINT_PROBES_FILE,
+    environmentMetadata: process.env.ENVIRONMENT_METADATA_FILE,
     serviceLogs: process.env.SERVICE_LOG_DIR,
     seedReportJson: process.env.SEED_REPORT_JSON,
     playwrightArtifacts: process.env.PLAYWRIGHT_ARTIFACT_DIR,
@@ -177,6 +289,7 @@ const payload = {
     containerStatus: exists(process.env.CONTAINER_STATUS_FILE),
     healthStatus: exists(process.env.HEALTH_STATUS_FILE),
     endpointProbes: exists(process.env.ENDPOINT_PROBES_FILE),
+    environmentMetadata: exists(process.env.ENVIRONMENT_METADATA_FILE),
     seedReportJson: exists(process.env.SEED_REPORT_JSON),
     playwrightArtifacts: exists(process.env.PLAYWRIGHT_ARTIFACT_DIR),
   },
@@ -233,9 +346,37 @@ probe_endpoint() {
   [[ "$code" =~ ^2|3[0-9][0-9]$ ]]
 }
 
+collect_remote_evidence() {
+  local reason="$1"
+  mkdir -p "$SERVICE_LOG_DIR"
+  {
+    echo "# Remote Live Stack Status"
+    echo "reason=$reason"
+    echo "mode=remote-live"
+    echo "environment=${LIVE_ENVIRONMENT_NAME:-unknown}"
+    echo "release_candidate_sha=${RELEASE_CANDIDATE_SHA:-unknown}"
+    echo "docker_compose=not-used"
+  } > "$CONTAINER_STATUS_FILE"
+
+  : > "$HEALTH_STATUS_FILE"
+  if [[ -f "$ENDPOINT_PROBES_FILE" ]]; then
+    awk -F '\t' 'NR > 1 { printf("{\"service\":\"%s\",\"url\":\"%s\",\"state\":\"http_%s\"}\n", $1, $2, $3) }' "$ENDPOINT_PROBES_FILE" >> "$HEALTH_STATUS_FILE"
+  fi
+
+  {
+    echo "Remote Bunnyshell/live validation does not have local docker logs."
+    echo "Retain Bunnyshell deployment logs or provider logs alongside this artifact bundle."
+  } > "$SERVICE_LOG_DIR/remote-live-stack.log"
+}
+
 collect_evidence() {
   local reason="$1"
   section "evidence collection: $reason"
+  if [[ "$REMOTE_STACK" == "true" ]]; then
+    collect_remote_evidence "$reason"
+    echo "remote evidence artifacts written under $ARTIFACT_DIR"
+    return
+  fi
   mkdir -p "$SERVICE_LOG_DIR"
   {
     echo "# Container Status"
@@ -293,8 +434,12 @@ if [[ "${VITE_USE_MOCKS:-false}" =~ ^(1|true|yes|on)$ ]] || [[ "${VITE_ENABLE_MO
 fi
 
 section "tooling"
-command -v docker-compose >/dev/null || fail "BLOCKED" "docker-compose is required in this validation environment"
-docker-compose --version
+if [[ "$REMOTE_STACK" == "true" ]]; then
+  echo "remote live validation mode enabled; docker-compose container inspection is skipped"
+else
+  command -v docker-compose >/dev/null || fail "BLOCKED" "docker-compose is required in this validation environment"
+  docker-compose --version
+fi
 node --version
 pnpm --version || true
 
@@ -310,8 +455,19 @@ section "frontend guardrails"
 )
 
 section "compose config"
-docker-compose -f "$COMPOSE_FILE" config | sanitize_stream > "$COMPOSE_CONFIG_FILE"
-echo "resolved compose saved to $COMPOSE_CONFIG_FILE"
+if [[ "$REMOTE_STACK" == "true" ]]; then
+  {
+    echo "# Remote live validation mode"
+    echo "# docker-compose config is not used for this run."
+    echo "remote_live_validation: true"
+    echo "frontend_url: ${FRONTEND_URL}"
+    echo "backend_url: ${BACKEND_URL}"
+  } > "$COMPOSE_CONFIG_FILE"
+  echo "remote validation metadata saved to $COMPOSE_CONFIG_FILE"
+else
+  docker-compose -f "$COMPOSE_FILE" config | sanitize_stream > "$COMPOSE_CONFIG_FILE"
+  echo "resolved compose saved to $COMPOSE_CONFIG_FILE"
+fi
 
 if [[ "$CONFIG_ONLY" == "true" ]]; then
   write_summary "PASS" "compose config and frontend live guardrails passed"
@@ -319,7 +475,11 @@ if [[ "$CONFIG_ONLY" == "true" ]]; then
   exit 0
 fi
 
-if [[ "$START_STACK" == "true" ]]; then
+if [[ "$REMOTE_STACK" == "true" ]]; then
+  section "remote service URL preflight"
+  parse_remote_service_health_urls
+  echo "configured remote service health checks: ${remote_service_names[*]}"
+elif [[ "$START_STACK" == "true" ]]; then
   section "stack startup"
   docker-compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" up -d --build
 else
@@ -327,33 +487,35 @@ else
   echo "probing currently running containers"
 fi
 
-section "health wait"
-deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
-while (( SECONDS < deadline )); do
-  unhealthy=()
-  for service in "${services[@]}"; do
-    cid="$(docker-compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" ps -q "$service" 2>/dev/null || true)"
-    if [[ -z "$cid" ]]; then
-      unhealthy+=("$service:missing")
-      continue
+if [[ "$REMOTE_STACK" != "true" ]]; then
+  section "health wait"
+  deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
+  while (( SECONDS < deadline )); do
+    unhealthy=()
+    for service in "${services[@]}"; do
+      cid="$(docker-compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" ps -q "$service" 2>/dev/null || true)"
+      if [[ -z "$cid" ]]; then
+        unhealthy+=("$service:missing")
+        continue
+      fi
+      state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid" 2>/dev/null || echo inspect-failed)"
+      if [[ "$state" != "healthy" && "$state" != "running" ]]; then
+        unhealthy+=("$service:$state")
+      fi
+    done
+    if [[ ${#unhealthy[@]} -eq 0 ]]; then
+      echo "all required services are healthy/running"
+      break
     fi
-    state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid" 2>/dev/null || echo inspect-failed)"
-    if [[ "$state" != "healthy" && "$state" != "running" ]]; then
-      unhealthy+=("$service:$state")
-    fi
+    echo "waiting for services: ${unhealthy[*]}"
+    sleep 10
   done
-  if [[ ${#unhealthy[@]} -eq 0 ]]; then
-    echo "all required services are healthy/running"
-    break
-  fi
-  echo "waiting for services: ${unhealthy[*]}"
-  sleep 10
-done
 
-if (( SECONDS >= deadline )); then
-  section "container status"
-  compose_ps_safe || true
-  fail "BLOCKED" "timed out waiting for live stack health"
+  if (( SECONDS >= deadline )); then
+    section "container status"
+    compose_ps_safe || true
+    fail "BLOCKED" "timed out waiting for live stack health"
+  fi
 fi
 
 section "endpoint probes"
@@ -361,15 +523,33 @@ section "endpoint probes"
 printf 'name\turl\tstatus_code\n' > "$ENDPOINT_PROBES_FILE"
 probe_endpoint frontend "$FRONTEND_URL" "$ARTIFACT_DIR/frontend-probe.html" || fail "FAIL" "frontend probe failed at $FRONTEND_URL"
 probe_endpoint backend_health "$BACKEND_URL/health" "$ARTIFACT_DIR/backend-health.json" || fail "FAIL" "backend health probe failed at $BACKEND_URL/health"
+if [[ "$REMOTE_STACK" == "true" ]]; then
+  for index in "${!remote_service_names[@]}"; do
+    probe_endpoint "${remote_service_names[$index]}" "${remote_service_urls[$index]}" "$ARTIFACT_DIR/remote-${remote_service_names[$index]}-probe.json" || fail "FAIL" "remote service probe failed for ${remote_service_names[$index]} at ${remote_service_urls[$index]}"
+  done
+fi
 cat "$ENDPOINT_PROBES_FILE"
 
 if [[ "$RUN_LIVE_SEED" == "true" ]]; then
   section "live seed"
-  docker-compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" --profile seed run --rm \
-    -e SEED_REPORT_JSON=/artifacts/seed-report.json \
-    -e SEED_STRICT=true \
-    -v "$ARTIFACT_DIR:/artifacts" \
-    live-seed
+  if [[ "$REMOTE_STACK" == "true" ]]; then
+    (
+      cd apps/web
+      PLAYWRIGHT_LIVE_MODE=true \
+      PLAYWRIGHT_BACKEND_URL="$BACKEND_URL" \
+      SEED_REPORT_JSON="$SEED_REPORT_JSON" \
+      SEED_STRICT=true \
+      VITE_USE_MOCKS=false \
+      VITE_ENABLE_MOCK_FALLBACK=false \
+      pnpm run seed:live
+    )
+  else
+    docker-compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" --profile seed run --rm \
+      -e SEED_REPORT_JSON=/artifacts/seed-report.json \
+      -e SEED_STRICT=true \
+      -v "$ARTIFACT_DIR:/artifacts" \
+      live-seed
+  fi
 fi
 
 if [[ "$RUN_LIVE_PLAYWRIGHT" == "true" ]]; then
