@@ -12,11 +12,13 @@
     "./generated": "./src/typescript/generated/index.ts"
   },
   "scripts": {
-    "check": "npm run contract:test:ts",
-    "contract:test:python": "pytest src/python/canonical -v --tb=short",
+    "check": "pnpm run contract:test:ts",
+    "typecheck": "pnpm run check",
+    "test": "pnpm run contract:test",
+    "contract:test:python": "python -m pytest src/python/canonical -v --tb=short",
     "contract:test:ts": "tsc -p tsconfig.json --noEmit",
     "contract:test:diagnostics": "node ./scripts/run-diagnostic-contract-tests.mjs",
-    "contract:test": "npm run contract:test:python && npm run contract:test:ts && npm run contract:test:diagnostics",
+    "contract:test": "pnpm run contract:test:python && pnpm run contract:test:ts && pnpm run contract:test:diagnostics",
     "generate:openapi-types": "node scripts/generate-openapi-types.mjs"
   },
   "devDependencies": {

@@ -11,8 +11,9 @@
   ],
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "test": "jest",
-    "lint": "eslint src/",
+    "lint": "eslint \"src/**/*.ts\"",
     "prepare": "npm run build"
   },
   "keywords": [
