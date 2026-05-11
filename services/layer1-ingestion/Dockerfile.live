@@ -81,4 +81,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["sh", "-lc", "/app/.venv/bin/alembic upgrade head && exec /app/.venv/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-lc", "attempts=0; until /app/.venv/bin/alembic upgrade head; do attempts=$((attempts + 1)); if [ \"$attempts\" -ge 24 ]; then echo \"layer1 migration failed after ${attempts} attempts\"; exit 1; fi; echo \"waiting for layer1 database (${attempts}/24)\"; sleep 5; done; exec /app/.venv/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 8000"]

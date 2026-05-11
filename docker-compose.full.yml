@@ -6,7 +6,7 @@ services:
   layer1-ingestion:
     build:
       context: .
-      dockerfile: ./services/layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile.live
     container_name: value-fabric-layer1
     ports:
       - "8001:8000"
@@ -46,7 +46,7 @@ services:
   layer2-extraction:
     build:
       context: .
-      dockerfile: ./services/layer2-extraction/Dockerfile
+      dockerfile: ./services/layer2-extraction/Dockerfile.full
     container_name: value-fabric-layer2
     ports:
       - "8002:8000"
@@ -114,7 +114,7 @@ services:
   layer3-knowledge:
     build:
       context: .
-      dockerfile: ./services/layer3-knowledge/Dockerfile
+      dockerfile: ./services/layer3-knowledge/Dockerfile.full
     container_name: value-fabric-layer3
     ports:
       - "8003:8001"
@@ -151,7 +151,7 @@ services:
   layer4-agents:
     build:
       context: .
-      dockerfile: ./services/layer4-agents/Dockerfile
+      dockerfile: ./services/layer4-agents/Dockerfile.full
     container_name: value-fabric-layer4
     ports:
       - "8004:8000"
@@ -203,7 +203,7 @@ services:
   layer5-ground-truth:
     build:
       context: .
-      dockerfile: ./services/layer5-ground-truth/Dockerfile
+      dockerfile: ./services/layer5-ground-truth/Dockerfile.full
     container_name: value-fabric-layer5
     ports:
       - "8005:8005"
@@ -239,7 +239,7 @@ services:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8005/api/v1/health').raise_for_status()"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8005/').raise_for_status()"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -249,9 +249,9 @@ services:
   layer5-migrate:
     build:
       context: .
-      dockerfile: ./services/layer5-ground-truth/Dockerfile
+      dockerfile: ./services/layer5-ground-truth/Dockerfile.full
     container_name: value-fabric-layer5-migrate
-    command: alembic upgrade head
+    command: /app/.venv/bin/alembic upgrade head
     environment:
       - DATABASE_URL_SYNC=postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth
     depends_on:
@@ -265,13 +265,21 @@ services:
   layer6-benchmarks:
     build:
       context: .
-      dockerfile: ./services/layer6-benchmarks/Dockerfile
+      dockerfile: ./services/layer6-benchmarks/Dockerfile.full
     container_name: value-fabric-layer6
     ports:
       - "8006:8006"
     environment:
       - PORT=8006
       - LOG_LEVEL=info
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/layer6_benchmarks
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - API_KEY_HMAC_SECRET=${API_KEY_HMAC_SECRET:-full-local-api-key-hmac-secret-do-not-use-in-production-32c}
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-full-local-service-auth-secret-do-not-use-in-production-32c}
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       # Infisical — leave blank to use plain env vars
       - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
       - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
@@ -303,8 +311,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ../monitoring/alerting/rules.yml:/etc/prometheus/alerting/rules.yml:ro
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerting/rules.yml:/etc/prometheus/alerting/rules.yml:ro
     networks:
       - value-fabric-network
     restart: unless-stopped
@@ -318,7 +326,7 @@ services:
   layer1-celery-worker:
     build:
       context: .
-      dockerfile: ./services/layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile.live
     container_name: value-fabric-layer1-celery-worker
     command: celery -A src.shared.tasks worker --loglevel=info --concurrency=4 -Q celery,ingestion,processing
     environment:
@@ -335,7 +343,7 @@ services:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "celery", "-A", "src.shared.tasks", "inspect", "ping", "--timeout", "5"]
+      test: ["CMD-SHELL", "/app/.venv/bin/celery -A src.shared.tasks inspect ping -d celery@$$(hostname) --timeout=5"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -344,7 +352,7 @@ services:
   layer1-celery-beat:
     build:
       context: .
-      dockerfile: ./services/layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile.live
     container_name: value-fabric-layer1-celery-beat
     command: celery -A src.shared.tasks beat --loglevel=info
     environment:
@@ -372,7 +380,7 @@ services:
   flower:
     build:
       context: .
-      dockerfile: ./services/layer1-ingestion/Dockerfile
+      dockerfile: ./services/layer1-ingestion/Dockerfile.live
     container_name: value-fabric-flower
     command: celery -A src.shared.tasks flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:?FLOWER_PASSWORD is required}
     environment:
@@ -407,7 +415,7 @@ services:
     ports:
       - "9093:9093"
     volumes:
-      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
     networks:
       - value-fabric-network
@@ -429,9 +437,9 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
-      - ../monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-      - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
     depends_on:
       prometheus:
@@ -498,7 +506,7 @@ services:
     ports:
       - "8200:8200"
     volumes:
-      - ../scripts/vault-dev-init.sh:/vault-dev-init.sh:ro
+      - ./scripts/vault-dev-init.sh:/vault-dev-init.sh:ro
     networks:
       - value-fabric-network
     restart: "no"
@@ -515,10 +523,10 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=ingestion
       # POSTGRES_MULTIPLE_DATABASES is consumed by init-multiple-dbs.sh
-      - POSTGRES_MULTIPLE_DATABASES=ingestion,ground_truth
+      - POSTGRES_MULTIPLE_DATABASES=ingestion,ground_truth,layer6_benchmarks
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+      - ./scripts/db/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
     networks:
       - value-fabric-network
     restart: unless-stopped

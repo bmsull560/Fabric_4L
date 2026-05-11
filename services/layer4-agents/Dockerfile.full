@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1
+# Root-context build for full/live compose stacks.
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
+
+COPY services/layer4-agents/pyproject.toml services/layer4-agents/uv.lock ./
+RUN uv sync --frozen --no-install-project
+RUN uv pip install "email-validator>=2.1.0"
+
+COPY services/layer4-agents/src/ ./src/
+COPY value_fabric/ ./value_fabric/
+
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
+
+WORKDIR /app
+
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/src ./src/
+COPY --from=builder /app/value_fabric ./value_fabric/
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH=/app:/app/src
+ENV PYTHONUNBUFFERED=1
+
+RUN chown -R appuser:appgroup /app /home/appuser
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -24,7 +24,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ingestion
-      POSTGRES_MULTIPLE_DATABASES: ingestion,layer2_extraction,ground_truth,layer4_agents
+      POSTGRES_MULTIPLE_DATABASES: ingestion,layer2_extraction,ground_truth,layer4_agents,layer6_benchmarks
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
@@ -159,14 +159,24 @@ services:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
       - live-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/app/.venv/bin/celery -A src.shared.tasks inspect ping -d celery@$$(hostname) --timeout=5",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
 
   # ---------------------------------------------------------------------------
   # Layer 2: Extraction Service (internal container port 8000)
   # ---------------------------------------------------------------------------
   layer2:
     build:
-      context: ./services/layer2-extraction
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./services/layer2-extraction/Dockerfile.full
     container_name: vf-live-layer2
     environment:
       ENVIRONMENT: development
@@ -202,8 +212,8 @@ services:
   # ---------------------------------------------------------------------------
   layer3:
     build:
-      context: ./services/layer3-knowledge
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./services/layer3-knowledge/Dockerfile.full
     container_name: vf-live-layer3
     environment:
       NEO4J_URI: bolt://neo4j:7687
@@ -272,8 +282,8 @@ services:
   # ---------------------------------------------------------------------------
   layer5:
     build:
-      context: ./services/layer5-ground-truth
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./services/layer5-ground-truth/Dockerfile.full
     container_name: vf-live-layer5
     environment:
       ENVIRONMENT: development
@@ -292,7 +302,7 @@ services:
     networks:
       - live-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8005/"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -300,15 +310,15 @@ services:
 
   layer5-migrate:
     build:
-      context: ./services/layer5-ground-truth
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./services/layer5-ground-truth/Dockerfile.full
     container_name: vf-live-layer5-migrate
     command:
       - sh
       - -lc
       - |
         attempts=0
-        until alembic upgrade head; do
+        until /app/.venv/bin/alembic upgrade head; do
           attempts=$$((attempts + 1))
           if [ "$$attempts" -ge 24 ]; then
             echo "layer5 migration failed after $${attempts} attempts"
@@ -334,8 +344,8 @@ services:
   # ---------------------------------------------------------------------------
   layer6:
     build:
-      context: ./services/layer6-benchmarks
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./services/layer6-benchmarks/Dockerfile.full
     container_name: vf-live-layer6
     environment:
       ENVIRONMENT: development
@@ -345,6 +355,10 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: devpassword
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/layer6_benchmarks
+      JWT_SECRET: ${JWT_SECRET:-live-local-secret-do-not-use-in-production-minimum-32-chars}
+      API_KEY_HMAC_SECRET: ${API_KEY_HMAC_SECRET:-live-local-api-key-hmac-secret-do-not-use-in-production-32c}
+      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-live-local-service-auth-secret-do-not-use-in-production-32c}
     volumes:
       - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
     networks:
