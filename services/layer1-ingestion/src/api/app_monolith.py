@@ -1194,6 +1194,10 @@ async def seed_validation_ingestion_job(
             db.flush()
 
         job.status = payload.status.value
+        # Reseeding should make the deterministic validation job the latest
+        # visible Meridian job in the UI, even when previous live attempts left
+        # queued jobs behind.
+        job.created_at = now
         job.started_at = job.started_at or now
         job.completed_at = now if payload.status == JobStatus.COMPLETED else job.completed_at
         job.progress_total_pages = 7

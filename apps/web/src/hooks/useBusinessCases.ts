@@ -135,6 +135,7 @@ async function fetchBusinessCases(filters: BusinessCaseFilters): Promise<Busines
   if (filters.status && filters.status !== 'all') params.set('status', filters.status);
   if (filters.search) params.set('search', filters.search);
   if (filters.company) params.set('company', filters.company);
+  params.set('include_completed', 'true');
 
   // Query L4 for business case workflows
   const response = await apiGet<Record<string, unknown>>('l4', `/workflows?type=business_case&${params.toString()}`);

@@ -14,6 +14,24 @@ class _Ctx:
 
 
 class _Executor:
+    async def list_workflows(self, tenant_id: str):
+        return [
+            {
+                "workflow_id": "wf-1",
+                "workflow_type": "roi_calculator",
+                "status": "running",
+                "progress_percentage": 35.0,
+                "tenant_id": tenant_id,
+            },
+            {
+                "workflow_id": "wf-complete",
+                "workflow_type": "business_case",
+                "status": "completed",
+                "progress_percentage": 100.0,
+                "tenant_id": tenant_id,
+            },
+        ]
+
     async def list_active_workflows(self, tenant_id: str):
         return [{"workflow_id": "wf-1", "workflow_type": "roi_calculator", "status": "running", "progress_percentage": 35.0}]
 
@@ -46,3 +64,15 @@ async def test_workflow_list_and_detail_match_canonical_schemas():
 
     Draft202012Validator(list_schema).validate(list_resp)
     Draft202012Validator(detail_schema).validate(detail_resp)
+
+
+@pytest.mark.asyncio
+async def test_workflow_list_requires_include_completed_for_terminal_cases():
+    app = _build_app()
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        default_resp = (await client.get("/v1/workflows?type=business_case")).json()
+        completed_resp = (await client.get("/v1/workflows?type=business_case&include_completed=true")).json()
+
+    assert default_resp["items"] == []
+    assert [item["id"] for item in completed_resp["items"]] == ["wf-complete"]

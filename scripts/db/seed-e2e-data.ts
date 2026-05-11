@@ -460,7 +460,7 @@ async function verifyWorkflowResult(workflowId: string): Promise<boolean> {
 }
 
 async function verifyWorkflowListIncludes(...workflowIds: string[]): Promise<boolean> {
-  const result = await api('GET', '/v1/workflows?type=business_case');
+  const result = await api('GET', '/v1/workflows?type=business_case&include_completed=true');
   const items = Array.isArray((result.data as any)?.items) ? (result.data as any).items : [];
   const observed = new Set(items.map((item: any) => String(item.id ?? item.workflow_id ?? '')));
   return workflowIds.every((workflowId) => observed.has(workflowId));

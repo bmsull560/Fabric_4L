@@ -369,20 +369,27 @@ async def _filter_and_paginate_workflows(
     offset: int,
     status: str | None,
     workflow_type: str | None,
+    include_completed: bool = False,
 ) -> dict[str, Any]:
     """Shared helper: filter and paginate workflows for a tenant."""
-    all_active = await executor.list_workflows(tenant_id=tenant_id)
+    workflows = await executor.list_workflows(tenant_id=tenant_id)
+
+    if not include_completed:
+        workflows = [
+            w for w in workflows
+            if str(w.get("status", "")).lower() not in TERMINAL_STATUSES
+        ]
 
     if status:
         status_lower = status.lower()
-        all_active = [w for w in all_active if w.get("status", "").lower() == status_lower]
+        workflows = [w for w in workflows if w.get("status", "").lower() == status_lower]
 
     if workflow_type:
         type_lower = workflow_type.lower()
-        all_active = [w for w in all_active if w.get("workflow_type", "").lower() == type_lower]
+        workflows = [w for w in workflows if w.get("workflow_type", "").lower() == type_lower]
 
-    total = len(all_active)
-    paginated_raw = all_active[offset:offset + limit]
+    total = len(workflows)
+    paginated_raw = workflows[offset:offset + limit]
     paginated = [
         WorkflowListItem(
             id=str(w.get("workflow_id") or w.get("id") or ""),
@@ -414,6 +421,7 @@ async def list_workflows(
     offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
     status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
     type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
+    include_completed: bool = Query(default=False, description="Include terminal workflows in the list response"),
     _ctx: RequestContext = Depends(require_authenticated),
     executor: OrchestrationController = Depends(get_executor),
 ) -> WorkflowListResponse:
@@ -422,7 +430,7 @@ async def list_workflows(
     Supports ?type=business_case filter used by the business-cases hook.
     """
     result = await _filter_and_paginate_workflows(
-        executor, _ctx.tenant_id, limit, offset, status, type
+        executor, _ctx.tenant_id, limit, offset, status, type, include_completed
     )
     return WorkflowListResponse.model_validate(result)
 
@@ -442,7 +450,7 @@ async def list_active_workflows(
     Returns a paginated list of workflows with metadata for efficient client-side rendering.
     """
     result = await _filter_and_paginate_workflows(
-        executor, _ctx.tenant_id, limit, offset, status, workflow_type
+        executor, _ctx.tenant_id, limit, offset, status, workflow_type, include_completed=False
     )
     return WorkflowListResponse.model_validate(result)
 
