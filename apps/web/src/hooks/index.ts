@@ -84,6 +84,11 @@ export {
   type TaskRecord,
   type TaskStatus,
 } from "./useTasks";
+export {
+  useComments,
+  useCreateComment,
+  type CommentRecord,
+} from "./useComments";
 
 // ── Utility Hooks ─────────────────────────────────────────────────────────────
 

@@ -52,6 +52,7 @@ const Signup = lazy(() => import("@/pages/Signup"));
 const ValueNarrativeHome = lazy(() => import("@/pages/ValueNarrativeHome"));
 const Accounts = lazy(() => import("@/pages/Accounts"));
 const TasksPage = lazy(() => import("@/pages/TasksPage"));
+const CollaborationCommentsPage = lazy(() => import("@/pages/CollaborationCommentsPage"));
 
 // ── Workspace Tab Pages ───────────────────────────────────────────────────────
 const SignalsTab = lazy(() => import("@/pages/intelligence/SignalsTab"));
@@ -242,6 +243,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <TasksPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/collaboration/comments",
+        element: (
+          <ProtectedRoute>
+            <CollaborationCommentsPage />
           </ProtectedRoute>
         ),
       },

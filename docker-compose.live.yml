@@ -234,7 +234,9 @@ services:
       - "8004:8000"
     environment:
       JWT_SECRET: ${JWT_SECRET:-live-local-secret-do-not-use-in-production-minimum-32-chars}
+      API_KEY_HMAC_SECRET: ${API_KEY_HMAC_SECRET:-live-local-api-key-hmac-secret-do-not-use-in-production-32c}
       SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-live-local-service-auth-secret-do-not-use-in-production-32c}
+      ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT: "true"
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents
       CHECKPOINT_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
       REDIS_URL: redis://redis:6379/0

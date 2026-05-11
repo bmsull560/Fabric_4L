@@ -245,6 +245,13 @@ export const QK = {
       ["tasks", "list", stableKey(filters)] as const,
   },
 
+  comments: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
+    all: ["comments"] as const,
+    list: (filters: { subjectType?: string; subjectId?: string; accountId?: string }) =>
+      ["comments", "list", stableKey(filters)] as const,
+  },
+
   integrations: {
     layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["integrations"] as const,

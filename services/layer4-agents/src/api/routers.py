@@ -9,7 +9,7 @@ from ..feature_flags.api import feature_flags_router
 from ..registry.api.routes import router as models_router
 from ..tenants.api import admin_router, api_keys_router, provisioning_router, registration_router, tenants_router, users_router
 from ..tenants.api.routes.oidc import router as oidc_router
-from .routes import accounts, agent_stream, analysis, prospects, signals, tasks, tools, workflows
+from .routes import accounts, agent_stream, analysis, comments, prospects, signals, tasks, tools, workflows
 from .routes.company_knowledge import router as company_knowledge_router
 from .routes import audit as audit_router
 from .routes.billing import router as billing_router
@@ -40,6 +40,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
     app.include_router(signals.router, prefix="/v1", tags=["signals"])
     app.include_router(tasks.router, prefix="/v1", tags=["tasks"])
+    app.include_router(comments.router, prefix="/v1", tags=["comments"])
     app.include_router(agent_stream.router, prefix="/v1", tags=["agent-stream"])
     app.include_router(crm_webhooks_router, prefix="/v1")
     app.include_router(checkpoint_router, prefix="/v1", tags=["checkpoints"])
