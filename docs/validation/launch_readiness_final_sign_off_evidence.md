@@ -37,6 +37,41 @@ Known limitations remain:
 | Journey SLO gate | REQUIRES_ARTIFACT | `apps/web/tmp/journey-slo-report.json` or configured `JOURNEY_SLO_REPORT_PATH` must be produced from a synthetic monitor run. |
 | Live production readiness | REQUIRES_ENVIRONMENT | Staging/live evidence remains required for SSO/OIDC, billing, live LLM provider validation, rollback, telemetry, alert receiver, and performance smoke. |
 
+## Owner Sign-Off: CI/Staging Backend-Integrated Reproducibility
+
+Evidence accepted for GitHub Actions run `25650409895`.
+
+Run URL:
+`https://github.com/bmsull560/Fabric_4L/actions/runs/25650409895`
+
+Release-candidate SHA:
+`cc6376e35b858f3593771eab34dfac5f5af58552`
+
+Artifact bundle:
+`backend-integrated-reproducibility-evidence-25650409895`
+
+Reviewed evidence:
+
+- Docker stack started successfully.
+- Seed completed successfully.
+- Seed report shows `aggregateStatus=present` and `requiredRowsPresent=true`.
+- J1-only retained JUnit shows `tests=15`, `failures=0`, `errors=0`, `skipped=0`.
+- J11-only retained JUnit shows `tests=5`, `failures=0`, `errors=0`, `skipped=0`.
+- J1+J11 pair retained JUnit shows `tests=20`, `failures=0`, `errors=0`, `skipped=0`.
+- Runner summary shows `status=PASS_WITH_CLASSIFIED_RETRY`.
+- Retry/flaky status is classified.
+- Validator status is `PASS`.
+- Evidence scope is `CI_STAGING_CANDIDATE`.
+- Approved environment metadata indicates `approvedForGateClosure=true`.
+
+Decision:
+
+CI/staging backend-integrated reproducibility evidence is accepted with classified retry noted.
+
+Owner: Test owner
+
+Date: 2026-05-11
+
 ## Repository-Owned Evidence Completed
 
 | Evidence Area | Artifact | Result | Interpretation |

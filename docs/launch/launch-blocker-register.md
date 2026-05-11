@@ -25,8 +25,11 @@ J11 backend-integrated business lifecycle validation passed as a J11-only retain
 | J11 business lifecycle backend-integrated Playwright run | PASS - 5 tests passed | `artifacts/live-workflow-validation/playwright/j11-junit.xml` | J11 business lifecycle only. |
 | Deterministic backend seed validation | PASS - `aggregateStatus=present`, `requiredRowsPresent=true` | `artifacts/live-workflow-validation/seed-report.json` | J11 seed preconditions only. |
 | Full J1+J11 backend-integrated Playwright pair | PASS - 20 tests passed | `artifacts/live-workflow-validation/playwright/junit.xml` | Local Docker-backed backend-integrated J1 golden path plus J11 business lifecycle. |
+| CI/staging backend-integrated reproducibility package | PASS WITH CLASSIFIED RETRY - accepted by Test owner on 2026-05-11 | GitHub Actions run `25650409895`; artifact bundle `backend-integrated-reproducibility-evidence-25650409895`; release-candidate SHA `cc6376e35b858f3593771eab34dfac5f5af58552` | CI/staging backend-integrated J1+J11 reproducibility evidence only; unrelated environment gates remain unchanged. |
 
 The local Docker-backed backend-integrated J1+J11 evidence line is now closed by the retained `junit.xml` artifact. This does not prove production readiness, paid GA readiness, CI reproducibility, or staging/live provider readiness. P0-001 remains environment-dependent until the release-candidate rehearsal is reproduced in the approved CI/staging or production-like environment with release SHA, logs, and owner sign-off.
+
+The CI/staging backend-integrated reproducibility package for GitHub Actions run `25650409895` is accepted with classified retry noted. This accepts only the retained backend-integrated J1+J11 reproducibility package and does not alter SSO/OIDC, billing, live LLM provider, rollback, telemetry, alert receiver, performance smoke, broad security suite, or Journey SLO evidence requirements.
 
 ## P0 Launch Blocker
 
