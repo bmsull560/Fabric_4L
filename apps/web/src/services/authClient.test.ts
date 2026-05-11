@@ -182,6 +182,10 @@ describe('AuthClient', () => {
 
   describe('refreshToken', () => {
     it('calls POST /auth/refresh with credentials: include', async () => {
+      Object.defineProperty(document, 'cookie', {
+        value: 'vf_csrf_token=csrf-refresh-token',
+        configurable: true,
+      });
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
@@ -198,7 +202,11 @@ describe('AuthClient', () => {
       expect(result).toBe(true);
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/auth/oidc/refresh'),
-        expect.objectContaining({ method: 'POST', credentials: 'include' })
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-refresh-token' }),
+        })
       );
     });
 
@@ -253,6 +261,10 @@ describe('AuthClient', () => {
 
   describe('logout', () => {
     it('calls POST /auth/logout and clears local metadata', async () => {
+      Object.defineProperty(document, 'cookie', {
+        value: 'vf_csrf_token=csrf-logout-token',
+        configurable: true,
+      });
       const user = authFixtures.user();
       env.sessionStorage.setItem(
         'vf.auth.session.meta',
@@ -265,7 +277,11 @@ describe('AuthClient', () => {
 
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/auth/oidc/logout'),
-        expect.objectContaining({ method: 'POST', credentials: 'include' })
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-logout-token' }),
+        })
       );
       expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
     });

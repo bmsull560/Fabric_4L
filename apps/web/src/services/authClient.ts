@@ -22,6 +22,24 @@ import { sessionService } from './sessionService';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const L4_PREFIX = import.meta.env.VITE_L4_PREFIX || '/agents';
+const CSRF_COOKIE_NAME = 'vf_csrf_token';
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined' || !document.cookie) {
+    return null;
+  }
+  const encodedName = `${encodeURIComponent(name)}=`;
+  const entry = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(encodedName));
+  return entry ? decodeURIComponent(entry.slice(encodedName.length)) : null;
+}
+
+function csrfHeaders(): Record<string, string> {
+  const token = readCookie(CSRF_COOKIE_NAME);
+  return token ? { 'X-CSRF-Token': token } : {};
+}
 
 export class AuthClient {
   /**
@@ -120,7 +138,7 @@ export class AuthClient {
       response = await fetch(url, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
       });
     } catch {
       // Network error — keep existing metadata, let next API call surface 401
@@ -172,6 +190,7 @@ export class AuthClient {
       await fetch(`${API_BASE}${L4_PREFIX}/auth/oidc/logout`, {
         method: 'POST',
         credentials: 'include',
+        headers: csrfHeaders(),
       });
     } catch {
       // Best-effort — local state is already cleared

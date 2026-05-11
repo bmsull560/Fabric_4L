@@ -511,6 +511,11 @@ services:
       - value-fabric-network
     restart: "no"
     command: server -dev -dev-root-token-id=root -dev-listen-address=0.0.0.0:8200
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # PostgreSQL (for Layer 1 crawl state + Layer 5 Ground Truth)
   postgres:

@@ -142,6 +142,8 @@ class OIDCClient:
             if getattr(exc.response, "status_code", 0) < 500:
                 raise
             response = await self._http_client.get(well_known)
+        except Exception:
+            response = await self._http_client.get(well_known)
         response.raise_for_status()
         return response.json()
 

@@ -221,6 +221,7 @@ class ProductionSettingsValidationTests(unittest.TestCase):
                 environment="development",
                 jwt_secret="j" * 40,
                 api_key_hmac_secret="h" * 40,
+                allow_insecure_service_http_in_development=False,
                 layer1_api_url="http://localhost:8000",
                 layer2_api_url="https://layer2.local",
                 layer3_api_url="https://layer3.local",

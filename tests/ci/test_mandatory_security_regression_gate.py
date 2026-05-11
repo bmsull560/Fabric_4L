@@ -7,6 +7,9 @@ and includes all required coverage without silent skips.
 
 from __future__ import annotations
 
+import os
+import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -20,6 +23,36 @@ def _gate_script_text() -> str:
     return GATE_SCRIPT.read_text(encoding="utf-8")
 
 
+def _gate_command(*args: str) -> list[str]:
+    if os.name == "nt":
+        bash = shutil.which("bash")
+        assert bash, "bash is required to execute mandatory_security_regression_gate.sh on Windows"
+        return [bash, str(GATE_SCRIPT), *args]
+    return [str(GATE_SCRIPT), *args]
+
+
+def _required_suites_from_script() -> list[str]:
+    script = _gate_script_text()
+    paths: list[str] = []
+    for array_name in (
+        "STANDALONE_API_TESTS",
+        "ROOT_SECURITY_TESTS",
+        "LAYER4_C06_SECURITY_TESTS",
+        "CONTRACT_TESTS",
+        "K8S_TESTS",
+        "LAYER2_FAIL_CLOSED_TESTS",
+        "LAYER5_FAIL_CLOSED_TESTS",
+    ):
+        match = re.search(rf"{array_name}=\((.*?)\)", script, flags=re.DOTALL)
+        assert match, f"Gate missing {array_name}"
+        paths.extend(
+            line.strip().split("::", 1)[0]
+            for line in match.group(1).splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        )
+    return paths
+
+
 def test_gate_script_exists():
     """Gate script must exist at expected location."""
     assert GATE_SCRIPT.exists(), f"Gate script not found at {GATE_SCRIPT}"
@@ -27,31 +60,43 @@ def test_gate_script_exists():
 
 def test_gate_is_executable():
     """Gate script should be executable."""
-    assert GATE_SCRIPT.stat().st_mode & 0o111, "Gate script is not executable"
+    if os.name == "nt":
+        assert GATE_SCRIPT.exists(), "Gate script must exist for CI execution"
+    else:
+        assert GATE_SCRIPT.stat().st_mode & 0o111, "Gate script is not executable"
 
 
 def test_gate_list_required_mode():
     """Gate should support --list-required dry-run mode."""
-    result = subprocess.run(
-        [str(GATE_SCRIPT), "--list-required"],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-    )
+    if os.name == "nt":
+        required_suites = _required_suites_from_script()
+    else:
+        result = subprocess.run(
+            _gate_command("--list-required"),
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+        )
 
-    assert result.returncode == 0, f"--list-required failed: {result.stderr}"
-    required_suites = result.stdout.strip().split("\n")
+        assert result.returncode == 0, f"--list-required failed: {result.stderr}"
+        required_suites = result.stdout.strip().split("\n")
 
     # Check that I-02 layer2 and layer5 suites are in the list
     layer2_i02 = "services/layer2-extraction/tests/test_production_fail_closed_i02.py"
     layer5_i02 = "services/layer5-ground-truth/tests/test_production_fail_closed_i02.py"
     layer4_rate_limits = "services/layer4-agents/tests/test_tenant_rate_limits.py"
     layer4_security_fixes = "services/layer4-agents/tests/test_security_fixes.py"
+    auth_hijacking = "tests/security/test_auth_session_hijacking.py"
+    csrf_comprehensive = "tests/security/test_csrf_comprehensive.py"
+    auth_rate_limiting = "tests/security/test_auth_rate_limiting.py"
 
     assert layer2_i02 in required_suites, f"I-02 Layer 2 suite missing from required list"
     assert layer5_i02 in required_suites, f"I-02 Layer 5 suite missing from required list"
     assert layer4_rate_limits in required_suites, "C-06 tenant rate-limit suite missing from required list"
     assert layer4_security_fixes in required_suites, "C-06 security fixes suite missing from required list"
+    assert auth_hijacking in required_suites, "Authentication session hijacking suite missing from required list"
+    assert csrf_comprehensive in required_suites, "Comprehensive CSRF suite missing from required list"
+    assert auth_rate_limiting in required_suites, "Authentication rate-limit suite missing from required list"
 
 
 def test_gate_references_required_i02_layer_suites():
@@ -66,8 +111,13 @@ def test_gate_references_required_i02_layer_suites():
 
 def test_gate_verify_required_only_mode():
     """Gate should support --verify-required-only mode and pass with all suites present."""
+    if os.name == "nt":
+        missing = [path for path in _required_suites_from_script() if not (REPO_ROOT / path).exists()]
+        assert not missing, f"Required suites missing: {missing}"
+        return
+
     result = subprocess.run(
-        [str(GATE_SCRIPT), "--verify-required-only"],
+        _gate_command("--verify-required-only"),
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,
@@ -103,6 +153,9 @@ def test_gate_includes_required_suite_arrays():
         "test_auth_enforcement",
         "test_production_safety",
         "test_tenant_boundary_fails_closed",
+        "test_auth_session_hijacking",
+        "test_csrf_comprehensive",
+        "test_auth_rate_limiting",
         "test_cross_tenant_api",
         "test_security_policies",
         "test_workload_validation",

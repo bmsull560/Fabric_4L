@@ -42,6 +42,9 @@ STANDALONE_API_TESTS=(
 ROOT_SECURITY_TESTS=(
   tests/security/test_auth_boundaries.py
   tests/security/test_auth_source_validation.py
+  tests/security/test_auth_session_hijacking.py
+  tests/security/test_csrf_comprehensive.py
+  tests/security/test_auth_rate_limiting.py
   tests/security/test_jwt_config_validation.py
   tests/security/test_tenant_boundary_fails_closed.py
   tests/security/test_cross_tenant_api.py

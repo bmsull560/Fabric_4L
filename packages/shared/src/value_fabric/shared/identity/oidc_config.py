@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,15 @@ class OIDCProviderConfig(BaseModel):
     issuer_url: str = Field(..., description="OIDC issuer URL")
     client_id: str = Field(..., description="OAuth2 client ID")
     client_secret_ref: Optional[str] = Field(
-        None, description="Reference to the client secret (e.g., env var or vault path)"
+        None,
+        description="Reference to the client secret (e.g., env var or vault path)",
+        validation_alias=AliasChoices("client_secret_ref", "client_secret"),
     )
+    jwks_uri: Optional[str] = None
+    authorization_endpoint: Optional[str] = None
+    token_endpoint: Optional[str] = None
+    userinfo_endpoint: Optional[str] = None
+    redirect_uri: Optional[str] = None
     scopes: List[str] = Field(default_factory=lambda: ["openid", "email", "profile"])
     claim_mapping: Dict[str, str] = Field(
         default_factory=dict,

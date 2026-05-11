@@ -1104,6 +1104,35 @@ jobs:
           retention-days: 14
 
   # Docker image build verification - catches Dockerfile regressions
+  docker-compose-config-contract:
+    name: Docker Compose Config Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.11'
+
+      - name: Install compose contract dependencies
+        run: python -m pip install pyyaml
+
+      - name: Validate Docker Compose config contracts
+        run: |
+          python scripts/ci/check_docker_compose_config.py \
+            --artifact-dir artifacts/docker-compose-config
+
+      - name: Upload Docker Compose config artifacts
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: docker-compose-config-contract
+          path: artifacts/docker-compose-config/**
+          retention-days: 14
+
   docker-build-check:
     name: Docker Image Build Verification
     runs-on: ubuntu-latest

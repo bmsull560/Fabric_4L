@@ -60,7 +60,7 @@ services:
       - DATABASES_USER=postgres
       - DATABASES_PASSWORD=postgres
     volumes:
-      - ./k8s/base/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+      - ./k8s/base/userlist.example.txt:/etc/pgbouncer/userlist.txt:ro
     ports:
       - "6432:6432"
     networks:
@@ -205,6 +205,18 @@ services:
     depends_on:
       layer4:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3001', (res) => process.exit(res.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
 volumes:
   dev-postgres-data:

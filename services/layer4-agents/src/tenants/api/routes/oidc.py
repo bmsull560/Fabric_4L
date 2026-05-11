@@ -13,6 +13,7 @@ import base64
 import hashlib
 import os
 import secrets
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -27,7 +28,7 @@ from value_fabric.shared.identity.oidc_config import OIDCProviderConfig
 from value_fabric.shared.identity.permissions import Role
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from ....api.security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token
+from ....api.security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token, validate_double_submit
 
 # SECURITY: OIDC login/callback endpoints are pre-authentication flows.
 # The user does not yet have a JWT, so get_db (no tenant context) is
@@ -74,6 +75,10 @@ class oidc_metadataResult(TypedDictModel):
 
 router = APIRouter(prefix="/auth/oidc", tags=["OIDC SSO"])
 
+AUTH_PREAUTH_WINDOW_SECONDS = 60
+AUTH_PREAUTH_MAX_ATTEMPTS = 5
+_auth_preauth_buckets: dict[str, tuple[float, int]] = {}
+
 _DEFAULT_REDIRECT_URI = os.getenv(
     "OIDC_DEFAULT_REDIRECT_URI", "https://localhost:3000/auth/callback"
 )
@@ -85,6 +90,46 @@ def _generate_state() -> str:
 
 def _generate_nonce() -> str:
     return secrets.token_urlsafe(32)
+
+
+def _resolve_client_ip(request: Request) -> str:
+    """Return the direct peer address for anonymous auth throttling.
+
+    Do not trust forwarded headers here. Proxy-origin normalization belongs at
+    the edge; using the socket peer keeps this route-level limiter conservative.
+    """
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _check_preauth_rate_limit(request: Request, endpoint: str, discriminator: str | None = None) -> None:
+    """Fail closed on repeated anonymous OIDC login/callback abuse."""
+    now = time.time()
+    client_ip = _resolve_client_ip(request)
+    suffix = discriminator or "anonymous"
+    key = f"auth:{endpoint}:{client_ip}:{suffix}"
+    window_start, count = _auth_preauth_buckets.get(key, (now, 0))
+
+    if now - window_start >= AUTH_PREAUTH_WINDOW_SECONDS:
+        window_start = now
+        count = 0
+
+    if count >= AUTH_PREAUTH_MAX_ATTEMPTS:
+        retry_after = max(1, int(AUTH_PREAUTH_WINDOW_SECONDS - (now - window_start)))
+        raise HTTPException(
+            status_code=429,
+            detail="Too many authentication attempts",
+            headers={
+                "Retry-After": str(retry_after),
+                "X-RateLimit-Limit": str(AUTH_PREAUTH_MAX_ATTEMPTS),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": str(int(window_start + AUTH_PREAUTH_WINDOW_SECONDS)),
+                "X-RateLimit-Policy": "oidc_preauth",
+            },
+        )
+
+    _auth_preauth_buckets[key] = (window_start, count + 1)
 
 
 # P0-10: PKCE helper functions
@@ -157,6 +202,7 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
 
 @router.get("/{tenant_slug}/login")
 async def oidc_login(
+    request: Request,
     tenant_slug: str,
     redirect_uri: str | None = Query(None),
     db: AsyncSession = Depends(get_db_from_context),
@@ -165,6 +211,8 @@ async def oidc_login(
 
     Stores state/nonce in ``oidc_sessions`` and returns the IdP authorize URL.
     """
+    _check_preauth_rate_limit(request, "login", tenant_slug)
+
     tenant = await _get_tenant_by_slug(db, tenant_slug)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
@@ -239,6 +287,8 @@ async def oidc_callback(
     and returns an internal JWT access_token.
     """
     from sqlalchemy import text
+
+    _check_preauth_rate_limit(request, "callback", state)
 
     # Look up and validate session (P0-10: include code_verifier for PKCE)
     result = await db.execute(
@@ -396,6 +446,7 @@ async def oidc_callback(
         tenant_id=tenant_id,
         user_id=str(user.id),
         roles=[user.role],
+        extra_claims={"jti": secrets.token_urlsafe(16)},
         expires_in_seconds=3600,
     )
     csrf_token = issue_csrf_token()
@@ -473,6 +524,7 @@ async def oidc_metadata(
 async def auth_refresh(
     response: Response,
     vf_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    _csrf_ok: None = Depends(validate_double_submit),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict:
     """Rotate the session cookie and return updated non-secret metadata.
@@ -516,6 +568,7 @@ async def auth_refresh(
         tenant_id=tenant_id,
         user_id=str(user.id),
         roles=[user.role],
+        extra_claims={"jti": secrets.token_urlsafe(16)},
         expires_in_seconds=3600,
     )
     csrf_token = issue_csrf_token()
@@ -549,7 +602,10 @@ async def auth_refresh(
 
 
 @router.post("/logout")
-async def auth_logout(response: Response) -> dict:
+async def auth_logout(
+    response: Response,
+    _csrf_ok: None = Depends(validate_double_submit),
+) -> dict:
     """Expire the session and CSRF cookies.
 
     Sets both cookies to Max-Age=0 so the browser removes them immediately.
