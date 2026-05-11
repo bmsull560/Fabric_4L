@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { lazy, type ComponentProps } from "react";
 import { createBrowserRouter, Navigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -8,7 +8,7 @@ import { ProtectedRoute } from "@/components/routing/ProtectedRoute";
 import { AccountContextSync } from "@/components/routing/AccountContextSync";
 import { AccountScopedRedirect } from "@/components/routing/AccountScopedRedirect";
 import { useAccountContextStore } from "@/stores/accountContextStore";
-import { useCreateAccount } from "@/hooks/useAccounts";
+import { useProspectSetupAccountCreate } from "@/hooks/useProspectSetupAccount";
 import { SettingsLayout } from "@/app/settings/SettingsLayout";
 import CommandCenter from "@/pages/CommandCenter";
 
@@ -124,27 +124,12 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function ProspectSetupWithNav() {
   const { navigateTo } = useNavigation();
-  const createAccount = useCreateAccount();
+  const prospectSetup = useProspectSetupAccountCreate();
   const setSelectedAccountId = useAccountContextStore((state) => state.setSelectedAccountId);
 
-  const handleCreateSetup = async (payload: {
-    companyName?: string;
-    industry?: string;
-    painPoints?: string[];
-    stakeholders?: Record<string, string>;
-  }) => {
+  const handleCreateSetup: ComponentProps<typeof ProspectSetup>["onCreateSetup"] = async (payload) => {
     try {
-      const name = payload.companyName ?? 'Unknown Account';
-      const slug = name.toLowerCase().replace(/\s+/g, '-');
-      const result = await createAccount.mutateAsync({
-        name,
-        provider: 'manual',
-        provider_record_id: `manual-${slug}`,
-        domain: `${slug}.com`,
-        industry: payload.industry,
-        stage: 'prospect',
-      });
-      return { accountId: result.account.id };
+      return await prospectSetup.createSetup(payload);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create account');
       throw error;
@@ -158,7 +143,7 @@ function ProspectSetupWithNav() {
         navigateTo(`/intelligence/${accountId}/signals`);
       }}
       onCreateSetup={handleCreateSetup}
-      isSubmitting={createAccount.isPending}
+      isSubmitting={prospectSetup.isSubmitting}
     />
   );
 }

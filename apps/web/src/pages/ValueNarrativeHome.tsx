@@ -10,9 +10,8 @@ import { Clock, CheckCircle2, AlertCircle, Loader2, Zap } from "lucide-react";
 import { useRecentIngestionJobs, useIngestionStats, type IngestionJob } from "@/hooks/useIngestion";
 import { MetricCard, DataTable, StatusBadge } from "@/components/WfPrimitives";
 import { ProspectPromptBuilder } from "@/components/workspace/ProspectPromptBuilder";
-import type { CreateSetupResult, ProspectSetupPromptPayload } from "@/components/workspace/ProspectPromptBuilder";
 import { useNavigation } from "@/hooks/useNavigation";
-import { apiClient } from "@/api/client";
+import { useProspectSetupAccountCreate } from "@/hooks/useProspectSetupAccount";
 
 export default function ValueNarrativeHome() {
   const { data: recentJobs = [], isLoading: jobsLoading } = useRecentIngestionJobs(5);
@@ -20,26 +19,10 @@ export default function ValueNarrativeHome() {
     data: kpiData = { totalDomains: 0, pagesSynthesized: 0, sourcesAnalyzed: 0, avgProcessingTime: 0 },
   } = useIngestionStats();
   const { navigateTo } = useNavigation();
-
-  const handleCreateSetup = async (payload: ProspectSetupPromptPayload): Promise<CreateSetupResult> => {
-    const response = await apiClient.post<CreateSetupResult>("l4", "/prospects/setup", {
-      prospect_data: {
-        account_id: payload.companyDomain || "new",
-        company_name: payload.companyName,
-        industry: payload.industry,
-        business_pains: payload.businessPain,
-        friction_points: payload.currentFriction,
-        desired_outcomes: payload.desiredOutcomes,
-        prompt_text: payload.freeformPrompt,
-        attachments: payload.sourceArtifacts,
-      },
-      options: { mode: payload.mode, depth: payload.enrichmentDepth },
-    });
-    return response.data;
-  };
+  const prospectSetup = useProspectSetupAccountCreate();
 
   const handleNavigateToWorkspace = (_path: string, accountId: string) => {
-    navigateTo('account-intelligence', { accountId });
+    navigateTo('intelligence-signals', { accountId });
   };
 
   return (
@@ -59,8 +42,9 @@ export default function ValueNarrativeHome() {
           </p>
         </div>
         <ProspectPromptBuilder
-          onCreateSetup={handleCreateSetup}
+          onCreateSetup={prospectSetup.createSetup}
           onNavigateToWorkspace={handleNavigateToWorkspace}
+          isSubmitting={prospectSetup.isSubmitting}
         />
       </div>
 

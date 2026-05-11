@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { buildCreateAccountPayload, createAccountPayloadSchema } from '@/hooks/useAccounts';
+import { buildProspectSetupCreateAccountPayload } from '@/hooks/useProspectSetupAccount';
 import { ApiErrorSchema, assertCanonicalSchema, assertSchema } from './_helpers';
 
 const backendCreateAccountRequestSchema = z.object({
@@ -72,6 +73,50 @@ describe('Contract: POST /accounts create payload', () => {
     });
 
     expect(() => createAccountPayloadSchema.parse(payload)).not.toThrow();
+    expect(() =>
+      assertCanonicalSchema(
+        backendCreateAccountRequestSchema,
+        'layer4-agents.json',
+        '#/components/schemas/CreateAccountRequest',
+        payload,
+        'CreateAccountRequest'
+      )
+    ).not.toThrow();
+  });
+
+  it('prospect setup entrypoints build the canonical account create payload', () => {
+    const payload = buildProspectSetupCreateAccountPayload({
+      companyName: 'Created Account Inc',
+      companyDomain: 'https://www.created-account.example/path',
+      industry: 'Manufacturing',
+      buyingContext: '',
+      whyNow: '',
+      knownInitiative: '',
+      stakeholders: {},
+      businessPain: [],
+      currentFriction: [],
+      desiredOutcomes: [],
+      desiredOutputs: [],
+      outputType: 'account_brief',
+      mode: 'Balanced',
+      enrichmentDepth: 'standard',
+      useUploadedFiles: false,
+      usePriorAccountContext: false,
+      runWebEnrichment: true,
+      complianceSensitive: false,
+      sourceArtifacts: [],
+      freeformPrompt: 'Company: Created Account Inc',
+    });
+
+    expect(payload).toMatchObject({
+      provider: 'manual',
+      provider_record_id: 'manual-created-account-example',
+      name: 'Created Account Inc',
+      domain: 'created-account.example',
+      website: 'created-account.example',
+      industry: 'Manufacturing',
+      stage: 'prospect',
+    });
     expect(() =>
       assertCanonicalSchema(
         backendCreateAccountRequestSchema,
