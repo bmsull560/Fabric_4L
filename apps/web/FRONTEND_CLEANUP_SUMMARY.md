@@ -44,15 +44,11 @@ Use this template for subsequent frontend cleanup write-ups.
 ```md
 # Frontend Cleanup: <short title>
 
-<<<<<<< ours
-### 2. Inline Tool Definitions (verification pending)
-=======
 ## Rationale (ADR-style)
 - **Context:** <what inconsistency or technical debt existed>
 - **Decision:** <pattern adopted>
 - **Why:** <why this pattern vs alternatives>
 - **Consequences:** <what changes for future contributors>
->>>>>>> theirs
 
 ## Scope
 - **In scope:** <areas/files/patterns intentionally addressed>
