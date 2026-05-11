@@ -16,6 +16,10 @@ GATE_SCRIPT = Path(__file__).parent.parent.parent / "scripts" / "ci" / "mandator
 REPO_ROOT = Path(__file__).parent.parent.parent
 
 
+def _gate_script_text() -> str:
+    return GATE_SCRIPT.read_text(encoding="utf-8")
+
+
 def test_gate_script_exists():
     """Gate script must exist at expected location."""
     assert GATE_SCRIPT.exists(), f"Gate script not found at {GATE_SCRIPT}"
@@ -52,7 +56,7 @@ def test_gate_list_required_mode():
 
 def test_gate_references_required_i02_layer_suites():
     """Gate script must explicitly invoke I-02 layer2 and layer5 checks."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     # Check for I-02 layer2 invocation
     assert "test_production_fail_closed_i02.py" in script_content, "Gate missing I-02 test invocation"
@@ -75,7 +79,7 @@ def test_gate_verify_required_only_mode():
 
 def test_gate_uses_repo_relative_audit_dir():
     """Gate should use repo-relative .fabric/audit, not Linux-specific /home/ubuntu."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     # Should NOT use Linux-specific path
     assert "/home/ubuntu/fabric_audit" not in script_content, "Gate uses Linux-specific artifact path"
@@ -88,7 +92,7 @@ def test_gate_uses_repo_relative_audit_dir():
 
 def test_gate_includes_required_suite_arrays():
     """Gate script must define required suite arrays with all critical checks."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "STANDALONE_API_TESTS=(" in script_content, "Gate missing API required suite array"
     assert "ROOT_SECURITY_TESTS=(" in script_content, "Gate missing root security suite array"
@@ -112,7 +116,7 @@ def test_gate_includes_required_suite_arrays():
 
 def test_gate_includes_frontend_contract_guards():
     """Gate must include frontend contract tests and placeholder guard."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "Frontend contract tests" in script_content or "vitest run src/api/__tests__/contract" in script_content, \
         "Gate missing frontend contract tests"
@@ -122,7 +126,7 @@ def test_gate_includes_frontend_contract_guards():
 
 def test_gate_includes_critical_e2e_guards():
     """Gate must include critical E2E skip-valve guard."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "E2E" in script_content or "e2e" in script_content.lower(), "Gate missing E2E reference"
     assert "skip" in script_content.lower(), "Gate missing skip guard reference"
@@ -130,7 +134,7 @@ def test_gate_includes_critical_e2e_guards():
 
 def test_gate_includes_kubernetes_hardening_checks():
     """Gate must include Kubernetes workload hardening checks."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "Kubernetes" in script_content or "k8s" in script_content.lower(), "Gate missing Kubernetes reference"
     assert "test_security_policies" in script_content, "Gate missing security policies test"
@@ -139,7 +143,7 @@ def test_gate_includes_kubernetes_hardening_checks():
 
 def test_gate_has_required_suite_validation_function():
     """Gate must have fail-closed validation function."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "assert_required_paths_present" in script_content, "Gate missing required path validation"
     assert "exit 1" in script_content, "Gate missing exit on failure"
@@ -147,7 +151,7 @@ def test_gate_has_required_suite_validation_function():
 
 def test_gate_calls_required_suite_validation():
     """Gate must call check_required_suites before execution."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     # The function should be called in main execution flow (after dry-run modes)
     assert "run_step \"Required suite manifest check\" assert_required_paths_present" in script_content, (
@@ -158,7 +162,7 @@ def test_gate_calls_required_suite_validation():
 
 def test_gate_runs_layer4_c06_suites_with_skip_assertion():
     """Gate must execute C-06 suites through the no-skips JUnit assertion."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "Layer 4 C-06 tenant rate-limit and security regression checks" in script_content
     assert "layer4_c06_security.xml" in script_content
@@ -168,7 +172,7 @@ def test_gate_runs_layer4_c06_suites_with_skip_assertion():
 
 def test_gate_bounds_mandatory_pytest_runs():
     """Mandatory pytest invocations must time out instead of hanging CI."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "python -m pytest --tb=short -q -n 0 --timeout=60" in script_content
     assert script_content.count("--timeout=60") >= 4
@@ -176,14 +180,14 @@ def test_gate_bounds_mandatory_pytest_runs():
 
 def test_gate_uses_deterministic_standalone_api_test_env():
     """Standalone API checks must not inherit unsafe ambient developer env."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "TESTING=true ENVIRONMENT=testing DEBUG=false SEED_DEMO_DATA=false" in script_content
 
 
 def test_gate_has_no_skip_or_best_effort_mode():
     """Gate should not have skip or best-effort mode for required suites."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     # These patterns would indicate silent failure modes
     anti_patterns = [
@@ -212,14 +216,14 @@ def test_gate_has_no_skip_or_best_effort_mode():
 
 def test_gate_has_launch_readiness_reference():
     """Gate script should describe the mandatory launch-readiness purpose."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "Mandatory launch-readiness security regression gate" in script_content
 
 
 def test_gate_creates_audit_directory():
     """Gate should create audit directory if it doesn't exist."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "mkdir -p" in script_content, "Gate missing mkdir -p for audit directory"
     assert "AUDIT_DIR" in script_content, "Gate missing AUDIT_DIR in mkdir command"
@@ -227,7 +231,7 @@ def test_gate_creates_audit_directory():
 
 def test_gate_outputs_evidence_path():
     """Gate should output evidence path on success."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "Evidence written to" in script_content, \
         "Gate missing evidence path output message"
@@ -237,7 +241,7 @@ def test_gate_outputs_evidence_path():
 
 def test_gate_has_jq_fallback():
     """Gate should gracefully handle missing jq dependency."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     # Should check for jq before using it
     assert "command -v jq" in script_content or "which jq" in script_content, \
@@ -246,7 +250,7 @@ def test_gate_has_jq_fallback():
 
 def test_gate_test_mode_functionality():
     """Gate should support FABRIC_GATE_TEST_MODE for skipping expensive operations."""
-    script_content = GATE_SCRIPT.read_text()
+    script_content = _gate_script_text()
 
     assert "FABRIC_GATE_TEST_MODE" in script_content, \
         "Gate missing FABRIC_GATE_TEST_MODE variable"
