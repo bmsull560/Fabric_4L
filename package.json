@@ -16,5 +16,10 @@
     "verify:frontend": "pnpm --filter ./apps/web run verify:frontend",
     "verify": "pnpm run check:default-scope && pnpm run verify:frontend"
   },
-  "packageManager": "pnpm@10.18.1"
+  "packageManager": "pnpm@10.18.1",
+  "pnpm": {
+    "overrides": {
+      "minimatch@>=9.0.0 <9.0.7": "9.0.9"
+    }
+  }
 }
