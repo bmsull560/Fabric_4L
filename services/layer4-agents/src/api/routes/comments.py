@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 
+from .notifications import create_notification_record
+
 router = APIRouter(prefix="/comments", tags=["comments"])
 
 
@@ -90,4 +92,13 @@ async def create_comment(
         updated_at=now,
     )
     _COMMENTS_BY_TENANT.setdefault(tenant_id, {})[comment.id] = comment
+    create_notification_record(
+        tenant_id=tenant_id,
+        notification_type="comment_created",
+        title="Comment posted",
+        message=f"Comment posted on {comment.subject_type}:{comment.subject_id}",
+        account_id=comment.account_id,
+        subject_id=comment.id,
+        subject_type="comment",
+    )
     return comment

@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 
+from .notifications import create_notification_record
+
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
@@ -104,6 +106,15 @@ async def create_task(
         updated_at=now,
     )
     _TASKS_BY_TENANT.setdefault(tenant_id, {})[task.id] = task
+    create_notification_record(
+        tenant_id=tenant_id,
+        notification_type="task_created",
+        title="Task created",
+        message=f"Task created: {task.title}",
+        account_id=task.account_id,
+        subject_id=task.id,
+        subject_type="task",
+    )
     return task
 
 
@@ -122,4 +133,14 @@ async def update_task(
     update = request.model_dump(exclude_unset=True)
     task = task.model_copy(update={**update, "updated_at": _now_iso()})
     tenant_tasks[task_id] = task
+    if request.status == TaskStatus.completed:
+        create_notification_record(
+            tenant_id=_tenant_key(ctx),
+            notification_type="task_completed",
+            title="Task completed",
+            message=f"Task completed: {task.title}",
+            account_id=task.account_id,
+            subject_id=task.id,
+            subject_type="task",
+        )
     return task

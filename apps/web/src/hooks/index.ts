@@ -89,6 +89,12 @@ export {
   useCreateComment,
   type CommentRecord,
 } from "./useComments";
+export {
+  useNotifications,
+  useCreateNotification,
+  useMarkNotificationRead,
+  type NotificationRecord,
+} from "./useNotifications";
 
 // ── Utility Hooks ─────────────────────────────────────────────────────────────
 
