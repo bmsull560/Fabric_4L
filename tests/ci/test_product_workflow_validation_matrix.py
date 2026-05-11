@@ -3,6 +3,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MATRIX = ROOT / "docs" / "validation" / "master_workflow_traceability_matrix.md"
+MAKEFILE = ROOT / "Makefile"
+PR_CHECKS_WORKFLOW = ROOT / ".github" / "workflows" / "pr-checks.yml"
 
 
 def _matrix_text() -> str:
@@ -94,3 +96,11 @@ def test_matrix_preserves_launch_evidence_boundary() -> None:
     assert "This matrix is not launch evidence" in text
     assert "does not close launch gates" in text
     assert "retained artifacts" in text
+
+
+def test_matrix_guard_is_wired_into_pr_ci() -> None:
+    makefile_text = MAKEFILE.read_text(encoding="utf-8")
+    pr_checks_text = PR_CHECKS_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "tests/ci/test_product_workflow_validation_matrix.py" in makefile_text
+    assert "make check-workflow-matrix" in pr_checks_text

@@ -61,6 +61,7 @@ check-workflow-matrix: ## Ensure the master workflow traceability matrix keeps i
 	@python3 scripts/ci/assert_master_workflow_traceability.py
 	@python3 scripts/ci/assert_backend_workflow_traceability.py
 	@python3 scripts/ci/assert_backend_platform_validation_ownership.py
+	@python -m pytest tests/ci/test_product_workflow_validation_matrix.py -n 0 -q -o cache_dir=.tmp/pytest-cache
 
 
 check-conflict-markers: ## Fail if unresolved merge conflict markers exist in tracked source files
