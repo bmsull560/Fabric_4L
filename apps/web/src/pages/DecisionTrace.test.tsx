@@ -78,7 +78,7 @@ describe('DecisionTrace trace-specific behavior', () => {
     registerTraceHandlers();
     render(<DecisionTrace />, { wrapper: createWrapper('/governance/audit/log') });
 
-    expect(await screen.findByText('Audit Log')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Audit Log' })).toBeInTheDocument();
   });
 
   it('allows selecting entity to view provenance timeline', async () => {
@@ -92,7 +92,7 @@ describe('DecisionTrace trace-specific behavior', () => {
     await userEvent.click(await screen.findByRole('button', { name: /view/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Provenance Timeline')).toBeInTheDocument();
+      expect(screen.getAllByText('Provenance Timeline').length).toBeGreaterThan(0);
     });
   });
 });

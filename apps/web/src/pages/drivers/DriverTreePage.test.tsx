@@ -48,13 +48,13 @@ describe("DriverTreePage account/loading guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     server.use(
-      http.get("/api/v1/agents/v1/cases", () =>
+      http.get("/api/v1/agents/cases", () =>
         HttpResponse.json({ items: [{ case_id: "case-123" }] })
       ),
-      http.get("/api/v1/agents/v1/cases/:caseId/workspace/drivers", () =>
+      http.get("/api/v1/agents/cases/:caseId/workspace/drivers", () =>
         HttpResponse.json({ drivers: [] })
       ),
-      http.get("/api/v1/agents/v1/cases/:caseId/workspace/evidence-links", () =>
+      http.get("/api/v1/agents/cases/:caseId/workspace/evidence-links", () =>
         HttpResponse.json({ evidence_links: [] })
       ),
       http.get("/api/v1/agents/v1/hypotheses/account/:accountId", () =>

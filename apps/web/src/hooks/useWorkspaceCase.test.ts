@@ -69,7 +69,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleSignalsResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/signals');
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/cases/case-123/workspace/signals');
   });
 
   it('should fetch drivers tab data successfully', async () => {
@@ -84,7 +84,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleDriversResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/drivers');
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/cases/case-123/workspace/drivers');
   });
 
   it('should fetch evidence tab data successfully', async () => {
@@ -99,7 +99,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleEvidenceResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/evidence');
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/cases/case-123/workspace/evidence');
   });
 
   it('should fetch stakeholders tab data successfully', async () => {
@@ -114,7 +114,7 @@ describe('useWorkspaceTabQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data).toEqual(sampleStakeholdersResponse);
-    expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/case-123/workspace/stakeholders');
+    expect(apiClient.get).toHaveBeenCalledWith('l4', '/cases/case-123/workspace/stakeholders');
   });
 
   it('should not fetch when caseId is null', async () => {
@@ -245,7 +245,7 @@ describe('useCanonicalCaseId', () => {
     expect(result.current.data).toBe('new-case-abc');
     expect(apiClient.post).toHaveBeenCalledWith(
       'l4',
-      '/v1/cases',
+      '/cases',
       {
         account_id: 'acc-123',
         title: 'Account acc-123 workspace',
@@ -296,7 +296,7 @@ describe('useGenerateWorkspaceIntelligence', () => {
     expect(result.current.data).toEqual(generateResponse);
     expect(apiClient.post).toHaveBeenCalledWith(
       'l4',
-      '/v1/cases/case-123/workspace/generate',
+      '/cases/case-123/workspace/generate',
       {}
     );
   });
@@ -325,7 +325,7 @@ describe('usePersistWorkspaceTab', () => {
     expect(apiClient.post).not.toHaveBeenCalled();
     expect(apiClient.put).toHaveBeenCalledWith(
       'l4',
-      '/v1/cases/case-123/workspace/signals',
+      '/cases/case-123/workspace/signals',
       payload
     );
     expect(result.current.persistState).toBe('saved');

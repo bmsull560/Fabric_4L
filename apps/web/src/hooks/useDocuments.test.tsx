@@ -163,7 +163,7 @@ describe('useDocuments', () => {
 
       expect(apiClient.get).toHaveBeenCalledWith(
         'l4',
-        '/v1/cases/bc-001/export?format=pdf'
+        '/cases/bc-001/export?format=pdf'
       );
       expect(result.current.data?.download_ready).toBe(true);
     });
@@ -195,7 +195,7 @@ describe('useDocuments', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(apiClient.get).toHaveBeenCalledWith('l4', '/v1/cases/bc-001');
+      expect(apiClient.get).toHaveBeenCalledWith('l4', '/cases/bc-001');
       expect(result.current.data?.case_id).toBe('bc-001');
       expect(result.current.data?.title).toBe('Test Business Case');
     });

@@ -797,14 +797,14 @@ export const handlers = [
   }),
 
   // Current L4 business-case and ground-truth governance routes
-  http.get('/api/v1/agents/v1/cases/:caseId', ({ params }) => {
+  http.get('/api/v1/agents/cases/:caseId', ({ params }) => {
     if (params.caseId === 'missing' || params.caseId === 'not-found') {
       return HttpResponse.json({ detail: 'Business case not found' }, { status: 404 });
     }
     return HttpResponse.json({ ...mockBusinessCase, case_id: String(params.caseId) });
   }),
 
-  http.post('/api/v1/agents/v1/cases/:caseId/export', ({ params }) => {
+  http.post('/api/v1/agents/cases/:caseId/export', ({ params }) => {
     return HttpResponse.json({
       download_ready: true,
       document_url: `/exports/${String(params.caseId)}.pdf`,

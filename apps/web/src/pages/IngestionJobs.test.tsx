@@ -139,6 +139,16 @@ describe("IngestionJobs", () => {
     return { user };
   }
 
+  async function findJobRowByDomain(domain: string): Promise<HTMLTableRowElement> {
+    const domainMatches = await screen.findAllByText(domain);
+    const jobRow = domainMatches
+      .map((match) => match.closest("tr"))
+      .find((row): row is HTMLTableRowElement => Boolean(row));
+
+    expect(jobRow).toBeTruthy();
+    return jobRow;
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     useIngestionJobsStore.getState().reset();
@@ -317,11 +327,8 @@ describe("IngestionJobs", () => {
     });
 
     // Click on the first job row
-    const jobCell = screen.getAllByText("https://example.com")[0];
-    const jobRow = jobCell.closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    const jobRow = await findJobRowByDomain("https://example.com");
+    await userEvent.click(jobRow);
 
     // Detail panel should show job info
     await waitFor(() => {
@@ -336,10 +343,8 @@ describe("IngestionJobs", () => {
   it("clears selection when clicking same job", async () => {
     const { user } = renderPage();
 
-    const jobDomainCell = await screen.findAllByText("https://example.com");
-    const jobRow = jobDomainCell[0]?.closest("tr");
-    expect(jobRow).toBeTruthy();
-    await user.click(jobRow!);
+    const jobRow = await findJobRowByDomain("https://example.com");
+    await user.click(jobRow);
 
     await screen.findByText("Priority:");
     expect(screen.getByText("5")).toBeInTheDocument();
@@ -354,10 +359,8 @@ describe("IngestionJobs", () => {
   it("shows logs for selected job", async () => {
     const { user } = renderPage();
 
-    const jobDomainCell = await screen.findAllByText("https://example.com");
-    const jobRow = jobDomainCell[0]?.closest("tr");
-    expect(jobRow).toBeTruthy();
-    await user.click(jobRow!);
+    const jobRow = await findJobRowByDomain("https://example.com");
+    await user.click(jobRow);
 
     await waitFor(() => {
       expect(screen.queryByTestId("job-logs-loading-state")).not.toBeInTheDocument();
@@ -373,10 +376,8 @@ describe("IngestionJobs", () => {
     });
 
     const { user } = renderPage();
-    const jobDomainCell = await screen.findAllByText("https://example.com");
-    const jobRow = jobDomainCell[0]?.closest("tr");
-    expect(jobRow).toBeTruthy();
-    await user.click(jobRow!);
+    const jobRow = await findJobRowByDomain("https://example.com");
+    await user.click(jobRow);
 
     await waitFor(() => {
       expect(screen.queryByTestId("job-logs-loading-state")).not.toBeInTheDocument();
@@ -393,11 +394,8 @@ describe("IngestionJobs", () => {
     });
 
     // Select completed job
-    const jobCell = screen.getAllByText("https://example.com")[0];
-    const jobRow = jobCell.closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    const jobRow = await findJobRowByDomain("https://example.com");
+    await userEvent.click(jobRow);
 
     await waitFor(() => {
       expect(screen.getByText("Job Detail")).toBeInTheDocument();
@@ -435,10 +433,8 @@ describe("IngestionJobs", () => {
     });
 
     // Select failed job
-    const jobRow = screen.getByText("https://failed.com").closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    const jobRow = await findJobRowByDomain("https://failed.com");
+    await userEvent.click(jobRow);
 
     await waitFor(() => {
       expect(screen.getByText("Retry Job")).toBeInTheDocument();
@@ -474,11 +470,8 @@ describe("IngestionJobs", () => {
     });
 
     // Select job
-    const jobCell = screen.getAllByText("https://example.com")[0];
-    const jobRow = jobCell.closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    const jobRow = await findJobRowByDomain("https://example.com");
+    await userEvent.click(jobRow);
 
     await waitFor(() => {
       expect(screen.getByText("Cancel Job")).toBeInTheDocument();
@@ -521,10 +514,8 @@ describe("IngestionJobs", () => {
     });
 
     // Select failed job
-    const jobRow = screen.getByText("https://failed.com").closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    const jobRow = await findJobRowByDomain("https://failed.com");
+    await userEvent.click(jobRow);
 
     await waitFor(() => {
       expect(screen.getByText("Retry Job")).toBeInTheDocument();
@@ -577,11 +568,8 @@ describe("IngestionJobs", () => {
       expect(screen.getAllByText("https://example.com").length).toBeGreaterThan(0);
     });
 
-    const jobCell = screen.getAllByText("https://example.com")[0];
-    const jobRow = jobCell.closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    const jobRow = await findJobRowByDomain("https://example.com");
+    await userEvent.click(jobRow);
 
     await waitFor(() => {
       expect(screen.getByText("Cancel Job")).toBeInTheDocument();
