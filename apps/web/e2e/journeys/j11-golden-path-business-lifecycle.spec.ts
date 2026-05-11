@@ -12,6 +12,7 @@ import {
   expectButtonStateIfVisible,
   expectNoCrossTenantLeakage,
   expectRouteSupportsWorkflow,
+  expectSeededBusinessCaseWorkflowResults,
   expectTenantContext,
   requireBackendOrThrow,
 } from '../helpers/validation-program';
@@ -21,6 +22,7 @@ import { setSelectedAccount, TEST_ACCOUNTS } from '../fixtures/account-helpers';
 import { setUserTier } from '../fixtures/tier-helpers';
 
 const ACCOUNT_ID = TEST_ACCOUNTS.meridian.id;
+const SEEDED_BUSINESS_CASE_IDS = ['case-draft-001', 'case-e2e-approved-001', 'case-meridian-e2e-001'];
 
 test.describe('Journey 11: Golden Path Business Lifecycle', () => {
   test.beforeEach(async ({ page }) => {
@@ -122,6 +124,7 @@ test.describe('Journey 11: Golden Path Business Lifecycle', () => {
 
   test('test_export_is_available_only_after_required_approval @backend', async ({ page }) => {
     requireBackendOrThrow('test_export_is_available_only_after_required_approval @backend');
+    await expectSeededBusinessCaseWorkflowResults(page, SEEDED_BUSINESS_CASE_IDS);
 
     await navigateAndWait(page, '/deliverables/cases/case-draft-001');
     await expectAnyVisible(
@@ -142,6 +145,7 @@ test.describe('Journey 11: Golden Path Business Lifecycle', () => {
 
   test('test_crm_push_available_after_case_approval @backend', async ({ page }) => {
     requireBackendOrThrow('test_crm_push_available_after_case_approval @backend');
+    await expectSeededBusinessCaseWorkflowResults(page, SEEDED_BUSINESS_CASE_IDS);
 
     // Navigate to the approved business case
     await navigateAndWait(page, '/deliverables/cases/case-e2e-approved-001');
@@ -161,6 +165,7 @@ test.describe('Journey 11: Golden Path Business Lifecycle', () => {
 
   test('test_post_sale_realization_conversion @backend', async ({ page }) => {
     requireBackendOrThrow('test_post_sale_realization_conversion @backend');
+    await expectSeededBusinessCaseWorkflowResults(page, SEEDED_BUSINESS_CASE_IDS);
 
     // Navigate to the approved business case
     await navigateAndWait(page, '/deliverables/cases/case-e2e-approved-001');

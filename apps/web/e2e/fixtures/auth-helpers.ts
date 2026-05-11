@@ -105,6 +105,41 @@ function seedBrowserSessionScript(u: TestUserInfo) {
   sessionStorage.setItem('vf.auth.session.meta', JSON.stringify({ user: u, tenantId: u.tenantId }));
 }
 
+async function waitForSeededBrowserSession(page: Page, user: TestUserInfo): Promise<void> {
+  await page.waitForFunction(
+    (expected) => {
+      const sessionRaw = sessionStorage.getItem('vf.auth.session.meta');
+      const accessToken = localStorage.getItem('accessToken');
+      const tenantId = localStorage.getItem('tenantId');
+      const userInfoRaw = localStorage.getItem('userInfo');
+
+      if (!sessionRaw || !accessToken || tenantId !== expected.tenantId || !userInfoRaw) {
+        return false;
+      }
+
+      try {
+        const session = JSON.parse(sessionRaw);
+        const userInfo = JSON.parse(userInfoRaw);
+        return (
+          session?.tenantId === expected.tenantId &&
+          session?.user?.id === expected.id &&
+          userInfo?.id === expected.id &&
+          userInfo?.tenantId === expected.tenantId
+        );
+      } catch {
+        return false;
+      }
+    },
+    user,
+    { timeout: 10000 },
+  ).catch((error) => {
+    throw new Error(
+      `Backend-integrated auth session was not ready after validation session seed for user ${user.id}. ` +
+      `${error instanceof Error ? error.message : String(error)}`,
+    );
+  });
+}
+
 async function seedBackendIntegratedSession(page: Page, user: TestUserInfo): Promise<TestUserInfo> {
   const serviceSecret = process.env.SERVICE_AUTH_SECRET;
   if (!serviceSecret) {
@@ -155,6 +190,7 @@ export async function seedAuthState(
     await ensureSameOrigin(page);
     await page.evaluate(seedBrowserSessionScript, seededUser);
     await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
+    await waitForSeededBrowserSession(page, seededUser);
     return;
   }
 
@@ -186,6 +222,7 @@ export async function seedAuthState(
   // app at /login before storage was seeded, reload once so the provider observes
   // the seeded session instead of retaining the unauthenticated initial state.
   await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
+  await waitForSeededBrowserSession(page, seededUser);
 }
 
 /**

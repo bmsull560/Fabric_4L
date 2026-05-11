@@ -25,6 +25,7 @@ import {
   expectEnabledAction,
   expectTenantContext,
   expectNoCrossTenantLeakage,
+  expectSeededBusinessCaseWorkflowResults,
   requireBackendOrThrow,
 } from '../helpers/validation-program';
 
@@ -32,6 +33,7 @@ import {
 const SEED_ACCOUNT_ID = 'acct-meridian-001';
 const SEED_CASE_ID = 'case-meridian-e2e-001';
 const SEED_TENANT_ID = '00000000-0000-4000-e2e0-000000000001';
+const SEEDED_BUSINESS_CASE_IDS = ['case-draft-001', 'case-e2e-approved-001', SEED_CASE_ID];
 
 journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approved Business Case', () => {
   journeyTest.beforeEach(async () => {
@@ -270,6 +272,7 @@ journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approv
   });
 
   journeyTest('GP-BI-013: user submits business case for review and reviewer approves', async ({ authedPage }) => {
+    await expectSeededBusinessCaseWorkflowResults(authedPage, SEEDED_BUSINESS_CASE_IDS);
     await authedPage.goto(`/deliverables/cases/${SEED_CASE_ID}`, { waitUntil: 'domcontentloaded' });
 
     await expect(
@@ -288,6 +291,7 @@ journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approv
   journeyTest('GP-BI-014: export is available only after required approval', async ({ authedPage }) => {
     // Note: Seeded data only has one case (case-meridian-e2e-001) which is active
     // This test verifies the export button state based on approval status
+    await expectSeededBusinessCaseWorkflowResults(authedPage, SEEDED_BUSINESS_CASE_IDS);
     await authedPage.goto(`/deliverables/cases/${SEED_CASE_ID}`, { waitUntil: 'domcontentloaded' });
     const exportBtn = authedPage.getByRole('button', { name: /export pdf/i }).first();
     
@@ -303,6 +307,7 @@ journeyTest.describe('@backend Golden Path Backend-Integrated: Account to Approv
   });
 
   journeyTest('GP-BI-015: business case contains traceable claims after golden path', async ({ authedPage }) => {
+    await expectSeededBusinessCaseWorkflowResults(authedPage, SEEDED_BUSINESS_CASE_IDS);
     await authedPage.goto(`/deliverables/cases/${SEED_CASE_ID}`, { waitUntil: 'domcontentloaded' });
 
     await expectAnyVisible(

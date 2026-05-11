@@ -291,6 +291,40 @@ export async function expectNoCrossTenantLeakage(page: Page): Promise<void> {
   await expect(page.getByText(/tenant-other|other tenant|globex confidential|cross-tenant/i).first()).not.toBeVisible({ timeout: 3000 });
 }
 
+export async function expectSeededBusinessCaseWorkflowResults(
+  page: Page,
+  caseIds: string[],
+): Promise<void> {
+  const missing: string[] = [];
+
+  for (const caseId of caseIds) {
+    const response = await page.request.get(`/api/v1/agents/cases/${encodeURIComponent(caseId)}`, {
+      headers: {
+        'X-Validation-Mode': 'backend-integrated',
+      },
+    });
+
+    if (response.status() === 404) {
+      missing.push(caseId);
+      continue;
+    }
+
+    if (!response.ok()) {
+      throw new Error(
+        `Seeded business-case preflight failed for ${caseId}: ` +
+        `GET /api/v1/agents/cases/${caseId} returned ${response.status()} ${await response.text()}`,
+      );
+    }
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Seeded business-case workflow state missing for ${missing.join(', ')}; ` +
+      'run scripts/db/seed-e2e-data.ts before seeded backend-integrated J1/J11 regressions.',
+    );
+  }
+}
+
 export async function attemptOptionalAction(page: Page, actionName: RegExp): Promise<boolean> {
   const action = page.getByRole('button', { name: actionName }).or(page.getByRole('link', { name: actionName })).first();
   try {
