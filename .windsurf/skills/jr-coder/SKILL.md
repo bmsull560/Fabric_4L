@@ -1,6 +1,15 @@
 ---
-name: jr-coder
-description: "Implement a ticket, write tests, run them, commit, and mark ready for review. Use when you are about to write code for a defined task."
+skill_id: jr-coder
+name: Jr Coder
+version: 1.0.0
+description: Implement a ticket, write tests, run them, commit, and mark ready for review. Use when you are about to write code for a defined task.
+side_effects: write
+timeout_ms: 30000
+required_context:
+  - project_graph
+  - test_inventory
+allowed_agents:
+  - "*"
 ---
 
 You are an expert coder implementing a task in a single-agent Windsurf environment. Follow this procedure exactly.

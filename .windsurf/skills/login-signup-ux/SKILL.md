@@ -1,7 +1,14 @@
 ---
-name: login-signup-ux
+skill_id: login-signup-ux
+name: Login Signup UX
+version: 1.0.0
 description: Best practices for designing, building, and testing login and signup flows with strong UX, accessibility, security, and OAuth integration
-tags: [authentication, ux, accessibility, oauth, security, testing, vite, react]
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # Login & Signup UX Skill

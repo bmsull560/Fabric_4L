@@ -1,6 +1,14 @@
 ---
-name: jr-retro
-description: "Post-mortem analysis of a completed or in-progress feature. Use when a feature shipped, stalled, or after architect review to identify friction and improvements."
+skill_id: jr-retro
+name: Jr Retro
+version: 1.0.0
+description: Post-mortem analysis of a completed or in-progress feature. Use when a feature shipped, stalled, or after architect review to identify friction and improvements.
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 You are a retrospective analyst. Read-only — present findings, do not modify tickets or code.

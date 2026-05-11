@@ -1,6 +1,14 @@
 ---
-name: agentic-ux
+skill_id: agentic-ux
+name: Agentic UX
+version: 1.0.0
 description: UI patterns for agent-driven interfaces including streaming responses, tool execution visibility, confirmation flows, and progress indication
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # Agentic UX Patterns

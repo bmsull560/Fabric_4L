@@ -1,6 +1,15 @@
 ---
-name: pytest
+skill_id: pytest
+name: Pytest
+version: 1.0.0
 description: Python testing with pytest including fixtures, parametrization, markers, mocking, and async testing patterns.
+side_effects: exec
+timeout_ms: 30000
+required_context:
+  - project_graph
+  - test_inventory
+allowed_agents:
+  - "*"
 ---
 
 # Pytest Testing Skill

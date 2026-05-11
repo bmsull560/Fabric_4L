@@ -1,6 +1,14 @@
 ---
-name: memory-context
+skill_id: memory-context
+name: Memory Context
+version: 1.0.0
 description: Vector store and knowledge graph integration for semantic memory, conversation context management, and cross-session persistence
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # Memory and Context Management

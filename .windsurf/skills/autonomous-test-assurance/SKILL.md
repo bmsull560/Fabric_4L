@@ -1,6 +1,15 @@
 ---
-name: autonomous-test-assurance
+skill_id: autonomous-test-assurance
+name: Autonomous Test Assurance
+version: 1.0.0
 description: Skill definition for Level 4 fully-autonomous test assurance agent with self-directed discovery, automatic recovery, and PR-ready delivery without human checkpoints
+side_effects: write
+timeout_ms: 30000
+required_context:
+  - project_graph
+  - test_inventory
+allowed_agents:
+  - "*"
 ---
 
 # Autonomous Test Assurance Agent - Skill Definition (Level 4)

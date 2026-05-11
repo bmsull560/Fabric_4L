@@ -1,6 +1,14 @@
 ---
-name: pre-production-audit
+skill_id: pre-production-audit
+name: Pre Production Audit
+version: 1.0.0
 description: Conduct comprehensive pre-production audits of enterprise SaaS platforms. Use when preparing for production deployment, reviewing code quality, assessing security posture, validating compliance controls, or evaluating production readiness across multi-layer architectures.
+side_effects: read
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # Pre-Production Audit Skill

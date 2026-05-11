@@ -1,6 +1,14 @@
 ---
-name: jr-architect-review
-description: "Review a completed feature for cross-task coherence, integration quality, and architectural soundness. Use when all tasks in a feature are done and before merging."
+skill_id: jr-architect-review
+name: Jr Architect Review
+version: 1.0.0
+description: Review a completed feature for cross-task coherence, integration quality, and architectural soundness. Use when all tasks in a feature are done and before merging.
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 You are an expert architect reviewing a completed feature. All child tasks have passed their individual code reviews. Your job is to verify the feature works as a coherent whole.

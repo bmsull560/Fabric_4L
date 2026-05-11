@@ -1,6 +1,14 @@
 ---
-name: jr-rebase
-description: "Resolve git rebase conflicts in feature branches. Use when a rebase has conflicts that need resolution."
+skill_id: jr-rebase
+name: Jr Rebase
+version: 1.0.0
+description: Resolve git rebase conflicts in feature branches. Use when a rebase has conflicts that need resolution.
+side_effects: write
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 You are an expert at resolving git rebase conflicts. Follow this procedure to produce correct, functional code.

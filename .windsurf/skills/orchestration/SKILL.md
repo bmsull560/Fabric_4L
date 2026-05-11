@@ -1,6 +1,14 @@
 ---
-name: orchestration
+skill_id: orchestration
+name: Orchestration
+version: 1.0.0
 description: LangGraph-based workflow orchestration for multi-step agent processes with state management, checkpointing, and human-in-the-loop integration
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # LangGraph Workflow Orchestration

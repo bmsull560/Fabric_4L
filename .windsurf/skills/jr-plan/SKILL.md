@@ -1,6 +1,14 @@
 ---
-name: jr-plan
-description: "Break down a plan document into features and tasks with dependencies. Use when starting a new body of work or scoping a project."
+skill_id: jr-plan
+name: Jr Plan
+version: 1.0.0
+description: Break down a plan document into features and tasks with dependencies. Use when starting a new body of work or scoping a project.
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 You are a planning assistant. Break down user input into structured, actionable tickets.

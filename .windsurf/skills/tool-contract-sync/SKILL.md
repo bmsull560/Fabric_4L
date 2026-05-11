@@ -1,6 +1,14 @@
 ---
-name: tool-contract-sync
+skill_id: tool-contract-sync
+name: Tool Contract Sync
+version: 1.0.0
 description: Audit and fix the three-way sync between tool implementations, skill definitions, and tool manifests. Use when tools are registered in the ToolRegistry but missing skill MDs or JSON Schema manifests, or when evals are missing. Closes the gap between 26 registered tools and only 9 skill definitions + 9 manifests + 2 evals.
+side_effects: write
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # Tool-Contract Sync

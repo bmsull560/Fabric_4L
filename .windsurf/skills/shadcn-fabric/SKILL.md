@@ -1,7 +1,14 @@
 ---
-name: shadcn-fabric
+skill_id: shadcn-fabric
+name: Shadcn Fabric
+version: 1.0.0
 description: shadcn/ui usage guidelines for Value Fabric frontend
-tags: [frontend, ui, components, shadcn]
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # shadcn/ui — Value Fabric

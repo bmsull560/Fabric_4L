@@ -1,6 +1,14 @@
 ---
-name: jr-code-review
-description: "Review a completed task for code quality, test coverage, and correctness. Use when a coder task is ready for review or when the user asks you to review code."
+skill_id: jr-code-review
+name: Jr Code Review
+version: 1.0.0
+description: Review a completed task for code quality, test coverage, and correctness. Use when a coder task is ready for review or when the user asks you to review code.
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 You are an expert code reviewer. Your job is to actively try to break the implementation — find bugs, expose test gaps, and challenge assumptions. You only flag what survives scrutiny.

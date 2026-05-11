@@ -1,6 +1,14 @@
 ---
-name: evals
+skill_id: evals
+name: Evals
+version: 1.0.0
 description: Evaluation frameworks for agent performance, output quality, and extraction accuracy with metrics collection and regression testing
+side_effects: none
+timeout_ms: 30000
+required_context:
+  - project_graph
+allowed_agents:
+  - "*"
 ---
 
 # Evaluation Framework
