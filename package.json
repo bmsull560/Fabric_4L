@@ -14,7 +14,8 @@
     "preinstall": "node scripts/enforce-package-manager.cjs",
     "check:package-manager-policy": "node scripts/ci/check_package_manager_policy.mjs",
     "verify:frontend": "pnpm --filter ./apps/web run verify:frontend",
-    "verify": "pnpm run check:default-scope && pnpm run verify:frontend"
+    "verify": "pnpm run check:default-scope && pnpm run verify:frontend",
+    "check:test-skip-governance": "python scripts/ci/check_test_skip_governance.py --register config/ci/test_skip_register.yaml"
   },
   "packageManager": "pnpm@10.18.1",
   "pnpm": {

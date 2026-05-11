@@ -66,6 +66,12 @@ jobs:
             echo "pytest collection exited non-zero (${collect_status}); structural-preflight should catch import errors separately."
           fi
 
+      - name: Enforce static test skip governance
+        run: |
+          python scripts/ci/check_test_skip_governance.py \
+            --register config/ci/test_skip_register.yaml \
+            --write-report artifacts/test-skip-governance.json
+
       - name: Run Layer 3 source mirror drift gate
         run: |
           mkdir -p artifacts
@@ -120,6 +126,7 @@ jobs:
             artifacts/shared-imports-runtime.json
             artifacts/pytest-collection.txt
             artifacts/pytest-skip-governance.json
+            artifacts/test-skip-governance.json
             artifacts/violation-diff-summary.json
             artifacts/violation-diff-summary.md
           retention-days: 14
