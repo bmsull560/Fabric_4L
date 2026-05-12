@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/contract-test';
 import { seedAuthState, setUserTier } from '../fixtures';
 
 test.describe('Workflow session context', () => {

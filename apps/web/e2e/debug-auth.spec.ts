@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from './fixtures/contract-test';
 import { seedAuthState } from './fixtures/auth-helpers';
 import { setUserTier } from './fixtures/tier-helpers';
 

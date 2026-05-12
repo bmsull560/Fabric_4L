@@ -10,7 +10,7 @@
  * specific keyboard interaction behaviors required by WCAG 2.2.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from '../fixtures/contract-test';
 
 test.describe("Keyboard Flow - Deep A11y Assertions", () => {
   test.beforeEach(async ({ page }) => {

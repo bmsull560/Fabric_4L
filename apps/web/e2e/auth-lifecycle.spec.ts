@@ -10,7 +10,7 @@
  * - Token expiration handling
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/contract-test';
 
 test.describe('Authentication Lifecycle', () => {
   test.describe('Login Page', () => {

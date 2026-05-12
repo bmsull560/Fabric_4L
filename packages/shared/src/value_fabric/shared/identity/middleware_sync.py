@@ -412,6 +412,7 @@ class GovernanceMiddlewareSync:
             permissions=frozenset(permissions),
             auth_source=AUTH_SOURCE_API_KEY,
             source=AUTH_SOURCE_API_KEY,
+            request_id=record.get("request_id"),
         )
 
     def _derive_permissions_sync(self, roles: list[str]) -> list[str]:

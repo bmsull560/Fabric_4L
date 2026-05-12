@@ -1,0 +1,210 @@
+"""Tests for Keycloak JWKS integration and token validation.
+
+Validates:
+- JWKS resolution order (static JSON -> explicit URL -> Keycloak auto-URL)
+- Token acceptance/rejection rules
+- Caching behavior
+- Fail-closed behavior on missing/invalid auth
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import time
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi import HTTPException
+from jose import jwt as jose_jwt
+
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
+from app.core.security import create_access_token
+from app.main import app
+from fastapi.testclient import TestClient
+
+client = TestClient(app)
+
+
+class TestKeycloakJWKSResolution:
+    """Validate JWKS URL construction and resolution order."""
+
+    def test_keycloak_jwks_url_auto_construction(self):
+        """KEYCLOAK_URL + KEYCLOAK_REALM builds the correct JWKS endpoint."""
+        from value_fabric.shared.identity.jwt import _build_keycloak_jwks_url
+
+        with patch.dict(os.environ, {
+            "KEYCLOAK_URL": "http://keycloak:8080",
+            "KEYCLOAK_REALM": "fabric",
+        }, clear=False):
+            url = _build_keycloak_jwks_url()
+            assert url == "http://keycloak:8080/realms/fabric/protocol/openid-connect/certs"
+
+    def test_keycloak_url_missing_returns_none(self):
+        """Without KEYCLOAK_URL set, auto-build returns None."""
+        from value_fabric.shared.identity.jwt import _build_keycloak_jwks_url
+
+        with patch.dict(os.environ, {"KEYCLOAK_URL": ""}, clear=False):
+            with patch.dict(os.environ, {"KEYCLOAK_REALM": "fabric"}, clear=False):
+                url = _build_keycloak_jwks_url()
+                assert url is None
+
+    def test_jwks_resolution_order_static_first(self):
+        """Static JWKS JSON takes precedence over URL fetching."""
+        from value_fabric.shared.identity.jwt import _resolve_external_key
+
+        static_jwks = {"keys": [{"kid": "test-kid", "kty": "RSA", "n": "abc", "e": "AQAB", "alg": "RS256"}]}
+        with patch.dict(os.environ, {"OIDC_JWKS_JSON": json.dumps(static_jwks)}, clear=False):
+            with patch("value_fabric.shared.identity.jwt._fetch_jwks_from_url") as mock_fetch:
+                header = {"kid": "test-kid", "alg": "RS256"}
+                _resolve_external_key(header, "test-issuer")
+                mock_fetch.assert_not_called()
+
+    def test_jwks_resolution_order_explicit_url_second(self):
+        """Explicit OIDC_JWKS_URL is used when static JSON is absent."""
+        from value_fabric.shared.identity.jwt import _resolve_external_key
+
+        with patch.dict(os.environ, {"OIDC_JWKS_JSON": ""}, clear=False):
+            with patch.dict(os.environ, {"OIDC_JWKS_URL": "http://example.com/jwks"}, clear=False):
+                with patch("value_fabric.shared.identity.jwt._fetch_jwks_from_url") as mock_fetch:
+                    mock_fetch.return_value = {"keys": []}
+                    header = {"kid": "missing", "alg": "RS256"}
+                    _resolve_external_key(header, "test-issuer")
+                    mock_fetch.assert_called_once_with("http://example.com/jwks")
+
+    def test_jwks_resolution_order_keycloak_third(self):
+        """Auto-built Keycloak URL is used when static and explicit URLs are absent."""
+        from value_fabric.shared.identity.jwt import _resolve_external_key
+
+        with patch.dict(os.environ, {
+            "OIDC_JWKS_JSON": "",
+            "OIDC_JWKS_URL": "",
+            "KEYCLOAK_URL": "http://keycloak:8080",
+            "KEYCLOAK_REALM": "fabric",
+        }, clear=False):
+            with patch("value_fabric.shared.identity.jwt._fetch_jwks_from_url") as mock_fetch:
+                mock_fetch.return_value = {"keys": []}
+                header = {"kid": "missing", "alg": "RS256"}
+                _resolve_external_key(header, "test-issuer")
+                mock_fetch.assert_called_once_with(
+                    "http://keycloak:8080/realms/fabric/protocol/openid-connect/certs"
+                )
+
+
+class TestTokenValidation:
+    """Validate token acceptance/rejection rules."""
+
+    def test_valid_internal_token_accepted(self):
+        from app.models.schemas import User
+        from app.core.database import db
+
+        db.users.insert("user-test", User(
+            id="user-test", tenant_id="tenant-test", email="test@test.com",
+            name="Test", role="admin", status="active", password_hash="$2b$12$dummy",
+        ))
+        token = create_access_token(
+            subject="user-test",
+            tenant_id="tenant-test",
+            extra_claims={"roles": ["admin"]},
+        )
+        resp = client.get("/v1/accounts", headers={
+            "Authorization": f"Bearer {token}",
+            "X-Tenant-ID": "tenant-test",
+        })
+        assert resp.status_code in (200, 404)  # 404 = no accounts, which is fine
+
+    def test_invalid_signature_rejected(self):
+        resp = client.get("/v1/accounts", headers={
+            "Authorization": "Bearer invalid.token.here",
+            "X-Tenant-ID": "tenant-test",
+        })
+        assert resp.status_code == 401
+
+    def test_expired_token_rejected(self):
+        expired_token = create_access_token(
+            subject="user-test",
+            tenant_id="tenant-test",
+            expires_delta=-1,  # expired 1 second ago
+        )
+        resp = client.get("/v1/accounts", headers={
+            "Authorization": f"Bearer {expired_token}",
+            "X-Tenant-ID": "tenant-test",
+        })
+        assert resp.status_code == 401
+
+    def test_missing_tenant_claim_rejected(self):
+        """Token without tenant_id in payload must be rejected."""
+        # Manually create a token without tenant_id
+        from app.core.config import get_settings
+        settings = get_settings()
+        payload = {"sub": "user-test", "exp": int(time.time()) + 3600}
+        bad_token = jose_jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
+        resp = client.get("/v1/accounts", headers={
+            "Authorization": f"Bearer {bad_token}",
+        })
+        assert resp.status_code == 401
+
+    def test_tenant_header_spoofing_blocked(self):
+        """JWT tenant claim must take precedence over forged X-Tenant-ID header."""
+        from app.models.schemas import User
+        from app.core.database import db
+
+        db.users.insert("user-spoof", User(
+            id="user-spoof", tenant_id="tenant-a", email="a@a.com",
+            name="A", role="admin", status="active", password_hash="$2b$12$dummy",
+        ))
+        token = create_access_token(
+            subject="user-spoof",
+            tenant_id="tenant-a",
+            extra_claims={"roles": ["admin"]},
+        )
+        resp = client.get("/v1/accounts", headers={
+            "Authorization": f"Bearer {token}",
+            "X-Tenant-ID": "tenant-b",  # forged - doesn't match JWT
+        })
+        # Should reject because header doesn't match JWT claim
+        assert resp.status_code in (401, 403)
+
+
+class TestJWKSCaching:
+    """Validate JWKS caching doesn't mask key rotation."""
+
+    def test_jwks_cache_ttl_expires(self):
+        """Cached JWKS should expire after TTL."""
+        from value_fabric.shared.identity.jwt import (
+            _JWKS_URL_CACHE,
+            _JWKS_URL_CACHE_EXPIRY,
+            _JWKS_URL_CACHE_TTL_SECONDS,
+            _fetch_jwks_from_url,
+        )
+
+        test_url = "http://test/jwks"
+        jwks_data = {"keys": [{"kid": "kid-1", "alg": "RS256"}]}
+
+        with patch("urllib.request.urlopen") as mock_urlopen:
+            mock_response = MagicMock()
+            mock_response.read.return_value = json.dumps(jwks_data).encode()
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+
+            # First fetch should hit network
+            result1 = _fetch_jwks_from_url(test_url)
+            assert mock_urlopen.call_count == 1
+
+            # Second fetch within TTL should use cache
+            result2 = _fetch_jwks_from_url(test_url)
+            assert mock_urlopen.call_count == 1  # no new network call
+            assert result2 == result1
+
+            # Expire cache manually
+            _JWKS_URL_CACHE_EXPIRY[test_url] = time.time() - 1
+
+            # Third fetch after expiry should hit network again
+            result3 = _fetch_jwks_from_url(test_url)
+            assert mock_urlopen.call_count == 2
+            assert result3 == result1
+
+        # Clean up
+        _JWKS_URL_CACHE.pop(test_url, None)
+        _JWKS_URL_CACHE_EXPIRY.pop(test_url, None)

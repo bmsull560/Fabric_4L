@@ -5,7 +5,7 @@
  * Run with: npx playwright test e2e/accessibility/
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/contract-test';
 import AxeBuilder from '@axe-core/playwright';
 
 // Critical pages that must pass accessibility audit

@@ -5,7 +5,7 @@
  * and captures screenshots + structural assertions for each.
  */
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './fixtures/contract-test';
 import { seedAuthState, clearAuthState } from './fixtures/auth-helpers';
 import { setUserTier, clearUserTier } from './fixtures/tier-helpers';
 

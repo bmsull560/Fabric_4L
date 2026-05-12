@@ -355,6 +355,15 @@ def _build_context_from_role(
     )
 
 
+def _get_worker_count() -> int:
+    """Return the configured uvicorn worker count for rate limiter safety checks."""
+    worker_count_raw = os.getenv("UVICORN_WORKERS", "1") or "1"
+    try:
+        return int(worker_count_raw)
+    except ValueError:
+        return 1
+
+
 class GovernanceMiddleware(BaseHTTPMiddleware):
     """Unified auth + tenant-resolution middleware for all Value Fabric layers.
 
@@ -400,13 +409,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         rate_limiter: Optional[RedisRateLimiter],
     ) -> None:
         """Fail closed when multi-worker deployments lack shared rate limits."""
-        worker_count_raw = os.getenv("UVICORN_WORKERS", "1") or "1"
-        try:
-            worker_count = int(worker_count_raw)
-        except ValueError:
-            worker_count = 1
-
-        if worker_count > 1 and rate_limiter is None:
+        if _get_worker_count() > 1 and rate_limiter is None:
             raise MultiWorkerRateLimitError()
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

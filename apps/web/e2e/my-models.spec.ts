@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from './fixtures/contract-test';
 import { navigateToRoute, waitForStableDOM } from "./fixtures/tier-helpers";
 
 test.describe("My Models E2E", () => {

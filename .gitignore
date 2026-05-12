@@ -155,3 +155,13 @@ tmp_*_findings.json
 tmp_*_after_fix.json
 tmp_gen_migration_baseline.py
 
+
+# Windows reserved-device artifact accidentally created by shell redirection
+/nul
+/NUL
+
+# Local test output artifacts
+/test_results_*.txt
+/collect_output.txt
+/pytest_collect*.txt
+/layer1_test_results*.txt

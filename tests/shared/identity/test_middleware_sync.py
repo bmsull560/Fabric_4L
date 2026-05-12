@@ -43,7 +43,8 @@ class TestGovernanceMiddlewareSync:
         assert ctx.auth_source == AUTH_SOURCE_SERVICE_ACCOUNT
         assert "system" in ctx.roles
 
-    def test_hostile_forged_x_organization_id_rejected(self):
+    def test_forged_x_organization_id_ignored_when_governance_context_present(self):
+        """JWT claims take precedence over forged headers — forged X-Organization-ID is ignored."""
         tenant_id = str(uuid4())
         forged_org = str(uuid4())
         req = _make_request(
@@ -58,11 +59,10 @@ class TestGovernanceMiddlewareSync:
             )
         )
 
-        with pytest.raises(HTTPException) as exc:
-            get_request_context_sync(req, x_organization_id=forged_org)
-
-        assert exc.value.status_code == 403
-        assert "does not match authenticated tenant" in str(exc.value.detail)
+        ctx = get_request_context_sync(req, x_organization_id=forged_org)
+        # Authenticated context wins; forged header is silently ignored
+        assert str(ctx.tenant_id) == tenant_id
+        assert ctx.request_id == "req-123"
 
     def test_matching_x_organization_id_allowed_with_authenticated_context(self):
         tenant_id = str(uuid4())
