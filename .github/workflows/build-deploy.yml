@@ -71,7 +71,7 @@ jobs:
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@6d2d7732ec3f8d4155459f03187c2bf0f8f868ad
+        uses: sigstore/cosign-installer@v3.8.1
 
       - name: Log in to Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
@@ -151,7 +151,7 @@ jobs:
 
       # P1-23 FIX: Security scan with Trivy before pushing
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@f19e8bd4f8dfdc8c0f8e0815d5cc8de6f3f5f7f1
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ github.sha }}
           format: 'sarif'
@@ -160,7 +160,7 @@ jobs:
           exit-code: '1'  # Fail on CRITICAL/HIGH vulnerabilities
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@b7197d43fd95e2f4c1c922ef5aaf7a00a1f8d2f4
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -190,7 +190,7 @@ jobs:
 
       # SECURITY: Generate SLSA provenance attestation
       - name: Publish SLSA provenance attestation
-        uses: actions/attest-build-provenance@e8994a95d35a7f7b1d3e89df0fa6f9e3c3f4e4eb
+        uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -233,7 +233,7 @@ jobs:
 
     steps:
       - name: Install Cosign
-        uses: sigstore/cosign-installer@6d2d7732ec3f8d4155459f03187c2bf0f8f868ad
+        uses: sigstore/cosign-installer@v3.8.1
 
       - name: Log in to Container Registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
