@@ -223,6 +223,7 @@ Return a JSON array of EconomicDifference objects with these fields:
     async def _query_graph_for_competitor(
         self,
         competitor_name: str,
+        tenant_id: str,
         neo4j_uri: str,
         neo4j_user: str,
         neo4j_password: str,
@@ -244,16 +245,19 @@ Return a JSON array of EconomicDifference objects with these fields:
             async with driver.session(database=database) as session:
                 result = await session.run(
                     """
-                    MATCH (c:Competitor {name: $name})
+                    MATCH (c:Competitor {name: $name, tenant_id: $tenant_id})
                     OPTIONAL MATCH (c)-[:HAS_CAPABILITY]->(cap:Capability)
+                      WHERE cap.tenant_id = $tenant_id
                     OPTIONAL MATCH (c)-[:HAS_RISK]->(r:Risk)
+                      WHERE r.tenant_id = $tenant_id
                     OPTIONAL MATCH (c)-[:HAS_COST_STRUCTURE]->(cs:CostStructure)
+                      WHERE cs.tenant_id = $tenant_id
                     RETURN c,
                            collect(DISTINCT cap.description) AS capabilities,
                            collect(DISTINCT r.description) AS risks,
                            collect(DISTINCT cs.description) AS cost_items
                     """,
-                    {"name": competitor_name},
+                    {"name": competitor_name, "tenant_id": tenant_id},
                 )
                 records = await result.data()
                 await driver.close()
@@ -429,6 +433,7 @@ Return a JSON array of EconomicDifference objects with these fields:
             if competitor_name:
                 competitor_facts = await self._query_graph_for_competitor(
                     competitor_name=competitor_name,
+                    tenant_id=input_data.tenant_id,
                     neo4j_uri=input_data.neo4j_uri,
                     neo4j_user=input_data.neo4j_user,
                     neo4j_password=input_data.neo4j_password,

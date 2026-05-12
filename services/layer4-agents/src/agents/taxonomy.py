@@ -29,6 +29,7 @@ import logging
 from enum import Enum
 from typing import Any
 
+from value_fabric.shared.identity.context import get_request_context
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from .base import AgentCapability, BaseAgent
@@ -139,9 +140,22 @@ async def _gate_execute(
     reaching into ``ToolRegistry`` directly.  This ensures GATE policy
     enforcement, invariant checks, and audit emission are always applied.
     """
+    effective_input = dict(input_data)
+    if "tenant_id" not in effective_input:
+        tenant_id = ctx.get("tenant_id")
+        if tenant_id is None:
+            request_context = get_request_context()
+            tenant_id = (
+                str(request_context.tenant_id)
+                if request_context and request_context.tenant_id
+                else None
+            )
+        if tenant_id is not None:
+            effective_input["tenant_id"] = str(tenant_id)
+
     gateway = ctx.get("tool_gateway")
     if gateway is not None:
-        return await gateway.execute(tool_name, input_data, estimated_cost_usd)
+        return await gateway.execute(tool_name, effective_input, estimated_cost_usd)
 
     # Graceful degradation: direct registry call when GATE is not injected
     registry = ctx.get("tool_registry")
@@ -151,7 +165,7 @@ async def _gate_execute(
             "call for tool '%s'. This bypasses policy enforcement.",
             tool_name,
         )
-        return await registry.execute(tool_name, input_data)
+        return await registry.execute(tool_name, effective_input)
 
     raise RuntimeError(
         f"Cannot execute tool '{tool_name}': neither tool_gateway nor "
