@@ -223,4 +223,4 @@ def build_pending_ingestion_store() -> PendingIngestionStore:
     sqlite_path = os.environ.get("PENDING_INGESTION_SQLITE_PATH")
     if sqlite_path:
         return SqlitePendingIngestionStore(sqlite_path)
-    return InMemoryPendingIngestionStore()
+    return SqlitePendingIngestionStore()

@@ -35,3 +35,5 @@ _append_namespace_root(_REPO_ROOT / "packages" / "shared" / "src" / "value_fabri
 _append_namespace_root(_REPO_ROOT / "services" / "layer4-agents" / "src")
 _append_namespace_root(_REPO_ROOT / "services" / "layer3-knowledge" / "src")
 _append_namespace_root(_REPO_ROOT / "services" / "layer2-extraction" / "src")
+_append_namespace_root(_REPO_ROOT / "services" / "layer1-ingestion" / "src")
+_append_namespace_root(_REPO_ROOT / "services" / "layer6-benchmarks" / "src")

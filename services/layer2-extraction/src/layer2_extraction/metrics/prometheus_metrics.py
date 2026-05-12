@@ -37,6 +37,32 @@ class PrometheusMetrics:
         """Get accumulated cost for a provider/model/tenant combination."""
         return self._accumulated_costs.get((provider, model, tenant_id), 0.0)
 
+    def record_llm_tokens(
+        self,
+        provider: str,
+        model: str,
+        token_type: str,
+        count: int,
+    ) -> None:
+        """Record LLM token count for a provider/model/token_type combination."""
+        key = (provider, model, token_type)
+        self._token_counts: dict[tuple[str, str, str], int] = getattr(self, "_token_counts", {})
+        self._token_counts[key] = self._token_counts.get(key, 0) + count
+
+    def get_metrics(self) -> str:
+        """Generate Prometheus exposition format output."""
+        lines: list[str] = []
+        for (provider, model, tenant_id), cost in self._accumulated_costs.items():
+            lines.append(
+                f'vf_llm_cost_usd_total{{provider="{provider}",model="{model}",tenant_id="{tenant_id}"}} {cost}'
+            )
+        token_counts: dict[tuple[str, str, str], int] = getattr(self, "_token_counts", {})
+        for (provider, model, token_type), count in token_counts.items():
+            lines.append(
+                f'vf_llm_tokens_total{{provider="{provider}",model="{model}",token_type="{token_type}"}} {count}'
+            )
+        return "\n".join(lines)
+
 
 _metrics_instance: PrometheusMetrics | None = None
 

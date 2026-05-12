@@ -37,7 +37,7 @@ class DatabaseConfig(BaseModel):
                 errors.append("POSTGRES_PASSWORD must be set in production")
             if host in ("localhost", "127.0.0.1", "::1"):
                 errors.append("POSTGRES_HOST must not point at localhost in production")
-            if user in ("postgres", "admin", "root"):
+            if user in ("postgres", "admin", "root", "layer2"):
                 errors.append("POSTGRES_USER must not use a default service account in production")
             if database in ("postgres", "layer2", "default"):
                 errors.append("POSTGRES_DB must not use a default database name in production")

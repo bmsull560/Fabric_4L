@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from layer2_extraction.models.ontology import (
     Capability,
+    Feature,
     Persona,
     UseCase,
     ValueDriver,
@@ -32,6 +33,7 @@ class ExtractionResult(BaseModel):
     source_url: str
     job_id: str = ""
     capabilities: list[Capability] = Field(default_factory=list)
+    features: list[Feature] = Field(default_factory=list)
     use_cases: list[UseCase] = Field(default_factory=list)
     personas: list[Persona] = Field(default_factory=list)
     value_drivers: list[ValueDriver] = Field(default_factory=list)
@@ -42,7 +44,14 @@ class ExtractionResult(BaseModel):
     def get_all_entities(self) -> list[Any]:
         return (
             self.capabilities
+            + self.features
             + self.use_cases
             + self.personas
             + self.value_drivers
         )
+
+    def get_entity_by_id(self, entity_id: str) -> Any | None:
+        for entity in self.get_all_entities():
+            if getattr(entity, "id", None) == entity_id:
+                return entity
+        return None

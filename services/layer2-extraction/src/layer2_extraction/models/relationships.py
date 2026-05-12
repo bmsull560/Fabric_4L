@@ -21,6 +21,7 @@ class PredicateType(str, Enum):
     ALTERNATIVE_TO = "alternative_to"
     IMPLEMENTS = "implements"
     CAPABILITY_SUBTYPE_OF = "capability_subtype_of"
+    SEMANTICALLY_EQUIVALENT = "semantically_equivalent"
 
 
 class Relationship(BaseModel):
@@ -43,20 +44,37 @@ class Relationship(BaseModel):
     source_url: str = ""
     extraction_job_id: str = ""
 
+    # Relationship property fields
+    impact_level: Any | None = None
+    strength: float | None = None
+    enablement_type: Any | None = None
+    contribution_weight: float | None = None
+    driver_type: Any | None = None
+    benefit_type: Any | None = None
+    influence_weight: float | None = None
+
+    @model_validator(mode="after")
+    def _validate_not_empty(self) -> "Relationship":
+        if not self.source_id or not self.source_id.strip():
+            raise ValueError("source_id cannot be empty")
+        if not self.target_id or not self.target_id.strip():
+            raise ValueError("target_id cannot be empty")
+        return self
+
     @model_validator(mode="after")
     def _sync_alias_fields(self) -> "Relationship":
         if self.source_id and not self.subject_id:
             self.subject_id = self.source_id
         if self.target_id and not self.object_id:
             self.object_id = self.target_id
-        if self.canonical_predicate and not self.predicate:
+        if self.canonical_predicate:
             self.predicate = self.canonical_predicate
+        elif self.predicate:
+            self.canonical_predicate = self.predicate
         if self.subject_id and not self.source_id:
             self.source_id = self.subject_id
         if self.object_id and not self.target_id:
             self.target_id = self.object_id
-        if self.predicate and not self.canonical_predicate:
-            self.canonical_predicate = self.predicate
         return self
 
     def get_inverse(self) -> Relationship:
@@ -64,9 +82,17 @@ class Relationship(BaseModel):
 
     def inverse(self) -> Relationship:
         inverse_pred = {
-            PredicateType.ENABLES: PredicateType.DEPENDS_ON,
+            PredicateType.ENABLES: PredicateType.REQUIRES,
             PredicateType.REQUIRES: PredicateType.ENABLES,
             PredicateType.DEPENDS_ON: PredicateType.ENABLES,
+            PredicateType.PRODUCES: PredicateType.MEASURES,
+            PredicateType.MEASURES: PredicateType.PRODUCES,
+            PredicateType.PART_OF: PredicateType.ASSOCIATED_WITH,
+            PredicateType.BENEFITS: PredicateType.DRIVES,
+            PredicateType.DRIVES: PredicateType.BENEFITS,
+            PredicateType.ALTERNATIVE_TO: PredicateType.ALTERNATIVE_TO,
+            PredicateType.IMPLEMENTS: PredicateType.CAPABILITY_SUBTYPE_OF,
+            PredicateType.CAPABILITY_SUBTYPE_OF: PredicateType.IMPLEMENTS,
         }.get(self.predicate, self.predicate)
         return Relationship(
             id=f"{self.id}_inv" if self.id else "",
@@ -94,7 +120,15 @@ class RelationshipGraph(BaseModel):
     relationships: list[Relationship] = Field(default_factory=list)
 
     def add(self, rel: Relationship) -> None:
+        for existing in self.relationships:
+            if (existing.source_id == rel.source_id and
+                existing.target_id == rel.target_id and
+                existing.predicate == rel.predicate):
+                return
         self.relationships.append(rel)
+
+    def add_relationship(self, rel: Relationship) -> None:
+        self.add(rel)
 
     def get_by_subject(self, subject_id: str) -> list[Relationship]:
         return [r for r in self.relationships if r.subject_id == subject_id]

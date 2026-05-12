@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -26,7 +26,7 @@ def test_validation_finding_to_dict_shape() -> None:
 def test_security_event_to_dict_shape() -> None:
     event = SecurityEvent(
         event_id="evt-1",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         event_type="request",
         source_ip="127.0.0.1",
         user_id="u1",
@@ -69,7 +69,7 @@ async def test_security_summary_shape() -> None:
 def test_analytics_event_to_dict_shape() -> None:
     event = AnalyticsEvent(
         event_id="evt-2",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         event_type="request",
         user_id="u1",
         api_key_id="k1",

@@ -146,3 +146,12 @@ apps/web/coverage/
 *_test_out.txt
 *_test_summary.txt
 
+# Layer 4 agent collection outputs
+services/layer4-agents/collect_errors.txt
+services/layer4-agents/collect_out*.txt
+
+# Temporary drift/migration baseline files
+tmp_*_findings.json
+tmp_*_after_fix.json
+tmp_gen_migration_baseline.py
+
