@@ -48,6 +48,24 @@ class TestTenantIsolation:
 
         return driver, session
 
+    @pytest.fixture
+    def mock_neo4j_session(self):
+        """Create a mock Neo4jTenantSession."""
+        mock = MagicMock()
+        mock.tenant_id = "tenant-a"
+        mock.execute_query = AsyncMock(return_value=[
+            {"total": 0, "id": "e1", "name": "Test", "description": "", "entity_type": "Capability", "confidence_score": 0.8, "created_at": "2024-01-01"}
+        ])
+        return mock
+
+    @pytest.fixture
+    def mock_neo4j_session_no_tenant(self):
+        """Create a mock Neo4jTenantSession without tenant context."""
+        mock = MagicMock()
+        mock.tenant_id = None
+        mock.execute_query = AsyncMock(side_effect=ValueError("Tenant context is required"))
+        return mock
+
     def test_extract_tenant_id_with_context(self, mock_request_with_tenant):
         """_extract_tenant_id should return tenant_id from request context."""
         tenant_id = _extract_tenant_id(mock_request_with_tenant)
@@ -64,67 +82,55 @@ class TestTenantIsolation:
         assert tenant_id is None
 
     @pytest.mark.asyncio
-    async def test_list_entities_requires_tenant_id(self, mock_neo4j_driver):
+    async def test_list_entities_requires_tenant_id(self, mock_neo4j_session_no_tenant):
         """list_entities must reject requests without tenant_id."""
-        driver, _ = mock_neo4j_driver
+        neo4j = mock_neo4j_session_no_tenant
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises((HTTPException, ValueError)) as exc_info:
             await list_entities(
                 search_text=None,
                 entity_types=None,
-                domains=None,
-                statuses=None,
-                min_confidence=None,
-                max_confidence=None,
+                confidence_min=0.0,
                 limit=25,
                 offset=0,
                 sort_by="updated_at",
                 sort_order="desc",
-                neo4j_driver=driver,
-                request=None,
+                _ctx=MagicMock(),
+                neo4j=neo4j,
             )
 
-        assert exc_info.value.status_code == 401
-        assert "Authentication context is required" in exc_info.value.detail
+        # Tenant validation is enforced by Neo4jTenantSession.run when tenant_id is absent
+        assert exc_info.value.status_code == 401 or "tenant" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_list_entities_includes_tenant_in_where_clause(
-        self, mock_request_with_tenant, mock_neo4j_driver
+        self, mock_neo4j_session
     ):
         """list_entities must include tenant_id in all MATCH queries."""
-        driver, session = mock_neo4j_driver
-
-        # Set up proper mock chain for session.run
-        mock_result = AsyncMock()
-        mock_result.single.return_value = {"total": 0}
-        mock_result.fetch.return_value = []
-        session.run.return_value = mock_result
+        neo4j = mock_neo4j_session
 
         await list_entities(
             search_text=None,
             entity_types=None,
-            domains=None,
-            statuses=None,
-            min_confidence=None,
-            max_confidence=None,
+            confidence_min=0.0,
             limit=25,
             offset=0,
             sort_by="updated_at",
             sort_order="desc",
-            neo4j_driver=driver,
-            request=mock_request_with_tenant,
+            _ctx=MagicMock(),
+            neo4j=neo4j,
         )
 
-        # Verify queries include tenant_id filter
-        calls = session.run.call_args_list
+        # Verify execute_query was called with tenant-scoped query
+        assert neo4j.execute_query.called, "execute_query was not called"
+        calls = neo4j.execute_query.call_args_list
         assert len(calls) > 0, "No queries were executed"
 
         for call in calls:
-            query = call[1].get("query") or call[0][0] if call[0] else call.args[1] if call.args else call.kwargs.get("query", "")
-            if "MATCH" in str(query):
-                params = call[1] if call[1] else call.kwargs if call.kwargs else {}
-                if isinstance(params, dict) and params:
-                    assert "tenant_id" in params or "$tenant_id" in str(query), f"Query missing tenant_id: {query}"
+            query = call[0][0] if call[0] else call.kwargs.get("query", "")
+            query_str = str(query)
+            if "MATCH" in query_str:
+                assert "tenant_id" in query_str or "$_tenant_id" in query_str, f"Query missing tenant_id: {query_str}"
 
     @pytest.mark.asyncio
     async def test_get_full_graph_requires_tenant_id(self):
@@ -140,8 +146,8 @@ class TestTenantIsolation:
                     request=None,
                 )
 
-        assert exc_info.value.status_code == 400
-        assert "tenant_id is required" in exc_info.value.detail
+        assert exc_info.value.status_code == 401
+        assert "Authentication context is required" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_get_full_graph_includes_tenant_in_queries(

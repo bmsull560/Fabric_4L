@@ -147,8 +147,8 @@ async def list_entities(
                 name=row["name"] or "Unnamed Entity",
                 description=row["description"],
                 entity_type=row["entity_type"],
-                confidence_score=row["confidence_score"] or 0.0,
-                created_at=row["created_at"],
+                confidence=row["confidence_score"] or 0.0,
+                updated_at=row["created_at"],
             )
             for row in results
         ]
@@ -287,8 +287,8 @@ async def query_entities(
         params: dict[str, Any] = {"limit": request.limit or 20, "offset": request.offset or 0}
 
         filters.add_entity_types(request.entity_types)
-        filters.add_confidence_min(request.confidence_min)
-        filters.add_confidence_max(request.confidence_max)
+        filters.add_confidence_min(request.min_confidence)
+        filters.add_confidence_max(request.max_confidence)
         params.update(filters.params)
         builder = TenantScopedCypher(neo4j.tenant_id or "")
         scoped_count = builder.custom_tenant_query(
@@ -334,8 +334,8 @@ async def query_entities(
                 name=row["name"] or "Unnamed Entity",
                 description=row["description"],
                 entity_type=row["entity_type"],
-                confidence_score=row["confidence_score"] or 0.0,
-                created_at=row["created_at"],
+                confidence=row["confidence_score"] or 0.0,
+                updated_at=row["created_at"],
             )
             for row in results
         ]

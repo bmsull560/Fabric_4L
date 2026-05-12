@@ -13,9 +13,17 @@ class _Neo4jCapture:
 
     async def execute_query(self, query, params=None, **kwargs):
         self.calls.append((query, params or {}, kwargs))
-        if len(self.calls) == 1:
-            return [{"total": 2}]
-        return []
+        return [
+            {
+                "total": 2,
+                "id": "e1",
+                "name": "Test Entity",
+                "description": "",
+                "entity_type": "Capability",
+                "confidence_score": 0.8,
+                "created_at": "2024-01-01",
+            }
+        ]
 
 
 @pytest.mark.asyncio
@@ -49,8 +57,8 @@ async def test_query_entities_filter_combinations_keep_tenant_predicate():
     await query_entities(
         request=EntityFilterRequest(
             entity_types=["Capability"],
-            confidence_min=0.2,
-            confidence_max=0.8,
+            min_confidence=0.2,
+            max_confidence=0.8,
             limit=5,
             offset=0,
         ),
