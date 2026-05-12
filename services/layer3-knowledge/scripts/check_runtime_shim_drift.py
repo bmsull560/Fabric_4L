@@ -10,19 +10,22 @@ from pathlib import Path
 
 EXPECTED: dict[str, str] = {
     "services/layer3-knowledge/src/api/models.py": (
-        '"""Compatibility forwarder for Layer 3 API models.\n\n'
-        'Canonical implementation lives in ``value_fabric.layer3.api.models``.\n"""\n\n'
-        'from value_fabric.layer3.api.models import *  # noqa: F403\n'
+        '"""Layer 3 compatibility shim for API models.\n\n'
+        'This module intentionally re-exports the canonical Layer 3 API models from\n'
+        '``value_fabric.layer3.api.models`` and must not contain service-local business\n'
+        'logic.\n"""\n\n'
+        'from value_fabric.layer3.api.models import *  # noqa: F401,F403\n'
     ),
     "services/layer3-knowledge/src/api/app_monolith.py": (
-        '"""Compatibility forwarder for Layer 3 monolith app module.\n\n'
-        'Canonical implementation lives in ``value_fabric.layer3.api.app_monolith``.\n"""\n\n'
-        'from value_fabric.layer3.api.app_monolith import *  # noqa: F403\n'
+        '"""Allowed service-local exception for Layer 3 service wrapper.\n\n'
+        'Owner: layer3-knowledge\n'
+        'Removal/migration target: 2026-09-30\n'
+        'Reason: Service-wrapper-only logic permitted by runtime path governance.\n"""\n\n\n'
+        'from value_fabric.layer3.api.app_monolith import *  # noqa: F401,F403\n'
     ),
     "services/layer3-knowledge/src/services/product_service.py": (
-        '"""Compatibility forwarder for Layer 3 product service.\n\n'
-        'Canonical implementation lives in ``value_fabric.layer3.services.product_service``.\n"""\n\n'
-        'from value_fabric.layer3.services.product_service import *  # noqa: F403\n'
+        '"""Compatibility wrapper for value_fabric.layer3.services.product_service."""\n\n'
+        'from value_fabric.layer3.services.product_service import *  # noqa: F401,F403\n'
     ),
 }
 

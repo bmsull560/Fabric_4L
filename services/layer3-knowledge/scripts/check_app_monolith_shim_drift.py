@@ -9,12 +9,13 @@ import sys
 from pathlib import Path
 
 
-EXPECTED_SHIM = '''"""Compatibility shim for the canonical Layer 3 API monolith.
+EXPECTED_SHIM = '''"""Allowed service-local exception for Layer 3 service wrapper.
 
-Authoritative implementation lives in ``value_fabric.layer3.api.app_monolith``
-per docs/reference/layer-runtime-path-governance.md.
-Do not add business logic in this compatibility module.
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Service-wrapper-only logic permitted by runtime path governance.
 """
+
 
 from value_fabric.layer3.api.app_monolith import *  # noqa: F401,F403
 '''

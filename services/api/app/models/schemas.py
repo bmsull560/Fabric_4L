@@ -359,6 +359,20 @@ class ReviewRequest(BaseModel):
     resolved_at: str | None = None
 
 
+class AccountVersionSnapshot(BaseModel):
+    id: str
+    account_id: str
+    tenant_id: str
+    created_by: str
+    snapshot_type: Literal["auto", "manual"] = "manual"
+    signals: list[Signal] = Field(default_factory=list)
+    drivers: list[ValueDriver] = Field(default_factory=list)
+    roi_calculations: list[ROICalculation] = Field(default_factory=list)
+    business_case_ids: list[str] = Field(default_factory=list)
+    label: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+
 # ============================================================================
 # Agents
 # ============================================================================

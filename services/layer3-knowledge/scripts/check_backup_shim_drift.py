@@ -10,14 +10,14 @@ from pathlib import Path
 
 EXPECTED: dict[str, str] = {
     "services/layer3-knowledge/src/backup/backup_manager.py": (
-        '"""Compatibility forwarder for Layer 3 backup manager.\n\n'
-        'Canonical implementation lives in ``value_fabric.layer3.backup.backup_manager``.\n"""\n\n'
-        'from value_fabric.layer3.backup.backup_manager import *  # noqa: F403\n'
+        '"""Compatibility wrapper for value_fabric.layer3.backup.backup_manager."""\n\n'
+        'from value_fabric.layer3.backup.backup_manager import *  # noqa: F401,F403\n'
     ),
     "services/layer3-knowledge/src/backup/__init__.py": (
-        '"""Compatibility forwarder for Layer 3 backup package.\n\n'
-        'Canonical implementation lives in ``value_fabric.layer3.backup``.\n"""\n\n'
-        'from value_fabric.layer3.backup import *  # noqa: F403\n'
+        '"""Compatibility wrapper for ``value_fabric.layer3.backup``.\n\n'
+        'Canonical implementation lives in ``value_fabric.layer3.backup``\n'
+        'per ``docs/reference/layer-runtime-path-governance.md``.\n"""\n\n'
+        'from value_fabric.layer3.backup import *  # noqa: F401,F403\n'
     ),
 }
 
