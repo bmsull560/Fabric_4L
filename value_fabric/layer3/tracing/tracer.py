@@ -436,7 +436,7 @@ class Tracer:
             return Tracer_create_trace_context_headersResult.model_validate({})
 
         return Tracer_create_trace_context_headersResult.model_validate({
-            "X-Trace-Id": context.trace_id,
+            CANONICAL_TRACE_HEADER: context.trace_id,
             "X-Span-Id": context.span_id,
             "X-Parent-Span-Id": context.parent_span_id or "",
             "X-Trace-Sampled": str(context.sampled).lower(),
@@ -454,9 +454,14 @@ class Tracer:
         Returns:
             Trace context or None
         """
-        trace_id = (
-            headers.get("X-Trace-Id") or headers.get("traceparent", "").split("-")[0]
-        )
+        trace_id = headers.get(CANONICAL_TRACE_HEADER)
+        if not trace_id:
+            for alias in TRACE_HEADER_ALIASES:
+                trace_id = headers.get(alias)
+                if trace_id:
+                    break
+        if not trace_id:
+            trace_id = headers.get("traceparent", "").split("-")[0]
         span_id = headers.get("X-Span-Id")
         parent_span_id = headers.get("X-Parent-Span-Id")
         sampled = headers.get("X-Trace-Sampled", "true").lower() == "true"
@@ -717,6 +722,10 @@ import threading
 import traceback
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.observability.trace_context import (
+    CANONICAL_TRACE_HEADER,
+    TRACE_HEADER_ALIASES,
+)
 
 
 class SpanEvent_to_dictResult(TypedDictModel):

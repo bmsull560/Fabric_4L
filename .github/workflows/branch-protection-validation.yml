@@ -28,6 +28,7 @@ jobs:
             "Layer 5 - Source Contract"
             "Layer 5 - Tenant Isolation Regression"
             "Layer 5 - Contract Shape Regression"
+            "make verify"
           )
 
           BRANCH="main"

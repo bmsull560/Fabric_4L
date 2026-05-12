@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.api.routes.benchmarks import list_benchmark_policies
+from api.routes.benchmarks import list_benchmark_policies
 
 
 class _Result:
@@ -55,7 +55,7 @@ async def test_list_benchmark_policies_returns_same_tenant_records(monkeypatch):
     async def _session_factory(_tenant_id):
         return session
 
-    monkeypatch.setattr("src.api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+    monkeypatch.setattr("api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
 
     api_key = SimpleNamespace(tenant_id=tenant_id)
     policies = await list_benchmark_policies(api_key=api_key)
@@ -86,7 +86,7 @@ async def test_list_benchmark_policies_returns_empty_for_cross_tenant_records(mo
     async def _session_factory(_tenant_id):
         return session
 
-    monkeypatch.setattr("src.api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+    monkeypatch.setattr("api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
 
     api_key = SimpleNamespace(tenant_id=tenant_id)
     policies = await list_benchmark_policies(api_key=api_key)
@@ -103,7 +103,7 @@ async def test_list_benchmark_policies_passes_required_tenant_parameter_to_neo4j
     async def _session_factory(_tenant_id):
         return session
 
-    monkeypatch.setattr("src.api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+    monkeypatch.setattr("api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
 
     api_key = SimpleNamespace(tenant_id=tenant_id)
     result = await list_benchmark_policies(api_key=api_key)

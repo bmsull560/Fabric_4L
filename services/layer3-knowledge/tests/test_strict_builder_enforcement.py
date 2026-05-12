@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from uuid import uuid4
+from collections.abc import AsyncIterator
 
 import pytest
 
@@ -45,6 +46,24 @@ def _settings_stub() -> SimpleNamespace:
         neo4j_auth=("neo4j", "test"),
         neo4j_max_pool_size=1,
     )
+
+
+class _AsyncResult(AsyncIterator[dict]):
+    """Minimal async Neo4j result iterator for analytics regression tests."""
+
+    def __init__(self, records: list[dict]):
+        self._records = records
+        self._index = 0
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._index >= len(self._records):
+            raise StopAsyncIteration
+        current = self._records[self._index]
+        self._index += 1
+        return current
 
 
 @pytest.fixture(autouse=True)
@@ -109,6 +128,45 @@ def test_custom_label_policy_respects_tenant_and_global_sets() -> None:
     assert policy.requires_scope(["GlobalMetadata", "TenantOwned"])
     assert not policy.is_tenant_owned("GlobalMetadata")
     assert not policy.requires_scope(["GlobalMetadata"])
+
+
+@pytest.mark.asyncio
+async def test_detect_louvain_shapes_valid_communities_without_import_runtime_errors(monkeypatch) -> None:
+    """Louvain detection should shape valid communities deterministically."""
+
+    class _FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def run(self, query, params=None):
+            if "gds.version" in query:
+                return _AsyncResult([])
+            if "gds.louvain.stream" in query:
+                return _AsyncResult(
+                    [
+                        {"node": {"id": "n1", "name": "Node 1", "labels": ["Capability"]}, "communityId": 1},
+                        {"node": {"id": "n2", "name": "Node 2", "labels": ["Capability"]}, "communityId": 1},
+                        {"node": {"id": "n3", "name": "Node 3", "labels": ["UseCase"]}, "communityId": 2},
+                    ]
+                )
+            return _AsyncResult([])
+
+    class _FakeDriver:
+        def session(self, database=None):
+            return _FakeSession()
+
+    detector = CommunityDetector(driver=_FakeDriver(), settings=_settings_stub())
+    monkeypatch.setattr(detector, "_project_graph", AsyncMock(return_value=None))
+    monkeypatch.setattr(detector, "_calculate_modularity", AsyncMock(return_value=0.42))
+
+    result = await detector.detect_louvain(min_community_size=2, tenant_id="tenant-a")
+
+    assert result["communities"]
+    assert result["valid_communities"] == 1
+    assert result["total_communities"] == 2
 
 
 @pytest.mark.parametrize(

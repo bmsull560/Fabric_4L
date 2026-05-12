@@ -65,3 +65,11 @@ The CI/staging backend-integrated reproducibility package for GitHub Actions run
 ## Waiver Requirements
 
 Any accepted P0 or P1 risk must include the approving owner, expiration date, customer impact statement, rollback plan, monitoring plan, and explicit scope reduction if the missing evidence affects a launch-critical capability. P2 items require owner and target date but do not require executive waiver.
+
+
+## Evidence Authority and Reports Policy
+
+- Authoritative launch status must be recorded in this register and in `docs/launch/environment-dependent-evidence-matrix.md`.
+- `reports/` artifacts are non-authoritative diagnostics by default.
+- A `reports/` artifact may be cited as supporting evidence only when it includes explicit gate linkage, UTC timestamp, commit SHA, and command/check provenance.
+- Historical failure logs must live under `reports/archive/<YYYY-MM-DD>-<context>/` or be removed.

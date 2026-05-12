@@ -208,6 +208,13 @@ repos:
         files: ^(contracts/|services/.+/api/)
         pass_filenames: false
         always_run: true
+      - id: check-no-nul-bytes
+        name: Check Python sources for NUL bytes
+        entry: python scripts/ci/check_no_nul_bytes.py
+        language: system
+        files: \.py$
+        pass_filenames: false
+        always_run: true
 
   # License header check
   - repo: local

@@ -118,7 +118,7 @@ Before opening a PR, run:
 make verify
 ```
 
-This runs: conflict-marker scan → lint → type-check → unit tests → contract tests → build.
+This runs: conflict-marker scan → NUL-byte scan (`check-no-nul-bytes`) across tracked `*.py`, `*.ts`, `*.tsx`, `*.json`, `*.yaml` files → lint → type-check → unit tests → contract tests → build.
 
 ### Troubleshooting: merge conflict marker failures
 
@@ -261,3 +261,25 @@ For production traces, see `monitoring/` for Grafana dashboards.
 - Contract: HTTP adapters return `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
   `X-RateLimit-Reset`, and `Retry-After` on throttled requests, with body fields
   `detail`, `error`, and `retry_after`.
+
+
+## Reports/ Artifact Policy and Launch Evidence Authority
+
+`reports/` is a generated diagnostics area, not a default source-of-truth for ship/no-ship decisions.
+
+### Policy
+
+- `reports/` artifacts should only be committed when they are tied to a passing gate/check and include build metadata (at minimum: UTC timestamp, commit SHA, and command/check name).
+- Historical failing snapshots (for example pytest outputs containing `errors during collection`) must not remain in active `reports/` paths.
+- Historical failing snapshots may be retained only under `reports/archive/<YYYY-MM-DD>-<context>/` with a short README describing date, purpose, and why retention is needed.
+- CI enforces this rule through `scripts/ci/check_reports_evidence_policy.py`.
+
+### Authoritative ship/no-ship evidence
+
+For launch decisions, treat the following as authoritative in this order:
+1. `docs/launch/launch-blocker-register.md`
+2. `docs/launch/environment-dependent-evidence-matrix.md`
+3. `docs/launch/final-testing-launch-checklist.md`
+4. Gate validator outputs referenced by the checklist (for example `scripts/ci/validate_final_testing_launch_gate.py`)
+
+`reports/` documents can support context but do not override the launch docs above.

@@ -557,3 +557,39 @@ See `docs/troubleshooting/runbooks/infrastructure/release-checklist.md` and `doc
 ## Contributor Pathing Reference
 
 - [Layer Runtime Path Governance Matrix](../reference/layer-runtime-path-governance.md) — Where to add new layer code vs compatibility-only paths
+
+---
+
+## Reproduce `make verify` Locally
+
+Use this sequence to match CI prerequisites and execution order:
+
+```bash
+# 1) Toolchain parity
+corepack enable
+corepack prepare pnpm@10.18.1 --activate
+python3 --version  # expected: 3.11.x
+node --version     # expected: 22.x
+pnpm --version     # expected: 10.18.1
+
+# 2) Install JavaScript dependencies
+pnpm install --frozen-lockfile
+
+# 3) Install Python test/runtime dependencies used by verify
+pip install -r tests/requirements-test.txt
+pip install -e services/api
+pip install -e services/layer1-ingestion
+pip install -e services/layer2-extraction
+pip install -e services/layer3-knowledge
+pip install -e services/layer4-agents
+pip install -e services/layer5-ground-truth
+pip install -e services/layer6-benchmarks
+
+# 4) Run the full gate
+make verify
+```
+
+Expected environment:
+- Linux/macOS shell with `bash`, `make`, `python3`, `pip`, `node`, `pnpm` available.
+- Repository root as working directory (`/workspace/Fabric_4L` in containerized dev).
+- Network access for first-time dependency resolution.

@@ -16,7 +16,6 @@ Expected Initial State:
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -35,7 +34,7 @@ def _load_security_config():
     """Load the security.config module directly to avoid sys.path issues
     when using patch.dict(clear=True)."""
     import importlib.util
-    config_path = _PROJECT_ROOT / "shared" / "security" / "config.py"
+    config_path = _PROJECT_ROOT / "value_fabric" / "shared" / "security" / "config.py"
     spec = importlib.util.spec_from_file_location("security_config", config_path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -58,10 +57,8 @@ class TestJWTSecretValidation:
             "REDIS_URL": "redis://localhost:6379",
         }, clear=True):
             mod = _load_security_config()
-            # With empty JWT_SECRET + other controls missing, should raise
-            # The validate_all_controls checks for catastrophic misconfiguration
-            # But we need a dedicated JWT validation
-            assert mod.is_production()
+            with pytest.raises(ValueError, match="JWT_SECRET.*required.*production"):
+                mod.validate_jwt_config()
 
     def test_startup_rejects_weak_jwt_secret_in_prod(self):
         """Production startup must fail if JWT_SECRET is too short.
@@ -69,39 +66,23 @@ class TestJWTSecretValidation:
         A JWT secret shorter than 32 characters is brute-forceable.
         Expected initial state: FAIL — no length validation exists.
         """
-        source = (_PROJECT_ROOT / "shared" / "security" / "config.py").read_text()
-
-        # Check if there's any JWT secret length validation
-        has_length_check = (
-            "len(jwt_secret)" in source
-            or "jwt_secret_length" in source
-            or ("JWT_SECRET" in source and ("< 32" in source or "min_length" in source))
-        )
-
-        assert has_length_check, (
-            "shared/security/config.py does not validate JWT_SECRET length. "
-            "A short JWT secret is brute-forceable. Production must require "
-            "at least 32 characters."
-        )
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "JWT_SECRET": "short",
+        }, clear=True):
+            mod = _load_security_config()
+            with pytest.raises(ValueError, match="JWT_SECRET.*at least 32"):
+                mod.validate_jwt_config()
 
     def test_startup_rejects_default_jwt_secret_in_prod(self):
         """Production must reject known default/test JWT secrets."""
-        source = (_PROJECT_ROOT / "shared" / "security" / "config.py").read_text()
-
-        # Check if there's any default secret detection
-        has_default_check = (
-            "default" in source.lower() and "jwt" in source.lower()
-            and ("reject" in source.lower() or "raise" in source.lower())
-        ) or (
-            "test-secret" in source or "changeme" in source or "your-secret" in source
-        )
-
-        # This is a weaker assertion — we just verify the concept exists
-        # The real test would be to call the validation with a known default
-        assert has_default_check or "JWT_SECRET" in source, (
-            "shared/security/config.py does not check for default JWT secrets. "
-            "Known defaults like 'test-secret-key' must be rejected in production."
-        )
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "JWT_SECRET": "changeme",
+        }, clear=True):
+            mod = _load_security_config()
+            with pytest.raises(ValueError, match="known default/test value"):
+                mod.validate_jwt_config()
 
 
 # ---------------------------------------------------------------------------
@@ -127,19 +108,14 @@ class TestStartupSummaryCompleteness:
             mod = _load_security_config()
             summary = mod.get_startup_summary()
 
-            # The summary should include RLS/tenant isolation status
-            has_rls_info = (
-                "rls" in str(summary).lower()
-                or "tenant_isolation" in str(summary)
-                or "row_level_security" in str(summary).lower()
-            )
-
-            assert has_rls_info, (
-                f"get_startup_summary() does not report RLS status. "
-                f"Current summary keys: {list(summary.keys())}. "
-                f"The startup summary must include tenant isolation mode "
-                f"(shared/schema/database) and RLS enforcement status."
-            )
+            assert summary["rls_status"] == "active"
+            assert summary["rls_enforcement"] == {
+                "supported_backend": True,
+                "superuser_connection": False,
+                "enforced": True,
+                "status": "enforced",
+            }
+            assert summary["degraded_control_status"]["is_degraded"] is False
 
     def test_startup_summary_reports_degraded_controls(self):
         """Startup summary must list degraded controls when Redis is missing."""
@@ -175,21 +151,13 @@ class TestRLSPrerequisiteValidation:
 
         Expected initial state: FAIL — no RLS prerequisite check exists.
         """
-        source = (_PROJECT_ROOT / "shared" / "security" / "config.py").read_text()
-
-        has_rls_validation = (
-            "rls" in source.lower()
-            or "row_level_security" in source.lower()
-            or "tenant_isolation" in source.lower()
-        )
-
-        assert has_rls_validation, (
-            "shared/security/config.py does not validate RLS prerequisites. "
-            "Production startup should verify that:\n"
-            "  1. Database is PostgreSQL (not SQLite/MySQL)\n"
-            "  2. RLS policies are expected to be active\n"
-            "  3. The application role is not a superuser (which bypasses RLS)"
-        )
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "mysql://user:pass@db/service",
+        }, clear=True):
+            mod = _load_security_config()
+            with pytest.raises(ValueError, match="must use PostgreSQL"):
+                mod.validate_rls_prerequisites()
 
     def test_startup_rejects_superuser_connection_in_prod(self):
         """Production must warn/reject if connecting as PostgreSQL superuser.
@@ -199,19 +167,13 @@ class TestRLSPrerequisiteValidation:
 
         Expected initial state: FAIL — no superuser detection exists.
         """
-        source = (_PROJECT_ROOT / "shared" / "security" / "config.py").read_text()
-
-        has_superuser_check = (
-            "superuser" in source.lower()
-            or "pg_roles" in source
-            or "rolsuper" in source
-        )
-
-        assert has_superuser_check, (
-            "shared/security/config.py does not check for superuser connections. "
-            "PostgreSQL superusers bypass ALL RLS policies. Production must "
-            "verify the connection role is not a superuser."
-        )
+        with patch.dict(os.environ, {
+            "ENVIRONMENT": "production",
+            "DATABASE_URL": "postgresql://postgres:pass@db/service?sslmode=require",
+        }, clear=True):
+            mod = _load_security_config()
+            with pytest.raises(ValueError, match="superuser"):
+                mod.validate_rls_prerequisites()
 
 
 # ---------------------------------------------------------------------------
@@ -227,8 +189,6 @@ class TestDegradedDependencyBehavior:
         Rate limiting can degrade gracefully, but authentication must
         never be optional — even if Redis is down.
         """
-        source = (_PROJECT_ROOT / "shared" / "security" / "config.py").read_text()
-
         # The startup summary should not list 'authentication' as degraded
         # when only Redis is missing
         with patch.dict(os.environ, {

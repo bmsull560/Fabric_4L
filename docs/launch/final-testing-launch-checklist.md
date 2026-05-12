@@ -6,6 +6,8 @@ This checklist is the sign-off package for entering final testing. It is deliber
 
 The release may enter final testing only when the repository-owned checks are passing, no unresolved **P0 Launch Blocker** remains, every **P1 Launch Blocker** has an owner and mitigation, and all live-only gates are explicitly scheduled with an evidence owner. The launch owner should treat missing evidence as a decision, not an assumption.
 
+Evidence authority rule: ship/no-ship decisions are authoritative only when reflected in `docs/launch/launch-blocker-register.md` and `docs/launch/environment-dependent-evidence-matrix.md`. `reports/` artifacts are supporting diagnostics only unless explicitly linked to a passing gate run with timestamp + commit SHA metadata.
+
 | Gate | Owner | Required Evidence | Status Before Final Testing | Blocker Rule |
 |---|---|---|---|---|
 | Repository launch gate | Release captain | `python3 scripts/ci/validate_final_testing_launch_gate.py` output attached to release notes. | REQUIRED_PASS | P0 Launch Blocker if failing. |

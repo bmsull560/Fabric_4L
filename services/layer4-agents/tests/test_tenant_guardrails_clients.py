@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from src.integration.layer1_client import Layer1ClientError, Layer1IngestionClient
-from src.integration.layer2_client import Layer2ClientError, Layer2ExtractionClient
-from src.integration.layer5_client import Layer5GroundTruthClient
+from integration.layer1_client import Layer1ClientError, Layer1IngestionClient
+from integration.layer2_client import Layer2ClientError, Layer2ExtractionClient
+from integration.layer5_client import Layer5GroundTruthClient
 
 
 @pytest.mark.asyncio

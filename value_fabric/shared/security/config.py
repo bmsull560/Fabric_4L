@@ -47,6 +47,7 @@ _DEFAULT_DATABASE_NAMES = frozenset({"postgres", "admin", "test", "db", "databas
 _LOCALHOST_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
 _APPROVED_DATABASE_SSL_MODES = frozenset({"require", "verify-ca", "verify-full"})
 _PREFERRED_DATABASE_SSL_MODE = "verify-full"
+_RLS_SUPPORTED_SCHEMES = frozenset({"postgresql", "postgres", "postgresql+asyncpg", "postgresql+psycopg"})
 
 
 class SecurityConfig(BaseModel):
@@ -610,6 +611,13 @@ def validate_jwt_secret_strength() -> None:
         # Missing JWT_SECRET is handled by validate_all_controls / jwt.py
         return
 
+    normalized = jwt_secret.strip().lower()
+    if is_production() and normalized in _WEAK_SECRET_DENYLIST:
+        raise ValueError(
+            "JWT_SECRET uses a known default/test value and is forbidden in production. "
+            "Generate a strong secret: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
+
     if is_production() and len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
         raise ValueError(
             f"JWT_SECRET is too short ({len(jwt_secret)} chars). "
@@ -628,8 +636,36 @@ def validate_jwt_secret_strength() -> None:
 
 def validate_jwt_config() -> None:
     """Compatibility wrapper for identity dependency startup validation."""
-
+    jwt_secret = os.getenv("JWT_SECRET", "")
+    if is_production() and not jwt_secret:
+        raise ValueError("JWT_SECRET is required in production")
     validate_jwt_secret_strength()
+
+
+def validate_rls_prerequisites() -> None:
+    """Validate startup prerequisites required for DB-backed tenant isolation."""
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url:
+        return
+
+    parsed = urlparse(database_url)
+    scheme = (parsed.scheme or "").lower()
+    username = (parsed.username or "").lower()
+
+    if scheme not in _RLS_SUPPORTED_SCHEMES and is_production():
+        raise ValueError(
+            "DATABASE_URL must use PostgreSQL in production to enforce Row-Level Security "
+            "for tenant isolation."
+        )
+
+    if username in _SUPERUSER_NAMES:
+        msg = (
+            f"DATABASE_URL connects as '{username}', a PostgreSQL superuser role. "
+            "Superusers bypass Row-Level Security and break tenant isolation."
+        )
+        if is_production():
+            raise ValueError(msg)
+        logger.warning(msg)
 
 
 def validate_database_superuser() -> None:
@@ -654,9 +690,7 @@ def validate_database_superuser() -> None:
         username = ""
 
     # Known PostgreSQL superuser names
-    superuser_names = {"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"}
-
-    if username.lower() in superuser_names:
+    if username.lower() in _SUPERUSER_NAMES:
         msg = (
             f"DATABASE_URL connects as '{username}', which is a PostgreSQL superuser. "
             f"Superusers bypass ALL Row-Level Security policies, meaning tenant "
@@ -715,6 +749,7 @@ def get_startup_summary() -> dict[str, Any]:
     cors_origins = os.getenv("CORS_ORIGINS", "*")
     database_url = os.getenv("DATABASE_URL", "")
     
+    rls_checks = _get_rls_enforcement(database_url)
     summary = {
         "environment": environment,
         "redis_enabled": bool(redis_url),
@@ -722,6 +757,11 @@ def get_startup_summary() -> dict[str, Any]:
         "cors_mode": "restricted" if cors_origins != "*" else "permissive",
         "jwt_validation": "strict" if is_production() else "relaxed",
         "rls_status": _get_rls_status(database_url),
+        "rls_enforcement": rls_checks,
+        "degraded_control_status": {
+            "is_degraded": False,
+            "controls": [],
+        },
         "warnings": [],
         "degraded_controls": [],
     }
@@ -757,6 +797,9 @@ def get_startup_summary() -> dict[str, Any]:
             "RLS policies exist but are bypassed for superusers."
         )
     
+    summary["degraded_control_status"]["controls"] = list(summary["degraded_controls"])
+    summary["degraded_control_status"]["is_degraded"] = bool(summary["degraded_controls"])
+
     if summary["warnings"]:
         summary["warnings"].insert(0, "WARNING: Some security controls are degraded")
         summary["warnings"].insert(0, "WARNING")
@@ -783,3 +826,44 @@ def _get_rls_status(database_url: str) -> str:
         return "superuser_bypass"
 
     return "active"
+
+
+def _get_rls_enforcement(database_url: str) -> dict[str, Any]:
+    """Return contract-stable RLS enforcement status details."""
+    if not database_url:
+        return {
+            "supported_backend": False,
+            "superuser_connection": False,
+            "enforced": False,
+            "status": "missing_database_url",
+        }
+
+    try:
+        parsed = urlparse(database_url)
+        scheme = (parsed.scheme or "").lower()
+        username = (parsed.username or "").lower()
+    except Exception:
+        return {
+            "supported_backend": False,
+            "superuser_connection": False,
+            "enforced": False,
+            "status": "invalid_database_url",
+        }
+
+    supported_backend = scheme in _RLS_SUPPORTED_SCHEMES
+    superuser_connection = username in _SUPERUSER_NAMES
+    enforced = supported_backend and not superuser_connection
+
+    if not supported_backend:
+        status = "unsupported_backend"
+    elif superuser_connection:
+        status = "superuser_bypass"
+    else:
+        status = "enforced"
+
+    return {
+        "supported_backend": supported_backend,
+        "superuser_connection": superuser_connection,
+        "enforced": enforced,
+        "status": status,
+    }

@@ -176,9 +176,7 @@ class CommunityDetector:
                     )
 
                 # Filter small communities
-                valid_communities = {
-                    k: v for k, v in communities.items() if len(v) >= min_community_size
-                }
+                valid_communities = {k: v for k, v in communities.items() if len(v) >= min_community_size}
 
                 return CommunityDetector_detect_louvainResult.model_validate({
                     "algorithm": "louvain",

@@ -10,7 +10,7 @@
 	gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
 	collect-95-plus-evidence collect-95-plus-evidence-focused \
 	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency \
-	check-pytest-skip-governance check-conflict-markers check-legacy-debt
+	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes
 
 
 # Strict shell settings for production safety
@@ -35,7 +35,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: check-conflict-markers lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance check-legacy-debt verify-structure ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure) — required before PR
+verify: check-conflict-markers check-no-nul-bytes lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance check-legacy-debt verify-structure ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure) — required before PR
 	@echo "✅  All checks passed"
 
 verify-structure: ## Run structural preflight and Python contract lint checks
@@ -63,15 +63,20 @@ check-workflow-matrix: ## Ensure the master workflow traceability matrix keeps i
 	@$(PYTHON) scripts/ci/assert_backend_platform_validation_ownership.py
 	@$(PYTHON) -m pytest tests/ci/test_product_workflow_validation_matrix.py -n 0 -q -o cache_dir=.tmp/pytest-cache
 
-
 check-conflict-markers: ## Fail if unresolved merge conflict markers exist in tracked source files
 	@bash scripts/ci/check_conflict_markers.sh
+
+check-no-nul-bytes: ## Fail if tracked source/config files contain NUL bytes
+	@python3 scripts/ci/check_no_nul_bytes.py
 
 check-pytest-skip-governance: ## Enforce pytest skip governance from collection output (with allowlist + baseline)
 	@mkdir -p artifacts
 	@set +e; python -m pytest --collect-only -q -ra tests > artifacts/pytest-collection.txt 2>&1; collect_status=$$?; set -e; \
 	 python scripts/ci/check_pytest_skip_governance.py artifacts/pytest-collection.txt --allowlist config/ci/pytest_skip_allowlist.yaml --baseline config/ci/pytest_skip_baseline.json --write-report artifacts/pytest-skip-governance.json; \
 	 if [ "$$collect_status" -ne 0 ]; then echo "pytest collection exited non-zero ($$collect_status); structural-preflight should catch import errors separately."; fi
+
+check-reports-evidence-policy: ## Enforce reports/ artifact policy and fail on unarchived failing snapshots
+	@python3 scripts/ci/check_reports_evidence_policy.py
 check-legacy-debt: ## Enforce legacy debt baseline (markers + legacy directories)
 	@mkdir -p artifacts
 	@python scripts/ci/check_legacy_debt.py --baseline config/ci/legacy_debt_baseline.json --approvals config/ci/legacy_debt_approvals.json --config config/ci/legacy_debt_config.json --write-report artifacts/legacy-debt-report.json
@@ -212,7 +217,7 @@ test-e2e-full: ## Run full E2E suite: seed → contracts → journeys → reset
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
 	$(PYTEST) tests/contract/ -v --tb=short
-	cd packages/platform-contract && npm run contract:test
+	pnpm --dir packages/platform-contract run contract:test
 	@echo "→ Running architecture tests (tenant isolation guards)..."
 	$(PYTEST) tests/arch/ -v --tb=short
 	@echo "✅  Contract and architecture tests passed"

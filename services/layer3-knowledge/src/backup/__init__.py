@@ -1,35 +1,6 @@
-"""Backup package initialization."""
+"""Compatibility forwarder for Layer 3 backup package.
 
-from .backup_manager import (
-    BackupConfig,
-    BackupManager,
-    BackupMetadata,
-    BackupRequest,
-    BackupResponse,
-    BackupStatus,
-    BackupStorage,
-    BackupType,
-    LocalStorage,
-    RestoreRequest,
-    RestoreResponse,
-    StorageType,
-    get_backup_manager,
-    initialize_backup_manager,
-)
+Canonical implementation lives in ``value_fabric.layer3.backup``.
+"""
 
-__all__ = [
-    "BackupType",
-    "BackupStatus",
-    "StorageType",
-    "BackupMetadata",
-    "BackupConfig",
-    "BackupRequest",
-    "BackupResponse",
-    "RestoreRequest",
-    "RestoreResponse",
-    "BackupStorage",
-    "LocalStorage",
-    "BackupManager",
-    "get_backup_manager",
-    "initialize_backup_manager",
-]
+from value_fabric.layer3.backup import *  # noqa: F403

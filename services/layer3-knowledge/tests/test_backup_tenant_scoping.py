@@ -133,7 +133,8 @@ async def test_service_account_without_admin_scope_cannot_trigger_global_export(
                 backup_type=BackupType.FULL,
                 global_export=True,
                 admin_capability=_capability(role="service_account", tenant_domain="tenant-a"),
-            )
+            ),
+            authenticated_tenant_id="tenant-a",
         )
 
 
@@ -160,7 +161,8 @@ async def test_platform_admin_global_export_succeeds_and_emits_before_after_audi
             backup_type=BackupType.FULL,
             global_export=True,
             admin_capability=_capability(),
-        )
+        ),
+        authenticated_tenant_id="tenant-a",
     )
 
     assert response.status.value == "completed"
@@ -168,3 +170,48 @@ async def test_platform_admin_global_export_succeeds_and_emits_before_after_audi
     assert events[0]["stage"] == "before"
     assert events[1]["stage"] == "after"
     assert events[0]["actor_id"] == "actor-1"
+
+
+@pytest.mark.asyncio
+async def test_create_backup_fails_closed_on_tenant_hint_mismatch(tmp_path):
+    session = _FakeSession()
+    manager = BackupManager(
+        BackupConfig(backup_directory=str(tmp_path)),
+        neo4j_driver=_FakeDriver(session),
+    )
+
+    response = await manager.create_backup(
+        BackupRequest(
+            backup_type=BackupType.FULL,
+            tenant_id="tenant-spoofed",
+        ),
+        authenticated_tenant_id="tenant-a",
+    )
+
+    assert response.status.value == "failed"
+    assert response.error is not None
+    assert '"code": "TENANT_SCOPE_MISMATCH"' in response.error
+    assert '"requested_tenant_hint": "tenant-spoofed"' in response.error
+
+
+@pytest.mark.asyncio
+async def test_create_backup_uses_authenticated_tenant_not_hint(tmp_path):
+    session = _FakeSession()
+    manager = BackupManager(
+        BackupConfig(backup_directory=str(tmp_path)),
+        neo4j_driver=_FakeDriver(session),
+    )
+
+    response = await manager.create_backup(
+        BackupRequest(
+            backup_type=BackupType.FULL,
+            tenant_id="tenant-a",
+        ),
+        authenticated_tenant_id="tenant-a",
+    )
+
+    assert response.status.value == "completed"
+    assert session.queries
+    query, params = session.queries[0]
+    assert "MATCH (n {tenant_id: $tenant_id})" in query
+    assert params["tenant_id"] == "tenant-a"

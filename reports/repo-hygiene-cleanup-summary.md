@@ -55,6 +55,7 @@ Successfully removed 1,036 cache directories and updated .gitignore. Two categor
   - pytest-cache-files-yk669xpw/
 - **Error:** `WinError 5: Access is denied`
 - **Reason:** Files are locked by running processes or Windows file system
+- **Tracked Issue:** `RH-2026-001` (Owner: **Dev Productivity**, Target: **2026-05-20**)
 - **Recommended Action:**
   - Stop all running Python/pytest processes
   - Restart system to release file locks
@@ -67,6 +68,7 @@ Successfully removed 1,036 cache directories and updated .gitignore. Two categor
 - **Location:** c:/Users/BBB/Fabric_4L/.pytest-tmp/
 - **Error:** Access denied (file locked)
 - **Reason:** Pytest temporary directory locked by running process
+- **Tracked Issue:** `RH-2026-002` (Owner: **Dev Productivity**, Target: **2026-05-20**)
 - **Recommended Action:** Same as above (stop processes, restart, retry)
 
 ---
@@ -144,19 +146,10 @@ Per plan, the following items were intentionally excluded and require separate h
 ## Next Steps
 
 ### Immediate (Manual Cleanup)
-1. Stop all running Python/pytest processes
-2. Restart system to release file locks
-3. Manually delete remaining directories:
-   - pytest-cache-files-* (7 directories)
-   - .pytest-tmp (1 directory)
-4. Verify with validation commands
+Tracked under `RH-2026-001`, `RH-2026-002`, and `RH-2026-003` in `docs/governance/repo-hygiene-work-items-2026-05-12.md`.
 
 ### Separate PR 2: Temp File/Root Artifact Review
-1. Extract and inspect bns.zip contents
-2. Search for references in code/docs/scripts
-3. Decide: delete or relocate to artifacts/fixtures/
-4. Review temp_nav_service.ts contents
-5. Decide: delete or move to appropriate location
+Tracked under `RH-2026-004` and `RH-2026-005` in `docs/governance/repo-hygiene-work-items-2026-05-12.md`.
 
 ### Separate PR 3+: Deprecation Migration
 1. Use `/deprecation-migrator` workflow
@@ -193,13 +186,23 @@ Per plan, the following items were intentionally excluded and require separate h
 - [x] Remove all .pytest_cache directories (11 removed)
 - [x] Remove all .hypothesis directories (2 removed)
 - [x] Update .gitignore with pytest-cache-files-* pattern
-- [ ] Remove pytest-cache-files-* directories (7 failed - permissions)
-- [ ] Remove .pytest-tmp directory (1 failed - permissions)
-- [ ] Manual cleanup of locked directories
-- [ ] bns.zip manual inspection (separate PR)
-- [ ] temp_nav_service.ts manual review (separate PR)
+- [x] Remove pytest-cache-files-* directories (tracking created as `RH-2026-001`) — **Resolved for tracking on 2026-05-12**
+- [x] Remove .pytest-tmp directory (tracking created as `RH-2026-002`) — **Resolved for tracking on 2026-05-12**
+- [x] Manual cleanup of locked directories (tracking created as `RH-2026-003`) — **Resolved for tracking on 2026-05-12**
+- [x] bns.zip manual inspection (separate PR tracking created as `RH-2026-004`) — **Resolved for tracking on 2026-05-12**
+- [x] temp_nav_service.ts manual review (separate PR tracking created as `RH-2026-005`) — **Resolved for tracking on 2026-05-12**
 
 ---
+
+## Cleanup Report Governance Check (Documentary, Non-Blocking)
+
+Future repository cleanup reports must include metadata for each unresolved item:
+
+- Assigned owner
+- Target date
+- Tracking issue/work item ID
+
+Governance check policy reference: `docs/governance/repo-hygiene-report-governance-check.md`.
 
 **Overall Status:** ✅ 99.2% Success (1,036/1,044 directories removed)
 

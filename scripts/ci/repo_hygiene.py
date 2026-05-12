@@ -413,6 +413,41 @@ def scan_production_frontend_client_references(repo_root: Path) -> list[Violatio
     return violations
 
 
+def scan_extensionless_frontend_files(repo_root: Path) -> list[Violation]:
+    """Flag extensionless files in apps/web that are not executable scripts."""
+    violations: list[Violation] = []
+    frontend_root = repo_root / "apps" / "web"
+    if not frontend_root.exists():
+        return violations
+
+    allowed_extensionless_files = {"Dockerfile"}
+    for file_path in frontend_root.rglob("*"):
+        if not file_path.is_file():
+            continue
+        if "node_modules" in file_path.parts or ".git" in file_path.parts:
+            continue
+        if file_path.suffix:
+            continue
+        if file_path.name.startswith("."):
+            continue
+        if file_path.name in allowed_extensionless_files:
+            continue
+        if file_path.stat().st_mode & 0o111:
+            continue
+
+        violations.append(
+            Violation(
+                rule_id="frontend_extensionless_file_policy",
+                severity="warn",
+                file=str(file_path.relative_to(repo_root)).replace("\\", "/"),
+                line=0,
+                message="Extensionless file under apps/web is not executable.",
+                suggestion="Add a descriptive extension, move the artifact to reports/, or make it an executable script if intentional.",
+            )
+        )
+    return violations
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Repository hygiene validator")
     parser.add_argument("--repo-root", default=".", help="Repository root")
@@ -438,6 +473,7 @@ def main() -> int:
     all_violations.extend(scan_shell_scripts(repo_root, manifest))
     all_violations.extend(scan_monitoring_runbooks(repo_root, manifest))
     all_violations.extend(scan_production_frontend_client_references(repo_root))
+    all_violations.extend(scan_extensionless_frontend_files(repo_root))
 
     errors = [v for v in all_violations if v.severity == "error"]
     warnings = [v for v in all_violations if v.severity == "warn"]

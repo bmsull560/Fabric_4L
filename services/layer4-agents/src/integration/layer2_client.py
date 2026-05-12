@@ -10,6 +10,8 @@ from typing import Any
 
 import httpx
 
+from value_fabric.shared.observability.trace_context import CANONICAL_TRACE_HEADER
+
 logger = logging.getLogger(__name__)
 
 TENANT_ID_HEADER = "X-Tenant-ID"
@@ -296,7 +298,7 @@ class Layer2ExtractionClient:
 
         headers = {}
         if trace_id:
-            headers["X-Trace-ID"] = trace_id
+            headers[CANONICAL_TRACE_HEADER] = trace_id
         # Tenant context propagated via client initialization, not headers
         # See shared.identity.context for AsyncLocalStorage-based propagation
 

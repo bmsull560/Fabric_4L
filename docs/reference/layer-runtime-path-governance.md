@@ -61,6 +61,13 @@ Before opening a PR with backend runtime changes:
 - Canonical implementation: `value_fabric/layer3/api/models.py`.
 - Compatibility shim only: `services/layer3-knowledge/src/api/models.py` (must only re-export canonical models; no local Pydantic model implementations).
 
+
+## Layer 3 backup ownership boundary
+
+- Canonical implementation: `value_fabric/layer3/backup/`.
+- Compatibility wrappers only: `services/layer3-knowledge/src/backup/`.
+- CI guardrail: `services/layer3-knowledge/scripts/check_backup_shim_drift.py` (fails when compatibility wrappers diverge from explicit forwarders).
+
 ## Related documentation
 
 - [Repository Agent Rules (root)](../../AGENTS.md)

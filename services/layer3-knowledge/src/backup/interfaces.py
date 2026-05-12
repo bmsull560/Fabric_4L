@@ -1,25 +1,6 @@
-"""Ports for Layer 3 backup storage adapters."""
+"""Compatibility forwarder for Layer 3 backup interfaces.
 
-from __future__ import annotations
+Canonical implementation lives in ``value_fabric.layer3.backup.interfaces``.
+"""
 
-from abc import ABC, abstractmethod
-from typing import Any
-
-
-class BackupStoragePort(ABC):
-    """Contract for backup object storage adapters."""
-
-    @abstractmethod
-    async def store_backup(self, backup_id: str, data: bytes) -> str: ...
-
-    @abstractmethod
-    async def retrieve_backup(self, backup_id: str) -> bytes: ...
-
-    @abstractmethod
-    async def delete_backup(self, backup_id: str) -> bool: ...
-
-    @abstractmethod
-    async def list_backups(self) -> list[str]: ...
-
-    @abstractmethod
-    async def get_backup_info(self, backup_id: str) -> dict[str, Any]: ...
+from value_fabric.layer3.backup.interfaces import *  # noqa: F403
