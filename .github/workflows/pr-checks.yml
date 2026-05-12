@@ -514,6 +514,84 @@ jobs:
         run: |
           uv run pip-audit --severity high --exit-code 1
 
+
+  layer5-duplicate-module-detection:
+    name: Layer 5 - Duplicate Module Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/layer5-ground-truth
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.11'
+
+      - name: Detect duplicate modules in Layer 5 runtime trees
+        run: python scripts/check_no_duplicate_modules.py
+
+  layer5-tenant-isolation-regression:
+    name: Layer 5 - Tenant Isolation Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/layer5-ground-truth
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        with:
+          version: '0.11.6'
+          enable-cache: true
+
+      - name: Install dependencies (frozen lock)
+        run: uv sync --frozen --all-extras
+
+      - name: Run tenant consistency and hostile access regression tests
+        run: |
+          uv run pytest -v --tb=short             tests/test_tenant_id_consistency.py             tests/test_api.py::TestGetTruth::test_org_isolation
+
+  layer5-contract-shape-regression:
+    name: Layer 5 - Contract Shape Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/layer5-ground-truth
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        with:
+          version: '0.11.6'
+          enable-cache: true
+
+      - name: Install dependencies (frozen lock)
+        run: uv sync --frozen --all-extras
+
+      - name: Run model registry and state transition contract-shape tests
+        run: |
+          uv run pytest -v --tb=short             tests/test_model_registry.py             tests/test_state_machine.py
+
   # Layer 6 - Benchmarks
   layer6-checks:
     name: Layer 6 - Benchmarks

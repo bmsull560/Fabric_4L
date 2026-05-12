@@ -136,6 +136,19 @@ layer5-ground-truth:
     - layer3-knowledge
 ```
 
+
+### CI Runtime / Test Matrix (required before merge)
+
+Layer 5 now includes dedicated required CI jobs in `PR Checks`:
+
+| Job name | Scope | Command(s) | Typical runtime |
+|---|---|---|---|
+| `Layer 5 - Duplicate Module Detection` | Prevent duplicate runtime module drift in Layer 5 trees | `python scripts/check_no_duplicate_modules.py` | ~1 minute |
+| `Layer 5 - Tenant Isolation Regression` | Tenant invariants and hostile cross-tenant access regression | `uv run pytest -v --tb=short tests/test_tenant_id_consistency.py tests/test_api.py::TestGetTruth::test_org_isolation` | ~2-4 minutes |
+| `Layer 5 - Contract Shape Regression` | Model registry and state transition contract-shape coverage | `uv run pytest -v --tb=short tests/test_model_registry.py tests/test_state_machine.py` | ~2-4 minutes |
+
+These checks should be configured as required branch-protection status checks on `main` so merges are blocked if any Layer 5 regression appears.
+
 ### Running Tests
 
 ```bash
