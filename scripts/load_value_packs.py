@@ -2,6 +2,11 @@
 """
 Value Pack Database Loader
 
+NON-PRODUCTION OPERATOR TOOLING ONLY.
+
+This script is intended for local/operator validation workflows and is
+explicitly blocked unless `--non-prod` is provided.
+
 Loads all domain value packs into Layer 3 Knowledge Graph.
 
 Usage:
@@ -12,6 +17,7 @@ Usage:
 """
 
 import argparse
+import os
 import json
 import sys
 from pathlib import Path
@@ -20,6 +26,10 @@ from typing import Any
 # Pack directory
 PACKS_DIR = Path(__file__).parent.parent / "packs"
 MANIFEST_FILE = PACKS_DIR / "pack-manifest.json"
+
+
+class PayloadValidationError(ValueError):
+    """Raised when value pack payload shape is invalid."""
 
 
 def load_manifest() -> dict:
@@ -41,6 +51,13 @@ def load_pack_files(pack_path: Path) -> dict[str, Any]:
 
 def transform_formula(pack_formula: dict, pack_id: str) -> dict:
     """Transform pack formula to Layer 3 API format."""
+    required_fields = ["formula_id", "name", "description", "formula_type", "expression", "version", "status"]
+    missing = [field for field in required_fields if field not in pack_formula]
+    if missing:
+        raise PayloadValidationError(f"Formula payload missing required fields: {', '.join(missing)}")
+    if not isinstance(pack_formula.get("expression"), dict) or "string" not in pack_formula["expression"]:
+        raise PayloadValidationError("Formula payload has invalid expression; expected expression.string")
+
     return {
         "id": pack_formula["formula_id"],
         "name": pack_formula["name"],
@@ -69,6 +86,11 @@ def transform_formula(pack_formula: dict, pack_id: str) -> dict:
 
 def transform_variable(pack_var: dict, pack_id: str) -> dict:
     """Transform pack variable to Layer 3 API format."""
+    required_fields = ["variable_name", "display_name"]
+    missing = [field for field in required_fields if field not in pack_var]
+    if missing:
+        raise PayloadValidationError(f"Variable payload missing required fields: {', '.join(missing)}")
+
     return {
         "name": pack_var["variable_name"],
         "display_name": pack_var["display_name"],
@@ -127,15 +149,29 @@ def load_pack_to_api(pack_id: str, pack_path: Path, api_url: str, dry_run: bool 
     # Transform formulas
     formulas = []
     if "formulas" in pack_files:
-        for f in pack_files["formulas"]["formulas"]:
-            formulas.append(transform_formula(f, pack_id))
+        try:
+            formula_items = pack_files["formulas"]["formulas"]
+        except (TypeError, KeyError):
+            return {"status": "error", "errors": ["Invalid formulas payload: expected formulas.formulas list"]}
+        for f in formula_items:
+            try:
+                formulas.append(transform_formula(f, pack_id))
+            except PayloadValidationError as exc:
+                return {"status": "error", "errors": [str(exc)]}
         print(f"✓ Transformed {len(formulas)} formulas")
     
     # Transform variables
     variables = []
     if "variables" in pack_files:
-        for v in pack_files["variables"]["variables"]:
-            variables.append(transform_variable(v, pack_id))
+        try:
+            variable_items = pack_files["variables"]["variables"]
+        except (TypeError, KeyError):
+            return {"status": "error", "errors": ["Invalid variables payload: expected variables.variables list"]}
+        for v in variable_items:
+            try:
+                variables.append(transform_variable(v, pack_id))
+            except PayloadValidationError as exc:
+                return {"status": "error", "errors": [str(exc)]}
         print(f"✓ Transformed {len(variables)} variables")
     
     if dry_run:
@@ -164,8 +200,21 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Validate without loading")
     parser.add_argument("--api-url", default="http://localhost:8000", help="Layer 3 API URL")
     parser.add_argument("--validate", action="store_true", help="Run validation only")
+    parser.add_argument(
+        "--non-prod",
+        action="store_true",
+        help="Required acknowledgement: this script is non-production operator tooling",
+    )
     
     args = parser.parse_args()
+
+    if not args.non_prod:
+        print("Error: This script is non-production-only. Re-run with --non-prod to acknowledge.")
+        sys.exit(2)
+
+    if os.getenv("RELEASE_PIPELINE", "").lower() in {"1", "true", "yes"}:
+        print("Error: Script blocked in release pipeline environments (RELEASE_PIPELINE=true).")
+        sys.exit(2)
     
     # Load manifest
     manifest = load_manifest()

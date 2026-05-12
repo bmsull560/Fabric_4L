@@ -8,6 +8,8 @@
 #
 # Related documents:
 #   - docs/audit/l3-neo4j-label-tenant-classification.md
+#   - docs/audit/l3-l4-cypher-scope-report.md
+#   - docs/audit/l3-l4-cypher-scope-report.json
 #   - .kimi/plans/sunspot-longshot-crimson-avenger.md (Migration plan)
 #   - services/layer3-knowledge/src/api/dependencies_tenant.py (Tenant session wrapper)
 
@@ -41,41 +43,41 @@ modules:
       Queries filter on `tenant_id = $tenant_id`. Canonical property name is
       `tenant_id` (snake_case). Migrated in Phase 0 of plan sunspot-longshot-crimson-avenger.
 
-  # ── INCOMPLETE ── Raw AsyncDriver, no tenant scoping ──────────────────────────
+  # ── COMPLETE ── Tenant-scoped via Neo4jTenantSession ─────────────────────────────
   - name: benchmarks
     file: services/layer3-knowledge/src/api/routes/benchmarks.py
-    status: DI_MIGRATED
-    tenant_scoped: false
-    security_todo_count: 4
+    status: COMPLETE
+    tenant_scoped: true
+    security_todo_count: 0
     labels_affected:
       - :Benchmark
       - :BenchmarkPolicy
     blocking_issue: |
       Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
-      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
+      Phase 6 complete: all Cypher queries include tenant_id WHERE clauses.
 
   - name: variables
     file: services/layer3-knowledge/src/api/routes/variables.py
-    status: DI_MIGRATED
-    tenant_scoped: false
-    security_todo_count: 8
+    status: COMPLETE
+    tenant_scoped: true
+    security_todo_count: 0
     labels_affected:
       - :Variable
       - :SourceBinding
     blocking_issue: |
       Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
-      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
+      Phase 6 complete: all Cypher queries include tenant_id WHERE clauses.
 
   - name: models
     file: services/layer3-knowledge/src/api/routes/models.py
-    status: DI_MIGRATED
-    tenant_scoped: false
-    security_todo_count: 5
+    status: COMPLETE
+    tenant_scoped: true
+    security_todo_count: 0
     labels_affected:
       - :ValueModel
     blocking_issue: |
       Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
-      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
+      Phase 6 complete: all Cypher queries include tenant_id WHERE clauses.
     note: |
       This module has user-level ownership checks (`m.owner = $user_id`) but
       these are NOT tenant isolation. A user with the same user_id in tenant A
@@ -83,17 +85,17 @@ modules:
 
   - name: formula_governance
     file: services/layer3-knowledge/src/api/routes/formula_governance.py
-    status: DI_MIGRATED
-    tenant_scoped: false
-    security_todo_count: 10
+    status: COMPLETE
+    tenant_scoped: true
+    security_todo_count: 0
     labels_affected:
       - :Formula
       - :FormulaVersion
     blocking_issue: |
       Phase 4 complete: Migrated from raw AsyncDriver to create_neo4j_tenant_session.
-      Phase 6 pending: Cypher queries still lack tenant_id WHERE clauses.
+      Phase 6 complete: all Cypher queries include tenant_id WHERE clauses.
     note: |
-      Additionally, FormulaVersion nodes and relationships lack tenant_id entirely.
+      FormulaVersion nodes and relationships now include canonical tenant_id.
 
 schema_migration_plan:
   plan_id: sunspot-longshot-crimson-avenger
@@ -162,7 +164,7 @@ schema_migration_plan:
         - All Cypher queries include tenant_id predicates
 
 exit_criteria:
-  - All 4 incomplete modules use Neo4jTenantSession with tenant_id filtering
+  - All 5 scoped modules use Neo4jTenantSession with tenant_id filtering
   - All Cypher queries in L3 routes include `tenant_id = $tenant_id` predicates
   - No raw `AsyncDriver = Depends(get_driver)` usage remains in L3 routes
   - Cross-tenant security tests pass (pytest -m mandatory)

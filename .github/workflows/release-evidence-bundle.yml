@@ -20,6 +20,21 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  release-readiness-gate:
+    name: Release readiness gate (observability + deployment)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+      - name: Enforce Task 46/47 final readiness criteria
+        run: |
+          python -m pytest -q tests/release/test_observability_deployment_readiness.py --no-mandatory-dep-check
+
   build-and-scan:
     name: Build images & security scan
     runs-on: ubuntu-latest
@@ -157,7 +172,7 @@ jobs:
   consolidate-bundle:
     name: Consolidate & Publish Evidence Bundle
     runs-on: ubuntu-latest
-    needs: [build-and-scan, sast-and-tests, live-stack-evidence]
+    needs: [release-readiness-gate, build-and-scan, sast-and-tests, live-stack-evidence]
     steps:
       - uses: actions/checkout@v4
 

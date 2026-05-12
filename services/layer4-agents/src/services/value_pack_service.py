@@ -35,12 +35,13 @@ class Neo4jValuePackService(IValuePackService):
 
     async def list_packs(
         self,
+        tenant_id: str,
         industry: str | None = None,
         status: PackStatus | None = None,
     ) -> list[ValuePack]:
         """List available Value Packs from Neo4j."""
         query = """
-        MATCH (vp:ValuePack)
+        MATCH (vp:ValuePack {tenant_id: $tenant_id})
         WHERE ($industry IS NULL OR vp.industry = $industry)
           AND ($status IS NULL OR vp.status = $status)
         OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver)
@@ -58,6 +59,7 @@ class Neo4jValuePackService(IValuePackService):
                     query,
                     industry=industry,
                     status=status.value if status else None,
+                    tenant_id=tenant_id,
                 )
                 records = await result.data()
 
@@ -124,10 +126,10 @@ class Neo4jValuePackService(IValuePackService):
             logger.error(f"Neo4j query failed: {e}", exc_info=True)
             raise RuntimeError(f"Database query failed: {e.code}") from e
 
-    async def get_pack(self, pack_id: str) -> ValuePack | None:
+    async def get_pack(self, pack_id: str, tenant_id: str) -> ValuePack | None:
         """Retrieve Value Pack by ID from Neo4j."""
         query = """
-        MATCH (vp:ValuePack {id: $pack_id})
+        MATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver)
         OPTIONAL MATCH (vp)-[:hasFormula]->(f:Formula)
         OPTIONAL MATCH (vp)-[:hasBenchmark]->(b:BenchmarkDataset)
@@ -138,7 +140,7 @@ class Neo4jValuePackService(IValuePackService):
         """
 
         async with self._driver.session() as session:
-            result = await session.run(query, pack_id=pack_id)
+            result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
             record = await result.single()
 
             if not record:
@@ -197,15 +199,16 @@ class Neo4jValuePackService(IValuePackService):
         self,
         pack_id: str,
         workspace_id: str,
+        tenant_id: str,
     ) -> ValuePack:
         """Load pack into workspace for customization/execution."""
-        pack = await self.get_pack(pack_id)
+        pack = await self.get_pack(pack_id, tenant_id)
         if not pack:
             raise ValueError(f"Pack {pack_id} not found")
 
         # Mark as loaded in workspace
         query = """
-        MATCH (vp:ValuePack {id: $pack_id})
+        MATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id})
         SET vp.workspaceId = $workspace_id,
             vp.isLoaded = true,
             vp.loadedAt = $loaded_at
@@ -218,7 +221,8 @@ class Neo4jValuePackService(IValuePackService):
                 query,
                 pack_id=pack_id,
                 workspace_id=workspace_id,
-                now=now,
+                tenant_id=tenant_id,
+                loaded_at=now,
             )
 
         pack.is_loaded = True
@@ -233,7 +237,8 @@ class Neo4jValuePackService(IValuePackService):
         execution_id = str(uuid.uuid4())
 
         # Get pack
-        pack = await self.get_pack(request.pack_id)
+        tenant_id = str(request.variables.get("tenant_id", ""))
+        pack = await self.get_pack(request.pack_id, tenant_id)
         if not pack:
             return PackExecutionResult(
                 execution_id=execution_id,
@@ -245,7 +250,7 @@ class Neo4jValuePackService(IValuePackService):
 
         # Store execution context
         query = """
-        MATCH (vp:ValuePack {id: $pack_id})
+        MATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id})
         CREATE (pe:PackExecution {
             id: $execution_id,
             packId: $pack_id,
@@ -267,6 +272,7 @@ class Neo4jValuePackService(IValuePackService):
                 workspace_id=request.workspace_id,
                 variables=request.variables,
                 started_at=started_at,
+                tenant_id=tenant_id,
             )
 
         # Execute formulas using calculation tool
@@ -337,10 +343,11 @@ class Neo4jValuePackService(IValuePackService):
         self,
         pack_id: str,
         workspace_id: str,
+        tenant_id: str,
         modifications: dict[str, Any],
     ) -> ValuePack:
         """Fork and customize pack for account-specific needs."""
-        original = await self.get_pack(pack_id)
+        original = await self.get_pack(pack_id, tenant_id)
         if not original:
             raise ValueError(f"Pack {pack_id} not found")
 
@@ -349,7 +356,7 @@ class Neo4jValuePackService(IValuePackService):
         new_version = self._increment_version(original.version)
 
         query = """
-        MATCH (old:ValuePack {id: $old_pack_id})
+        MATCH (old:ValuePack {id: $old_pack_id, tenant_id: $tenant_id})
         CREATE (new:ValuePack {
             id: $new_pack_id,
             name: $name,
@@ -362,6 +369,7 @@ class Neo4jValuePackService(IValuePackService):
             isLoaded: true,
             createdAt: $created_at,
             createdBy: $created_by,
+            tenant_id: $tenant_id,
             forkedFrom: $old_pack_id
         })
         CREATE (new)-[:SUPERSEDES {type: 'fork'}]->(old)
@@ -392,6 +400,7 @@ class Neo4jValuePackService(IValuePackService):
                 workspace_id=workspace_id,
                 created_at=created_at,
                 created_by=modifications.get("user_id"),
+                tenant_id=tenant_id,
             )
             record = await result.single()
 
@@ -414,10 +423,10 @@ class Neo4jValuePackService(IValuePackService):
                 created_by=new_vp.get("createdBy"),
             )
 
-    async def save_pack(self, pack: ValuePack) -> ValuePack:
+    async def save_pack(self, pack: ValuePack, tenant_id: str) -> ValuePack:
         """Save pack (create new version or update draft)."""
         query = """
-        MERGE (vp:ValuePack {id: $pack_id})
+        MERGE (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id})
         SET vp.name = $name,
             vp.description = $description,
             vp.industry = $industry,
@@ -439,6 +448,7 @@ class Neo4jValuePackService(IValuePackService):
                 status=pack.status.value,
                 version=pack.version,
                 updated_at=datetime.now(UTC).isoformat(),
+                tenant_id=tenant_id,
             )
             record = await result.single()
 

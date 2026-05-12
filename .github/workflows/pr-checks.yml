@@ -30,6 +30,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base branch for diff-aware policy checks
+        run: |
+          git fetch --no-tags --prune origin "${{ github.base_ref || 'main' }}"
+
+      - name: Enforce frontend root policy (apps/web only)
+        run: |
+          python scripts/ci/check_frontend_root_policy.py --base-ref "origin/${{ github.base_ref || 'main' }}"
 
       - name: Enforce package manager policy (root + apps/web)
         run: pnpm run check:package-manager-policy
@@ -72,6 +82,14 @@ jobs:
             --register config/ci/test_skip_register.yaml \
             --write-report artifacts/test-skip-governance.json
 
+      - name: Enforce legacy debt baseline
+        run: |
+          python scripts/ci/check_legacy_debt.py \
+            --baseline config/ci/legacy_debt_baseline.json \
+            --approvals config/ci/legacy_debt_approvals.json \
+            --config config/ci/legacy_debt_config.json \
+            --write-report artifacts/legacy-debt-report.json
+
       - name: Run Layer 3 source mirror drift gate
         run: |
           mkdir -p artifacts
@@ -96,7 +114,7 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Deprecated namespace import gate
-        run: python scripts/ci/check_deprecated_namespace_imports.py --strict --json
+        run: python scripts/ci/check_deprecated_namespace_imports.py --strict --use-baseline --json
 
       - name: Run navigation pattern guardrail
         run: |
@@ -130,6 +148,7 @@ jobs:
             artifacts/pytest-collection.txt
             artifacts/pytest-skip-governance.json
             artifacts/test-skip-governance.json
+            artifacts/legacy-debt-report.json
             artifacts/violation-diff-summary.json
             artifacts/violation-diff-summary.md
           retention-days: 14
@@ -173,6 +192,15 @@ jobs:
         run: |
           mkdir -p artifacts/docs-validation
           python scripts/ci/validate_docs_claims.py --artifacts-dir artifacts/docs-validation
+
+      - name: Fail if contract inventory contains TBD placeholders
+        run: |
+          set -euo pipefail
+          if rg -n "\\bTBD\\b" docs/contracts/contract-inventory.md; then
+            echo "Found unresolved TBD placeholders in docs/contracts/contract-inventory.md"
+            exit 1
+          fi
+          echo "Contract inventory TBD gate passed."
 
       - name: Upload docs validation artifacts
         if: always()

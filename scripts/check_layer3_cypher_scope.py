@@ -72,6 +72,7 @@ SCANNED_ROOTS = (
     "services/layer3-knowledge/src/ingestion",
     "services/layer3-knowledge/src/services",
     "services/layer3-knowledge/src/api/routes",
+    "services/layer4-agents/src",
     "value_fabric/layer3/analytics",
     "value_fabric/layer3/retrieval",
     "value_fabric/layer3/ingestion",

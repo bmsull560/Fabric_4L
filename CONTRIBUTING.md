@@ -65,6 +65,16 @@ This sanity check fails if CI would pick up excluded directories through default
 
 ---
 
+## Repository root file policy
+
+To keep the repository root stable for discovery and automation, only the following file types are allowed at repo root:
+
+- Core project governance/spec markdown files (for example: `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `RUNBOOK.md`)
+- Top-level release/version metadata (`CHANGELOG.md`, `version.txt`, `VERSIONING.md`)
+- Required project configuration files used by tooling/CI
+
+Historical or ad hoc outputs (quality reports, test dumps, diagnostics, temporary tables, and one-off audits) must **not** remain at repo root. Archive them under `docs/archive/quality-reports/` instead.
+
 ## Coding standards
 
 ### Python

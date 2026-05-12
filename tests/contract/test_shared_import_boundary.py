@@ -63,18 +63,6 @@ def test_important_shared_submodules_import_from_canonical_package(
     _assert_within_canonical_shared(module_name)
 
 
-def test_root_shared_import_boundary_is_explicit() -> None:
-    """Root-level shared imports must be narrow compatibility shims only.
-
-    Production code imports the canonical ``value_fabric.shared`` package from
-    ``packages/shared/src``. A root-level ``shared`` package is allowed only for
-    small compatibility modules used by legacy gate entrypoints, and it must not
-    become an alternate implementation tree for shared domain logic.
-    """
-    module = importlib.import_module("shared")
-    resolved = _module_path(module)
-
-    assert resolved == (REPO_ROOT / "shared" / "__init__.py").resolve()
-    assert not any((REPO_ROOT / "shared").glob("**/tenant_boundary.py")), (
-        "root shared package must not duplicate canonical tenant-boundary logic"
-    )
+def test_root_shared_directory_removed() -> None:
+    """Deprecated root-level shared/ directory must be fully removed."""
+    assert not (REPO_ROOT / "shared").exists()

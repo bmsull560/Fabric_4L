@@ -111,7 +111,7 @@ class IFormulaGovernanceService(ABC):
     """
 
     @abstractmethod
-    async def get_governance(self, formula_id: str) -> FormulaGovernance | None:
+    async def get_governance(self, formula_id: str, tenant_id: str) -> FormulaGovernance | None:
         """Retrieve governance metadata for formula."""
         pass
 
@@ -119,6 +119,7 @@ class IFormulaGovernanceService(ABC):
     async def create_version(
         self,
         formula_id: str,
+        tenant_id: str,
         new_version: str,
         change_summary: str,
         created_by: str,
@@ -130,6 +131,7 @@ class IFormulaGovernanceService(ABC):
     async def list_versions(
         self,
         formula_id: str,
+        tenant_id: str,
         include_retired: bool = False,
     ) -> list[FormulaVersion]:
         """List all versions of a formula."""
@@ -139,6 +141,7 @@ class IFormulaGovernanceService(ABC):
     async def activate(
         self,
         request: ActivationRequest,
+        tenant_id: str,
     ) -> GovernanceTransitionResult:
         """Activate a formula version."""
         pass
@@ -147,6 +150,7 @@ class IFormulaGovernanceService(ABC):
     async def deprecate(
         self,
         request: DeprecationRequest,
+        tenant_id: str,
     ) -> GovernanceTransitionResult:
         """Deprecate a formula."""
         pass
@@ -155,6 +159,7 @@ class IFormulaGovernanceService(ABC):
     async def get_dependencies(
         self,
         formula_id: str,
+        tenant_id: str,
         direction: str = "outgoing",  # outgoing, incoming, both
     ) -> list[FormulaDependency]:
         """Get formula dependencies."""
@@ -164,6 +169,7 @@ class IFormulaGovernanceService(ABC):
     async def validate_activation(
         self,
         formula_id: str,
+        tenant_id: str,
         version: str,
     ) -> dict[str, Any]:
         """Validate if formula can be activated."""
@@ -180,6 +186,7 @@ class IFormulaApprovalWorkflow(ABC):
     async def submit_for_review(
         self,
         formula_id: str,
+        tenant_id: str,
         version: str,
         submitted_by: str,
     ) -> GovernanceTransitionResult:
@@ -190,6 +197,7 @@ class IFormulaApprovalWorkflow(ABC):
     async def approve(
         self,
         formula_id: str,
+        tenant_id: str,
         version: str,
         approved_by: str,
         comments: str | None = None,
@@ -201,6 +209,7 @@ class IFormulaApprovalWorkflow(ABC):
     async def reject(
         self,
         formula_id: str,
+        tenant_id: str,
         version: str,
         rejected_by: str,
         reason: str,

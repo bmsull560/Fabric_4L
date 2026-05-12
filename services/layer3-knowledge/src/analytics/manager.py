@@ -8,45 +8,44 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, TypedDict
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
-from value_fabric.shared.models.typed_dict import TypedDictModel
+class AnalyticsEventPayload(TypedDict):
+    event_id: str
+    timestamp: str
+    event_type: str
+    user_id: str | None
+    api_key_id: str | None
+    endpoint: str
+    method: str
+    status_code: int
+    response_time_ms: float
+    request_size_bytes: int
+    response_size_bytes: int
+    user_agent: str | None
+    ip_address: str | None
+    request_id: str | None
+    tags: dict[str, str]
+    metadata: dict[str, Any]
 
 
-class AnalyticsEvent_to_dictResult(TypedDictModel):
-    api_key_id: Any
-    endpoint: Any
-    event_id: Any
-    event_type: Any
-    ip_address: Any
-    metadata: Any
-    method: Any
-    request_id: Any
-    request_size_bytes: Any
-    response_size_bytes: Any
-    response_time_ms: Any
-    status_code: Any
-    tags: Any
-    timestamp: Any
-    user_agent: Any
-    user_id: Any
+class DashboardDataPayload(TypedDict):
+    dashboard: dict[str, Any] | None
+    data: dict[str, Any] | None
+    generated_at: str | None
 
-class AnalyticsManager_get_dashboard_dataResult(TypedDictModel):
-    dashboard: Any | None = None
-    data: Any | None = None
-    generated_at: Any | None = None
 
-class AnalyticsManager_get_metrics_summaryResult(TypedDictModel):
-    avg_response_time: Any
-    success_rate: Any
-    throughput_rps: Any
-    top_endpoints: Any
-    total_errors: Any
-    total_requests: Any
-    unique_api_keys: Any
-    unique_users: Any
+class MetricsSummaryPayload(TypedDict):
+    total_requests: int
+    total_errors: int
+    success_rate: float
+    avg_response_time: float
+    throughput_rps: float
+    unique_users: int
+    unique_api_keys: int
+    top_endpoints: list[dict[str, Any]]
 
 logger = logging.getLogger(__name__)
 
@@ -115,26 +114,26 @@ class AnalyticsEvent:
     tags: dict[str, str] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> AnalyticsEventPayload:
         """Convert to dictionary."""
-        return AnalyticsEvent_to_dictResult.model_validate({
-            "event_id": self.event_id,
-            "timestamp": self.timestamp.isoformat(),
-            "event_type": self.event_type,
-            "user_id": self.user_id,
-            "api_key_id": self.api_key_id,
-            "endpoint": self.endpoint,
-            "method": self.method,
-            "status_code": self.status_code,
-            "response_time_ms": self.response_time_ms,
-            "request_size_bytes": self.request_size_bytes,
-            "response_size_bytes": self.response_size_bytes,
-            "user_agent": self.user_agent,
-            "ip_address": self.ip_address,
-            "request_id": self.request_id,
-            "tags": self.tags,
-            "metadata": self.metadata,
-        })
+        return AnalyticsEventPayload(
+            event_id=self.event_id,
+            timestamp=self.timestamp.isoformat(),
+            event_type=self.event_type,
+            user_id=self.user_id,
+            api_key_id=self.api_key_id,
+            endpoint=self.endpoint,
+            method=self.method,
+            status_code=self.status_code,
+            response_time_ms=self.response_time_ms,
+            request_size_bytes=self.request_size_bytes,
+            response_size_bytes=self.response_size_bytes,
+            user_agent=self.user_agent,
+            ip_address=self.ip_address,
+            request_id=self.request_id,
+            tags=self.tags,
+            metadata=self.metadata,
+        )
 
 
 class MetricDefinition(BaseModel):
@@ -1015,7 +1014,7 @@ class AnalyticsManager:
         """
         return self.dashboards.get(dashboard_id)
 
-    async def get_dashboard_data(self, dashboard_id: str) -> dict[str, Any]:
+    async def get_dashboard_data(self, dashboard_id: str) -> DashboardDataPayload:
         """Get dashboard data.
 
         Args:
@@ -1026,7 +1025,7 @@ class AnalyticsManager:
         """
         dashboard = self.dashboards.get(dashboard_id)
         if not dashboard:
-            return AnalyticsManager_get_dashboard_dataResult.model_validate({})
+            return DashboardDataPayload(dashboard=None, data=None, generated_at=None)
 
         # Execute queries for all widgets
         widget_data = {}
@@ -1055,31 +1054,31 @@ class AnalyticsManager:
                     )
                     widget_data[f"widget_{i}"] = data
 
-        return AnalyticsManager_get_dashboard_dataResult.model_validate({
-            "dashboard": dashboard.dict(),
-            "data": widget_data,
-            "generated_at": datetime.utcnow().isoformat(),
-        })
+        return DashboardDataPayload(
+            dashboard=dashboard.dict(),
+            data=widget_data,
+            generated_at=datetime.utcnow().isoformat(),
+        )
 
 
-    async def get_metrics_summary(self) -> dict[str, Any]:
+    async def get_metrics_summary(self) -> MetricsSummaryPayload:
         """Get metrics summary.
 
         Returns:
             Metrics summary
         """
-        return AnalyticsManager_get_metrics_summaryResult.model_validate({
-            "total_requests": self.collector.counters.get("api_requests_total", 0),
-            "total_errors": self.collector.counters.get("api_errors_total", 0),
-            "success_rate": self.collector.calculate_success_rate(),
-            "throughput_rps": self.collector.calculate_throughput(),
-            "unique_users": self.collector.get_unique_count("user:"),
-            "unique_api_keys": self.collector.get_unique_count("api_key:"),
-            "avg_response_time": self.collector.get_metric(
+        return MetricsSummaryPayload(
+            total_requests=self.collector.counters.get("api_requests_total", 0),
+            total_errors=self.collector.counters.get("api_errors_total", 0),
+            success_rate=self.collector.calculate_success_rate(),
+            throughput_rps=self.collector.calculate_throughput(),
+            unique_users=self.collector.get_unique_count("user:"),
+            unique_api_keys=self.collector.get_unique_count("api_key:"),
+            avg_response_time=self.collector.get_metric(
                 "api_response_time_ms", AggregationType.AVERAGE
             ),
-            "top_endpoints": self.collector.get_top_metrics("endpoint:", 10),
-        })
+            top_endpoints=self.collector.get_top_metrics("endpoint:", 10),
+        )
 
 
     async def cleanup(self):

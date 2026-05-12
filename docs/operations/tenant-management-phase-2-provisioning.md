@@ -650,7 +650,7 @@ async def provision_tenant_webhook(
     # Get DB session (outside FastAPI dependency injection)
     async with get_db_session(require_tenant=False) as db:
         # Check if webhook already processed (idempotency)
-        # TODO: Check X-Webhook-ID in processed webhooks table
+        # SEC-4271 (Platform Identity, M4-2026Q3): enforce webhook idempotency by persisting and rejecting duplicate X-Webhook-ID values
 
         # Create tenant service
         tenant_service = TenantService(db)

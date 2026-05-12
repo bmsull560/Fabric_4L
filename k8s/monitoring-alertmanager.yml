@@ -25,6 +25,10 @@ data:
           receiver: pagerduty-critical
           continue: true
           repeat_interval: 1h
+        - match:
+            severity: critical
+          receiver: slack-critical
+          repeat_interval: 1h
         # Warning alerts go to Slack only
         - match:
             severity: warning

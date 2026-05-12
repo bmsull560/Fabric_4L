@@ -114,6 +114,7 @@ class IValuePackService(ABC):
     @abstractmethod
     async def list_packs(
         self,
+        tenant_id: str,
         industry: str | None = None,
         status: PackStatus | None = None,
     ) -> list[ValuePack]:
@@ -121,7 +122,7 @@ class IValuePackService(ABC):
         pass
 
     @abstractmethod
-    async def get_pack(self, pack_id: str) -> ValuePack | None:
+    async def get_pack(self, pack_id: str, tenant_id: str) -> ValuePack | None:
         """Retrieve Value Pack by ID."""
         pass
 
@@ -130,6 +131,7 @@ class IValuePackService(ABC):
         self,
         pack_id: str,
         workspace_id: str,
+        tenant_id: str,
     ) -> ValuePack:
         """Load pack into workspace for customization/execution."""
         pass
@@ -147,6 +149,7 @@ class IValuePackService(ABC):
         self,
         pack_id: str,
         workspace_id: str,
+        tenant_id: str,
         modifications: dict[str, Any],
     ) -> ValuePack:
         """Fork and customize pack for account-specific needs."""
@@ -156,6 +159,7 @@ class IValuePackService(ABC):
     async def save_pack(
         self,
         pack: ValuePack,
+        tenant_id: str,
     ) -> ValuePack:
         """Save pack (create new version or update draft)."""
         pass

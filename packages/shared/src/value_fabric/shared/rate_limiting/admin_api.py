@@ -30,7 +30,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 # Import driver getter - may not be available in all contexts
 try:
-    from value_fabric.layer3_knowledge.src.db.driver import get_driver
+    from value_fabric.layer3.db.driver import get_driver
     NEO4J_AVAILABLE = True
 except ImportError:
     NEO4J_AVAILABLE = False

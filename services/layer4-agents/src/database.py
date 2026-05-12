@@ -209,6 +209,17 @@ FAIL_SAFE_MODE = True
 # Reserved tenant keywords for system/admin operations
 RESERVED_TENANT_KEYWORDS = frozenset({'system', 'admin', 'internal'})
 
+
+def _is_test_environment() -> bool:
+    """Return True when deprecated DB dependencies are executed under tests."""
+    env = os.getenv("ENVIRONMENT", "").strip().lower()
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    return (
+        os.getenv("PYTEST_CURRENT_TEST") is not None
+        or env in {"test", "testing"}
+        or app_env in {"test", "testing"}
+    )
+
 # Try to import shared tenant validation
 try:
     from value_fabric.shared.database import (
@@ -342,6 +353,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     SECURITY: Use only for health checks or admin operations with proper
     role authentication. All production endpoints should use get_db_from_context.
     """
+    if not _is_test_environment():
+        raise RuntimeError(
+            "Deprecated dependency get_db() is disabled outside test environments. "
+            "Use get_db_from_context() for tenant-scoped routes."
+        )
     warnings.warn(
         "get_db() is deprecated. Use get_db_from_context() for proper tenant isolation.",
         DeprecationWarning,
@@ -384,6 +400,11 @@ async def get_db_with_tenant(
     Raises:
         HTTPException: 400 if X-Tenant-ID header is missing or invalid
     """
+    if not _is_test_environment():
+        raise RuntimeError(
+            "Deprecated dependency get_db_with_tenant() is disabled outside test environments. "
+            "Use get_db_from_context() for tenant-scoped routes."
+        )
     warnings.warn(
         "get_db_with_tenant() is deprecated. Use get_db_from_context() for proper tenant context propagation.",
         DeprecationWarning,

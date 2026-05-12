@@ -9,43 +9,41 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
-from value_fabric.shared.models.typed_dict import TypedDictModel
+class SecurityEventPayload(TypedDict):
+    event_id: str
+    timestamp: str
+    event_type: str
+    source_ip: str
+    user_id: str | None
+    api_key_id: str | None
+    endpoint: str
+    method: str
+    user_agent: str | None
+    request_size: int
+    response_size: int
+    status_code: int
+    response_time_ms: float
+    request_headers: dict[str, str]
+    request_body: str | None
+    response_headers: dict[str, str]
+    geo_location: dict[str, str] | None
+    reputation_score: float
+    risk_score: float
+    tags: list[str]
+    metadata: dict[str, Any]
 
 
-class SecurityEvent_to_dictResult(TypedDictModel):
-    api_key_id: Any
-    endpoint: Any
-    event_id: Any
-    event_type: Any
-    geo_location: Any
-    metadata: Any
-    method: Any
-    reputation_score: Any
-    request_body: Any
-    request_headers: Any
-    request_size: Any
-    response_headers: Any
-    response_size: Any
-    response_time_ms: Any
-    risk_score: Any
-    source_ip: Any
-    status_code: Any
-    tags: list[Any]
-    timestamp: Any
-    user_agent: Any
-    user_id: Any
-
-class SecurityMonitor_get_security_summaryResult(TypedDictModel):
-    active_signatures: Any
-    alert_levels: dict[str, Any]
-    blocked_ips: Any
-    blocked_users: Any
-    recent_alerts: Any
-    stats: Any
+class SecuritySummaryPayload(TypedDict):
+    stats: dict[str, int]
+    alert_levels: dict[Literal["low", "medium", "high", "critical"], int]
+    recent_alerts: int
+    blocked_ips: int
+    blocked_users: int
+    active_signatures: int
 
 logger = logging.getLogger(__name__)
 
@@ -122,31 +120,31 @@ class SecurityEvent:
     tags: set[str] = field(default_factory=set)
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> SecurityEventPayload:
         """Convert to dictionary."""
-        return SecurityEvent_to_dictResult.model_validate({
-            "event_id": self.event_id,
-            "timestamp": self.timestamp.isoformat(),
-            "event_type": self.event_type,
-            "source_ip": self.source_ip,
-            "user_id": self.user_id,
-            "api_key_id": self.api_key_id,
-            "endpoint": self.endpoint,
-            "method": self.method,
-            "user_agent": self.user_agent,
-            "request_size": self.request_size,
-            "response_size": self.response_size,
-            "status_code": self.status_code,
-            "response_time_ms": self.response_time_ms,
-            "request_headers": self.request_headers,
-            "request_body": self.request_body,
-            "response_headers": self.response_headers,
-            "geo_location": self.geo_location,
-            "reputation_score": self.reputation_score,
-            "risk_score": self.risk_score,
-            "tags": list(self.tags),
-            "metadata": self.metadata,
-        })
+        return SecurityEventPayload(
+            event_id=self.event_id,
+            timestamp=self.timestamp.isoformat(),
+            event_type=self.event_type,
+            source_ip=self.source_ip,
+            user_id=self.user_id,
+            api_key_id=self.api_key_id,
+            endpoint=self.endpoint,
+            method=self.method,
+            user_agent=self.user_agent,
+            request_size=self.request_size,
+            response_size=self.response_size,
+            status_code=self.status_code,
+            response_time_ms=self.response_time_ms,
+            request_headers=self.request_headers,
+            request_body=self.request_body,
+            response_headers=self.response_headers,
+            geo_location=self.geo_location,
+            reputation_score=self.reputation_score,
+            risk_score=self.risk_score,
+            tags=list(self.tags),
+            metadata=self.metadata,
+        )
 
 
 class ThreatSignature(BaseModel):
@@ -1068,7 +1066,7 @@ class SecurityMonitor:
 
         self.stats["threats_blocked"] += 1
 
-    async def get_security_summary(self) -> dict[str, Any]:
+    async def get_security_summary(self) -> SecuritySummaryPayload:
         """Get security monitoring summary.
 
         Returns:
@@ -1076,15 +1074,15 @@ class SecurityMonitor:
         """
         recent_alerts = await self.store.get_alerts_by_status(AlertStatus.NEW, limit=10)
 
-        return SecurityMonitor_get_security_summaryResult.model_validate({
-            "stats": self.stats,
-            "blocked_ips": len(self.blocked_ips),
-            "blocked_users": len(self.blocked_users),
-            "active_signatures": len(
+        return SecuritySummaryPayload(
+            stats=self.stats,
+            blocked_ips=len(self.blocked_ips),
+            blocked_users=len(self.blocked_users),
+            active_signatures=len(
                 [s for s in self.signature_matcher.signatures.values() if s.enabled]
             ),
-            "recent_alerts": len(recent_alerts),
-            "alert_levels": {
+            recent_alerts=len(recent_alerts),
+            alert_levels={
                 "low": len(
                     [a for a in recent_alerts if a.threat_level == ThreatLevel.LOW]
                 ),
@@ -1098,7 +1096,7 @@ class SecurityMonitor:
                     [a for a in recent_alerts if a.threat_level == ThreatLevel.CRITICAL]
                 ),
             },
-        })
+        )
 
 
     async def cleanup(self):

@@ -38,19 +38,19 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         self._driver = driver
 
     async def _tenant_id_for_formula(self, formula_id: str) -> str:
-        query = "MATCH (f:Formula {id: $formula_id}) RETURN f.tenant_id as tenant_id"
+        query = "MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id}) RETURN f.tenant_id as tenant_id"
         async with self._driver.session() as session:
-            result = await session.run(query, formula_id=formula_id)
+            result = await session.run(query, formula_id=formula_id, tenant_id=tenant_id)
             record = await result.single()
             return record["tenant_id"] if record and record.get("tenant_id") else "unknown"
 
-    async def get_governance(self, formula_id: str) -> FormulaGovernance | None:
+    async def get_governance(self, formula_id: str, tenant_id: str) -> FormulaGovernance | None:
         """Retrieve governance metadata for formula from Neo4j."""
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion)
-        OPTIONAL MATCH (f)-[:DEPENDS_ON]->(dep:Formula)
-        OPTIONAL MATCH (other:Formula)-[:DEPENDS_ON]->(f)
+        OPTIONAL MATCH (f)-[:DEPENDS_ON]->(dep:Formula {tenant_id: $tenant_id})
+        OPTIONAL MATCH (other:Formula {tenant_id: $tenant_id})-[:DEPENDS_ON]->(f)
         RETURN f,
                collect(DISTINCT fv) as versions,
                collect(DISTINCT {id: dep.id, type: 'outgoing'}) as outgoing_deps,
@@ -58,7 +58,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         """
 
         async with self._driver.session() as session:
-            result = await session.run(query, formula_id=formula_id)
+            result = await session.run(query, formula_id=formula_id, tenant_id=tenant_id)
             record = await result.single()
 
             if not record or not record["f"]:
@@ -132,6 +132,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     async def create_version(
         self,
         formula_id: str,
+        tenant_id: str,
         new_version: str,
         change_summary: str,
         created_by: str,
@@ -145,18 +146,18 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
 
         # Get current version as previous
         get_current_query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         RETURN f.version as current_version
         """
 
         async with self._driver.session() as session:
-            result = await session.run(get_current_query, formula_id=formula_id)
+            result = await session.run(get_current_query, formula_id=formula_id, tenant_id=tenant_id)
             record = await result.single()
             previous_version = record["current_version"] if record else None
 
         # Create version node
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         CREATE (fv:FormulaVersion {
             id: $version_id,
             version: $version,
@@ -205,11 +206,12 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     async def list_versions(
         self,
         formula_id: str,
+        tenant_id: str,
         include_retired: bool = False,
     ) -> list[FormulaVersion]:
         """List all versions of a formula from Neo4j."""
         query = """
-        MATCH (f:Formula {id: $formula_id})-[:HAS_VERSION]->(fv:FormulaVersion)
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})-[:HAS_VERSION]->(fv:FormulaVersion)
         WHERE $include_retired OR fv.status <> 'retired'
         RETURN fv
         ORDER BY fv.createdAt DESC
@@ -219,6 +221,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
             result = await session.run(
                 query,
                 formula_id=formula_id,
+                tenant_id=tenant_id,
                 include_retired=include_retired,
             )
             records = await result.data()
@@ -245,18 +248,19 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     async def activate(
         self,
         request: ActivationRequest,
+        tenant_id: str,
     ) -> GovernanceTransitionResult:
         """Activate a formula version in Neo4j."""
         now = datetime.now(UTC).isoformat()
 
         # Get current status
         check_query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         RETURN f.status as status, f.version as current_version
         """
 
         async with self._driver.session() as session:
-            result = await session.run(check_query, formula_id=request.formula_id)
+            result = await session.run(check_query, formula_id=request.formula_id, tenant_id=tenant_id)
             record = await result.single()
 
             if not record:
@@ -293,7 +297,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
 
         # Perform activation
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
         SET f.status = 'active',
             f.version = $version,
@@ -310,6 +314,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
             result = await session.run(
                 query,
                 formula_id=request.formula_id,
+                tenant_id=tenant_id,
                 version=request.version,
                 activated_at=now,
                 activated_by=request.requested_by,
@@ -336,18 +341,19 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     async def deprecate(
         self,
         request: DeprecationRequest,
+        tenant_id: str,
     ) -> GovernanceTransitionResult:
         """Deprecate a formula in Neo4j."""
         datetime.now(UTC).isoformat()
 
         # Get current status
         check_query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         RETURN f.status as status
         """
 
         async with self._driver.session() as session:
-            result = await session.run(check_query, formula_id=request.formula_id)
+            result = await session.run(check_query, formula_id=request.formula_id, tenant_id=tenant_id)
             record = await result.single()
 
             if not record:
@@ -372,7 +378,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
 
         # Perform deprecation
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         SET f.status = 'deprecated',
             f.deprecatedAt = $deprecated_at,
             f.deprecatedBy = $deprecated_by,
@@ -401,6 +407,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     async def get_dependencies(
         self,
         formula_id: str,
+        tenant_id: str,
         direction: str = "outgoing",
     ) -> list[FormulaDependency]:
         """Get formula dependencies from Neo4j."""
@@ -408,11 +415,11 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
 
         if direction in ["outgoing", "both"]:
             outgoing_query = """
-            MATCH (f:Formula {id: $formula_id})-[:DEPENDS_ON]->(dep:Formula)
+            MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})-[:DEPENDS_ON]->(dep:Formula)
             RETURN dep.id as dep_id
             """
             async with self._driver.session() as session:
-                result = await session.run(outgoing_query, formula_id=formula_id)
+                result = await session.run(outgoing_query, formula_id=formula_id, tenant_id=tenant_id)
                 records = await result.data()
                 for r in records:
                     deps.append(
@@ -425,11 +432,11 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
 
         if direction in ["incoming", "both"]:
             incoming_query = """
-            MATCH (other:Formula)-[:DEPENDS_ON]->(f:Formula {id: $formula_id})
+            MATCH (other:Formula {tenant_id: $tenant_id})-[:DEPENDS_ON]->(f:Formula {id: $formula_id, tenant_id: $tenant_id})
             RETURN other.id as other_id
             """
             async with self._driver.session() as session:
-                result = await session.run(incoming_query, formula_id=formula_id)
+                result = await session.run(incoming_query, formula_id=formula_id, tenant_id=tenant_id)
                 records = await result.data()
                 for r in records:
                     deps.append(
@@ -445,13 +452,14 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     async def validate_activation(
         self,
         formula_id: str,
+        tenant_id: str,
         version: str,
     ) -> dict[str, Any]:
         """Validate if formula can be activated."""
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
-        OPTIONAL MATCH (f)-[:DEPENDS_ON]->(dep:Formula)
+        OPTIONAL MATCH (f)-[:DEPENDS_ON]->(dep:Formula {tenant_id: $tenant_id})
         WHERE dep.status <> 'active'
         RETURN f.status as status,
                fv IS NOT NULL as version_exists,
@@ -459,7 +467,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         """
 
         async with self._driver.session() as session:
-            result = await session.run(query, formula_id=formula_id, version=version)
+            result = await session.run(query, formula_id=formula_id, tenant_id=tenant_id, version=version)
             record = await result.single()
 
             if not record:
@@ -521,7 +529,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         now = datetime.now(UTC).isoformat()
 
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
         SET f.status = 'approved',
             f.approvedAt = $approved_at,
@@ -574,7 +582,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         now = datetime.now(UTC).isoformat()
 
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
         SET f.status = 'draft',
             f.rejectedAt = $rejected_at,
@@ -628,7 +636,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         now = datetime.now(UTC).isoformat()
 
         check_query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         RETURN f.status as status
         """
 
@@ -658,7 +666,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
 
         # Perform transition
         query = """
-        MATCH (f:Formula {id: $formula_id})
+        MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id})
         MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
         SET f.status = $new_status,
             f.updatedAt = $updated_at,

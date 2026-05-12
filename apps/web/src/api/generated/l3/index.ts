@@ -4349,8 +4349,10 @@ export interface components {
          * GraphEdge
          * @description Edge/relationship in the knowledge graph.
          *
-         *     NOTE: Provides backward-compatible alias 'relationship_type' for 'type'.
-         *     TODO: Deprecate 'type' field once consumers migrate.
+         *     Versioned policy:
+         *     - v2.3 and earlier: emit canonical 'type' plus deprecated alias 'relationship_type'.
+         *     - v2.4 warning window: alias remains deprecated and monitored.
+         *     - v2.5 and later: remove 'relationship_type' alias and keep only 'type'.
          */
         GraphEdge: {
             /**
@@ -4365,7 +4367,7 @@ export interface components {
             target: string;
             /**
              * Type
-             * @description Relationship type/label (legacy: use 'relationship_type')
+             * @description Canonical relationship type/label
              */
             type: string;
             /**
@@ -4392,7 +4394,7 @@ export interface components {
          *     - 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')
          *
          *     The legacy fields (label, type, confidence) are preserved for backward compatibility.
-         *     TODO: Deprecate legacy fields once all consumers migrate to new field names.
+         *     - v2.5 and later: remove deprecated aliases and emit only canonical fields (name/entity_type/confidence_score).
          */
         GraphNode: {
             /**
@@ -4403,19 +4405,19 @@ export interface components {
             /**
              * Label
              * @deprecated
-             * @description Deprecated alias of name; removal planned after v1.4
+             * @description Deprecated alias of name. Removal target: v2.5 (2026-10-01).
              */
             label?: string;
             /**
              * Type
              * @deprecated
-             * @description Deprecated alias of entity_type; removal planned after v1.4
+             * @description Deprecated alias of entity_type. Removal target: v2.5 (2026-10-01).
              */
             type?: string;
             /**
              * Confidence
              * @deprecated
-             * @description Deprecated alias of confidence_score; removal planned after v1.4
+             * @description Deprecated alias of confidence_score. Removal target: v2.5 (2026-10-01).
              * @default 0.8
              */
             confidence: number;

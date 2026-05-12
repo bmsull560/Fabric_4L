@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+MARKERS = ("DEPRECATED", "OBSOLETE")
+TEXT_EXTENSIONS = {
+    ".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".yaml", ".yml", ".md", ".txt", ".sh", ".toml", ".ini", ".cfg",
+}
+EXCLUDE_DIRS = {".git", "node_modules", ".venv", "venv", "dist", "build", ".mypy_cache", ".pytest_cache", "coverage", "artifacts"}
+
+
+@dataclass
+class Finding:
+    kind: str
+    key: str
+    file: str
+    line: int
+    text: str
+
+
+def is_text_file(path: Path) -> bool:
+    return path.suffix.lower() in TEXT_EXTENSIONS
+
+
+def iter_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for p in root.rglob("*"):
+        if p.is_dir() and p.name in EXCLUDE_DIRS:
+            continue
+        if p.is_file() and is_text_file(p):
+            if any(part in EXCLUDE_DIRS for part in p.parts):
+                continue
+            files.append(p)
+    return files
+
+
+def scan_markers(repo_root: Path, excluded_paths: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    for file_path in iter_files(repo_root):
+        rel = file_path.relative_to(repo_root).as_posix()
+        if rel in excluded_paths:
+            continue
+        try:
+            lines = file_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for idx, line in enumerate(lines, start=1):
+            for marker in MARKERS:
+                if marker in line:
+                    findings.append(Finding("marker", marker, rel, idx, line.strip()))
+    return findings
+
+
+def scan_legacy_dirs(repo_root: Path, legacy_dirs: list[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    for legacy_dir in legacy_dirs:
+        path = repo_root / legacy_dir
+        if path.exists():
+            findings.append(Finding("legacy_dir", legacy_dir, legacy_dir, 1, "Legacy directory exists"))
+    return findings
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def allowed_delta(key: str, approvals: dict[str, Any]) -> int:
+    item = approvals.get("approvals", {}).get(key)
+    if not item:
+        return 0
+    expires_on = item.get("expires_on")
+    if not expires_on:
+        return 0
+    if date.fromisoformat(expires_on) < date.today():
+        return 0
+    return int(item.get("allowed_increase", 0))
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Check legacy debt markers/directories against a baseline")
+    ap.add_argument("--repo-root", type=Path, default=Path("."))
+    ap.add_argument("--baseline", type=Path, default=Path("config/ci/legacy_debt_baseline.json"))
+    ap.add_argument("--approvals", type=Path, default=Path("config/ci/legacy_debt_approvals.json"))
+    ap.add_argument("--config", type=Path, default=Path("config/ci/legacy_debt_config.json"))
+    ap.add_argument("--write-report", type=Path)
+    args = ap.parse_args()
+
+    repo_root = args.repo_root.resolve()
+    config = load_json(args.config)
+    legacy_dirs = config.get("legacy_directories", ["shared", "apps/web/src/legacy", "apps/web/src/obsolete"])
+
+    excluded_paths = set(config.get("excluded_paths", []))
+    marker_findings = scan_markers(repo_root, excluded_paths)
+    dir_findings = scan_legacy_dirs(repo_root, legacy_dirs)
+    findings = marker_findings + dir_findings
+
+    counts: dict[str, int] = {
+        "DEPRECATED": sum(1 for f in marker_findings if f.key == "DEPRECATED"),
+        "OBSOLETE": sum(1 for f in marker_findings if f.key == "OBSOLETE"),
+        "legacy_directories": len(dir_findings),
+    }
+
+    baseline = load_json(args.baseline)
+    baseline_counts = baseline.get("counts", {})
+    approvals = load_json(args.approvals)
+
+    regressions: list[str] = []
+    for key, actual in counts.items():
+        base = int(baseline_counts.get(key, 0))
+        max_allowed = base + allowed_delta(key, approvals)
+        if actual > max_allowed:
+            regressions.append(f"{key}: {actual} > baseline {base} (+approved {max_allowed - base})")
+
+    report = {
+        "counts": counts,
+        "baseline_counts": baseline_counts,
+        "regressions": regressions,
+        "findings": [f.__dict__ for f in findings],
+    }
+
+    if args.write_report:
+        args.write_report.parent.mkdir(parents=True, exist_ok=True)
+        args.write_report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+    print("Legacy debt counts:", json.dumps(counts, sort_keys=True))
+    if findings:
+        print("Actionable findings:")
+        for f in findings:
+            print(f"- {f.file}:{f.line} [{f.kind}:{f.key}] {f.text}")
+
+    if regressions:
+        print("ERROR: legacy debt regressions detected:", file=sys.stderr)
+        for r in regressions:
+            print(f"  - {r}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

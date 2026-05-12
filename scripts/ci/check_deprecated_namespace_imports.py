@@ -12,6 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCAN_ROOTS = (Path("services"), Path("value_fabric"), Path("tests"), Path("scripts"))
 DEPRECATED_PREFIXES = ("value_fabric.layer1_ingestion", "value_fabric.layer3_knowledge")
+BASELINE_PATH = Path("docs/reference/deprecated-namespace-import-baseline.json")
 ALLOWLIST = {
     Path("value_fabric/layer1_ingestion/__init__.py"),
     Path("value_fabric/layer1_ingestion/src/__init__.py"),
@@ -82,14 +83,47 @@ def scan(repo_root: Path) -> list[DeprecatedImport]:
     return sorted(findings, key=lambda x: (x.path, x.line, x.statement))
 
 
+def _load_baseline(repo_root: Path, baseline_path: Path) -> set[tuple[str, int, str, str]]:
+    abs_path = repo_root / baseline_path
+    if not abs_path.exists():
+        return set()
+    payload = json.loads(abs_path.read_text(encoding="utf-8"))
+    return {
+        (
+            str(item["path"]),
+            int(item["line"]),
+            str(item["statement"]),
+            str(item["deprecated_namespace"]),
+        )
+        for item in payload
+    }
+
+
+def _subtract_baseline(
+    findings: list[DeprecatedImport],
+    baseline: set[tuple[str, int, str, str]],
+) -> list[DeprecatedImport]:
+    return [
+        item
+        for item in findings
+        if (item.path, item.line, item.statement, item.deprecated_namespace) not in baseline
+    ]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=str(REPO_ROOT))
     parser.add_argument("--strict", action="store_true")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--use-baseline", action="store_true")
+    parser.add_argument("--baseline-path", default=str(BASELINE_PATH))
     args = parser.parse_args(argv)
 
-    findings = scan(Path(args.repo_root).resolve())
+    repo_root = Path(args.repo_root).resolve()
+    findings = scan(repo_root)
+    if args.use_baseline:
+        baseline = _load_baseline(repo_root, Path(args.baseline_path))
+        findings = _subtract_baseline(findings, baseline)
     if args.json:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     else:

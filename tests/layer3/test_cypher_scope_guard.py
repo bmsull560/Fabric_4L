@@ -5,6 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from value_fabric.layer3.db.query_execution import (
+    TenantExecutionContext,
+    TenantQueryExecutor,
+    TenantQueryValidationError,
+)
 from value_fabric.layer3.services.cypher_scope_guard import validate_tenant_scoped_cypher
 
 
@@ -66,3 +71,32 @@ def test_query_templates_are_tenant_scoped(relative_path: str) -> None:
             tenant_owned_labels=_TENANT_OWNED,
             query_name=f"{relative_path}#{idx}",
         )
+
+
+def test_executor_rejects_marker_only_bypass_pattern_without_per_path_scope() -> None:
+    query = "MATCH (p:Capability {tenant_id: $tenant_id}) OPTIONAL MATCH (f:Capability) RETURN p, f"
+    with pytest.raises(TenantQueryValidationError, match="missing tenant scoping"):
+        TenantQueryExecutor._validate(
+            query=query,
+            params={"tenant_id": "tenant-a"},
+            context=TenantExecutionContext(tenant_id="tenant-a"),
+        )
+
+
+def test_executor_fails_closed_on_ambiguous_multiclause_query() -> None:
+    query = "MATCH (a:Capability {tenant_id: $tenant_id}) MATCH (b:Capability {tenant_id: $tenant_id}) RETURN a, b"
+    with pytest.raises(TenantQueryValidationError, match="ambiguous or multi-clause"):
+        TenantQueryExecutor._validate(
+            query=query,
+            params={"tenant_id": "tenant-a"},
+            context=TenantExecutionContext(tenant_id="tenant-a"),
+        )
+
+
+def test_executor_allows_ambiguous_query_when_explicitly_allowlisted_system_query() -> None:
+    query = "MATCH (a:Capability {tenant_id: $tenant_id}) MATCH (b:Capability {tenant_id: $tenant_id}) RETURN a, b"
+    TenantQueryExecutor._validate(
+        query=query,
+        params={"tenant_id": "tenant-a"},
+        context=TenantExecutionContext(tenant_id="tenant-a", allow_system_query=True),
+    )

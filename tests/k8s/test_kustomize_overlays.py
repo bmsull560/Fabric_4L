@@ -78,6 +78,14 @@ class TestKustomizeBaseLayer:
         assert "monitoring-prometheus.yml" in resources
         assert "monitoring-alertmanager.yml" in resources
 
+    def test_deprecated_alertmanager_manifest_absent(self, repo_root: Path) -> None:
+        """Regression: deprecated root alertmanager manifest must not exist."""
+        deprecated_manifest = repo_root / "k8s" / "alertmanager.yml"
+        assert not deprecated_manifest.exists(), (
+            "Deprecated k8s/alertmanager.yml must not reappear; "
+            "use k8s/monitoring-alertmanager.yml (or k8s/base/monitoring-alertmanager.yml) only."
+        )
+
     def test_base_includes_network_policies(self, k8s_base_dir: Path) -> None:
         """Verify network policies directory is included for zero-trust."""
         kustomization = k8s_base_dir / "kustomization.yaml"

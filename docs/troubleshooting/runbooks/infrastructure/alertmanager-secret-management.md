@@ -66,7 +66,7 @@ kubectl get secret alertmanager-secrets -n value-fabric
 
 #### 4. Mount Secret in Alertmanager Deployment
 
-The Alertmanager deployment (`k8s/base/alertmanager.yml`) mounts the secret as files:
+The Alertmanager deployment (`k8s/base/monitoring-alertmanager.yml`) mounts the secret as files:
 
 ```yaml
 volumeMounts:

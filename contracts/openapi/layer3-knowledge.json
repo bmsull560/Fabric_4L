@@ -11113,7 +11113,7 @@
           "type": {
             "type": "string",
             "title": "Type",
-            "description": "Relationship type/label (legacy: use 'relationship_type')"
+            "description": "Canonical relationship type/label"
           },
           "weight": {
             "type": "number",
@@ -11131,9 +11131,9 @@
           "relationship_type": {
             "type": "string",
             "deprecated": true,
-            "description": "Deprecated alias of type. Removal target: v2.4 (2026-07-01).",
-            "x-deprecation-target-version": "v2.4",
-            "x-deprecation-target-date": "2026-07-01"
+            "description": "Deprecated alias of type. Removal target: v2.5 (2026-10-01).",
+            "x-deprecation-target-version": "v2.5",
+            "x-deprecation-target-date": "2026-10-01"
           }
         },
         "type": "object",
@@ -11143,7 +11143,7 @@
           "type"
         ],
         "title": "GraphEdge",
-        "description": "Edge/relationship in the knowledge graph.\n\nNOTE: Provides backward-compatible alias 'relationship_type' for 'type'.\nTODO: Deprecate 'type' field once consumers migrate."
+        "description": "Edge/relationship in the knowledge graph.\n\nVersioned policy:\n- v2.3 and earlier: emit canonical 'type' plus deprecated alias 'relationship_type'.\n- v2.4 warning window: alias remains deprecated and monitored.\n- v2.5 and later: remove 'relationship_type' alias and keep only 'type'."
       },
       "GraphNode": {
         "properties": {
@@ -11155,29 +11155,29 @@
           "label": {
             "type": "string",
             "title": "Label",
-            "description": "Deprecated alias of name. Removal target: v2.4 (2026-07-01).",
+            "description": "Deprecated alias of name. Removal target: v2.5 (2026-10-01).",
             "deprecated": true,
-            "x-deprecation-target-version": "v2.4",
-            "x-deprecation-target-date": "2026-07-01"
+            "x-deprecation-target-version": "v2.5",
+            "x-deprecation-target-date": "2026-10-01"
           },
           "type": {
             "type": "string",
             "title": "Type",
-            "description": "Deprecated alias of entity_type. Removal target: v2.4 (2026-07-01).",
+            "description": "Deprecated alias of entity_type. Removal target: v2.5 (2026-10-01).",
             "deprecated": true,
-            "x-deprecation-target-version": "v2.4",
-            "x-deprecation-target-date": "2026-07-01"
+            "x-deprecation-target-version": "v2.5",
+            "x-deprecation-target-date": "2026-10-01"
           },
           "confidence": {
             "type": "number",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Confidence",
-            "description": "Deprecated alias of confidence_score. Removal target: v2.4 (2026-07-01).",
+            "description": "Deprecated alias of confidence_score. Removal target: v2.5 (2026-10-01).",
             "default": 0.8,
             "deprecated": true,
-            "x-deprecation-target-version": "v2.4",
-            "x-deprecation-target-date": "2026-07-01"
+            "x-deprecation-target-version": "v2.5",
+            "x-deprecation-target-date": "2026-10-01"
           },
           "properties": {
             "additionalProperties": true,
@@ -11208,7 +11208,7 @@
           "entity_type"
         ],
         "title": "GraphNode",
-        "description": "Node in the knowledge graph.\n\nNOTE: This model provides backward-compatible field aliases for frontend contract stability:\n- 'name' is an alias for 'label' (frontend expects 'name')\n- 'entity_type' is an alias for 'type' (frontend expects 'entity_type')\n- 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')\n\nThe legacy fields (label, type, confidence) are preserved for backward compatibility.\nTODO: Deprecate legacy fields once all consumers migrate to new field names."
+        "description": "Node in the knowledge graph.\n\nVersioned policy:\n- v2.3 and earlier: emit canonical fields plus deprecated aliases (label/type/confidence).\n- v2.4 warning window: aliases remain deprecated and monitored.\n- v2.5 and later: remove deprecated aliases and emit only canonical fields (name/entity_type/confidence_score)."
       },
       "GraphNodeWithLayout": {
         "properties": {

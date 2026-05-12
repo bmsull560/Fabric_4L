@@ -5,6 +5,7 @@ This reference maps the approved dependency workflows across the monorepo and ex
 ## JavaScript / TypeScript workspaces (pnpm only)
 
 Use **pnpm** for all workspace package management.
+Use `apps/web/` as the only valid frontend source/config root.
 
 ### Canonical commands
 
@@ -62,3 +63,19 @@ Approved lockfile churn paths are intentionally narrow to prevent accidental cro
 
 - **CI**: `pnpm run check:package-manager-policy`
 - **pre-commit**: local hook `package-manager-and-lockfile-policy`
+
+## Frontend root governance guard
+
+CI rejects pull requests that add non-documentation files under `frontend/`.
+
+- Canonical frontend root: `apps/web/`
+- Legacy path (`frontend/`) is doc-only and migration metadata only
+- Allowed under `frontend/`:
+  - `frontend/OBSOLETE.md`
+  - Markdown docs (including archive/doc-only content)
+
+Guard entrypoint:
+
+```bash
+python scripts/ci/check_frontend_root_policy.py --base-ref origin/main
+```

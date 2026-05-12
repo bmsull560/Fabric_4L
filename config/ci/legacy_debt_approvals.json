@@ -1,0 +1,22 @@
+{
+  "approvals": {
+    "DEPRECATED": {
+      "allowed_increase": 0,
+      "expires_on": "2026-12-31",
+      "owner": "platform-governance",
+      "reason": "Set >0 only for temporary approved debt"
+    },
+    "OBSOLETE": {
+      "allowed_increase": 0,
+      "expires_on": "2026-12-31",
+      "owner": "platform-governance",
+      "reason": "Set >0 only for temporary approved debt"
+    },
+    "legacy_directories": {
+      "allowed_increase": 0,
+      "expires_on": "2026-12-31",
+      "owner": "platform-governance",
+      "reason": "Set >0 only for temporary approved debt"
+    }
+  }
+}

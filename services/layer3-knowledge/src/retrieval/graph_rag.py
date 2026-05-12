@@ -55,6 +55,7 @@ _ALLOWED_RELATIONSHIP_TYPES = frozenset(get_relationship_types()) | {
     rel.upper() for rel in get_relationship_types()
 }
 _ALLOWED_ENTITY_TYPES = frozenset(get_entity_types())
+GRAPH_FIELD_ALIAS_REMOVAL_VERSION = "v2.5"
 
 
 def _validate_hops(hops: int, *, max_hops: int = 5) -> int:
@@ -100,7 +101,12 @@ def _serialize_neo4j_value(value: Any) -> Any:
     return value
 
 
-def _serialize_entity(entity: dict[str, Any]) -> dict[str, Any]:
+def _include_legacy_graph_aliases(api_version: str = "v2.3") -> bool:
+    """Return True while legacy graph aliases are still part of the contract."""
+    return api_version < GRAPH_FIELD_ALIAS_REMOVAL_VERSION
+
+
+def _serialize_entity(entity: dict[str, Any], *, api_version: str = "v2.3") -> dict[str, Any]:
     """Serialize an entity dict, converting Neo4j temporal types to strings.
 
     Adds backward-compatible alias fields for frontend contract alignment:
@@ -117,33 +123,37 @@ def _serialize_entity(entity: dict[str, Any]) -> dict[str, Any]:
     # Base serialization of Neo4j values
     serialized = {k: _serialize_neo4j_value(v) for k, v in entity.items()}
 
-    # ═════════════════════════════════════════════════════════════════════════
-    # Backward-compatible alias fields for frontend contract alignment
-    # ═════════════════════════════════════════════════════════════════════════
+    include_legacy_aliases = _include_legacy_graph_aliases(api_version)
 
-    # Add 'name' alias (prefer 'label', fallback to 'name')
+    # Canonical node contract fields.
     if "name" not in serialized:
         if "label" in serialized:
             serialized["name"] = serialized["label"]
         elif "name" in entity:
             serialized["name"] = entity["name"]
 
-    # Add 'entity_type' alias (prefer 'type', fallback to first label)
+    # Canonical node contract fields.
     if "entity_type" not in serialized:
         if "type" in serialized:
             serialized["entity_type"] = serialized["type"]
         elif "labels" in serialized and serialized["labels"]:
-            # Use first label as entity type
             serialized["entity_type"] = serialized["labels"][0]
 
-    # Add 'confidence_score' alias (from 'confidence')
+    # Canonical node contract fields.
     if "confidence_score" not in serialized and "confidence" in serialized:
         serialized["confidence_score"] = serialized["confidence"]
+
+    if not include_legacy_aliases:
+        serialized.pop("label", None)
+        serialized.pop("type", None)
+        serialized.pop("confidence", None)
 
     return serialized
 
 
-def _serialize_relationship(rel: Any, include_hops: bool = False, hops: int = 0) -> SerializedRelationship:
+def _serialize_relationship(
+    rel: Any, include_hops: bool = False, hops: int = 0, *, api_version: str = "v2.3"
+) -> SerializedRelationship:
     """Serialize a Neo4j relationship with alias fields.
 
     Centralizes relationship serialization to ensure consistent alias field
@@ -159,11 +169,12 @@ def _serialize_relationship(rel: Any, include_hops: bool = False, hops: int = 0)
     """
     data: dict[str, Any] = {
         "type": rel.type,
-        "relationship_type": rel.type,  # Frontend alias
         "source": rel.start_node["id"],
         "target": rel.end_node["id"],
         "properties": _serialize_entity(dict(rel)),
     }
+    if _include_legacy_graph_aliases(api_version):
+        data["relationship_type"] = rel.type
     if include_hops:
         data["hops"] = hops
     return data

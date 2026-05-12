@@ -104,6 +104,15 @@ ALLOWLIST: dict[str, str] = {
     "scripts:scripts/ci/prod_stub_scan.py:31": "Scanner contains banned pattern definition list",
     "scripts:scripts/ci/prod_stub_scan.py:32": "Scanner contains banned pattern definition list",
     "scripts:scripts/ci/prod_stub_scan.py:33": "Scanner contains banned pattern definition list",
+    "scripts:scripts/ci/prod_stub_scan.py:24": "Scanner contains banned pattern definition list",
+    "scripts:scripts/ci/prod_stub_scan.py:34": "Scanner contains banned pattern definition list",
+    "scripts:scripts/ci/prod_stub_scan.py:35": "Scanner contains banned pattern definition list",
+    "scripts:scripts/ci/prod_stub_scan.py:129": "Scanner contains security-critical pattern definition list",
+    "scripts:scripts/ci/prod_stub_scan.py:130": "Scanner contains security-critical pattern definition list",
+    "scripts:scripts/ci/prod_stub_scan.py:136": "Scanner contains security-critical pattern definition list",
+    "scripts:scripts/ci/prod_stub_scan.py:137": "Scanner contains security-critical pattern definition list",
+    "other:services/layer4-agents/src/api/routes/integrations.py:190": "Base64url encoding for signed integration payload transport",
+    "tests:tests/layer3/test_model_registry_tenant_context.py:16": "Test helper generates base64url fixture IDs",
 }
 
 # Directories to skip entirely
@@ -121,6 +130,23 @@ SKIP_DIRS = {
 }
 
 # File extensions to scan
+
+# Security-critical TODO/FIXME markers are forbidden in release-scoped paths.
+SECURITY_CRITICAL_TODO_PATTERNS: tuple[str, ...] = (
+    "TODO(auth)",
+    "TODO(tenant)",
+    "FIXME(auth)",
+    "FIXME(tenant)",
+)
+
+RELEASE_SCOPED_PREFIXES: tuple[str, ...] = (
+    "services/",
+    "value_fabric/",
+    "packages/shared/src/value_fabric/shared/",
+    "k8s/",
+    "config/production-readiness/",
+)
+
 SCAN_EXTENSIONS = {
     ".py",
     ".ts",
@@ -207,6 +233,14 @@ def main() -> int:
 
         lines = content.splitlines()
         for line_no, line in enumerate(lines, start=1):
+            rel_posix = fpath.relative_to(repo_root).as_posix()
+            if rel_posix.startswith(RELEASE_SCOPED_PREFIXES):
+                line_upper = line.upper()
+                if any(token.upper() in line_upper for token in SECURITY_CRITICAL_TODO_PATTERNS):
+                    key = _allowlist_key(fpath, repo_root, line_no)
+                    if key not in ALLOWLIST:
+                        violations.append((fpath.relative_to(repo_root), line_no, "security-critical TODO/FIXME", line.strip()))
+                        continue
             for pattern in BANNED_PATTERNS:
                 if pattern in line:
                     key = _allowlist_key(fpath, repo_root, line_no)

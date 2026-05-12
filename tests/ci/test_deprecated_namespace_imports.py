@@ -22,6 +22,29 @@ def test_namespace_scanner_detects_deprecated_import(tmp_path) -> None:
     assert check_deprecated_namespace_imports.main(["--repo-root", str(tmp_path), "--strict"]) == 1
 
 
+def test_namespace_scanner_allows_baseline_findings(tmp_path) -> None:
+    (tmp_path / "services/demo").mkdir(parents=True)
+    sample = tmp_path / "services/demo/sample.py"
+    statement = "from value_fabric.layer1_ingestion.src import api"
+    sample.write_text(statement + "\n", encoding="utf-8")
+    baseline_dir = tmp_path / "docs/reference"
+    baseline_dir.mkdir(parents=True)
+    (baseline_dir / "deprecated-namespace-import-baseline.json").write_text(
+        "["
+        '{"path":"services/demo/sample.py","line":1,'
+        '"statement":"from value_fabric.layer1_ingestion.src import api",'
+        '"deprecated_namespace":"value_fabric.layer1_ingestion"}'
+        "]",
+        encoding="utf-8",
+    )
+    assert (
+        check_deprecated_namespace_imports.main(
+            ["--repo-root", str(tmp_path), "--strict", "--use-baseline"]
+        )
+        == 0
+    )
+
+
 def test_layer1_shim_emits_deprecation_warning() -> None:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", DeprecationWarning)

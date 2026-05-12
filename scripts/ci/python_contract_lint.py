@@ -134,6 +134,11 @@ SCAN_GLOBS = (
     "tests/**/*.py",
 )
 
+DEPRECATED_DB_DEP_ALLOWLIST = {
+    "services/layer4-agents/src/database.py",
+    "tests/security/test_deprecated_l4_db_dependencies.py",
+}
+
 SKIP_PATH_PARTS = frozenset(
     {
         "__pycache__",
@@ -248,6 +253,48 @@ def check_file_with_ast(file_path: Path, content: str) -> list[ContractFinding]:
     return findings
 
 
+def check_deprecated_l4_db_dependencies(file_path: Path, content: str, repo_root: Path) -> list[ContractFinding]:
+    """Block deprecated Layer 4 DB dependency imports/usages outside allowlist."""
+    repo_relative = file_path.relative_to(repo_root).as_posix()
+    if repo_relative in DEPRECATED_DB_DEP_ALLOWLIST:
+        return []
+
+    findings: list[ContractFinding] = []
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return findings
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            names = {alias.name for alias in node.names}
+            if {"get_db", "get_db_with_tenant"} & names:
+                findings.append(
+                    ContractFinding(
+                        contract_id="deprecated_l4_db_dependency",
+                        severity="critical",
+                        path=repo_relative,
+                        line=getattr(node, "lineno", 0),
+                        column=getattr(node, "col_offset", 0),
+                        message="Deprecated Layer 4 DB dependency import detected",
+                        preferred_pattern="Use get_db_from_context()",
+                    )
+                )
+        if isinstance(node, ast.Name) and node.id in {"get_db", "get_db_with_tenant"}:
+            findings.append(
+                ContractFinding(
+                    contract_id="deprecated_l4_db_dependency",
+                    severity="critical",
+                    path=repo_relative,
+                    line=getattr(node, "lineno", 0),
+                    column=getattr(node, "col_offset", 0),
+                    message=f"Deprecated Layer 4 DB dependency usage detected: {node.id}",
+                    preferred_pattern="Use get_db_from_context()",
+                )
+            )
+    return findings
+
+
 def should_scan_file(file_path: Path) -> bool:
     """Determine if a file should be scanned."""
     if file_path.suffix != ".py":
@@ -316,6 +363,7 @@ def scan_repository(repo_root: Path, changed_only: bool = False) -> LintReport:
         report.files_scanned += 1
         report.findings.extend(check_file_with_regex(file_path, content))
         report.findings.extend(check_file_with_ast(file_path, content))
+        report.findings.extend(check_deprecated_l4_db_dependencies(file_path, content, repo_root))
 
     return report
 

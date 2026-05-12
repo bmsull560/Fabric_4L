@@ -1,0 +1,14 @@
+{
+  "legacy_directories": [
+    "shared",
+    "apps/web/src/legacy",
+    "apps/web/src/obsolete"
+  ],
+  "excluded_paths": [
+    "scripts/ci/check_legacy_debt.py",
+    "config/ci/legacy_debt_config.json",
+    "config/ci/legacy_debt_baseline.json",
+    "config/ci/legacy_debt_approvals.json",
+    "docs/operations/legacy-debt-baseline-overrides.md"
+  ]
+}

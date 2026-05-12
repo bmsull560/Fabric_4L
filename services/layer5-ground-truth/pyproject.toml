@@ -99,6 +99,8 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 # Note: Strict mode is enabled via Makefile CLI flags for CI consistency
 
 [tool.pytest.ini_options]
+pythonpath = ["src", "..", "../../packages/shared/src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short"
+

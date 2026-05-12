@@ -1155,7 +1155,7 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 ---
 
 ### **Task 46: Monitoring Stack Completion (DEVOPS)** ⭐ CRITICAL
-**Priority:** P0 | **Effort:** 2 days | **Status:** 🟡 Partial (Grafana dashboards exist, Prometheus status TBD) | **Unblocks:** Production observability criterion
+**Priority:** P0 | **Effort:** 2 days | **Status:** ✅ COMPLETE 2026-05-12 (verification evidence recorded) | **Unblocks:** Production observability criterion
 
 **Gap:** Prometheus stubs return zeros; no real counters. Health checks don't show dependency status. No Grafana dashboards.
 
@@ -1170,11 +1170,12 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 - Modify: All `src/api/main.py` (replace mocked metrics)
 - Create: `monitoring/grafana/dashboards/value-fabric.json`
 - Create: `monitoring/alerting/rules.yml`
+- Verify: `docs/readiness/observability-deployment-readiness.md` (dated PASS evidence and acceptance criteria)
 
 ---
 
 ### **Task 47: Kubernetes Manifests (DEVOPS)** ⭐ CRITICAL
-**Priority:** P0 | **Effort:** 2 days | **Status:** 🟡 Partial (K8s manifests exist for all layers, verification TBD) | **Unblocks:** Production deployment
+**Priority:** P0 | **Effort:** 2 days | **Status:** ✅ COMPLETE 2026-05-12 (verification evidence recorded) | **Unblocks:** Production deployment
 
 **Gap:** No Kubernetes manifests for production deployment. No infrastructure as code.
 
@@ -1187,6 +1188,7 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 **Implementation:**
 - Create: `k8s/base/` with Kustomize structure
 - Create: `k8s/envs/dev/`, `k8s/envs/prod/`, `k8s/routing/{nginx,gateway-api,istio}/`, `k8s/deployments/{dev-nginx,prod-nginx,prod-gateway-api,prod-istio}/`
+- Verify: `docs/readiness/observability-deployment-readiness.md` (dated PASS evidence and acceptance criteria)
 
 ---
 

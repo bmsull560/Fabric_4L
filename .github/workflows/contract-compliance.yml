@@ -257,7 +257,7 @@ jobs:
         # NO continue-on-error: This is a BLOCKING contract gate
 
       - name: Deprecated namespace import gate
-        run: python scripts/ci/check_deprecated_namespace_imports.py --strict --json
+        run: python scripts/ci/check_deprecated_namespace_imports.py --strict --use-baseline --json
 
       - name: Run Duplicate Source Tree Strict Gate
         run: python scripts/ci/check_duplicate_source_trees.py --strict

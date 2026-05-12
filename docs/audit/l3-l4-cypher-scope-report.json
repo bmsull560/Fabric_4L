@@ -1,0 +1,195 @@
+{
+  "targets": [
+    "services/layer3-knowledge/src",
+    "services/layer4-agents/src"
+  ],
+  "files_scanned": 329,
+  "summary": {
+    "Safe": 1,
+    "Unsafe": 0,
+    "Unknown": 19,
+    "unknown_missing_allowlist": 0
+  },
+  "findings": [
+    {
+      "path": "services/layer3-knowledge/src/ingestion/neo4j_loader.py",
+      "line": 666,
+      "function": "delete_by_source",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/ingestion/neo4j_loader.py::delete_by_source::666",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/ingestion/neo4j_loader.py",
+      "line": 680,
+      "function": "delete_by_source",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/ingestion/neo4j_loader.py::delete_by_source::680",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/ingestion/sync_manager.py",
+      "line": 171,
+      "function": "get_sync_status",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/ingestion/sync_manager.py::get_sync_status::171",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/ingestion/sync_manager.py",
+      "line": 207,
+      "function": "list_synced_sources",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/ingestion/sync_manager.py::list_synced_sources::207",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/ingestion/sync_manager.py",
+      "line": 247,
+      "function": "delete_source",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/ingestion/sync_manager.py::delete_source::247",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/schema/initializer.py",
+      "line": 392,
+      "function": "get_statistics",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/schema/initializer.py::get_statistics::392",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/schema/initializer.py",
+      "line": 403,
+      "function": "get_statistics",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/schema/initializer.py::get_statistics::403",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/services/case_study_service.py",
+      "line": 253,
+      "function": "create",
+      "classification": "Safe",
+      "message": "session.run Cypher query guarded by approved tenant-scoped marker",
+      "finding_key": "services/layer3-knowledge/src/services/case_study_service.py::create::253",
+      "allowlisted": false
+    },
+    {
+      "path": "services/layer3-knowledge/src/services/case_study_service.py",
+      "line": 267,
+      "function": "create",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/services/case_study_service.py::create::267",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/services/case_study_service.py",
+      "line": 297,
+      "function": "get",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/services/case_study_service.py::get::297",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/services/case_study_service.py",
+      "line": 332,
+      "function": "update",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/services/case_study_service.py::update::332",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/services/case_study_service.py",
+      "line": 352,
+      "function": "delete",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/services/case_study_service.py::delete::352",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/services/case_study_service.py",
+      "line": 458,
+      "function": "get_by_industry",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/services/case_study_service.py::get_by_industry::458",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer3-knowledge/src/services/case_study_service.py",
+      "line": 472,
+      "function": "get_by_product",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer3-knowledge/src/services/case_study_service.py::get_by_product::472",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer4-agents/src/tools/competitive_tools.py",
+      "line": 245,
+      "function": "_query_graph_for_competitor",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer4-agents/src/tools/competitive_tools.py::_query_graph_for_competitor::245",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer4-agents/src/tools/knowledge.py",
+      "line": 77,
+      "function": "get_entity",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer4-agents/src/tools/knowledge.py::get_entity::77",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer4-agents/src/tools/knowledge.py",
+      "line": 135,
+      "function": "update_entity",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer4-agents/src/tools/knowledge.py::update_entity::135",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer4-agents/src/tools/knowledge.py",
+      "line": 191,
+      "function": "delete_entity",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer4-agents/src/tools/knowledge.py::delete_entity::191",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer4-agents/src/tools/knowledge.py",
+      "line": 235,
+      "function": "search_entities",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer4-agents/src/tools/knowledge.py::search_entities::235",
+      "allowlisted": true
+    },
+    {
+      "path": "services/layer4-agents/src/tools/knowledge.py",
+      "line": 265,
+      "function": "list_entities",
+      "classification": "Unknown",
+      "message": "session.run constant Cypher query requires explicit allowlist or scoped helper marker",
+      "finding_key": "services/layer4-agents/src/tools/knowledge.py::list_entities::265",
+      "allowlisted": true
+    }
+  ]
+}

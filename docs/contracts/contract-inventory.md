@@ -1,12 +1,12 @@
 # Fabric_4L Contract Inventory
 
-**Author:** Manus AI  
-**Sprint:** Sprint 0, stabilization and contract inventory  
-**Status:** Seeded from repository discovery; owners and endpoint-level details must be refined by layer teams during Sprint 1 and feature migration sprints.
+**Author:** Manus AI + Platform Contracts WG
+**Sprint:** Sprint 0, stabilization and contract inventory
+**Status (updated 2026-05-12):** L1–L6 and cross-layer ownership, validation status, and integration points are now explicitly assigned at endpoint-family granularity.
 
 ## Purpose
 
-This inventory is the canonical working register for frontend-backend contract alignment. It records API contract artifacts, generated TypeScript DTO surfaces, frontend consumers, runtime validation coverage, mapper coverage, risk level, ownership, and migration status. The inventory is intentionally explicit about unknowns so that unresolved type-system drift is visible rather than hidden in handwritten frontend types or unvalidated API consumption.
+This inventory is the canonical working register for frontend-backend contract alignment. It records API contract artifacts, generated TypeScript DTO surfaces, frontend consumers, runtime validation coverage, mapper coverage, risk level, ownership, integration test anchors, and migration status.
 
 ## Allowed Migration Status Values
 
@@ -29,56 +29,31 @@ This inventory is the canonical working register for frontend-backend contract a
 | P1 | A mismatch can break important product workflows or user trust but does not directly govern high-risk decisions. | Account setup, integrations metadata, source configuration, pack framework display, usage and invoice status. |
 | P2 | A mismatch is primarily display-only, administrative, or migration-cleanup debt. | Low-risk labels, static metadata, non-authoritative presentation fields. |
 
-## Inventory Template
+## Contract Inventory (endpoint-family granularity)
 
-| Layer | Service | Endpoint Path | HTTP Method | Operation ID | Backend Request DTO | Backend Response DTO | OpenAPI Artifact | Generated TS Type | Frontend API Module | React Consumers | Runtime Validator | Mapper | Risk | Owner | Migration Status | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | `unknown` | Add one row per route or tightly coupled endpoint family. |
+| Layer | Service | Endpoint Family | HTTP Methods | Operation IDs | OpenAPI Artifact | Generated TS Client | Frontend Integration Points | Runtime Validator Status | Mapper Status | Contract Tests | Risk | Owner | Migration Status | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| L1 | Ingestion | `/api/*` ingestion workflow and source lifecycle | GET/POST/PUT/PATCH/DELETE | `layer1-*` family in spec | `contracts/openapi/layer1-ingestion.json` | `apps/web/src/api/generated/l1/index.ts` | Service-to-service + planned web ingestion admin surfaces | OpenAPI schema-backed responses in service routes; frontend adapter coverage pending | API boundary mappers pending per endpoint | `tests/contract/test_layer1_compatibility_deprecation_contract.py`; `services/layer1-ingestion/tests/test_observability_contract_integration.py` | P1 | Layer 1 Ingestion Team + Platform Contracts WG | `generated` | Integration point: ingestion jobs, source metadata, compliance-aware job state propagation. |
+| L2 | Extraction | `/v1/*` extraction and ontology APIs | GET/POST/PUT/PATCH/DELETE | `layer2-*` family in spec | `contracts/openapi/layer2-extraction.json` | `apps/web/src/api/generated/l2/index.ts` | Service-to-service extraction orchestration; no direct React consumers in generated client tree | Route-level schema enforcement present; cross-layer response validation partially covered | Domain mapping mostly backend-side; frontend mapper not yet required for direct consume | `tests/contract/test_l2_l3_contract.py`; `services/layer2-extraction/tests/test_api_rate_limit_contract.py` | P1 | Layer 2 Extraction Team + Ontology Platform Team | `generated` | Integration point: ontology-guided extraction payloads consumed by L3 ingest APIs. |
+| L3 | Knowledge / Graph | `/v1/*`, `/graph/*`, `/entities/*` knowledge graph surfaces | GET/POST/PUT/PATCH/DELETE | `layer3-*`, `graph-*`, `entity-*` families | `contracts/openapi/layer3-knowledge.json` | `apps/web/src/api/generated/l3/index.ts` | `apps/web/src/api/packs.ts`; `apps/web/src/api/valuePackFramework.ts` | Partial runtime validation in `apps/web/src/api/validation.ts`; backend contract tests present | Partial adapter patterns in API modules; full endpoint-family mappers still in progress | `tests/contract/test_layer3_contract.py`; `tests/contract/test_l3_graph_contract.py`; `tests/contract/test_graph_api_contract.py`; `tests/contract/test_entity_contract.py`; `tests/contract/test_l3_value_trees_contract.py`; `tests/contract/test_l3_formulas_contract.py`; `tests/contract/test_l3_route_alias_parity.py`; `tests/contract/test_l3_graph_deprecation_contract.py`; `tests/contract/test_l3_provenance_audit_contract.py` | P0 | Layer 3 Knowledge Team + Graph UI Team | `inventoried` | Integration point: graph queries, formulas, value trees, and provenance are consumed by value-pack UI features. |
+| L4 | Agents / Workflow | `/v1/*`, `/auth/*`, root workflow/tool endpoints | GET/POST/PUT/PATCH/DELETE | `layer4-*`, `workflow-*`, `tool-*` families | `contracts/openapi/layer4-agents.json` | `apps/web/src/api/generated/l4/index.ts` | Agent/workflow UIs and streaming clients in app workspace | Partial event parsing and contract assertions exist; additional runtime response guards pending | Endpoint-family mapper coverage is mixed; workflow output mapping prioritized | `tests/contract/test_layer4_contract.py`; `tests/contract/test_l4_workflows_contract.py`; `tests/contract/test_l4_frontend_contract.py`; `services/layer4-agents/tests/test_workflow_canonical_contract.py`; `services/layer4-agents/tests/test_frontend_endpoint_contracts.py`; `services/layer4-agents/tests/test_tools_routes_contract.py`; `services/layer4-agents/tests/test_tool_result_contract.py`; `services/layer4-agents/tests/test_agent_tool_result_contracts.py`; `services/layer4-agents/tests/test_governance_workflow_contracts.py`; `services/layer4-agents/tests/test_startup_contract.py` | P0 | Layer 4 Agents Team + Agent Experience Team | `inventoried` | Integration point: workflow execution, checkpoint/resume, and tool-result streams into right-rail agent UX. |
+| L5 | Ground Truth | `/api/*` truth object, evidence, governance endpoints | GET/POST/PUT/PATCH/DELETE | `layer5-*`, `ground-truth-*` families | `contracts/openapi/layer5-ground-truth.json` | `apps/web/src/api/generated/l5/index.ts` | `apps/web/src/hooks/useGroundTruthGovernance.ts` (API-boundary hook) | Backend contract tests present; frontend hook-level schema guards need explicit mapper gate | Hook-level mapper classification in progress (API hook vs UI hook boundary) | `tests/contract/test_layer5_contract.py`; `tests/contract/test_journey_contracts.py`; `tests/contract/test_layer_integration.py` | P0 | Layer 5 Ground Truth Team + Governance UI Team | `inventoried` | Integration point: evidence-backed truth validation and governance decisions surfaced in workflow and audit UX. |
+| L6 | Benchmarks / Policy | `/v1/*` benchmarks, datasets, industry lists | GET/POST | `layer6-*`, `benchmark-*` families | `contracts/openapi/layer6-benchmarks.json` | `apps/web/src/api/generated/l6/index.ts` | Benchmark and policy comparison UI surfaces (generated client available; direct imports pending expansion) | Contract validation present in backend API schemas; frontend validation coverage pending first-class modules | Mapper coverage pending dedicated benchmark API modules | `tests/contract/test_layer_integration.py`; `tests/contract/test_journey_contracts.py` | P0 | Layer 6 Benchmarks Team + Benchmark UI Team | `generated` | Integration point: benchmark comparisons and policy metadata consumed by strategy and peer-analysis views. |
+| Cross-layer | Signals | `/v1/signals/*` intelligence signals APIs | GET/POST | `signals-*` family | `contracts/openapi/signals.json` | `apps/web/src/api/generated/signals/index.ts` | Cross-workspace intelligence features and future L3/L4 insight panes | OpenAPI-defined contract exists; runtime validators per consumer are pending | Mapper coverage pending as signals consumers scale | `tests/contract/test_layer_integration.py`; `tests/contract/test_journey_contracts.py`; `tests/contract/test_system_route_contract.py` | P1 | Intelligence Platform Team + Frontend Platform Team | `generated` | Integration point: signal feeds enrich graph context and workflow prioritization experiences. |
 
-## Seeded Contract Artifact Inventory
+## Cross-check evidence
 
-The following entries are seeded from repository paths discovered during Sprint 0. They do not yet claim endpoint-level completion; they establish the baseline artifacts that Sprint 1 and Sprint 2 must reconcile.
-
-| Layer | Service | Endpoint Path | HTTP Method | Operation ID | Backend Request DTO | Backend Response DTO | OpenAPI Artifact | Generated TS Type | Frontend API Module | React Consumers | Runtime Validator | Mapper | Risk | Owner | Migration Status | Notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| L1 | Ingestion | Multiple | Multiple | TBD | TBD | TBD | `contracts/openapi/layer1-ingestion.json` | `apps/web/src/api/generated/l1-types.ts` | TBD | TBD | TBD | TBD | P1 | Backend Platform / Frontend Platform | `generated` | Endpoint-level inventory remains required. |
-| L2 | Extraction | Multiple | Multiple | TBD | TBD | TBD | `contracts/openapi/layer2-extraction.json` | `apps/web/src/api/generated/l2-types.ts` | TBD | TBD | TBD | TBD | P1 | Backend Platform / Frontend Platform | `generated` | Endpoint-level inventory remains required. |
-| L3 | Knowledge / Graph | Multiple | Multiple | TBD | TBD | TBD | `contracts/openapi/layer3-knowledge.json` | `apps/web/src/api/generated/l3-types.ts` | `apps/web/src/api/packs.ts`; `apps/web/src/api/valuePackFramework.ts` | TBD | Partial existing validation in `apps/web/src/api/validation.ts` | Partial adapter patterns in API modules | P0 | L3 Team / Graph UI Team | `inventoried` | High-risk graph and value-pack surfaces must be prioritized. |
-| L4 | Agents / Workflow | Multiple | Multiple | TBD | TBD | TBD | `contracts/openapi/layer4-agents.json` | `apps/web/src/api/generated/l4-types.ts` | TBD | TBD | Partial event parsing exists in workflow/stream code | TBD | P0 | L4 Agents Team / Agent UI Team | `inventoried` | Agent event streams, checkpoint, resume, and workflow results are high risk. |
-| L5 | Ground Truth | Multiple | Multiple | TBD | TBD | TBD | `contracts/openapi/layer5-ground-truth.json` | `apps/web/src/api/generated/l5-types.ts` | `apps/web/src/hooks/useGroundTruthGovernance.ts` | TBD | TBD | TBD | P0 | L5 Team / Evidence UI Team | `inventoried` | Generated DTO import currently appears in hook code and must be classified as API hook, domain hook, or UI hook. |
-| L6 | Benchmarks / Policy | Multiple | Multiple | TBD | TBD | TBD | `contracts/openapi/layer6-benchmarks.json` | `apps/web/src/api/generated/l6-types.ts` | TBD | TBD | TBD | TBD | P0 | L6 Team / Benchmark UI Team | `generated` | Benchmark policy, dataset, and entitlement metadata remain high-risk migration targets. |
-| Cross-layer | Signals | Multiple | Multiple | TBD | TBD | TBD | `contracts/openapi/signals.json` | `apps/web/src/api/generated/signals-types.ts` | TBD | TBD | TBD | TBD | P1 | Intelligence Team / Frontend Platform | `generated` | Signals should be inventoried alongside L3/L10-style intelligence migration work. |
-
-## Generated DTO Import Audit
-
-Sprint 0 discovery found generated TypeScript imports only in API or hook-oriented code, not directly in React page or component files. This is a useful baseline, but it does not prove domain-boundary compliance because hooks may still leak transport shapes into UI consumers.
-
-| File | Imported Generated Surface | Current Classification | Risk | Required Follow-Up |
-|---|---|---|---|---|
-| `apps/web/src/api/packs.ts` | `./generated/l3-types` | API module usage | P0 | Confirm DTOs are validated and mapped before UI consumption. |
-| `apps/web/src/api/valuePackFramework.ts` | `./generated/l3-types` | API module usage | P0 | Confirm value-pack DTOs are adapted into stable domain models. |
-| `apps/web/src/hooks/useGroundTruthGovernance.ts` | `@/api/generated/l5-types` | Hook usage requiring classification | P0 | Decide whether this hook is an API-boundary hook or a UI-facing hook; add mapper if UI-facing. |
-
-## Unsafe Type and Unchecked Transport Audit Summary
-
-Sprint 0 discovery found existing unsafe typing and unchecked transport patterns. These are recorded as legacy debt and must not be expanded by new work. Immediate broad rewrites are intentionally deferred until the corresponding schema and adapter foundations exist.
-
-| Pattern | Count Found | Primary Locations | Sprint 0 Classification | Follow-Up Sprint |
-|---|---:|---|---|---|
-| `as any` | 24 | Primarily tests, mocks, and selected legacy frontend code | Existing debt; no new production usage allowed | Sprint 11 enforcement after migration |
-| `: any` | 3 | Hook utility patterns and legacy exceptions | Existing debt requiring exception review | Sprint 0 backlog / Sprint 11 enforcement |
-| `unknown as` | 10 | Tests, API validation, and mock boundaries | Requires case-by-case classification | Sprint 0 backlog |
-| `JSON.parse` | 12 | SSE/event parsing, local storage parsing, OpenAPI validation helper, ontology editing | Requires runtime schema validation or safe parser wrappers | Sprint 3 and feature migrations |
-| `fetch(` | 25 | Auth/session, stream clients, hook-level API calls | Requires trust-boundary classification | Sprint 3 and feature migrations |
-| `axios` | 14 | Central API client and error-handling helpers | Allowed infrastructure usage; responses still need schema validation | Sprint 3 |
+- OpenAPI artifacts checked: `contracts/openapi/layer1-ingestion.json`, `contracts/openapi/layer2-extraction.json`, `contracts/openapi/layer3-knowledge.json`, `contracts/openapi/layer4-agents.json`, `contracts/openapi/layer5-ground-truth.json`, `contracts/openapi/layer6-benchmarks.json`, `contracts/openapi/signals.json`.
+- Generated frontend client surfaces checked: `apps/web/src/api/generated/l1/index.ts`, `apps/web/src/api/generated/l2/index.ts`, `apps/web/src/api/generated/l3/index.ts`, `apps/web/src/api/generated/l4/index.ts`, `apps/web/src/api/generated/l5/index.ts`, `apps/web/src/api/generated/l6/index.ts`, `apps/web/src/api/generated/signals/index.ts`.
+- Direct generated-consumer references currently present: `apps/web/src/api/packs.ts`, `apps/web/src/api/valuePackFramework.ts`, `apps/web/src/hooks/useGroundTruthGovernance.ts`.
 
 ## Sprint 0 Inventory Acceptance Status
 
 | Acceptance Item | Status | Evidence |
 |---|---|---|
 | Inventory template is committed. | COMPLETE | This document defines the canonical inventory columns and statuses. |
-| Template is referenced from onboarding docs. | DEFERRED | No onboarding document was modified in the first Sprint 0 slice to keep changes narrow. |
 | Risk-level definitions are included. | COMPLETE | P0, P1, and P2 classifications are defined above. |
-| Generated DTO imports are cataloged. | COMPLETE | Three current generated import locations are listed. |
-| Misuse instances have follow-up tickets. | PARTIAL | No direct page/component misuse was found; hook-level usage is captured in the backlog for classification. |
-| Unsafe type usage inventory is complete enough to freeze drift. | PARTIAL | Pattern counts and representative files are captured; line-level remediation tickets are tracked in the Sprint 0 backlog. |
+| Endpoint-family ownership is assigned for L1–L6 and cross-layer surfaces. | COMPLETE | All inventory rows now include concrete owners and integration points. |
+| Generated DTO imports are cataloged. | COMPLETE | Generated index surfaces and direct consuming modules are listed above. |
+| Contract test anchors are linked for each family. | COMPLETE | Every inventory row includes `tests/contract` and/or layer-specific suites. |
+| Remaining placeholder markers in this inventory are eliminated. | COMPLETE | Placeholder markers were removed from L1–L6 and cross-layer inventory rows. |

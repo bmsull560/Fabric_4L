@@ -216,6 +216,8 @@ Outdated documentation moves to `/archive/YYYY-MM/`:
 
 See [Archive Registry](./archive/archive-registry.md) for complete history.
 
+Historical root-level quality reports are archived under [`/archive/quality-reports/`](./archive/quality-reports/).
+
 ---
 
 ## Success Metrics

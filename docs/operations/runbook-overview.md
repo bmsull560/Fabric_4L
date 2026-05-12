@@ -294,13 +294,22 @@ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 
 ## Contact Information
 
-| Role | Name | Primary | Escalation |
-|------|------|---------|------------|
-| On-Call Engineer | Rotation | PagerDuty | Engineering Lead |
-| Engineering Lead | TBD | Slack @eng-lead | CTO |
-| Security Lead | TBD | Slack @security | CISO |
-| SRE Lead | TBD | Slack @sre-lead | VP Engineering |
-| Incident Commander | Rotation | #incident-response | CEO (SEV-0 only) |
+| Role | Contact Alias | Primary On-Call Routing | Backup On-Call Routing | Escalation |
+|------|---------------|-------------------------|------------------------|------------|
+| On-Call Engineer | `@vf-eng-oncall` | PagerDuty service `pagerduty-critical` | Slack `#vf-alerts-critical` | Engineering Lead |
+| Engineering Lead | `@vf-eng-leadership` | Slack `#engineering-leads` | PagerDuty schedule `engineering-lead-secondary` | VP Engineering |
+| Security Lead | `@vf-security-lead` | PagerDuty service `pagerduty-critical` (security incidents) | Slack `#vf-alerts-critical` + `#security` | CISO |
+| SRE Lead | `@vf-sre-leadership` | Alertmanager receiver `pagerduty-critical` + Slack `#vf-alerts-critical` | PagerDuty schedule `sre-secondary` | VP Engineering |
+| Incident Commander | `@vf-incident-command` | Slack `#incident-response` | PagerDuty schedule `incident-commander-backup` | CEO (SEV-0 only) |
+
+> Routing alignment: The primary and backup channels above are intentionally aligned with `monitoring/alertmanager/alertmanager.yml` (`pagerduty-critical`, `#vf-alerts-critical`) and production Alertmanager routes in `monitoring/alertmanager/alertmanager-production.yml`.
+
+### Runbook Ownership and Review Cadence
+
+- **Owner**: Site Reliability Engineering (`@vf-sre-leadership`)
+- **Review cadence**: Quarterly (first business week of each quarter)
+- **Scope**: Validate role aliases, PagerDuty schedules/services, Slack channels, and escalation targets.
+- **Required update path**: If any alias or route changes, update this runbook in the same change set as Alertmanager/paging configuration.
 
 ## External Dependencies
 
@@ -316,7 +325,7 @@ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 **Last Updated**: 2026-04-15  
 **Version**: 1.0.0  
 **Owner**: Site Reliability Engineering  
-**Next Review**: 2026-07-15
+**Next Review**: 2026-07-01 (quarterly cadence)
 
 
 ## Observability Contracts

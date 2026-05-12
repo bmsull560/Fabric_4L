@@ -4,13 +4,15 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from value_fabric.layer3.security.query_validator import QueryValidator, ValidationSeverity
+
 
 class TenantQueryValidationError(ValueError):
     """Raised when Cypher execution violates tenant isolation requirements."""
 
 
 _MATCH_PATTERN = re.compile(r"\bMATCH\b", re.IGNORECASE)
-_TENANT_MARKERS = ("tenant_id", "tenantId", "$_tenant_id", "$tenant_id", "$tenantId")
+_CLAUSE_PATTERN = re.compile(r"\b(MATCH|OPTIONAL\s+MATCH|CALL\s*\{|UNION(?:\s+ALL)?|WITH)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -41,17 +43,28 @@ class TenantQueryExecutor:
 
     @classmethod
     def _validate(cls, query: str, params: dict[str, Any], context: TenantExecutionContext) -> None:
-        lowered = query.lower()
+        validator = QueryValidator(fail_closed=False)
         if context.is_bypass:
             return
         if not context.tenant_id and not context.allow_system_query:
             raise TenantQueryValidationError("Tenant context is required for Cypher execution")
 
         if _MATCH_PATTERN.search(query):
-            has_tenant = any(marker.lower() in lowered for marker in _TENANT_MARKERS) or any(
-                key in params for key in ("tenant_id", "_tenant_id", "tenantId")
-            )
-            if not has_tenant and not context.allow_system_query:
+            findings = validator.validate_structural_tenant_scope(query, query_name="tenant_query_executor")
+            structural_errors = [f for f in findings if f.severity == ValidationSeverity.ERROR]
+            if structural_errors and not context.allow_system_query:
+                details = "; ".join(f.message for f in structural_errors)
                 raise TenantQueryValidationError(
-                    "Denied broad MATCH traversal without tenant constraints; set allow_system_query=True only for allowlisted system queries"
+                    f"Denied Cypher query due to missing tenant scoping in MATCH path: {details}"
+                )
+
+            clause_tokens = [m.group(1).upper() for m in _CLAUSE_PATTERN.finditer(query)]
+            ambiguous = (
+                clause_tokens.count("MATCH") + clause_tokens.count("OPTIONAL MATCH") > 1
+                or any(token.startswith("UNION") for token in clause_tokens)
+                or "CALL{" in "".join(token.replace(" ", "") for token in clause_tokens)
+            )
+            if ambiguous and not context.allow_system_query:
+                raise TenantQueryValidationError(
+                    "Denied ambiguous or multi-clause Cypher; only allowlisted system queries may opt in via allow_system_query=True"
                 )

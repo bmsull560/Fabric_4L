@@ -31,17 +31,14 @@ import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Literal, TypedDict
 
-from value_fabric.shared.models.typed_dict import TypedDictModel
-
-
-class ValidationFinding_to_dictResult(TypedDictModel):
-    line_number: Any
-    message: Any
-    pattern: Any
-    severity: Any
-    suggestion: Any
+class ValidationFindingPayload(TypedDict):
+    severity: Literal["error", "warning", "info"]
+    message: str
+    line_number: int | None
+    pattern: str | None
+    suggestion: str | None
 
 logger = logging.getLogger(__name__)
 
@@ -91,15 +88,15 @@ class ValidationFinding:
     pattern: str | None = None
     suggestion: str | None = None
     
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> ValidationFindingPayload:
         """Convert finding to dictionary."""
-        return ValidationFinding_to_dictResult.model_validate({
-            "severity": self.severity.value,
-            "message": self.message,
-            "line_number": self.line_number,
-            "pattern": self.pattern,
-            "suggestion": self.suggestion,
-        })
+        return ValidationFindingPayload(
+            severity=self.severity.value,
+            message=self.message,
+            line_number=self.line_number,
+            pattern=self.pattern,
+            suggestion=self.suggestion,
+        )
 
 
 class QueryValidator:
@@ -402,7 +399,7 @@ class ValidatedNeo4jSession:
         self._strict = strict
         self._validator = QueryValidator(fail_closed=strict)
     
-    async def run(self, query: str, parameters: dict | None = None, **kwargs) -> Any:
+    async def run(self, query: str, parameters: dict | None = None, **kwargs) -> object:
         """Run query with validation.
         
         Args:

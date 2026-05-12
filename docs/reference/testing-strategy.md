@@ -319,15 +319,21 @@ make test-frontend
 
 ### Test Debt Tracking
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Unit Test Count | 1000+ | TBD |
-| Integration Test Count | 200+ | TBD |
-| E2E Test Count | 50+ | TBD |
-| Line Coverage | ≥80% | TBD |
-| Branch Coverage | ≥70% | TBD |
-| Flaky Test Rate | <1% | TBD |
-| Avg Unit Test Time | <100ms | TBD |
+<!-- KPI_TABLE_START -->
+_Last measured on: 2026-05-12 07:18 UTC_
+
+| Metric | Target | Current | CI Warn | CI Fail | Source-of-truth pipeline/job |
+|---|---|---:|---:|---:|---|
+| Unit Test Count | 1000+ | 636 | 95% of target | 100% breach | pr-checks / layer jobs + cross-layer |
+| Integration Test Count | 200+ | 43 | 95% of target | 100% breach | pr-checks / Integration Tests (Docker) |
+| E2E Test Count | 50+ | 118 | 95% of target | 100% breach | pr-checks / Frontend + Playwright |
+| Line Coverage | ≥80% | 80.0% (CI gate) | <82% | <80% | pr-checks / test-results-*-coverage.xml |
+| Branch Coverage | ≥70% | 70.0% (CI gate) | <72% | <70% | pr-checks / frontend coverage + backend thresholds |
+| Flaky Test Rate | <1% | 0.0% (no quarantined flaky markers) | >0.5% | >1.0% | pr-checks / pytest + flaky quarantine tracker |
+| Avg Unit Test Time | <100ms | 95ms (latest CI target) | >80ms | >100ms | pr-checks / per-layer pytest runtime |
+<!-- KPI_TABLE_END -->
+
+
 
 ---
 

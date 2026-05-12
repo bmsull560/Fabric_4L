@@ -1,150 +1,200 @@
 #!/usr/bin/env python3
-"""Fail on high-risk Layer 3 Cypher construction patterns.
+"""Fail on Layer 3/4 Cypher scope risks with explicit classification governance.
 
-This gate intentionally targets injection-prone patterns that bypass tenant
-parameters. It is not a full Cypher parser; it complements tenant isolation
-tests and the ScopedQuery builder boundary.
+This gate classifies each discovered query as:
+- Safe: approved scoped helper markers are present.
+- Unsafe: known anti-patterns (inline f-strings, tenant interpolation, etc.).
+- Unknown: Cypher appears present but could not be proven safe.
+
+Unknown findings must be explicitly allowlisted to preserve drift visibility.
 """
 
 from __future__ import annotations
 
-import ast
 import argparse
+import ast
 import json
-import sys
+from dataclasses import dataclass
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TARGET = ROOT / "services" / "layer3-knowledge" / "src"
+DEFAULT_TARGETS = (
+    ROOT / "services" / "layer3-knowledge" / "src",
+    ROOT / "services" / "layer4-agents" / "src",
+)
 SKIP_PARTS = {"migrations", "__pycache__"}
-APPROVED_ROUTE_MARKERS = ("TenantScopedCypher", "custom_tenant_query", "match_node_query", "ScopedQuery", "strict-scoped-query-execution")
+APPROVED_ROUTE_MARKERS = (
+    "TenantScopedCypher",
+    "custom_tenant_query",
+    "match_node_query",
+    "ScopedQuery",
+    "strict-scoped-query-execution",
+)
+
+CLASS_SAFE = "Safe"
+CLASS_UNSAFE = "Unsafe"
+CLASS_UNKNOWN = "Unknown"
 
 
-class Finding:
-    def __init__(self, path: Path, line: int, message: str) -> None:
+@dataclass(frozen=True)
+class QueryFinding:
+    path: Path
+    line: int
+    function: str
+    classification: str
+    message: str
+
+    def key(self) -> str:
+        return f"{self.path.relative_to(ROOT)}::{self.function}::{self.line}"
+
+
+class QueryClassifier(ast.NodeVisitor):
+    def __init__(self, path: Path, source: str) -> None:
         self.path = path
-        self.line = line
-        self.message = message
+        self.source = source
+        self.source_lines = source.splitlines()
+        self.findings: list[QueryFinding] = []
+        self.function_stack: list[str] = []
 
-    def __str__(self) -> str:
-        rel = self.path.relative_to(ROOT)
-        return f"{rel}:{self.line}: {self.message}"
+    def _function_name(self) -> str:
+        return self.function_stack[-1] if self.function_stack else "<module>"
 
+    def _add(self, node: ast.AST, classification: str, message: str) -> None:
+        self.findings.append(
+            QueryFinding(
+                path=self.path,
+                line=getattr(node, "lineno", 1),
+                function=self._function_name(),
+                classification=classification,
+                message=message,
+            )
+        )
 
-def _contains_name(node: ast.AST, names: set[str]) -> bool:
-    return any(isinstance(child, ast.Name) and child.id in names for child in ast.walk(node))
+    def _window_contains(self, line: int, markers: tuple[str, ...], radius: int = 12) -> bool:
+        start = max(0, line - radius)
+        end = min(len(self.source_lines), line + radius)
+        window = "\n".join(self.source_lines[start:end])
+        return any(marker in window for marker in markers)
 
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self.function_stack.append(node.name)
+        self.generic_visit(node)
+        self.function_stack.pop()
 
-def _string_value(node: ast.AST) -> str:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value
-    if isinstance(node, ast.JoinedStr):
-        return "".join(part.value if isinstance(part, ast.Constant) else "{}" for part in node.values)
-    return ""
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.function_stack.append(node.name)
+        self.generic_visit(node)
+        self.function_stack.pop()
 
-
-def scan_file(path: Path) -> list[Finding]:
-    source = path.read_text(encoding="utf-8")
-    tree = ast.parse(source, filename=str(path))
-    findings: list[Finding] = []
-
-    is_route_file = "api/routes" in path.as_posix()
-    source_lines = source.splitlines()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.JoinedStr):
-            rendered = _string_value(node)
-            if "tenant_id:" in rendered and _contains_name(node, {"tenant_id", "effective_tenant_id"}):
-                findings.append(
-                    Finding(path, node.lineno, "tenant_id must be passed as a Neo4j parameter, not interpolated")
-                )
-            if "type(" in rendered and _contains_name(node, {"relationship_types", "rel_types_str"}):
-                findings.append(
-                    Finding(path, node.lineno, "relationship type filters must use validated parameter lists")
-                )
-
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            if node.func.attr != "run" or not node.args:
-                continue
+    def visit_Call(self, node: ast.Call) -> None:
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "run" and node.args:
             first_arg = node.args[0]
             if isinstance(first_arg, ast.JoinedStr):
-                findings.append(
-                    Finding(path, node.lineno, "session.run must not receive an inline f-string Cypher query")
-                )
-        if (
-            is_route_file
-            and isinstance(node, ast.Constant)
-            and isinstance(node.value, str)
-            and "MATCH (" in node.value
-            and (
-                lambda ln: not any(
-                    marker in "\n".join(source_lines[max(0, ln - 12) : min(len(source_lines), ln + 12)])
-                    for marker in APPROVED_ROUTE_MARKERS
-                )
-            )(node.lineno)
-        ):
-            findings.append(
-                Finding(
-                    path,
-                    node.lineno,
-                    "api/routes Cypher MATCH must be created via approved tenant-scoped helper",
-                )
-            )
+                self._add(node, CLASS_UNSAFE, "session.run received inline f-string Cypher query")
+            elif isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+                q = first_arg.value
+                if "MATCH (" in q:
+                    if self._window_contains(node.lineno, APPROVED_ROUTE_MARKERS):
+                        self._add(node, CLASS_SAFE, "session.run Cypher query guarded by approved tenant-scoped marker")
+                    else:
+                        self._add(node, CLASS_UNKNOWN, "session.run constant Cypher query requires explicit allowlist or scoped helper marker")
+        self.generic_visit(node)
 
-    return findings
+    def visit_JoinedStr(self, node: ast.JoinedStr) -> None:
+        rendered = "".join(part.value if isinstance(part, ast.Constant) else "{}" for part in node.values)
+        if "tenant_id:" in rendered:
+            if any(isinstance(child, ast.Name) and child.id in {"tenant_id", "effective_tenant_id"} for child in ast.walk(node)):
+                self._add(node, CLASS_UNSAFE, "tenant_id must be passed as Neo4j parameter, not interpolated")
+        if "type(" in rendered:
+            if any(isinstance(child, ast.Name) and child.id in {"relationship_types", "rel_types_str"} for child in ast.walk(node)):
+                self._add(node, CLASS_UNSAFE, "relationship type filters must use validated parameter lists")
+        self.generic_visit(node)
 
 
 def iter_python_files(target: Path) -> list[Path]:
-    files: list[Path] = []
-    for path in target.rglob("*.py"):
-        if any(part in SKIP_PARTS for part in path.parts):
-            continue
-        files.append(path)
-    return sorted(files)
+    return sorted(
+        p for p in target.rglob("*.py") if not any(part in SKIP_PARTS for part in p.parts)
+    )
+
+
+def load_unknown_allowlist(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    data = json.loads(path.read_text(encoding="utf-8"))
+    entries = data.get("allowlist", [])
+    return {str(item["finding_key"]) for item in entries if isinstance(item, dict) and "finding_key" in item}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("target", nargs="?", default=str(DEFAULT_TARGET))
-    parser.add_argument("--report-json", default="", help="Optional JSON audit report path")
+    parser.add_argument("targets", nargs="*", help="Optional explicit target directories")
+    parser.add_argument("--report-json", default="docs/audit/l3-l4-cypher-scope-report.json")
+    parser.add_argument("--unknown-allowlist", default="config/production-readiness/l3-l4-cypher-unknown-allowlist.json")
     args = parser.parse_args()
 
-    target = (ROOT / args.target).resolve() if not Path(args.target).is_absolute() else Path(args.target)
-    findings: list[Finding] = []
-    files = iter_python_files(target)
-    for path in files:
-        findings.extend(scan_file(path))
+    targets = [Path(t).resolve() for t in args.targets] if args.targets else list(DEFAULT_TARGETS)
 
-    if args.report_json:
-        report_path = (ROOT / args.report_json).resolve() if not Path(args.report_json).is_absolute() else Path(args.report_json)
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(
-            json.dumps(
-                {
-                    "target": str(target.relative_to(ROOT) if target.is_relative_to(ROOT) else target),
-                    "files_scanned": len(files),
-                    "findings": [
-                        {
-                            "path": str(finding.path.relative_to(ROOT)),
-                            "line": finding.line,
-                            "message": finding.message,
-                        }
-                        for finding in findings
-                    ],
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+    findings: list[QueryFinding] = []
+    files_scanned = 0
+    for target in targets:
+        for path in iter_python_files(target):
+            files_scanned += 1
+            source = path.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(path))
+            classifier = QueryClassifier(path=path, source=source)
+            classifier.visit(tree)
+            findings.extend(classifier.findings)
 
-    if findings:
-        print("Layer 3 Cypher scope gate failed:")
-        for finding in findings:
-            print(f"  {finding}")
+    allowlisted_unknowns = load_unknown_allowlist((ROOT / args.unknown_allowlist).resolve())
+
+    unsafe = [f for f in findings if f.classification == CLASS_UNSAFE]
+    unknown = [f for f in findings if f.classification == CLASS_UNKNOWN]
+    unknown_missing_allowlist = [f for f in unknown if f.key() not in allowlisted_unknowns]
+
+    report_payload = {
+        "targets": [str(t.relative_to(ROOT) if t.is_relative_to(ROOT) else t) for t in targets],
+        "files_scanned": files_scanned,
+        "summary": {
+            CLASS_SAFE: sum(1 for f in findings if f.classification == CLASS_SAFE),
+            CLASS_UNSAFE: len(unsafe),
+            CLASS_UNKNOWN: len(unknown),
+            "unknown_missing_allowlist": len(unknown_missing_allowlist),
+        },
+        "findings": [
+            {
+                "path": str(f.path.relative_to(ROOT)),
+                "line": f.line,
+                "function": f.function,
+                "classification": f.classification,
+                "message": f.message,
+                "finding_key": f.key(),
+                "allowlisted": f.classification == CLASS_UNKNOWN and f.key() in allowlisted_unknowns,
+            }
+            for f in findings
+        ],
+    }
+
+    report_path = (ROOT / args.report_json).resolve()
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report_payload, indent=2) + "\n", encoding="utf-8")
+
+    print(f"Layer 3/4 Cypher scope report written: {report_path.relative_to(ROOT)}")
+    print(f"Files scanned: {files_scanned}")
+    print(f"Unsafe: {len(unsafe)} | Unknown: {len(unknown)} | Unknown (missing allowlist): {len(unknown_missing_allowlist)}")
+
+    if unsafe:
+        print("FAIL: unsafe findings detected")
+        for f in unsafe:
+            print(f"  {f.key()} :: {f.message}")
         return 1
 
-    print(f"Layer 3 Cypher scope gate passed. Files scanned: {len(files)}")
+    if unknown_missing_allowlist:
+        print("FAIL: unknown findings require explicit allowlist entry")
+        for f in unknown_missing_allowlist:
+            print(f"  {f.key()} :: {f.message}")
+        return 1
+
+    print("PASS: no unsafe findings and all unknown findings are explicitly allowlisted")
     return 0
 
 
