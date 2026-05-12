@@ -246,6 +246,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/validation/seed/job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Validation Ingestion Job
+         * @description Seed deterministic Layer 1 job evidence for backend-integrated validation.
+         *
+         *     This endpoint is non-production only, service-auth gated, and writes
+         *     tenant-scoped Layer 1 records through the canonical persistence models.
+         *     It exists to prove the live frontend can read real Layer 1 job state
+         *     without requiring external crawling or mocks during Playwright validation.
+         */
+        post: operations["seed_validation_ingestion_job_api_v1_ingestion_validation_seed_job_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/targets": {
         parameters: {
             query?: never;
@@ -1365,6 +1390,10 @@ export interface components {
              * Format: uuid
              */
             target_id: string;
+            /** Configuration */
+            configuration: {
+                [key: string]: unknown;
+            };
             /** Status */
             status: string;
             /** Priority */
@@ -1990,6 +2019,21 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * ValidationIngestionJobSeedRequest
+         * @description Non-production deterministic ingestion evidence for backend-integrated Playwright.
+         */
+        ValidationIngestionJobSeedRequest: {
+            /**
+             * Domain
+             * @default meridian-auto.com
+             */
+            domain: string;
+            /** Url */
+            url?: string | null;
+            /** @default COMPLETED */
+            status: components["schemas"]["JobStatus"];
+        };
+        /**
          * ValidationWarning
          * @description Validation warning detail.
          */
@@ -2385,6 +2429,41 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seed_validation_ingestion_job_api_v1_ingestion_validation_seed_job_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationIngestionJobSeedRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
                     };
                 };
             };

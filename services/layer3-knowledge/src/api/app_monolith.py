@@ -119,6 +119,19 @@ def _extract_tenant_id(request: Request | None) -> str | None:
     if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
+
+
+def _resolve_ingest_tenant_id(header_tenant_id: str | None, body_tenant_id: str | None) -> str:
+    """Resolve Layer 2 ingestion tenant scope without fail-open defaults."""
+    normalized_header = header_tenant_id.strip() if header_tenant_id else ""
+    normalized_body = body_tenant_id.strip() if body_tenant_id else ""
+
+    if normalized_header and normalized_body and normalized_header != normalized_body:
+        raise HTTPException(status_code=403, detail="Tenant header does not match request tenant_id")
+    tenant_id = normalized_header or normalized_body
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail="tenant_id is required for RDF ingestion")
+    return tenant_id
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
 from .exceptions import (
@@ -1529,11 +1542,7 @@ async def ingest_rdf(
     x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
 ):
     """Ingest RDF data from Layer 2 extraction pipeline."""
-    # Extract tenant_id from header or request body (header takes precedence)
-    # Strip whitespace and fall back to "system" for empty/None values
-    tenant_id = (x_tenant_id or request.tenant_id or "system").strip()
-    if not tenant_id:
-        tenant_id = "system"
+    tenant_id = _resolve_ingest_tenant_id(x_tenant_id, request.tenant_id)
 
     try:
         stats = await sync_manager.sync_extraction_result(

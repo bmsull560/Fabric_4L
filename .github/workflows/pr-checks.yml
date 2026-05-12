@@ -221,7 +221,15 @@ jobs:
 
       - name: Run Layer 3 Cypher scope gate
         working-directory: ${{ github.workspace }}
-        run: python scripts/ci/check_layer3_cypher_scope.py services/layer3-knowledge/src
+        run: python scripts/ci/check_layer3_cypher_scope.py services/layer3-knowledge/src --report-json artifacts/layer3-cypher-scope-audit.json
+
+      - name: Upload Layer 3 Cypher scope audit
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: layer3-cypher-scope-audit
+          path: artifacts/layer3-cypher-scope-audit.json
+          if-no-files-found: ignore
 
       - name: Run tests with coverage
         run: |
@@ -875,8 +883,11 @@ jobs:
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: packages/platform-contract/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        run: corepack enable && corepack prepare pnpm@10.18.1 --activate
 
       - name: Install dependencies
         run: |
@@ -884,7 +895,7 @@ jobs:
 
       - name: Install platform contract package dependencies
         working-directory: packages/platform-contract
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Run contract and architecture tests
         run: make contract-tests

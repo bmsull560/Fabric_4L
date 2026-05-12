@@ -174,9 +174,9 @@ install_metrics_middleware(
 )
 
 # SecurityMiddleware — input validation and security headers (before CORS)
-# L6 has no skip paths — all endpoints require strict validation
+# Probe endpoints stay unauthenticated for platform health/readiness checks.
 _security_config_l6 = SecurityConfig.from_env(
-    skip_validation_paths=frozenset(),
+    skip_validation_paths=frozenset({"/health", "/ready", "/metrics"}),
     strict_mode=True,
 )
 add_security_middleware(app, config=_security_config_l6)

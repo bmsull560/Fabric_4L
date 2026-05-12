@@ -181,6 +181,18 @@
               "title": "Type"
             },
             "description": "Filter by workflow type (e.g. business_case)"
+          },
+          {
+            "name": "include_completed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include terminal workflows in the list response",
+              "default": false,
+              "title": "Include Completed"
+            },
+            "description": "Include terminal workflows in the list response"
           }
         ],
         "responses": {
@@ -1140,6 +1152,94 @@
         }
       }
     },
+    "/v1/validation/seed/auth-context": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Seed Validation Auth Context",
+        "description": "Seed deterministic auth context for backend-integrated validation.\n\nThis endpoint is non-production only and persists no raw secrets. It is\ndesigned to make local/CI backend-integrated tests reproducible while\nkeeping runtime secrets sourced exclusively from environment or a secret\nmanager.",
+        "operationId": "seed_validation_auth_context_v1_validation_seed_auth_context_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationAuthContextSeedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Seed Validation Auth Context V1 Validation Seed Auth Context Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/validation/session": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Issue Validation Session",
+        "description": "Issue a non-production browser session for backend-integrated Playwright validation.\n\nThe endpoint is deliberately gated by the same service-authenticated,\nprivileged, non-production boundary as deterministic seed data. It uses the\ncanonical JWT and CSRF cookie mechanics, and returns only non-secret UI\nmetadata.",
+        "operationId": "issue_validation_session_v1_validation_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Issue Validation Session V1 Validation Session Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/analysis/roi": {
       "post": {
         "tags": [
@@ -1307,6 +1407,59 @@
         }
       }
     },
+    "/v1/cases/{case_id}/regenerate": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Regenerate Business Case",
+        "description": "Regenerate a business case with latest inputs and preserve revision lineage.",
+        "operationId": "regenerate_business_case_v1_cases__case_id__regenerate_post",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateBusinessCaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/cases/{case_id}": {
       "get": {
         "tags": [
@@ -1333,6 +1486,50 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BusinessCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/validation/seed/business-case-lifecycle": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Seed Business Case Lifecycle",
+        "description": "Seed deterministic business-case lifecycle state for non-production E2E validation.",
+        "operationId": "seed_business_case_lifecycle_v1_validation_seed_business_case_lifecycle_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessCaseLifecycleSeedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Seed Business Case Lifecycle V1 Validation Seed Business Case Lifecycle Post"
                 }
               }
             }
@@ -1584,6 +1781,48 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cases/{case_id}/workspace/evidence": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Get Workspace Evidence",
+        "operationId": "get_workspace_evidence_v1_cases__case_id__workspace_evidence_get",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceEvidenceResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -2519,6 +2758,444 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EvidenceDecisionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks": {
+      "get": {
+        "tags": [
+          "tasks",
+          "tasks"
+        ],
+        "summary": "List Tasks",
+        "description": "List tenant-scoped tasks with optional account and status filters.",
+        "operationId": "list_tasks_v1_tasks_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TaskStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "tasks",
+          "tasks"
+        ],
+        "summary": "Create Task",
+        "description": "Create a tenant-scoped task that remains available after page reload.",
+        "operationId": "create_task_v1_tasks_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tasks/{task_id}": {
+      "patch": {
+        "tags": [
+          "tasks",
+          "tasks"
+        ],
+        "summary": "Update Task",
+        "description": "Update mutable task fields for the authenticated tenant only.",
+        "operationId": "update_task_v1_tasks__task_id__patch",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/comments": {
+      "get": {
+        "tags": [
+          "comments",
+          "comments"
+        ],
+        "summary": "List Comments",
+        "description": "List tenant-scoped comments with optional subject/account filters.",
+        "operationId": "list_comments_v1_comments_get",
+        "parameters": [
+          {
+            "name": "subject_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Type"
+            }
+          },
+          {
+            "name": "subject_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject Id"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "comments",
+          "comments"
+        ],
+        "summary": "Create Comment",
+        "description": "Create a tenant-scoped comment that remains available after page reload.",
+        "operationId": "create_comment_v1_comments_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "tags": [
+          "notifications",
+          "notifications"
+        ],
+        "summary": "List Notifications",
+        "description": "List tenant-scoped in-app notifications.",
+        "operationId": "list_notifications_v1_notifications_get",
+        "parameters": [
+          {
+            "name": "read",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Read"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "notifications",
+          "notifications"
+        ],
+        "summary": "Create Notification",
+        "description": "Create a tenant-scoped notification for validation and explicit workflow events.",
+        "operationId": "create_notification_v1_notifications_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications/{notification_id}/read": {
+      "patch": {
+        "tags": [
+          "notifications",
+          "notifications"
+        ],
+        "summary": "Mark Notification Read",
+        "description": "Mark a tenant-scoped notification as read.",
+        "operationId": "mark_notification_read_v1_notifications__notification_id__read_patch",
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationRecord"
                 }
               }
             }
@@ -5117,6 +5794,22 @@
         "operationId": "auth_refresh_auth_oidc_refresh_post",
         "parameters": [
           {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
             "name": "vf_session",
             "in": "cookie",
             "required": false,
@@ -5130,6 +5823,22 @@
                 }
               ],
               "title": "Vf Session"
+            }
+          },
+          {
+            "name": "vf_csrf_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vf Csrf Token"
             }
           }
         ],
@@ -5167,15 +5876,59 @@
         "summary": "Auth Logout",
         "description": "Expire the session and CSRF cookies.\n\nSets both cookies to Max-Age=0 so the browser removes them immediately.\nSafe to call even when no session exists.",
         "operationId": "auth_logout_auth_oidc_logout_post",
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Csrf-Token"
+            }
+          },
+          {
+            "name": "vf_csrf_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vf Csrf Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
                   "type": "object",
+                  "additionalProperties": true,
                   "title": "Response Auth Logout Auth Oidc Logout Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -10598,6 +11351,18 @@
               }
             ]
           },
+          "contextEnvelope": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextenvelope"
+          },
           "entityContext": {
             "anyOf": [
               {
@@ -11331,6 +12096,38 @@
         ],
         "title": "Body_upsert_feature_flag_v1_feature_flags__flag_key__put"
       },
+      "BusinessCaseLifecycleSeedRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "draft_case_id": {
+            "type": "string",
+            "title": "Draft Case Id",
+            "default": "case-draft-001"
+          },
+          "approved_case_id": {
+            "type": "string",
+            "title": "Approved Case Id",
+            "default": "case-e2e-approved-001"
+          },
+          "approved_case_aliases": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Approved Case Aliases"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id"
+        ],
+        "title": "BusinessCaseLifecycleSeedRequest",
+        "description": "Non-production deterministic lifecycle seed payload for backend E2E validation."
+      },
       "BusinessCaseRequest": {
         "properties": {
           "account_id": {
@@ -11487,6 +12284,19 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Case Metadata"
+          },
+          "revision_history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Revision History"
+          },
+          "diff_summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Diff Summary"
           }
         },
         "type": "object",
@@ -11786,6 +12596,81 @@
         ],
         "title": "CheckpointListResponse",
         "description": "Response containing checkpoint timeline."
+      },
+      "CommentListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommentRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CommentListResponse"
+      },
+      "CommentRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "subject_type": {
+            "type": "string",
+            "title": "Subject Type"
+          },
+          "subject_id": {
+            "type": "string",
+            "title": "Subject Id"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "author": {
+            "type": "string",
+            "title": "Author"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "subject_type",
+          "subject_id",
+          "body",
+          "author",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CommentRecord"
       },
       "CompanyKnowledgeProfileCreateRequest": {
         "properties": {
@@ -12657,6 +13542,169 @@
         ],
         "title": "CreateCaseResponse",
         "description": "Created case response."
+      },
+      "CreateCommentRequest": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "subject_type": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Subject Type"
+          },
+          "subject_id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Subject Id"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject_type",
+          "subject_id",
+          "body"
+        ],
+        "title": "CreateCommentRequest"
+      },
+      "CreateNotificationRequest": {
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "subject_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
+          },
+          "subject_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Type"
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "message"
+        ],
+        "title": "CreateNotificationRequest"
+      },
+      "CreateTaskRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "assignee": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "CreateTaskRequest"
       },
       "CrmMatchResult": {
         "properties": {
@@ -15169,6 +16217,108 @@
         "title": "NodeMetrics",
         "description": "Metrics for a single node execution."
       },
+      "NotificationListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "unread_count": {
+            "type": "integer",
+            "title": "Unread Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "unread_count"
+        ],
+        "title": "NotificationListResponse"
+      },
+      "NotificationRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "subject_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
+          },
+          "subject_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Type"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "read": {
+            "type": "boolean",
+            "title": "Read",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "title",
+          "message",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "NotificationRecord"
+      },
       "OnboardingStatusResponse": {
         "properties": {
           "tenant_id": {
@@ -16278,6 +17428,58 @@
         ],
         "title": "RankHypothesesRequest",
         "description": "Request to re-rank hypotheses."
+      },
+      "RegenerateBusinessCaseRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id",
+            "description": "Account UUID identifier"
+          },
+          "opportunity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opportunity Id"
+          },
+          "sections": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sections"
+          },
+          "output_format": {
+            "type": "string",
+            "title": "Output Format",
+            "description": "Output format (pdf, docx, html)",
+            "default": "pdf"
+          },
+          "custom_inputs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Custom Inputs",
+            "description": "Optional custom inputs, including truth_requirements and organization_id"
+          },
+          "previous_case_id": {
+            "type": "string",
+            "title": "Previous Case Id",
+            "description": "Existing case id being regenerated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "previous_case_id"
+        ],
+        "title": "RegenerateBusinessCaseRequest",
+        "description": "Regenerate request with lineage to an existing case."
       },
       "RegisterTenantResponse": {
         "properties": {
@@ -17624,6 +18826,112 @@
         "title": "SyncTriggerResponse",
         "description": "Manual sync trigger response."
       },
+      "TaskListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "TaskListResponse"
+      },
+      "TaskRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "assignee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus",
+            "default": "open"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TaskRecord"
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "in_progress",
+          "completed"
+        ],
+        "title": "TaskStatus"
+      },
       "TenantContextResponse": {
         "properties": {
           "tenant": {
@@ -18136,6 +19444,57 @@
         "title": "ToolSchemaResponse",
         "description": "Typed response model for a single tool schema."
       },
+      "UpdateTaskRequest": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assignee": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          }
+        },
+        "type": "object",
+        "title": "UpdateTaskRequest"
+      },
       "UsageMetricsResponse": {
         "properties": {
           "tenant_id": {
@@ -18421,6 +19780,67 @@
         ],
         "title": "ValidateTruthRequest"
       },
+      "ValidationAuthContextSeedRequest": {
+        "properties": {
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "maxLength": 63,
+            "minLength": 1,
+            "title": "Tenant Slug",
+            "default": "tenant-e2e-001"
+          },
+          "tenant_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Tenant Name",
+            "default": "E2E Validation Tenant"
+          },
+          "service_account_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Account Id",
+            "default": "svc-playwright-backend-validation"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSeededApiKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "account_mappings": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Account Mappings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ValidationAuthContextSeedRequest",
+        "description": "Non-production deterministic auth-context seed payload.\n\nThe payload intentionally accepts only non-secret metadata and optional\npre-hashed API key material. Raw secrets are rejected by ``extra=forbid``."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -18460,6 +19880,100 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ValidationSeededApiKey": {
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 3,
+            "title": "Key Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "default": "E2E backend-integrated validation service key"
+          },
+          "key_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Key Hash"
+          },
+          "prefix": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 4,
+            "title": "Prefix"
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Role",
+            "default": "system"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key_id",
+          "key_hash",
+          "prefix"
+        ],
+        "title": "ValidationSeededApiKey",
+        "description": "Pre-hashed API key metadata for deterministic non-production validation."
+      },
+      "ValidationSessionRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "User Id",
+            "default": "e2e-admin-user"
+          },
+          "email": {
+            "type": "string",
+            "minLength": 3,
+            "title": "Email",
+            "default": "e2e@valuefabric.test"
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Role",
+            "default": "admin"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Tenant Slug",
+            "default": "e2e-test"
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "maximum": 86400.0,
+            "minimum": 60.0,
+            "title": "Expires In Seconds",
+            "default": 3600
+          }
+        },
+        "type": "object",
+        "title": "ValidationSessionRequest",
+        "description": "Non-production browser session payload for backend-integrated Playwright validation."
       },
       "ValueExtractionRecordListResponse": {
         "properties": {
@@ -19671,6 +21185,124 @@
         ],
         "title": "WorkflowStatusResponse",
         "description": "Workflow status response - OpenAPI spec compliant.\n\nSpec requires:\n- workflow_instance_id: string\n- workflow_type: string\n- status: string\n- current_state: string\n- progress_percentage: number\n- started_at: datetime\n- completed_at: datetime\n- results: object"
+      },
+      "WorkspaceEvidenceItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "evidence"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "Unknown"
+          },
+          "matchScore": {
+            "type": "integer",
+            "title": "Matchscore",
+            "default": 0
+          },
+          "verification": {
+            "type": "string",
+            "title": "Verification",
+            "default": "unverified"
+          },
+          "linkedSignals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Linkedsignals"
+          },
+          "excerpt": {
+            "type": "string",
+            "title": "Excerpt",
+            "default": ""
+          },
+          "decision_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Status"
+          },
+          "attached_driver_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attached Driver Id"
+          },
+          "provenance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance Id"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "WorkspaceEvidenceItem"
+      },
+      "WorkspaceEvidenceResponse": {
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceEvidenceItem"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceEvidenceResponse"
       },
       "convert_hypothesisResult": {
         "properties": {

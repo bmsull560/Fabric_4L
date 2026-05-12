@@ -4636,6 +4636,18 @@ export interface components {
              */
             status: "healthy" | "unhealthy" | "degraded";
             /**
+             * Service
+             * @description Service name
+             */
+            service: string;
+            /**
+             * Readiness
+             * @description Readiness envelope
+             */
+            readiness: {
+                [key: string]: unknown;
+            };
+            /**
              * Version
              * @description API version
              */

@@ -31,7 +31,10 @@ def create_app(*, lifespan):
         instrument_telemetry=True,
     )
 
-    security_config = SecurityConfig.from_env(skip_validation_paths=frozenset({"/health", "/metrics"}), strict_mode=True)
+    security_config = SecurityConfig.from_env(
+        skip_validation_paths=frozenset({"/health", "/ready", "/metrics"}),
+        strict_mode=True,
+    )
     add_security_middleware(app, config=security_config)
     app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=None)
     install_metrics_middleware(app, metrics=initialize_metrics(), middleware_factory=MetricsMiddleware, logger=logger)

@@ -299,6 +299,7 @@ groups:
         annotations:
           summary: "401/403 spike in {{ $labels.layer }}"
           description: "Authentication/authorization denials spiking above 2 rps over 5m."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/zero-trust-validation.md"
 
       - alert: RateLimit429Spike
         expr: |
@@ -309,6 +310,7 @@ groups:
         annotations:
           summary: "429 spike in {{ $labels.layer }}"
           description: "Rate limit denials spiking above 1 rps over 5m."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-error-rate.md"
 
       - alert: TokenReplaySuspected
         expr: increase(auth_token_replay_suspected_total[10m]) > 5
@@ -318,6 +320,7 @@ groups:
         annotations:
           summary: "Token replay pattern suspected"
           description: "Replay-suspected token events exceeded threshold in 10m window."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/zero-trust-validation.md"
 
       # Ground truth staleness (L5)
       # `layer5_stale_objects_detected` is a Gauge reflecting the *current*
@@ -370,6 +373,7 @@ groups:
         annotations:
           summary: "Throttling anomaly spike detected"
           description: "429 ratio is above 20% for 10 minutes; investigate rate-limit regressions or traffic spikes."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-error-rate.md"
 
       - alert: HotTenantThrottling
         expr: |
@@ -380,6 +384,7 @@ groups:
         annotations:
           summary: "Hot tenant throttling detected"
           description: "A single tenant is receiving sustained throttling pressure (>2 req/s of 429s over 10m)."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/high-error-rate.md"
 
       - alert: AuthBruteforcePattern
         expr: |
@@ -390,3 +395,4 @@ groups:
         annotations:
           summary: "Potential auth brute-force pattern"
           description: "High auth-route throttling indicates possible credential stuffing or brute-force attacks."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/troubleshooting/runbooks/zero-trust-validation.md"

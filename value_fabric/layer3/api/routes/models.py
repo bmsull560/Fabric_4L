@@ -95,6 +95,16 @@ class ModelCreateRequest(BaseModel):
         return v
 
 
+class TenantContextPayload(BaseModel):
+    """Canonical tenant context pilot for model registry routes."""
+
+    tenant_id: str
+    user_id: str
+    source: str = "authorization_bearer"
+    auth_method: str = "jwt"
+    trace_id: str | None = None
+
+
 class ModelListResponse(BaseModel):
     """Paginated list of models with metadata."""
     models: list[ModelSummary] = Field(..., description="Model summaries")
@@ -195,23 +205,44 @@ def _get_current_user(request: Request) -> str:
 
 
 def _get_current_tenant(request: Request) -> str:
-    """Extract tenant ID from JWT Bearer token.
-    
-    Returns the 'tenant_id' claim from the JWT payload, or 'default'
-    if not present. This is a Phase 3 interim helper; Phase 4 will
-    migrate this module to Neo4jTenantSession with proper context.
-    """
+    """Extract tenant ID from the canonical model-registry tenant context."""
+    return _get_tenant_context(request).tenant_id
+
+
+def _get_tenant_context(request: Request) -> TenantContextPayload:
+    """Resolve tenant context for the model registry without fail-open defaults."""
     auth_header = request.headers.get("authorization", "")
     if not auth_header or not auth_header.startswith("Bearer "):
-        return "default"
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
     token = auth_header[BEARER_PREFIX_LENGTH:]
     
     try:
         payload = _decode_jwt_payload(token)
-        return payload.get("tenant_id") or "default"
-    except Exception:
-        return "default"
+    except Exception as exc:
+        context = {"tenant": "unknown", "endpoint": "/models", "operation": "get_tenant_context"}
+        raise map_exception_to_http_error(ValidationError("Invalid token", details={"reason": str(exc)}), context=context)
+
+    tenant_id = str(payload.get("tenant_id") or "").strip()
+    user_id = str(payload.get("sub") or "").strip()
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Invalid token: missing tenant_id claim")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token: missing subject claim")
+
+    header_tenant = request.headers.get("x-tenant-id")
+    if header_tenant and header_tenant.strip() != tenant_id:
+        raise HTTPException(status_code=403, detail="X-Tenant-ID does not match authenticated tenant")
+
+    return TenantContextPayload(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        trace_id=request.headers.get("x-request-id"),
+    )
 
 
 def _model_node_to_summary(record: dict[str, Any]) -> ModelSummary:

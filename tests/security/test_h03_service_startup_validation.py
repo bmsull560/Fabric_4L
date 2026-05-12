@@ -76,9 +76,8 @@ class TestResolveCorsPolicy:
 
 
 class TestValidateProductionSafety:
-    def test_passes_with_valid_config(self, monkeypatch):
+    def _set_valid_production_env(self, monkeypatch):
         monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.delenv("ALLOW_DEV_AUTH_BYPASS", raising=False)
         monkeypatch.setenv("JWT_SECRET", "x" * 48)
         monkeypatch.setenv("DATABASE_URL", "postgresql://app_fabric:pass@db.internal:5432/fabric")
         monkeypatch.setenv("CREDENTIALS_MASTER_KEY", "x" * 48)
@@ -87,31 +86,35 @@ class TestValidateProductionSafety:
         monkeypatch.setenv("DEFAULT_TENANT_ID", "12345678-1234-1234-1234-123456789abc")
         monkeypatch.setenv("SERVICE_AUTH_SECRET", "x" * 48)
         monkeypatch.setenv("LLM_PROVIDER", "openai")
+
+    def test_passes_with_valid_config(self, monkeypatch):
+        self._set_valid_production_env(monkeypatch)
+        monkeypatch.delenv("ALLOW_DEV_AUTH_BYPASS", raising=False)
         # Should not raise
         validate_production_safety()
 
     def test_fails_with_short_jwt_secret(self, monkeypatch):
-        monkeypatch.setenv("ENVIRONMENT", "production")
+        self._set_valid_production_env(monkeypatch)
         monkeypatch.setenv("JWT_SECRET", "short")
-        monkeypatch.setenv("DATABASE_URL", "postgresql://app_fabric:pass@db.internal:5432/fabric")
-        monkeypatch.setenv("CREDENTIALS_MASTER_KEY", "x" * 48)
-        monkeypatch.setenv("API_KEY_HMAC_SECRET", "x" * 48)
-        monkeypatch.setenv("CORS_ORIGINS", "https://app.example.com")
-        monkeypatch.setenv("DEFAULT_TENANT_ID", "12345678-1234-1234-1234-123456789abc")
-        monkeypatch.setenv("SERVICE_AUTH_SECRET", "x" * 48)
-        monkeypatch.setenv("LLM_PROVIDER", "openai")
         with pytest.raises(RuntimeError, match="JWT_SECRET"):
             validate_production_safety()
 
     def test_fails_with_missing_cors_origins(self, monkeypatch):
-        monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("JWT_SECRET", "x" * 48)
-        monkeypatch.setenv("DATABASE_URL", "postgresql://app_fabric:pass@db.internal:5432/fabric")
-        monkeypatch.setenv("CREDENTIALS_MASTER_KEY", "x" * 48)
-        monkeypatch.setenv("API_KEY_HMAC_SECRET", "x" * 48)
+        self._set_valid_production_env(monkeypatch)
         monkeypatch.delenv("CORS_ORIGINS", raising=False)
-        monkeypatch.setenv("DEFAULT_TENANT_ID", "12345678-1234-1234-1234-123456789abc")
-        monkeypatch.setenv("SERVICE_AUTH_SECRET", "x" * 48)
-        monkeypatch.setenv("LLM_PROVIDER", "openai")
         with pytest.raises(RuntimeError, match="CORS_ORIGINS"):
+            validate_production_safety()
+
+    def test_fails_with_dev_auth_bypass_in_production(self, monkeypatch):
+        self._set_valid_production_env(monkeypatch)
+        monkeypatch.setenv("ALLOW_DEV_AUTH_BYPASS", "i_understand_risk")
+
+        with pytest.raises(RuntimeError, match="ALLOW_DEV_AUTH_BYPASS"):
+            validate_production_safety()
+
+    def test_fails_with_default_tenant_fallback_in_production(self, monkeypatch):
+        self._set_valid_production_env(monkeypatch)
+        monkeypatch.setenv("DEFAULT_TENANT_ID", "default")
+
+        with pytest.raises(RuntimeError, match="DEFAULT_TENANT_ID"):
             validate_production_safety()

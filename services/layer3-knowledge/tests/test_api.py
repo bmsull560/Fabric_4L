@@ -27,6 +27,7 @@ def test_ingest_endpoint_validation(test_client: TestClient) -> None:
         "rdf_data": "test",
         "source_id": "src-1",
         "extraction_job_id": "job-1",
+        "tenant_id": "tenant-test-123",
     }
     response = test_client.post("/v1/ingest", json=payload)
     assert response.status_code in {HTTPStatus.OK, HTTPStatus.INTERNAL_SERVER_ERROR, HTTPStatus.SERVICE_UNAVAILABLE}

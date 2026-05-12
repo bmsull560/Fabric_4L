@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any
 from uuid import uuid4
 
@@ -18,13 +19,20 @@ _INGESTION_SOURCE_COMPAT_STORE: dict[str, dict[str, Any]] = {}
 _DEPRECATION_REMOVAL_DATE = "2026-07-15"
 
 
+def _hash_identifier(value: str) -> str:
+    return sha256(value.encode("utf-8")).hexdigest()[:16]
+
+
 def _record_compatibility_usage(*, endpoint: str, tenant_id: str, user_id: str) -> None:
     logger.warning(
-        "layer1_compatibility_route_accessed",
-        endpoint=endpoint,
-        tenant_id=tenant_id,
-        user_id=user_id,
+        "legacy_route_deprecation_usage",
+        route_name="layer1_compatibility",
+        legacy_route=endpoint,
+        canonical_route="/api/v1/ingestion",
+        tenant_hash=_hash_identifier(tenant_id),
+        account_hash=_hash_identifier(user_id),
         removal_date=_DEPRECATION_REMOVAL_DATE,
+        timestamp=datetime.now(UTC).isoformat(),
     )
 
 

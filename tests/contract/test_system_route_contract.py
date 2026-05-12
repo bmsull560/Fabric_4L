@@ -45,6 +45,18 @@ async def test_layer2_system_health_contract_envelope(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.asyncio
+async def test_layer2_system_readiness_contract() -> None:
+    sys.path.insert(0, str(REPO_ROOT / "services" / "layer2-extraction" / "src"))
+    try:
+        layer2_system = importlib.import_module("layer2_extraction.api.routes.system")
+        payload = await layer2_system.readiness_check()
+    finally:
+        sys.path.remove(str(REPO_ROOT / "services" / "layer2-extraction" / "src"))
+
+    assert payload == {"status": "ready"}
+
+
+@pytest.mark.asyncio
 async def test_layer3_system_health_contract_envelope(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_request = SimpleNamespace(state=SimpleNamespace(request_id="test"))
 
@@ -95,3 +107,19 @@ async def test_layer6_system_health_contract_envelope(monkeypatch: pytest.Monkey
     assert payload["status"] == "degraded"
     assert payload["service"] == "layer6-benchmarks"
     assert payload["readiness"] == {"is_ready": True, "reason": "dependencies_available"}
+
+
+@pytest.mark.asyncio
+async def test_layer6_system_readiness_contract() -> None:
+    src_path = str(REPO_ROOT / "services" / "layer6-benchmarks" / "src")
+    for name in list(sys.modules):
+        if name == "api" or name.startswith("api."):
+            sys.modules.pop(name)
+    sys.path.insert(0, src_path)
+    try:
+        layer6_system = importlib.import_module("api.routes.system")
+        payload = await layer6_system.readiness_check()
+    finally:
+        sys.path.remove(src_path)
+
+    assert payload == {"status": "ready"}

@@ -9,6 +9,8 @@ tests and the ScopedQuery builder boundary.
 from __future__ import annotations
 
 import ast
+import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -80,10 +82,39 @@ def iter_python_files(target: Path) -> list[Path]:
 
 
 def main() -> int:
-    target = (ROOT / sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_TARGET
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("target", nargs="?", default=str(DEFAULT_TARGET))
+    parser.add_argument("--report-json", default="", help="Optional JSON audit report path")
+    args = parser.parse_args()
+
+    target = (ROOT / args.target).resolve() if not Path(args.target).is_absolute() else Path(args.target)
     findings: list[Finding] = []
-    for path in iter_python_files(target):
+    files = iter_python_files(target)
+    for path in files:
         findings.extend(scan_file(path))
+
+    if args.report_json:
+        report_path = (ROOT / args.report_json).resolve() if not Path(args.report_json).is_absolute() else Path(args.report_json)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(
+                {
+                    "target": str(target.relative_to(ROOT) if target.is_relative_to(ROOT) else target),
+                    "files_scanned": len(files),
+                    "findings": [
+                        {
+                            "path": str(finding.path.relative_to(ROOT)),
+                            "line": finding.line,
+                            "message": finding.message,
+                        }
+                        for finding in findings
+                    ],
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     if findings:
         print("Layer 3 Cypher scope gate failed:")
@@ -91,7 +122,7 @@ def main() -> int:
             print(f"  {finding}")
         return 1
 
-    print("Layer 3 Cypher scope gate passed.")
+    print(f"Layer 3 Cypher scope gate passed. Files scanned: {len(files)}")
     return 0
 
 

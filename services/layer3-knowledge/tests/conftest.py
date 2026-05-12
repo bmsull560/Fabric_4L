@@ -352,7 +352,8 @@ def sample_ingestion_request() -> dict[str, Any]:
         """,
         "source_id": "test_doc_123",
         "extraction_job_id": "test_job_456",
-        "content_hash": "abc123def456789"
+        "content_hash": "abc123def456789",
+        "tenant_id": "tenant-test-123",
     }
 
 
