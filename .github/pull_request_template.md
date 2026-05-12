@@ -18,6 +18,16 @@
 - **Versioning decision:**
 - **Deprecation plan (if applicable):**
 
+### Layer 5 Compatibility Policy (Required for contract-impacting Layer 5 changes)
+
+Reference: `docs/reference/layer5-api-compatibility-policy.md`
+
+- **Compatibility classification:** Additive-safe | Breaking
+- **Consumer impact assessment:** (frontend, generated clients, Layer 4, Layer 6, external consumers)
+- **Rollback behavior if downstream parsers fail:**
+- [ ] Completed required frontend/generated-client update steps per policy.
+- [ ] Completed required Layer 4 / Layer 6 integration test updates per policy.
+
 ### Phase 3 API Evolution Linked Updates (Required When L5 API Surface Changes)
 
 - [ ] Updated `contracts/openapi/layer5-ground-truth.json`.

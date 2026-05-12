@@ -509,6 +509,10 @@ class Settings(BaseSettings):
             password=self.neo4j_password,
             environment=self.environment,
         )
+        if self.environment in {"production", "staging"} and self.oidc_state_store_backend != "redis":
+            raise ValueError(
+                "FATAL: OIDC state store backend must be 'redis' in production/staging."
+            )
         return self
 
 

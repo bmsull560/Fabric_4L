@@ -1051,31 +1051,7 @@ class GraphNode(BaseModel):
                     f"Conflicting GraphNode fields: '{canonical}' and deprecated '{alias}' must match"
                 )
             if canonical not in data and alias in data:
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
                 _increment_deprecated_field_usage("graph_node_request_legacy_fields")
-=======
-                _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
->>>>>>> theirs
-=======
-                _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
->>>>>>> theirs
-=======
-                _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
->>>>>>> theirs
-=======
-                _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
->>>>>>> theirs
-=======
-                _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
->>>>>>> theirs
-=======
-                _increment_deprecated_field_usage("graph_node_request_legacy_fields")
->>>>>>> theirs
                 data[canonical] = data[alias]
         return data
 
@@ -1124,31 +1100,7 @@ class GraphNode(BaseModel):
             return data
         # Dynamically add alias fields using the mapping
         for alias in GraphNodeAliasMap:
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
             _increment_deprecated_field_usage("graph_node_response_legacy_fields")
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _increment_deprecated_field_usage("graph_node_response_legacy_fields")
->>>>>>> theirs
             data[alias] = getattr(self, alias)
         return data
 
@@ -1190,14 +1142,6 @@ class GraphEdge(BaseModel):
         default_factory=dict, description="Additional edge properties"
     )
 
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
->>>>>>> theirs
     @model_validator(mode="before")
     @classmethod
     def normalize_and_validate_legacy_aliases(cls, data: Any) -> Any:
@@ -1211,40 +1155,6 @@ class GraphEdge(BaseModel):
             if canonical not in data and alias in data:
                 _increment_deprecated_field_usage("graph_edge_request_legacy_fields")
                 data[canonical] = data[alias]
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_and_validate_legacy_aliases(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        if "relationship_type" in data and "type" not in data:
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_request_legacy_fields"] += 1
-            data["type"] = data["relationship_type"]
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
         return data
 
     # ═════════════════════════════════════════════════════════════════════════
@@ -1270,31 +1180,7 @@ class GraphEdge(BaseModel):
             return data
         # Dynamically add alias fields using the mapping
         for alias, source in GraphEdgeAliasMap.items():
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
             _increment_deprecated_field_usage("graph_edge_response_legacy_fields")
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
->>>>>>> theirs
-=======
-            _increment_deprecated_field_usage("graph_edge_response_legacy_fields")
->>>>>>> theirs
             data[alias] = getattr(self, alias)
         return data
 

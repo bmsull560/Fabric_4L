@@ -3,7 +3,13 @@ from __future__ import annotations
 import threading
 import time
 
-from src.shared.identity.oidc import InMemoryOIDCStateStore, RedisOIDCStateStore
+import pytest
+
+from src.shared.identity.oidc import (
+    InMemoryOIDCStateStore,
+    RedisOIDCStateStore,
+    create_oidc_state_store,
+)
 
 
 class _FakeRedis:
@@ -44,6 +50,11 @@ def test_in_memory_store_enforces_expiry() -> None:
     assert store.validate_and_consume("state-exp") is None
 
 
+def test_in_memory_store_requires_explicit_non_production_guard() -> None:
+    with pytest.raises(RuntimeError, match="tests/development only"):
+        InMemoryOIDCStateStore(ttl_seconds=60)
+
+
 def test_redis_store_concurrent_consume_allows_single_winner() -> None:
     redis_store = RedisOIDCStateStore(redis_client=_FakeRedis(), ttl_seconds=30)
     redis_store.store("state-race", "verifier-race")
@@ -61,3 +72,17 @@ def test_redis_store_concurrent_consume_allows_single_winner() -> None:
 
     assert results.count("verifier-race") == 1
     assert results.count(None) == 15
+
+
+def test_redis_store_enforces_expiry() -> None:
+    redis_store = RedisOIDCStateStore(redis_client=_FakeRedis(), ttl_seconds=1)
+    redis_store.store("state-exp-redis", "verifier-exp-redis")
+
+    time.sleep(1.1)
+    assert redis_store.validate_and_consume("state-exp-redis") is None
+
+
+def test_factory_defaults_to_redis_backend() -> None:
+    store = create_oidc_state_store(redis_client=_FakeRedis(), ttl_seconds=30)
+    store.store("state-factory", "verifier-factory")
+    assert store.validate_and_consume("state-factory") == "verifier-factory"

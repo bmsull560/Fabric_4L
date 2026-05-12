@@ -229,6 +229,17 @@ Layer 3 graph response models currently include both canonical and legacy alias 
 - GraphEdge canonical: `type`
 - GraphEdge legacy alias: `relationship_type`
 
+### Compatibility deprecation phases and removal gate
+
+- `warning_only`: legacy routes/fields stay active and emit counters.
+- `disable_non_prod`: legacy routes return `410 Gone` in non-production environments.
+- `removed`: legacy routes and legacy graph aliases are disabled.
+
+Hard-removal threshold (must be met before production removal):
+
+- `layer3_deprecated_route_hits_total` aggregate over lookback window: `0`
+- `layer3_legacy_field_usage_total` aggregate over lookback window: `0`
+
 Target removal is **v2.4 / 2026-07-01**. Monitor runtime counters before removal:
 `graph_node_request_legacy_fields`, `graph_node_response_legacy_fields`, `graph_edge_request_legacy_fields`, `graph_edge_response_legacy_fields`.
 See `docs/DEPRECATIONS.md#graph-legacy-field-removal-checklist` for mandatory cutover steps.

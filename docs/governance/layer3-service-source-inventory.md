@@ -1,5 +1,7 @@
 # Layer 3 service source inventory (`services/layer3-knowledge/src`)
 
+Reviewed: 2026-05-12 (policy reconciliation sweep for shim-only vs service-local exceptions).
+
 
 Source-of-truth policy references:
 

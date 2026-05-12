@@ -12,6 +12,9 @@ Use this template for every Layer 5 (Ground Truth) backlog item tracked during P
 - **Tenant impact:**
 - **Contract impact:**
 - **Rollback notes:**
+- **Phase 3 compatibility classification:** Additive-safe | Breaking
+- **Phase 3 consumer impact assessment:**
+- **Phase 3 rollback behavior if downstream parsers fail:**
 
 ## Optional Supporting Fields
 

@@ -5,6 +5,10 @@ from httpx import ASGITransport, AsyncClient
 import pytest
 
 from value_fabric.layer4.api.routes import narratives
+from value_fabric.layer4.services.narrative_builder_service import (
+    NarrativeBuilderService,
+    NarrativeRequest,
+)
 
 
 @pytest.mark.asyncio
@@ -38,3 +42,21 @@ async def test_generate_rejects_hostile_payload_tenant_id(monkeypatch):
 
     assert response.status_code == 422
     assert called["value"] is False
+
+
+@pytest.mark.asyncio
+async def test_generate_narrative_rejects_mismatched_request_tenant_for_persistence():
+    class _Driver:
+        pass
+
+    class _HostileNarrativeRequest(NarrativeRequest):
+        tenant_id: str = "victim-tenant"
+
+    svc = NarrativeBuilderService(_Driver())
+    hostile_request = _HostileNarrativeRequest(account_id="acct-1")
+
+    with pytest.raises(ValueError, match="does not match trusted tenant context"):
+        await svc.generate_narrative(
+            hostile_request,
+            tenant_id="trusted-tenant",
+        )

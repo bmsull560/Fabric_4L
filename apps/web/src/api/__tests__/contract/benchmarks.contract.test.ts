@@ -14,6 +14,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { ApiErrorSchema, assertSchema, assertSchemaRejects } from './_helpers';
 
 // ── Response schemas (frontend-expected shapes) ───────────────────────────────
@@ -238,9 +240,27 @@ describe('Contract: GET /v1/benchmarks/industries', () => {
 });
 
 describe('Contract: benchmark ownership boundaries', () => {
-  it('L6 benchmark experiences use canonical /v1/benchmarks/* routes', () => {
-    const canonicalRoutes = ['/v1/benchmarks/datasets', '/v1/benchmarks/compare', '/v1/benchmarks/industries'];
+  it('L6 benchmark experiences pin the canonical global compare/validate route surface', () => {
+    const canonicalRoutes = [
+      '/v1/benchmarks/datasets',
+      '/v1/benchmarks/datasets/{dataset_id}',
+      '/v1/benchmarks/compare',
+      '/v1/benchmarks/validate',
+      '/v1/benchmarks/industries',
+    ];
+
+    const deprecatedDatasetScopedRoutes = [
+      '/v1/benchmarks/datasets/{dataset_id}/compare',
+      '/v1/benchmarks/datasets/{dataset_id}/validate',
+    ];
+
+    const openApiPath = resolve(process.cwd(), '../../contracts/openapi/layer6-benchmarks.json');
+    const openApiSpec = JSON.parse(readFileSync(openApiPath, 'utf8')) as { paths: Record<string, unknown> };
+    const declaredRoutes = Object.keys(openApiSpec.paths);
+
     expect(canonicalRoutes.every((route) => route.startsWith('/v1/benchmarks/'))).toBe(true);
+    expect(declaredRoutes).toEqual(expect.arrayContaining(canonicalRoutes));
+    expect(declaredRoutes).not.toEqual(expect.arrayContaining(deprecatedDatasetScopedRoutes));
   });
 });
 

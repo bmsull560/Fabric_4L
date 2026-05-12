@@ -215,6 +215,10 @@ class ProductionSettingsValidationTests(unittest.TestCase):
             "http://layer2-extraction.value-fabric.svc.cluster.local:8000",
         )
 
+    def test_production_rejects_in_memory_oidc_state_store_backend(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "OIDC state store backend must be 'redis'"):
+            self._settings(oidc_state_store_backend="memory")
+
     def test_development_requires_explicit_insecure_http_override(self) -> None:
         with self.assertRaisesRegex(ValidationError, "ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true"):
             Settings(

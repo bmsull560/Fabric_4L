@@ -14,13 +14,14 @@ logger = logging.getLogger(__name__)
 
 # Known route templates for L6 Benchmarks API. Anything outside this set
 # is normalized via PathNormalizer heuristics (UUID/hash/numeric collapse).
-_L6_KNOWN_ROUTES: Dict[str, str] = {
-    "/health": "/health",
-    "/metrics": "/metrics",
-    "/datasets": "/datasets",
-    "/datasets/{dataset_id}": "/datasets/{id}",
-    "/datasets/{dataset_id}/compare": "/datasets/{id}/compare",
-    "/datasets/{dataset_id}/validate": "/datasets/{id}/validate",
+_L6_KNOWN_ROUTES: Dict[str, str] = {
+    "/health": "/health",
+    "/metrics": "/metrics",
+    "/v1/benchmarks/datasets": "/v1/benchmarks/datasets",
+    "/v1/benchmarks/datasets/{dataset_id}": "/v1/benchmarks/datasets/{id}",
+    "/v1/benchmarks/compare": "/v1/benchmarks/compare",
+    "/v1/benchmarks/validate": "/v1/benchmarks/validate",
+    "/v1/benchmarks/industries": "/v1/benchmarks/industries",
     "/docs": "/docs",
     "/redoc": "/redoc",
     "/openapi.json": "/openapi.json",

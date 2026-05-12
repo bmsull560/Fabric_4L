@@ -3,6 +3,10 @@
 from pathlib import Path
 import re
 
+import pytest
+
+from value_fabric.layer6.repositories.benchmark_repository import BenchmarkRepository
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LAYER6_REPOSITORY_PATHS = [
@@ -27,3 +31,62 @@ def test_benchmarkdataset_match_always_scopes_tenant() -> None:
                     )
 
     assert not violations, "Layer 6 tenant-isolation query violations:\n" + "\n".join(violations)
+
+
+class _DummyRunResult:
+    async def single(self):
+        return None
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
+
+
+class _CaptureTx:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict]] = []
+
+    async def run(self, query: str, **params):
+        self.calls.append((query, params))
+        return _DummyRunResult()
+
+
+@pytest.mark.asyncio
+async def test_list_datasets_query_uses_bound_tenant_parameter() -> None:
+    tx = _CaptureTx()
+    attacker_tenant = "tenant-a' OR '1'='1"
+
+    await BenchmarkRepository._tx_list_datasets(tx, industry=None, segment=None, tenant_id=attacker_tenant)
+
+    assert len(tx.calls) == 1
+    query, params = tx.calls[0]
+    assert "WHERE d.tenant_id = $tenant_id" in query
+    assert params["tenant_id"] == attacker_tenant
+
+
+@pytest.mark.asyncio
+async def test_get_dataset_query_uses_bound_tenant_parameter() -> None:
+    tx = _CaptureTx()
+    attacker_tenant = "tenant-a' OR '1'='1"
+
+    await BenchmarkRepository._tx_get_dataset(tx, dataset_id="manufacturing-efficiency-2024", tenant_id=attacker_tenant)
+
+    assert len(tx.calls) == 1
+    query, params = tx.calls[0]
+    assert "tenant_id: $tenant_id" in query
+    assert params["tenant_id"] == attacker_tenant
+
+
+@pytest.mark.asyncio
+async def test_delete_dataset_query_uses_bound_tenant_parameter() -> None:
+    tx = _CaptureTx()
+    attacker_tenant = "tenant-a' OR '1'='1"
+
+    await BenchmarkRepository._tx_delete_dataset(tx, dataset_id="manufacturing-efficiency-2024", tenant_id=attacker_tenant)
+
+    assert len(tx.calls) == 1
+    query, params = tx.calls[0]
+    assert "tenant_id: $tenant_id" in query
+    assert params["tenant_id"] == attacker_tenant

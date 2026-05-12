@@ -203,6 +203,10 @@ class NarrativeBuilderService:
         This method accepts pre-fetched data from the orchestration layer
         so it can be used both standalone and as part of a larger pipeline.
         """
+        trusted_tenant_id = self._resolve_trusted_tenant_id(
+            request=request,
+            tenant_id=tenant_id,
+        )
         narrative_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -228,7 +232,7 @@ class NarrativeBuilderService:
         # Assemble the narrative
         narrative = {
             "id": narrative_id,
-            "tenant_id": tenant_id,
+            "tenant_id": trusted_tenant_id,
             "account_id": request.account_id,
             "title": request.title,
             "audience": request.audience,
@@ -260,6 +264,23 @@ class NarrativeBuilderService:
         )
 
         return stored
+
+    def _resolve_trusted_tenant_id(
+        self,
+        *,
+        request: NarrativeRequest,
+        tenant_id: str,
+    ) -> str:
+        """Validate and return trusted tenant context for persistence."""
+        trusted_tenant_id = tenant_id.strip()
+        if not trusted_tenant_id:
+            raise ValueError("tenant_id must be provided from trusted auth context")
+
+        payload_tenant_id = getattr(request, "tenant_id", None)
+        if payload_tenant_id is not None and str(payload_tenant_id) != trusted_tenant_id:
+            raise ValueError("request tenant_id does not match trusted tenant context")
+
+        return trusted_tenant_id
 
     # ------------------------------------------------------------------
     # Section Rendering

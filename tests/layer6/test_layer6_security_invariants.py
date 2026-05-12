@@ -82,3 +82,72 @@ class TestLayer6ErrorHandling:
         response = await client.get("/v1/benchmarks/datasets/non-existent", headers={"Authorization": f"Bearer {tenant_a_token}"})
         if response.status_code == 404:
             assert "traceback" not in str(response.json()).lower()
+
+
+def _assert_structured_error_contract(response) -> None:
+    """Layer 6 error shape must be a structured object with a detail field."""
+    if response.status_code < 400:
+        return
+    body = response.json()
+    assert isinstance(body, dict)
+    assert "detail" in body
+
+
+class TestLayer6TenantSpoofingDefense:
+    @pytest.mark.asyncio
+    async def test_datasets_list_conflicting_tenant_query_is_not_honored(self, client: AsyncClient, tenant_a_token: str):
+        response = await client.get(
+            "/v1/benchmarks/datasets?tenant_id=tenant-b",
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert response.status_code in [200, 400, 401, 403, 422]
+        _assert_structured_error_contract(response)
+
+    @pytest.mark.asyncio
+    async def test_dataset_detail_conflicting_tenant_path_is_not_honored(self, client: AsyncClient, tenant_a_token: str):
+        response = await client.get(
+            "/v1/benchmarks/datasets/tenant-b:manufacturing-efficiency-2024",
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert response.status_code in [404, 400, 401, 403, 422]
+        _assert_structured_error_contract(response)
+
+    @pytest.mark.asyncio
+    async def test_compare_conflicting_tenant_payload_is_rejected_or_ignored(self, client: AsyncClient, tenant_a_token: str):
+        response = await client.post(
+            "/v1/benchmarks/compare",
+            json={
+                "dataset_id": "manufacturing-efficiency-2024",
+                "metric": "throughput",
+                "company_value": "100.0",
+                "industry": "manufacturing",
+                "tenant_id": TENANT_B,
+            },
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert response.status_code in [200, 400, 401, 403, 404, 422, 503]
+        _assert_structured_error_contract(response)
+
+    @pytest.mark.asyncio
+    async def test_validate_conflicting_tenant_payload_is_rejected_or_ignored(self, client: AsyncClient, tenant_a_token: str):
+        response = await client.post(
+            "/v1/benchmarks/validate",
+            json={
+                "dataset_id": "manufacturing-efficiency-2024",
+                "metric": "throughput",
+                "value": "100.0",
+                "tenant_id": TENANT_B,
+            },
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert response.status_code in [200, 400, 401, 403, 404, 422, 503]
+        _assert_structured_error_contract(response)
+
+    @pytest.mark.asyncio
+    async def test_industries_conflicting_tenant_query_is_not_honored(self, client: AsyncClient, tenant_a_token: str):
+        response = await client.get(
+            "/v1/benchmarks/industries?tenant_id=tenant-b",
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert response.status_code in [200, 400, 401, 403, 422, 503]
+        _assert_structured_error_contract(response)

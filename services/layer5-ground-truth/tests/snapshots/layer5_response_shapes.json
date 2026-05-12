@@ -1,0 +1,24 @@
+{
+  "health": {
+    "status": "str",
+    "timestamp": "str",
+    "version": "str"
+  },
+  "maturity_ladder": {
+    "levels": [
+      {
+        "advancement_trigger": "str",
+        "description": "str",
+        "level": "int",
+        "name": "str",
+        "required_status": "str"
+      }
+    ]
+  },
+  "freshness_summary": {
+    "expiring_soon": "int",
+    "fresh": "int",
+    "stale": "int",
+    "total": "int"
+  }
+}

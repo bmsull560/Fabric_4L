@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jose import jwt
 
-from src.shared.identity.oidc import OIDCClient, OIDCProviderConfig
+from src.shared.identity.oidc import OIDCClient, OIDCProviderConfig, OIDCValidationError
 
 
 def _b64url_uint(value: int) -> str:
@@ -87,7 +87,7 @@ async def test_validate_id_token_rejects_invalid_signature(oidc_setup):
         expires_delta=timedelta(minutes=5),
     )
 
-    with pytest.raises(ValueError, match="ID token validation failed"):
+    with pytest.raises(OIDCValidationError, match="signature validation failed"):
         await client.validate_id_token(token)
 
 
@@ -105,7 +105,7 @@ async def test_validate_id_token_rejects_wrong_issuer_or_audience(oidc_setup, is
 
     token = _make_token(private_key, issuer=issuer, audience=audience, expires_delta=timedelta(minutes=5))
 
-    with pytest.raises(ValueError, match="ID token validation failed"):
+    with pytest.raises(OIDCValidationError, match="mismatch"):
         await client.validate_id_token(token)
 
 
@@ -121,7 +121,7 @@ async def test_validate_id_token_rejects_expired_token(oidc_setup):
         expires_delta=timedelta(minutes=-5),
     )
 
-    with pytest.raises(ValueError, match="ID token validation failed"):
+    with pytest.raises(OIDCValidationError, match="expired_token"):
         await client.validate_id_token(token)
 
 

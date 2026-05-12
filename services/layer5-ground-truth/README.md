@@ -147,7 +147,7 @@ Layer 5 now includes dedicated required CI jobs in `PR Checks`:
 |---|---|---|---|
 | `Layer 5 - Source Contract` | Prevent Layer 5 source-of-truth and shim drift | `python scripts/check_no_duplicate_modules.py` | ~1 minute |
 | `Layer 5 - Tenant Isolation Regression` | Tenant invariants and hostile cross-tenant access regression | `uv run pytest -v --tb=short tests/test_tenant_id_consistency.py tests/test_api.py::TestGetTruth::test_org_isolation` | ~2-4 minutes |
-| `Layer 5 - Contract Shape Regression` | Model registry and state transition contract-shape coverage | `uv run pytest -v --tb=short tests/test_model_registry.py tests/test_state_machine.py` | ~2-4 minutes |
+| `Layer 5 - Contract Shape Regression` | OpenAPI drift check + Layer 5 contract suite + endpoint response-shape snapshots | `uv run python scripts/check_openapi_contract.py`<br>`uv run pytest -v --tb=short ../../tests/contract/test_layer5_contract.py`<br>`uv run pytest -v --tb=short tests/test_endpoint_response_shape_snapshots.py` | ~4-7 minutes |
 
 These checks should be configured as required branch-protection status checks on `main` so merges are blocked if any Layer 5 regression appears.
 
@@ -204,6 +204,41 @@ CI runs this same command in `.github/workflows/contract-compliance.yml` as part
 
 ---
 
+## Contract and Snapshot Remediation Playbook
+
+When `Layer 5 - Contract Shape Regression` fails, use this sequence:
+
+1. **Regenerate and inspect OpenAPI locally**
+   ```bash
+   uv run python scripts/check_openapi_contract.py
+   ```
+   - If drift is valid and intentional, regenerate `contracts/openapi/layer5-ground-truth.json` from
+     `services/layer5-ground-truth/src/layer5_ground_truth/api/main.py` and commit the contract update with the implementation change.
+2. **Re-run Layer 5 contract tests**
+   ```bash
+   uv run pytest -v --tb=short ../../tests/contract/test_layer5_contract.py
+   ```
+3. **Re-run endpoint response-shape snapshots**
+   ```bash
+   uv run pytest -v --tb=short tests/test_endpoint_response_shape_snapshots.py
+   ```
+   - Update `tests/snapshots/layer5_response_shapes.json` only when the response-shape change is intentional and contract-reviewed.
+
+### Required reviewers for contract/snapshot changes
+
+Any PR that changes either:
+- `contracts/openapi/layer5-ground-truth.json`, or
+- `services/layer5-ground-truth/tests/snapshots/layer5_response_shapes.json`
+
+must include **all** of the following reviewers before merge:
+- **Layer 5 service owner/maintainer**
+- **Platform contracts owner**
+- **QA or release governance reviewer**
+
+This keeps API contract evolution explicit, auditable, and aligned with downstream consumers.
+
+---
+
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -249,6 +284,42 @@ When a TruthObject reaches **APPROVED** status, Layer 5 automatically syncs it t
 ```
 
 Sync is **best-effort** — Layer 5 remains fully operational if Layer 3 is unavailable. Failed syncs can be retried via `POST /api/v1/truths/sync-kg`.
+
+---
+
+## Observability Contract (Logs + Metrics)
+
+Layer 5 validation and Layer 3 sync paths must emit audit-safe, structured observability events even on failure paths (for example: invalid state transitions, retry exhaustion, and partial sync failures).
+
+### Required structured log fields
+
+When context applies, structured log events include:
+
+- `request_id`: request correlation identifier (nullable for background/internal flows).
+- `tenant_id`: tenant UUID from authenticated context.
+- `truth_object_id`: Layer 5 TruthObject UUID.
+- `transition`: transition context (for example `supported->corroborated`, `approved->kg_sync`).
+- `sync_status`: sync lifecycle status (`pending`, `success`, `failed`, `not_attempted`, etc.).
+
+### Governed metric names and labels
+
+- `validation_latency_seconds{transition=...}`  
+  Histogram for claim validation transition latency.
+- `validation_transition_failures_total{transition=...,reason=...}`  
+  Counter for rejected or failed validation transitions.
+- `kg_sync_total{status=...}`  
+  Counter for Layer 3 sync attempts/outcomes at transport/application level.
+- `kg_sync_outcomes_total{sync_status=...,transition=...}`  
+  Counter for transition-aware sync outcomes including retries/failures.
+
+Authoritative schema reference (must remain aligned with tests and dashboards):
+
+- `docs/reference/layer5-observability-schema.md`
+
+Operational runbooks:
+
+- `docs/runbooks/operational/alerting-source-of-truth.md`
+- `docs/troubleshooting/runbooks/application/stale-ground-truth.md`
 
 ---
 

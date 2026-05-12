@@ -743,14 +743,17 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
+      - name: Enforce Layer 5 tenant isolation matrix coverage
+        run: python ../../scripts/ci/check_layer5_tenant_isolation_matrix.py
+
       - name: Run tenant consistency and hostile access regression tests
         run: |
-          uv run pytest -v --tb=short             tests/test_tenant_id_consistency.py             tests/test_api.py::TestGetTruth::test_org_isolation
+          uv run pytest -v --tb=short             tests/test_tenant_id_consistency.py             tests/test_api.py::TestGetTruth::test_org_isolation             tests/test_cross_tenant_hostile.py
 
   layer5-contract-shape-regression:
     name: Layer 5 - Contract Shape Regression
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: services/layer5-ground-truth
@@ -772,9 +775,32 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
-      - name: Run model registry and state transition contract-shape tests
+      - name: Generate and diff Layer 5 OpenAPI contract
         run: |
-          uv run pytest -v --tb=short             tests/test_model_registry.py             tests/test_state_machine.py
+          mkdir -p contract-diff
+          set +e
+          uv run python scripts/check_openapi_contract.py > contract-diff/layer5-openapi.diff 2>&1
+          status=$?
+          set -e
+          if [ $status -ne 0 ]; then
+            echo "openapi_check_failed=true" >> "$GITHUB_ENV"
+            cat contract-diff/layer5-openapi.diff
+            exit $status
+          fi
+
+      - name: Run Layer 5 API contract tests
+        run: PYTHONPATH=../.. uv run pytest -v --tb=short ../../tests/contract/test_layer5_contract.py
+
+      - name: Run Layer 5 endpoint response-shape snapshots
+        run: PYTHONPATH=../.. uv run pytest -v --tb=short tests/test_endpoint_response_shape_snapshots.py
+
+      - name: Upload Layer 5 contract diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: layer5-contract-diff-artifacts
+          path: services/layer5-ground-truth/contract-diff/
+          retention-days: 14
 
   # Layer 6 - Benchmarks
   layer6-checks:

@@ -21,6 +21,14 @@ logger = logging.getLogger(__name__)
 websocket_router = APIRouter()
 
 
+_TOKEN_EXCEPTION_CODE_MAP = {
+    "ExpiredSignatureError": "AUTH_TOKEN_EXPIRED",
+    "InvalidTokenError": "AUTH_TOKEN_INVALID",
+    "DecodeError": "AUTH_TOKEN_DECODE_FAILED",
+    "InvalidSignatureError": "AUTH_TOKEN_SIGNATURE_INVALID",
+}
+
+
 class WebSocketAuthError(Exception):
     """Raised when WebSocket authentication fails."""
 
@@ -68,9 +76,13 @@ def _extract_tenant_from_token(token: str | None) -> tuple[str, str]:
         
     except WebSocketAuthError:
         raise
-    except Exception:
-        logger.warning("WebSocket JWT decode failed", extra={"auth_code": "AUTH_TOKEN_DECODE_FAILED"})
-        raise WebSocketAuthError("AUTH_TOKEN_DECODE_FAILED")
+    except Exception as exc:
+        error_code = _TOKEN_EXCEPTION_CODE_MAP.get(
+            exc.__class__.__name__,
+            "AUTH_TOKEN_DECODE_FAILED",
+        )
+        logger.warning("WebSocket JWT decode failed", extra={"auth_code": error_code})
+        raise WebSocketAuthError(error_code)
 
 
 @websocket_router.websocket("/ws/workflows/{workflow_id}")
@@ -127,7 +139,11 @@ async def workflow_websocket(
     """
     # P1-13 FIX: Reject JWT in query parameter (prevents logging by proxies)
     if token:
-        await websocket.close(code=1008, reason="JWT in query param is not allowed. Use Sec-WebSocket-Protocol header.")
+        logger.warning(
+            "WebSocket authentication failed",
+            extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", "workflow_id": workflow_id},
+        )
+        await websocket.close(code=1008, reason="Authentication failed")
         return
 
     # P1-13 FIX: Accept JWT from Sec-WebSocket-Protocol header instead

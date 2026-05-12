@@ -112,7 +112,15 @@ def _violations() -> list[str]:
 
     for rel in sorted(mirrored_files & compat_files):
         expected_module = _canonical_module_for(rel)
-        if not _is_thin_shim(COMPAT_ROOT / rel, expected_module):
+        compat_path = COMPAT_ROOT / rel
+        text = compat_path.read_text(encoding="utf-8")
+        if any(marker in text for marker in ("<<<<<<<", "=======", ">>>>>>>")):
+            violations.append(
+                "merge conflict markers detected in compatibility path: "
+                f"services/layer3-knowledge/src/{rel.as_posix()}"
+            )
+            continue
+        if not _is_thin_shim(compat_path, expected_module):
             violations.append(
                 "non-shim implementation in compatibility tree: "
                 f"services/layer3-knowledge/src/{rel.as_posix()} must re-export {expected_module}"

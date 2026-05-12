@@ -13,50 +13,10 @@ from . import query_search
 router = APIRouter(prefix="/v1", tags=["compatibility"], dependencies=[Depends(require_authenticated)])
 
 
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-def _app_client(request: Request) -> str:
-    return request.headers.get("x-app-client", "unknown")
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
 def _app_client(request: Request) -> str:
     return request.headers.get("x-app-client", "unknown")
 
 
->>>>>>> theirs
-=======
-def _app_client(request: Request) -> str:
-    return request.headers.get("x-app-client", "unknown")
-
-
->>>>>>> theirs
-=======
-def _app_client(request: Request) -> str:
-    return request.headers.get("x-app-client", "unknown")
-
-
->>>>>>> theirs
-=======
-def _app_client(request: Request) -> str:
-    return request.headers.get("x-app-client", "unknown")
-
-
->>>>>>> theirs
 def _assert_legacy_alias_enabled(request: Request, alias_name: str) -> None:
     phase = getattr(request.app.state, "layer3_compat_deprecation_phase", "warning_only")
     if phase == "disable_non_prod":
@@ -65,35 +25,10 @@ def _assert_legacy_alias_enabled(request: Request, alias_name: str) -> None:
             raise HTTPException(status_code=410, detail=f"Legacy alias '{alias_name}' disabled in non-production")
     elif phase == "removed":
         raise HTTPException(status_code=410, detail=f"Legacy alias '{alias_name}' has been removed")
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
 
 
 def _record_route_hit(request: Request, route: str, tenant_id: str) -> None:
     record_deprecated_route_hit(route, tenant_id=tenant_id, app_client=_app_client(request))
->>>>>>> theirs
-=======
->>>>>>> theirs
 
 
 @router.post("/graphrag", response_model=GraphRAGResponse, deprecated=True)
@@ -103,139 +38,42 @@ async def graph_rag_legacy_alias(
     graph_rag=Depends(get_graph_rag),
     ctx: RequestContext = Depends(require_authenticated),
 ):
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
+    _assert_legacy_alias_enabled(request, "/v1/graphrag")
 <<<<<<< ours
 <<<<<<< ours
     record_deprecated_route_hit("/v1/graphrag", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
+    return await query_search.graph_rag_query_impl(query, graph_rag, ctx=ctx, request=request)
+
+
 =======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
+=======
 >>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
-    record_deprecated_route_hit("/v1/graphrag", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
-    record_deprecated_route_hit("/v1/graphrag", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
     _record_route_hit(request, "/v1/graphrag", tenant_id=str(ctx.tenant_id))
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(request, "/v1/graphrag")
-    record_deprecated_route_hit("/v1/graphrag", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
->>>>>>> theirs
     return await query_search.graph_rag_query_impl(query, graph_rag, ctx=ctx, request=request)
 
 
 @router.post("/query", response_model=GraphRAGResponse, deprecated=True)
 <<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 @router.post("/query/graph", response_model=GraphRAGResponse, deprecated=True)
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-@router.post("/query/graph", response_model=GraphRAGResponse)
->>>>>>> theirs
-=======
-@router.post("/query/graph", response_model=GraphRAGResponse, deprecated=True)
->>>>>>> theirs
-=======
-@router.post("/query/graph", response_model=GraphRAGResponse, deprecated=True)
->>>>>>> theirs
-=======
-@router.post("/query/graph", response_model=GraphRAGResponse)
->>>>>>> theirs
-=======
-@router.post("/query/graph", response_model=GraphRAGResponse, deprecated=True)
->>>>>>> theirs
 async def graph_rag_query_aliases(
     query: GraphRAGQuery,
     request: Request,
     graph_rag=Depends(get_graph_rag),
     ctx: RequestContext = Depends(require_authenticated),
 ):
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-    record_deprecated_route_hit("/v1/query", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
-=======
-    if request.url.path.endswith("/query"):
-        _assert_legacy_alias_enabled(request, "/v1/query")
->>>>>>> theirs
-=======
-    if request.url.path.endswith("/query"):
-        _assert_legacy_alias_enabled(request, "/v1/query")
->>>>>>> theirs
-=======
-    if request.url.path.endswith("/query"):
-        _assert_legacy_alias_enabled(request, "/v1/query")
->>>>>>> theirs
-=======
-    if request.url.path.endswith("/query"):
-        _assert_legacy_alias_enabled(request, "/v1/query")
->>>>>>> theirs
-=======
-    if request.url.path.endswith("/query"):
-        _assert_legacy_alias_enabled(request, "/v1/query")
->>>>>>> theirs
-=======
     route = request.url.path
     _assert_legacy_alias_enabled(request, route)
+<<<<<<< ours
+<<<<<<< ours
     record_deprecated_route_hit(route, tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
+=======
+    _record_route_hit(request, route, tenant_id=str(ctx.tenant_id))
 >>>>>>> theirs
 =======
-    route = request.url.path
-    _assert_legacy_alias_enabled(request, route)
-    record_deprecated_route_hit(route, tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
->>>>>>> theirs
-=======
-    if request.url.path.endswith("/query"):
-        _assert_legacy_alias_enabled(request, "/v1/query")
-        _record_route_hit(request, "/v1/query", tenant_id=str(ctx.tenant_id))
->>>>>>> theirs
-=======
-    route = request.url.path
-    _assert_legacy_alias_enabled(request, route)
-    record_deprecated_route_hit(route, tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
+    _record_route_hit(request, route, tenant_id=str(ctx.tenant_id))
 >>>>>>> theirs
     return await query_search.graph_rag_query_impl(query, graph_rag, ctx=ctx, request=request)
 
@@ -248,14 +86,7 @@ async def graph_rag_query_stream_alias(
     ctx: RequestContext = Depends(require_authenticated),
 ):
     _assert_legacy_alias_enabled(request, "/v1/query/graph/stream")
-<<<<<<< ours
-<<<<<<< ours
-=======
->>>>>>> theirs
-    record_deprecated_route_hit("/v1/query/graph/stream", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
-=======
     _record_route_hit(request, "/v1/query/graph/stream", tenant_id=str(ctx.tenant_id))
->>>>>>> theirs
     return await query_search.graph_rag_query_stream_impl(query, graph_rag)
 
 
@@ -268,57 +99,12 @@ async def hybrid_search_aliases(
     hybrid_search=Depends(get_hybrid_search),
     ctx: RequestContext = Depends(require_authenticated),
 ):
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
     app_client = _app_client(http_request)
     route = http_request.url.path
     _assert_legacy_alias_enabled(http_request, route)
     record_deprecated_route_hit(route, tenant_id=str(ctx.tenant_id), app_client=app_client)
-    if request.search_type == "fulltext":
-        record_deprecated_legacy_field_usage("search_type=fulltext", tenant_id=str(ctx.tenant_id), app_client=app_client)
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
-    _assert_legacy_alias_enabled(http_request, http_request.url.path)
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(http_request, http_request.url.path)
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(http_request, http_request.url.path)
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(http_request, http_request.url.path)
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(http_request, http_request.url.path)
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
-    _assert_legacy_alias_enabled(http_request, http_request.url.path)
-    _record_route_hit(http_request, http_request.url.path, tenant_id=str(ctx.tenant_id))
     if request.search_type.value == "fulltext":
         record_deprecated_legacy_field_usage(
-            "search_type=fulltext", tenant_id=str(ctx.tenant_id), app_client=_app_client(http_request)
+            "search_type=fulltext", tenant_id=str(ctx.tenant_id), app_client=app_client
         )
->>>>>>> theirs
-=======
->>>>>>> theirs
     return await query_search.hybrid_search_impl(request, hybrid_search, ctx=ctx, http_request=http_request)

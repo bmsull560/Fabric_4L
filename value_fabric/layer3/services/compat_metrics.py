@@ -11,6 +11,10 @@ except Exception:  # pragma: no cover
 
 _DEPRECATED_ROUTE_HITS: Counter[tuple[str, str, str]] = Counter()
 _DEPRECATED_LEGACY_FIELD_HITS: Counter[tuple[str, str, str]] = Counter()
+DEPRECATION_ACCEPTANCE_THRESHOLDS: dict[str, int] = {
+    "max_legacy_route_hits_7d": 0,
+    "max_legacy_field_hits_7d": 0,
+}
 
 if PromCounter is not None:
     _ROUTE_COUNTER = PromCounter(
@@ -47,3 +51,19 @@ def get_compat_metrics_snapshot() -> dict[str, dict[str, int]]:
         "route_hits": {"|".join(key): value for key, value in _DEPRECATED_ROUTE_HITS.items()},
         "legacy_field_hits": {"|".join(key): value for key, value in _DEPRECATED_LEGACY_FIELD_HITS.items()},
     }
+
+
+def deprecation_ready_for_removal(
+    snapshot: dict[str, dict[str, int]] | None = None,
+    *,
+    thresholds: dict[str, int] | None = None,
+) -> bool:
+    """Return whether compatibility usage is below hard-removal thresholds."""
+    snapshot = snapshot or get_compat_metrics_snapshot()
+    thresholds = thresholds or DEPRECATION_ACCEPTANCE_THRESHOLDS
+    route_total = sum(snapshot.get("route_hits", {}).values())
+    field_total = sum(snapshot.get("legacy_field_hits", {}).values())
+    return (
+        route_total <= thresholds["max_legacy_route_hits_7d"]
+        and field_total <= thresholds["max_legacy_field_hits_7d"]
+    )

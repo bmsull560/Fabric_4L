@@ -174,6 +174,7 @@ class OIDCClient:
         self._jwks_cache_expiry: datetime | None = None
         self._http_client = httpx.AsyncClient(timeout=30.0)
         self._allowed_algorithms = {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
+        self._clock_skew_seconds = 60
 
         logger.info(
             "oidc_client_initialized",
@@ -436,6 +437,13 @@ class OIDCClient:
         except Exception as exc:
             raise OIDCValidationError("oidc.id_token.invalid_jwk", "invalid_id_token: invalid JWK") from exc
 
+        jwk_alg = keys[kid].get("alg")
+        if jwk_alg and jwk_alg != alg:
+            raise OIDCValidationError(
+                "oidc.id_token.alg_mismatch",
+                "invalid_id_token: signing algorithm mismatch",
+            )
+
         try:
             payload_data = jwt.decode(
                 id_token,
@@ -443,6 +451,7 @@ class OIDCClient:
                 algorithms=[alg],
                 audience=self.config.client_id,
                 issuer=self.config.issuer,
+                leeway=self._clock_skew_seconds,
                 options={"require": ["exp", "iat", "iss", "aud", "sub"]},
             )
         except jwt.ExpiredSignatureError as exc:
@@ -451,6 +460,8 @@ class OIDCClient:
             raise OIDCValidationError("oidc.id_token.invalid_aud", "invalid_id_token: audience mismatch") from exc
         except jwt.InvalidIssuerError as exc:
             raise OIDCValidationError("oidc.id_token.invalid_iss", "invalid_id_token: issuer mismatch") from exc
+        except jwt.ImmatureSignatureError as exc:
+            raise OIDCValidationError("oidc.id_token.immature", "invalid_id_token: token not yet valid") from exc
         except jwt.PyJWTError as exc:
             raise OIDCValidationError(
                 "oidc.id_token.invalid_signature",
@@ -459,7 +470,7 @@ class OIDCClient:
 
         now = datetime.now(UTC)
         iat_dt = datetime.fromtimestamp(payload_data["iat"], tz=UTC)
-        if iat_dt > now + timedelta(seconds=30):
+        if iat_dt > now + timedelta(seconds=self._clock_skew_seconds):
             raise OIDCValidationError("oidc.id_token.invalid_iat", "invalid_id_token: iat is in the future")
         if iat_dt < now - timedelta(seconds=max_iat_age_seconds):
             raise OIDCValidationError("oidc.id_token.stale_iat", "invalid_id_token: iat is too old")
