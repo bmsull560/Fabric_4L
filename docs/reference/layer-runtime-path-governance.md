@@ -56,6 +56,12 @@ Before opening a PR with backend runtime changes:
 3. Keep service wrapper changes minimal and wiring-only.
 4. If compatibility code is touched, add a TODO with migration intent and owner.
 
+## Layer 3 app_monolith ownership note
+
+- Canonical implementation: `value_fabric/layer3/api/app_monolith.py`.
+- Compatibility shim only: `services/layer3-knowledge/src/api/app_monolith.py` (must remain a thin re-export of the canonical module with no local endpoint logic).
+- CI guardrail: `services/layer3-knowledge/scripts/check_app_monolith_shim_drift.py` (fails when compatibility shim drifts from the approved re-export template).
+
 ## Layer 3 API model ownership note
 
 - Canonical implementation: `value_fabric/layer3/api/models.py`.

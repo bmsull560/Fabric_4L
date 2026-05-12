@@ -17,14 +17,16 @@ from typing import Any
 
 from neo4j import AsyncDriver
 from value_fabric.shared.identity.context import get_request_context
-from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
+from value_fabric.shared.identity.isolation import TenantScopedCypher
 
 from ..config import Settings, get_settings
+from ..db.cypher_execution_helper import execute_tenant_cypher
 from ..db.driver import get_driver
 from .graph_rag import GraphRAGEngine
 from .vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+_ALLOWED_FULLTEXT_ENTITY_TYPES = frozenset({"Capability", "UseCase", "Persona", "ValueDriver"})
 
 
 @dataclass
@@ -182,9 +184,13 @@ class HybridSearch:
     def _tenant_builder(self, tenant_id: str | None = None) -> TenantScopedCypher:
         return TenantScopedCypher(self._resolve_tenant_id(tenant_id))
 
-    async def _run_scoped(self, session: Any, scoped: ScopedQuery):
-        """Execute a strict scoped query through the Neo4j session seam."""
-        return await session.run(scoped.cypher, scoped.params)
+    def _validate_entity_types(self, entity_types: list[str] | None) -> list[str] | None:
+        if not entity_types:
+            return entity_types
+        invalid = [etype for etype in entity_types if etype not in _ALLOWED_FULLTEXT_ENTITY_TYPES]
+        if invalid:
+            raise ValueError(f"Unsupported entity_type for fulltext retrieval: {', '.join(invalid)}")
+        return entity_types
 
     async def _bm25_search(
         self,
@@ -197,6 +203,7 @@ class HybridSearch:
         driver = await self._get_driver()
         results = []
 
+        entity_types = self._validate_entity_types(entity_types)
         if entity_types:
             unions = []
             for etype in entity_types:
@@ -242,7 +249,15 @@ class HybridSearch:
                     operation="hybrid_search.bm25",
                     labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
                 )
-                result = await self._run_scoped(session, scoped)
+                result = await execute_tenant_cypher(
+                    operation="hybrid_search.bm25",
+                    session=session,
+                    query=scoped.cypher,
+                    params=scoped.params,
+                    tenant_id=self._resolve_tenant_id(tenant_id),
+                    labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
+                    allow_system_query=True,
+                )
                 async for record in result:
                     row = dict(record)
                     if entity_types and row.get("entity_type") not in entity_types:
@@ -315,6 +330,7 @@ class HybridSearch:
         driver = await self._get_driver()
         results = []
 
+        entity_types = self._validate_entity_types(entity_types)
         if entity_types:
             unions = []
             for etype in entity_types:
@@ -363,7 +379,15 @@ class HybridSearch:
                     operation="hybrid_search.graph",
                     labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
                 )
-                result = await self._run_scoped(session, scoped)
+                result = await execute_tenant_cypher(
+                    operation="hybrid_search.graph",
+                    session=session,
+                    query=scoped.cypher,
+                    params=scoped.params,
+                    tenant_id=self._resolve_tenant_id(tenant_id),
+                    labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
+                    allow_system_query=True,
+                )
                 async for record in result:
                     results.append(dict(record))
             except Exception as exc:

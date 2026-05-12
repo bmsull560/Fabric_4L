@@ -52,6 +52,7 @@ class PackExecuteInput:
 
     pack_id: str
     workspace_id: str
+    tenant_id: str
     variables: dict[str, Any]
     user_id: str | None = None
 
@@ -179,7 +180,7 @@ class PackSkills:
             user_id=input_data.user_id,
         )
 
-        result = await self._service.execute_pack(request)
+        result = await self._service.execute_pack(request, tenant_id=input_data.tenant_id)
 
         return PackExecuteOutput(
             execution_id=result.execution_id,

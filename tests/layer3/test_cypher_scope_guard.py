@@ -100,3 +100,20 @@ def test_executor_allows_ambiguous_query_when_explicitly_allowlisted_system_quer
         params={"tenant_id": "tenant-a"},
         context=TenantExecutionContext(tenant_id="tenant-a", allow_system_query=True),
     )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "MATCH (a:Capability {tenant_id: $tenant_id}) RETURN a UNION MATCH (b:Capability {tenant_id: $tenant_id}) RETURN b",
+        "CALL { MATCH (a:Capability {tenant_id: $tenant_id}) RETURN a } RETURN a",
+        "MATCH (a:Capability {tenant_id: $tenant_id}) MATCH (b:Capability {tenant_id: $tenant_id}) RETURN a, b",
+    ],
+)
+def test_executor_blocks_union_call_and_multimatch_without_system_opt_in(query: str) -> None:
+    with pytest.raises(TenantQueryValidationError, match="ambiguous or multi-clause"):
+        TenantQueryExecutor._validate(
+            query=query,
+            params={"tenant_id": "tenant-a"},
+            context=TenantExecutionContext(tenant_id="tenant-a"),
+        )

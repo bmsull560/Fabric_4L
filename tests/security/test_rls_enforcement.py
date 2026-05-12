@@ -327,6 +327,29 @@ class TestRLSPolicyStructure:
                             f"tenant_id to be NOT NULL, or use a separate admin-only policy "
                             f"for NULL rows."
                         )
+
+
+    def test_remediation_migrations_do_not_reintroduce_null_visibility(self):
+        """Security remediation migrations must stay strict in both upgrade and downgrade.
+
+        Downgrades are sometimes used operationally; reintroducing
+        ``tenant_id IS NULL OR ...`` would reopen a cross-tenant data exposure
+        path for tenant-owned rows.
+        """
+        remediation_files = [
+            _L4_MIGRATIONS_DIR / "025_fix_billing_rls_policies.py",
+            _L4_MIGRATIONS_DIR / "026_fix_rls_null_tenant_policy.py",
+        ]
+
+        for migration_file in remediation_files:
+            source = migration_file.read_text()
+            assert "tenant_id IS NULL OR" not in source, (
+                f"{migration_file.name}: found deprecated NULL-permissive tenant policy "
+                "clause (tenant_id IS NULL OR ...). Remediation migrations must "
+                "keep strict tenant equality policies to prevent cross-tenant data "
+                "visibility if tenant_id is missing on a row."
+            )
+
     def test_rls_force_enabled(self):
         """RLS must be FORCE enabled (applies even to table owners)."""
         for migration_file in sorted(_L4_MIGRATIONS_DIR.glob("*.py")):

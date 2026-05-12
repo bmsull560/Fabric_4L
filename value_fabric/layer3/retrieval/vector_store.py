@@ -23,10 +23,11 @@ from typing import Any
 from neo4j import AsyncDriver
 from neo4j.exceptions import ClientError, ServiceUnavailable
 from value_fabric.shared.identity.context import get_request_context
-from value_fabric.shared.identity.isolation import ScopedQuery, SystemCypher, TenantScopedCypher
+from value_fabric.shared.identity.isolation import SystemCypher, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
+from ..db.cypher_execution_helper import execute_tenant_cypher
 from ..db.driver import get_driver
 
 
@@ -118,11 +119,6 @@ class Neo4jVectorStore:
             return str(ctx.tenant_id)
         raise ValueError("tenant_id is required for tenant-scoped vector store operations")
 
-    async def _run_scoped(self, scoped: ScopedQuery):
-        """Execute a strict scoped query object through the Neo4j driver."""
-        driver = await self._get_driver()
-        async with driver.session(database=self.settings.neo4j_database) as session:
-            return await session.run(scoped.cypher, scoped.params)
 
     # ------------------------------------------------------------------
     # Write operations
@@ -134,7 +130,7 @@ class Neo4jVectorStore:
         entity_type: str,
         text: str,
         metadata: dict[str, Any] | None = None,
-        tenant_id: str | None = None,
+        tenant_id: str,
     ) -> dict[str, Any]:
         """Upsert a single entity embedding into Neo4j."""
         if entity_type not in VECTOR_ENTITY_TYPES:
@@ -142,7 +138,7 @@ class Neo4jVectorStore:
                 f"Unknown entity type '{entity_type}'. Supported: {VECTOR_ENTITY_TYPES}"
             )
 
-        tenant = self._resolve_tenant_id(tenant_id or (metadata or {}).get("tenant_id"))
+        tenant = self._resolve_tenant_id(tenant_id)
         embedding = self._embed(text)
         clean_metadata = {
             k: v
@@ -174,7 +170,17 @@ class Neo4jVectorStore:
         )
 
         try:
-            result = await self._run_scoped(scoped)
+            driver = await self._get_driver()
+            async with driver.session(database=self.settings.neo4j_database) as session:
+                result = await execute_tenant_cypher(
+                    operation=scoped.operation,
+                    session=session,
+                    query=scoped.cypher,
+                    params=scoped.params,
+                    tenant_id=tenant,
+                    labels=tuple(scoped.labels),
+                    allow_system_query=True,
+                )
             record = await result.single()
             return Neo4jVectorStore_upsert_entityResult.model_validate({
                 "entity_id": record["entity_id"] if record else entity_id,
@@ -192,13 +198,13 @@ class Neo4jVectorStore:
         self,
         entities: list[dict[str, Any]],
         entity_type: str,
-        tenant_id: str | None = None,
+        tenant_id: str,
     ) -> dict[str, Any]:
         """Batch upsert entity embeddings."""
         if not entities:
             return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": 0, "failed": []})
 
-        tenant = self._resolve_tenant_id(tenant_id or entities[0].get("tenant_id"))
+        tenant = self._resolve_tenant_id(tenant_id)
         texts = [e.get("text", e.get("name", "")) for e in entities]
         embeddings = self._embed_batch(texts)
 
@@ -238,7 +244,17 @@ class Neo4jVectorStore:
         )
 
         try:
-            result = await self._run_scoped(scoped)
+            driver = await self._get_driver()
+            async with driver.session(database=self.settings.neo4j_database) as session:
+                result = await execute_tenant_cypher(
+                    operation=scoped.operation,
+                    session=session,
+                    query=scoped.cypher,
+                    params=scoped.params,
+                    tenant_id=tenant,
+                    labels=tuple(scoped.labels),
+                    allow_system_query=True,
+                )
             record = await result.single()
             return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": record["upserted"] if record else 0, "failed": []})
         except (ClientError, ServiceUnavailable) as exc:
@@ -290,8 +306,18 @@ class Neo4jVectorStore:
                 labels=(etype,),
             )
             try:
-                result = await self._run_scoped(scoped)
-                async for record in result:
+                driver = await self._get_driver()
+                async with driver.session(database=self.settings.neo4j_database) as session:
+                    result = await execute_tenant_cypher(
+                        operation=scoped.operation,
+                        session=session,
+                        query=scoped.cypher,
+                        params=scoped.params,
+                        tenant_id=tenant,
+                        labels=tuple(scoped.labels),
+                        allow_system_query=True,
+                    )
+                    async for record in result:
                         all_results.append(
                             (
                                 record["entity_id"],
@@ -349,7 +375,17 @@ class Neo4jVectorStore:
             labels=("*",),
         )
         try:
-            result = await self._run_scoped(scoped)
+            driver = await self._get_driver()
+            async with driver.session(database=self.settings.neo4j_database) as session:
+                result = await execute_tenant_cypher(
+                    operation=scoped.operation,
+                    session=session,
+                    query=scoped.cypher,
+                    params=scoped.params,
+                    tenant_id=tenant,
+                    labels=tuple(scoped.labels),
+                    allow_system_query=True,
+                )
             record = await result.single()
             return bool(record and record["updated"] > 0)
         except (ClientError, ServiceUnavailable) as exc:

@@ -27,13 +27,13 @@ from value_fabric.layer4.workflows.roi_calculator import ROICalculatorWorkflow
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
-class TestBusinessCaseGeneratorWorkflow_mock_execute_errorResult(TypedDictModel):
+class BusinessCaseGeneratorWorkflowMockExecuteErrorResult(TypedDictModel):
     status: str
 
-class TestWorkflowToolFailureHandling_mock_execute_all_failResult(TypedDictModel):
+class WorkflowToolFailureHandlingMockExecuteAllFailResult(TypedDictModel):
     status: str
 
-class TestBusinessCaseGeneratorWorkflow_mock_executeResult(TypedDictModel):
+class BusinessCaseGeneratorWorkflowMockExecuteResult(TypedDictModel):
     chart_data: dict[str, Any] | None = None
     content: str | None = None
     key_points: list[Any] | None = None
@@ -255,7 +255,7 @@ class TestBusinessCaseGeneratorWorkflow:
         # Mock generate_section tool to return content
         async def mock_execute(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
-                return TestBusinessCaseGeneratorWorkflow_mock_executeResult.model_validate({
+                return BusinessCaseGeneratorWorkflowMockExecuteResult.model_validate({
                     "content": f"Mock content for {params.get('section_type', 'unknown')}",
                     "word_count": 150,
                     "key_points": ["Point 1", "Point 2"],
@@ -263,9 +263,9 @@ class TestBusinessCaseGeneratorWorkflow:
 
 
             elif tool_name == "create_chart":
-                return TestBusinessCaseGeneratorWorkflow_mock_executeResult.model_validate({"chart_data": {"type": "bar", "data": []}})
+                return BusinessCaseGeneratorWorkflowMockExecuteResult.model_validate({"chart_data": {"type": "bar", "data": []}})
             else:
-                return TestBusinessCaseGeneratorWorkflow_mock_executeResult.model_validate({"status": "ok"})
+                return BusinessCaseGeneratorWorkflowMockExecuteResult.model_validate({"status": "ok"})
 
         registry.execute = AsyncMock(side_effect=mock_execute)
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
@@ -320,7 +320,7 @@ class TestBusinessCaseGeneratorWorkflow:
         async def mock_execute_error(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
                 raise RuntimeError("LLM API unavailable")
-            return TestBusinessCaseGeneratorWorkflow_mock_execute_errorResult.model_validate({"status": "ok"})
+            return BusinessCaseGeneratorWorkflowMockExecuteErrorResult.model_validate({"status": "ok"})
 
         registry.execute = AsyncMock(side_effect=mock_execute_error)
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
@@ -772,7 +772,7 @@ class TestWorkflowToolFailureHandling:
         async def mock_execute_all_fail(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
                 raise RuntimeError("LLM API is down for all calls")
-            return TestWorkflowToolFailureHandling_mock_execute_all_failResult.model_validate({"status": "ok"})
+            return WorkflowToolFailureHandlingMockExecuteAllFailResult.model_validate({"status": "ok"})
 
         registry.execute = AsyncMock(side_effect=mock_execute_all_fail)
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)

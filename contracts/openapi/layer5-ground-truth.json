@@ -4075,7 +4075,9 @@
           },
           "confidence": {
             "type": "number",
-            "title": "Confidence"
+            "title": "Confidence",
+            "minimum": 0.0,
+            "maximum": 1.0
           },
           "status": {
             "type": "string",
@@ -4308,7 +4310,9 @@
           },
           "confidence": {
             "type": "number",
-            "title": "Confidence"
+            "title": "Confidence",
+            "minimum": 0.0,
+            "maximum": 1.0
           },
           "status": {
             "type": "string",

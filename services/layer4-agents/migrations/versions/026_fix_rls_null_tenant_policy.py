@@ -118,11 +118,9 @@ def downgrade() -> None:
                 FOR ALL
                 TO PUBLIC
                 USING (
-                    tenant_id IS NULL OR
                     tenant_id::text = current_setting('app.tenant_id', true)
                 )
                 WITH CHECK (
-                    tenant_id IS NULL OR
                     tenant_id::text = current_setting('app.tenant_id', true)
                 )
         """)

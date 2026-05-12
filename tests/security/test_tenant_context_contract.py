@@ -477,3 +477,29 @@ class TestImportConsistency:
             f"Import consistency violations:\n"
             + "\n".join(f"  - {v}" for v in violations)
         )
+
+
+class TestTenantIdSourceOfTruth:
+    """Tenant identity in routes must come from authenticated request context."""
+
+    TARGET_FILES = [
+        _L4_ROUTES_DIR / "accounts.py",
+        _L4_TENANT_ROUTES_DIR / "users.py",
+        _L4_TENANT_ROUTES_DIR / "api_keys.py",
+        _L4_TENANT_ROUTES_DIR / "admin.py",
+    ]
+
+    def test_target_routes_do_not_use_request_body_tenant_id(self):
+        """Prevent drift to request-body tenant_id on sensitive routes."""
+        violations = []
+        pattern = re.compile(r"\brequest\.tenant_id\b")
+        for filepath in self.TARGET_FILES:
+            source = filepath.read_text(encoding="utf-8")
+            if pattern.search(source):
+                violations.append(str(filepath.relative_to(_PROJECT_ROOT)))
+
+        assert not violations, (
+            "Sensitive Layer 4 routes must use authenticated context tenant_id, "
+            "not request-body tenant_id. Violations:\n"
+            + "\n".join(f"  - {v}" for v in violations)
+        )

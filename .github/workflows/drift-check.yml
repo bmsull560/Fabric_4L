@@ -43,6 +43,11 @@ jobs:
           pip install -e services/layer3-knowledge/
           pip install -e services/layer4-agents/
 
+
+      - name: Check Layer 3 app_monolith shim drift
+        run: |
+          python3 services/layer3-knowledge/scripts/check_app_monolith_shim_drift.py
+
       - name: Export current contracts
         run: |
           python scripts/export_openapi.py

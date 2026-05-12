@@ -9,3 +9,8 @@ Canonical ownership map during monolith decomposition:
 - `value_fabric/layer3/api/routes/entity_compat.py` owns temporary compatibility logic for legacy entity-context semantics.
 
 `value_fabric/layer3/api/app_monolith.py` is bootstrap/composition only and must not own business endpoint logic.
+
+Service wrapper note:
+
+- Edit `value_fabric/layer3/api/app_monolith.py` for Layer 3 monolith changes.
+- Do not edit `services/layer3-knowledge/src/api/app_monolith.py` except to preserve the approved thin re-export shim shape.

@@ -3,6 +3,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from value_fabric.layer4.interfaces.formula_governance import FormulaStatus
+from value_fabric.layer4.interfaces.value_pack_service import (
+    PackExecutionRequest,
+    PackStatus,
+    ValuePack,
+)
 from value_fabric.layer4.services.formula_governance_service import Neo4jFormulaGovernanceService
 from value_fabric.layer4.services.value_pack_service import Neo4jValuePackService
 
@@ -61,3 +66,37 @@ async def test_formula_id_in_tenant_b_not_visible_from_tenant_a_regression():
     assert resp.new_status == FormulaStatus.DRAFT
     _, kwargs = session.run.call_args
     assert kwargs["tenant_id"] == "tenant-a"
+
+
+@pytest.mark.asyncio
+async def test_execute_pack_ignores_crafted_variables_tenant_id():
+    driver = MagicMock()
+    session = AsyncMock()
+    driver.session.return_value.__aenter__.return_value = session
+    session.run = AsyncMock()
+
+    svc = Neo4jValuePackService(driver)
+    svc.get_pack = AsyncMock(  # type: ignore[method-assign]
+        return_value=ValuePack(
+            pack_id="pack-shared",
+            name="Shared Pack",
+            description="",
+            industry="saas",
+            segment=None,
+            status=PackStatus.PUBLISHED,
+            version="1.0.0",
+            formulas=[],
+        )
+    )
+
+    request = PackExecutionRequest(
+        pack_id="pack-shared",
+        workspace_id="ws-1",
+        variables={"tenant_id": "tenant-b", "arr": 1000},
+        user_id="user-a",
+    )
+    await svc.execute_pack(request=request, tenant_id="tenant-a")
+
+    svc.get_pack.assert_awaited_once_with("pack-shared", "tenant-a")
+    for call in session.run.call_args_list:
+        assert call.kwargs["tenant_id"] == "tenant-a"

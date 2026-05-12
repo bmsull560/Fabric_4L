@@ -645,12 +645,24 @@ def validate_jwt_config() -> None:
 def validate_rls_prerequisites() -> None:
     """Validate startup prerequisites required for DB-backed tenant isolation."""
     database_url = os.getenv("DATABASE_URL", "")
+    if not database_url and is_production():
+        raise ValueError(
+            "DATABASE_URL is required in production to validate PostgreSQL RLS prerequisites."
+        )
     if not database_url:
         return
 
-    parsed = urlparse(database_url)
-    scheme = (parsed.scheme or "").lower()
-    username = (parsed.username or "").lower()
+    try:
+        parsed = urlparse(database_url)
+        scheme = (parsed.scheme or "").lower()
+        username = (parsed.username or "").lower()
+    except Exception as exc:
+        if is_production():
+            raise ValueError(
+                "DATABASE_URL is malformed and RLS prerequisites cannot be verified."
+            ) from exc
+        logger.warning("DATABASE_URL is malformed; RLS prerequisite checks are degraded")
+        return
 
     if scheme not in _RLS_SUPPORTED_SCHEMES and is_production():
         raise ValueError(
@@ -758,6 +770,7 @@ def get_startup_summary() -> dict[str, Any]:
         "jwt_validation": "strict" if is_production() else "relaxed",
         "rls_status": _get_rls_status(database_url),
         "rls_enforcement": rls_checks,
+        "rls_enforcement_status": rls_checks["status"],
         "degraded_control_status": {
             "is_degraded": False,
             "controls": [],
@@ -795,6 +808,11 @@ def get_startup_summary() -> dict[str, Any]:
         summary["warnings"].append(
             "Database connection uses a superuser role. "
             "RLS policies exist but are bypassed for superusers."
+        )
+    elif rls_checks["status"] == "missing_database_url":
+        summary["degraded_controls"].append("rls")
+        summary["warnings"].append(
+            "DATABASE_URL is missing; RLS enforcement prerequisites cannot be validated."
         )
     
     summary["degraded_control_status"]["controls"] = list(summary["degraded_controls"])

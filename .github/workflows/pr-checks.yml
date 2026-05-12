@@ -77,6 +77,10 @@ jobs:
             cat artifacts/pytest-collection.txt
             exit "$collect_status"
           fi
+          if rg -n "PytestCollectionWarning: cannot collect test class" artifacts/pytest-collection.txt; then
+            echo "Pytest collection warnings indicate test discovery collisions. Failing CI."
+            exit 1
+          fi
 
       - name: Enforce static test skip governance
         run: |

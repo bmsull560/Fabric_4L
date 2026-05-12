@@ -7,7 +7,10 @@ from unittest.mock import AsyncMock
 import pytest
 
 from value_fabric.layer4.services.export_provenance import build_export_provenance_manifest
-from value_fabric.layer4.workflows.business_case import BusinessCaseGeneratorWorkflow
+from value_fabric.layer4.workflows.business_case import (
+    BusinessCaseGeneratorWorkflow,
+    MissingTenantContextError,
+)
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
@@ -171,3 +174,35 @@ def test_export_manifest_reads_persisted_case_linkage():
 
     assert manifest["truth_object_ids"] == ["truth-123"]
     assert manifest["source_references"] == [{"claim": "A", "truth_object_id": "truth-123"}]
+
+
+def test_resolve_organization_id_fails_closed_without_authenticated_tenant():
+    workflow = BusinessCaseGeneratorWorkflow(tool_registry=AsyncMock())
+    state = workflow.create_initial_state(
+        {
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
+            "sections_requested": ["executive_summary"],
+            "output_format": "pdf",
+            "custom_inputs": {"organization_id": "forged-org"},
+        }
+    )
+    state.metadata["tenant_id"] = "forged-metadata-tenant"
+
+    with pytest.raises(MissingTenantContextError):
+        workflow._resolve_organization_id(state)
+
+
+def test_resolve_organization_id_ignores_forged_metadata_tenant():
+    workflow = BusinessCaseGeneratorWorkflow(tool_registry=AsyncMock())
+    state = workflow.create_initial_state(
+        {
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
+            "sections_requested": ["executive_summary"],
+            "output_format": "pdf",
+            "custom_inputs": {"organization_id": "forged-org"},
+            "tenant_id": "auth-tenant-1",
+        }
+    )
+    state.metadata["tenant_id"] = "forged-metadata-tenant"
+
+    assert workflow._resolve_organization_id(state) == "auth-tenant-1"

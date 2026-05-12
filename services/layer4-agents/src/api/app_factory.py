@@ -11,6 +11,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from value_fabric.shared.security import validate_production_safety
 from value_fabric.shared.observability import configure_observability
+from value_fabric.shared.fastapi_framework import create_fabric_app
 
 from ..config.settings import settings
 
@@ -34,7 +35,8 @@ def init_telemetry() -> TracerProvider | None:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(
+    app = create_fabric_app(
+        service_name="layer4-agents",
         title="Layer 4: Agentic Workflow Engine",
         description="LangGraph-powered workflow orchestration for Value Fabric with multi-agent support",
         version="0.2.0",

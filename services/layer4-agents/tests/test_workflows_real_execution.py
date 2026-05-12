@@ -65,7 +65,7 @@ def _merge(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     return {**left, **right}
 
 
-class TestState(TypedDict, total=False):
+class WorkflowTestState(TypedDict, total=False):
     """Lightweight LangGraph state schema for orchestration tests."""
 
     workflow_id: str
@@ -78,7 +78,7 @@ class TestState(TypedDict, total=False):
 def _make_initial_state(
     workflow_id: str = "wf-test",
     pre_existing_output: dict[str, Any] | None = None,
-) -> TestState:
+) -> WorkflowTestState:
     """Build a fresh initial state dict for test invocation."""
     return _make_initial_stateResult.model_validate({
         "workflow_id": workflow_id,
@@ -90,18 +90,18 @@ def _make_initial_state(
 
 def _build_simple_graph(checkpointer=None) -> Any:
     """Build a simple START → PROCESS → END graph."""
-    async def start_node(state: TestState) -> dict:
+    async def start_node(state: WorkflowTestState) -> dict:
         return start_nodeResult.model_validate({"current_node": "start", "status": "running"})
 
-    async def process_node(state: TestState) -> dict:
+    async def process_node(state: WorkflowTestState) -> dict:
         output = state.get("output_data", {})
         return process_nodeResult.model_validate({"current_node": "process", "output_data": {**output, "process": "done"}, "status": "running"})
 
-    async def end_node(state: TestState) -> dict:
+    async def end_node(state: WorkflowTestState) -> dict:
         output = state.get("output_data", {})
         return end_nodeResult.model_validate({"current_node": "end", "output_data": {**output, "end": "done"}, "status": "completed"})
 
-    graph = StateGraph(TestState)
+    graph = StateGraph(WorkflowTestState)
     graph.add_node("start", start_node)
     graph.add_node("process", process_node)
     graph.add_node("end_node", end_node)
@@ -116,16 +116,16 @@ def _build_looping_graph(checkpointer=None) -> Any:
     """Build A → B → A loop graph to test recursion limits."""
     call_count = [0]
 
-    def node_a(state: TestState) -> dict:
+    def node_a(state: WorkflowTestState) -> dict:
         call_count[0] += 1
         output = state.get("output_data", {})
         return node_aResult.model_validate({"current_node": "node_a", "output_data": {**output, "a_calls": call_count[0]}, "status": "running"})
 
-    def node_b(state: TestState) -> dict:
+    def node_b(state: WorkflowTestState) -> dict:
         output = state.get("output_data", {})
         return node_bResult.model_validate({"current_node": "node_b", "output_data": {**output, "b": "executed"}, "status": "running"})
 
-    graph = StateGraph(TestState)
+    graph = StateGraph(WorkflowTestState)
     graph.add_node("node_a", node_a)
     graph.add_node("node_b", node_b)
     graph.add_edge("node_a", "node_b")

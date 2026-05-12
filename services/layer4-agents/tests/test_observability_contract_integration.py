@@ -16,3 +16,25 @@ def test_standard_observability_probes_and_correlation_header() -> None:
     assert health.headers.get("X-Request-ID") == trace_id
     assert health.headers.get("X-Correlation-ID") == trace_id
     assert health.headers.get("X-Trace-ID") == trace_id
+
+
+def test_request_id_round_trips_on_success_response() -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    request_id = "req-l4-success-001"
+    response = client.get("/health", headers={"X-Request-ID": request_id})
+
+    assert response.status_code == 200
+    assert response.headers.get("X-Request-ID") == request_id
+
+
+def test_request_id_round_trips_on_error_response() -> None:
+    app = create_app()
+    client = TestClient(app)
+
+    request_id = "req-l4-error-001"
+    response = client.get("/does-not-exist", headers={"X-Request-ID": request_id})
+
+    assert response.status_code == 404
+    assert response.headers.get("X-Request-ID") == request_id

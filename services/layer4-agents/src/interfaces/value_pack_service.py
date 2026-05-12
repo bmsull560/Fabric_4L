@@ -140,6 +140,7 @@ class IValuePackService(ABC):
     async def execute_pack(
         self,
         request: PackExecutionRequest,
+        tenant_id: str,
     ) -> PackExecutionResult:
         """Execute pack workflow with provided variables."""
         pass

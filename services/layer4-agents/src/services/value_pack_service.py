@@ -232,12 +232,12 @@ class Neo4jValuePackService(IValuePackService):
     async def execute_pack(
         self,
         request: PackExecutionRequest,
+        tenant_id: str,
     ) -> PackExecutionResult:
         """Execute pack workflow with provided variables."""
         execution_id = str(uuid.uuid4())
 
         # Get pack
-        tenant_id = str(request.variables.get("tenant_id", ""))
         pack = await self.get_pack(request.pack_id, tenant_id)
         if not pack:
             return PackExecutionResult(

@@ -21,12 +21,23 @@ APP_MONOLITH_PATH = REPO_ROOT / "services" / "layer3-knowledge" / "src" / "api" 
 TENANT_RESOLUTION_PATH = REPO_ROOT / "services" / "layer3-knowledge" / "src" / "api" / "services" / "tenant_resolution.py"
 
 
-def _resolve_ingest_tenant_id(header_tenant_id: str | None, body_tenant_id: str | None) -> str:
+def _resolve_ingest_tenant_id(
+    authenticated_tenant_id: str,
+    header_tenant_id: str | None,
+    body_tenant_id: str | None,
+    *,
+    allow_tenant_hints: bool,
+) -> str:
     spec = importlib.util.spec_from_file_location("tenant_resolution", TENANT_RESOLUTION_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec is not None and spec.loader is not None
     spec.loader.exec_module(module)
-    return module.resolve_ingest_tenant_id(header_tenant_id, body_tenant_id)
+    return module.resolve_ingest_tenant_id(
+        authenticated_tenant_id,
+        header_tenant_id,
+        body_tenant_id,
+        allow_tenant_hints=allow_tenant_hints,
+    )
 
 
 def test_endpoint_inventory_includes_optional_tenant_hint_model() -> None:
@@ -42,18 +53,40 @@ def test_ingest_rejects_missing_auth_tenant_context_fail_closed() -> None:
     assert 'raise HTTPException(status_code=401, detail="Authentication context is required")' in source
 
 
-def test_ingest_rejects_mismatched_tenant_hint_fail_closed() -> None:
-    """Body/header tenant hints must not override authenticated tenant context."""
-    with pytest.raises(HTTPException) as header_exc:
-        _resolve_ingest_tenant_id("tenant-auth", "tenant-other")
-    assert header_exc.value.status_code == 403
-    assert header_exc.value.detail == "Tenant header does not match request tenant_id"
-
-
-def test_ingest_rejects_cross_tenant_access_attempt_fail_closed() -> None:
-    """Cross-tenant attempts via compatibility hints are rejected with stable contract."""
+def test_ingest_rejects_tenant_hints_for_non_service_principals() -> None:
     with pytest.raises(HTTPException) as exc:
-        _resolve_ingest_tenant_id("tenant-a", "tenant-b")
+        _resolve_ingest_tenant_id(
+            "tenant-a",
+            "tenant-a",
+            None,
+            allow_tenant_hints=False,
+        )
 
     assert exc.value.status_code == 403
-    assert exc.value.detail == "Tenant header does not match request tenant_id"
+    assert exc.value.detail == "Tenant hints are not allowed for this principal"
+
+
+def test_ingest_rejects_cross_tenant_header_forgery_even_for_authorized_hints() -> None:
+    with pytest.raises(HTTPException) as exc:
+        _resolve_ingest_tenant_id(
+            "tenant-a",
+            "tenant-b",
+            None,
+            allow_tenant_hints=True,
+        )
+
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "X-Tenant-ID header does not match authenticated tenant context"
+
+
+def test_ingest_rejects_cross_tenant_body_forgery_even_for_authorized_hints() -> None:
+    with pytest.raises(HTTPException) as exc:
+        _resolve_ingest_tenant_id(
+            "tenant-a",
+            None,
+            "tenant-b",
+            allow_tenant_hints=True,
+        )
+
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "Request tenant_id does not match authenticated tenant context"

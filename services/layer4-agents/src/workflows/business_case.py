@@ -85,6 +85,10 @@ class BusinessCaseGeneratorWorkflow__sync_ground_truths_to_kgResult(TypedDictMod
 logger = logging.getLogger(__name__)
 
 
+class MissingTenantContextError(ValueError):
+    """Raised when a tenant-scoped business case workflow has no authenticated tenant context."""
+
+
 class BusinessCaseGeneratorWorkflow(BaseWorkflow):
     """Workflow for generating comprehensive business case documents.
 
@@ -121,6 +125,10 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
     def create_initial_state(self, input_data: dict[str, Any]) -> BusinessCaseAgentState:
         """Create initial state from input data."""
         case_input = BusinessCaseInputData(**input_data)
+        authenticated_tenant_id = input_data.get("tenant_id")
+        metadata = {"workflow_name": self.name}
+        if authenticated_tenant_id:
+            metadata["authenticated_tenant_id"] = str(authenticated_tenant_id)
 
         return BusinessCaseAgentState(
             workflow_type=self.config.workflow_type,
@@ -129,7 +137,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             input_data=input_data,
             output_data={},
             errors=[],
-            metadata={"workflow_name": self.name},
+            metadata=metadata,
         )
 
     async def _execute_tool(
@@ -865,28 +873,24 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         finally:
             await client.close()
 
-    def _resolve_organization_id(self, state: BusinessCaseAgentState) -> str | None:
-        """Resolve tenant/organization ID from state or environment."""
+    def _resolve_organization_id(self, state: BusinessCaseAgentState) -> str:
+        """Resolve tenant/organization ID from authenticated workflow state."""
         organization_id: str | None = None
+        if state.metadata:
+            organization_id = state.metadata.get("authenticated_tenant_id")
 
-        if state.case_input and state.case_input.custom_inputs:
-            organization_id = state.case_input.custom_inputs.get("organization_id")
+        if organization_id:
+            return str(organization_id)
 
-        if not organization_id and state.metadata:
-            organization_id = state.metadata.get("tenant_id")
-
-        if not organization_id:
-            organization_id = os.getenv("LAYER5_DEFAULT_ORG_ID")
-
-        return organization_id
+        raise MissingTenantContextError(
+            "Missing authenticated tenant context for business case workflow execution."
+        )
 
     async def _sync_ground_truths_to_kg(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Best-effort sync of approved TruthObjects to the KG via Layer 5.
 
-        Resolves the tenant/organization ID from (in priority order):
-          1. ``state.case_input.custom_inputs["organization_id"]``
-          2. ``state.metadata["tenant_id"]`` (set by TenantMiddleware)
-          3. The LAYER5_DEFAULT_ORG_ID environment variable (dev fallback)
+        Resolves tenant/organization ID exclusively from authenticated
+        workflow state metadata set during workflow initialization.
 
         Returns a dict with sync statistics or an ``error`` key.
         """

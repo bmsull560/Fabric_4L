@@ -40,7 +40,7 @@ function normalizeWorkflowStatus(status: unknown): WorkflowState {
     waiting_dependency: "waiting_dependency",
     retrying: "retrying",
     paused: "paused",
-    interrupted: "paused",
+    interrupted: "interrupted",
     completed: "succeeded",
     succeeded: "succeeded",
     failed: "failed_terminal",

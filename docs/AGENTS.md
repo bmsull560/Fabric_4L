@@ -118,7 +118,7 @@ Before opening a PR, run:
 make verify
 ```
 
-This runs: conflict-marker scan → NUL-byte scan (`check-no-nul-bytes`) across tracked `*.py`, `*.ts`, `*.tsx`, `*.json`, `*.yaml` files → lint → type-check → unit tests → contract tests → build.
+This runs: conflict-marker scan → NUL-byte scans (`check-no-nul-bytes` across tracked source/config files and `check-python-no-nul-bytes` across tracked `*.py`) → lint → type-check → unit tests → contract tests → build.
 
 ### Troubleshooting: merge conflict marker failures
 

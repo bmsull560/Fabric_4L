@@ -12,13 +12,27 @@ def extract_tenant_id(request: Request | None, *, tenant_support_enabled: bool) 
     return None
 
 
-def resolve_ingest_tenant_id(header_tenant_id: str | None, body_tenant_id: str | None) -> str:
+def resolve_ingest_tenant_id(
+    authenticated_tenant_id: str,
+    header_tenant_id: str | None,
+    body_tenant_id: str | None,
+    *,
+    allow_tenant_hints: bool,
+) -> str:
+    normalized_authenticated = authenticated_tenant_id.strip()
+    if not normalized_authenticated:
+        raise HTTPException(status_code=400, detail="tenant_id is required for RDF ingestion")
     normalized_header = header_tenant_id.strip() if header_tenant_id else ""
     normalized_body = body_tenant_id.strip() if body_tenant_id else ""
 
-    if normalized_header and normalized_body and normalized_header != normalized_body:
-        raise HTTPException(status_code=403, detail="Tenant header does not match request tenant_id")
-    tenant_id = normalized_header or normalized_body
-    if not tenant_id:
-        raise HTTPException(status_code=400, detail="tenant_id is required for RDF ingestion")
-    return tenant_id
+    # Authenticated tenant context is mandatory; tenant hints are compatibility-only and restricted.
+    if not allow_tenant_hints and (normalized_header or normalized_body):
+        raise HTTPException(status_code=403, detail="Tenant hints are not allowed for this principal")
+
+    if normalized_header and normalized_header != normalized_authenticated:
+        raise HTTPException(status_code=403, detail="X-Tenant-ID header does not match authenticated tenant context")
+
+    if normalized_body and normalized_body != normalized_authenticated:
+        raise HTTPException(status_code=403, detail="Request tenant_id does not match authenticated tenant context")
+
+    return normalized_authenticated

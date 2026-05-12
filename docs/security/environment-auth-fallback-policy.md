@@ -22,6 +22,7 @@ Startup validation is expected to **fail closed** when any of the following are 
 - `JWT_SECRET` matches known default/test placeholders (for example `changeme`, `test-secret`, `your-secret`).
 - `JWT_SECRET` is shorter than 32 characters.
 - `DATABASE_URL` points to a non-PostgreSQL backend for tenant-scoped services.
+- `DATABASE_URL` is missing or malformed, so RLS prerequisites cannot be verified.
 - `DATABASE_URL` uses a known PostgreSQL superuser role (`postgres`, `rdsadmin`, `cloudsqladmin`, `azure_superuser`), because superusers bypass RLS.
 
 ## Startup summary contract expectations
@@ -34,6 +35,7 @@ Startup validation is expected to **fail closed** when any of the following are 
   - `superuser_connection` (bool)
   - `enforced` (bool)
   - `status` (`enforced`, `unsupported_backend`, `superuser_bypass`, `missing_database_url`, `invalid_database_url`)
+- `rls_enforcement_status`: convenience string mirroring `rls_enforcement.status` for operational dashboards and log summaries.
 - `degraded_control_status`: object with:
   - `is_degraded` (bool)
   - `controls` (list of degraded control names)

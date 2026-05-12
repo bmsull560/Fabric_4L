@@ -39,20 +39,7 @@ import {
   assertSchemaRejects,
 } from './_helpers';
 
-const DOCUMENTED_DIVERGENCES = [
-  {
-    id: 'truth-object-confidence-range',
-    classification: 'intentional_temporary',
-    reason: 'Frontend enforces confidence range [0,1] ahead of OpenAPI tightening.',
-    tracker: 'docs/DEPRECATIONS.md',
-  },
-  {
-    id: 'workflow-status-enum-tightening',
-    classification: 'intentional_temporary',
-    reason: 'Frontend uses enum guard while OpenAPI status is still broad string.',
-    tracker: 'docs/DEPRECATIONS.md',
-  },
-] as const;
+
 
 // ---------------------------------------------------------------------------
 // Drift detection — every tracked schema must accept its canonical fixture
@@ -272,14 +259,6 @@ describe('OpenAPI drift: L5 Ground Truth', () => {
 // ---------------------------------------------------------------------------
 
 describe('OpenAPI drift: negative-path consistency', () => {
-  it('all intentional divergences are explicitly documented', () => {
-    expect(DOCUMENTED_DIVERGENCES.length).toBe(2);
-    for (const divergence of DOCUMENTED_DIVERGENCES) {
-      expect(divergence.classification).toBe('intentional_temporary');
-      expect(divergence.tracker).toBeTruthy();
-    }
-  });
-
   it('Zod rejects invalid UUID where OpenAPI also rejects it', () => {
     const bad = { ...fixtures.tenant(), id: 'not-a-uuid' };
     assertSchemaRejects(TenantModelSchema, bad, 'TenantModel bad UUID');
@@ -291,21 +270,26 @@ describe('OpenAPI drift: negative-path consistency', () => {
     );
   });
 
-  it('Zod rejects out-of-range confidence but OpenAPI allows any number (documented divergence)', () => {
+  it('Zod and OpenAPI both reject out-of-range confidence', () => {
     const bad = { ...fixtures.truthObject(), confidence: 1.5 };
     assertSchemaRejects(TruthObjectResponseSchema, bad, 'TruthObject confidence > 1');
-    // Intentionally NOT asserting OpenAPI rejection — the canonical spec
-    // does not constrain the confidence range. Zod is stricter.
-    expect(bad.confidence).toBe(1.5);
+    assertOpenApiSchemaRejects(
+      'layer5-ground-truth.json',
+      '#/components/schemas/TruthObjectResponse',
+      bad,
+      'TruthObject confidence > 1 (OpenAPI)'
+    );
   });
 
-  it('Zod rejects unknown workflow status but OpenAPI allows any string (documented divergence)', () => {
+  it('Zod and OpenAPI both reject unknown workflow status', () => {
     const bad = fixtures.workflowStatus({ status: 'bogus' as 'running' });
-    // Zod is stricter: it uses an enum. OpenAPI defines status as a plain string.
     assertSchemaRejects(WorkflowStatusResponseSchema, bad, 'WorkflowStatus unknown enum');
-    // Intentionally NOT asserting OpenAPI rejection here — the canonical spec
-    // is looser than our frontend schema. This is a known divergence.
-    expect(bad.status).toBe('bogus');
+    assertOpenApiSchemaRejects(
+      'layer4-agents.json',
+      '#/components/schemas/WorkflowStatusResponse',
+      bad,
+      'WorkflowStatus unknown enum (OpenAPI)'
+    );
   });
 });
 

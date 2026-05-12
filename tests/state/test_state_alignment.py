@@ -6,12 +6,8 @@ definitions.  A mismatch means the UI will silently mishandle workflows in
 an unknown state — this is a release-blocking defect.
 
 Expected Initial State:
-    - test_backend_workflow_status_superset_of_frontend: FAIL
-      (backend has ``INTERRUPTED`` which frontend lacks)
-    - test_frontend_workflow_status_subset_of_backend:   FAIL
-      (same root cause — ``interrupted`` missing from frontend union)
-    - test_workflow_type_enum_matches_frontend:          PASS or FAIL
-    - test_no_duplicate_enum_aliases:                    Verify
+    - All alignment checks should PASS when frontend/backend remain synchronized.
+    - Duplicate alias checks should PASS when WorkflowType values remain unique.
 
 These tests parse source files directly (no runtime import of frontend code)
 so they run without Node.js and catch drift even when the two stacks are
@@ -136,9 +132,8 @@ class TestWorkflowStatusAlignment:
     def test_backend_workflow_status_superset_of_frontend(self):
         """Every backend status must exist in the frontend type.
 
-        Expected initial state: FAIL — backend has ``interrupted`` which the
-        frontend ``WorkflowStatus`` union does not include.  The fix is to add
-        ``'interrupted'`` to the frontend type.
+        This test fails if backend introduces a new status not represented
+        in the frontend union (for example ``interrupted``).
         """
         missing_in_frontend = self.backend_values - self.frontend_values
         assert not missing_in_frontend, (
@@ -221,10 +216,7 @@ class TestWorkflowTypeAlignment:
 class TestNoDuplicateEnumAliases:
     """Verify that WorkflowType has no duplicate values (aliases).
 
-    The backend currently has both ``WHITESPACE_ANALYSIS`` and
-    ``WHITESPACE_ANALYSIS_WORKFLOW`` mapping to the same string value
-    ``"whitespace_analysis"``.  While Python allows this, it creates
-    confusion and potential routing bugs.
+    Enum aliases create ambiguous routing/branching behavior and are disallowed.
     """
 
     def test_workflow_type_values_are_unique(self):

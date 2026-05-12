@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI
+from value_fabric.shared.error_handling import RequestIDMiddleware
 
 from ..error_handling.handlers import register_exception_handlers
 
@@ -162,5 +163,16 @@ def create_fabric_app(
 
     if register_default_exception_handlers:
         register_exception_handlers(app)
+
+    @app.on_event("startup")
+    async def _assert_canonical_middleware_chain() -> None:
+        middleware_classes = {middleware.cls for middleware in app.user_middleware}
+        if RequestIDMiddleware not in middleware_classes:
+            message = (
+                f"{service_name}: canonical request correlation middleware is missing. "
+                "Install RequestIDMiddleware via create_fabric_app(include_request_id_middleware=True) "
+                "or add value_fabric.shared.fastapi_framework.add_request_id_middleware explicitly."
+            )
+            raise RuntimeError(message)
 
     return app

@@ -9,6 +9,7 @@ Covers:
 from __future__ import annotations
 
 import uuid
+from typing import Any
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -21,12 +22,12 @@ from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
-class TestMiddlewareTenantStatusEnforcement__jwt_payloadResult(TypedDictModel):
+class MiddlewareTenantStatusEnforcementJwtPayloadResult(TypedDictModel):
     roles: list[Any]
     sub: Any
     tenant_id: Any
 
-class TestMiddlewareTenantStatusEnforcement_get_dataResult(TypedDictModel):
+class MiddlewareTenantStatusEnforcementGetDataResult(TypedDictModel):
     ok: bool
 
 
@@ -177,12 +178,12 @@ class TestMiddlewareTenantStatusEnforcement:
 
         @app.get("/data")
         async def get_data(request: Request):
-            return TestMiddlewareTenantStatusEnforcement_get_dataResult.model_validate({"ok": True})
+            return MiddlewareTenantStatusEnforcementGetDataResult.model_validate({"ok": True})
 
         return app
 
     def _jwt_payload(self, tenant_id: str):
-        return TestMiddlewareTenantStatusEnforcement__jwt_payloadResult.model_validate({
+        return MiddlewareTenantStatusEnforcementJwtPayloadResult.model_validate({
             "sub": str(uuid.uuid4()),
             "tenant_id": tenant_id,
             "roles": ["user"],

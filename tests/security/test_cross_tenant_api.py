@@ -349,6 +349,47 @@ class TestTenantAdminRouteTenantEnforcement:
             f"otherwise read/revoke another tenant's API keys."
         )
 
+    @pytest.mark.parametrize(
+        ("filepath", "function_name"),
+        [
+            (ADMIN_FILE, "list_tenant_users"),
+            (ADMIN_FILE, "get_tenant_usage"),
+            (ADMIN_FILE, "get_tenant_audit_log"),
+            (ADMIN_FILE, "get_tenant_settings"),
+            (ADMIN_FILE, "update_tenant_settings"),
+            (USERS_FILE, "api_invite_user"),
+            (USERS_FILE, "api_list_users"),
+            (USERS_FILE, "api_get_user"),
+            (USERS_FILE, "api_update_user"),
+            (USERS_FILE, "api_deactivate_user"),
+            (API_KEYS_FILE, "api_create_key"),
+            (API_KEYS_FILE, "api_list_keys"),
+            (API_KEYS_FILE, "api_revoke_key"),
+        ],
+    )
+    def test_tenant_admin_endpoints_require_authenticated_context(
+        self, filepath: Path, function_name: str
+    ):
+        """Tenant admin endpoints must require an authenticated context dependency.
+
+        ``require_tenant_admin`` is acceptable since it is stricter than
+        ``require_authenticated`` and enforces auth + role check.
+        """
+        source = filepath.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)) and node.name == function_name:
+                signature_text = ast.get_source_segment(source, node) or ""
+                assert (
+                    "Depends(require_tenant_admin)" in signature_text
+                    or "Depends(require_authenticated)" in signature_text
+                ), (
+                    f"{filepath.name}::{function_name} must require authenticated context "
+                    "via require_tenant_admin or require_authenticated."
+                )
+                return
+        pytest.fail(f"Could not find function {function_name} in {filepath}")
+
 
 # ---------------------------------------------------------------------------
 # Tests: Aggregate Dependency Audit
