@@ -15,6 +15,7 @@ import os
 import re
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 import inspect
 
 from fastapi import FastAPI, HTTPException, Request
@@ -41,6 +42,7 @@ from metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..config import get_settings
 from ..database import close_db, get_session_factory, init_db
 from .router import router
+from .schemas import HealthResponse
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -304,6 +306,16 @@ def create_app() -> FastAPI:
                 content=f"# Error: {e}", status_code=500, media_type="text/plain"
             )
 
+    # Public health check (matches middleware PUBLIC_PATH_ALLOWLIST)
+    @app.get("/health", response_model=HealthResponse, tags=["system"], include_in_schema=False)
+    async def public_health() -> HealthResponse:
+        return HealthResponse(
+            status="ok",
+            version="0.1.0",
+            timestamp=datetime.now(UTC),
+            database="ok",
+        )
+
     # Root redirect to docs
     @app.get("/", include_in_schema=False)
     async def root() -> JSONResponse:
@@ -312,7 +324,7 @@ def create_app() -> FastAPI:
                 "service": "Value Fabric Ground Truth Layer (L5)",
                 "version": "0.1.0",
                 "docs": "/docs",
-                "health": "/api/v1/health",
+                "health": "/health",
                 "metrics": "/metrics",
             }
         )

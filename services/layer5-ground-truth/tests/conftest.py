@@ -36,6 +36,8 @@ os.environ["AUTO_ADVANCE_TO_SUPPORTED"] = "true"
 os.environ["MIN_CONFIDENCE_FOR_SUPPORTED"] = "0.5"
 os.environ["MIN_SOURCES_FOR_CORROBORATED"] = "2"
 os.environ["JWT_FALLBACK_TO_QUERY_PARAM"] = "true"
+os.environ["SERVICE_AUTH_SECRET"] = "test-service-auth-secret-that-is-32-chars-long-ok"
+os.environ["ALLOW_INSECURE_DEV_AUTH_BYPASS"] = "true"
 
 from layer5_ground_truth import database as db_module  # noqa: E402
 from layer5_ground_truth.api.main import create_app  # noqa: E402
@@ -123,11 +125,14 @@ async def client(db) -> AsyncGenerator[AsyncClient, None]:
     to use the test session.
     """
     from layer5_ground_truth.api.auth import TokenClaims, get_current_user
-    from layer5_ground_truth.database import get_db
+    from layer5_ground_truth.database import get_db, get_db_from_context
 
     app = create_app()
 
     async def override_get_db():
+        yield db
+
+    async def override_get_db_from_context():
         yield db
 
     def override_get_current_user():
@@ -139,11 +144,16 @@ async def client(db) -> AsyncGenerator[AsyncClient, None]:
         )
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db_from_context] = override_get_db_from_context
     app.dependency_overrides[get_current_user] = override_get_current_user
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
+        headers={
+            "X-Tenant-ID": str(TEST_ORG_ID),
+            "X-Service-Auth": os.environ["SERVICE_AUTH_SECRET"],
+        },
     ) as ac:
         yield ac
 
@@ -162,9 +172,13 @@ async def async_client(client) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture
 def auth_headers() -> dict:
-    """Return authentication headers for API tests."""
+    """Return request headers for API tests.
+
+    Auth is handled via dependency overrides in the test client fixture;
+    no Authorization header is needed (and an invalid one would trigger
+    GovernanceMiddleware JWT validation failures).
+    """
     return {
-        "Authorization": "Bearer test-token",
         "Content-Type": "application/json",
     }
 
@@ -224,6 +238,10 @@ async def tenant_aware_client(db) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
+        headers={
+            "X-Tenant-ID": str(TEST_ORG_ID),
+            "X-Service-Auth": os.environ["SERVICE_AUTH_SECRET"],
+        },
     ) as ac:
         yield ac
 

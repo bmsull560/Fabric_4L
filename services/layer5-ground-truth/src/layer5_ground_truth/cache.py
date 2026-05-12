@@ -17,7 +17,9 @@ Usage Example:
         return expensive_computation(tenant_id, param)
 """
 
+import functools
 import hashlib
+import inspect
 import json
 import logging
 from typing import Any, Callable, TypeVar
@@ -123,6 +125,7 @@ def cached(ttl: int | None = None, key_prefix: str = ""):
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             cache = get_cache_manager()
 
@@ -148,6 +151,8 @@ def cached(ttl: int | None = None, key_prefix: str = ""):
 
             return result
 
+        # Preserve original signature for FastAPI dependency injection
+        wrapper.__signature__ = inspect.signature(func)  # type: ignore[attr-defined]
         return wrapper
 
     return decorator

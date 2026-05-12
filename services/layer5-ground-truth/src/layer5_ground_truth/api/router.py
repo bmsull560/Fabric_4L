@@ -236,6 +236,177 @@ async def list_truths(
 
 
 # ---------------------------------------------------------------------------
+# POST /truths/sync-kg
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/truths/sync-kg",
+    summary="Sync approved TruthObjects to Layer 3 Knowledge Graph",
+    description=(
+        "Triggers a bulk sync of all APPROVED TruthObjects that have not yet "
+        "been synced to the Layer 3 Knowledge Graph."
+    ),
+)
+async def sync_to_kg(
+    caller: TokenClaims = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_from_context),
+) -> dict:
+    tenant_id = caller.tenant_id
+    from sqlalchemy import and_, select
+
+    from ..models.truth_object import TruthObject
+
+    result = await db.execute(
+        select(TruthObject).where(
+            and_(
+                TruthObject.tenant_id == tenant_id,
+                TruthObject.status == "approved",
+                TruthObject.kg_node_id.is_(None),
+                TruthObject.deleted_at.is_(None),
+            )
+        )
+    )
+    pending = result.scalars().all()
+
+    client = get_layer3_client()
+    synced = 0
+    failed = 0
+    for truth in pending:
+        node_id = await client.sync_truth_object(
+            truth_object_id=truth.id,
+            tenant_id=truth.tenant_id,
+            claim=truth.claim,
+            claim_type=truth.claim_type,
+            confidence=truth.confidence,
+            status=truth.status,
+            maturity_level=truth.maturity_level,
+            value=truth.value,
+            applies_to=truth.applies_to,
+            source_count=len(truth.sources),
+        )
+        if node_id:
+            truth.kg_node_id = node_id
+            truth.kg_synced_at = datetime.now(UTC)
+            synced += 1
+        else:
+            failed += 1
+
+    return sync_to_kgResult.model_validate({
+        "synced": synced,
+        "failed": failed,
+        "total_pending": len(pending),
+    })
+
+
+# ---------------------------------------------------------------------------
+# POST /truths/check-stale
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/truths/check-stale",
+    summary="Trigger freshness check for stale truths",
+    description=(
+        "Manually trigger the freshness monitor to check for and mark "
+        "expired TruthObjects as stale. Can be run in dry-run mode to preview."
+    ),
+    responses={
+        200: {"description": "Freshness check completed"},
+    },
+)
+async def check_stale(
+    dry_run: bool = Query(default=False, description="Preview only, don't mark stale"),
+    caller: TokenClaims = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_from_context),
+) -> dict:
+    from ..services.freshness_monitor import check_freshness
+
+    tenant_id = caller.tenant_id
+    result = await check_freshness(
+        db=db,
+        tenant_id=tenant_id,
+        dry_run=dry_run,
+    )
+    return result
+
+
+# ---------------------------------------------------------------------------
+# GET /truths/stale
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/truths/stale",
+    summary="List stale TruthObjects",
+    description="Returns all TruthObjects marked as stale for the organization.",
+)
+async def list_stale(
+    caller: TokenClaims = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_from_context),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> dict:
+    from ..services.freshness_monitor import get_stale_truths
+    from .schemas import TruthObjectSummary
+
+    tenant_id = caller.tenant_id
+    items, total = await get_stale_truths(
+        db=db,
+        tenant_id=tenant_id,
+        limit=limit,
+        offset=offset,
+    )
+
+    summaries = [
+        TruthObjectSummary(
+            id=t.id,
+            claim=t.claim,
+            claim_type=t.claim_type,
+            confidence=t.confidence,
+            status=t.status,
+            maturity_level=t.maturity_level,
+            is_stale=t.is_stale,
+            source_count=len(t.sources),
+            approved_by=t.approved_by,
+            freshness=t.freshness,
+            created_at=t.created_at,
+        )
+        for t in items
+    ]
+
+    return list_staleResult.model_validate({
+        "items": summaries,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": (offset + limit) < total,
+    })
+
+
+# ---------------------------------------------------------------------------
+# GET /truths/freshness-summary
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/truths/freshness-summary",
+    summary="Get freshness status summary",
+    description="Returns counts of stale, fresh, and expiring-soon TruthObjects.",
+)
+async def freshness_summary(
+    caller: TokenClaims = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_from_context),
+) -> dict:
+    from ..services.freshness_monitor import FreshnessMonitor
+
+    tenant_id = caller.tenant_id
+    monitor = FreshnessMonitor()
+    result = await monitor.get_freshness_summary(db, tenant_id)
+    return result.model_dump() if hasattr(result, "model_dump") else dict(result)
+
+
+# ---------------------------------------------------------------------------
 # GET /truths/{id}
 # ---------------------------------------------------------------------------
 
@@ -466,70 +637,6 @@ async def delete_truth(
 
 
 # ---------------------------------------------------------------------------
-# POST /truths/sync-kg
-# ---------------------------------------------------------------------------
-
-
-@router.post(
-    "/truths/sync-kg",
-    summary="Sync approved TruthObjects to Layer 3 Knowledge Graph",
-    description=(
-        "Triggers a bulk sync of all APPROVED TruthObjects that have not yet "
-        "been synced to the Layer 3 Knowledge Graph."
-    ),
-)
-async def sync_to_kg(
-    caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
-    tenant_id = caller.tenant_id
-    from sqlalchemy import and_, select
-
-    from ..models.truth_object import TruthObject
-
-    result = await db.execute(
-        select(TruthObject).where(
-            and_(
-                TruthObject.tenant_id == tenant_id,
-                TruthObject.status == "approved",
-                TruthObject.kg_node_id.is_(None),
-                TruthObject.deleted_at.is_(None),
-            )
-        )
-    )
-    pending = result.scalars().all()
-
-    client = get_layer3_client()
-    synced = 0
-    failed = 0
-    for truth in pending:
-        node_id = await client.sync_truth_object(
-            truth_object_id=truth.id,
-            tenant_id=truth.tenant_id,
-            claim=truth.claim,
-            claim_type=truth.claim_type,
-            confidence=truth.confidence,
-            status=truth.status,
-            maturity_level=truth.maturity_level,
-            value=truth.value,
-            applies_to=truth.applies_to,
-            source_count=len(truth.sources),
-        )
-        if node_id:
-            truth.kg_node_id = node_id
-            truth.kg_synced_at = datetime.now(UTC)
-            synced += 1
-        else:
-            failed += 1
-
-    return sync_to_kgResult.model_validate({
-        "synced": synced,
-        "failed": failed,
-        "total_pending": len(pending),
-    })
-
-
-# ---------------------------------------------------------------------------
 # GET /maturity-ladder
 # ---------------------------------------------------------------------------
 
@@ -593,112 +700,6 @@ async def get_maturity_ladder() -> MaturityLadderResponse:
 
 
 # ---------------------------------------------------------------------------
-# POST /truths/check-stale
-# ---------------------------------------------------------------------------
-
-
-@router.post(
-    "/truths/check-stale",
-    summary="Trigger freshness check for stale truths",
-    description=(
-        "Manually trigger the freshness monitor to check for and mark "
-        "expired TruthObjects as stale. Can be run in dry-run mode to preview."
-    ),
-    responses={
-        200: {"description": "Freshness check completed"},
-    },
-)
-async def check_stale(
-    dry_run: bool = Query(default=False, description="Preview only, don't mark stale"),
-    caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
-    from ..services.freshness_monitor import check_freshness
-
-    tenant_id = caller.tenant_id
-    result = await check_freshness(
-        db=db,
-        tenant_id=tenant_id,
-        dry_run=dry_run,
-    )
-    return result
-
-
-# ---------------------------------------------------------------------------
-# GET /truths/stale
-# ---------------------------------------------------------------------------
-
-
-@router.get(
-    "/truths/stale",
-    summary="List stale TruthObjects",
-    description="Returns all TruthObjects marked as stale for the organization.",
-)
-async def list_stale(
-    caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_from_context),
-    limit: int = Query(default=50, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
-) -> dict:
-    from ..services.freshness_monitor import get_stale_truths
-    from .schemas import TruthObjectSummary
-
-    tenant_id = caller.tenant_id
-    items, total = await get_stale_truths(
-        db=db,
-        tenant_id=tenant_id,
-        limit=limit,
-        offset=offset,
-    )
-
-    summaries = [
-        TruthObjectSummary(
-            id=t.id,
-            claim=t.claim,
-            claim_type=t.claim_type,
-            confidence=t.confidence,
-            status=t.status,
-            maturity_level=t.maturity_level,
-            is_stale=t.is_stale,
-            source_count=len(t.sources),
-            approved_by=t.approved_by,
-            freshness=t.freshness,
-            created_at=t.created_at,
-        )
-        for t in items
-    ]
-
-    return list_staleResult.model_validate({
-        "items": summaries,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": (offset + limit) < total,
-    })
-
-
-# ---------------------------------------------------------------------------
-# GET /truths/freshness-summary
-# ---------------------------------------------------------------------------
-
-
-@router.get(
-    "/truths/freshness-summary",
-    summary="Get freshness status summary",
-    description="Returns counts of stale, fresh, and expiring-soon TruthObjects.",
-)
-async def freshness_summary(
-    caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
-    from ..services.freshness_monitor import FreshnessMonitor
-
-    tenant_id = caller.tenant_id
-    monitor = FreshnessMonitor()
-    return await monitor.get_freshness_summary(db, tenant_id)
-
-
-# ---------------------------------------------------------------------------
 # GET /health
 # ---------------------------------------------------------------------------
 
@@ -720,6 +721,7 @@ async def health_check() -> HealthResponse:
         status="ok",
         version="0.1.0",
         timestamp=datetime.now(UTC),
+        database="ok",
         # Internal fields omitted for security - public health checks
         # should not expose dependency topology or configuration
     )

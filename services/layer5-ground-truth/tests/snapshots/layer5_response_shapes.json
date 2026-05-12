@@ -1,5 +1,8 @@
 {
   "health": {
+    "database": "str",
+    "layer3_connected": "NoneType",
+    "layer3_url": "NoneType",
     "status": "str",
     "timestamp": "str",
     "version": "str"
@@ -16,9 +19,14 @@
     ]
   },
   "freshness_summary": {
-    "expiring_soon": "int",
-    "fresh": "int",
-    "stale": "int",
-    "total": "int"
+    "summary": {
+      "expiring_soon": "int",
+      "fresh": "int",
+      "stale": "int",
+      "total": "int"
+    },
+    "tenant_id": "str",
+    "timestamp": "str",
+    "warning_threshold_days": "int"
   }
 }

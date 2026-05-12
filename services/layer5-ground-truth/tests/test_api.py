@@ -402,14 +402,14 @@ class TestMaturityLadder:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/v1/health
+# GET /health
 # ---------------------------------------------------------------------------
 
 class TestHealth:
     @pytest.mark.asyncio
     async def test_health_returns_ok(self, client):
-        """Health endpoint should return 200 with status ok."""
-        resp = await client.get("/api/v1/health")
+        """Public health endpoint should return 200 with status ok."""
+        resp = await client.get("/health")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"

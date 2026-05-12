@@ -110,8 +110,10 @@ class CheckpointConfig:
         url = cls._clean_url(cls.get_database_url())
         conn = await asyncpg.connect(url)
         saver = AsyncPostgresSaver(conn)
-        # Store connection reference for cleanup
-        saver._conn = conn
+        # Store connection reference for cleanup only if the saver does not
+        # already expose it via a public attribute.
+        if not hasattr(saver, "conn"):
+            saver._conn = conn
         return saver
 
     @classmethod
@@ -121,8 +123,15 @@ class CheckpointConfig:
         Args:
             saver: The saver to close, or None (no-op)
         """
-        if saver is not None and hasattr(saver, "_conn"):
-            await saver._conn.close()
+        if saver is None:
+            return
+        # Attempt to close via public attribute first, then private fallback.
+        connection = getattr(saver, "conn", None) or getattr(saver, "_conn", None)
+        if connection is not None:
+            try:
+                await connection.close()
+            except Exception:
+                pass  # Already closed or never fully connected
 
     @classmethod
     @asynccontextmanager

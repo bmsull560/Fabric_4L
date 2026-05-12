@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from observability import Layer4EventContext
+from value_fabric.layer4.observability import Layer4EventContext
 
 
 def test_layer4_event_context_requires_observability_fields():

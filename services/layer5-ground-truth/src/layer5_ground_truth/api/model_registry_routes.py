@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db_from_context
@@ -96,15 +96,16 @@ async def create_model_version(
     # If setting as default, clear other defaults for this provider
     if payload.is_default:
         await db.execute(
-            select(ModelVersion).where(
+            update(ModelVersion)
+            .where(
                 and_(
                     ModelVersion.tenant_id == tenant_id,
                     ModelVersion.provider == payload.provider.value,
                     ModelVersion.is_default.is_(True),
                 )
             )
+            .values(is_default=False)
         )
-        # Note: Actual update done after commit in production; simplified here
 
     model = ModelVersion(
         tenant_id=tenant_id,
@@ -315,7 +316,8 @@ async def set_default_model_version(
 
     # Clear other defaults for this provider
     await db.execute(
-        select(ModelVersion).where(
+        update(ModelVersion)
+        .where(
             and_(
                 ModelVersion.tenant_id == tenant_id,
                 ModelVersion.provider == model.provider,
@@ -323,6 +325,7 @@ async def set_default_model_version(
                 ModelVersion.id != model_id,
             )
         )
+        .values(is_default=False)
     )
 
     model.is_default = True
@@ -419,7 +422,8 @@ async def promote_model(
     # If making default, clear other defaults for this environment
     if payload.make_default:
         await db.execute(
-            select(ModelDeployment).where(
+            update(ModelDeployment)
+            .where(
                 and_(
                     ModelDeployment.tenant_id == tenant_id,
                     ModelDeployment.environment == payload.environment.value,
@@ -427,6 +431,7 @@ async def promote_model(
                     ModelDeployment.model_version_id != model_id,
                 )
             )
+            .values(is_default_for_env=False)
         )
 
     logger.info(

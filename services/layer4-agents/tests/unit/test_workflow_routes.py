@@ -67,19 +67,19 @@ class TestWorkflowStatusResponse:
 
     def test_valid_status_response(self):
         resp = WorkflowStatusResponse(
-            workflow_instance_id="wf-001",
+            id="wf-001",
             workflow_type="roi_calculator",
             status="running",
-            progress_percentage=45.0,
+            progress=45.0,
         )
-        assert resp.workflow_instance_id == "wf-001"
+        assert resp.id == "wf-001"
         assert resp.status == "running"
-        assert resp.progress_percentage == 45.0
+        assert resp.progress == 45.0
 
     def test_status_response_with_progress(self):
         from value_fabric.layer4.api.schemas.workflow_progress import WorkflowProgressSchema
 
-        progress = WorkflowProgressSchema(
+        progress_meta = WorkflowProgressSchema(
             step_id="node-1",
             status="running",
             percent=50.0,
@@ -94,13 +94,14 @@ class TestWorkflowStatusResponse:
             },
         )
         resp = WorkflowStatusResponse(
-            workflow_instance_id="wf-001",
+            id="wf-001",
             workflow_type="business_case",
             status="running",
-            progress=progress,
+            progress=50.0,
+            progress_meta=progress_meta,
         )
-        assert resp.progress is not None
-        assert resp.progress.percent == 50.0
+        assert resp.progress_meta is not None
+        assert resp.progress_meta.percent == 50.0
 
 
 class TestWorkflowConstants:

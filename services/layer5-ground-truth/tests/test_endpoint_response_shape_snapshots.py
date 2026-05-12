@@ -21,7 +21,7 @@ def _shape(value):
 @pytest.mark.parametrize(
     "endpoint,snapshot_key",
     [
-        ("/api/v1/health", "health"),
+        ("/health", "health"),
         ("/api/v1/maturity-ladder", "maturity_ladder"),
         ("/api/v1/truths/freshness-summary", "freshness_summary"),
     ],
