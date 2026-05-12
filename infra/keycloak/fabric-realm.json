@@ -1,0 +1,307 @@
+{
+  "id": "fabric",
+  "realm": "fabric",
+  "displayName": "Value Fabric",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "roles": {
+    "realm": [
+      {
+        "id": "role-super-admin",
+        "name": "super_admin",
+        "description": "Platform-wide administrator",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "fabric"
+      },
+      {
+        "id": "role-tenant-admin",
+        "name": "tenant_admin",
+        "description": "Tenant administrator with full tenant access",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "fabric"
+      },
+      {
+        "id": "role-content-admin",
+        "name": "content_admin",
+        "description": "Can create and modify resources",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "fabric"
+      },
+      {
+        "id": "role-analyst",
+        "name": "analyst",
+        "description": "Can run queries and generate business cases",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "fabric"
+      },
+      {
+        "id": "role-read-only",
+        "name": "read_only",
+        "description": "Read-only access",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "fabric"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "tenant-admins",
+      "path": "/tenant-admins"
+    },
+    {
+      "name": "default-users",
+      "path": "/default-users"
+    }
+  ],
+  "clients": [
+    {
+      "id": "client-fabric-frontend",
+      "clientId": "fabric-frontend",
+      "name": "Fabric Web Frontend",
+      "description": "Browser-based OIDC client for the React frontend",
+      "rootUrl": "http://localhost:3001",
+      "adminUrl": "http://localhost:3001",
+      "baseUrl": "http://localhost:3001",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "fabric-frontend-secret-do-not-use-in-production",
+      "redirectUris": [
+        "http://localhost:3001/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3001",
+        "http://localhost:3000"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "login_theme": "keycloak"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenant_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "org_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "org_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "org_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "id": "client-fabric-api",
+      "clientId": "fabric-api",
+      "name": "Fabric API",
+      "description": "Backend API client for service-to-service and bearer token validation",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "fabric-api-secret-do-not-use-in-production",
+      "redirectUris": [],
+      "webOrigins": [],
+      "notBefore": 0,
+      "bearerOnly": true,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {},
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenant_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "user-admin-001",
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@fabric.local",
+      "emailVerified": true,
+      "firstName": "System",
+      "lastName": "Administrator",
+      "attributes": {
+        "tenant_id": ["demo-tenant"],
+        "org_id": ["demo-org"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["tenant_admin"],
+      "groups": ["/tenant-admins"]
+    },
+    {
+      "id": "user-analyst-001",
+      "username": "analyst",
+      "enabled": true,
+      "email": "analyst@fabric.local",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Analyst",
+      "attributes": {
+        "tenant_id": ["demo-tenant"],
+        "org_id": ["demo-org"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "analyst",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["analyst"],
+      "groups": ["/default-users"]
+    }
+  ],
+  "scopeMappings": [
+    {
+      "clientScope": "roles",
+      "roles": ["super_admin", "tenant_admin", "content_admin", "analyst", "read_only"]
+    }
+  ],
+  "clientScopeMappings": {
+    "fabric-frontend": [
+      {
+        "client": "fabric-api",
+        "roles": ["super_admin", "tenant_admin", "content_admin", "analyst", "read_only"]
+      }
+    ]
+  },
+  "identityProviders": [],
+  "identityProviderMappers": [],
+  "browserFlow": "browser",
+  "registrationFlow": "registration",
+  "directGrantFlow": "direct grant",
+  "resetCredentialsFlow": "reset credentials",
+  "clientAuthenticationFlow": "clients",
+  "dockerAuthenticationFlow": "docker auth",
+  "keycloakVersion": "25.0.0"
+}

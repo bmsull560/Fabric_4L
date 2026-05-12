@@ -35,6 +35,7 @@ class PendingIngestionStore(ABC):
         extraction_result_json: str,
         relationships_json: str = "[]",
         retry_count: int = 0,
+        max_retries: int = 3,
         next_retry_at: datetime | None = None,
         last_error: str | None = None,
     ) -> None:
@@ -90,6 +91,7 @@ class SqlitePendingIngestionStore(PendingIngestionStore):
         extraction_result_json: str,
         relationships_json: str = "[]",
         retry_count: int = 0,
+        max_retries: int = 3,
         next_retry_at: datetime | None = None,
         last_error: str | None = None,
     ) -> None:
@@ -171,6 +173,7 @@ class InMemoryPendingIngestionStore(PendingIngestionStore):
         extraction_result_json: str,
         relationships_json: str = "[]",
         retry_count: int = 0,
+        max_retries: int = 3,
         next_retry_at: datetime | None = None,
         last_error: str | None = None,
     ) -> None:
@@ -180,6 +183,7 @@ class InMemoryPendingIngestionStore(PendingIngestionStore):
             extraction_result_json=extraction_result_json,
             relationships_json=relationships_json,
             retry_count=retry_count,
+            max_retries=max_retries,
             next_retry_at=next_retry_at,
             last_error=last_error,
         )

@@ -1,0 +1,635 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0
+Using --randomly-seed=2916328468
+rootdir: C:\Users\BBB\Fabric_4L\services\layer1-ingestion
+configfile: pyproject.toml
+plugins: anyio-4.13.0, Faker-40.15.0, hypothesis-6.152.4, langsmith-0.8.0, asyncio-1.3.0, cov-7.1.0, randomly-4.1.0, timeout-2.4.0, xdist-3.8.0, respx-0.23.1, schemathesis-4.17.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 563 items
+
+services\layer1-ingestion\tests\unit\test_crawler_telemetry.py F......FF [  1%]
+FFF                                                                      [  2%]
+services\layer1-ingestion\tests\unit\test_playwright_crawler.py ssssssss [  3%]
+sssssssssss                                                              [  5%]
+services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py . [  5%]
+....F.F..FFF....F..F                                                     [  9%]
+services\layer1-ingestion\tests\unit\test_celery_tasks.py FFFFFFFFFFFFFF [ 11%]
+FFFFFFFFFFFFFFF                                                          [ 14%]
+services\layer1-ingestion\tests\unit\test_adapters.py .............      [ 16%]
+services\layer1-ingestion\tests\unit\test_pii_scanner.py ............... [ 19%]
+...............                                                          [ 22%]
+services\layer1-ingestion\tests\crawler\test_quality_gate.py ..........F [ 23%]
+.......F...                                                              [ 25%]
+services\layer1-ingestion\tests\unit\test_batch_operations.py EEEEEEEE   [ 27%]
+services\layer1-ingestion\tests\unit\test_todo_placeholder_regressions.py . [ 27%]
+..                                                                       [ 27%]
+services\layer1-ingestion\tests\unit\test_quality_gate.py .............. [ 30%]
+............                                                             [ 32%]
+services\layer1-ingestion\tests\test_cross_tenant_hostile.py ..          [ 32%]
+services\layer1-ingestion\tests\unit\test_pdf_adapter.py sssssssssssssss [ 35%]
+sssssssssssssssss                                                        [ 38%]
+services\layer1-ingestion\tests\unit\test_content_extractor.py ......... [ 40%]
+..............................................                           [ 48%]
+services\layer1-ingestion\tests\unit\test_scheduler.py ......            [ 49%]
+services\layer1-ingestion\tests\unit\test_h03_security_config.py FFFF    [ 50%]
+services\layer1-ingestion\tests\test_observability_contract_integration.py . [ 50%]
+                                                                         [ 50%]
+services\layer1-ingestion\tests\unit\test_models.py ......               [ 51%]
+services\layer1-ingestion\tests\unit\test_smart_router.py .............. [ 53%]
+.......................................................                  [ 63%]
+services\layer1-ingestion\tests\crawler\test_smart_router.py ........... [ 65%]
+.......F...........F..F..F..........                                     [ 71%]
+services\layer1-ingestion\tests\unit\test_m02_exception_remediation.py F [ 72%]
+F.F..                                                                    [ 73%]
+services\layer1-ingestion\tests\crawler\test_httpx_crawler.py ........F. [ 74%]
+.................F.F....                                                 [ 79%]
+services\layer1-ingestion\tests\unit\test_validation.py FFFFFFFFFFFFFFFF [ 81%]
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF                         [ 90%]
+services\layer1-ingestion\tests\test_api_tenant_propagation.py ..        [ 90%]
+services\layer1-ingestion\tests\unit\test_xbrl_parser_extended.py ...... [ 91%]
+.F...F..........                                                         [ 94%]
+services\layer1-ingestion\tests\unit\test_crawler_config.py ............ [ 96%]
+                                                                         [ 96%]
+services\layer1-ingestion\tests\integration\test_router_edge_cases.py .. [ 97%]
+....FF.F....F..F                                                         [100%]
+
+=================================== ERRORS ====================================
+_____________ ERROR at setup of test_batch_wrong_identifier_type ______________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 220
+  def test_batch_wrong_identifier_type(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:220
+_________________ ERROR at setup of test_batch_cancel_success _________________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 100
+  def test_batch_cancel_success(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:100
+____________ ERROR at setup of test_batch_excessive_size_rejected _____________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 301
+  def test_batch_excessive_size_rejected(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:301
+_____________ ERROR at setup of test_batch_mixed_success_failure ______________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 173
+  def test_batch_mixed_success_failure(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:173
+_________________ ERROR at setup of test_batch_retry_success __________________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 145
+  def test_batch_retry_success(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:145
+_________________ ERROR at setup of test_batch_empty_rejected _________________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 282
+  def test_batch_empty_rejected(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:282
+________________ ERROR at setup of test_batch_execute_success _________________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 64
+  def test_batch_execute_success(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:64
+___________ ERROR at setup of test_batch_cross_tenant_access_denied ___________
+file C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py, line 255
+  def test_batch_cross_tenant_access_denied(
+E       fixture 'client' not found
+>       available fixtures: _class_scoped_runner, _function_scoped_runner, _module_scoped_runner, _package_scoped_runner, _session_faker, _session_scoped_runner, active_target, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, cov, doctest_namespace, event_loop_policy, failed_job, faker, faker_seed, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, no_cover, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, respx_mock, sample_org_id, sample_user_id, subtests, testrun_uid, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory, worker_id
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_batch_operations.py:255
+================================== FAILURES ===================================
+E   AssertionError: Expected 'start_as_current_span' to have been called once. Called 0 times.
+C:\Python314\Lib\unittest\mock.py:965: AssertionError: Expected 'start_as_current_span' to have been called once. Called 0 times.
+E   TypeError: BatchSpanProcessor() takes no arguments
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\telemetry.py:79: TypeError: BatchSpanProcessor() takes no arguments
+E   AssertionError: Expected 'get_tracer' to have been called.
+C:\Python314\Lib\unittest\mock.py:955: AssertionError: Expected 'get_tracer' to have been called.
+E   AssertionError: assert NonRecordingSpan(SpanContext(trace_id=0x00000000000000000000000000000000, span_id=0x0000000000000000, trace_flags=0x00, trace_state=[], is_remote=False)) == <MagicMock id='1610179189392'>
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_crawler_telemetry.py:151: AssertionError: assert NonRecordingSpan(SpanContext(trace_id=0x00000000000000000000000000000000, span_id=0x0000000000000000, trace_flags=0x00, trace_state=[], is_remote=False)) == <MagicMock id='1610179189392'>
+E   AssertionError: Expected 'set_status' to have been called.
+C:\Python314\Lib\unittest\mock.py:955: AssertionError: Expected 'set_status' to have been called.
+E   AttributeError: module 'crawler' has no attribute 'telemetry'
+C:\Python314\Lib\pkgutil.py:473: AttributeError: module 'crawler' has no attribute 'telemetry'
+E   AssertionError: assert 'text_length' == 'no_spa'
+      
+      - no_spa
+      + text_length
+------------------------------ Captured log call ------------------------------
+WARNING  trafilatura.core:core.py:344 discarding data: None
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py:211: AssertionError: assert 'text_length' == 'no_spa'
+E   AssertionError: assert 'text_length' == 'no_spa'
+      
+      - no_spa
+      + text_length
+------------------------------ Captured log call ------------------------------
+WARNING  trafilatura.core:core.py:344 discarding data: None
+WARNING  value_fabric.layer1.crawler.execution_logger:execution_logger.py:381 {"component": "ExecutionLogger", "timestamp": "2026-05-12T20:26:44.464403Z", "job_id": "test-job-123", "url": "https://example.com/spa", "domain": "example.com", "target_mode": "fast_fallback", "initial_route": "fast_fallback", "final_path": "fallback", "routing_reason": "default_with_fallback", "quality_passed": false, "quality_checks": {"success_status": true, "text_length": false, "content_ratio": false, "no_spa": true, "fetch_time": true, "valid_content_type": true, "has_title": false}, "fallback_reason": "text_length", "fetch_time_ms": 4, "total_time_ms": 4, "bytes_transferred": 438, "browser_sessions_used": 1, "browser_steps": 0, "status_code": 200, "content_hash": "e3b0c44298fc1c14", "text_length": 0, "link_count": 0, "spa_detected": false, "error_type": null, "error_message": null, "event_type": "fast_path_fallback", "event": "execution_fast_path_fallback", "logger": "value_fabric.layer1.crawler.execution_logger", "level": "warning"}
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py:376: AssertionError: assert 'text_length' == 'no_spa'
+E   TypeError: 'RoutingDecision' object can't be awaited
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py:143: TypeError: 'RoutingDecision' object can't be awaited
+E   TypeError: 'RoutingDecision' object can't be awaited
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py:109: TypeError: 'RoutingDecision' object can't be awaited
+E   TypeError: 'RoutingDecision' object can't be awaited
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py:160: TypeError: 'RoutingDecision' object can't be awaited
+E   TypeError: Response.__init__() got an unexpected keyword argument 'xml'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py:396: TypeError: Response.__init__() got an unexpected keyword argument 'xml'
+E   TypeError: 'RoutingDecision' object can't be awaited
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py:52: TypeError: 'RoutingDecision' object can't be awaited
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   AssertionError: assert False is True
+     +  where False = QualityDecision(passed=False, checks={'success_status': True, 'text_length': False, 'content_ratio': True, 'no_spa': True, 'fetch_time': True, 'valid_content_type': True, 'has_title': True}, fallback_reason='text_length').passed
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_quality_gate.py:385: AssertionError: assert False is True
+E   AssertionError: assert False is True
+     +  where False = QualityDecision(passed=False, checks={'success_status': True, 'text_length': False, 'content_ratio': True, 'no_spa': True, 'fetch_time': True, 'valid_content_type': True, 'has_title': True}, fallback_reason='text_length').passed
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_quality_gate.py:162: AssertionError: assert False is True
+E   ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+E   ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+E   ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+E   ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError: No module named 'shared.config'; 'shared' is not a package
+E   AssertionError: /page.html should route to RouteType.FAST
+    assert <RouteType.FA...ast_fallback'> == <RouteType.FAST: 'fast'>
+      
+      - fast
+      + fast_fallback
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_smart_router.py:47: AssertionError: /page.html should route to RouteType.FAST
+E   assert False is True
+     +  where False = detect_spa('\n        <html>\n            <head>\n                <script src="1.js"></script>\n                <script src="2.js...        <script src="6.js"></script>\n            </head>\n            <body>Content</body>\n        </html>\n        ')
+     +    where detect_spa = <value_fabric.layer1.crawler.smart_router.SmartRouter object at 0x00000176E98128D0>.detect_spa
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_smart_router.py:210: assert False is True
+E   assert False is True
+     +  where False = detect_spa('<html data-reactroot=""><body>Content</body></html>')
+     +    where detect_spa = <value_fabric.layer1.crawler.smart_router.SmartRouter object at 0x00000176E9812E70>.detect_spa
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_smart_router.py:193: assert False is True
+E   AssertionError: assert False is True
+     +  where False = detect_spa('<html><div><span><div><span><div><span><div><span><div><span><div><span><div><span><div><span><div><span><div><span><...></div></span></div></span></div></span></div></span></div></span></div></span></div></span></div></span></div></html>')
+     +    where detect_spa = <value_fabric.layer1.crawler.smart_router.SmartRouter object at 0x00000176E9813410>.detect_spa
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_smart_router.py:216: AssertionError: assert False is True
+E   assert <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.Connection(decode_responses=True,host=localhost,port=6379,db=0)>)>)> is None
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_m02_exception_remediation.py:47: assert <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.Connection(decode_responses=True,host=localhost,port=6379,db=0)>)>)> is None
+E   ImportError: cannot import name 'REDIS_AVAILABLE' from 'value_fabric.layer1.shared.database' (C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\shared\database.py)
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_m02_exception_remediation.py:40: ImportError: cannot import name 'REDIS_AVAILABLE' from 'value_fabric.layer1.shared.database' (C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\shared\database.py)
+E   Failed: DID NOT RAISE <class 'RuntimeError'>
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_m02_exception_remediation.py:19: Failed: DID NOT RAISE <class 'RuntimeError'>
+E   AssertionError: assert 200 == 504
+     +  where 200 = FastPathResult(url='https://example.com/slow', status_code=200, html='', title='', text_content='', content_hash='e3b0...1c14', links_found=[], is_spa_detected=False, fetch_time_ms=10009, content_type='', headers={}, original_html_length=0).status_code
+------------------------------ Captured log call ------------------------------
+ERROR    trafilatura.utils:utils.py:252 lxml parsing failed: Document is empty
+ERROR    trafilatura.utils:utils.py:217 lxml parser bytestring Document is empty
+ERROR    trafilatura.core:core.py:237 empty HTML tree: None
+WARNING  trafilatura.core:core.py:344 discarding data: None
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_httpx_crawler.py:358: AssertionError: assert 200 == 504
+E   assert False is True
+     +  where False = _detect_spa_shell('\n        <html data-reactroot="">\n            <head>\n                <script src="1.js"></script>\n               ...        <script src="5.js"></script>\n            </head>\n            <body>Content</body>\n        </html>\n        ')
+     +    where _detect_spa_shell = <value_fabric.layer1.crawler.httpx_crawler.HttpxCrawler object at 0x00000176E9822430>._detect_spa_shell
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_httpx_crawler.py:165: assert False is True
+E   assert False is True
+     +  where False = _detect_spa_shell("<html><div class='wrapper'><span><div class='wrapper'><span><div class='wrapper'><span><div class='wrapper'><span><di...></div></span></div></span></div></span></div></span></div></span></div></span></div></span></div></span></div></html>")
+     +    where _detect_spa_shell = <value_fabric.layer1.crawler.httpx_crawler.HttpxCrawler object at 0x00000176E9821780>._detect_spa_shell
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_httpx_crawler.py:171: assert False is True
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   ModuleNotFoundError: No module named 'playwright'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\crawler\playwright_crawler.py:22: ModuleNotFoundError: No module named 'playwright'
+E   Failed: DID NOT RAISE <class 'value_fabric.layer1.shared.exceptions.XBRLParseError'>
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_xbrl_parser_extended.py:71: Failed: DID NOT RAISE <class 'value_fabric.layer1.shared.exceptions.XBRLParseError'>
+E   AssertionError: assert 1 == 0
+     +  where 1 = len([FinancialFact(concept='Revenues', value=99999, unit='iso4217:USD', context_ref='ctx-2023', period_start=datetime.datetime(2023, 1, 1, 0, 0), period_end=datetime.datetime(2023, 12, 31, 0, 0), dimensions={})])
+     +    where [FinancialFact(concept='Revenues', value=99999, unit='iso4217:USD', context_ref='ctx-2023', period_start=datetime.datetime(2023, 1, 1, 0, 0), period_end=datetime.datetime(2023, 12, 31, 0, 0), dimensions={})] = ParsedXBRL(entity=None, document_type=None, document_period=None, fiscal_year=None, fiscal_period=None, balance_sheet=...2, 31, 0, 0), 'instant': datetime.datetime(2023, 12, 31, 0, 0), 'entity': 'CIK123'}}, raw_units={'USD': 'iso4217:USD'}).all_facts
+------------------------------ Captured log call ------------------------------
+WARNING  value_fabric.layer1.adapters.xbrl_parser:xbrl_parser.py:327 {"concept": "Revenues", "decimals_value": "bad", "context_ref": "ctx-2023", "fallback": "using_scale_0", "event": "xbrl_decimals_parse_failed", "logger": "value_fabric.layer1.adapters.xbrl_parser", "level": "warning", "timestamp": "2026-05-12T20:26:58.855541Z"}
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_xbrl_parser_extended.py:170: AssertionError: assert 1 == 0
+E   TypeError: FastPathResult.__init__() got an unexpected keyword argument 'links'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_router_edge_cases.py:133: TypeError: FastPathResult.__init__() got an unexpected keyword argument 'links'
+E   TypeError: FastPathResult.__init__() got an unexpected keyword argument 'links'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_router_edge_cases.py:160: TypeError: FastPathResult.__init__() got an unexpected keyword argument 'links'
+E   AssertionError: assert <RouteType.FA...ast_fallback'> == <RouteType.FAST: 'fast'>
+      
+      - fast
+      + fast_fallback
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_router_edge_cases.py:69: AssertionError: assert <RouteType.FA...ast_fallback'> == <RouteType.FAST: 'fast'>
+E   AssertionError: assert 'robots' in 'sitemap'
+     +  where 'robots' = <built-in method lower of str object at 0x00000176DEA61D40>()
+     +    where <built-in method lower of str object at 0x00000176DEA61D40> = 'robots'.lower
+     +  and   'sitemap' = <built-in method lower of str object at 0x00000176DDE20BD0>()
+     +    where <built-in method lower of str object at 0x00000176DDE20BD0> = 'sitemap'.lower
+     +      where 'sitemap' = RoutingDecision(url='https://example.com/robots.txt', route=<RouteType.FAST: 'fast'>, reason='sitemap', priority=10, stagehand_config=None).reason
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_router_edge_cases.py:229: AssertionError: assert 'robots' in 'sitemap'
+E   TypeError: FastPathResult.__init__() got an unexpected keyword argument 'links'
+C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\integration\test_router_edge_cases.py:191: TypeError: FastPathResult.__init__() got an unexpected keyword argument 'links'
+============================== warnings summary ===============================
+packages\shared\src\value_fabric\shared\identity\jwt.py:19
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\identity\jwt.py:19: UserWarning: Field name "keys" in "get_jwksResult" shadows an attribute in parent "TypedDictModel"
+    class get_jwksResult(TypedDictModel):
+
+packages\shared\src\value_fabric\shared\audit\models.py:154
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\audit\models.py:154: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class TenantResolvedDetails(BaseModel):
+
+packages\shared\src\value_fabric\shared\security\config.py:52
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\security\config.py:52: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class SecurityConfig(BaseModel):
+
+services\layer1-ingestion\src\api\app_monolith.py:387
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:387: UserWarning: Field name "items" in "list_contentResult" shadows an attribute in parent "TypedDictModel"
+    class list_contentResult(TypedDictModel):
+
+services\layer1-ingestion\src\api\app_monolith.py:393
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:393: UserWarning: Field name "items" in "list_compliance_logsResult" shadows an attribute in parent "TypedDictModel"
+    class list_compliance_logsResult(TypedDictModel):
+
+packages\shared\src\value_fabric\shared\fastapi_framework\middleware.py:114
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\fastapi_framework\middleware.py:114: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\AppData\Roaming\Python\Python314\site-packages\fastapi\applications.py:4598
+  C:\Users\BBB\AppData\Roaming\Python\Python314\site-packages\fastapi\applications.py:4598: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+services\layer1-ingestion\src\api\app_monolith.py:1242
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:1242: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_by: str = Query(
+
+services\layer1-ingestion\src\api\app_monolith.py:1245
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:1245: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
+
+services\layer1-ingestion\src\api\app_monolith.py:2015
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2015: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_by: str = Query(
+
+services\layer1-ingestion\src\api\app_monolith.py:2018
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2018: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
+
+services\layer1-ingestion\src\api\app_monolith.py:2257
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2257: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    format: str = Query(default="json", regex="^(json|csv|ndjson)$"),
+
+services\layer1-ingestion\src\api\app_monolith.py:2656
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2656: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    format: str = Query(default="json", regex="^(json|markdown|flattened)$"),
+
+services\layer1-ingestion\tests\unit\test_pdf_adapter.py:19
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_pdf_adapter.py:19: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytest.mark.slow,
+
+services\layer1-ingestion\tests\unit\test_playwright_crawler.py:20
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_playwright_crawler.py:20: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytest.mark.slow,
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED services\layer1-ingestion\tests\unit\test_crawler_telemetry.py::TestStartBatchSpan::test_start_batch_span_sets_attributes
+FAILED services\layer1-ingestion\tests\unit\test_crawler_telemetry.py::TestInitTelemetry::test_init_creates_provider
+FAILED services\layer1-ingestion\tests\unit\test_crawler_telemetry.py::TestInitTelemetry::test_get_tracer_returns_instance
+FAILED services\layer1-ingestion\tests\unit\test_crawler_telemetry.py::TestStartCrawlSpan::test_start_crawl_span_yields_span
+FAILED services\layer1-ingestion\tests\unit\test_crawler_telemetry.py::TestStartCrawlSpan::test_span_records_exception_on_error
+FAILED services\layer1-ingestion\tests\unit\test_crawler_telemetry.py::TestTraceMethodDecorator::test_decorator_adds_span
+FAILED services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py::TestSPADetection::test_spa_detected_triggers_fallback
+FAILED services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py::TestExecutionLogging::test_log_fallback
+FAILED services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py::TestPerURLSmartRouting::test_navigation_urls_route_browser
+FAILED services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py::TestPerURLSmartRouting::test_sitemap_routes_fast_high_priority
+FAILED services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py::TestPerURLSmartRouting::test_previous_crawl_consistency
+FAILED services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py::TestEndToEndPipeline::test_mixed_content_target
+FAILED services\layer1-ingestion\tests\integration\test_fast_path_pipeline.py::TestTargetLevelModes::test_browser_mode_skips_fast_path
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCleanupOldContent::test_cleanup_marks_content_as_deleted
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCleanupOldContent::test_cleanup_returns_deleted_count_and_cutoff
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCleanupOldContent::test_cleanup_default_days_is_30
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetrySemantics::test_max_retry_exhaustion_behavior
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetrySemantics::test_dead_letter_queue_routing
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetrySemantics::test_idempotency_of_retried_tasks
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetrySemantics::test_exponential_backoff_timing
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestExecutePipelineStage::test_execute_pipeline_stage_compliance_check
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestExecutePipelineStage::test_execute_pipeline_stage_unknown_raises
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestPipelineStageErrorPaths::test_all_pipeline_stages_are_registered_as_celery_tasks
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestPipelineStageErrorPaths::test_execute_pipeline_stage_dispatches_all_known_stages
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestPipelineStageErrorPaths::test_celery_worker_prefetch_is_one
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestPipelineStageErrorPaths::test_celery_result_expires_configured
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestComplianceCheckStage::test_compliance_check_stage_missing_job_retries
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestComplianceCheckStage::test_compliance_check_stage_updates_job_status
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryAppConfiguration::test_celery_timezone_utc
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryAppConfiguration::test_celery_task_serializer
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryAppConfiguration::test_celery_task_time_limit
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryAppConfiguration::test_celery_result_serializer
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryAppConfiguration::test_celery_app_name
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetryBehavior::test_cleanup_old_content_handles_db_error
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetryBehavior::test_celery_max_retries_configured
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetryBehavior::test_cleanup_old_content_handles_empty_result
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetryBehavior::test_compliance_check_stage_handles_invalid_job_configuration
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetryBehavior::test_process_scraping_job_handles_chain_failure
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestCeleryRetryBehavior::test_compliance_check_stage_handles_db_error
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestProcessScrapingJob::test_process_scraping_job_missing_job_raises
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestProcessScrapingJob::test_process_scraping_job_returns_task_id_on_success
+FAILED services\layer1-ingestion\tests\unit\test_celery_tasks.py::TestProcessScrapingJob::test_process_scraping_job_chains_all_stages
+FAILED services\layer1-ingestion\tests\crawler\test_quality_gate.py::TestAdaptiveQualityGate::test_domain_specific_thresholds
+FAILED services\layer1-ingestion\tests\crawler\test_quality_gate.py::TestQualityThresholds::test_custom_text_length_threshold
+FAILED services\layer1-ingestion\tests\unit\test_h03_security_config.py::test_layer1_rejects_wildcard_and_placeholder_cors_in_production_like_env
+FAILED services\layer1-ingestion\tests\unit\test_h03_security_config.py::test_layer1_development_default_cors_is_localhost_not_wildcard
+FAILED services\layer1-ingestion\tests\unit\test_h03_security_config.py::test_layer1_cors_policy_uses_explicit_origins_methods_and_headers
+FAILED services\layer1-ingestion\tests\unit\test_h03_security_config.py::test_layer1_treats_unknown_environment_as_production_like
+FAILED services\layer1-ingestion\tests\crawler\test_smart_router.py::TestRoutingRules::test_static_pattern_matching[/page.html-fast]
+FAILED services\layer1-ingestion\tests\crawler\test_smart_router.py::TestSPADetection::test_detect_spa_high_script_density
+FAILED services\layer1-ingestion\tests\crawler\test_smart_router.py::TestSPADetection::test_detect_spa_react_marker
+FAILED services\layer1-ingestion\tests\crawler\test_smart_router.py::TestSPADetection::test_detect_spa_low_content_ratio
+FAILED services\layer1-ingestion\tests\unit\test_m02_exception_remediation.py::TestDatabaseRedisAvailability::test_redis_client_none_when_unavailable
+FAILED services\layer1-ingestion\tests\unit\test_m02_exception_remediation.py::TestDatabaseRedisAvailability::test_redis_available_flag_exists
+FAILED services\layer1-ingestion\tests\unit\test_m02_exception_remediation.py::TestNoOpExecutionLoggerProductionGuard::test_raises_in_production
+FAILED services\layer1-ingestion\tests\crawler\test_httpx_crawler.py::TestErrorHandling::test_timeout_handling
+FAILED services\layer1-ingestion\tests\crawler\test_httpx_crawler.py::TestSPADetection::test_detect_react_marker
+FAILED services\layer1-ingestion\tests\crawler\test_httpx_crawler.py::TestSPADetection::test_detect_low_content_ratio
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_at_monthly_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_six_fields_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_step_syntax
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_weekday_only
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_first_of_month
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_at_yearly_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_dow_out_of_range
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_single_field_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_every_minute
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_daily_midnight
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_at_hourly_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_minute_out_of_range
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_every_hour_at_zero
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_month_out_of_range
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_hour_out_of_range
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_at_weekly_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_list_syntax
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_empty_string_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_at_reboot_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_at_daily_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_leading_trailing_whitespace_stripped
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_non_numeric_field_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_dom_out_of_range
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_specific_month
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidateCronExpression::test_four_fields_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_nested_type_error
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_empty_schema_always_valid
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_empty_data_with_required_fields_invalid
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_matching_payload_valid
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_empty_data_with_no_required_fields_valid
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_missing_multiple_required_fields
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_wrong_type_string_for_number
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_missing_single_required_field
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_root_path_is_dollar_sign
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_extra_fields_allowed_by_default
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_nested_required_field_missing
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_error_dict_has_required_keys
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidatePayloadAgainstSchema::test_wrong_type_number_for_string
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_offset_string_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_iana_timezone_accepted
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_utc_timezone_accepted
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_empty_timezone_raises_validation_error
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_four_field_cron_raises_validation_error
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_none_cron_accepted
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_max_concurrent_jobs_maximum
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_max_concurrent_jobs_minimum
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_invalid_cron_raises_validation_error
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_max_concurrent_jobs_over_limit_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_cron_whitespace_normalised
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_max_concurrent_jobs_zero_rejected
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_valid_cron_stored
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_unknown_timezone_raises_validation_error
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_macro_cron_raises_validation_error
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestScheduleInputModel::test_europe_london_accepted
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_no_extracted_data_record_completes_gracefully
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_schema_not_a_dict_skips_validation
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_valid_payload_sets_schema_valid_true
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_malformed_prev_result_missing_job_id_raises
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_no_schema_completes_without_modifying_extracted
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_type_errors_in_payload_recorded
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_job_not_found_raises_value_error
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_malformed_prev_result_invalid_uuid_raises
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_invalid_payload_sets_schema_valid_false
+FAILED services\layer1-ingestion\tests\unit\test_validation.py::TestValidationStageTask::test_tenant_id_used_in_extracted_data_query
+FAILED services\layer1-ingestion\tests\unit\test_xbrl_parser_extended.py::TestXBRLParserErrorHandling::test_parse_date_raises_on_invalid_date
+FAILED services\layer1-ingestion\tests\unit\test_xbrl_parser_extended.py::TestDecimalScaling::test_invalid_decimals_value_skips_fact
+FAILED services\layer1-ingestion\tests\integration\test_router_edge_cases.py::TestFailClosedBehavior::test_borderline_timing_triggers_fallback
+FAILED services\layer1-ingestion\tests\integration\test_router_edge_cases.py::TestFailClosedBehavior::test_indeterminate_quality_escalates
+FAILED services\layer1-ingestion\tests\integration\test_router_edge_cases.py::TestStaticPageRouting::test_empty_page_fails_quality
+FAILED services\layer1-ingestion\tests\integration\test_router_edge_cases.py::TestRouterRuleCoverage::test_router_rules[https://example.com/robots.txt-fast-robots]
+FAILED services\layer1-ingestion\tests\integration\test_router_edge_cases.py::TestContentRatioChecks::test_heavy_markup_fails_ratio
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_wrong_identifier_type
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_cancel_success
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_excessive_size_rejected
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_mixed_success_failure
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_retry_success
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_empty_rejected
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_execute_success
+ERROR services\layer1-ingestion\tests\unit\test_batch_operations.py::test_batch_cross_tenant_access_denied
+===== 129 failed, 375 passed, 51 skipped, 15 warnings, 8 errors in 22.07s =====

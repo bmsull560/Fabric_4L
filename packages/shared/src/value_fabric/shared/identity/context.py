@@ -89,12 +89,14 @@ class RequestContext:
     auth_source: Optional[str] = None
     request_id: Optional[str] = None
     org_id: Optional[Any] = None
+    workspace_id: Optional[Any] = None
     tenant_role: Optional[str] = None
     isolation_tier: str = ISOLATION_TIER_SHARED
     service_account_id: Optional[str] = None
     service_account_scopes: List[str] = field(default_factory=list)
     accessed_tenant_ids: Set[str] = field(default_factory=set)
     privileged_session_start: Optional[float] = None
+    impersonator_id: Optional[str] = None
     _locked: bool = field(default=False, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -119,12 +121,13 @@ class RequestContext:
     def __setattr__(self, name: str, value: Any) -> None:
         """Protect escalation-sensitive identity fields after construction.
 
-        Tenant identity and permission assignments remain immutable for the
-        cross-layer security contract, while privileged-audit bookkeeping fields
-        such as ``accessed_tenant_ids`` and ``privileged_session_start`` remain
-        mutable so audit instrumentation can record runtime session details.
+        Tenant identity, workspace scope, and permission assignments remain
+        immutable for the cross-layer security contract, while privileged-audit
+        bookkeeping fields such as ``accessed_tenant_ids`` and
+        ``privileged_session_start`` remain mutable so audit instrumentation
+        can record runtime session details.
         """
-        if getattr(self, "_locked", False) and name in {"tenant_id", "permissions"}:
+        if getattr(self, "_locked", False) and name in {"tenant_id", "permissions", "workspace_id"}:
             raise AttributeError(f"cannot assign to immutable RequestContext field '{name}'")
         super().__setattr__(name, value)
 
@@ -195,6 +198,7 @@ class RequestContext:
             "user_id": str(self.user_id) if self.user_id is not None else None,
             "api_key_id": self.api_key_id,
             "org_id": str(self.org_id) if self.org_id is not None else None,
+            "workspace_id": str(self.workspace_id) if self.workspace_id is not None else None,
             "service_account_id": self.service_account_id,
             "roles": list(self.roles),
             "permissions": [
@@ -207,6 +211,7 @@ class RequestContext:
             "source": self.source,
             "service_account_scopes": list(self.service_account_scopes),
             "request_id": self.request_id,
+            "impersonator_id": self.impersonator_id,
         }
 
     def to_log_dict(self) -> Dict[str, Any]:

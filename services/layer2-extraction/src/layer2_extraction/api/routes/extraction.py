@@ -99,7 +99,7 @@ async def get_extraction_results(
         entities.append(
             ExtractedEntity(
                 entity_id=getattr(e, "id", getattr(e, "entity_id", "")),
-                type=type(e).__name__,
+                type=getattr(e, "type", type(e).__name__),
                 name=getattr(e, "name", ""),
                 confidence=getattr(e, "confidence", 0.0),
                 source_span=EntitySourceSpan(
@@ -111,8 +111,8 @@ async def get_extraction_results(
                 else None,
                 provenance=EntityProvenance(
                     extraction_job_id=job_id,
-                    source_url=getattr(e, "source_url", ""),
-                    trace_id=getattr(job, "trace_id", ""),
+                    source_url=str(getattr(e, "source_url", "")),
+                    trace_id=str(getattr(job, "trace_id", "")),
                 ),
                 attributes=getattr(e, "attributes", {}),
             )

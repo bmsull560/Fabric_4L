@@ -33,8 +33,14 @@ _DEFAULT_ALGORITHM = "HS256"
 _DEFAULT_TENANT_CLAIM = "tenant_id"
 _DEFAULT_USER_CLAIM = "sub"
 _DEFAULT_ROLES_CLAIM = "roles"
+_DEFAULT_ORG_CLAIM = "org_id"
+_DEFAULT_WORKSPACE_CLAIM = "workspace_id"
 _DEFAULT_INTERNAL_ISSUER = "value-fabric-internal"
 _DEFAULT_INTERNAL_AUDIENCE = "value-fabric-services"
+
+# Keycloak integration defaults
+_DEFAULT_KEYCLOAK_REALM = "fabric"
+_DEFAULT_KEYCLOAK_JWKS_PATH = "/protocol/openid-connect/certs"
 
 _DEVELOPMENT_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
 _ENV_KEYS = ("ENVIRONMENT", "ENV", "APP_ENV", "VF_ENV", "VALUE_FABRIC_ENV", "PYTHON_ENV")
@@ -154,20 +160,72 @@ def get_jwks() -> Dict[str, Any]:
     return get_jwksResult.model_validate({"keys": keys})
 
 
+_JWKS_URL_CACHE: Dict[str, Any] = {}
+_JWKS_URL_CACHE_EXPIRY: Dict[str, float] = {}
+_JWKS_URL_CACHE_TTL_SECONDS = 300  # 5 minutes
+
+
+def _fetch_jwks_from_url(url: str) -> Optional[Dict[str, Any]]:
+    """Fetch JWKS from a URL with simple in-memory caching."""
+    now = time.time()
+    cached = _JWKS_URL_CACHE.get(url)
+    expiry = _JWKS_URL_CACHE_EXPIRY.get(url, 0)
+    if cached and now < expiry:
+        return cached
+    try:
+        import urllib.request
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            jwks = json.loads(response.read().decode("utf-8"))
+            _JWKS_URL_CACHE[url] = jwks
+            _JWKS_URL_CACHE_EXPIRY[url] = now + _JWKS_URL_CACHE_TTL_SECONDS
+            return jwks
+    except Exception as exc:
+        logger.warning("Failed to fetch JWKS from %s: %s", url, exc)
+        return None
+
+
+def _build_keycloak_jwks_url() -> Optional[str]:
+    """Build Keycloak JWKS URL from KEYCLOAK_URL and KEYCLOAK_REALM."""
+    keycloak_url = os.getenv("KEYCLOAK_URL", "").strip().rstrip("/")
+    realm = os.getenv("KEYCLOAK_REALM", _DEFAULT_KEYCLOAK_REALM).strip()
+    if keycloak_url and realm:
+        return f"{keycloak_url}/realms/{realm}{_DEFAULT_KEYCLOAK_JWKS_PATH}"
+    return None
+
+
 def _resolve_external_key(header: Dict[str, Any], issuer: str) -> Optional[Any]:
     kid = header.get("kid")
     if not kid:
         return None
     if kid in _get_revoked_kids():
         return None
+
+    jwks: Optional[Dict[str, Any]] = None
+
+    # Try static JWKS JSON first
     jwks_raw = os.getenv("OIDC_JWKS_JSON", "").strip()
-    if not jwks_raw:
+    if jwks_raw:
+        try:
+            jwks = json.loads(jwks_raw)
+        except json.JSONDecodeError:
+            logger.warning("OIDC_JWKS_JSON is invalid JSON")
+
+    # Fall back to explicit JWKS URL
+    if jwks is None:
+        jwks_url = os.getenv("OIDC_JWKS_URL", "").strip()
+        if jwks_url:
+            jwks = _fetch_jwks_from_url(jwks_url)
+
+    # Fall back to auto-built Keycloak URL
+    if jwks is None:
+        keycloak_jwks = _build_keycloak_jwks_url()
+        if keycloak_jwks:
+            jwks = _fetch_jwks_from_url(keycloak_jwks)
+
+    if jwks is None:
         return None
-    try:
-        jwks = json.loads(jwks_raw)
-    except json.JSONDecodeError:
-        logger.warning("OIDC_JWKS_JSON is invalid JSON")
-        return None
+
     for key in jwks.get("keys", []):
         if key.get("kid") == kid:
             return jwt.algorithms.get_default_algorithms()[key.get("alg", "RS256")].from_jwk(json.dumps(key))
@@ -265,10 +323,28 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
     exp = payload.get("exp")
     iat = payload.get("iat")
     jti = payload.get("jti")
-    standard_claims = {tenant_claim, user_claim, roles_claim, "role", "exp", "iat", "jti", "api_key_id"}
+    org_claim = os.getenv("JWT_ORG_CLAIM", _DEFAULT_ORG_CLAIM)
+    workspace_claim = os.getenv("JWT_WORKSPACE_CLAIM", _DEFAULT_WORKSPACE_CLAIM)
+    standard_claims = {
+        tenant_claim, user_claim, roles_claim, org_claim, workspace_claim,
+        "role", "exp", "iat", "jti", "api_key_id", "email", "name", "impersonator_id",
+    }
     extra: Dict[str, Any] = {k: v for k, v in payload.items() if k not in standard_claims}
 
-    return TokenClaims(sub=payload.get(user_claim, ""), tenant_id=str(tenant_id) if tenant_id else None, roles=roles if isinstance(roles, list) else [roles] if roles else [], exp=exp if isinstance(exp, int) else None, iat=iat if isinstance(iat, int) else None, jti=jti if isinstance(jti, str) else None, extra_claims=extra)
+    return TokenClaims(
+        sub=payload.get(user_claim, ""),
+        tenant_id=str(tenant_id) if tenant_id else None,
+        org_id=payload.get(org_claim),
+        workspace_id=payload.get(workspace_claim),
+        roles=roles if isinstance(roles, list) else [roles] if roles else [],
+        email=payload.get("email"),
+        name=payload.get("name"),
+        impersonator_id=payload.get("impersonator_id"),
+        exp=exp if isinstance(exp, int) else None,
+        iat=iat if isinstance(iat, int) else None,
+        jti=jti if isinstance(jti, str) else None,
+        extra_claims=extra,
+    )
 
 
 def encode_jwt(

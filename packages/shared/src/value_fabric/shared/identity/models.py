@@ -32,11 +32,17 @@ class TokenClaims(BaseModel):
 
     This is the canonical representation of a verified JWT's payload,
     used after signature verification and claim validation.
+    Supports both internal (HS256) and Keycloak (RS256) tokens.
     """
 
     sub: str = Field(..., description="Subject identifier (user ID)")
-    tenant_id: Optional[str] = Field(None, description="Tenant identifier for multi-tenant contexts")
+    tenant_id: Optional[str] = Field(None, description="Tenant identifier (L2 boundary)")
+    org_id: Optional[str] = Field(None, description="Organization identifier (L1 billing entity)")
+    workspace_id: Optional[str] = Field(None, description="Workspace identifier (L3 project)")
     roles: List[str] = Field(default_factory=list, description="User roles/permissions")
+    email: Optional[str] = Field(None, description="User email from identity provider")
+    name: Optional[str] = Field(None, description="User display name from identity provider")
+    impersonator_id: Optional[str] = Field(None, description="Actor ID if this token was exchanged for impersonation")
     exp: Optional[int] = Field(None, description="Expiration timestamp (Unix epoch)")
     iat: Optional[int] = Field(None, description="Issued at timestamp (Unix epoch)")
     jti: Optional[str] = Field(None, description="JWT unique identifier")

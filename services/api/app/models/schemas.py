@@ -38,6 +38,9 @@ class User(BaseModel):
     email: str
     name: str
     role: Literal["admin", "editor", "viewer"] = "editor"
+    password_hash: str | None = None
+    status: Literal["invited", "active", "deactivated"] = "active"
+    invited_by: str | None = None
 
 
 # ============================================================================

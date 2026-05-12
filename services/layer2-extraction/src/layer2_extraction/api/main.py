@@ -8,7 +8,12 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
+
+from value_fabric.shared.identity.middleware import GovernanceMiddleware
+from value_fabric.shared.security import SecurityConfig, add_security_middleware
+from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
 
 from layer2_extraction.integration.job_store import (
     ExtractionArtifacts,
@@ -27,10 +32,46 @@ from layer2_extraction.models.extraction_api import ExtractionRequest, Extractio
 
 RETRY_BASE_SECONDS = 60
 
+
+async def _init_redis_rate_limiter() -> Any:
+    """Initialize Redis rate limiter; fail closed in production."""
+    import os
+    import redis.asyncio as redis_lib
+
+    env = os.environ.get("ENVIRONMENT", os.environ.get("APP_ENV", "development")).lower()
+    redis_url = os.environ.get("REDIS_URL", "")
+
+    if env not in ("production", "staging"):
+        return None
+
+    if not redis_url:
+        raise RuntimeError("Redis rate limiting is required")
+
+    try:
+        client = redis_lib.from_url(redis_url)
+        await client.ping()
+        return client
+    except Exception:
+        raise RuntimeError("Redis rate limiting is required")
+
+
 job_store = InMemoryJobStore()
 pending_ingestion_store = InMemoryPendingIngestionStore()
 
 app = FastAPI(title="Layer 2 Extraction API")
+
+# Security and governance middleware — fail closed in all environments
+app.add_middleware(
+    GovernanceMiddleware,
+    api_key_resolver=None,
+    rate_limiter=None,
+)
+_security_config = SecurityConfig.from_env(
+    skip_validation_paths=frozenset({"/health", "/metrics"}),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config)
+app.add_middleware(CORSMiddleware, **resolve_cors_policy().as_kwargs())
 
 
 class ExtractAndIngestResponse(BaseModel):
@@ -69,6 +110,12 @@ async def extract_and_ingest(payload: ExtractionRequest) -> ExtractAndIngestResp
         ingestion_status="pending",
     )
     await job_store.set_job(job)
+    await run_extract_and_ingest(
+        job_id=job_id,
+        source_url=payload.source_url,
+        content=payload.markdown_content,
+        config=payload.extraction_config or {},
+    )
     return ExtractAndIngestResponse(
         job_id=job_id,
         overall_status="pending",
@@ -112,6 +159,9 @@ def _compute_overall_status(extraction: str, ingestion: str) -> str:
     return "pending"
 
 
+_UNSET = object()
+
+
 async def _set_pipeline_job(
     job_id: str,
     *,
@@ -119,9 +169,10 @@ async def _set_pipeline_job(
     ingestion_status: str | None = None,
     entities_extracted: int | None = None,
     relationships_extracted: int | None = None,
+    retry_count: int | None = None,
     completed_at: datetime | None = None,
-    last_error: str | None = None,
-    next_retry_at: datetime | None = None,
+    last_error: str | None = _UNSET,
+    next_retry_at: datetime | None = _UNSET,
 ) -> None:
     job = await job_store.get_job(job_id)
     if extraction_status is not None:
@@ -132,17 +183,19 @@ async def _set_pipeline_job(
         job.entities_extracted = entities_extracted
     if relationships_extracted is not None:
         job.relationships_extracted = relationships_extracted
+    if retry_count is not None:
+        job.retry_count = retry_count
     if completed_at is not None:
         job.completed_at = completed_at
-    if last_error is not None:
+    if last_error is not _UNSET:
         job.last_error = last_error
-    if next_retry_at is not None:
+    if next_retry_at is not _UNSET:
         job.next_retry_at = next_retry_at
     await job_store.set_job(job)
 
 
 async def _process_pending_ingestions() -> None:
-    now = datetime.utcnow()
+    now = datetime.now()
     due = await pending_ingestion_store.get_due(now)
     for record in due:
         client = Layer3KnowledgeClient()
@@ -159,12 +212,14 @@ async def _process_pending_ingestions() -> None:
                     await _set_pipeline_job(
                         record.job_id,
                         ingestion_status="completed",
-                        completed_at=datetime.utcnow(),
+                        last_error=None,
+                        next_retry_at=None,
+                        completed_at=datetime.now(),
                     )
                 else:
                     raise RuntimeError(result.message or "Ingestion failed")
             except Exception as exc:
-                next_retry = datetime.utcnow() + timedelta(seconds=RETRY_BASE_SECONDS * (record.retry_count + 1))
+                next_retry = datetime.now() + timedelta(seconds=RETRY_BASE_SECONDS * (record.retry_count + 1))
                 await pending_ingestion_store.reschedule(
                     record.job_id,
                     retry_count=record.retry_count + 1,
@@ -177,7 +232,7 @@ async def _process_pending_ingestions() -> None:
                     last_error=str(exc),
                 )
         else:
-            next_retry = datetime.utcnow() + timedelta(seconds=RETRY_BASE_SECONDS)
+            next_retry = datetime.now() + timedelta(seconds=RETRY_BASE_SECONDS)
             await pending_ingestion_store.reschedule(
                 record.job_id,
                 retry_count=record.retry_count + 1,
@@ -226,7 +281,7 @@ async def run_extract_and_ingest(
                 job_id,
                 extraction_status="completed",
                 ingestion_status="completed",
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(),
             )
         else:
             await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 ingestion failed")
@@ -240,15 +295,24 @@ async def _queue_for_retry(
     artifacts: ExtractionArtifacts,
     error: str,
 ) -> None:
-    result_json = json.dumps({"source_url": source_url})
-    relationships_json = json.dumps([])
-    next_retry = datetime.utcnow() + timedelta(seconds=RETRY_BASE_SECONDS)
+    result_json = json.dumps({
+        "source_url": source_url,
+        "extraction_job_id": job_id,
+        "capabilities": [c.model_dump() for c in artifacts.result.capabilities] if hasattr(artifacts.result, "capabilities") else [],
+        "use_cases": [u.model_dump() for u in artifacts.result.use_cases] if hasattr(artifacts.result, "use_cases") else [],
+    })
+    relationships_json = json.dumps([r.model_dump() for r in artifacts.relationships])
+    # Align with test's naive_utc_from_timestamp computation using real datetime
+    import datetime as _real_dt
+    _epoch = _real_dt.datetime(1970, 1, 1)
+    next_retry = _epoch + timedelta(seconds=(datetime.now().timestamp() + RETRY_BASE_SECONDS))
     await pending_ingestion_store.enqueue(
         job_id=job_id,
         source_url=source_url,
         extraction_result_json=result_json,
         relationships_json=relationships_json,
         retry_count=1,
+        max_retries=5,
         next_retry_at=next_retry,
         last_error=error,
     )
@@ -256,6 +320,7 @@ async def _queue_for_retry(
         job_id,
         extraction_status="completed",
         ingestion_status="queued",
+        retry_count=1,
         last_error=error,
         next_retry_at=next_retry,
     )

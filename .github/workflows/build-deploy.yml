@@ -214,7 +214,7 @@ jobs:
           exit-code: '1'  # Fail on CRITICAL/HIGH vulnerabilities
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@3ce22a6e336a7fcc318bc58ae1986395bdc83ba7 # v4.35.4
         if: always() && steps.scan-image.outcome != 'skipped'
         with:
           sarif_file: 'trivy-results.sarif'

@@ -105,31 +105,15 @@ class DevAuthBypassMiddleware(BaseHTTPMiddleware):
 def maybe_install_dev_bypass(app: ASGIApp) -> bool:
     """Install dev bypass middleware if DEV_AUTH_BYPASS=true.
 
-    Call this **before** adding GovernanceMiddleware in main.py.
-    When active, GovernanceMiddleware will see a pre-populated
-    ``request.state.governance_context`` and skip authentication.
-
-    Returns:
-        True if dev bypass was installed, False otherwise.
+    .. deprecated::
+        Dev auth bypass has been permanently disabled. This function
+        remains as a no-op compatibility shim to avoid breaking legacy
+        imports, but it will never install the bypass middleware.
     """
-    if not is_dev_bypass_enabled():
-        return False
-    validate_dev_bypass_configuration()
-
-    # CRITICAL: Log at error level to ensure visibility in all logging configs
-    logger.error(
-        "SECURITY: Dev auth bypass is ACTIVE. All requests will be auto-authenticated "
-        "as tenant %s with admin privileges. This should NEVER be enabled in production.",
-        DEV_TENANT_ID,
-    )
-    logger.warning(
-        "╔══════════════════════════════════════════════════════════╗\n"
-        "║  DEV AUTH BYPASS ENABLED — ALL REQUESTS AUTO-AUTHED    ║\n"
-        "║  Tenant: %s                     ║\n"
-        "║  DO NOT USE IN PRODUCTION                              ║\n"
-        "╚══════════════════════════════════════════════════════════╝",
-        DEV_TENANT_ID,
-    )
-
-    app.add_middleware(DevAuthBypassMiddleware)
-    return True
+    if is_dev_bypass_enabled():
+        logger.critical(
+            "SECURITY: DEV_AUTH_BYPASS is set but dev auth bypass has been "
+            "permanently removed from the platform. Unset DEV_AUTH_BYPASS and "
+            "ALLOW_DEV_AUTH_BYPASS immediately."
+        )
+    return False

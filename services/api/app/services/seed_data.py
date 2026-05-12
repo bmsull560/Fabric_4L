@@ -4,6 +4,7 @@ import os
 from typing import Any
 
 from app.core.database import db
+from app.core.security import hash_password
 from app.models.schemas import (
     Account,
     AgentRun,
@@ -60,6 +61,8 @@ def seed_users(tenant_ids: list[str]):
             email="admin@alpha.com",
             name="Admin User",
             role="admin",
+            password_hash=hash_password("admin123"),
+            status="active",
         ),
         User(
             id="user-2",
@@ -67,6 +70,8 @@ def seed_users(tenant_ids: list[str]):
             email="editor@beta.com",
             name="Editor User",
             role="editor",
+            password_hash=hash_password("editor123"),
+            status="active",
         ),
     ]
     for u in users:

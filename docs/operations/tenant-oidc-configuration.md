@@ -16,7 +16,8 @@ Fabric 4L authenticates tenant users via the OpenID Connect protocol. Each tenan
 | Auth0 | Yes | SaaS; supports Organizations for multi-tenant |
 | Okta | Yes | Enterprise SSO; supports custom claims |
 | Azure AD / Entra ID | Yes | Microsoft ecosystem; use App Registration |
-| Google Workspace | Partial | Limited custom claim support |
+| Google | Yes | Standard OIDC; preset endpoints available |
+| Apple Sign In | Yes | Requires JWT client-secret generation |
 | Any OIDC-compliant IdP | Expected | Must support discovery endpoint |
 
 ---
@@ -67,6 +68,67 @@ After creating the application, record:
 - **Client ID**
 - **Client Secret**
 - **Discovery URL** (usually `{issuer_url}/.well-known/openid-configuration`)
+
+### 3.4 Google and Apple Sign-In Setup
+
+For **Google** and **Apple**, the platform provides preset endpoints so you can omit `issuer_url` and most endpoint fields.
+
+#### Google OAuth 2.0
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
+2. Create an **OAuth 2.0 Client ID** (Web application type)
+3. Add authorized redirect URI: `https://{your-domain}/api/v1/auth/oidc/callback`
+4. Note the **Client ID** and **Client Secret**
+5. Enable the **Google People API** (for `profile` scope)
+
+Required tenant settings:
+```json
+{
+  "oidc": {
+    "provider_name": "google",
+    "client_id": "YOUR_GOOGLE_CLIENT_ID",
+    "client_secret_ref": "OIDC_CLIENT_SECRET_GOOGLE",
+    "auto_provision_users": true,
+    "default_role": "read_only"
+  }
+}
+```
+
+#### Apple Sign In
+
+1. Go to [Apple Developer Portal](https://developer.apple.com/) → Certificates, Identifiers & Profiles
+2. Create an **App ID** with "Sign In with Apple" capability
+3. Create a **Services ID** for the web application
+4. Configure the **Return URL** (redirect URI): `https://{your-domain}/api/v1/auth/oidc/callback`
+5. Create a **Sign In with Apple** private key (ES256, .p8 format)
+6. Note the **Team ID**, **Key ID**, **Services ID** (used as `client_id`), and download the private key
+
+Required tenant settings:
+```json
+{
+  "oidc": {
+    "provider_name": "apple",
+    "client_id": "com.example.webapp",
+    "auto_provision_users": true,
+    "default_role": "read_only"
+  }
+}
+```
+
+Required environment variables (or Infisical secrets):
+```bash
+APPLE_TEAM_ID=ABCDE12345
+APPLE_KEY_ID=DEFGHI1234
+APPLE_PRIVATE_KEY="-----BEGIN EC PRIVATE KEY-----
+...
+-----END EC PRIVATE KEY-----"
+```
+
+**Important notes for Apple:**
+- Apple only returns the user's `name` and `email` on the **first** login. Subsequent logins return only the `sub` claim.
+- The platform auto-generates the JWT client secret on-the-fly using your private key.
+- Store the private key securely (Infisical/Vault). Never commit it to source control.
+- Apple requires the `response_mode=form_post` parameter for web callbacks; the platform handles this automatically.
 
 ---
 

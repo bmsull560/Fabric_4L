@@ -62,16 +62,14 @@ These services use Alembic for relational database migrations and have `alembic.
 - **Fix applied:** Changed `down_revision` in `20260503_0002_add_rls_policies.py` from `20250418_0001` to `20250419_0001`, linearizing the chain.
 - Current state: **1 head**, **1 root** — clean.
 
-### Layer 4 — Drift Risk (Unfixed)
+### Layer 4 — Fixed
 
-- 29 revisions across two separate chains
-- **Multi-head detected:** `028` and `20260101_0000`
-- **Duplicate revision ID:** `018` exists in two files:
-  - `018_add_company_knowledge_tables.py`
-  - `018_add_rls_to_billing_tables.py`
-- **Root cause:** `20260101_0000_a1b2c3d4e5f6_initial_layer4_schema.py` is a second baseline migration that duplicates schema already created by the `001` chain. It has `down_revision = None`, creating a completely separate branch.
-- **Impact:** `alembic upgrade head` on a fresh database would fail or produce inconsistent results because Alembic cannot resolve which head to follow.
-- **Remediation:** Requires manual merge migration or removal of the duplicate baseline (`20260101_0000`) if it has not been applied to any production database. **Not fixed in this pass** due to potential production-history implications.
+- 29 revisions in a single linear chain
+- Previous state: **2 heads** (`028` and `20260101_0000`) + **duplicate revision ID** `018`
+- **Fix applied:**
+  1. Removed orphan baseline `20260101_0000_a1b2c3d4e5f6_initial_layer4_schema.py` (no children, conflicted with `002` which creates the same `tenants`/`users` tables).
+  2. Renamed `018_add_company_knowledge_tables.py` → `029_add_company_knowledge_tables.py` and updated `revision` → `"029"`, `down_revision` → `"028"`, resolving the duplicate `018` ID.
+- Current state: **1 head** (`029`), **1 root** (`001`) — clean.
 
 ### Layer 5 — Clean
 
@@ -153,5 +151,6 @@ These services use Alembic for relational database migrations and have `alembic.
 
 | Item                                                                                                       | Priority | Status | Owner       |
 | ---------------------------------------------------------------------------------------------------------- | -------- | ------ | ----------- |
-| Layer 4: resolve dual baseline (`20260101_0000` vs `001` chain)                                           | **High** | Open   | Engineering |
-| Layer 4: deduplicate `018` revision ID                                                                     | **High** | Open   | Engineering |
+| Layer 4: resolve dual baseline (`20260101_0000` vs `001` chain)                                           | **High** | Fixed  | AI-assisted |
+| Layer 4: deduplicate `018` revision ID                                                                     | **High** | Fixed  | AI-assisted |
+| Layer 2: linearize multi-head chain (`20260503_0002` branch)                                              | **High** | Fixed  | AI-assisted |

@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+# =============================================================================
+# Dockerfile.playwright — Playwright Test Runner for Value Fabric Frontend
+# =============================================================================
+#
+# Base: Official Playwright image with Chromium, Firefox, WebKit + system deps.
+# Node is upgraded to 22 to match the project runtime.
+# Dependencies are baked into the image; entrypoint seeds them into the named
+# volume at runtime so live source mounts work without polluting the host
+# node_modules with Linux binaries.
+# =============================================================================
+
+FROM mcr.microsoft.com/playwright:v1.60.0-noble
+
+# Playwright v1.60+ images ship Node 22 — no upgrade needed
+
+# Enable pnpm via corepack (project standard)
+RUN corepack enable && corepack prepare pnpm@10.18.1 --activate
+
+# -----------------------------------------------------------------------------
+# Bake dependencies
+# -----------------------------------------------------------------------------
+WORKDIR /baked
+
+# Copy manifest and capture its hash BEFORE we strip workspace deps
+COPY package.json ./
+COPY scripts ./scripts
+RUN md5sum package.json > /baked/package-json.md5
+
+# Strip monorepo workspace references that cannot resolve in isolation
+RUN sed -i '/eslint-plugin-fabric-contracts/d' package.json && \
+    sed -i '/patchedDependencies/,/}/d' package.json
+
+# Install dependencies (lockfile is omitted because we modified the manifest)
+RUN pnpm install
+
+# Persist node_modules for runtime seeding
+RUN cp -a /baked/node_modules /baked-node_modules
+
+# Timestamp used by entrypoint to detect image rebuilds
+RUN date +%s > /baked/image-build.timestamp
+
+# -----------------------------------------------------------------------------
+# Runtime
+# -----------------------------------------------------------------------------
+WORKDIR /app
+
+COPY scripts/playwright-docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["pnpm", "exec", "playwright", "test", "--project=contracts"]

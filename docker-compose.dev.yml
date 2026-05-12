@@ -114,6 +114,36 @@ services:
       start_period: 30s
 
   # ---------------------------------------------------------------------------
+  # Identity — Keycloak (OIDC/SAML broker)
+  # ---------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: vf-dev-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_PROXY: edge
+      # Realm import
+      KC_REALM_IMPORT_LOCATION: /opt/keycloak/data/import/fabric-realm.json
+    ports:
+      - "8080:8080"
+    volumes:
+      - dev-keycloak-data:/opt/keycloak/data
+      - ./infra/keycloak/fabric-realm.json:/opt/keycloak/data/import/fabric-realm.json:ro
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200 OK' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
   # Backend — Layer 4 Agents API
   # ---------------------------------------------------------------------------
   layer4:
@@ -143,6 +173,10 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
       - THESYS_API_KEY=${THESYS_API_KEY:-}
+      # Keycloak OIDC configuration (dev mode — validates against Keycloak JWKS)
+      - OIDC_ISSUER=http://keycloak:8080/realms/fabric
+      - OIDC_AUDIENCE=fabric-api
+      - OIDC_JWKS_URL=http://keycloak:8080/realms/fabric/protocol/openid-connect/certs
       # Inter-layer URLs (point to self for now — stubs return 503)
       - LAYER4_LAYER1_API_URL=http://layer4:8000
       - LAYER4_LAYER2_API_URL=http://layer4:8000
@@ -163,6 +197,8 @@ services:
       redis:
         condition: service_healthy
       neo4j:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - dev-network
@@ -226,6 +262,7 @@ volumes:
   dev-postgres-data:
   dev-redis-data:
   dev-neo4j-data:
+  dev-keycloak-data:
 
 networks:
   dev-network:

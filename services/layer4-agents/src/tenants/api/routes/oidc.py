@@ -26,6 +26,7 @@ from value_fabric.shared.identity.jwt import encode_jwt
 from value_fabric.shared.identity.oidc import OIDCClient, map_role_from_claims
 from value_fabric.shared.identity.oidc_config import OIDCProviderConfig
 from value_fabric.shared.identity.permissions import Role
+from value_fabric.shared.identity.providers import resolve_oidc_config, resolve_client_secret
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ....api.security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token, validate_double_submit
@@ -160,6 +161,7 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
     """Resolve the OIDC client secret from config reference.
 
     Supports:
+    - Provider-specific generation (Apple JWT)
     - Vault references: "vault:secret/data/path#key"
     - Environment variable references: "ENV_VAR_NAME"
     - Direct values (fallback)
@@ -167,6 +169,16 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
     Raises:
         ValueError: If client secret cannot be resolved
     """
+    # Provider-specific secret generation (e.g., Apple JWT)
+    provider = (config.provider_name or "oidc").strip().lower()
+    if provider == "apple":
+        try:
+            secret = await resolve_client_secret(config)
+            if secret:
+                return secret
+        except ValueError:
+            pass  # Fall through to standard resolution for better error messages
+
     # First try client_secret_ref if provided
     if config.client_secret_ref:
         # Handle Vault references
@@ -217,9 +229,12 @@ async def oidc_login(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    oidc_config = OIDCProviderConfig.from_settings(tenant.settings or {})
-    if oidc_config is None or not oidc_config.enabled:
+    raw_config = OIDCProviderConfig.from_settings(tenant.settings or {})
+    if raw_config is None or not raw_config.enabled:
         raise HTTPException(status_code=400, detail="OIDC is not enabled for this tenant")
+
+    # Apply provider-specific presets (Google/Apple endpoints, scopes, etc.)
+    oidc_config = resolve_oidc_config(raw_config)
 
     oidc_client = OIDCClient()
     try:
@@ -334,9 +349,12 @@ async def oidc_callback(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    oidc_config = OIDCProviderConfig.from_settings(tenant.settings or {})
-    if oidc_config is None or not oidc_config.enabled:
+    raw_config = OIDCProviderConfig.from_settings(tenant.settings or {})
+    if raw_config is None or not raw_config.enabled:
         raise HTTPException(status_code=400, detail="OIDC is not enabled for this tenant")
+
+    # Apply provider-specific presets (Google/Apple endpoints, scopes, etc.)
+    oidc_config = resolve_oidc_config(raw_config)
 
     client_secret = await _get_client_secret(oidc_config)
     oidc_client = OIDCClient()
@@ -500,9 +518,12 @@ async def oidc_metadata(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    oidc_config = OIDCProviderConfig.from_settings(tenant.settings or {})
-    if oidc_config is None:
+    raw_config = OIDCProviderConfig.from_settings(tenant.settings or {})
+    if raw_config is None:
         raise HTTPException(status_code=400, detail="OIDC is not configured for this tenant")
+
+    # Apply provider-specific presets so metadata reflects resolved values
+    oidc_config = resolve_oidc_config(raw_config)
 
     return oidc_metadataResult.model_validate({
         "provider_name": oidc_config.provider_name,

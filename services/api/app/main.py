@@ -8,11 +8,13 @@ from .shared_bootstrap import (
     validate_production_safety,
 )
 
+from app.core.audit import AuditMiddleware
 from app.core.config import get_settings
 from app.core.metrics import metrics_middleware, render_metrics
 from app.routers import (
     accounts,
     agents,
+    auth,
     calculator,
     context_engine,
     drivers,
@@ -47,6 +49,7 @@ app = create_fabric_app(
     cors_policy=settings.cors_policy,
 )
 
+app.include_router(auth.router, prefix="/v1")
 app.include_router(accounts.router, prefix="/v1")
 app.include_router(intelligence.router, prefix="/v1")
 app.include_router(intelligence.legacy_router, prefix="/v1")
@@ -61,6 +64,9 @@ app.include_router(reviews.router, prefix="/v1")
 app.include_router(versioning.router, prefix="/v1")
 app.include_router(realization.router, prefix="/v1")
 app.include_router(agents.router, prefix="/v1")
+
+# Audit logging for all state-changing requests
+app.add_middleware(AuditMiddleware)
 
 app.middleware("http")(metrics_middleware)
 register_health_endpoint(app, service_name="fabric-4l-api")

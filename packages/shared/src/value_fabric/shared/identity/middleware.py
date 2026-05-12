@@ -208,6 +208,7 @@ def extract_context_from_jwt(payload: dict[str, Any]) -> RequestContext:
 
     This helper is intentionally small and shared by middleware and security
     contract tests so JWT tenant/user extraction has one fail-closed contract.
+    Supports both internal (HS256) and Keycloak (RS256) token claim shapes.
     """
     if "tenant_id" not in payload or not payload.get("tenant_id"):
         raise ValueError("tenant_id is required in JWT claims")
@@ -220,6 +221,24 @@ def extract_context_from_jwt(payload: dict[str, Any]) -> RequestContext:
             user_id = UUID(str(raw_user_id))
         except (TypeError, ValueError) as exc:
             raise ValueError("Invalid user_id in JWT claims") from exc
+
+    # L1 Organization (billing entity)
+    org_id: Optional[UUID | str] = None
+    raw_org = payload.get("org_id")
+    if raw_org is not None:
+        try:
+            org_id = UUID(str(raw_org))
+        except (TypeError, ValueError):
+            org_id = str(raw_org)
+
+    # L3 Workspace (project boundary)
+    workspace_id: Optional[UUID | str] = None
+    raw_workspace = payload.get("workspace_id")
+    if raw_workspace is not None:
+        try:
+            workspace_id = UUID(str(raw_workspace))
+        except (TypeError, ValueError):
+            workspace_id = str(raw_workspace)
 
     permissions = payload.get("permissions") or []
     if len(permissions) > 1024:
@@ -234,10 +253,13 @@ def extract_context_from_jwt(payload: dict[str, Any]) -> RequestContext:
     return RequestContext(
         tenant_id=tenant_id,
         user_id=user_id,
+        org_id=org_id,
+        workspace_id=workspace_id,
         roles=list(roles),
         permissions=frozenset(str(permission) for permission in permissions),
         source="jwt",
         raw=dict(payload),
+        impersonator_id=payload.get("impersonator_id"),
     )
 
 

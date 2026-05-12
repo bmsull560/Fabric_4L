@@ -79,7 +79,7 @@ jobs:
           scanners: 'vuln,secret,config'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@3ce22a6e336a7fcc318bc58ae1986395bdc83ba7 # v4.35.4
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -141,7 +141,7 @@ jobs:
 
       - name: Upload SBOM vulnerability SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@3ce22a6e336a7fcc318bc58ae1986395bdc83ba7 # v4.35.4
         with:
           sarif_file: '${{ matrix.artifact.name }}-sbom-vuln.sarif'
           category: sbom-${{ matrix.artifact.name }}

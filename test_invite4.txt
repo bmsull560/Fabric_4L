@@ -1,0 +1,52 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+Using --randomly-seed=1508850126
+rootdir: C:\Users\BBB\Fabric_4L\services\api
+configfile: pyproject.toml
+plugins: anyio-4.13.0, Faker-40.15.0, hypothesis-6.152.4, langsmith-0.8.0, asyncio-1.3.0, cov-7.1.0, randomly-4.1.0, timeout-2.4.0, xdist-3.8.0, respx-0.23.1, schemathesis-4.17.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 7 items
+
+services\api\app\tests\test_invitation_and_tenant_leakage.py::TestCrossTenantLeakage::test_tenant_a_token_with_matching_header_succeeds PASSED [ 14%]
+services\api\app\tests\test_invitation_and_tenant_leakage.py::TestCrossTenantLeakage::test_deactivated_user_cannot_login FAILED [ 28%]
+services\api\app\tests\test_invitation_and_tenant_leakage.py::TestCrossTenantLeakage::test_tenant_a_token_cannot_list_tenant_b_accounts PASSED [ 42%]
+services\api\app\tests\test_invitation_and_tenant_leakage.py::TestCrossTenantLeakage::test_missing_tenant_claim_returns_401 PASSED [ 57%]
+services\api\app\tests\test_invitation_and_tenant_leakage.py::TestInvitationFlow::test_invite_and_accept_lifecycle FAILED [ 71%]
+services\api\app\tests\test_invitation_and_tenant_leakage.py::TestInvitationFlow::test_invite_requires_authentication PASSED [ 85%]
+services\api\app\tests\test_invitation_and_tenant_leakage.py::TestInvitationFlow::test_invite_requires_admin_role PASSED [100%]
+
+================================== FAILURES ===================================
+__________ TestCrossTenantLeakage.test_deactivated_user_cannot_login __________
+services\api\app\tests\test_invitation_and_tenant_leakage.py:192: in test_deactivated_user_cannot_login
+    assert "deactivated" in response.json()["detail"]
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'detail'
+------------------------------ Captured log call ------------------------------
+WARNING  fabric.audit:audit.py:89 access_denied
+_____________ TestInvitationFlow.test_invite_and_accept_lifecycle _____________
+services\api\app\tests\test_invitation_and_tenant_leakage.py:98: in test_invite_and_accept_lifecycle
+    assert "pending activation" in login_resp.json()["detail"]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'detail'
+------------------------------ Captured log call ------------------------------
+WARNING  fabric.audit:audit.py:89 access_denied
+============================== warnings summary ===============================
+packages\shared\src\value_fabric\shared\identity\jwt.py:19
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\identity\jwt.py:19: UserWarning: Field name "keys" in "get_jwksResult" shadows an attribute in parent "TypedDictModel"
+    class get_jwksResult(TypedDictModel):
+
+packages\shared\src\value_fabric\shared\audit\models.py:154
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\audit\models.py:154: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class TenantResolvedDetails(BaseModel):
+
+packages\shared\src\value_fabric\shared\security\config.py:52
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\security\config.py:52: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class SecurityConfig(BaseModel):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED services\api\app\tests\test_invitation_and_tenant_leakage.py::TestCrossTenantLeakage::test_deactivated_user_cannot_login
+FAILED services\api\app\tests\test_invitation_and_tenant_leakage.py::TestInvitationFlow::test_invite_and_accept_lifecycle
+=================== 2 failed, 5 passed, 3 warnings in 2.38s ===================

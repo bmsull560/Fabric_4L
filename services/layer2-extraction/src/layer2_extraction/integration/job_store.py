@@ -24,7 +24,7 @@ class PipelineJob(BaseModel):
     retry_count: int = 0
     last_error: str | None = None
     next_retry_at: datetime | None = None
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=datetime.now)
     completed_at: datetime | None = None
     tenant_id: str | None = None
 

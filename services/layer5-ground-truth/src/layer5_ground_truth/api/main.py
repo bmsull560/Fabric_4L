@@ -248,10 +248,7 @@ def create_app() -> FastAPI:
     add_security_middleware(app, config=_security_config_l5)
 
     # GovernanceMiddleware — provides auth and tenant context with rate limiting
-    # Production/staging: fail closed if auth middleware is missing
-    allow_bypass = settings.allow_insecure_dev_auth_bypass
-
-    # Get Redis rate limiter from app state (initialized in lifespan)
+    # Fail closed in all environments; no bypass permitted.
     redis_rate_limiter = getattr(app.state, 'redis_rate_limiter', None)
 
     try:
@@ -264,19 +261,12 @@ def create_app() -> FastAPI:
         )
         logger.info("L5: GovernanceMiddleware with rate limiting initialized")
     except ImportError:
-        if settings.is_production_like and not allow_bypass:
-            logger.error(
-                "CRITICAL: GovernanceMiddleware not importable in production/staging. "
-                "Authentication is required. Set ALLOW_INSECURE_DEV_AUTH_BYPASS=true ONLY for local dev."
-            )
-            raise RuntimeError(
-                "GovernanceMiddleware is required in production/staging. "
-                "shared.identity.middleware is not importable."
-            )
-
-        logger.warning(
-            "SECURITY WARNING: GovernanceMiddleware not imported. "
-            "API endpoints are UNPROTECTED. This is only allowed in development with ALLOW_INSECURE_DEV_AUTH_BYPASS=true."
+        logger.error(
+            "CRITICAL: GovernanceMiddleware not importable. "
+            "Authentication is required in all environments."
+        )
+        raise RuntimeError(
+            "GovernanceMiddleware is required. shared.identity.middleware is not importable."
         )
 
     # CORS — fail-safe via shared resolve_cors_policy()

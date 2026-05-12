@@ -61,17 +61,6 @@ def create_app() -> FastAPI:
     )
     configure_middleware(app)
 
-    from value_fabric.shared.identity.dev_bypass import maybe_install_dev_bypass
-
-    dev_bypass_active = maybe_install_dev_bypass(app)
-    if dev_bypass_active:
-        logger.critical(
-            "SECURITY: DEV_AUTH_BYPASS is enabled for ENVIRONMENT=%s. "
-            "Only local development is allowed. Disable DEV_AUTH_BYPASS and "
-            "unset ALLOW_DEV_AUTH_BYPASS before promoting this build.",
-            settings.environment,
-        )
-
     register_core_routes(app)
     register_routers(app)
     return app
