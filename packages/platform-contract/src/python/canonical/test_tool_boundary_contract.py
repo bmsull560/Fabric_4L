@@ -61,6 +61,12 @@ class InvalidOutputTool(EchoTool):
         return validated_input.message
 
 
+class UnimplementedTool(BaseTool):
+    name = "unimplemented"
+    input_schema = EchoInput
+    output_schema = EchoOutput
+
+
 def test_tool_registry_registers_gets_and_lists_tools() -> None:
     registry = ToolRegistry()
     tool = EchoTool()
@@ -145,3 +151,8 @@ def test_tool_registry_unknown_tool_message_is_actionable() -> None:
         match="Tool 'missing' is not registered",
     ):
         registry.get("missing")
+
+
+def test_base_tool_is_explicit_non_runtime_abstraction() -> None:
+    with pytest.raises(TypeError, match="Can't instantiate abstract class UnimplementedTool"):
+        UnimplementedTool()

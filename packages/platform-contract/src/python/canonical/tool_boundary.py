@@ -83,7 +83,7 @@ class BaseTool(ABC):
     @abstractmethod
     async def execute(self, validated_input: BaseModel) -> BaseModel | dict[str, Any]:
         """Tool-specific logic. Must return a Pydantic model or dict."""
-        raise NotImplementedError
+        ...
 
 
 class ToolRegistry:

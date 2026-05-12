@@ -980,135 +980,78 @@ class BatchAnalyticsResponse(BaseModel):
 
 # Graph Models
 # Mapping of alias field names to their source property names
-# Deprecation transition metadata (Graph API alias fields)
-GRAPH_ALIAS_DEPRECATION_TARGET_VERSION = "v2.4"
-GRAPH_ALIAS_DEPRECATION_TARGET_DATE = "2026-07-01"
-GRAPH_ALIAS_REMOVAL_CHECKLIST_DOC = "docs/DEPRECATIONS.md#graph-legacy-field-removal-checklist"
-
-# Safe process-local counters for deprecation usage instrumentation.
-# These are intentionally non-blocking and best-effort to avoid impact to request flow.
-_DEPRECATED_FIELD_USAGE_COUNTERS: dict[str, int] = {
-    "graph_node_request_legacy_fields": 0,
-    "graph_node_response_legacy_fields": 0,
-    "graph_edge_request_legacy_fields": 0,
-    "graph_edge_response_legacy_fields": 0,
-}
-
-
-def _increment_deprecated_field_usage(counter_key: str) -> None:
-    """Increment deprecated-field usage counters safely (best effort)."""
-    _DEPRECATED_FIELD_USAGE_COUNTERS[counter_key] = (
-        _DEPRECATED_FIELD_USAGE_COUNTERS.get(counter_key, 0) + 1
-    )
-
-
-def get_deprecated_field_usage_counters() -> dict[str, int]:
-    """Expose a copy of deprecated-field usage counters for diagnostics/tests."""
-    return dict(_DEPRECATED_FIELD_USAGE_COUNTERS)
-
-
 GraphNodeAliasMap: dict[str, str] = {
-    "label": "name",
-    "type": "entity_type",
-    "confidence": "confidence_score",
+    "name": "label",
+    "entity_type": "type",
+    "confidence_score": "confidence",
 }
 
 
 class GraphNode(BaseModel):
     """Node in the knowledge graph.
 
-<<<<<<< ours
     NOTE: This model provides backward-compatible field aliases for frontend contract stability:
     - 'name' is an alias for 'label' (frontend expects 'name')
     - 'entity_type' is an alias for 'type' (frontend expects 'entity_type')
     - 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')
 
-    Deprecation metadata:
-    - Target removal version: v2.4
-    - Target removal date: 2026-07-01
-    - Replacement fields: label→name, type→entity_type, confidence→confidence_score
-    - Cutover checklist: docs/DEPRECATIONS.md#graph-legacy-field-removal-checklist
-=======
-    Canonical fields are name/entity_type/confidence_score.
-    Legacy aliases label/type/confidence are emitted for one deprecation window.
->>>>>>> theirs
+    The legacy fields (label, type, confidence) are preserved for backward compatibility.
+    TODO: Deprecate legacy fields once all consumers migrate to new field names.
     """
 
     id: str = Field(..., description="Unique node identifier")
-    name: str = Field(..., description="Display label")
-    entity_type: str = Field(..., description="Node type")
-    confidence_score: float = Field(
-        default=0.8, ge=0.0, le=1.0, description="Confidence score"
+    label: str = Field(..., description="Display label (legacy: use 'name')")
+    type: str = Field(..., description="Node type (legacy: use 'entity_type')")
+    confidence: float = Field(
+        default=0.8, ge=0.0, le=1.0, description="Confidence score (legacy: use 'confidence_score')"
     )
     properties: dict[str, Any] = Field(
         default_factory=dict, description="Additional node properties"
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_and_validate_legacy_aliases(cls, data: Any) -> Any:
-        """Allow legacy aliases only when canonical fields are absent or equal."""
-        if not isinstance(data, dict):
-            return data
-        for alias, canonical in GraphNodeAliasMap.items():
-            if canonical in data and alias in data and data[canonical] != data[alias]:
-                raise ValueError(
-                    f"Conflicting GraphNode fields: '{canonical}' and deprecated '{alias}' must match"
-                )
-            if canonical not in data and alias in data:
-                data[canonical] = data[alias]
-        return data
-
     # ═════════════════════════════════════════════════════════════════════════
     # Backward-compatible alias fields for frontend contract alignment
     # ═════════════════════════════════════════════════════════════════════════
 
-    @classmethod
-    def model_validate(cls, obj: Any, *args: Any, **kwargs: Any) -> "GraphNode":
-        if isinstance(obj, dict) and any(k in obj for k in ("label", "type", "confidence")):
-            _increment_deprecated_field_usage("graph_node_request_legacy_fields")
-        return super().model_validate(obj, *args, **kwargs)
-
     @property
-    def label(self) -> str:
-        """Deprecated alias for 'name'."""
+    def name(self) -> str:
+        """Frontend-compatible alias for 'label'."""
         import warnings
         warnings.warn(
-            "GraphNode.label is deprecated; use GraphNode.name instead",
+            "GraphNode.name is deprecated; use GraphNode.label instead",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.name
+        return self.label
 
     @property
-    def type(self) -> str:
-        """Deprecated alias for 'entity_type'."""
+    def entity_type(self) -> str:
+        """Frontend-compatible alias for 'type'."""
         import warnings
         warnings.warn(
-            "GraphNode.type is deprecated; use GraphNode.entity_type instead",
+            "GraphNode.entity_type is deprecated; use GraphNode.type instead",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.entity_type
+        return self.type
 
     @property
-    def confidence(self) -> float:
-        """Deprecated alias for 'confidence_score'."""
+    def confidence_score(self) -> float:
+        """Frontend-compatible alias for 'confidence'."""
         import warnings
         warnings.warn(
-            "GraphNode.confidence is deprecated; use GraphNode.confidence_score instead",
+            "GraphNode.confidence_score is deprecated; use GraphNode.confidence instead",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.confidence_score
+        return self.confidence
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override to include computed alias fields in serialization."""
         data = super().model_dump(**kwargs)
         # Dynamically add alias fields using the mapping
-        for alias in GraphNodeAliasMap:
+        for alias, source in GraphNodeAliasMap.items():
             data[alias] = getattr(self, alias)
-        _increment_deprecated_field_usage("graph_node_response_legacy_fields")
         return data
 
 
@@ -1135,11 +1078,8 @@ GraphEdgeAliasMap: dict[str, str] = {
 class GraphEdge(BaseModel):
     """Edge/relationship in the knowledge graph.
 
-    Deprecation metadata:
-    - Target removal version: v2.4
-    - Target removal date: 2026-07-01
-    - Replacement field: type→relationship_type
-    - Cutover checklist: docs/DEPRECATIONS.md#graph-legacy-field-removal-checklist
+    NOTE: Provides backward-compatible alias 'relationship_type' for 'type'.
+    TODO: Deprecate 'type' field once consumers migrate.
     """
 
     source: str = Field(..., description="Source node ID")
@@ -1153,12 +1093,6 @@ class GraphEdge(BaseModel):
     # ═════════════════════════════════════════════════════════════════════════
     # Backward-compatible alias fields
     # ═════════════════════════════════════════════════════════════════════════
-
-    @classmethod
-    def model_validate(cls, obj: Any, *args: Any, **kwargs: Any) -> "GraphEdge":
-        if isinstance(obj, dict) and "type" in obj:
-            _increment_deprecated_field_usage("graph_edge_request_legacy_fields")
-        return super().model_validate(obj, *args, **kwargs)
 
     @property
     def relationship_type(self) -> str:
@@ -1177,7 +1111,6 @@ class GraphEdge(BaseModel):
         # Dynamically add alias fields using the mapping
         for alias, source in GraphEdgeAliasMap.items():
             data[alias] = getattr(self, alias)
-        _increment_deprecated_field_usage("graph_edge_response_legacy_fields")
         return data
 
 
