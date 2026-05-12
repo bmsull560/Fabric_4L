@@ -159,6 +159,21 @@ module.exports = {
         "no-console": "off",
       },
     },
+    {
+      // E2E tests must not introduce explicit any; use a documented inline override only when unavoidable.
+      files: ["e2e/**/*.ts"],
+      rules: {
+        "@typescript-eslint/no-explicit-any": ["error", { fixToUnknown: true, ignoreRestArgs: false }],
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "TSAnyKeyword",
+            message:
+              "Explicit any is disallowed in E2E tests. Use concrete interfaces or unknown. If unavoidable, add a documented eslint-disable-next-line @typescript-eslint/no-explicit-any with a reason.",
+          },
+        ],
+      },
+    },
   ],
   ignorePatterns: [
     "dist/**",

@@ -1,6 +1,20 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { seedAuthState } from './fixtures/auth-helpers';
 import { setUserTier } from './fixtures/tier-helpers';
+
+type DebugAuthWindowHooks = Window & {
+  __authClientClearSession?: () => void;
+};
+
+type SchemaProbeResult = {
+  removedKeys: string[];
+};
+
+type PostNavigationState = {
+  url: string;
+  token: string | null;
+  userInfo: string | null;
+};
 
 test('debug auth flow', async ({ page }) => {
   await page.goto('/login', { waitUntil: 'networkidle' });
@@ -13,12 +27,12 @@ test('debug auth flow', async ({ page }) => {
   await setUserTier(page, 'admin', 'super_admin');
 
   // Inject a script to test schema validation
-  const schemaResult = await page.evaluate(() => {
+  const schemaResult = await page.evaluate<SchemaProbeResult>(() => {
     // The Zod schema isn't globally accessible, but we can try to import it
     // Actually, let's just check what the authClient does
     // We'll monkey-patch clearSession to see if it's being called
-    const originalClearSession = (window as any).__authClientClearSession;
-    let clearSessionCalled = false;
+    const browserWindow = window as DebugAuthWindowHooks;
+    void browserWindow.__authClientClearSession;
     
     // We can't easily access the authClient instance, but we can listen for localStorage changes
     let removedKeys: string[] = [];
@@ -28,7 +42,7 @@ test('debug auth flow', async ({ page }) => {
       return origRemoveItem(key);
     };
 
-    return new Promise((resolve) => {
+    return new Promise<SchemaProbeResult>((resolve) => {
       setTimeout(() => {
         resolve({ removedKeys });
       }, 2000);
@@ -40,8 +54,7 @@ test('debug auth flow', async ({ page }) => {
   await page.goto('/home', { waitUntil: 'networkidle' });
   await page.waitForTimeout(3000);
 
-  const afterNav = await page.evaluate(() => {
-    let removedKeys: string[] = [];
+  const afterNav = await page.evaluate<PostNavigationState>(() => {
     // We need to re-inject since navigation resets the page
     // Actually localStorage persists, so let's just check what's there
     return {

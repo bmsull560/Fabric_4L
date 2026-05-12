@@ -8,6 +8,13 @@
  */
 import { test, expect } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
+import type { Page } from "@playwright/test";
+import type { AxeResults, Result } from "axe-core";
+
+type AccessibilityScanInput = {
+  page: Page;
+  testName: string;
+};
 
 test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
   test.beforeEach(async ({ page }) => {
@@ -17,7 +24,7 @@ test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
   });
 
   // Helper function to run axe scan with error handling
-  async function scanAccessibility(page: any, testName: string) {
+  async function scanAccessibility({ page, testName }: AccessibilityScanInput): Promise<AxeResults> {
     try {
       const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
       if (accessibilityScanResults.violations.length > 0) {
@@ -31,7 +38,7 @@ test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
   }
 
   test("app shell / landing page is accessible", async ({ page }) => {
-    const accessibilityScanResults = await scanAccessibility(page, "app shell");
+    const accessibilityScanResults = await scanAccessibility({ page, testName: "app shell" });
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
@@ -49,7 +56,7 @@ test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
     try {
       await page.goto("/intelligence");
       await page.waitForLoadState("networkidle");
-      const accessibilityScanResults = await scanAccessibility(page, "Intelligence page");
+      const accessibilityScanResults = await scanAccessibility({ page, testName: "Intelligence page" });
       expect(accessibilityScanResults.violations).toEqual([]);
     } catch (error) {
       console.warn("Intelligence page test skipped (may require authentication)");
@@ -61,7 +68,7 @@ test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
     await page.goto("/context/formulas/new");
     await page.waitForLoadState("networkidle");
 
-    const accessibilityScanResults = await scanAccessibility(page, "FormulaBuilder page");
+    const accessibilityScanResults = await scanAccessibility({ page, testName: "FormulaBuilder page" });
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
@@ -70,7 +77,7 @@ test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
     try {
       await page.goto("/calculator");
       await page.waitForLoadState("networkidle");
-      const accessibilityScanResults = await scanAccessibility(page, "Calculator page");
+      const accessibilityScanResults = await scanAccessibility({ page, testName: "Calculator page" });
       expect(accessibilityScanResults.violations).toEqual([]);
     } catch (error) {
       console.warn("Calculator page test skipped (route may not exist)");
@@ -82,7 +89,7 @@ test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
     try {
       await page.goto("/value-case");
       await page.waitForLoadState("networkidle");
-      const accessibilityScanResults = await scanAccessibility(page, "Value Case page");
+      const accessibilityScanResults = await scanAccessibility({ page, testName: "Value Case page" });
       expect(accessibilityScanResults.violations).toEqual([]);
     } catch (error) {
       console.warn("Value Case page test skipped (route may not exist)");
@@ -151,9 +158,9 @@ test.describe("Accessibility Journeys - WCAG 2.2 AA", () => {
     await page.waitForLoadState("networkidle");
 
     // Axe will check color contrast automatically
-    const accessibilityScanResults = await scanAccessibility(page, "color contrast");
+    const accessibilityScanResults = await scanAccessibility({ page, testName: "color contrast" });
     const contrastViolations = accessibilityScanResults.violations.filter(
-      (v: any) => v.id === "color-contrast"
+      (violation: Result) => violation.id === "color-contrast"
     );
     expect(contrastViolations).toEqual([]);
   });
