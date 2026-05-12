@@ -454,13 +454,13 @@ class AccountService:
             })
 
 
-    async def refresh_account(self, account_id: UUID) -> Account | None:
+    async def refresh_account(self, account_id: UUID, tenant_id: str) -> Account | None:
         """Refresh single account from CRM provider.
 
         Uses CRMSyncService for consistent sync behavior.
         """
         sync_service = CRMSyncService(self.db)
-        return await sync_service.refresh_single_account(account_id)
+        return await sync_service.refresh_single_account(account_id, tenant_id)
 
     # ========================================================================
     # Filter Options

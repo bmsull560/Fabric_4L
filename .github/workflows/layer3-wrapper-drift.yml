@@ -1,0 +1,27 @@
+name: Layer3 Wrapper Drift Check
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - 'services/layer3-knowledge/src/**/*.py'
+      - 'value_fabric/layer3/**/*.py'
+      - 'scripts/ci/check_layer3_wrapper_drift.py'
+      - '.github/workflows/layer3-wrapper-drift.yml'
+  workflow_dispatch:
+
+jobs:
+  check-layer3-wrapper-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Layer3 wrappers
+        run: python scripts/ci/check_layer3_wrapper_drift.py

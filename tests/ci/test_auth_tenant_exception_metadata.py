@@ -1,0 +1,45 @@
+from __future__ import annotations
+
+from datetime import date, timedelta
+from pathlib import Path
+
+from scripts.ci import prod_stub_scan
+from scripts.ci.python_contract_lint import check_file_with_regex
+
+
+def test_prod_stub_scan_accepts_valid_structured_metadata():
+    future = (date.today() + timedelta(days=30)).isoformat()
+    metadata = f"temporary exception [auth-tenant-exception ticket=SEC-123 owner=platform.security expiry={future}]"
+    assert prod_stub_scan._has_valid_exception_metadata(metadata)
+
+
+def test_prod_stub_scan_rejects_missing_or_expired_metadata():
+    expired = (date.today() - timedelta(days=1)).isoformat()
+    invalid = f"[auth-tenant-exception ticket=SEC-123 owner=platform.security expiry={expired}]"
+    assert not prod_stub_scan._has_valid_exception_metadata("no structured tag")
+    assert not prod_stub_scan._has_valid_exception_metadata(invalid)
+
+
+def test_python_contract_lint_allows_security_todo_with_valid_tag(tmp_path):
+    future = (date.today() + timedelta(days=30)).isoformat()
+    content = (
+        "# TODO auth follow-up "
+        f"[auth-tenant-exception ticket=SEC-321 owner=security.team expiry={future}]\n"
+    )
+    file_path = tmp_path / "services" / "layer1" / "api.py"
+    file_path.parent.mkdir(parents=True)
+    file_path.write_text(content, encoding="utf-8")
+    findings = check_file_with_regex(Path("services/layer1/api.py"), content)
+    assert findings
+    assert findings[0].message.startswith("Unresolved security-critical TODO/FIXME")
+
+
+def test_python_contract_lint_fails_security_todo_without_valid_tag(tmp_path):
+    content = "# TODO tenant hardening follow-up\n"
+    file_path = tmp_path / "services" / "layer1" / "api.py"
+    file_path.parent.mkdir(parents=True)
+    file_path.write_text(content, encoding="utf-8")
+
+    findings = check_file_with_regex(Path("services/layer1/api.py"), content)
+    assert findings
+    assert "missing valid exception metadata" in findings[0].message

@@ -77,3 +77,19 @@ class TestApiKeyRejection:
 
         assert "'xy...'" not in caplog.text
         assert "***" in caplog.text
+
+    @pytest.mark.parametrize("candidate", ["", "   ", "\n\t", "key with spaces", "🔥not-ascii🔥"])
+    def test_reject_api_key_unsupported_handles_malformed_inputs(self, caplog, candidate: str):
+        """Malformed API key candidates should be rejected and safely masked."""
+        with caplog.at_level(logging.WARNING):
+            result = reject_api_key_unsupported(candidate)
+        assert result is None
+        assert "API key authentication rejected" in caplog.text
+
+    @pytest.mark.parametrize("token", ["x.y", "x.y.z.extra", "..", "header.payload.", ".payload.sig"])
+    def test_reject_api_key_with_error_never_treats_jwt_like_input_as_valid(self, caplog, token: str):
+        """JWT-like malformed values must still be rejected as API keys in DB-less layers."""
+        with caplog.at_level(logging.ERROR):
+            result = reject_api_key_with_error(token)
+        assert result is None
+        assert "rejected" in caplog.text

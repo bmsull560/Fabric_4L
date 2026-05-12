@@ -10,6 +10,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import date
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Pattern
@@ -144,6 +145,10 @@ SECURITY_CRITICAL_TODO_PATTERN = re.compile(
     r"\b(?:TODO|FIXME)\b[^\n#]*\b(?:auth|authentication|authorization|tenant|rbac|acl|oidc)\b|\bSECURITY-TODO\b",
     re.IGNORECASE,
 )
+AUTH_TENANT_EXCEPTION_TAG_PATTERN = re.compile(
+    r"\[auth-tenant-exception\s+ticket=(?P<ticket>[A-Z][A-Z0-9_-]+-\d+)\s+owner=(?P<owner>[a-z0-9][a-z0-9._-]*)\s+expiry=(?P<expiry>\d{4}-\d{2}-\d{2})\]",
+    re.IGNORECASE,
+)
 
 DEPRECATED_DB_DEP_ALLOWLIST = {
     "services/layer4-agents/src/database.py",
@@ -194,6 +199,30 @@ def check_file_with_regex(file_path: Path, content: str) -> list[ContractFinding
     for line_number, line in enumerate(content.splitlines(), start=1):
         normalized_path = file_path.as_posix()
         if normalized_path.startswith(RELEASE_SCOPED_PREFIXES) and SECURITY_CRITICAL_TODO_PATTERN.search(line):
+            metadata_match = AUTH_TENANT_EXCEPTION_TAG_PATTERN.search(line)
+            has_valid_metadata = False
+            if metadata_match is not None:
+                try:
+                    has_valid_metadata = date.fromisoformat(metadata_match.group("expiry")) >= date.today()
+                except ValueError:
+                    has_valid_metadata = False
+            if not has_valid_metadata:
+                findings.append(
+                    ContractFinding(
+                        contract_id="security_todo",
+                        severity="critical",
+                        path=str(file_path),
+                        line=line_number,
+                        column=0,
+                        message="Security-critical TODO/FIXME in release-scoped path is missing valid exception metadata",
+                        preferred_pattern=(
+                            "Include [auth-tenant-exception ticket=SEC-123 owner=team.slug expiry=YYYY-MM-DD] "
+                            "or remove the marker"
+                        ),
+                        snippet=line.strip()[:100],
+                    )
+                )
+                continue
             findings.append(
                 ContractFinding(
                     contract_id="security_todo",

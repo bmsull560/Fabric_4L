@@ -142,6 +142,8 @@ alembic current
 
 - `LAYER4_DATABASE_URL`: Database connection string (PostgreSQL with asyncpg for runtime, psycopg2 for migrations)
 - `CHECKPOINT_DATABASE_URL`: Fallback database URL for checkpoint database
+- `LAYER4_OIDC_STATE_STORE_BACKEND`: OIDC state backend (`redis` default; `memory` for non-production only)
+- `LAYER4_OIDC_STATE_TTL_SECONDS`: Strict TTL for OIDC state records (default: `300`)
 
 ### Schema Tables
 

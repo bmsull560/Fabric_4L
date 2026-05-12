@@ -1,9 +1,3 @@
-"""Route-level helpers for tenant resolution.
+"""Compatibility wrapper for value_fabric.layer3.api.routes.tenant_resolution."""
 
-Compatibility shim to keep app_monolith as an orchestration facade while
-consolidating tenant parsing logic in api/services.
-"""
-
-from ..services.tenant_resolution import extract_tenant_id, resolve_ingest_tenant_id
-
-__all__ = ["extract_tenant_id", "resolve_ingest_tenant_id"]
+from value_fabric.layer3.api.routes.tenant_resolution import *  # noqa: F401,F403

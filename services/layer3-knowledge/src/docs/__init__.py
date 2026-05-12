@@ -1,29 +1,3 @@
-"""Documentation package initialization."""
+"""Compatibility wrapper for value_fabric.layer3.docs.__init__."""
 
-from .api_documentation import (
-    API_DOCUMENTATION,
-    APIEndpoint,
-    APIError,
-    APIExample,
-    APIGuide,
-    APITutorial,
-    get_documentation,
-    get_endpoint_documentation,
-    get_error_documentation,
-    get_guide,
-    get_tutorial,
-)
-
-__all__ = [
-    "APIExample",
-    "APITutorial",
-    "APIError",
-    "APIEndpoint",
-    "APIGuide",
-    "get_documentation",
-    "get_endpoint_documentation",
-    "get_error_documentation",
-    "get_tutorial",
-    "get_guide",
-    "API_DOCUMENTATION",
-]
+from value_fabric.layer3.docs.__init__ import *  # noqa: F401,F403

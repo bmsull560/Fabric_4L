@@ -30,7 +30,7 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON, TypeDecorator
 
 # ---------------------------------------------------------------------------
@@ -177,7 +177,7 @@ class TruthObject(Base):
         default=lambda: uuid.uuid4(),
         comment="Globally unique truth object identifier",
     )
-    tenant_id = Column(
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID,
         nullable=False,
         index=True,
@@ -445,7 +445,7 @@ class TruthSource(Base):
         nullable=False,
         index=True,
     )
-    tenant_id = Column(UUID, nullable=False, index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
 
     # Source identification
     source_type = Column(
@@ -543,7 +543,7 @@ class ValidationEvent(Base):
         nullable=False,
         index=True,
     )
-    tenant_id = Column(UUID, nullable=False, index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
 
     # Transition details
     from_status = Column(
@@ -626,7 +626,7 @@ class MaturityHistory(Base):
         nullable=False,
         index=True,
     )
-    tenant_id = Column(UUID, nullable=False, index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID, nullable=False, index=True)
 
     from_level = Column(Integer, nullable=True)
     to_level = Column(Integer, nullable=False)

@@ -85,6 +85,40 @@ def allowed_delta(key: str, approvals: dict[str, Any]) -> int:
     return int(item.get("allowed_increase", 0))
 
 
+def staged_max(key: str, approvals: dict[str, Any], fallback: int) -> int:
+    staged = approvals.get("staged_thresholds", {}).get(key, [])
+    active_max = fallback
+    today = date.today()
+    for item in staged:
+        effective_on = item.get("effective_on")
+        max_count = item.get("max_count")
+        if effective_on is None or max_count is None:
+            continue
+        if date.fromisoformat(effective_on) <= today:
+            active_max = int(max_count)
+    return active_max
+
+
+def validate_obsolete_approval_metadata(approvals: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    entries = approvals.get("obsolete_marker_approvals", [])
+    for idx, entry in enumerate(entries, start=1):
+        owner = (entry.get("owner") or "").strip()
+        target_removal_date = entry.get("target_removal_date")
+        if not owner:
+            errors.append(f"obsolete_marker_approvals[{idx}] is missing owner")
+        if not target_removal_date:
+            errors.append(f"obsolete_marker_approvals[{idx}] is missing target_removal_date")
+            continue
+        try:
+            date.fromisoformat(target_removal_date)
+        except ValueError:
+            errors.append(
+                f"obsolete_marker_approvals[{idx}] has invalid target_removal_date: {target_removal_date}"
+            )
+    return errors
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Check legacy debt markers/directories against a baseline")
     ap.add_argument("--repo-root", type=Path, default=Path("."))
@@ -114,16 +148,22 @@ def main() -> int:
     approvals = load_json(args.approvals)
 
     regressions: list[str] = []
+    metadata_errors = validate_obsolete_approval_metadata(approvals)
     for key, actual in counts.items():
         base = int(baseline_counts.get(key, 0))
         max_allowed = base + allowed_delta(key, approvals)
-        if actual > max_allowed:
-            regressions.append(f"{key}: {actual} > baseline {base} (+approved {max_allowed - base})")
+        staged_allowed = staged_max(key, approvals, fallback=max_allowed)
+        effective_max = min(max_allowed, staged_allowed)
+        if actual > effective_max:
+            regressions.append(
+                f"{key}: {actual} > max {effective_max} (baseline {base}, approved {max_allowed}, staged {staged_allowed})"
+            )
 
     report = {
         "counts": counts,
         "baseline_counts": baseline_counts,
         "regressions": regressions,
+        "metadata_errors": metadata_errors,
         "findings": [f.__dict__ for f in findings],
     }
 
@@ -137,10 +177,17 @@ def main() -> int:
         for f in findings:
             print(f"- {f.file}:{f.line} [{f.kind}:{f.key}] {f.text}")
 
+    if metadata_errors:
+        print("ERROR: obsolete marker approvals are missing required metadata:", file=sys.stderr)
+        for err in metadata_errors:
+            print(f"  - {err}", file=sys.stderr)
+
     if regressions:
         print("ERROR: legacy debt regressions detected:", file=sys.stderr)
         for r in regressions:
             print(f"  - {r}", file=sys.stderr)
+
+    if metadata_errors or regressions:
         return 1
     return 0
 

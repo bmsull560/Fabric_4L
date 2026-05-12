@@ -18,7 +18,9 @@ from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from jose import jwt
 
+from app.core.config import get_settings
 from app.main import app
 
 from .conftest import TENANT_ALPHA, TENANT_BETA, auth_headers, mint_token
@@ -251,3 +253,19 @@ class TestProductionSecretGuard:
         assert settings is not None
 
         get_settings.cache_clear()
+
+
+class TestTenantClaimRequired:
+    def test_missing_tenant_claim_returns_401(self) -> None:
+        settings = get_settings()
+        token = jwt.encode({"sub": "user-no-tenant"}, settings.secret_key, algorithm=settings.algorithm)
+        with TestClient(app) as client:
+            response = client.get("/v1/accounts", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401
+
+    def test_blank_tenant_claim_returns_401(self) -> None:
+        settings = get_settings()
+        token = jwt.encode({"sub": "user-empty-tenant", "tenant_id": "   "}, settings.secret_key, algorithm=settings.algorithm)
+        with TestClient(app) as client:
+            response = client.get("/v1/accounts", headers={"Authorization": f"Bearer {token}"})
+        assert response.status_code == 401

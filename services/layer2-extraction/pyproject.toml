@@ -119,7 +119,7 @@ minversion = "8.0"
 addopts = "-ra -q --strict-markers --tb=short"
 testpaths = ["tests"]
 asyncio_mode = "auto"
-pythonpath = ["src", "..", "../../packages/shared/src"]
+pythonpath = ["src", "../..", "../../packages/shared/src"]
 timeout = 30
 
 [tool.coverage.run]

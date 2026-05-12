@@ -414,7 +414,7 @@ async def refresh_account(
         )
 
     # Trigger refresh
-    refreshed = await service.refresh_account(account_id)
+    refreshed = await service.refresh_account(account_id, tenant_id=str(_ctx.tenant_id))
     if not refreshed:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

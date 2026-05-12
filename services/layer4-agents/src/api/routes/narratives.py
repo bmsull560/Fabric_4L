@@ -16,7 +16,7 @@ from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from value_fabric.shared.models.typed_dict import TypedDictModel
 from value_fabric.shared.security.dil_auth import (
     VALID_NARRATIVE_AUDIENCES,
@@ -43,6 +43,8 @@ router = APIRouter(prefix="/narratives", tags=["Narratives"])
 
 class NarrativeGenerateRequest(BaseModel):
     """Request to generate a narrative."""
+
+    model_config = ConfigDict(extra="forbid")
 
     account_id: str = Field(..., description="Account to generate narrative for")
     title: str = Field("Account Intelligence Narrative", max_length=500)
@@ -132,7 +134,6 @@ async def generate_narrative(
     svc = NarrativeBuilderService(driver)
 
     narr_request = NarrativeRequest(
-        tenant_id=tenant_id,
         account_id=body.account_id,
         title=body.title,
         tone=body.tone,
@@ -147,6 +148,7 @@ async def generate_narrative(
 
     result = await svc.generate_narrative(
         narr_request,
+        tenant_id=tenant_id,
         account_data=body.account_data,
         signals_data=body.signals_data,
         hypotheses_data=body.hypotheses_data,

@@ -1,3 +1,35 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""Authentication package initialization."""
 
-from value_fabric.layer3.auth import *  # noqa: F401,F403
+from .api_keys import (
+    ROLE_PERMISSIONS,
+    APIKey,
+    APIKeyCreateRequest,
+    APIKeyCreateResponse,
+    APIKeyManager,
+    APIKeyResponse,
+    APIKeyUpdateRequest,
+    AuthenticationResult,
+    AuthorizationChecker,
+    Permission,
+    Role,
+    get_api_key_manager,
+    get_authorization_checker,
+    initialize_authentication,
+)
+
+__all__ = [
+    "Permission",
+    "Role",
+    "APIKey",
+    "APIKeyCreateRequest",
+    "APIKeyResponse",
+    "APIKeyCreateResponse",
+    "APIKeyUpdateRequest",
+    "AuthenticationResult",
+    "APIKeyManager",
+    "AuthorizationChecker",
+    "get_api_key_manager",
+    "get_authorization_checker",
+    "initialize_authentication",
+    "ROLE_PERMISSIONS",
+]

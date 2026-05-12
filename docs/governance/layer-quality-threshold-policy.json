@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "description": "Release gate policy for per-layer quality scorecard coverage signals.",
+  "thresholds": {
+    "per_layer_min_score": 80,
+    "max_failed_layers": 0
+  },
+  "checks": [
+    "tenant_isolation_tests",
+    "contract_tests",
+    "migration_discipline",
+    "security_negative_paths",
+    "docs_contract_freshness"
+  ]
+}

@@ -138,6 +138,12 @@ jobs:
         run: |
           make check-workflow-matrix
 
+
+      - name: Generate layer quality scorecard
+        run: |
+          mkdir -p artifacts
+          python scripts/ci/layer_quality_scorecard.py             --output docs/governance/layer-quality-scorecard.json             --summary artifacts/layer-quality-scorecard.md
+
       - name: Build PR diff violation summary artifact
         if: always()
         run: |
@@ -161,6 +167,7 @@ jobs:
             artifacts/legacy-debt-report.json
             artifacts/violation-diff-summary.json
             artifacts/violation-diff-summary.md
+            artifacts/layer-quality-scorecard.md
           retention-days: 14
 
   governance-docs-check:
@@ -1040,6 +1047,30 @@ jobs:
       - name: Compatibility debt summary
         run: |
           python scripts/ci/compatibility_debt_summary.py
+
+      - name: Detect changed files
+        if: github.event_name == 'pull_request'
+        id: changed-files
+        uses: tj-actions/changed-files@44f58c6df7a7d39a250c8bca2f8f4a8c07c9a0d6 # v46
+
+      - name: Enforce shim change acknowledgment labels
+        if: github.event_name == 'pull_request'
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          python scripts/ci/check_shim_change_ack.py
+
+      - name: Generate compatibility shim usage report
+        run: |
+          python scripts/ci/shim_usage_report.py --output-dir artifacts/compatibility-debt
+
+      - name: Upload compatibility shim report
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: compatibility-shim-report
+          path: artifacts/compatibility-debt/
+          retention-days: 90
 
       - name: Upload test results
         if: always()

@@ -71,8 +71,9 @@ CI rejects pull requests that add non-documentation files under `frontend/`.
 - Canonical frontend root: `apps/web/`
 - Legacy path (`frontend/`) is doc-only and migration metadata only
 - Allowed under `frontend/`:
-  - `frontend/OBSOLETE.md`
   - Markdown docs (including archive/doc-only content)
+
+For migration context, see `docs/reference/frontend-root-policy.md`.
 
 Guard entrypoint:
 

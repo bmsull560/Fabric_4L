@@ -1,3 +1,3 @@
-"""Compatibility wrapper for value_fabric.layer3.api.routes."""
+"""Compatibility wrapper for value_fabric.layer3.api.routes.__init__."""
 
-from value_fabric.layer3.api.routes import *  # noqa: F401,F403
+from value_fabric.layer3.api.routes.__init__ import *  # noqa: F401,F403

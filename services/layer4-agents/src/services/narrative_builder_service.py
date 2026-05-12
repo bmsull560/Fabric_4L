@@ -159,7 +159,6 @@ TONE_TEMPLATES: dict[str, dict[str, str]] = {
 class NarrativeRequest:
     """Request to generate a narrative."""
 
-    tenant_id: str
     account_id: str
     title: str = "Account Intelligence Narrative"
     tone: str = "executive"
@@ -191,6 +190,7 @@ class NarrativeBuilderService:
         self,
         request: NarrativeRequest,
         *,
+        tenant_id: str,
         account_data: dict[str, Any] | None = None,
         signals_data: list[dict[str, Any]] | None = None,
         hypotheses_data: list[dict[str, Any]] | None = None,
@@ -228,7 +228,7 @@ class NarrativeBuilderService:
         # Assemble the narrative
         narrative = {
             "id": narrative_id,
-            "tenant_id": request.tenant_id,
+            "tenant_id": tenant_id,
             "account_id": request.account_id,
             "title": request.title,
             "audience": request.audience,

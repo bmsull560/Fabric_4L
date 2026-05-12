@@ -1,4 +1,14 @@
 import os
+import sys
+from pathlib import Path
+
+# Belt-and-braces: ensure repo root is on sys.path so `value_fabric.layer6.*`
+# canonical-shim imports resolve even if pyproject.toml `pythonpath` is bypassed
+# (e.g. ad-hoc invocations outside the configured pytest session).
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import pytest
 from unittest.mock import AsyncMock
 
@@ -10,6 +20,13 @@ _TEST_ENV_DEFAULTS = {
     "ALLOW_INSECURE_DEV_AUTH_BYPASS": "true",
     "DEV_AUTH_BYPASS": "true",
     "ALLOW_DEV_AUTH_BYPASS": "I_UNDERSTAND_RISK",
+    # Match root conftest.py secret defaults so L6 service venv can boot the FastAPI
+    # app without a live Infisical / vault. Mirrors the canonical test-secret values
+    # required by value_fabric.shared.secrets.infisical._validate_required_secrets.
+    "JWT_SECRET": "dummy_jwt_secret_for_tests_must_be_32_chars",
+    "API_KEY_HMAC_SECRET": "dummy_api_key_secret_for_tests_must_be_32_chars",
+    "SERVICE_AUTH_SECRET": "dummy_service_auth_secret_for_tests_32_chars",
+    "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/fabric",
 }
 for _key, _value in _TEST_ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)

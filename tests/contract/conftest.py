@@ -19,6 +19,19 @@ import urllib.error
 import pytest
 from httpx import AsyncClient
 
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Auto-mark every contract-suite item ``no_parallel``.
+
+    Schemathesis-driven contract tests crash under pytest-xdist with
+    ``AttributeError: 'WorkerController' object has no attribute 'workeroutput'``.
+    Marking forces ``-n0`` semantics for these items even when callers pass
+    ``-n auto``. See reports/TEST_COVERAGE_RUBRIC_AUDIT_2026-05-12.md §8 M0-3.
+    """
+    for item in items:
+        item.add_marker(pytest.mark.no_parallel)
+
+
 # Default API endpoints for local development
 DEFAULT_LAYER3_URL = "http://localhost:8003"
 DEFAULT_LAYER4_URL = "http://localhost:8004"

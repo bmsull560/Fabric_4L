@@ -1,6 +1,3 @@
-"""Compatibility forwarder for Layer 3 monolith app module.
+"""Compatibility wrapper for value_fabric.layer3.api.app_monolith."""
 
-Canonical implementation lives in ``value_fabric.layer3.api.app_monolith``.
-"""
-
-from value_fabric.layer3.api.app_monolith import *  # noqa: F403
+from value_fabric.layer3.api.app_monolith import *  # noqa: F401,F403

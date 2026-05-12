@@ -1,3 +1,62 @@
-"""Compatibility wrapper for value_fabric.layer6.api.routes.benchmarks."""
+"""Benchmark domain routes for Layer 6 API."""
 
-from value_fabric.layer6.api.routes.benchmarks import *  # noqa: F401,F403
+from typing import List
+
+from fastapi import APIRouter, Depends
+
+from ..deps import get_request_context, industry_filter, segment_filter
+from ..schemas import (
+    ComparisonRequestPayload,
+    ComparisonResponse,
+    DatasetDetail,
+    DatasetSummary,
+    ValidationRequestPayload,
+    ValidationResponse,
+)
+
+router = APIRouter(prefix="/v1/benchmarks", tags=["benchmarks"])
+
+
+@router.get("/datasets", response_model=List[DatasetSummary])
+async def list_datasets(
+    industry: str | None = Depends(industry_filter),
+    segment: str | None = Depends(segment_filter),
+    ctx = Depends(get_request_context),
+):
+    from .. import main as handlers
+    return await handlers.list_datasets(industry=industry, segment=segment, ctx=ctx)
+
+
+@router.get("/datasets/{dataset_id}", response_model=DatasetDetail)
+async def get_dataset(
+    dataset_id: str,
+    ctx = Depends(get_request_context),
+):
+    from .. import main as handlers
+    return await handlers.get_dataset(dataset_id, ctx=ctx)
+
+
+@router.post("/compare", response_model=ComparisonResponse)
+async def compare(
+    payload: ComparisonRequestPayload,
+    ctx = Depends(get_request_context),
+):
+    from .. import main as handlers
+    return await handlers.compare(payload, ctx=ctx)
+
+
+@router.post("/validate", response_model=ValidationResponse)
+async def validate(
+    payload: ValidationRequestPayload,
+    ctx = Depends(get_request_context),
+):
+    from .. import main as handlers
+    return await handlers.validate(payload, ctx=ctx)
+
+
+@router.get("/industries")
+async def list_industries(
+    ctx = Depends(get_request_context),
+):
+    from .. import main as handlers
+    return await handlers.list_industries(ctx=ctx)

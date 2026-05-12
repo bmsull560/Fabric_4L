@@ -98,6 +98,28 @@ CI will:
 3. Verify approval chain is complete
 4. Fail build if exception expired
 
+### Step 4: Release-Scoped Auth/Tenant Placeholder Exception Tag
+
+For release-scoped `TODO`/`FIXME` markers that mention auth, authentication, authorization, tenant, RBAC, ACL, or OIDC, CI requires structured metadata in the exception text:
+
+```text
+[auth-tenant-exception ticket=SEC-123 owner=platform.security expiry=YYYY-MM-DD]
+```
+
+Requirements:
+
+- `ticket`: tracking ticket ID (for example `SEC-123` or `PLATSEC-4567`)
+- `owner`: responsible team slug (for example `platform.security`)
+- `expiry`: ISO date in `YYYY-MM-DD` format and must be current/future
+
+Review process:
+
+1. Author includes the structured tag in the allowlist exception metadata.
+2. Reviewer verifies ticket is active and mitigation is documented.
+3. Reviewer verifies owner is accountable for remediation.
+4. Reviewer verifies expiry is short-lived and aligned to release risk.
+5. CI blocks merge if metadata is missing, malformed, or expired.
+
 ---
 
 ## Approval Hierarchy

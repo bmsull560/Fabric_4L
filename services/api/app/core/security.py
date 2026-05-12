@@ -85,9 +85,10 @@ def decode_token(token: str) -> TokenPayload | None:
         return None
     try:
         data = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        return TokenPayload(
-            sub=data["sub"], tenant_id=data.get("tenant_id", "default"), exp=data.get("exp")
-        )
+        tenant_id = data.get("tenant_id")
+        if not isinstance(tenant_id, str) or not tenant_id.strip():
+            return None
+        return TokenPayload(sub=data["sub"], tenant_id=tenant_id.strip(), exp=data.get("exp"))
     except ExpiredSignatureError:
         raise TokenExpiredError("Token has expired")
     except JWTError:

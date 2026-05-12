@@ -583,6 +583,7 @@ class CRMSyncService:
     async def refresh_single_account(
         self,
         account_id: UUID,
+        tenant_id: str,
     ) -> Account | None:
         """Refresh a single account from its CRM provider.
 
@@ -593,7 +594,14 @@ class CRMSyncService:
             Updated Account or None if not found
         """
         # Get account
-        result = await self.db.execute(select(Account).where(Account.id == account_id))
+        result = await self.db.execute(
+            select(Account).where(
+                and_(
+                    Account.id == account_id,
+                    Account.tenant_id == tenant_id,
+                )
+            )
+        )
         account = result.scalar_one_or_none()
 
         if not account:
@@ -608,7 +616,6 @@ class CRMSyncService:
             ) from e
 
         # Get CRM config
-        tenant_id = account.tenant_id or "default"
         config = await self._get_crm_config(provider, tenant_id)
         if not config or not config.get("api_key"):
             raise ValueError(f"CRM not configured for provider {provider.value}")

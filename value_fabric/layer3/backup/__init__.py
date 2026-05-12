@@ -1,3 +1,35 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""Backup package initialization."""
 
-from value_fabric.layer3.backup import *  # noqa: F401,F403
+from .backup_manager import (
+    BackupConfig,
+    BackupManager,
+    BackupMetadata,
+    BackupRequest,
+    BackupResponse,
+    BackupStatus,
+    BackupStorage,
+    BackupType,
+    LocalStorage,
+    RestoreRequest,
+    RestoreResponse,
+    StorageType,
+    get_backup_manager,
+    initialize_backup_manager,
+)
+
+__all__ = [
+    "BackupType",
+    "BackupStatus",
+    "StorageType",
+    "BackupMetadata",
+    "BackupConfig",
+    "BackupRequest",
+    "BackupResponse",
+    "RestoreRequest",
+    "RestoreResponse",
+    "BackupStorage",
+    "LocalStorage",
+    "BackupManager",
+    "get_backup_manager",
+    "initialize_backup_manager",
+]

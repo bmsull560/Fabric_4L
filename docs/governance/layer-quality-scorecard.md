@@ -1,0 +1,25 @@
+# Layer Quality Scorecard
+
+This scorecard is a machine-readable governance artifact for release gating.
+
+- Policy source: `docs/governance/layer-quality-threshold-policy.json`
+- Generated artifact: `docs/governance/layer-quality-scorecard.json`
+- CI markdown summary: `artifacts/layer-quality-scorecard.md`
+- Generator: `scripts/ci/layer_quality_scorecard.py`
+
+## Signals tracked per layer
+
+1. `tenant_isolation_tests`
+2. `contract_tests`
+3. `migration_discipline`
+4. `security_negative_paths`
+5. `docs_contract_freshness`
+
+## Regression threshold policy
+
+The release gate fails when either condition is violated:
+
+- A layer score drops below `per_layer_min_score`.
+- The number of failed layers exceeds `max_failed_layers`.
+
+Current thresholds are defined in the policy JSON and consumed by CI so regressions are visible before release.

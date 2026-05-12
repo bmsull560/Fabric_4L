@@ -27,6 +27,8 @@ import redis.asyncio as redis
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.rate_limiting.tenant_rate_limiter import TenantRateLimiter, TenantTier
 
+from tests.cache.conftest import make_redis_mock
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Test Suite: Redis Key Tenant Scoping
@@ -45,7 +47,7 @@ class TestRateLimitKeyIsolation:
         tenant_a = uuid4()
         tenant_b = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         mock_redis.zadd = AsyncMock(return_value=1)
         mock_redis.zcount = AsyncMock(return_value=1)
         mock_redis.expire = AsyncMock(return_value=True)
@@ -85,7 +87,7 @@ class TestRateLimitKeyIsolation:
         tenant_a = uuid4()
         tenant_b = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         
         # Tenant A makes 100 requests (exhausts quota)
         call_count = {}
@@ -128,7 +130,7 @@ class TestRateLimitKeyIsolation:
         tenant_a = uuid4()
         tenant_b = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         deleted_keys = set()
         
         async def mock_delete(*keys):
@@ -166,7 +168,7 @@ class TestCacheKeyIsolation:
         tenant_b = uuid4()
         entity_id = "entity-123"
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {}
         
         async def mock_get(key):
@@ -220,7 +222,7 @@ class TestCacheKeyIsolation:
         tenant_b = uuid4()
         query = "AI technology"
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {}
         
         async def mock_get(key):
@@ -267,7 +269,7 @@ class TestCacheKeyIsolation:
         tenant_a = uuid4()
         tenant_b = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {
             f"cache:tenant:{tenant_a}:entity:e1": b"data_a",
             f"cache:tenant:{tenant_a}:query:q1": b"data_a",
@@ -318,7 +320,7 @@ class TestSessionCacheIsolation:
         tenant_b = uuid4()
         user_id = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {}
         
         async def mock_get(key):
@@ -365,7 +367,7 @@ class TestSessionCacheIsolation:
         tenant_b = uuid4()
         api_key = "sk_test_12345"
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {}
         
         async def mock_get(key):
@@ -414,7 +416,7 @@ class TestDegradedModeIsolation:
         """
         tenant_id = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         mock_redis.zadd = AsyncMock(side_effect=redis.ConnectionError("Connection refused"))
         
         limiter = TenantRateLimiter(redis_client=mock_redis)
@@ -443,7 +445,7 @@ class TestDegradedModeIsolation:
         tenant_b = uuid4()
         entity_id = "entity-123"
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         mock_redis.get = AsyncMock(return_value=None)  # Cache miss
         
         with patch("value_fabric.layer3.api.cache.redis_client", mock_redis):
@@ -464,7 +466,7 @@ class TestDegradedModeIsolation:
         tenant_b = uuid4()
         
         # Simulate connection pool with single connection
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         connection_state = {}
         
         async def mock_set(key, value, ex=None):
@@ -518,7 +520,7 @@ class TestCachePoisoningPrevention:
         tenant_a = uuid4()
         tenant_b = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {}
         
         async def mock_set(key, value, ex=None):
@@ -558,7 +560,7 @@ class TestCachePoisoningPrevention:
         # Malicious entity_id trying to inject tenant_b into key
         malicious_entity_id = f"../../tenant:{tenant_b}:entity:secret"
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {}
         
         async def mock_set(key, value, ex=None):
@@ -592,7 +594,7 @@ class TestCachePoisoningPrevention:
         tenant_a = uuid4()
         tenant_b = uuid4()
         
-        mock_redis = AsyncMock()
+        mock_redis = make_redis_mock()
         cache_store = {
             f"cache:tenant:{tenant_a}:entity:e1": b"data_a",
             f"cache:tenant:{tenant_a}:entity:e2": b"data_a",

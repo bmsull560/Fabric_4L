@@ -69,3 +69,24 @@ def test_runtime_compatibility_markers_have_registry_entries() -> None:
         "Found runtime legacy/compatibility marker paths without registry entries:\n"
         + "\n".join(missing)
     )
+
+
+def test_registry_target_removal_dates_not_exceeded_without_extension_note() -> None:
+    text = REGISTRY.read_text(encoding="utf-8")
+    today = dt.date.today()
+    overdue: list[str] = []
+
+    row_re = re.compile(r"^\|\s*([^|]+?)\s*\|\s*`([^`]+)`\s*\|\s*[^|]+\|\s*[^|]+\|\s*[^|]+\|\s*(\d{4}-\d{2}-\d{2})\s*\|$", re.MULTILINE)
+    for m in row_re.finditer(text):
+        shim_id = m.group(1).strip()
+        target = dt.date.fromisoformat(m.group(3))
+        if target >= today:
+            continue
+        extension_ok = bool(re.search(rf"{re.escape(shim_id)}.*extension", text, flags=re.IGNORECASE))
+        if not extension_ok:
+            overdue.append(f"{shim_id} (target {target.isoformat()})")
+
+    assert not overdue, (
+        "Compatibility shim target removal date exceeded without documented extension note:\n"
+        + "\n".join(overdue)
+    )

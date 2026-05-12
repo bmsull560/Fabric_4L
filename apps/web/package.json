@@ -58,9 +58,13 @@
     "check:no-raw-api-client-in-hooks": "node scripts/assert-no-raw-api-client-in-hooks.mjs",
     "test:e2e:journey-launch": "pnpm run test:e2e:guard && playwright test --project=journeys e2e/journeys/j24-account-signals-evidence-driver-calculator-business-case.spec.ts",
     "test:journey-slo-gate": "node scripts/quality/assert-journey-launch-slos.mjs",
-    "test:frontend-hygiene": "node scripts/quality/assert-frontend-hygiene.mjs",
+    "test:frontend-hygiene": "node scripts/quality/assert-frontend-hygiene.mjs && pnpm run check:no-legacy-api-imports",
+<<<<<<< ours
     "test:legacy-removals": "node scripts/quality/assert-legacy-removals.mjs",
-    "test:coverage:critical": "vitest run --coverage --config vitest.critical-coverage.config.ts"
+=======
+>>>>>>> theirs
+    "test:coverage:critical": "vitest run --coverage --config vitest.critical-coverage.config.ts",
+    "check:no-legacy-api-imports": "node scripts/assert-no-legacy-api-imports.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

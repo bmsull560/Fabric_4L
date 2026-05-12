@@ -5,10 +5,12 @@ from pathlib import Path
 
 import pytest
 
+from value_fabric.shared.identity.isolation import QueryScope, ScopedQuery
 from value_fabric.layer3.db.query_execution import (
     TenantExecutionContext,
     TenantQueryExecutor,
     TenantQueryValidationError,
+    run_scoped_query,
 )
 from value_fabric.layer3.services.cypher_scope_guard import validate_tenant_scoped_cypher
 
@@ -102,6 +104,7 @@ def test_executor_allows_ambiguous_query_when_explicitly_allowlisted_system_quer
     )
 
 
+<<<<<<< ours
 @pytest.mark.parametrize(
     "query",
     [
@@ -117,3 +120,34 @@ def test_executor_blocks_union_call_and_multimatch_without_system_opt_in(query: 
             params={"tenant_id": "tenant-a"},
             context=TenantExecutionContext(tenant_id="tenant-a"),
         )
+
+
+=======
+>>>>>>> theirs
+@pytest.mark.asyncio
+async def test_run_scoped_query_enforces_tenant_for_tenant_scoped_queries() -> None:
+    async def _run(_query: str, _params: dict[str, str]):
+        return "ok"
+
+    with pytest.raises(TenantQueryValidationError, match="Tenant context is required"):
+        await run_scoped_query(
+            _run,
+            ScopedQuery(cypher="MATCH (p:Product) RETURN p", scope=QueryScope.TENANT),
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_scoped_query_allows_explicit_system_scope() -> None:
+    calls: list[tuple[str, dict[str, str]]] = []
+
+    async def _run(query: str, params: dict[str, str]):
+        calls.append((query, params))
+        return "ok"
+
+    result = await run_scoped_query(
+        _run,
+        ScopedQuery(cypher="CALL db.labels()", scope=QueryScope.SCHEMA, allowlist_key="test.schema"),
+    )
+
+    assert result == "ok"
+    assert calls == [("CALL db.labels()", {})]

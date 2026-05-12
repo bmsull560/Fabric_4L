@@ -22,3 +22,4 @@ from being mistaken for CI-runnable gate tests.
 | Runbook | Purpose |
 |--------|---------|
 | `abuse-emergency-controls.md` | Emergency controls for abuse spikes, blocklists, replay response, and temporary stricter limits |
+| `alerting-source-of-truth.md` | Canonical Alertmanager/alert-rule edit paths per environment and CI governance |

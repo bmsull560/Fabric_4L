@@ -1,3 +1,46 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""Analytics package initialization."""
 
-from value_fabric.layer3.analytics import *  # noqa: F401,F403
+# Import existing analytics components
+from .centrality import CentralityAnalyzer
+from .communities import CommunityDetector
+from .manager import (
+    AggregationType,
+    AnalyticsConfig,
+    AnalyticsEvent,
+    AnalyticsManager,
+    AnalyticsQuery,
+    AnalyticsResult,
+    AnalyticsStore,
+    DashboardConfig,
+    DashboardType,
+    MetricDefinition,
+    MetricsCollector,
+    MetricType,
+    TimeGranularity,
+    get_analytics_manager,
+    initialize_analytics,
+)
+from .similarity import SimilarityAnalyzer
+
+__all__ = [
+    # Existing analytics components
+    "CommunityDetector",
+    "CentralityAnalyzer",
+    "SimilarityAnalyzer",
+    # New analytics system
+    "MetricType",
+    "AggregationType",
+    "TimeGranularity",
+    "DashboardType",
+    "AnalyticsEvent",
+    "MetricDefinition",
+    "AnalyticsQuery",
+    "AnalyticsResult",
+    "DashboardConfig",
+    "AnalyticsConfig",
+    "MetricsCollector",
+    "AnalyticsStore",
+    "AnalyticsManager",
+    "get_analytics_manager",
+    "initialize_analytics",
+]

@@ -8,9 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ALLOWED_EXACT = {
-    "frontend/OBSOLETE.md",
-}
+ALLOWED_EXACT = set()
 ALLOWED_SUFFIXES = (".md",)
 ALLOWED_PREFIXES = (
     "frontend/archive/",

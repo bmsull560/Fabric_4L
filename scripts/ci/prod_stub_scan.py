@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 # Patterns that must not appear in production source code.
@@ -116,6 +117,11 @@ ALLOWLIST: dict[str, str] = {
     "tests:tests/layer3/test_model_registry_tenant_context.py:16": "Test helper generates base64url fixture IDs",
 }
 
+EXCEPTION_TAG_PATTERN = re.compile(
+    r"\[auth-tenant-exception\s+ticket=(?P<ticket>[A-Z][A-Z0-9_-]+-\d+)\s+owner=(?P<owner>[a-z0-9][a-z0-9._-]*)\s+expiry=(?P<expiry>\d{4}-\d{2}-\d{2})\]",
+    re.IGNORECASE,
+)
+
 # Directories to skip entirely
 SKIP_DIRS = {
     ".git",
@@ -192,6 +198,18 @@ def _allowlist_key(path: Path, repo_root: Path, line_no: int) -> str:
     return f"{prefix}:{rel}:{line_no}"
 
 
+def _has_valid_exception_metadata(metadata: str) -> bool:
+    """Require structured exception metadata with non-expired date."""
+    match = EXCEPTION_TAG_PATTERN.search(metadata)
+    if match is None:
+        return False
+    try:
+        expiry = date.fromisoformat(match.group("expiry"))
+    except ValueError:
+        return False
+    return expiry >= date.today()
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     violations: list[tuple[Path, int, str, str]] = []
@@ -236,8 +254,19 @@ def main() -> int:
             if rel_posix.startswith(RELEASE_SCOPED_PREFIXES):
                 if any(pattern.search(line) for pattern in SECURITY_CRITICAL_TODO_PATTERNS):
                     key = _allowlist_key(fpath, repo_root, line_no)
-                    if key not in ALLOWLIST:
+                    metadata = ALLOWLIST.get(key)
+                    if metadata is None:
                         violations.append((fpath.relative_to(repo_root), line_no, "security-critical TODO/FIXME", line.strip()))
+                        continue
+                    if not _has_valid_exception_metadata(metadata):
+                        violations.append(
+                            (
+                                fpath.relative_to(repo_root),
+                                line_no,
+                                "security-critical TODO/FIXME missing valid exception metadata",
+                                line.strip(),
+                            )
+                        )
                         continue
             for pattern in BANNED_PATTERNS:
                 if pattern in line:
@@ -271,8 +300,8 @@ def main() -> int:
         print(f"    Line:    {line_text}")
         print()
     print(
-        "If a match is intentional and safe, add an entry to ALLOWLIST in"
-        " scripts/ci/prod_stub_scan.py with a mandatory justification."
+        "If a match is intentional and safe, add an ALLOWLIST entry. Release-scoped auth/tenant TODOs must"
+        " include [auth-tenant-exception ticket=SEC-123 owner=team.slug expiry=YYYY-MM-DD] metadata."
     )
     return 1
 

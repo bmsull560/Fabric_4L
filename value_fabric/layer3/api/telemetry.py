@@ -1,3 +1,31 @@
-"""Compatibility wrapper for value_fabric.layer3.api.telemetry."""
+"""Optional OpenTelemetry imports for Layer 3 API."""
 
-from value_fabric.layer3.api.telemetry import *  # noqa: F401,F403
+try:
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    OTEL_AVAILABLE = True
+except ImportError:
+    OTEL_AVAILABLE = False
+    trace = None
+    OTLPSpanExporter = None
+    FastAPIInstrumentor = None
+    SERVICE_NAME = None
+    Resource = None
+    TracerProvider = None
+    BatchSpanProcessor = None
+
+__all__ = [
+    "OTEL_AVAILABLE",
+    "trace",
+    "OTLPSpanExporter",
+    "FastAPIInstrumentor",
+    "SERVICE_NAME",
+    "Resource",
+    "TracerProvider",
+    "BatchSpanProcessor",
+]

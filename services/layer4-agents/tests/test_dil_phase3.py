@@ -166,7 +166,7 @@ class TestNarrativeRequest:
     """Test NarrativeRequest dataclass."""
 
     def test_defaults(self):
-        req = NarrativeRequest(tenant_id=TENANT_ID, account_id=ACCOUNT_ID)
+        req = NarrativeRequest(account_id=ACCOUNT_ID)
         assert req.tone == "executive"
         assert req.audience == "c_suite"
         assert req.ranking_strategy == "balanced"
@@ -178,7 +178,6 @@ class TestNarrativeRequest:
 
     def test_custom_values(self):
         req = NarrativeRequest(
-            tenant_id=TENANT_ID,
             account_id=ACCOUNT_ID,
             title="Custom Narrative",
             tone="technical",
@@ -199,7 +198,7 @@ class TestNarrativeBuilderSectionRendering:
         driver = MagicMock()
         svc = NarrativeBuilderService(driver)
 
-        request = NarrativeRequest(tenant_id=TENANT_ID, account_id=ACCOUNT_ID)
+        request = NarrativeRequest(account_id=ACCOUNT_ID)
         context = svc._build_context(
             request=request,
             account_data={"name": "Acme Corp"},
@@ -376,13 +375,13 @@ class TestNarrativeBuilderGeneration:
         svc = NarrativeBuilderService(driver)
 
         request = NarrativeRequest(
-            tenant_id=TENANT_ID,
             account_id=ACCOUNT_ID,
             title="Test Narrative",
         )
 
         result = await svc.generate_narrative(
             request,
+            tenant_id=TENANT_ID,
             account_data={"name": "Acme Corp"},
             signals_data=[{"category": "cost", "confidence_score": 0.9}],
             hypotheses_data=[{"hypothesis_text": "H1", "estimated_impact_usd": 100000}],
@@ -409,12 +408,11 @@ class TestNarrativeBuilderGeneration:
         svc = NarrativeBuilderService(driver)
 
         request = NarrativeRequest(
-            tenant_id=TENANT_ID,
             account_id=ACCOUNT_ID,
             include_sections=["executive_summary", "roi_projection"],
         )
 
-        result = await svc.generate_narrative(request)
+        result = await svc.generate_narrative(request, tenant_id=TENANT_ID)
 
         assert "executive_summary" in result["sections"]
         assert "roi_projection" in result["sections"]
@@ -427,8 +425,8 @@ class TestNarrativeBuilderGeneration:
         ])
         svc = NarrativeBuilderService(driver)
 
-        request = NarrativeRequest(tenant_id=TENANT_ID, account_id=ACCOUNT_ID)
-        result = await svc.generate_narrative(request)
+        request = NarrativeRequest(account_id=ACCOUNT_ID)
+        result = await svc.generate_narrative(request, tenant_id=TENANT_ID)
 
         assert result["metadata"]["hypothesis_count"] == 0
         assert result["metadata"]["signal_count"] == 0
@@ -821,9 +819,10 @@ class TestCrossServiceIntegration:
             },
         ]
 
-        request = NarrativeRequest(tenant_id=TENANT_ID, account_id=ACCOUNT_ID)
+        request = NarrativeRequest(account_id=ACCOUNT_ID)
         result = await svc.generate_narrative(
-            request, hypotheses_data=hypotheses
+            request,
+            tenant_id=TENANT_ID, hypotheses_data=hypotheses
         )
 
         assert result["metadata"]["hypothesis_count"] == 2
@@ -846,9 +845,10 @@ class TestCrossServiceIntegration:
             ],
         }
 
-        request = NarrativeRequest(tenant_id=TENANT_ID, account_id=ACCOUNT_ID)
+        request = NarrativeRequest(account_id=ACCOUNT_ID)
         result = await svc.generate_narrative(
-            request, competitive_data=competitive
+            request,
+            tenant_id=TENANT_ID, competitive_data=competitive
         )
 
         cp_section = result["sections"]["competitive_positioning"]
@@ -866,9 +866,10 @@ class TestCrossServiceIntegration:
             {"title": "Mid-Market Win", "industry": "healthcare", "company_size": "mid-market", "outcome_summary": "99% compliance"},
         ]
 
-        request = NarrativeRequest(tenant_id=TENANT_ID, account_id=ACCOUNT_ID)
+        request = NarrativeRequest(account_id=ACCOUNT_ID)
         result = await svc.generate_narrative(
-            request, evidence_data=evidence
+            request,
+            tenant_id=TENANT_ID, evidence_data=evidence
         )
 
         ev_section = result["sections"]["evidence"]
@@ -905,12 +906,12 @@ class TestCrossServiceIntegration:
             svc = NarrativeBuilderService(driver)
 
             request = NarrativeRequest(
-                tenant_id=TENANT_ID,
                 account_id=ACCOUNT_ID,
                 tone=tone.value,
             )
             result = await svc.generate_narrative(
                 request,
+                tenant_id=TENANT_ID,
                 account_data={"name": "TestCo"},
                 hypotheses_data=[{"estimated_impact_usd": 50000}],
             )

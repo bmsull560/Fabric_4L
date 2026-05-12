@@ -18,5 +18,22 @@
       "owner": "platform-governance",
       "reason": "Set >0 only for temporary approved debt"
     }
-  }
+  },
+  "staged_thresholds": {
+    "DEPRECATED": [
+      { "effective_on": "2026-01-01", "max_count": 61 },
+      { "effective_on": "2026-07-01", "max_count": 56 },
+      { "effective_on": "2026-10-01", "max_count": 50 }
+    ],
+    "OBSOLETE": [
+      { "effective_on": "2026-01-01", "max_count": 18 },
+      { "effective_on": "2026-07-01", "max_count": 14 },
+      { "effective_on": "2026-10-01", "max_count": 10 }
+    ],
+    "legacy_directories": [
+      { "effective_on": "2026-01-01", "max_count": 1 },
+      { "effective_on": "2026-07-01", "max_count": 0 }
+    ]
+  },
+  "obsolete_marker_approvals": []
 }

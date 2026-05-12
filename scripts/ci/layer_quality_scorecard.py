@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""Generate per-layer quality scorecard and enforce regression threshold policy."""
+from __future__ import annotations
+import argparse, json
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+LAYER_PATHS = {
+    "layer1": ["value_fabric/layer1", "services/layer1-ingestion"],
+    "layer2": ["value_fabric/layer2", "services/layer2-extraction"],
+    "layer3": ["value_fabric/layer3", "services/layer3-knowledge"],
+    "layer4": ["value_fabric/layer4", "services/layer4-agents"],
+    "layer5": ["services/layer5-ground-truth/src/layer5_ground_truth", "services/layer5-ground-truth"],
+    "layer6": ["value_fabric/layer6", "services/layer6-benchmarks"],
+}
+
+@dataclass
+class CheckDef:
+    key: str
+    description: str
+    patterns: list[str]
+
+CHECKS = [
+    CheckDef("tenant_isolation_tests", "Tenant isolation test presence", ["tenant", "cross-tenant", "isolation"]),
+    CheckDef("contract_tests", "Contract tests presence", ["contract", "openapi", "schema"]),
+    CheckDef("migration_discipline", "Migration discipline checks", ["migration", "alembic", "revision"]),
+    CheckDef("security_negative_paths", "Security/auth negative-path coverage", ["unauthorized", "forbidden", "auth", "401", "403"]),
+    CheckDef("docs_contract_freshness", "Docs-contract freshness status", ["contract", "openapi", "schema", "docs"]),
+]
+
+
+def _find_any_text(paths: list[str], snippets: list[str]) -> bool:
+    lowered = [s.lower() for s in snippets]
+    for rel in paths:
+        p = ROOT / rel
+        if not p.exists():
+            continue
+        for f in p.rglob("*"):
+            if not f.is_file() or f.suffix.lower() not in {".py", ".md", ".yaml", ".yml", ".json"}:
+                continue
+            try:
+                text = f.read_text(encoding="utf-8", errors="ignore").lower()
+            except Exception:
+                continue
+            if any(s in text for s in lowered):
+                return True
+    return False
+
+
+def compute(policy: dict) -> dict:
+    per_layer = {}
+    for layer, paths in LAYER_PATHS.items():
+        checks = {}
+        passed = 0
+        for chk in CHECKS:
+            ok = _find_any_text(paths + ["tests", "docs", "contracts"], chk.patterns)
+            checks[chk.key] = {"description": chk.description, "present": ok}
+            passed += int(ok)
+        score = round((passed / len(CHECKS)) * 100, 1)
+        min_score = policy["thresholds"]["per_layer_min_score"]
+        per_layer[layer] = {
+            "score": score,
+            "status": "pass" if score >= min_score else "fail",
+            "checks": checks,
+        }
+
+    overall = round(sum(v["score"] for v in per_layer.values()) / len(per_layer), 1)
+    max_fail = policy["thresholds"]["max_failed_layers"]
+    failed_layers = sorted([k for k, v in per_layer.items() if v["status"] == "fail"])
+    return {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "policy_version": policy["version"],
+        "thresholds": policy["thresholds"],
+        "overall_score": overall,
+        "failed_layers": failed_layers,
+        "status": "pass" if len(failed_layers) <= max_fail else "fail",
+        "layers": per_layer,
+    }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--policy", default="docs/governance/layer-quality-threshold-policy.json")
+    ap.add_argument("--output", default="docs/governance/layer-quality-scorecard.json")
+    ap.add_argument("--summary", default="artifacts/layer-quality-scorecard.md")
+    args = ap.parse_args()
+    policy = json.loads((ROOT / args.policy).read_text(encoding="utf-8"))
+    report = compute(policy)
+    out = ROOT / args.output
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    summary = ROOT / args.summary
+    summary.parent.mkdir(parents=True, exist_ok=True)
+    lines = ["## Layer Quality Scorecard", "", f"Overall: **{report['overall_score']}** ({report['status']})", "", "| Layer | Score | Status |", "|---|---:|---|" ]
+    for layer, data in report["layers"].items():
+        emoji = "✅" if data["status"] == "pass" else "❌"
+        lines.append(f"| {layer} | {data['score']} | {emoji} {data['status']} |")
+    summary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2))
+    return 0 if report["status"] == "pass" else 1
+
+if __name__ == "__main__":
+    raise SystemExit(main())

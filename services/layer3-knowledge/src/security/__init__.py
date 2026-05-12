@@ -1,3 +1,3 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""Compatibility wrapper for value_fabric.layer3.security.__init__."""
 
-from value_fabric.layer3.security import *  # noqa: F401,F403
+from value_fabric.layer3.security.__init__ import *  # noqa: F401,F403

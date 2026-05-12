@@ -679,7 +679,7 @@ async def test_refresh_account_success(client: AsyncClient, sample_account: Acco
     # Mock CRMSyncService to avoid environment coupling
     from value_fabric.layer4.services.crm_sync_service import CRMSyncService
     
-    async def mock_refresh_single_account(self, account_id):
+    async def mock_refresh_single_account(self, account_id, tenant_id):
         # Return the account with updated timestamp
         return sample_account
     

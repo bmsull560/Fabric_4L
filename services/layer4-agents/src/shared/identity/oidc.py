@@ -12,14 +12,17 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import inspect
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any
+from threading import Lock
+from typing import Any, Protocol
 from urllib.parse import urlencode
 
 import httpx
+import jwt
 import structlog
 from pydantic import BaseModel, Field, field_validator
 
@@ -120,6 +123,14 @@ class OIDCClaims(BaseModel):
     raw_claims: dict[str, Any] = Field(default_factory=dict)
 
 
+class OIDCValidationError(ValueError):
+    """Structured OIDC token validation error with stable error code."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 class OIDCClient:
     """OIDC client with PKCE support for secure authentication.
 
@@ -162,6 +173,7 @@ class OIDCClient:
         self._jwks_cache: dict[str, Any] | None = None
         self._jwks_cache_expiry: datetime | None = None
         self._http_client = httpx.AsyncClient(timeout=30.0)
+        self._allowed_algorithms = {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512"}
 
         logger.info(
             "oidc_client_initialized",
@@ -327,16 +339,21 @@ class OIDCClient:
             )
             raise ValueError(f"Invalid token response: missing {e}") from e
 
-    async def _fetch_jwks(self) -> dict[str, Any]:
+    async def _fetch_jwks(self, *, force_refresh: bool = False) -> dict[str, Any]:
         """Fetch and cache JWKS from configured endpoint.
 
         Returns:
             JWKS dictionary with "keys" list
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Return cached JWKS if valid
-        if self._jwks_cache and self._jwks_cache_expiry and now < self._jwks_cache_expiry:
+        if (
+            not force_refresh
+            and self._jwks_cache
+            and self._jwks_cache_expiry
+            and now < self._jwks_cache_expiry
+        ):
             return self._jwks_cache
 
         if not self.config.jwks_uri:
@@ -358,93 +375,119 @@ class OIDCClient:
             logger.error("jwks_fetch_failed", tenant_id=self.tenant_id, error=str(e))
             raise ValueError(f"Failed to fetch JWKS: {e}") from e
 
-    async def validate_id_token(self, id_token: str) -> OIDCClaims:
-        """Validate OIDC ID token and extract claims.
-
-        Performs signature validation using JWKS and basic claim validation.
-        For production use, consider using a library like python-jose or jwcrypto.
-
-        Args:
-            id_token: JWT ID token from token exchange
-
-        Returns:
-            Parsed and validated OIDC claims
-
-        Raises:
-            ValueError: If token is invalid or expired
-            NotImplementedError: For full JWT validation (implement with jwcrypto)
-        """
-        # Parse JWT header and payload (base64url decode)
+    async def _load_jwks_for_validation(self, *, force_refresh: bool = False) -> dict[str, Any]:
+        """Load JWKS while tolerating test doubles that omit force_refresh."""
         try:
-            parts = id_token.split(".")
-            if len(parts) != 3:
-                raise ValueError("Invalid JWT format")
+            result = self._fetch_jwks(force_refresh=force_refresh)
+        except TypeError:
+            result = self._fetch_jwks()
+        if inspect.isawaitable(result):
+            return await result
+        return result
 
-            # Add padding if needed
-            def b64url_decode(s: str) -> bytes:
-                padding_needed = 4 - len(s) % 4
-                if padding_needed != 4:
-                    s += "=" * padding_needed
-                return base64.urlsafe_b64decode(s)
+    def _public_key_from_jwk(self, alg: str, jwk_data: dict[str, Any]) -> Any:
+        if alg.startswith("RS"):
+            return jwt.algorithms.RSAAlgorithm.from_jwk(jwk_data)
+        if alg.startswith("ES"):
+            return jwt.algorithms.ECAlgorithm.from_jwk(jwk_data)
+        raise OIDCValidationError("oidc.id_token.invalid_alg", f"invalid_id_token: algorithm '{alg}' is not allowed")
 
-            header = b64url_decode(parts[0])
-            payload = b64url_decode(parts[1])
+    async def validate_id_token(
+        self,
+        id_token: str,
+        *,
+        expected_nonce: str | None = None,
+        callback_state: str | None = None,
+        stored_state: str | None = None,
+        max_iat_age_seconds: int = 600,
+    ) -> OIDCClaims:
+        """Validate OIDC ID token and extract claims with strict contract checks."""
+        try:
+            header = jwt.get_unverified_header(id_token)
+        except jwt.PyJWTError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_format", "invalid_id_token: malformed_token") from exc
 
-            import json
+        alg = header.get("alg")
+        if alg not in self._allowed_algorithms:
+            raise OIDCValidationError(
+                "oidc.id_token.invalid_alg",
+                f"invalid_id_token: algorithm '{alg}' is not allowed",
+            )
 
-            _header_data = json.loads(header)
-            payload_data = json.loads(payload)
+        kid = header.get("kid")
+        if not kid:
+            raise OIDCValidationError("oidc.id_token.missing_kid", "invalid_id_token: missing kid")
 
-        except Exception as e:
-            logger.error("id_token_parse_failed", tenant_id=self.tenant_id, error=str(e))
-            raise ValueError(f"Failed to parse ID token: {e}") from e
+        jwks = await self._load_jwks_for_validation()
+        keys = {key.get("kid"): key for key in jwks.get("keys", []) if key.get("kid")}
+        if kid not in keys:
+            self._jwks_cache = None
+            self._jwks_cache_expiry = None
+            jwks = await self._load_jwks_for_validation(force_refresh=True)
+            keys = {key.get("kid"): key for key in jwks.get("keys", []) if key.get("kid")}
+            if kid not in keys:
+                raise OIDCValidationError(
+                    "oidc.id_token.stale_jwks",
+                    "invalid_id_token: stale JWKS or unknown key id",
+                )
 
-        # Basic validation
-        now = datetime.utcnow()
-        exp = payload_data.get("exp")
-        iat = payload_data.get("iat")
-        iss = payload_data.get("iss")
-        aud = payload_data.get("aud")
+        try:
+            public_key = self._public_key_from_jwk(alg, keys[kid])
+        except Exception as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_jwk", "invalid_id_token: invalid JWK") from exc
 
-        if exp and datetime.utcfromtimestamp(exp) < now:
-            raise ValueError("ID token expired")
+        try:
+            payload_data = jwt.decode(
+                id_token,
+                key=public_key,
+                algorithms=[alg],
+                audience=self.config.client_id,
+                issuer=self.config.issuer,
+                options={"require": ["exp", "iat", "iss", "aud", "sub"]},
+            )
+        except jwt.ExpiredSignatureError as exc:
+            raise OIDCValidationError("oidc.id_token.expired", "invalid_id_token: expired_token") from exc
+        except jwt.InvalidAudienceError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_aud", "invalid_id_token: audience mismatch") from exc
+        except jwt.InvalidIssuerError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_iss", "invalid_id_token: issuer mismatch") from exc
+        except jwt.PyJWTError as exc:
+            raise OIDCValidationError(
+                "oidc.id_token.invalid_signature",
+                "invalid_id_token: signature validation failed",
+            ) from exc
 
-        if iss and iss != self.config.issuer:
-            raise ValueError(f"Invalid issuer: {iss}")
+        now = datetime.now(UTC)
+        iat_dt = datetime.fromtimestamp(payload_data["iat"], tz=UTC)
+        if iat_dt > now + timedelta(seconds=30):
+            raise OIDCValidationError("oidc.id_token.invalid_iat", "invalid_id_token: iat is in the future")
+        if iat_dt < now - timedelta(seconds=max_iat_age_seconds):
+            raise OIDCValidationError("oidc.id_token.stale_iat", "invalid_id_token: iat is too old")
 
-        if aud and aud != self.config.client_id:
-            raise ValueError(f"Invalid audience: {aud}")
+        if expected_nonce is not None and payload_data.get("nonce") != expected_nonce:
+            raise OIDCValidationError("oidc.id_token.invalid_nonce", "ID token nonce mismatch")
 
-        # Extract groups claim (configurable - common names: "groups", "roles", "memberOf")
+        if callback_state is not None and stored_state is not None and callback_state != stored_state:
+            raise OIDCValidationError("oidc.state.replay_or_mismatch", "OIDC callback state mismatch or replay detected")
+
         groups: list[str] = []
         for claim_name in ["groups", "roles", "memberOf", "https://claims.example.com/groups"]:
             if claim_name in payload_data:
                 claim_val = payload_data[claim_name]
-                if isinstance(claim_val, list):
-                    groups = claim_val
-                elif isinstance(claim_val, str):
-                    groups = [claim_val]
+                groups = claim_val if isinstance(claim_val, list) else [claim_val]
                 break
 
         claims = OIDCClaims(
-            sub=payload_data.get("sub", ""),
-            iss=iss or "",
-            aud=aud or "",
-            exp=datetime.utcfromtimestamp(exp) if exp else now + timedelta(hours=1),
-            iat=datetime.utcfromtimestamp(iat) if iat else now,
+            sub=payload_data["sub"],
+            iss=payload_data["iss"],
+            aud=payload_data["aud"] if isinstance(payload_data["aud"], str) else payload_data["aud"][0],
+            exp=datetime.fromtimestamp(payload_data["exp"], tz=UTC),
+            iat=iat_dt,
             email=payload_data.get("email"),
             name=payload_data.get("name") or payload_data.get("displayName"),
-            groups=groups,
+            groups=[str(g) for g in groups],
             raw_claims=payload_data,
         )
-
-        logger.info(
-            "id_token_validated",
-            tenant_id=self.tenant_id,
-            subject=claims.sub[:8] + "...",
-            email=claims.email,
-        )
-
         return claims
 
     def map_groups_to_roles(self, claims: dict[str, Any]) -> list[Role]:
@@ -496,73 +539,139 @@ class OIDCClient:
         return list(roles)
 
 
-class OIDCStateStore:
-    """In-memory store for OIDC state and PKCE verifiers.
-
-    WARNING: This is a simple in-memory implementation.
-    For production, use Redis or a database with proper TTL.
-    State entries expire after 5 minutes (OIDC spec recommendation).
-    """
-
-    def __init__(self, ttl_seconds: int = 300) -> None:
-        """Initialize state store.
-
-        Args:
-            ttl_seconds: Time-to-live for state entries (default: 5 min)
-        """
-        self._store: dict[str, tuple[str, datetime]] = {}  # state -> (code_verifier, expiry)
-        self._ttl = ttl_seconds
-        self._lock = None  # Would use asyncio.Lock in async context
+class OIDCStateStoreProtocol(Protocol):
+    """Protocol for storing and consuming OIDC state and PKCE verifiers."""
 
     def store(self, state: str, code_verifier: str) -> None:
-        """Store state and code verifier.
+        """Store the verifier with strict TTL semantics."""
 
-        Args:
-            state: OIDC state parameter
-            code_verifier: PKCE code verifier
-        """
-        expiry = datetime.utcnow() + timedelta(seconds=self._ttl)
-        self._store[state] = (code_verifier, expiry)
+    def validate_and_consume(self, state: str) -> str | None:
+        """Atomically validate and consume state for single-use semantics."""
 
-        logger.debug("state_stored", state_prefix=state[:8], ttl=self._ttl)
 
-    def get(self, state: str) -> str | None:
-        """Retrieve and validate code verifier for state.
+class InMemoryOIDCStateStore(OIDCStateStoreProtocol):
+    """In-memory store for tests/development only.
 
-        Args:
-            state: OIDC state from callback
+    This store is explicitly non-production and guarded by ``allow_non_production``.
+    """
 
-        Returns:
-            Code verifier if valid, None if expired/invalid
-        """
-        if state not in self._store:
-            logger.warning("state_not_found", state_prefix=state[:8])
-            return None
+    def __init__(self, ttl_seconds: int = 300, *, allow_non_production: bool = False) -> None:
+        if not allow_non_production:
+            raise RuntimeError(
+                "InMemoryOIDCStateStore is for tests/development only. "
+                "Use RedisOIDCStateStore in production."
+            )
+        self._store: dict[str, tuple[str, datetime]] = {}
+        self._ttl = ttl_seconds
+        self._lock = Lock()
 
-        code_verifier, expiry = self._store[state]
+    def store(self, state: str, code_verifier: str) -> None:
+        expiry = datetime.now(UTC) + timedelta(seconds=self._ttl)
+        with self._lock:
+            self._store[state] = (code_verifier, expiry)
+        logger.debug("oidc_state_stored_memory", state_prefix=state[:8], ttl=self._ttl)
 
-        if datetime.utcnow() > expiry:
-            logger.warning("state_expired", state_prefix=state[:8])
+    def validate_and_consume(self, state: str) -> str | None:
+        now = datetime.now(UTC)
+        with self._lock:
+            record = self._store.get(state)
+            if record is None:
+                logger.warning("oidc_state_not_found_memory", state_prefix=state[:8])
+                return None
+            code_verifier, expiry = record
+            if now > expiry:
+                del self._store[state]
+                logger.warning("oidc_state_expired_memory", state_prefix=state[:8])
+                return None
             del self._store[state]
-            return None
-
-        # Remove after use (one-time)
-        del self._store[state]
-
-        logger.debug("state_validated", state_prefix=state[:8])
+        logger.debug("oidc_state_consumed_memory", state_prefix=state[:8])
         return code_verifier
 
-    def cleanup_expired(self) -> int:
-        """Remove expired entries.
 
-        Returns:
-            Number of entries removed
-        """
-        now = datetime.utcnow()
-        expired = [k for k, (_, exp) in self._store.items() if now > exp]
-        for k in expired:
-            del self._store[k]
-        return len(expired)
+class RedisOIDCStateStore(OIDCStateStoreProtocol):
+    """Redis-backed OIDC state store with atomic consume semantics."""
+
+    def __init__(self, redis_client: Any, ttl_seconds: int = 300, *, key_prefix: str = "oidc:state") -> None:
+        self._redis = redis_client
+        self._ttl = ttl_seconds
+        self._key_prefix = key_prefix
+
+    def _key(self, state: str) -> str:
+        return f"{self._key_prefix}:{state}"
+
+    def store(self, state: str, code_verifier: str) -> None:
+        self._redis.set(self._key(state), code_verifier, ex=self._ttl)
+        logger.debug("oidc_state_stored_redis", state_prefix=state[:8], ttl=self._ttl)
+
+    def validate_and_consume(self, state: str) -> str | None:
+        key = self._key(state)
+        try:
+            verifier = self._redis.getdel(key)
+        except AttributeError:
+            verifier = self._redis.eval(
+                "local v = redis.call('GET', KEYS[1]); if v then redis.call('DEL', KEYS[1]); end; return v",
+                1,
+                key,
+            )
+
+        if verifier is None:
+            logger.warning("oidc_state_not_found_or_expired_redis", state_prefix=state[:8])
+            return None
+
+        if isinstance(verifier, bytes):
+            verifier = verifier.decode("utf-8")
+
+        logger.debug("oidc_state_consumed_redis", state_prefix=state[:8])
+        return str(verifier)
+
+
+class OIDCStateStore(RedisOIDCStateStore):
+    """Default production OIDC state store implementation (Redis-backed)."""
+
+
+def create_oidc_state_store(
+    *,
+    redis_client: Any | None,
+    ttl_seconds: int = 300,
+    backend: str = "redis",
+    allow_non_production_memory: bool = False,
+) -> OIDCStateStoreProtocol:
+    """Create OIDC state store using configured backend.
+
+    Redis is the production default. In-memory backend requires explicit non-prod guard.
+    """
+
+    normalized = backend.strip().lower()
+    if normalized == "memory":
+        return InMemoryOIDCStateStore(
+            ttl_seconds=ttl_seconds,
+            allow_non_production=allow_non_production_memory,
+        )
+
+    if redis_client is None:
+        raise RuntimeError("OIDC state store requires Redis client when backend=redis")
+
+    return RedisOIDCStateStore(redis_client=redis_client, ttl_seconds=ttl_seconds)
+
+
+def validate_tenant_oidc_provider_mapping(
+    *,
+    tenant_id: str,
+    expected_issuer: str,
+    expected_client_id: str,
+    provider_config: OIDCProviderConfig,
+) -> None:
+    """Prevent cross-tenant OIDC provider config bleed by strict equality checks."""
+    if provider_config.issuer != expected_issuer:
+        raise OIDCValidationError(
+            "oidc.tenant.invalid_issuer_mapping",
+            f"Tenant {tenant_id} issuer mapping mismatch",
+        )
+    if provider_config.client_id != expected_client_id:
+        raise OIDCValidationError(
+            "oidc.tenant.invalid_client_mapping",
+            f"Tenant {tenant_id} client_id mapping mismatch",
+        )
 
 
 def create_oidc_config_from_tenant_settings(settings: dict[str, Any]) -> OIDCProviderConfig:

@@ -1,3 +1,6 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""Ingestion pipeline for Layer 3 Knowledge Graph."""
 
-from value_fabric.layer3.ingestion import *  # noqa: F401,F403
+from .neo4j_loader import Neo4jLoader, RDFLoadError
+from .sync_manager import SyncConflictError, SyncManager
+
+__all__ = ["Neo4jLoader", "RDFLoadError", "SyncManager", "SyncConflictError"]

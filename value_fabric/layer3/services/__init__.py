@@ -1,3 +1,12 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""Services for Layer 3 Knowledge Graph operations."""
 
-from value_fabric.layer3.services import *  # noqa: F401,F403
+from .evidence_search import EvidenceSearchService
+from .signal_persistence import SignalPersistenceService
+from .signal_quantification import QuantificationResult, SignalQuantificationService
+
+__all__ = [
+    "EvidenceSearchService",
+    "SignalPersistenceService",
+    "SignalQuantificationService",
+    "QuantificationResult",
+]

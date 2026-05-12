@@ -141,6 +141,16 @@ module.exports = {
             name: "@/components/WfPrimitives",
             message: "WfPrimitives is a frozen compatibility layer. Import the canonical component directly instead.",
           },
+          {
+            name: "@/api/legacy",
+            message: "Legacy API shim is banned. Use '@/api/workflows', generated clients, or '@/hooks/useWorkflows'.",
+          },
+        ],
+        patterns: [
+          {
+            group: ["**/api/legacy", "**/api/legacy.ts"],
+            message: "Legacy API shim is banned. Use '@/api/workflows', generated clients, or '@/hooks/useWorkflows'.",
+          },
         ],
       },
     ],

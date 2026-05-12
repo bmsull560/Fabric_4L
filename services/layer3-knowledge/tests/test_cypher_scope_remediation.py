@@ -68,3 +68,56 @@ def test_graphrag_rejects_unbounded_hops() -> None:
 
 def test_graphrag_engine_instantiates_for_static_contract() -> None:
     assert GraphRAGEngine(driver=object())._driver is not None
+
+
+class _EmptyAsyncResult:
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
+
+
+class _CaptureSession:
+    def __init__(self):
+        self.query = None
+        self.params = None
+
+    async def run(self, query, params):
+        self.query = query
+        self.params = params
+        return _EmptyAsyncResult()
+
+
+class _CaptureDriver:
+    def __init__(self, session):
+        self._session = session
+
+    def session(self, **kwargs):
+        class _Ctx:
+            def __init__(self, s):
+                self._s = s
+
+            async def __aenter__(self):
+                return self._s
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        return _Ctx(self._session)
+
+
+@pytest.mark.asyncio
+async def test_graphrag_expand_context_anchors_path_to_tenant_nodes() -> None:
+    session = _CaptureSession()
+    engine = GraphRAGEngine(driver=_CaptureDriver(session))
+
+    await engine._expand_context(
+        seed_entities=[{"id": "seed-1", "confidence": 0.9}],
+        max_hops=2,
+        min_confidence=0.1,
+        tenant_id="tenant-a",
+    )
+
+    assert "MATCH path = (seed {tenant_id: $_tenant_id})" in session.query
+    assert "-(connected {tenant_id: $_tenant_id})" in session.query

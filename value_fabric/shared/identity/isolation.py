@@ -340,6 +340,20 @@ class TenantScopedCypher:
     def _tenant_predicate(self, alias: str) -> str:
         return f"{alias}.{self._tenant_property} = $_tenant_id"
 
+    def tenant_scoped_where(
+        self,
+        alias: str,
+        *extra_predicates: str | None,
+    ) -> str:
+        """Return deterministic WHERE clause predicates with tenant check first.
+
+        Dynamic Cypher builders should use this helper so tenant filtering order
+        is stable across wrappers and canonical modules.
+        """
+        predicates = [self._tenant_predicate(alias)]
+        predicates.extend(f"({predicate})" for predicate in extra_predicates if predicate and predicate.strip())
+        return " AND ".join(predicates)
+
     def _query(
         self,
         cypher: str,
@@ -371,15 +385,11 @@ class TenantScopedCypher:
     ) -> ScopedQuery:
         """Build a tenant-scoped node ``MATCH`` or ``OPTIONAL MATCH`` query."""
         params = self._params(extra_params)
-        where_parts = [self._tenant_predicate(alias)]
-        if extra_where:
-            where_parts.append(f"({extra_where})")
-
         ret = return_clause or alias
         match_keyword = "OPTIONAL MATCH" if optional else "MATCH"
         cypher = (
             f"{match_keyword} ({alias}:{label})\n"
-            f"WHERE {' AND '.join(where_parts)}\n"
+            f"WHERE {self.tenant_scoped_where(alias, extra_where)}\n"
             f"RETURN {ret}"
         )
         return self._query(cypher, params, operation="match_node", labels=(label,))
@@ -560,10 +570,6 @@ class TenantScopedCypher:
     ) -> ScopedQuery:
         """Build a relationship match where both endpoints belong to tenant."""
         params = self._params(extra_params)
-        where_parts = [self._tenant_predicate(from_alias), self._tenant_predicate(to_alias)]
-        if extra_where:
-            where_parts.append(f"({extra_where})")
-
         rel = f"[{rel_alias or ''}:{rel_type}]"
         if direction == "in":
             pattern = f"({from_alias}:{from_label})<-{rel}-({to_alias}:{to_label})"
@@ -575,7 +581,7 @@ class TenantScopedCypher:
         ret = return_clause or f"{from_alias}, {to_alias}"
         cypher = (
             f"{match_keyword} {pattern}\n"
-            f"WHERE {' AND '.join(where_parts)}\n"
+            f"WHERE {self.tenant_scoped_where(from_alias)} AND {self.tenant_scoped_where(to_alias, extra_where)}\n"
             f"RETURN {ret}"
         )
         return self._query(
@@ -698,13 +704,10 @@ class TenantScopedCypher:
         """Build a tenant-post-filtered full-text index query."""
         all_params = self._params(params)
         all_params["_index_name"] = index_name
-        where_parts = [self._tenant_predicate(node_alias)]
-        if where:
-            where_parts.append(f"({where})")
         lines = [
             f"CALL db.index.fulltext.queryNodes($_index_name, ${query_param_name}) "
             f"YIELD node AS {node_alias}, score AS {score_alias}",
-            f"WHERE {' AND '.join(where_parts)}",
+            f"WHERE {self.tenant_scoped_where(node_alias, where)}",
             f"RETURN {return_clause or f'{node_alias}, {score_alias}'}",
         ]
         if limit is not None:

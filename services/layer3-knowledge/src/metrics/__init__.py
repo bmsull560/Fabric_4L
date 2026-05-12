@@ -1,19 +1,3 @@
-"""Metrics package initialization."""
+"""Compatibility wrapper for value_fabric.layer3.metrics.__init__."""
 
-from .prometheus_metrics import (
-    MetricsConfig,
-    MetricsMiddleware,
-    PrometheusMetrics,
-    get_metrics,
-    initialize_metrics,
-    track_metrics,
-)
-
-__all__ = [
-    "MetricsConfig",
-    "PrometheusMetrics",
-    "MetricsMiddleware",
-    "get_metrics",
-    "initialize_metrics",
-    "track_metrics",
-]
+from value_fabric.layer3.metrics.__init__ import *  # noqa: F401,F403

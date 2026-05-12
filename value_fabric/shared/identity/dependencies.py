@@ -11,35 +11,105 @@ from __future__ import annotations
 
 import inspect
 import logging
+import os
 import sys
 import time
 import types
 from typing import Any, Callable, Optional
 
-try:  # pragma: no cover - FastAPI is available in CI, but keep import safe.
-    from fastapi import Depends, HTTPException, Request, status
-    from fastapi.params import Depends as DependsParam
-except Exception:  # pragma: no cover
-    def Depends(dependency: object = None) -> object:  # type: ignore[no-redef]
-        return dependency
+logger = logging.getLogger(__name__)
 
-    class DependsParam:  # type: ignore[no-redef]
-        pass
+def _is_truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
-    class HTTPException(Exception):
-        def __init__(self, status_code: int, detail: object | None = None, headers: dict[str, str] | None = None) -> None:
-            super().__init__(detail)
-            self.status_code = status_code
-            self.detail = detail
-            self.headers = headers or {}
 
-    class Request:  # type: ignore[no-redef]
-        pass
+def _allow_identity_fallback() -> bool:
+    env = (os.getenv("VALUE_FABRIC_ENV") or os.getenv("ENV") or os.getenv("ENVIRONMENT") or "").strip().lower()
+    app_env = (os.getenv("APP_ENV") or "").strip().lower()
+    if env in {"local", "dev", "development", "test", "testing"}:
+        return True
+    if app_env in {"local", "dev", "development", "test", "testing"}:
+        return True
+    if _is_truthy(os.getenv("PYTEST_CURRENT_TEST")) or os.getenv("PYTEST_CURRENT_TEST"):
+        return True
+    if _is_truthy(os.getenv("CI")) and _is_truthy(os.getenv("ALLOW_IDENTITY_DEPENDENCY_FALLBACK_IN_CI")):
+        return True
+    return _is_truthy(os.getenv("ALLOW_IDENTITY_DEPENDENCY_FALLBACK"))
 
-    class status:  # type: ignore[no-redef]
-        HTTP_400_BAD_REQUEST = 400
-        HTTP_401_UNAUTHORIZED = 401
-        HTTP_403_FORBIDDEN = 403
+
+def _emit_fallback_observability(reason: str) -> None:
+    metadata = {
+        "reason": reason,
+        "environment_metadata": {
+            "VALUE_FABRIC_ENV": os.getenv("VALUE_FABRIC_ENV"),
+            "ENV": os.getenv("ENV"),
+            "ENVIRONMENT": os.getenv("ENVIRONMENT"),
+            "APP_ENV": os.getenv("APP_ENV"),
+            "CI": os.getenv("CI"),
+            "PYTEST_CURRENT_TEST": bool(os.getenv("PYTEST_CURRENT_TEST")),
+        },
+        "process_metadata": {
+            "pid": os.getpid(),
+            "argv": list(sys.argv),
+            "executable": sys.executable,
+        },
+    }
+    logger.warning("identity.dependencies fallback activated", extra={"event": "identity_dependency_fallback", **metadata})
+    try:
+        from value_fabric.shared.audit import emit_audit_event as _emit_audit_event
+        from value_fabric.shared.audit.models import AuditAction as _AuditAction, AuditOutcome as _AuditOutcome
+
+        result = _emit_audit_event(
+            action=getattr(_AuditAction, "UNKNOWN", "unknown"),
+            outcome=getattr(_AuditOutcome, "ERROR", getattr(_AuditOutcome, "FAILURE", "failure")),
+            resource_type="identity.dependencies",
+            resource_id="fastapi-import-fallback",
+            details=metadata,
+        )
+        if inspect.isawaitable(result):
+            logger.warning(
+                "identity.dependencies fallback audit emit returned awaitable outside request scope",
+                extra={"event": "identity_dependency_fallback_audit_async", **metadata},
+            )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("identity.dependencies fallback audit emission failed: %s", exc, extra={"event": "identity_dependency_fallback_audit_error", **metadata})
+
+
+def _resolve_fastapi_dependencies() -> tuple[Any, Any, Any, Any, Any]:
+    try:  # pragma: no cover - FastAPI is available in CI, but keep import safe.
+        from fastapi import Depends as fastapi_depends, HTTPException as fastapi_http_exception, Request as fastapi_request, status as fastapi_status
+        from fastapi.params import Depends as fastapi_depends_param
+
+        return fastapi_depends, fastapi_http_exception, fastapi_request, fastapi_status, fastapi_depends_param
+    except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover
+        if not _allow_identity_fallback():
+            raise RuntimeError(
+                "FastAPI dependency fallback is disabled outside sanctioned test/development runtime contexts"
+            ) from exc
+        _emit_fallback_observability(f"{type(exc).__name__}: {exc}")
+
+        class _FallbackDependsParam:
+            pass
+
+        class _FallbackHTTPException(Exception):
+            def __init__(self, status_code: int, detail: object | None = None, headers: dict[str, str] | None = None) -> None:
+                super().__init__(detail)
+                self.status_code = status_code
+                self.detail = detail
+                self.headers = headers or {}
+
+        class _FallbackRequest:
+            pass
+
+        class _FallbackStatus:
+            HTTP_400_BAD_REQUEST = 400
+            HTTP_401_UNAUTHORIZED = 401
+            HTTP_403_FORBIDDEN = 403
+
+        return (lambda dependency=None: dependency), _FallbackHTTPException, _FallbackRequest, _FallbackStatus, _FallbackDependsParam
+
+
+Depends, HTTPException, Request, status, DependsParam = _resolve_fastapi_dependencies()
 
 from value_fabric.shared.audit import emit_audit_event
 from value_fabric.shared.audit.models import AuditAction, AuditOutcome, PrivilegedAccessDetails
@@ -50,8 +120,6 @@ from value_fabric.shared.identity.context import (
 )
 from value_fabric.shared.identity.permissions import Permission, Role
 from value_fabric.shared.security.config import validate_jwt_config
-
-logger = logging.getLogger(__name__)
 
 # Compatibility alias required by legacy tests and routes that patch/import
 # ``shared.identity.dependencies`` while this source tree is imported through the

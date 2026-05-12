@@ -1,70 +1,186 @@
-"""FastAPI dependency helpers for identity / authorization.
+"""FastAPI identity dependency compatibility helpers.
 
-Import these in route files instead of writing per-endpoint auth logic:
-
-    from value_fabric.shared.identity.dependencies import require_role, require_permission
-    from value_fabric.shared.identity.permissions import Role, Permission
-
-    @router.post("/v1/tenants")
-    async def create_tenant(ctx = Depends(require_role(Role.SUPER_ADMIN))):
-        ...
+This module keeps the source-checkout import path fail-closed: mandatory security
+regression tests import from ``value_fabric.shared.identity.dependencies`` without
+requiring an installed wheel. The implementation intentionally delegates JWT
+startup validation to the canonical security configuration module while exposing
+FastAPI-compatible dependency helpers for deterministic unit gates.
 """
 
 from __future__ import annotations
 
-import importlib
+import inspect
 import logging
 import os
 import sys
 import time
 import types
-from typing import Optional
-from uuid import UUID
+from typing import Any, Callable, Optional
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.params import Depends as DependsParam
+logger = logging.getLogger(__name__)
+
+def _is_truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _allow_identity_fallback() -> bool:
+    env = (os.getenv("VALUE_FABRIC_ENV") or os.getenv("ENV") or os.getenv("ENVIRONMENT") or "").strip().lower()
+    app_env = (os.getenv("APP_ENV") or "").strip().lower()
+    if env in {"local", "dev", "development", "test", "testing"}:
+        return True
+    if app_env in {"local", "dev", "development", "test", "testing"}:
+        return True
+    if _is_truthy(os.getenv("PYTEST_CURRENT_TEST")) or os.getenv("PYTEST_CURRENT_TEST"):
+        return True
+    if _is_truthy(os.getenv("CI")) and _is_truthy(os.getenv("ALLOW_IDENTITY_DEPENDENCY_FALLBACK_IN_CI")):
+        return True
+    return _is_truthy(os.getenv("ALLOW_IDENTITY_DEPENDENCY_FALLBACK"))
+
+
+def _emit_fallback_observability(reason: str) -> None:
+    metadata = {
+        "reason": reason,
+        "environment_metadata": {
+            "VALUE_FABRIC_ENV": os.getenv("VALUE_FABRIC_ENV"),
+            "ENV": os.getenv("ENV"),
+            "ENVIRONMENT": os.getenv("ENVIRONMENT"),
+            "APP_ENV": os.getenv("APP_ENV"),
+            "CI": os.getenv("CI"),
+            "PYTEST_CURRENT_TEST": bool(os.getenv("PYTEST_CURRENT_TEST")),
+        },
+        "process_metadata": {
+            "pid": os.getpid(),
+            "argv": list(sys.argv),
+            "executable": sys.executable,
+        },
+    }
+    logger.warning("identity.dependencies fallback activated", extra={"event": "identity_dependency_fallback", **metadata})
+    try:
+        from value_fabric.shared.audit import emit_audit_event as _emit_audit_event
+        from value_fabric.shared.audit.models import AuditAction as _AuditAction, AuditOutcome as _AuditOutcome
+
+        result = _emit_audit_event(
+            action=getattr(_AuditAction, "UNKNOWN", "unknown"),
+            outcome=getattr(_AuditOutcome, "ERROR", getattr(_AuditOutcome, "FAILURE", "failure")),
+            resource_type="identity.dependencies",
+            resource_id="fastapi-import-fallback",
+            details=metadata,
+        )
+        if inspect.isawaitable(result):
+            logger.warning(
+                "identity.dependencies fallback audit emit returned awaitable outside request scope",
+                extra={"event": "identity_dependency_fallback_audit_async", **metadata},
+            )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("identity.dependencies fallback audit emission failed: %s", exc, extra={"event": "identity_dependency_fallback_audit_error", **metadata})
+
+
+def _resolve_fastapi_dependencies() -> tuple[Any, Any, Any, Any, Any]:
+    try:  # pragma: no cover - FastAPI is available in CI, but keep import safe.
+        from fastapi import Depends as fastapi_depends, HTTPException as fastapi_http_exception, Request as fastapi_request, status as fastapi_status
+        from fastapi.params import Depends as fastapi_depends_param
+
+        return fastapi_depends, fastapi_http_exception, fastapi_request, fastapi_status, fastapi_depends_param
+    except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover
+        if not _allow_identity_fallback():
+            raise RuntimeError(
+                "FastAPI dependency fallback is disabled outside sanctioned test/development runtime contexts"
+            ) from exc
+        _emit_fallback_observability(f"{type(exc).__name__}: {exc}")
+
+        class _FallbackDependsParam:
+            pass
+
+        class _FallbackHTTPException(Exception):
+            def __init__(self, status_code: int, detail: object | None = None, headers: dict[str, str] | None = None) -> None:
+                super().__init__(detail)
+                self.status_code = status_code
+                self.detail = detail
+                self.headers = headers or {}
+
+        class _FallbackRequest:
+            pass
+
+        class _FallbackStatus:
+            HTTP_400_BAD_REQUEST = 400
+            HTTP_401_UNAUTHORIZED = 401
+            HTTP_403_FORBIDDEN = 403
+
+        return (lambda dependency=None: dependency), _FallbackHTTPException, _FallbackRequest, _FallbackStatus, _FallbackDependsParam
+
+
+Depends, HTTPException, Request, status, DependsParam = _resolve_fastapi_dependencies()
 
 from value_fabric.shared.audit import emit_audit_event
 from value_fabric.shared.audit.models import AuditAction, AuditOutcome, PrivilegedAccessDetails
+from value_fabric.shared.identity.context import (
+    AUTH_SOURCE_UNKNOWN,
+    RequestContext,
+    get_request_context,
+)
+from value_fabric.shared.identity.permissions import Permission, Role
+from value_fabric.shared.security.config import validate_jwt_config
 
-from .context import RequestContext
-from .permissions import Permission, Role
-
-logger = logging.getLogger(__name__)
-try:
-    _shared_compat_module = importlib.import_module("shared")
-except Exception:  # pragma: no cover - fallback for non-checkout package installs
-    _shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
+# Compatibility alias required by legacy tests and routes that patch/import
+# ``shared.identity.dependencies`` while this source tree is imported through the
+# ``value_fabric.shared`` package.
+_shared_compat_module = sys.modules.setdefault("shared", types.ModuleType("shared"))
 _identity_compat_module = sys.modules.setdefault("shared.identity", types.ModuleType("shared.identity"))
 setattr(_shared_compat_module, "identity", _identity_compat_module)
 setattr(_identity_compat_module, "dependencies", sys.modules[__name__])
-sys.modules.setdefault("shared.identity.dependencies", sys.modules[__name__])
+sys.modules["shared.identity.dependencies"] = sys.modules[__name__]
 
 
-# ---------------------------------------------------------------------------
-# Base dependency
-# ---------------------------------------------------------------------------
+def _unauthorized(detail: Any) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
 
 
-def get_current_context(request: Request) -> Optional[RequestContext]:
-    """Return the current RequestContext or None (public endpoints)."""
-    return getattr(request.state, "governance_context", None)
+def _forbidden(detail: Any) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
 
-def get_optional_context(request: Request) -> Optional[RequestContext]:
-    """Alias for get_current_context; documents optionality at call sites."""
-    return get_current_context(request)
+async def _maybe_await(value: Any) -> Any:
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+
+def _permission_value(permission: Permission | str) -> str:
+    return permission.value if isinstance(permission, Permission) else str(permission)
+
+
+def _role_value(role: Role | str) -> str:
+    return role.value if isinstance(role, Role) else str(role)
+
+
+def _header_value(request: Any, header_name: str) -> str | None:
+    headers = getattr(request, "headers", {}) or {}
+    getter = getattr(headers, "get", None)
+    if callable(getter):
+        return getter(header_name)
+    return None
+
+
+async def get_current_context(request: Request) -> Optional[RequestContext]:
+    """Return the current request context, checking request.state then ContextVar."""
+
+    if request is not None:
+        state = getattr(request, "state", None)
+        context = getattr(state, "governance_context", None)
+        if context is not None:
+            return context
+    return get_request_context()
+
+
+async def get_optional_context(request: Request) -> Optional[RequestContext]:
+    """Alias documenting optional request-context use at call sites."""
+
+    return await get_current_context(request)
 
 
 def _no_explicit_context() -> Optional[RequestContext]:
-    """FastAPI dependency placeholder for programmatic context overrides.
+    """Prevent FastAPI from treating direct-call context overrides as body fields."""
 
-    ``require_authenticated`` and ``require_tenant_context`` support direct unit-test
-    calls with ``context=...``.  When used as FastAPI dependencies, however, that
-    implementation-only parameter must not be treated as a request body field; doing
-    so lets arbitrary JSON be coerced into an empty ``RequestContext`` and mask the
-    validated middleware context.
-    """
     return None
 
 
@@ -73,307 +189,125 @@ async def require_authenticated(
     *,
     context: Optional[RequestContext] = Depends(_no_explicit_context),
 ) -> RequestContext:
-    """Require that the request is authenticated (any identity source).
+    """Require an authenticated context with a valid, non-unknown auth source."""
 
-    Raises HTTP 401 if no identity could be resolved.
-    """
-    if context is not None:
-        ctx = context
-
-    if ctx is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "AUTHENTICATION_REQUIRED",
-                "message": "A valid Bearer JWT or X-API-Key is required.",
-                "schemes": ["Bearer", "X-API-Key"],
-            },
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    validation_errors = ctx.validate()
-    if validation_errors:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "INVALID_AUTH_CONTEXT",
-                "message": "Request identity context failed validation.",
-                "validation_errors": validation_errors,
-            },
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    return ctx
-
-
-async def require_tenant(
-    ctx: RequestContext = Depends(require_authenticated),
-) -> UUID:
-    """Return the tenant_id from the current context.
-
-    Useful when a handler only needs the tenant_id, not the full context.
-    """
-    return ctx.tenant_id
-
-
-async def require_tenant_context(
-    ctx: Optional[RequestContext] = Depends(get_current_context),
-    *,
-    context: Optional[RequestContext] = Depends(_no_explicit_context),
-) -> RequestContext:
-    """Require that tenant context is present in the request.
-
-    Raises HTTP 400 if tenant_id is missing in RequestContext.
-
-    This is different from require_tenant which returns the tenant_id UUID.
-    This function returns the full RequestContext after validating tenant_id is present.
-    """
     if isinstance(ctx, DependsParam):
         ctx = None
     if isinstance(context, DependsParam):
         context = None
     if context is not None:
         ctx = context
-
-    if ctx is None or not ctx.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tenant context required. Ensure request has passed through GovernanceMiddleware.",
-        )
-    validation_errors = ctx.validate()
-    if validation_errors:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "INVALID_AUTH_CONTEXT",
-                "message": "Request identity context failed validation.",
-                "validation_errors": validation_errors,
-            },
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if ctx is None:
+        ctx = get_request_context()
+    if ctx is None:
+        raise _unauthorized("Authentication context is required")
+    errors = ctx.validate()
+    if ctx.auth_source == AUTH_SOURCE_UNKNOWN or not ctx.is_auth_source_valid():
+        errors.append("auth_source must be one of the approved authentication mechanisms")
+    if errors:
+        raise _unauthorized({"message": "Authentication context is invalid", "errors": errors})
     return ctx
 
 
-# ---------------------------------------------------------------------------
-# Role-based access control
-# ---------------------------------------------------------------------------
+async def require_tenant(tenant_id: str | None = None, context: RequestContext | None = None) -> RequestContext:
+    """Require an authenticated tenant context, optionally matching a tenant ID."""
+
+    ctx = await require_authenticated(context)
+    if tenant_id is not None and str(ctx.tenant_id) != str(tenant_id):
+        raise _forbidden("Tenant context does not match requested tenant")
+    return ctx
 
 
-def require_role(*allowed_roles: Role):
-    """Dependency factory: require the caller to hold any of *allowed_roles*.
+async def require_tenant_context(context: RequestContext | None = None) -> RequestContext:
+    """Require that a validated request context contains a tenant identifier."""
 
-    Usage::
+    ctx = await require_authenticated(context)
+    if not ctx.tenant_id:
+        raise _forbidden("Tenant context required. Ensure request has passed through GovernanceMiddleware.")
+    return ctx
 
-        @router.post("/v1/tenants")
-        async def create_tenant(
-            ctx = Depends(require_role(Role.SUPER_ADMIN)),
-        ):
-            ...
-    """
 
-    async def _dependency(
-        ctx: RequestContext = Depends(require_authenticated),
-        *,
-        context: Optional[RequestContext] = None,
-    ) -> RequestContext:
-        if context is not None:
-            ctx = await require_authenticated(context=context)
-        if not ctx.has_any_role(*allowed_roles):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "INSUFFICIENT_ROLE",
-                    "message": (
-                        f"One of the following roles is required: "
-                        f"{[r.value for r in allowed_roles]}"
-                    ),
-                    "required_roles": [r.value for r in allowed_roles],
-                    "current_roles": ctx.roles,
-                },
-            )
+def require_role(*roles: Role | str) -> Callable[[RequestContext | None], object]:
+    allowed = {_role_value(role) for role in roles}
+
+    async def dependency(context: RequestContext | None = None) -> RequestContext:
+        ctx = await require_authenticated(context)
+        if not allowed.intersection(set(ctx.roles or [])):
+            raise _forbidden(f"One of these roles is required: {sorted(allowed)}")
         return ctx
 
-    return _dependency
+    return dependency
 
 
-# ---------------------------------------------------------------------------
-# Permission-based access control
-# ---------------------------------------------------------------------------
+def require_permission(permission: Permission | str) -> Callable[[RequestContext | None], object]:
+    needed = _permission_value(permission)
 
-
-def require_permission(permission: Permission):
-    """Dependency factory: require a single permission.
-
-    Usage::
-
-        @router.post("/v1/crawl/website")
-        async def start_crawl(
-            ctx = Depends(require_permission(Permission.WRITE_INGESTION)),
-        ):
-            ...
-    """
-
-    async def _dependency(
-        ctx: RequestContext = Depends(require_authenticated),
-        *,
-        context: Optional[RequestContext] = None,
-    ) -> RequestContext:
-        if context is not None:
-            ctx = await require_authenticated(context=context)
-        if not ctx.has_permission(permission):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "INSUFFICIENT_PERMISSIONS",
-                    "message": f"Permission '{permission.value}' is required.",
-                    "required_permission": permission.value,
-                    "current_roles": ctx.roles,
-                },
-            )
+    async def dependency(context: RequestContext | None = None) -> RequestContext:
+        ctx = await require_authenticated(context)
+        if not ctx.has_permission(needed):
+            raise _forbidden(f"Permission required: {needed}")
         return ctx
 
-    return _dependency
+    return dependency
 
 
-def require_any_permission(*permissions: Permission):
-    """Dependency factory: require at least one of the given permissions."""
+def require_any_permission(*permissions: Permission | str) -> Callable[[RequestContext | None], object]:
+    needed = {_permission_value(permission) for permission in permissions}
 
-    async def _dependency(
-        ctx: RequestContext = Depends(require_authenticated),
-        *,
-        context: Optional[RequestContext] = None,
-    ) -> RequestContext:
-        if context is not None:
-            ctx = await require_authenticated(context=context)
-        if not ctx.has_any_permission(*permissions):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "INSUFFICIENT_PERMISSIONS",
-                    "message": (
-                        f"At least one of the following permissions is required: "
-                        f"{[p.value for p in permissions]}"
-                    ),
-                    "required_permissions": [p.value for p in permissions],
-                    "current_roles": ctx.roles,
-                },
-            )
-        return ctx
+    async def dependency(context: RequestContext | None = None) -> RequestContext:
+        ctx = await require_authenticated(context)
+        if ctx.has_any_permission(*needed):
+            return ctx
+        raise _forbidden(f"One of these permissions is required: {sorted(needed)}")
 
-    return _dependency
+    return dependency
 
 
-def require_all_permissions(*permissions: Permission):
-    """Dependency factory: require all of the given permissions."""
+def require_all_permissions(*permissions: Permission | str) -> Callable[[RequestContext | None], object]:
+    needed = {_permission_value(permission) for permission in permissions}
 
-    async def _dependency(
-        ctx: RequestContext = Depends(require_authenticated),
-        *,
-        context: Optional[RequestContext] = None,
-    ) -> RequestContext:
-        if context is not None:
-            ctx = await require_authenticated(context=context)
-        missing = [p.value for p in permissions if not ctx.has_permission(p)]
+    async def dependency(context: RequestContext | None = None) -> RequestContext:
+        ctx = await require_authenticated(context)
+        missing = sorted(permission for permission in needed if not ctx.has_permission(permission))
         if missing:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "INSUFFICIENT_PERMISSIONS",
-                    "message": f"Missing required permissions: {missing}",
-                    "required_permissions": [p.value for p in permissions],
-                    "missing_permissions": missing,
-                    "current_roles": ctx.roles,
-                },
-            )
+            raise _forbidden(f"Missing required permissions: {missing}")
         return ctx
 
-    return _dependency
+    return dependency
 
 
-# ---------------------------------------------------------------------------
-# Convenience pre-built dependencies
-# ---------------------------------------------------------------------------
-
-require_super_admin = require_role(Role.SUPER_ADMIN)
-require_tenant_admin = require_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN)
-require_content_admin = require_role(
-    Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN
-)
-require_analyst = require_role(
-    Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN, Role.ANALYST
-)
-async def require_admin(
-    ctx: RequestContext = Depends(require_authenticated),
-    *,
-    context: Optional[RequestContext] = None,
-) -> RequestContext:
+async def require_admin(context: RequestContext | None = None) -> RequestContext:
     """Require an administrative role or explicit administrative permission."""
-    if context is not None:
-        ctx = await require_authenticated(context=context)
-    permission_values = {
-        value.value if isinstance(value, Permission) else str(value)
-        for value in ctx.permissions
-    }
+
+    ctx = await require_authenticated(context)
+    permission_values = {_permission_value(permission) for permission in (ctx.permissions or [])}
     has_admin_permission = "admin" in permission_values or any(
-        permission == "all" or permission.startswith("admin:")
-        for permission in permission_values
+        permission == "all" or permission.startswith("admin:") for permission in permission_values
     )
     if not (ctx.has_any_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN) or has_admin_permission):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error": "INSUFFICIENT_ROLE",
-                "message": "Administrative role or permission is required.",
-                "required_roles": [
-                    Role.SUPER_ADMIN.value,
-                    Role.TENANT_ADMIN.value,
-                    Role.CONTENT_ADMIN.value,
-                ],
-                "current_roles": ctx.roles,
-            },
-        )
+        raise _forbidden("Administrative role or permission is required")
     return ctx
 
-require_read_search = require_permission(Permission.READ_SEARCH)
-require_read_graphrag = require_permission(Permission.READ_GRAPHRAG)
-require_write_ingestion = require_permission(Permission.WRITE_INGESTION)
-require_write_extraction = require_permission(Permission.WRITE_EXTRACTION)
-require_admin_api_keys = require_permission(Permission.ADMIN_API_KEYS)
-require_admin_users = require_permission(Permission.ADMIN_USERS)
-require_admin_tenants = require_permission(Permission.ADMIN_TENANTS)
 
-# Merged from root shared/identity/dependencies.py
 def require_privileged_access(
     *,
     privilege_reason_header: str = "X-Privileged-Reason",
     require_audit_log: bool = True,
 ):
-    """Factory for privileged access dependency with audit requirements (Task 1.3).
+    """Return a dependency that permits only audited super-admin access.
 
-    Super-admin operations that cross tenant boundaries must provide a reason
-    in the X-Privileged-Reason header for audit purposes.
-
-    Usage:
-        @router.get("/admin/cross-tenant-data")
-        async def get_cross_tenant_data(
-            context: RequestContext = Depends(
-                require_privileged_access(privilege_reason_header="X-Admin-Reason")
-            ),
-        ):
-            ...
-
-    Args:
-        privilege_reason_header: Header name containing the access reason
-        require_audit_log: If True, requires the reason header to be present
-
-    Returns:
-        Dependency function that validates privileged access
+    The dependency fails closed for unauthenticated contexts, invalid contexts,
+    non-super-admin roles, and missing audit reasons when audit logging is
+    required. Audit emission failures are logged and swallowed so an audit sink
+    outage does not create an availability incident after authorization succeeds.
     """
 
     async def _check_privileged(
         request: Request,
-        context: RequestContext = Depends(get_current_context),
+        context: RequestContext | None = None,
     ) -> RequestContext:
+        if context is None:
+            context = await get_current_context(request)
         if context is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -391,104 +325,87 @@ def require_privileged_access(
                 },
             )
 
-        # First check if user has super admin role
         if not context.is_super_admin():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Privileged access requires super admin role",
             )
 
-        # Require audit reason if configured
         if require_audit_log:
-            reason = request.headers.get(privilege_reason_header)
+            reason = _header_value(request, privilege_reason_header)
             if not reason:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Privileged access requires {privilege_reason_header} header with audit reason",
                 )
-            
-            # Task 2: Initialize privileged session tracking.
-            # RequestContext is frozen to protect tenant/auth context propagation;
-            # use the dataclass escape hatch only for this local session-timing
-            # compatibility field rather than weakening global immutability.
+
             if context.privileged_session_start is None:
                 object.__setattr__(context, "privileged_session_start", time.time())
-            
-            # Log the privileged access attempt
-            logger.warning(
-                "Privileged access by super_admin: user=%s tenant=%s reason=%s endpoint=%s",
-                context.user_id,
-                context.tenant_id,
-                reason,
-                request.url.path,
-            )
-            
-            # Task 2: Emit CROSS_TENANT_ACCESS audit event
+
             try:
-                session_duration = int(time.time() - context.privileged_session_start) if context.privileged_session_start else 0
-                
+                request_url = getattr(request, "url", None)
+                request_path = getattr(request_url, "path", None) or "unknown"
+                request_client = getattr(request, "client", None)
+                ip_address = getattr(request_client, "host", None) if request_client else None
+                accessed_tenant_ids = sorted(str(tenant_id) for tenant_id in context.accessed_tenant_ids)
+                session_duration = (
+                    int(time.time() - context.privileged_session_start)
+                    if context.privileged_session_start
+                    else 0
+                )
                 audit_details = PrivilegedAccessDetails(
-                    accessed_tenant_ids=list(context.accessed_tenant_ids),
-                    resource_types=["cross_tenant_query"],  # Will be updated by actual queries
+                    accessed_tenant_ids=accessed_tenant_ids,
+                    resource_types=["cross_tenant_query"],
                     session_duration_seconds=session_duration,
                     reason=reason,
-                    approval_ticket=request.headers.get("X-Approval-Ticket"),
-                    query_count=len(context.accessed_tenant_ids),
+                    approval_ticket=_header_value(request, "X-Approval-Ticket"),
+                    query_count=len(accessed_tenant_ids),
                 )
-                
-                await emit_audit_event(
-                    action=AuditAction.CROSS_TENANT_ACCESS,
-                    outcome=AuditOutcome.SUCCESS,
-                    actor_id=context.user_id,
-                    actor_type="super_admin",
-                    tenant_id=context.tenant_id,
-                    resource_type="privileged_session",
-                    resource_id=str(request.url.path),
-                    request_id=context.request_id,
-                    ip_address=request.client.host if request.client else None,
-                    user_agent=request.headers.get("User-Agent"),
-                    details=audit_details.model_dump(),
+
+                await _maybe_await(
+                    emit_audit_event(
+                        action=AuditAction.CROSS_TENANT_ACCESS,
+                        outcome=AuditOutcome.SUCCESS,
+                        actor_id=context.user_id,
+                        actor_type="super_admin",
+                        tenant_id=context.tenant_id,
+                        resource_type="privileged_session",
+                        resource_id=str(request_path),
+                        request_id=context.request_id,
+                        ip_address=ip_address,
+                        user_agent=_header_value(request, "User-Agent"),
+                        details=audit_details.model_dump(),
+                    )
                 )
-            except Exception as e:
-                logger.error(f"Failed to emit privileged access audit event: {e}")
-                # Don't block the request if audit fails, but log it
+            except Exception as exc:  # pragma: no cover - behavior asserted by tests via no raise
+                logger.error("Failed to emit privileged access audit event: %s", exc)
 
         return context
 
     return _check_privileged
 
-def validate_jwt_config() -> None:
-    """Validate JWT configuration for production safety.
-    
-    Raises:
-        ValueError: If JWT is misconfigured in production
-    """
-    environment = os.getenv("ENVIRONMENT", "").lower()
-    jwt_secret = os.getenv("JWT_SECRET", "")
-    jwt_issuer = os.getenv("JWT_ISSUER", "")
-    jwt_audience = os.getenv("JWT_AUDIENCE", "")
-    
-    if environment in {"production", "staging"}:
-        if not jwt_secret:
-            raise ValueError(
-                "JWT_SECRET is required in production. "
-                "Tokens cannot be verified without a secret."
-            )
-        
-        if len(jwt_secret.encode("utf-8")) < 32:
-            raise ValueError(
-                "JWT_SECRET must be at least 32 characters in production. "
-                "Weak secrets are vulnerable to brute force attacks."
-            )
-        
-        if not jwt_issuer:
-            raise ValueError(
-                "JWT_ISSUER is required in production. "
-                "Missing issuer allows tokens from any source to be accepted."
-            )
-        
-        if not jwt_audience:
-            raise ValueError(
-                "JWT_AUDIENCE is required in production. "
-                "Missing audience allows tokens intended for other services."
-            )
+
+# Convenience aliases matching canonical shared dependencies.
+require_super_admin = require_role(Role.SUPER_ADMIN)
+require_tenant_admin = require_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN)
+require_content_admin = require_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN)
+require_analyst = require_role(Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.CONTENT_ADMIN, Role.ANALYST)
+
+__all__ = [
+    "get_current_context",
+    "get_optional_context",
+    "require_authenticated",
+    "require_tenant",
+    "require_tenant_context",
+    "require_role",
+    "require_permission",
+    "require_any_permission",
+    "require_all_permissions",
+    "require_admin",
+    "require_privileged_access",
+    "require_super_admin",
+    "require_tenant_admin",
+    "require_content_admin",
+    "require_analyst",
+    "validate_jwt_config",
+]

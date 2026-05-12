@@ -1,6 +1,3 @@
-"""Compatibility forwarder for Layer 3 API models.
+"""Compatibility wrapper for value_fabric.layer3.api.models."""
 
-Canonical implementation lives in ``value_fabric.layer3.api.models``.
-"""
-
-from value_fabric.layer3.api.models import *  # noqa: F403
+from value_fabric.layer3.api.models import *  # noqa: F401,F403

@@ -74,6 +74,20 @@ Prefer generated OpenAPI schema types (`layer1_ingestion`, `layer2_extraction`, 
 
 Runtime parsers (Zod, `safeParse`, manual mappers) must remain in place; the wrappers only remove compile-time `as` casts on API responses. The `src/hooks/` directory is guarded by `pnpm run check:no-raw-api-client-in-hooks` to prevent backsliding.
 
+### Legacy API Ban (`@/api/legacy`)
+
+`apps/web/src/api/legacy.ts` is a temporary compatibility shim and is banned for new production imports.
+
+- ESLint enforces `no-restricted-imports` for `@/api/legacy` and relative equivalents.
+- CI enforces `pnpm run check:no-legacy-api-imports` and fails if `legacy.ts` is imported outside explicit migration-test scope (`src/api/__tests__/migration/`).
+
+**Remediation path**
+
+1. Replace legacy workflow contracts with `@/api/workflows`.
+2. Replace endpoint DTO assumptions with generated API clients and local mappers where needed.
+3. Replace UI-facing workflow legacy interfaces with `@/hooks/useWorkflows`.
+4. Run `node scripts/migrations/legacy-api-migration-map.mjs` for a quick export-to-canonical mapping guide.
+
 ## Typography Rules
 
 Value Fabric uses a compact, data-oriented typography system. Use `Inter` for UI text unless an existing file already defines a compatible system stack. Reserve `JetBrains Mono` or system monospace fonts for code, identifiers, and technical data.

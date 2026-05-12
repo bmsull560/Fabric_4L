@@ -343,7 +343,7 @@ class TestCRMSyncService:
                 MockProspectDataTool
             ):
                 # Act
-                result = await sync_service.refresh_single_account(account_id)
+                result = await sync_service.refresh_single_account(account_id, tenant_id="tenant-a")
                 
                 # Assert
                 assert result is not None
@@ -360,7 +360,7 @@ class TestCRMSyncService:
         mock_db.execute.return_value = mock_result
         
         # Act
-        result = await sync_service.refresh_single_account(uuid4())
+        result = await sync_service.refresh_single_account(uuid4(), tenant_id="tenant-a")
         
         # Assert
         assert result is None
@@ -685,9 +685,9 @@ class TestAccountServiceIntegration:
             mock_sync_class.return_value = mock_sync
             
             # Act
-            result = await account_service.refresh_account(account_id)
+            result = await account_service.refresh_account(account_id, tenant_id="tenant-a")
             
             # Assert
             assert result is not None
             assert result.id == account_id
-            mock_sync.refresh_single_account.assert_called_once_with(account_id)
+            mock_sync.refresh_single_account.assert_called_once_with(account_id, "tenant-a")

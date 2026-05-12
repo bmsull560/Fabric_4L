@@ -610,6 +610,13 @@ def validate_jwt_secret_strength() -> None:
         # Missing JWT_SECRET is handled by validate_all_controls / jwt.py
         return
 
+    normalized = jwt_secret.strip().lower()
+    if is_production() and normalized in _WEAK_SECRET_DENYLIST:
+        raise ValueError(
+            "JWT_SECRET uses a known default/test value and is forbidden in production. "
+            "Generate a strong secret: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
+
     if is_production() and len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
         raise ValueError(
             f"JWT_SECRET is too short ({len(jwt_secret)} chars). "
@@ -624,6 +631,14 @@ def validate_jwt_secret_strength() -> None:
             len(jwt_secret),
             _MIN_JWT_SECRET_LENGTH,
         )
+
+
+def validate_jwt_config() -> None:
+    """Compatibility wrapper for identity dependency startup validation."""
+    jwt_secret = os.getenv("JWT_SECRET", "")
+    if is_production() and not jwt_secret:
+        raise ValueError("JWT_SECRET is required in production")
+    validate_jwt_secret_strength()
 
 
 def validate_database_superuser() -> None:

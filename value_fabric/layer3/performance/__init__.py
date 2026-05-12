@@ -1,3 +1,33 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""Performance package initialization."""
 
-from value_fabric.layer3.performance import *  # noqa: F401,F403
+from .cache import (
+    CacheConfig,
+    CacheEntry,
+    CacheManager,
+    CacheStats,
+    CacheStrategy,
+    CompressionType,
+    MemoryCache,
+    PerformanceOptimizer,
+    RedisCache,
+    SerializationType,
+    get_cache_manager,
+    get_performance_optimizer,
+    initialize_caching,
+)
+
+__all__ = [
+    "CacheStrategy",
+    "CompressionType",
+    "SerializationType",
+    "CacheEntry",
+    "CacheConfig",
+    "CacheStats",
+    "MemoryCache",
+    "RedisCache",
+    "CacheManager",
+    "PerformanceOptimizer",
+    "get_cache_manager",
+    "get_performance_optimizer",
+    "initialize_caching",
+]

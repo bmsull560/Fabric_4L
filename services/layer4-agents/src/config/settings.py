@@ -216,6 +216,15 @@ class Settings(BaseSettings):
         description="Feature flag backend: redis, config, or unleash"
     )
 
+    oidc_state_store_backend: str = Field(
+        default="redis",
+        description="OIDC state store backend: redis (production default) or memory (non-production only)",
+    )
+    oidc_state_ttl_seconds: int = Field(
+        default=300,
+        description="Strict TTL for OIDC state and PKCE verifier records",
+    )
+
     enable_oidc_cleanup: bool = Field(
         default=True,
         description="Enable OIDC session cleanup startup integration"
@@ -476,6 +485,21 @@ class Settings(BaseSettings):
             f"FATAL: {field_name} must use HTTPS in {environment}, "
             "or enable validated service-mesh mTLS mode."
         )
+
+    @field_validator("oidc_state_store_backend")
+    @classmethod
+    def validate_oidc_state_store_backend(cls, v: str) -> str:
+        backend = v.strip().lower()
+        if backend not in {"redis", "memory"}:
+            raise ValueError("oidc_state_store_backend must be one of: redis, memory")
+        return backend
+
+    @field_validator("oidc_state_ttl_seconds")
+    @classmethod
+    def validate_oidc_state_ttl_seconds(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("oidc_state_ttl_seconds must be positive")
+        return v
 
     @model_validator(mode="after")
     def validate_prod_neo4j_aura(self) -> "Settings":

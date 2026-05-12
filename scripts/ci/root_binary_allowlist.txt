@@ -1,0 +1,5 @@
+# Root-level binary file allowlist.
+# Paths must be repository-root relative.
+# Keep this list short and reviewed.
+.gitattributes
+.gitignore

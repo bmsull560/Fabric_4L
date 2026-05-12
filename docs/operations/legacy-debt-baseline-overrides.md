@@ -1,11 +1,24 @@
 # Legacy debt baseline overrides
 
-CI now enforces a baseline for legacy markers and legacy directories.
+CI enforces staged legacy debt thresholds for legacy markers and legacy directories.
 
 - Markers scanned: `DEPRECATED`, `OBSOLETE`
 - Directories scanned: configured in `config/ci/legacy_debt_config.json`
 
-The gate fails when counts exceed `config/ci/legacy_debt_baseline.json` unless there is an unexpired explicit approval.
+The gate fails when counts exceed the effective threshold. Effective threshold is the minimum of:
+
+1. Baseline + temporary explicit approval (`allowed_increase`)
+2. Active staged threshold for today's date from `staged_thresholds`
+
+## Staged threshold policy
+
+Use `config/ci/legacy_debt_approvals.json` to encode release-over-release target reductions.
+
+- Configure `staged_thresholds.<category>[]` entries with:
+  - `effective_on` (`YYYY-MM-DD`)
+  - `max_count`
+- Add stages in chronological order.
+- Each new stage should reduce or hold counts relative to the previous stage.
 
 ## Temporary override process
 
@@ -19,6 +32,15 @@ Use `config/ci/legacy_debt_approvals.json`.
    - `reason`
 3. Include a cleanup ticket and target removal date in your PR.
 4. Reset `allowed_increase` to `0` after cleanup.
+
+## Obsolete marker approval metadata requirements
+
+For each entry in `obsolete_marker_approvals`, CI requires:
+
+- `owner`
+- `target_removal_date` (`YYYY-MM-DD`)
+
+CI fails if either field is missing or the target removal date is invalid.
 
 ## Local command
 

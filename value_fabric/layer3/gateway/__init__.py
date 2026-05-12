@@ -1,3 +1,45 @@
-"""Compatibility shim for Layer 3 canonical runtime module."""
+"""API gateway and service mesh package initialization."""
 
-from value_fabric.layer3.gateway import *  # noqa: F401,F403
+from .api_gateway import (
+    APIGateway,
+    CircuitBreaker,
+    CircuitState,
+    FaultInjection,
+    GatewayConfig,
+    GatewayProtocol,
+    GatewayStats,
+    RetryPolicy,
+    RouteEngine,
+    RouteRule,
+    RoutingStrategy,
+    ServiceEndpoint,
+    ServiceMesh,
+    ServiceMeshConfig,
+    ServiceMeshProtocol,
+    ServiceRegistry,
+    get_api_gateway,
+    get_service_mesh,
+    initialize_gateway,
+)
+
+__all__ = [
+    "GatewayProtocol",
+    "ServiceMeshProtocol",
+    "RoutingStrategy",
+    "RetryPolicy",
+    "CircuitState",
+    "ServiceEndpoint",
+    "RouteRule",
+    "FaultInjection",
+    "GatewayConfig",
+    "ServiceMeshConfig",
+    "GatewayStats",
+    "CircuitBreaker",
+    "ServiceRegistry",
+    "RouteEngine",
+    "APIGateway",
+    "ServiceMesh",
+    "get_api_gateway",
+    "get_service_mesh",
+    "initialize_gateway",
+]

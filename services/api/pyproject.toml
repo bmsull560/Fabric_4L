@@ -28,7 +28,7 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["app/tests"]
-pythonpath = [".", "../../packages/shared/src"]
+pythonpath = [".", "../..", "../../packages/shared/src"]
 
 [tool.mypy]
 python_version = "3.11"

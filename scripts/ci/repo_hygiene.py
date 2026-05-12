@@ -448,6 +448,63 @@ def scan_extensionless_frontend_files(repo_root: Path) -> list[Violation]:
     return violations
 
 
+
+
+def load_root_binary_allowlist(repo_root: Path) -> set[str]:
+    """Load root-level binary allowlist entries."""
+    allowlist_path = repo_root / "scripts" / "ci" / "root_binary_allowlist.txt"
+    if not allowlist_path.exists():
+        return set()
+
+    entries: set[str] = set()
+    for raw_line in allowlist_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        entries.add(line)
+    return entries
+
+
+def appears_binary(path: Path) -> bool:
+    """Best-effort binary detection using NUL-byte heuristic."""
+    chunk = path.read_bytes()[:4096]
+    return b"\x00" in chunk
+
+
+def scan_root_binary_blobs(repo_root: Path) -> list[Violation]:
+    """Block unapproved root-level binary blobs."""
+    violations: list[Violation] = []
+    allowlist = load_root_binary_allowlist(repo_root)
+
+    for path in repo_root.iterdir():
+        if path.name.startswith('.') and path.name not in allowlist:
+            continue
+        if not path.is_file():
+            continue
+
+        relative = path.relative_to(repo_root).as_posix()
+        if relative in allowlist:
+            continue
+        if path.suffix in {".md", ".txt", ".yaml", ".yml", ".json", ".toml", ".lock", ".sh", ".py", ".js", ".ts", ".tsx", ".jsx", ".ini", ".cfg", ".xml", ".env", ".csv", ".svg"}:
+            continue
+        if not appears_binary(path):
+            continue
+
+        violations.append(
+            Violation(
+                rule_id="root_binary_blob_policy",
+                severity="error",
+                file=relative,
+                line=0,
+                message="Unapproved root-level binary blob detected.",
+                suggestion=(
+                    "Move the file into a governed artifact location (for example artifacts/non-runtime/) "
+                    "or publish it via the release asset process, then add an explicit allowlist entry only if needed."
+                ),
+            )
+        )
+    return violations
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Repository hygiene validator")
     parser.add_argument("--repo-root", default=".", help="Repository root")
@@ -474,6 +531,7 @@ def main() -> int:
     all_violations.extend(scan_monitoring_runbooks(repo_root, manifest))
     all_violations.extend(scan_production_frontend_client_references(repo_root))
     all_violations.extend(scan_extensionless_frontend_files(repo_root))
+    all_violations.extend(scan_root_binary_blobs(repo_root))
 
     errors = [v for v in all_violations if v.severity == "error"]
     warnings = [v for v in all_violations if v.severity == "warn"]
