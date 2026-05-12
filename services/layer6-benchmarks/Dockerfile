@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
+FROM python:3.14.0-slim-bookworm@sha256:d13fa0424035d290decef3d575cea23d1b7d5952cdf429df8f5542c71e961576
 
 # Security: Create non-root user early
 RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
