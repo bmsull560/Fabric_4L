@@ -1063,7 +1063,15 @@ class GraphNode(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
                 _increment_deprecated_field_usage("graph_node_request_legacy_fields")
+=======
+                _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
+>>>>>>> theirs
+=======
+                _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
+>>>>>>> theirs
 =======
                 _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
 >>>>>>> theirs
@@ -1124,7 +1132,15 @@ class GraphNode(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
             _increment_deprecated_field_usage("graph_node_response_legacy_fields")
+=======
+            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
+>>>>>>> theirs
+=======
+            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
+>>>>>>> theirs
 =======
             _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
 >>>>>>> theirs
@@ -1178,6 +1194,8 @@ class GraphEdge(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
     @model_validator(mode="before")
     @classmethod
     def normalize_legacy_request_aliases(cls, data: Any) -> Any:
@@ -1196,6 +1214,10 @@ class GraphEdge(BaseModel):
 >>>>>>> theirs
 =======
 >>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 
     @model_validator(mode="before")
     @classmethod
@@ -1207,6 +1229,12 @@ class GraphEdge(BaseModel):
             data["type"] = data["relationship_type"]
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 =======
 >>>>>>> theirs
@@ -1240,7 +1268,15 @@ class GraphEdge(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
             _increment_deprecated_field_usage("graph_edge_response_legacy_fields")
+=======
+            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
+>>>>>>> theirs
+=======
+            _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
+>>>>>>> theirs
 =======
             _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
 >>>>>>> theirs

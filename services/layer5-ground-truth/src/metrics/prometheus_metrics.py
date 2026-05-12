@@ -91,6 +91,19 @@ class PrometheusMetrics:
             ["from_status", "to_status"],
             registry=self.config.registry,
         )
+        self._metrics["validation_latency_seconds"] = Histogram(
+            f"{prefix}validation_latency_seconds",
+            "Validation transition latency in seconds",
+            ["transition"],
+            buckets=self.config.default_buckets,
+            registry=self.config.registry,
+        )
+        self._metrics["validation_transition_failures_total"] = Counter(
+            f"{prefix}validation_transition_failures_total",
+            "Total failed validation transitions",
+            ["transition", "reason"],
+            registry=self.config.registry,
+        )
 
         self._metrics["truth_objects_by_status"] = Gauge(
             f"{prefix}truth_objects_by_status",
@@ -109,6 +122,12 @@ class PrometheusMetrics:
             f"{prefix}kg_sync_total",
             "Total knowledge graph sync operations",
             ["status"],
+            registry=self.config.registry,
+        )
+        self._metrics["kg_sync_outcomes_total"] = Counter(
+            f"{prefix}kg_sync_outcomes_total",
+            "Layer 3 KG sync outcomes by transition context",
+            ["sync_status", "transition"],
             registry=self.config.registry,
         )
 
@@ -194,6 +213,19 @@ class PrometheusMetrics:
             self._metrics["validations_total"].labels(
                 from_status=from_status, to_status=to_status
             ).inc()
+    def observe_validation_latency(self, transition: str, duration: float) -> None:
+        if self.config.enabled:
+            self._metrics["validation_latency_seconds"].labels(
+                transition=transition
+            ).observe(duration)
+
+    def increment_validation_transition_failure(
+        self, transition: str, reason: str
+    ) -> None:
+        if self.config.enabled:
+            self._metrics["validation_transition_failures_total"].labels(
+                transition=transition, reason=reason
+            ).inc()
 
     def set_truth_objects_by_status(
         self, status: str, claim_type: str, count: int
@@ -210,6 +242,12 @@ class PrometheusMetrics:
     def increment_kg_sync(self, status: str) -> None:
         if self.config.enabled:
             self._metrics["kg_sync_total"].labels(status=status).inc()
+
+    def increment_kg_sync_outcome(self, sync_status: str, transition: str) -> None:
+        if self.config.enabled:
+            self._metrics["kg_sync_outcomes_total"].labels(
+                sync_status=sync_status, transition=transition
+            ).inc()
 
     def increment_freshness_checks(self) -> None:
         if self.config.enabled:

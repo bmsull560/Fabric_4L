@@ -66,10 +66,13 @@ curl -X POST http://localhost:8003/v1/ingest \
 
 ```bash
 <<<<<<< ours
+<<<<<<< ours
 # from repository root
 cd services/layer3-knowledge
 python -m uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
 =======
+=======
+>>>>>>> theirs
 curl -X POST http://localhost:8003/v1/query \
   -H "Content-Type: application/json" \
   -d '{
@@ -87,10 +90,13 @@ Layer 3 canonical external port in the routing matrix is **8001**.
 
 ```bash
 <<<<<<< ours
+<<<<<<< ours
 curl http://localhost:8001/health
 curl http://localhost:8001/ready
 curl http://localhost:8001/metrics
 =======
+=======
+>>>>>>> theirs
 curl -X POST http://localhost:8003/v1/search \
   -H "Content-Type: application/json" \
   -d '{
@@ -152,6 +158,9 @@ Compatibility exceptions must be tracked in `docs/governance/compatibility-debt-
 | `NEO4J_PASSWORD` | `password` | Neo4j password |
 | `PINECONE_API_KEY` | - | Pinecone API key (optional) |
 | `API_PORT` | `8003` | API server port |
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 
 - System/ops: `system.py` (`/health`, `/ready`, `/metrics`, detailed health variants)

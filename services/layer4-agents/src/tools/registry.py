@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID, uuid4
+from value_fabric.layer4.observability import Layer4EventContext, Layer4LifecycleLogger
 
 from value_fabric.shared.identity.context import RequestContext, get_request_context
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -98,6 +99,7 @@ class get_tool_metadataResult(TypedDictModel):
     tenant_scoped: Any
 
 logger = logging.getLogger(__name__)
+lifecycle_logger = Layer4LifecycleLogger(logger)
 
 _SENSITIVE_KEY_PATTERN = re.compile(
     r"(secret|token|password|api[_-]?key|authorization|credential|private[_-]?key)",
@@ -589,7 +591,9 @@ class ToolRegistry:
 
         response_hash: str | None = None
 
+        lifecycle_logger.emit(stage="tool-call", context=Layer4EventContext(request_id=str(trace_id or workflow_id or "tool"), trace_id=str(trace_id or workflow_id or "tool"), tenant_id=str(tenant_id or "unknown"), workflow_id=str(workflow_id or "unknown"), run_id=str(workflow_id or "unknown"), provider_name=str(type(tool).__name__)))
         result = await tool.run(input_dict, trace_id=trace_id)
+        lifecycle_logger.emit(stage="tool-result", context=Layer4EventContext(request_id=str(trace_id or workflow_id or "tool"), trace_id=str(trace_id or workflow_id or "tool"), tenant_id=str(tenant_id or "unknown"), workflow_id=str(workflow_id or "unknown"), run_id=str(workflow_id or "unknown"), provider_name=str(type(tool).__name__)), tool_success=result.is_success())
         if idempotency_key:
             self._idempotency_cache[(tenant_id, tool_name, str(idempotency_key))] = result
 

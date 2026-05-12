@@ -32,13 +32,15 @@ APPROVED → OPERATIONALIZED (maturity only, status stays APPROVED)
 """
 
 import logging
+import time
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
+from metrics.prometheus_metrics import get_metrics
 from ..models.truth_object import (
     DisputeReason,
     MaturityHistory,
@@ -65,6 +67,12 @@ class InvalidTransitionError(ValueError):
 
 class InsufficientEvidenceError(ValueError):
     """Raised when the evidence requirements for a transition are not met."""
+
+    pass
+
+
+class TransitionConflictError(ValueError):
+    """Raised when a concurrent transition already changed the status."""
 
     pass
 
@@ -397,6 +405,23 @@ class ValidationStateMachine:
         current = TruthStatus(truth_object.status)
         allowed = ALLOWED_TRANSITIONS.get(current, set())
         if target not in allowed:
+            metrics = get_metrics()
+            transition_name = f"{current.value}->{target.value}"
+            if metrics:
+                metrics.increment_validation_transition_failure(
+                    transition=transition_name,
+                    reason="invalid_transition",
+                )
+            logger.warning(
+                "validation transition rejected",
+                extra={
+                    "request_id": None,
+                    "tenant_id": str(truth_object.tenant_id),
+                    "truth_object_id": str(truth_object.id),
+                    "transition": transition_name,
+                    "sync_status": "not_attempted",
+                },
+            )
             raise InvalidTransitionError(
                 f"Transition {current.value} → {target.value} is not permitted. "
                 f"Allowed from {current.value}: "
@@ -450,16 +475,43 @@ class ValidationStateMachine:
     ) -> TruthObject:
         """Apply a validated status transition and record audit events."""
         old_status = truth_object.status
+        start = time.perf_counter()
         old_maturity = truth_object.maturity_level
         new_maturity = max(
             old_maturity,
             STATUS_TO_MATURITY[new_status].value,
         )
 
-        # Update the truth object
+        now = datetime.now(UTC)
+
+        # Concurrency guard: only transition if the row is still in the expected state.
+        # This behaves like optimistic locking using the old status as the expected version.
+        result = await db.execute(
+            update(TruthObject)
+            .where(
+                and_(
+                    TruthObject.id == truth_object.id,
+                    TruthObject.tenant_id == truth_object.tenant_id,
+                    TruthObject.status == old_status,
+                    TruthObject.deleted_at.is_(None),
+                )
+            )
+            .values(
+                status=new_status.value,
+                maturity_level=new_maturity,
+                updated_at=now,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        if (result.rowcount or 0) != 1:
+            raise TransitionConflictError(
+                "Concurrent transition conflict: truth object state changed before this transition could be applied."
+            )
+
+        # Keep ORM object in sync for caller/response usage.
         truth_object.status = new_status.value
         truth_object.maturity_level = new_maturity
-        truth_object.updated_at = datetime.now(UTC)
+        truth_object.updated_at = now
 
         # Record validation event (immutable audit)
         event = ValidationEvent(
@@ -497,6 +549,27 @@ class ValidationStateMachine:
             old_maturity,
             new_maturity,
             actor,
+        )
+        metrics = get_metrics()
+        transition_name = f"{old_status}->{new_status.value}"
+        if metrics:
+            metrics.increment_validations(
+                from_status=old_status,
+                to_status=new_status.value,
+            )
+            metrics.observe_validation_latency(
+                transition=transition_name,
+                duration=time.perf_counter() - start,
+            )
+        logger.info(
+            "validation transition applied",
+            extra={
+                "request_id": None,
+                "tenant_id": str(truth_object.tenant_id),
+                "truth_object_id": str(truth_object.id),
+                "transition": transition_name,
+                "sync_status": "pending",
+            },
         )
         await db.flush()  # Persist event and history before returning
         return truth_object

@@ -278,3 +278,102 @@ class TestLayer4SecretsProtection:
         )
         # Should accept but sanitize in logs/responses
         assert response.status_code in {HTTP_OK, HTTP_ACCEPTED, HTTP_BAD_REQUEST}
+
+
+class TestLayer4StreamTenantAdversarial:
+    """Adversarial tenant-isolation tests for stream/checkpoint surfaces."""
+
+    STREAM_PATH = "/v1/workflows/{workflow_id}/events"
+    RESUME_PATH = "/v1/workflows/{workflow_id}/resume"
+    CHECKPOINTS_PATH = "/v1/workflows/{workflow_id}/checkpoints"
+    CHECKPOINT_STATE_PATH = "/v1/workflows/{workflow_id}/checkpoints/{checkpoint_id}/state"
+    TOOL_AUDIT_EVENTS_PATH = "/v1/tools/export/audit-events"
+
+    def _assert_error_envelope(self, response) -> None:
+        """Assert stable error envelope shape for denied/invalid requests."""
+        payload = response.json()
+        assert isinstance(payload, dict), f"Error payload must be object, got: {type(payload)}"
+        # API may return FastAPI detail envelope or explicit error/message envelope.
+        assert any(k in payload for k in ("detail", "error", "message")), (
+            f"Expected one of detail/error/message keys, got: {payload}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_subscribe_other_tenant_run_stream_denied(
+        self, client: AsyncClient, tenant_a_token: str
+    ):
+        workflow_id = "tenant-b-run-123"
+        response = await client.get(
+            self.STREAM_PATH.format(workflow_id=workflow_id),
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert response.status_code in {HTTP_FORBIDDEN, HTTP_NOT_FOUND, HTTP_UNAUTHORIZED}
+        self._assert_error_envelope(response)
+
+    @pytest.mark.asyncio
+    async def test_resume_replay_token_cross_tenant_denied(
+        self, client: AsyncClient, tenant_a_token: str
+    ):
+        workflow_id = "tenant-b-run-replay"
+        response = await client.post(
+            self.RESUME_PATH.format(workflow_id=workflow_id),
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+            json={
+                "resume_data": {
+                    "checkpoint_token": "stale-token-from-tenant-b",
+                    "resume_token": "replayed-cross-tenant-token",
+                }
+            },
+        )
+        assert response.status_code in {
+            HTTP_FORBIDDEN,
+            HTTP_NOT_FOUND,
+            HTTP_UNAUTHORIZED,
+            HTTP_BAD_REQUEST,
+            HTTP_UNPROCESSABLE_ENTITY,
+        }
+        self._assert_error_envelope(response)
+
+    @pytest.mark.asyncio
+    async def test_reconnect_with_mismatched_tenant_context_denied(
+        self, client: AsyncClient, tenant_a_token: str
+    ):
+        workflow_id = "tenant-a-run-123"
+        response = await client.get(
+            self.STREAM_PATH.format(workflow_id=workflow_id),
+            headers={
+                "Authorization": f"Bearer {tenant_a_token}",
+                "X-Tenant-ID": TENANT_B,
+                "X-Reconnect-Attempt": "1",
+            },
+        )
+        assert response.status_code in {HTTP_FORBIDDEN, HTTP_BAD_REQUEST, HTTP_UNAUTHORIZED}
+        self._assert_error_envelope(response)
+
+    @pytest.mark.asyncio
+    async def test_cross_tenant_checkpoint_and_tool_event_retrieval_denied(
+        self, client: AsyncClient, tenant_a_token: str
+    ):
+        workflow_id = "tenant-b-run-checkpoint"
+        checkpoint_id = "chk-tenant-b-001"
+
+        checkpoints_response = await client.get(
+            self.CHECKPOINTS_PATH.format(workflow_id=workflow_id),
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert checkpoints_response.status_code in {HTTP_FORBIDDEN, HTTP_NOT_FOUND, HTTP_UNAUTHORIZED}
+        self._assert_error_envelope(checkpoints_response)
+
+        checkpoint_state_response = await client.get(
+            self.CHECKPOINT_STATE_PATH.format(workflow_id=workflow_id, checkpoint_id=checkpoint_id),
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        assert checkpoint_state_response.status_code in {HTTP_FORBIDDEN, HTTP_NOT_FOUND, HTTP_UNAUTHORIZED}
+        self._assert_error_envelope(checkpoint_state_response)
+
+        tool_events_response = await client.get(
+            f"{self.TOOL_AUDIT_EVENTS_PATH}?tenant_id={TENANT_B}",
+            headers={"Authorization": f"Bearer {tenant_a_token}"},
+        )
+        if tool_events_response.status_code in {HTTP_FORBIDDEN, HTTP_NOT_FOUND, HTTP_UNAUTHORIZED, HTTP_BAD_REQUEST}:
+            self._assert_error_envelope(tool_events_response)

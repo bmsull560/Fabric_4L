@@ -44,6 +44,7 @@ from .execution_validation import ensure_controller_accepts_execution
 from .execution_dispatch import build_workflow_task
 from .execution_persistence import mark_workflow_running, persist_workflow_failure
 from .execution_checkpointing import persist_interruption_if_needed
+from value_fabric.layer4.observability import Layer4EventContext, Layer4LifecycleLogger
 
 sys.modules["src.engine.executor"] = sys.modules[__name__]
 sys.modules["value_fabric.layer4.engine.executor"] = sys.modules[__name__]
@@ -84,6 +85,7 @@ class OrchestrationController_get_cluster_healthResult(TypedDictModel):
     utilization: Any
 
 logger = logging.getLogger(__name__)
+lifecycle_logger = Layer4LifecycleLogger(logger)
 
 
 # ---------------------------------------------------------------------------
@@ -375,6 +377,19 @@ class OrchestrationController:
         }
 
         # Schedule workflow execution (Task 2.1: Capture tenant context)
+        lifecycle_logger.emit(
+            stage="start",
+            context=Layer4EventContext(
+                request_id=workflow_id,
+                trace_id=workflow_id,
+                tenant_id=tenant_id or "unknown",
+                workflow_id=workflow_id,
+                run_id=workflow_id,
+                provider_name="langgraph",
+            ),
+            workflow_type=workflow_type,
+        )
+
         initial_state.status = WorkflowStatus.PENDING
         initial_state.started_at = datetime.now(UTC)
         await self.state_manager.save_state(workflow_id, initial_state)
@@ -667,6 +682,7 @@ class OrchestrationController:
             state.completed_at = datetime.now(UTC)
             await self.state_manager.save_state(workflow_id, state)
 
+        lifecycle_logger.emit(stage="cancel", context=Layer4EventContext(request_id=workflow_id, trace_id=workflow_id, tenant_id=str(self._workflow_metadata.get(workflow_id, {}).get("tenant_id") or "unknown"), workflow_id=workflow_id, run_id=workflow_id, provider_name="langgraph"), cancel_reason=reason)
         return cancelled
 
     async def pause_workflow(
@@ -718,6 +734,7 @@ class OrchestrationController:
         state.metadata["paused_at"] = paused_at.isoformat()
         await self.state_manager.save_state(workflow_id, state)
         logger.info("Paused workflow %s at node %s", workflow_id, state.current_node)
+        lifecycle_logger.emit(stage="checkpoint", context=Layer4EventContext(request_id=workflow_id, trace_id=workflow_id, tenant_id=str((state.metadata or {}).get("tenant_id") or self._workflow_metadata.get(workflow_id, {}).get("tenant_id") or "unknown"), workflow_id=workflow_id, run_id=workflow_id, provider_name="langgraph", checkpoint_id=str(state.current_node or "paused")))
         return True
 
     async def archive_workflow(self, workflow_id: str, tenant_id: str | None = None) -> dict[str, Any] | None:
@@ -842,6 +859,7 @@ class OrchestrationController:
                 f"Failed to resume workflow {workflow_id}: {e}"
             ) from e
 
+        lifecycle_logger.emit(stage="resume", context=Layer4EventContext(request_id=workflow_id, trace_id=workflow_id, tenant_id=str(metadata.get("tenant_id") or "unknown"), workflow_id=workflow_id, run_id=workflow_id, provider_name="langgraph", checkpoint_id=str(state.current_node or "resume")), resumed_by=user_id)
         return result
 
     async def list_active_workflows(
@@ -1068,6 +1086,7 @@ class OrchestrationController:
         try:
             result = await workflow.run(initial_state, thread_id=workflow_id)
             await self.state_manager.save_state(workflow_id, result)
+            lifecycle_logger.emit(stage="completion", context=Layer4EventContext(request_id=workflow_id, trace_id=workflow_id, tenant_id=str(self._workflow_metadata.get(workflow_id, {}).get("tenant_id") or "unknown"), workflow_id=workflow_id, run_id=workflow_id, provider_name="langgraph"))
             return result
         except asyncio.CancelledError:
             await persist_interruption_if_needed(
@@ -1085,6 +1104,7 @@ class OrchestrationController:
                 initial_state=initial_state,
                 exc=exc,
             )
+            lifecycle_logger.emit(stage="failure", context=Layer4EventContext(request_id=workflow_id, trace_id=workflow_id, tenant_id=str(self._workflow_metadata.get(workflow_id, {}).get("tenant_id") or "unknown"), workflow_id=workflow_id, run_id=workflow_id, provider_name="langgraph"), error_class=type(exc).__name__, error_code="WORKFLOW_EXECUTION_ERROR")
             raise
         finally:
             self._active_workflows.pop(workflow_id, None)

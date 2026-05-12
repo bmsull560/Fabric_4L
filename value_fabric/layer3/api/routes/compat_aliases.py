@@ -16,9 +16,15 @@ router = APIRouter(prefix="/v1", tags=["compatibility"], dependencies=[Depends(r
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 def _app_client(request: Request) -> str:
     return request.headers.get("x-app-client", "unknown")
 =======
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 =======
 >>>>>>> theirs
 =======
@@ -33,6 +39,12 @@ def _assert_legacy_alias_enabled(request: Request, alias_name: str) -> None:
         raise HTTPException(status_code=410, detail=f"Legacy alias '{alias_name}' has been removed")
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 =======
 >>>>>>> theirs
@@ -50,7 +62,15 @@ async def graph_rag_legacy_alias(
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
     record_deprecated_route_hit("/v1/graphrag", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
+=======
+    _assert_legacy_alias_enabled(request, "/v1/graphrag")
+>>>>>>> theirs
+=======
+    _assert_legacy_alias_enabled(request, "/v1/graphrag")
+>>>>>>> theirs
 =======
     _assert_legacy_alias_enabled(request, "/v1/graphrag")
 >>>>>>> theirs
@@ -67,8 +87,14 @@ async def graph_rag_legacy_alias(
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 @router.post("/query/graph", response_model=GraphRAGResponse, deprecated=True)
 =======
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 =======
 >>>>>>> theirs
 =======
@@ -84,7 +110,17 @@ async def graph_rag_query_aliases(
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
     record_deprecated_route_hit("/v1/query", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
+=======
+    if request.url.path.endswith("/query"):
+        _assert_legacy_alias_enabled(request, "/v1/query")
+>>>>>>> theirs
+=======
+    if request.url.path.endswith("/query"):
+        _assert_legacy_alias_enabled(request, "/v1/query")
+>>>>>>> theirs
 =======
     if request.url.path.endswith("/query"):
         _assert_legacy_alias_enabled(request, "/v1/query")
@@ -123,10 +159,18 @@ async def hybrid_search_aliases(
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
     app_client = _app_client(http_request)
     record_deprecated_route_hit("/v1/query/search", tenant_id=str(ctx.tenant_id), app_client=app_client)
     if request.search_type == "fulltext":
         record_deprecated_legacy_field_usage("search_type=fulltext", tenant_id=str(ctx.tenant_id), app_client=app_client)
+=======
+    _assert_legacy_alias_enabled(http_request, http_request.url.path)
+>>>>>>> theirs
+=======
+    _assert_legacy_alias_enabled(http_request, http_request.url.path)
+>>>>>>> theirs
 =======
     _assert_legacy_alias_enabled(http_request, http_request.url.path)
 >>>>>>> theirs

@@ -25,3 +25,11 @@ Only these paths should be edited directly.
 ## Regeneration expectation
 
 When you intentionally regenerate compatibility artifacts, include the regeneration command/script update in the same PR so CI can verify intent.
+
+## Layer 5 observability governance binding
+
+Layer 5 alert rules and dashboard queries for validation latency, transition failures, and KG sync outcomes are contract-bound to:
+
+- `docs/reference/layer5-observability-schema.md`
+
+Any rename of Layer 5 structured log keys or metric names/labels defined there requires explicit governance review in the same PR.

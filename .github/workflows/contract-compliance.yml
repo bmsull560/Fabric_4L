@@ -414,12 +414,17 @@ jobs:
       - name: Compare OpenAPI specs
         id: compare
         run: |
-          pip install jsondiff
-          python scripts/compare_openapi.py \
-            contracts/openapi/${{ matrix.layer }}.json \
-            generated/generated-openapi.json \
-            --output drift-report-${{ matrix.layer }}.md \
-            --exit-code || EXIT_CODE=$?
+          if [ "${{ matrix.layer }}" = "layer5-ground-truth" ]; then
+            python services/layer5-ground-truth/scripts/check_openapi_contract.py \
+              > drift-report-${{ matrix.layer }}.md 2>&1 || EXIT_CODE=$?
+          else
+            pip install jsondiff
+            python scripts/compare_openapi.py \
+              contracts/openapi/${{ matrix.layer }}.json \
+              generated/generated-openapi.json \
+              --output drift-report-${{ matrix.layer }}.md \
+              --exit-code || EXIT_CODE=$?
+          fi
           echo "exit_code=${EXIT_CODE:-0}" >> $GITHUB_OUTPUT
 
       - name: Comment PR with drift report

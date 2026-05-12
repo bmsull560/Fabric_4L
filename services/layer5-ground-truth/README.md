@@ -185,6 +185,25 @@ If the check fails, keep the canonical implementation in `services/layer5-ground
 
 ---
 
+## OpenAPI Contract Drift Guardrail (Canonical Command Path)
+
+Layer 5 uses one canonical command path to validate OpenAPI contract drift so local and CI behavior stay identical:
+
+```bash
+python services/layer5-ground-truth/scripts/check_openapi_contract.py
+```
+
+What this command does:
+
+1. Generates OpenAPI from canonical runtime module `services/layer5-ground-truth/src/layer5_ground_truth/api/main.py` (`layer5_ground_truth.api.main:app`).
+2. Normalizes generated and committed JSON with deterministic ordering/format.
+3. Diffs normalized output against `contracts/openapi/layer5-ground-truth.json`.
+4. Exits non-zero on mismatch.
+
+CI runs this same command in `.github/workflows/contract-compliance.yml` as part of Layer 5 OpenAPI drift detection.
+
+---
+
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -272,3 +291,20 @@ Canonical runtime package: `services/layer5-ground-truth/src/layer5_ground_truth
 `value_fabric/layer5` is compatibility-only. Prefer canonical imports (`layer5_ground_truth.*`) for Layer 5 runtime modules.
 
 `services/layer5-ground-truth/` owns deployment and operational wrapper concerns.
+
+## TruthObject transition concurrency behavior
+
+Validation transitions are handled by `ValidationStateMachine` and routed through `validate_truth_object`.
+
+- Transition handlers/services:
+  - `src/layer5_ground_truth/services/truth_service.py::validate_truth_object`
+  - `src/layer5_ground_truth/services/state_machine.py` transition methods (`advance_to_supported`, `advance_to_corroborated`, `approve`, `dispute`, `resolve_dispute`, `mark_operationalized`) and `_apply_transition`.
+- Allowed concurrent behavior for the same TruthObject:
+  - **Optimistic status check:** `_apply_transition` performs a conditional `UPDATE ... WHERE id + tenant_id + expected_status + deleted_at IS NULL`.
+  - **Last-write rejection:** if another request has already transitioned the object, rowcount is 0 and `TransitionConflictError` is raised.
+  - **Deterministic conflict response:** API returns HTTP 409 with stable error shape:
+    - `{"detail": {"code": "TRANSITION_CONFLICT", "message": "..."}}`
+  - **No partial audit writes on conflict:** validation event/history are written only after the guarded status update succeeds.
+  - **Idempotent retry guidance:** callers may safely retry after conflict by re-fetching the TruthObject and re-evaluating allowed actions against current status.
+- Tenant isolation:
+  - All transition reads and writes are tenant-scoped (`get_truth_object` filter + guarded update includes `tenant_id`).

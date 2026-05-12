@@ -18,6 +18,7 @@ from uuid import UUID
 import httpx
 
 from ..config import get_settings
+from metrics.prometheus_metrics import get_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,11 @@ class Layer3Client:
           RETURN g.id
         """
         if not self._settings.layer3_sync_enabled:
+            metrics = get_metrics()
+            if metrics:
+                metrics.increment_kg_sync_outcome(
+                    sync_status="disabled", transition=f"{status}->kg_sync"
+                )
             logger.debug(
                 "Layer 3 sync disabled — skipping sync for %s", truth_object_id
             )
@@ -147,10 +153,33 @@ class Layer3Client:
                         truth_object_id,
                         node_id,
                     )
+                    metrics = get_metrics()
+                    if metrics:
+                        metrics.increment_kg_sync(status="success")
+                        metrics.increment_kg_sync_outcome(
+                            sync_status="success", transition=f"{status}->kg_sync"
+                        )
+                    logger.info(
+                        "kg sync outcome",
+                        extra={
+                            "request_id": None,
+                            "tenant_id": str(tenant_id),
+                            "truth_object_id": str(truth_object_id),
+                            "transition": f"{status}->kg_sync",
+                            "sync_status": "success",
+                        },
+                    )
                     return node_id
             except httpx.HTTPStatusError as exc:
                 # Don't retry 4xx errors (client errors)
                 if 400 <= exc.response.status_code < 500:
+                    metrics = get_metrics()
+                    if metrics:
+                        metrics.increment_kg_sync(status="client_error")
+                        metrics.increment_kg_sync_outcome(
+                            sync_status="client_error",
+                            transition=f"{status}->kg_sync",
+                        )
                     logger.warning(
                         "Layer 3 sync failed for TruthObject %s: HTTP %d — %s",
                         truth_object_id,
@@ -177,6 +206,13 @@ class Layer3Client:
                     max_retries,
                     exc.response.status_code,
                 )
+                metrics = get_metrics()
+                if metrics:
+                    metrics.increment_kg_sync(status="server_error")
+                    metrics.increment_kg_sync_outcome(
+                        sync_status="server_error",
+                        transition=f"{status}->kg_sync",
+                    )
                 return None
             except Exception as exc:
                 # Retry on connection errors
@@ -197,6 +233,22 @@ class Layer3Client:
                     truth_object_id,
                     max_retries,
                     exc,
+                )
+                metrics = get_metrics()
+                if metrics:
+                    metrics.increment_kg_sync(status="exception")
+                    metrics.increment_kg_sync_outcome(
+                        sync_status="exception", transition=f"{status}->kg_sync"
+                    )
+                logger.warning(
+                    "kg sync outcome",
+                    extra={
+                        "request_id": None,
+                        "tenant_id": str(tenant_id),
+                        "truth_object_id": str(truth_object_id),
+                        "transition": f"{status}->kg_sync",
+                        "sync_status": "failed",
+                    },
                 )
                 return None
         return None

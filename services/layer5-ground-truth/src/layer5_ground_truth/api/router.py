@@ -28,7 +28,11 @@ from ..config import get_settings
 from ..database import get_db_from_context
 from ..integration.layer3_client import get_layer3_client
 from ..models.truth_object import ClaimType, TruthStatus
-from ..services.state_machine import InsufficientEvidenceError, InvalidTransitionError
+from ..services.state_machine import (
+    InsufficientEvidenceError,
+    InvalidTransitionError,
+    TransitionConflictError,
+)
 from ..services.truth_service import (
     add_source,
     create_truth_object,
@@ -278,6 +282,7 @@ async def get_truth(
     responses={
         200: {"description": "Transition applied successfully"},
         400: {"description": "Invalid transition or insufficient evidence"},
+        409: {"description": "Concurrent transition conflict"},
         404: {"description": "TruthObject not found"},
     },
 )
@@ -311,11 +316,25 @@ async def validate_truth(
             else None,
         )
     except InvalidTransitionError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_TRANSITION", "message": str(exc)},
+        )
     except InsufficientEvidenceError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INSUFFICIENT_EVIDENCE", "message": str(exc)},
+        )
+    except TransitionConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "TRANSITION_CONFLICT", "message": str(exc)},
+        )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_REQUEST", "message": str(exc)},
+        )
 
     # Sync to Layer 3 after approval
     if truth.status == "approved":

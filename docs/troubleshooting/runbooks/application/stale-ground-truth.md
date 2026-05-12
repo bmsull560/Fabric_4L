@@ -199,3 +199,4 @@ curl -s "https://api.valuefabric.io/v1/workflows/active" | jq '.workflows | leng
 **External References:**
 - [Ground Truth Architecture](../../docs/layer5-architecture.md)
 - [Extraction Pipeline Docs](../../docs/layer2-extraction.md)
+- [Layer 5 Observability Schema](../../../reference/layer5-observability-schema.md)

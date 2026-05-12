@@ -1,8 +1,11 @@
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
 """Compatibility wrapper for value_fabric.layer3.db.query_execution."""
 =======
+=======
+>>>>>>> theirs
 =======
 >>>>>>> theirs
 =======
@@ -14,6 +17,9 @@ per ``docs/reference/layer-runtime-path-governance.md``.
 """
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 =======
 >>>>>>> theirs

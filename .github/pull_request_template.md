@@ -9,6 +9,21 @@
 - [ ] Documentation
 - [ ] Refactor/maintenance
 
+
+## API Evolution (Required for Phase 3 Feature Tickets)
+
+- **Route(s) affected:**
+- **Additive field list:**
+- **Backward compatibility guarantee:**
+- **Versioning decision:**
+- **Deprecation plan (if applicable):**
+
+### Phase 3 API Evolution Linked Updates (Required When L5 API Surface Changes)
+
+- [ ] Updated `contracts/openapi/layer5-ground-truth.json`.
+- [ ] Regenerated and committed generated client outputs for impacted surfaces.
+- [ ] Updated consumer integration tests for impacted Layer 4 / Layer 6 paths.
+
 ## Release & Policy Checklist (Required)
 
 - [ ] If API behavior/contracts changed, I updated `contracts/openapi/` and/or `contracts/jsonschema/`.
@@ -16,6 +31,7 @@
 - [ ] If deprecating APIs, I documented deprecation start and sunset dates per `docs/api-versioning-policy.md`.
 - [ ] I reviewed DR expectations in `docs/reliability/dr-policy.md` and updated recovery docs if service criticality changed.
 - [ ] For resilience-impacting changes, I updated or validated DR runbooks in `docs/runbooks/`.
+- [ ] If this PR claims Layer 5 Phase 0 closure/readiness, all discovered Layer 5 issues include owner and due date (per `docs/governance/layer5-backlog-issue-template.md`); otherwise Phase 0 remains open.
 
 ## Validation
 

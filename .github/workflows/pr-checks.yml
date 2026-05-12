@@ -205,6 +205,53 @@ jobs:
         run: .github/scripts/check-control-matrix.sh
 
 
+      - name: Enforce Phase 3 API evolution section for enhancement PRs
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+
+          body = os.environ.get("PR_BODY") or ""
+
+          feature_checked = re.search(r"(?mi)^- \[x\]\s+Feature\s*$", body) is not None
+          if not feature_checked:
+              print("Feature checkbox not selected; skipping Phase 3 API evolution gate.")
+              raise SystemExit(0)
+
+          required_labels = [
+              "route(s) affected",
+              "additive field list",
+              "backward compatibility guarantee",
+              "versioning decision",
+              "deprecation plan",
+          ]
+          lowered = body.lower()
+          missing = [label for label in required_labels if label not in lowered]
+          if missing:
+              print("Missing required API Evolution content for enhancement PR:")
+              for label in missing:
+                  print(f"- {label}")
+              raise SystemExit(1)
+
+          linked_updates = [
+              "updated `contracts/openapi/layer5-ground-truth.json`",
+              "regenerated and committed generated client outputs",
+              "updated consumer integration tests for impacted layer 4 / layer 6 paths",
+          ]
+          missing_updates = [item for item in linked_updates if item not in lowered]
+          if missing_updates:
+              print("Missing required linked update checklist items in PR body:")
+              for item in missing_updates:
+                  print(f"- {item}")
+              raise SystemExit(1)
+
+          print("Phase 3 API evolution gate passed for enhancement PR.")
+          PY
+
+
       - name: Validate docs claim verification map
         run: |
           mkdir -p artifacts/docs-validation

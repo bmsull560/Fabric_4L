@@ -1,0 +1,35 @@
+name: layer4-route-contract-matrix-check
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/layer4-route-contract-matrix.json'
+      - 'contracts/openapi/layer4-agents.json'
+      - 'services/layer4-agents/src/api/routes/**'
+      - 'services/layer4-agents/src/feature_flags/api/**'
+      - 'services/layer4-agents/src/tenants/api/routes/**'
+      - 'services/layer4-agents/src/registry/api/**'
+      - 'apps/web/src/**'
+      - 'scripts/ci/check_layer4_route_contract_matrix.py'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/layer4-route-contract-matrix.json'
+      - 'contracts/openapi/layer4-agents.json'
+      - 'services/layer4-agents/src/api/routes/**'
+      - 'services/layer4-agents/src/feature_flags/api/**'
+      - 'services/layer4-agents/src/tenants/api/routes/**'
+      - 'services/layer4-agents/src/registry/api/**'
+      - 'apps/web/src/**'
+      - 'scripts/ci/check_layer4_route_contract_matrix.py'
+
+jobs:
+  check-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate Layer4 route matrix coverage and schema refs
+        run: python scripts/ci/check_layer4_route_contract_matrix.py

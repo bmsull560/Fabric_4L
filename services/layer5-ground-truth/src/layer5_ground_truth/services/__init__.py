@@ -11,6 +11,7 @@ from .state_machine import (
     STATUS_TO_MATURITY,
     InsufficientEvidenceError,
     InvalidTransitionError,
+    TransitionConflictError,
     ValidationStateMachine,
 )
 from .truth_service import (
@@ -33,6 +34,7 @@ __all__ = [
     "STATUS_TO_MATURITY",
     "InsufficientEvidenceError",
     "InvalidTransitionError",
+    "TransitionConflictError",
     "ValidationStateMachine",
     # Truth service
     "add_source",

@@ -13,3 +13,19 @@ The readiness assessment identified enterprise SSO/OIDC, central model managemen
 ## Production Assertion Rule
 
 A P0 gate must not be marked production PASS merely because repository files exist. PASS requires a live or staging environment that exercises the relevant control with external dependencies configured, sensitive values externalized, and evidence captured without secrets.
+
+
+## Phase 0 Deliverable Criteria
+
+For Layer 5 backlog governance, **"issue register complete"** means all discovered Layer 5 items are entered using `docs/governance/layer5-backlog-issue-template.md` with every required field populated:
+
+- risk tag
+- severity (P0–P3)
+- owner
+- due date
+- affected module/path
+- tenant impact
+- contract impact
+- rollback notes
+
+Phase 0 must remain open if any discovered Layer 5 issue is missing required fields. In particular, missing **owner** or **due date** blocks Phase 0 closure.
