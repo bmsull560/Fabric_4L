@@ -17,7 +17,7 @@ def _clear_layer2_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class TestLayer2LLMClientProductionSafety:
-    def test_openai_client_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_openai_client_requires_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """OpenAI client must raise ValueError when API key is not configured."""
         _clear_layer2_env(monkeypatch)
         monkeypatch.setenv("ENVIRONMENT", "development")
@@ -27,7 +27,7 @@ class TestLayer2LLMClientProductionSafety:
         with pytest.raises(ValueError, match="OpenAI API key required"):
             LLMClient(provider="openai")
 
-    def test_anthropic_client_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_anthropic_client_requires_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Anthropic client must raise ValueError when API key is not configured."""
         _clear_layer2_env(monkeypatch)
         monkeypatch.setenv("ENVIRONMENT", "development")
@@ -37,7 +37,7 @@ class TestLayer2LLMClientProductionSafety:
         with pytest.raises(ValueError, match="Anthropic API key required"):
             LLMClient(provider="anthropic")
 
-    def test_openai_client_accepts_env_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_openai_client_accepts_env_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """OpenAI client should accept API key from environment variable."""
         _clear_layer2_env(monkeypatch)
         monkeypatch.setenv("ENVIRONMENT", "development")
@@ -48,7 +48,7 @@ class TestLayer2LLMClientProductionSafety:
         client = LLMClient(provider="openai")
         assert client.provider.value == "openai"
 
-    def test_anthropic_client_accepts_env_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_anthropic_client_accepts_env_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Anthropic client should accept API key from environment variable."""
         _clear_layer2_env(monkeypatch)
         monkeypatch.setenv("ENVIRONMENT", "development")
@@ -59,7 +59,7 @@ class TestLayer2LLMClientProductionSafety:
         client = LLMClient(provider="anthropic")
         assert client.provider.value == "anthropic"
 
-    def test_llm_client_has_no_mock_provider_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_llm_client_has_no_mock_provider_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """LLMClient should not have a 'mock' provider option - only real providers."""
         _clear_layer2_env(monkeypatch)
         monkeypatch.setenv("ENVIRONMENT", "development")

@@ -60,6 +60,12 @@ class InMemoryJobStore:
     async def set_artifacts(self, job_id: str, artifacts: ExtractionArtifacts) -> None:
         self._artifacts[job_id] = artifacts
 
+    async def list_jobs(self, *, tenant_id: str | None = None) -> list[PipelineJob]:
+        jobs = list(self._jobs.values())
+        if tenant_id is not None:
+            jobs = [j for j in jobs if j.tenant_id == tenant_id]
+        return jobs
+
 
 def build_job_store() -> InMemoryJobStore:
     """Factory for job store based on environment."""

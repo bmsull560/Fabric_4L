@@ -252,3 +252,10 @@ def create_llm_call_record(
         cost_usd=cost_usd,
         duration_ms=duration_ms,
     )
+
+
+SourceDocument.model_rebuild()
+LLMCall.model_rebuild()
+ExtractionStep.model_rebuild()
+ExtractionActivity.model_rebuild()
+

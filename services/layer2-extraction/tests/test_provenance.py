@@ -209,8 +209,8 @@ class TestExtractionActivity:
         act = _make_activity()
         step = _make_step()
         step.llm_calls = [
-            LLMCall("c1", "gpt-4o", "ph", "v1", 0, 100, 50, 0.005, 100),
-            LLMCall("c2", "gpt-4o", "ph", "v1", 0, 200, 100, 0.010, 200),
+            LLMCall(call_id="c1", model="gpt-4o", prompt_hash="ph", prompt_version="v1", temperature=0, tokens_in=100, tokens_out=50, cost_usd=0.005, duration_ms=100),
+            LLMCall(call_id="c2", model="gpt-4o", prompt_hash="ph", prompt_version="v1", temperature=0, tokens_in=200, tokens_out=100, cost_usd=0.010, duration_ms=200),
         ]
         act.add_step(step)
         assert abs(act.total_cost_usd - 0.015) < 1e-9
