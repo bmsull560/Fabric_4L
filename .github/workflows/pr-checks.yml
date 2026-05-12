@@ -378,6 +378,19 @@ jobs:
             --json-report --json-report-file=layer3-results.json \
             --cov-fail-under=80
 
+      - name: Run Layer 3 hostile tenancy endpoint suite
+        run: |
+          mkdir -p artifacts/layer3-tenancy
+          uv run pytest tests/layer3/test_endpoint_tenant_isolation.py -v \
+            --junitxml artifacts/layer3-tenancy/hostile-tenancy-junit.xml \
+            --json-report --json-report-file=artifacts/layer3-tenancy/hostile-tenancy-report.json
+
+      - name: Collect Layer 3 Cypher + tenancy release evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/layer3-tenancy
+          cp "${{ github.workspace }}/artifacts/layer3-cypher-scope-audit.json" artifacts/layer3-tenancy/cypher-scope-report.json || true
+
       - name: Upload test results
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         if: always()
@@ -388,6 +401,14 @@ jobs:
             services/layer3-knowledge/layer3-results.json
             services/layer3-knowledge/layer3-coverage.xml
           retention-days: 14
+
+      - name: Upload Layer 3 tenancy evidence artifacts
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        if: always()
+        with:
+          name: layer3-tenancy-evidence
+          path: services/layer3-knowledge/artifacts/layer3-tenancy/
+          retention-days: 30
 
       - name: Security scan with bandit
         run: uv run bandit -r src/ -ll -ii

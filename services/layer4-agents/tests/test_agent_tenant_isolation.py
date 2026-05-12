@@ -11,7 +11,10 @@ from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 
 from value_fabric.layer4.api.routes import agent_stream
-from value_fabric.layer4.services.conversation import ConversationService
+from value_fabric.layer4.services.conversation import (
+    ConversationService,
+    ConversationTenantValidationError,
+)
 from value_fabric.layer4.tools.registry import TenantAwareTool, ToolResult
 from value_fabric.shared.identity.context import RequestContext
 
@@ -198,6 +201,7 @@ async def test_agent_retrieval_excludes_foreign_tenant_evidence() -> None:
         workflow_result=None,
         account_name="Acme",
         gate_context={},
+        tenant_id="tenant-a",
     )
 
     assert "ev-a" in result
@@ -221,7 +225,45 @@ async def test_agent_output_contains_no_foreign_tenant_data() -> None:
         workflow_result=None,
         account_name="Acme",
         gate_context={},
+        tenant_id="tenant-a",
     )
 
     assert "foreign-account-secret" not in result
     assert "cannot present it as verified" in result.lower()
+
+
+@pytest.mark.asyncio
+async def test_conversation_service_fails_closed_on_blank_tenant() -> None:
+    with pytest.raises(ConversationTenantValidationError):
+        await ConversationService().handle_message(
+            user_message="Summarize this account.",
+            messages=[{"role": "user", "content": "Summarize this account."}],
+            active_tab="evidence",
+            account_id="account-a",
+            account_name="Acme",
+            tenant_id="",
+            trace_id="trace-blank-tenant",
+        )
+
+
+@pytest.mark.asyncio
+async def test_mutation_tool_rejects_empty_tenant_id() -> None:
+    class StubToolRegistry:
+        async def promote_signal(self, **kwargs: Any) -> dict[str, Any]:
+            raise AssertionError("tool should not execute when tenant_id is blank")
+
+    service = ConversationService(tool_registry=StubToolRegistry())
+
+    with pytest.raises(ConversationTenantValidationError):
+        await service._generate_response(
+            user_message="Promote this signal.",
+            messages=[{"role": "user", "content": "Promote this signal."}],
+            active_tab="signals",
+            intent="promote_signal",
+            context_data={"account": {"id": "account-a"}},
+            workflow_result=None,
+            account_name="Acme",
+            gate_context={},
+            tenant_id="   ",
+            entities={"signal_id": "signal-a"},
+        )

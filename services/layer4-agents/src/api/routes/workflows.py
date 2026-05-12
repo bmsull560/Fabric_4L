@@ -117,8 +117,6 @@ class WorkflowCreateRequest(BaseModel):
 
     Spec requires:
     - workflow_type: enum [whitespace_analysis, business_case_generation]
-    - tenant_id: string
-    - user_id: string
     - inputs: object
     """
 
@@ -127,8 +125,6 @@ class WorkflowCreateRequest(BaseModel):
         description="Type of workflow to run",
         json_schema_extra={"enum": list(VALID_WORKFLOW_TYPES)},
     )
-    tenant_id: str | None = Field(None, description="Tenant identifier")
-    user_id: str | None = Field(None, description="User identifier")
     inputs: WorkflowInputs = Field(default_factory=WorkflowInputs, description="Workflow inputs")
     priority: str = Field(default="NORMAL", description="Execution priority")
     workflow_id: str | None = Field(None, description="Optional workflow ID")
@@ -302,8 +298,6 @@ async def create_workflow(
         POST /v1/workflows
         {
             "workflow_type": "roi_calculator",
-            "tenant_id": "tenant-001",
-            "user_id": "user-001",
             "inputs": {
                 "prospect_id": "prospect-001",
                 "use_case_ids": ["uc-001", "uc-002"]
@@ -314,17 +308,13 @@ async def create_workflow(
     Returns:
         201 Created with workflow_instance_id and estimated duration
     """
-    # Use auth context defaults when not explicitly provided
-    tenant_id = request.tenant_id or _ctx.tenant_id
-    user_id = request.user_id or _ctx.user_id
+    # Tenant/user identity is sourced from authenticated context only.
+    tenant_id = _ctx.tenant_id
+    user_id = _ctx.user_id
 
     # Validate tenant_id is required
     if not tenant_id:
         raise HTTPException(status_code=400, detail="tenant_id is required")
-
-    # Validate tenant_id matches authenticated tenant
-    if _ctx.tenant_id and tenant_id != _ctx.tenant_id:
-        raise HTTPException(status_code=403, detail="tenant_id mismatch")
 
     try:
         # Map priority string to enum

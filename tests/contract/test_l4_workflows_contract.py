@@ -29,8 +29,6 @@ class TestL4WorkflowCreateContracts:
         l4_openapi = _load_json(OPENAPI_L4_PATH)
         sample = {
             "workflow_type": "business_case",
-            "tenant_id": "tenant-1",
-            "user_id": "user-1",
             "inputs": {
                 "entity_id": "cap-1",
                 "formula_id": "formula-1",
@@ -38,6 +36,20 @@ class TestL4WorkflowCreateContracts:
         }
         schema = _schema_ref(l4_openapi, "WorkflowCreateRequest")
         assert_matches_schema(sample, schema, root=l4_openapi)
+
+    def test_workflow_create_contract_rejects_client_supplied_tenant_user_identity(self) -> None:
+        """Workflow create contract must not allow client-supplied tenant/user identity fields."""
+        l4_openapi = _load_json(OPENAPI_L4_PATH)
+        workflow_post = l4_openapi["paths"]["/v1/workflows"]["post"]
+
+        description = workflow_post.get("description", "")
+        assert "tenant_id" not in description, "POST /v1/workflows description must not include tenant_id in examples"
+        assert "user_id" not in description, "POST /v1/workflows description must not include user_id in examples"
+
+        schema_name = workflow_post["requestBody"]["content"]["application/json"]["schema"]["$ref"].split("/")[-1]
+        schema_props = l4_openapi["components"]["schemas"][schema_name].get("properties", {})
+        assert "tenant_id" not in schema_props, "WorkflowCreateRequest must not accept tenant_id from clients"
+        assert "user_id" not in schema_props, "WorkflowCreateRequest must not accept user_id from clients"
 
     def test_workflow_create_response_matches_openapi(self) -> None:
         """POST /workflows response matches OpenAPI schema."""

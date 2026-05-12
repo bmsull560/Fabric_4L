@@ -5,8 +5,6 @@ import type { LayerKey } from './client';
 
 export interface WorkflowCreateRequest {
   workflow_type: 'roi_calculator' | 'whitespace_analysis' | 'business_case' | 'business_case_generation' | 'orchestrator';
-  tenant_id?: string;
-  user_id?: string;
   inputs?: WorkflowInputs;
   priority?: 'CRITICAL' | 'HIGH' | 'NORMAL' | 'LOW' | 'BACKGROUND';
 }

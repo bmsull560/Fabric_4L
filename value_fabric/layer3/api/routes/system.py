@@ -93,7 +93,7 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
                     },
                 )
             )
-    except Exception as exc:
+    except (ConnectionError, OSError, RuntimeError, TimeoutError) as exc:
         dependencies.append(
             DependencyStatus(
                 name="neo4j",
@@ -117,7 +117,7 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
                     details={"index": settings.pinecone_index},
                 )
             )
-        except Exception as exc:
+        except (ConnectionError, OSError, RuntimeError, TimeoutError) as exc:
             dependencies.append(
                 DependencyStatus(
                     name="pinecone",
@@ -176,13 +176,10 @@ async def get_metrics(request: Request) -> Response:
             content=metrics_data,
             media_type="text/plain; version=0.0.4; charset=utf-8",
         )
-    except Exception as exc:
-        logger.error("Error generating metrics: %s", exc)
-        return Response(
-            content=f"# Error: {exc}",
-            status_code=500,
-            media_type="text/plain",
-        )
+    except (AttributeError, RuntimeError, ValueError, TypeError) as exc:
+        logger.error("Error generating metrics", extra={"context": {"endpoint": "/metrics", "operation": "get_metrics", "error_type": exc.__class__.__name__}}, exc_info=True)
+        error_payload = {"code": "METRICS_EXPORT_ERROR", "message": "Failed to generate metrics"}
+        return Response(content=str(error_payload), status_code=500, media_type="application/json")
 
 
 @router.get(
@@ -218,7 +215,7 @@ async def health_check(
                     health_result.model_dump() if hasattr(health_result, "model_dump") else dict(health_result)
                 )
                 schema_status = await schema_initializer.verify_schema()
-        except Exception:
+        except (ConnectionError, OSError, RuntimeError, TimeoutError, ValueError, TypeError):
             logger.warning(
                 "Health check failed for Neo4j",
                 exc_info=True,

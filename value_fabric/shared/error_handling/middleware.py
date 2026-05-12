@@ -2,6 +2,10 @@
 
 from typing import Callable
 
+from value_fabric.shared.observability.correlation import (
+    REQUEST_STATE_CORRELATION_ID_KEY,
+    REQUEST_STATE_TRACE_ID_KEY,
+)
 from value_fabric.shared.observability.trace_context import (
     ALL_TRACE_HEADERS,
     CANONICAL_TRACE_HEADER,
@@ -50,8 +54,8 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         request_id = sanitize_trace_id(trace_context.trace_id, generator=self.generator)
 
         # Store in request state for access in route handlers
-        request.state.trace_id = request_id
-        request.state.correlation_id = request_id
+        setattr(request.state, REQUEST_STATE_TRACE_ID_KEY, request_id)
+        setattr(request.state, REQUEST_STATE_CORRELATION_ID_KEY, request_id)
 
         # Process request
         response = await call_next(request)

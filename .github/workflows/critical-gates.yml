@@ -45,6 +45,11 @@ jobs:
             owner: "@value-fabric/sre-leads"
             escalation: "@value-fabric/qa-leads"
             command: "python -m pytest -q tests/k8s/test_production_blockers.py --maxfail=1"
+          - id: correlation-log-contract
+            service: shared
+            owner: "@value-fabric/backend-leads"
+            escalation: "@value-fabric/security-leads"
+            command: "python -m pytest -q tests/security/test_correlation_logging_contract.py --maxfail=1 --no-mandatory-dep-check -n 0"
 
     steps:
       - uses: actions/checkout@v4

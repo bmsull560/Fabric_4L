@@ -15,7 +15,10 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
-from fastapi import HTTPException
+from asyncio import TimeoutError as AsyncTimeoutError
+from fastapi import HTTPException, Request
+from pydantic import ValidationError as PydanticValidationError
+from value_fabric.shared.identity import RequestContext
 from fastapi.responses import StreamingResponse
 
 from ..cache import get_request_deduplicator
@@ -24,6 +27,26 @@ from ..exceptions import SearchError, VectorStoreError
 from ..models import GraphRAGQuery, GraphRAGResponse, SearchRequest, SearchResponse, SearchResult, SearchType
 
 logger = logging.getLogger(__name__)
+
+
+def _build_error_context(*, tenant_id: str | None, endpoint: str, operation: str, request_id: str | None) -> dict[str, str]:
+    context: dict[str, str] = {
+        "tenant": str(tenant_id) if tenant_id else "unknown",
+        "endpoint": endpoint,
+        "operation": operation,
+    }
+    if request_id:
+        context["request_id"] = request_id
+        context["correlation_id"] = request_id
+    return context
+
+
+def _request_id_from_context(request: Request | None, ctx: RequestContext | None) -> str | None:
+    if request:
+        return getattr(request.state, "trace_id", None) or getattr(request.state, "correlation_id", None)
+    if ctx:
+        return ctx.request_id
+    return None
 
 
 async def _execute_graph_rag_query(
@@ -69,7 +92,13 @@ async def _execute_graph_rag_query(
     })
 
 
-async def graph_rag_query_impl(query: GraphRAGQuery, graph_rag: Any) -> GraphRAGResponse:
+async def graph_rag_query_impl(
+    query: GraphRAGQuery,
+    graph_rag: Any,
+    *,
+    ctx: RequestContext | None = None,
+    request: Request | None = None,
+) -> GraphRAGResponse:
     try:
         deduplicator = get_request_deduplicator()
         if deduplicator:
@@ -94,11 +123,40 @@ async def graph_rag_query_impl(query: GraphRAGQuery, graph_rag: Any) -> GraphRAG
             graph_rag, query.query, query.entity_type, query.max_hops, query.max_results
         )
     except (SearchError, VectorStoreError) as exc:
-        context = {"tenant": "unknown", "endpoint": "/v1/query", "operation": "graph_rag_query"}
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/query",
+            operation="graph_rag_query",
+            request_id=_request_id_from_context(request, ctx),
+        )
         logger.warning("GraphRAG query mapped exception", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
+    except (PydanticValidationError, ValueError, TypeError) as exc:
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/query",
+            operation="graph_rag_query",
+            request_id=_request_id_from_context(request, ctx),
+        )
+        context["error_code"] = "VALIDATION_ERROR"
+        logger.warning("GraphRAG query validation failed", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
+    except (AsyncTimeoutError, TimeoutError) as exc:
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/query",
+            operation="graph_rag_query",
+            request_id=_request_id_from_context(request, ctx),
+        )
+        context["error_code"] = "UPSTREAM_TIMEOUT"
+        logger.error("GraphRAG query timed out", extra={"context": context}, exc_info=True)
     except Exception as exc:
-        context = {"tenant": "unknown", "endpoint": "/v1/query", "operation": "graph_rag_query"}
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/query",
+            operation="graph_rag_query",
+            request_id=_request_id_from_context(request, ctx),
+        )
         logger.error("GraphRAG query failed", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
 
@@ -119,8 +177,8 @@ async def graph_rag_query_stream_impl(query: GraphRAGQuery, graph_rag: Any) -> S
                     "progress_percent": event.get("progress_percent", 0.0),
                 }
                 yield f"data: {json.dumps(event_data)}\\n\\n"
-        except Exception as exc:
-            logger.error("Streaming GraphRAG query failed", exc_info=True)
+        except (AsyncTimeoutError, TimeoutError, RuntimeError, ValueError, TypeError) as exc:
+            logger.error("Streaming GraphRAG query failed", extra={"context": {"tenant": "unknown", "endpoint": "/v1/query/stream", "operation": "graph_rag_query_stream", "error_type": exc.__class__.__name__}}, exc_info=True)
             trace_id = None
             if isinstance(exc, Exception):
                 trace_id = getattr(exc, "trace_id", None) or getattr(exc, "correlation_id", None)
@@ -167,7 +225,13 @@ async def _execute_hybrid_search(
     })
 
 
-async def hybrid_search_impl(request: SearchRequest, hybrid_search: Any) -> SearchResponse:
+async def hybrid_search_impl(
+    request: SearchRequest,
+    hybrid_search: Any,
+    *,
+    ctx: RequestContext | None = None,
+    http_request: Request | None = None,
+) -> SearchResponse:
     try:
         deduplicator = get_request_deduplicator()
         if deduplicator:
@@ -199,10 +263,39 @@ async def hybrid_search_impl(request: SearchRequest, hybrid_search: Any) -> Sear
             request.weights,
         )
     except (SearchError, VectorStoreError) as exc:
-        context = {"tenant": "unknown", "endpoint": "/v1/search", "operation": "hybrid_search"}
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/search",
+            operation="hybrid_search",
+            request_id=_request_id_from_context(http_request, ctx),
+        )
         logger.warning("Search mapped exception", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
+    except (PydanticValidationError, ValueError, TypeError) as exc:
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/search",
+            operation="hybrid_search",
+            request_id=_request_id_from_context(http_request, ctx),
+        )
+        context["error_code"] = "VALIDATION_ERROR"
+        logger.warning("Search validation failed", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
+    except (AsyncTimeoutError, TimeoutError) as exc:
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/search",
+            operation="hybrid_search",
+            request_id=_request_id_from_context(http_request, ctx),
+        )
+        context["error_code"] = "UPSTREAM_TIMEOUT"
+        logger.error("Search timed out", extra={"context": context}, exc_info=True)
     except Exception as exc:
-        context = {"tenant": "unknown", "endpoint": "/v1/search", "operation": "hybrid_search"}
+        context = _build_error_context(
+            tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
+            endpoint="/v1/search",
+            operation="hybrid_search",
+            request_id=_request_id_from_context(http_request, ctx),
+        )
         logger.error("Search failed", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)

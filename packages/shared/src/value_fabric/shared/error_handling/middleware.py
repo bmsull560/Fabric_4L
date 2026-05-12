@@ -1,18 +1,22 @@
 """Middleware for request correlation ID handling."""
 
-import re
-import uuid
 from typing import Callable
+
+from value_fabric.shared.observability.correlation import (
+    REQUEST_STATE_CORRELATION_ID_KEY,
+    REQUEST_STATE_TRACE_ID_KEY,
+)
+from value_fabric.shared.observability.trace_context import (
+    ALL_TRACE_HEADERS,
+    CANONICAL_TRACE_HEADER,
+    canonical_trace_headers,
+    resolve_trace_context,
+    sanitize_trace_id,
+)
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
-
-# Maximum length for request ID to prevent header size attacks
-MAX_REQUEST_ID_LENGTH = 64
-
-# Regex for valid request ID characters (alphanumeric, hyphen, underscore)
-VALID_REQUEST_ID_PATTERN = re.compile(r'^[a-zA-Z0-9\-_]+$')
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -29,7 +33,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        header_name: str = "X-Request-ID",
+        header_name: str = CANONICAL_TRACE_HEADER,
         generator: Callable[[], str] | None = None,
     ):
         """Initialize the middleware.
@@ -41,46 +45,24 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self.header_name = header_name
-        self.generator = generator or self._default_generator
-
-    @staticmethod
-    def _default_generator() -> str:
-        """Generate a default request ID."""
-        return f"req_{uuid.uuid4().hex[:20]}"
-
-    def _validate_request_id(self, request_id: str | None) -> str:
-        """Validate and sanitize incoming request ID.
-        
-        Returns a safe request ID or generates a new one if invalid.
-        """
-        if not request_id:
-            return self.generator()
-        
-        # Check length
-        if len(request_id) > MAX_REQUEST_ID_LENGTH:
-            request_id = request_id[:MAX_REQUEST_ID_LENGTH]
-        
-        # Check valid characters
-        if not VALID_REQUEST_ID_PATTERN.match(request_id):
-            # Invalid characters found, generate new ID
-            return self.generator()
-        
-        return request_id
+        self.generator = generator
 
     async def dispatch(self, request: Request, call_next) -> Response:
         """Process request and add correlation ID."""
         # Get and validate request ID from header, or generate new one
-        raw_request_id = request.headers.get(self.header_name)
-        request_id = self._validate_request_id(raw_request_id)
+        trace_context = resolve_trace_context(request.headers)
+        request_id = sanitize_trace_id(trace_context.trace_id, generator=self.generator)
 
         # Store in request state for access in route handlers
-        request.state.trace_id = request_id
+        setattr(request.state, REQUEST_STATE_TRACE_ID_KEY, request_id)
+        setattr(request.state, REQUEST_STATE_CORRELATION_ID_KEY, request_id)
 
         # Process request
         response = await call_next(request)
 
         # Add request ID to response headers
-        response.headers[self.header_name] = request_id
+        for header, value in canonical_trace_headers(request_id).items():
+            response.headers[header] = value
 
         return response
 
@@ -100,4 +82,8 @@ def get_request_id(request: Request) -> str:
         return str(trace_id)
 
     # Fall back to header
-    return request.headers.get("X-Request-ID", "unknown")
+    for header in ALL_TRACE_HEADERS:
+        value = request.headers.get(header)
+        if value:
+            return value
+    return "unknown"

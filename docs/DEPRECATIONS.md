@@ -301,8 +301,19 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 
 ## Field Deprecations
 
-- [P2] graph-node-legacy-fields: GraphNode alias fields (name, entity_type, confidence_score) are deprecated in favor of canonical fields (label, type, confidence). Target removal: 2026-07-01.
-- [P2] graph-edge-legacy-field: GraphEdge alias field (relationship_type) is deprecated in favor of canonical field (type). Target removal: 2026-07-01.
+- [P2] graph-node-legacy-fields: GraphNode alias fields (`name`, `entity_type`, `confidence_score`) are deprecated in favor of canonical fields (`label`, `type`, `confidence`). Target removal: **v2.4 / 2026-07-01**. Runtime instrumentation: `graph_node_request_legacy_fields`, `graph_node_response_legacy_fields`.
+- [P2] graph-edge-legacy-field: GraphEdge alias field (`relationship_type`) is deprecated in favor of canonical field (`type`). Target removal: **v2.4 / 2026-07-01**. Runtime instrumentation: `graph_edge_request_legacy_fields`, `graph_edge_response_legacy_fields`.
+
+### Graph Legacy Field Removal Checklist
+
+Before removing legacy GraphNode/GraphEdge fields, complete all steps:
+
+- [ ] Confirm request/response deprecated-field counters are zero for a sustained 14-day window in production.
+- [ ] Confirm no frontend clients parse deprecated aliases (`name`, `entity_type`, `confidence_score`, `relationship_type`).
+- [ ] Update `value_fabric/layer3/api/models.py` and wrapper mirror `services/layer3-knowledge/src/api/models.py` in the same change.
+- [ ] Regenerate OpenAPI and validate `contracts/openapi/layer3-knowledge.json` matches the removal intent.
+- [ ] Update/add contract tests to assert deprecated fields are absent and canonical fields remain stable.
+- [ ] Communicate cutover date to dependent service owners before release.
 - [P1] legacy-error-response-aliases: `HTTPValidationError` and Layer 1's top-level `error: "authentication_required"` adapter remain compatibility aliases only. New clients must consume `ErrorResponse` with `message`, `code`, `trace_id`, and optional sanitized `details`. Target removal: 2026-08-01.
 
 ---

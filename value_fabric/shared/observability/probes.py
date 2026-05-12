@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
+from .correlation import LOG_FIELD_CORRELATION_ID, REQUEST_STATE_CORRELATION_ID_KEY, REQUEST_STATE_TRACE_ID_KEY
 from .trace_context import canonical_trace_headers, resolve_trace_context
 
 logger = logging.getLogger("value_fabric.observability")
@@ -32,8 +33,8 @@ def configure_observability(
     async def correlation_middleware(request: Request, call_next):
         trace_context = resolve_trace_context(request.headers)
         correlation_id = trace_context.trace_id
-        request.state.trace_id = correlation_id
-        request.state.correlation_id = correlation_id
+        setattr(request.state, REQUEST_STATE_TRACE_ID_KEY, correlation_id)
+        setattr(request.state, REQUEST_STATE_CORRELATION_ID_KEY, correlation_id)
         try:
             response = await call_next(request)
         except Exception as exc:
@@ -44,7 +45,7 @@ def configure_observability(
                         "service": service_name,
                         "path": request.url.path,
                         "method": request.method,
-                        "correlation_id": correlation_id,
+                        LOG_FIELD_CORRELATION_ID: correlation_id,
                         "error": str(exc),
                         "exception_type": type(exc).__name__,
                     }

@@ -7,11 +7,20 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
 from value_fabric.shared.models.typed_dict import TypedDictModel
+
+from .types import (
+    BucketState,
+    LeakyBucketState,
+    MetricsMap,
+    RateLimitRuleMetadata,
+    StringCountMap,
+    TokenBucketState,
+)
 
 
 class RateLimitManager_get_metricsResult(TypedDictModel):
@@ -72,7 +81,7 @@ class RateLimitRule:
     priority: int = 0
     enabled: bool = True
     conditions: dict[str, Any] = field(default_factory=dict)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: RateLimitRuleMetadata = field(default_factory=dict)
 
     def __post_init__(self):
         """Post-initialization validation."""
@@ -418,7 +427,7 @@ class RateLimitStore:
             await self.redis_client.close()
             logger.info("Disconnected from Redis")
 
-    async def get_bucket_state(self, key: str) -> dict[str, Any] | None:
+    async def get_bucket_state(self, key: str) -> BucketState | None:
         """Get bucket state from Redis.
 
         Args:
@@ -437,7 +446,7 @@ class RateLimitStore:
             logger.error(f"Failed to get bucket state: {e}")
             return None
 
-    async def set_bucket_state(self, key: str, state: dict[str, Any], ttl: int = 3600):
+    async def set_bucket_state(self, key: str, state: BucketState, ttl: int = 3600):
         """Set bucket state in Redis.
 
         Args:
@@ -529,7 +538,7 @@ class RateLimitManager:
         self.store = RateLimitStore(config.redis_url)
         self.rules: list[RateLimitRule] = []
         self.limiters: dict[str, Any] = {}  # Cache of limiters
-        self.metrics: dict[str, Any] = defaultdict(int)
+        self.metrics: MetricsMap = defaultdict(int)
 
         # Combine default and custom rules
         self.rules = config.default_limits + config.custom_limits
@@ -716,11 +725,14 @@ class RateLimitManager:
         state = await self.store.get_bucket_state(key)
 
         if not state:
-            state = {
-                "tokens": rule.limit,
-                "last_refill": time.time(),
-                "created_at": time.time(),
-            }
+            state = cast(
+                TokenBucketState,
+                {
+                    "tokens": float(rule.limit),
+                    "last_refill": time.time(),
+                    "created_at": time.time(),
+                },
+            )
 
         # Calculate refill rate
         refill_rate = rule.limit / rule.window_seconds
@@ -864,11 +876,14 @@ class RateLimitManager:
         state = await self.store.get_bucket_state(key)
 
         if not state:
-            state = {
-                "queue_size": 0,
-                "last_leak": time.time(),
-                "created_at": time.time(),
-            }
+            state = cast(
+                LeakyBucketState,
+                {
+                    "queue_size": 0,
+                    "last_leak": time.time(),
+                    "created_at": time.time(),
+                },
+            )
 
         # Calculate leak rate
         leak_rate = rule.limit / rule.window_seconds
@@ -973,7 +988,7 @@ class RateLimitManager:
 
         return False
 
-    async def get_metrics(self) -> dict[str, Any]:
+    async def get_metrics(self) -> RateLimitManager_get_metricsResult:
         """Get rate limiting metrics.
 
         Returns:
@@ -983,8 +998,8 @@ class RateLimitManager:
         enabled_rules = len([r for r in self.rules if r.enabled])
 
         # Count by scope
-        scope_counts = defaultdict(int)
-        type_counts = defaultdict(int)
+        scope_counts: StringCountMap = defaultdict(int)
+        type_counts: StringCountMap = defaultdict(int)
 
         for rule in self.rules:
             scope_counts[rule.scope.value] += 1

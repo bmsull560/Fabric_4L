@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+
+from .correlation import LOG_FIELD_CORRELATION_ID, REQUEST_STATE_CORRELATION_ID_KEY, REQUEST_STATE_TRACE_ID_KEY
+from .trace_context import canonical_trace_headers, resolve_trace_context
 
 logger = logging.getLogger("value_fabric.observability")
 
@@ -29,8 +31,10 @@ def configure_observability(
 
     @app.middleware("http")
     async def correlation_middleware(request: Request, call_next):
-        correlation_id = request.headers.get(correlation_header) or request.headers.get("X-Request-ID") or str(uuid.uuid4())
-        request.state.correlation_id = correlation_id
+        trace_context = resolve_trace_context(request.headers)
+        correlation_id = trace_context.trace_id
+        setattr(request.state, REQUEST_STATE_TRACE_ID_KEY, correlation_id)
+        setattr(request.state, REQUEST_STATE_CORRELATION_ID_KEY, correlation_id)
         try:
             response = await call_next(request)
         except Exception as exc:
@@ -41,7 +45,7 @@ def configure_observability(
                         "service": service_name,
                         "path": request.url.path,
                         "method": request.method,
-                        "correlation_id": correlation_id,
+                        LOG_FIELD_CORRELATION_ID: correlation_id,
                         "error": str(exc),
                         "exception_type": type(exc).__name__,
                     }
@@ -50,11 +54,11 @@ def configure_observability(
             return JSONResponse(
                 status_code=500,
                 content={"error": "internal_server_error", "correlation_id": correlation_id},
-                headers={correlation_header: correlation_id, "X-Request-ID": correlation_id},
+                headers=canonical_trace_headers(correlation_id),
             )
 
-        response.headers[correlation_header] = correlation_id
-        response.headers.setdefault("X-Request-ID", correlation_id)
+        for header, value in canonical_trace_headers(correlation_id).items():
+            response.headers[header] = value
         return response
 
     paths = {route.path for route in app.routes if hasattr(route, "path")}

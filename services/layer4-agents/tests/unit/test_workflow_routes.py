@@ -24,39 +24,23 @@ class TestWorkflowCreateRequest:
     def test_valid_request_with_all_fields(self):
         req = WorkflowCreateRequest(
             workflow_type="roi_calculator",
-            tenant_id="tenant-001",
-            user_id="user-001",
             inputs=WorkflowInputs(prospect_id="p-001"),
             priority="HIGH",
         )
         assert req.workflow_type == "roi_calculator"
-        assert req.tenant_id == "tenant-001"
-        assert req.user_id == "user-001"
         assert req.inputs.prospect_id == "p-001"
         assert req.priority == "HIGH"
 
-    def test_valid_request_without_tenant_id(self):
-        """tenant_id should be optional (falls back to auth context)."""
+    def test_valid_request_minimal_with_type_only(self):
+        """Only workflow_type is required for create request."""
         req = WorkflowCreateRequest(
             workflow_type="business_case_generation",
-            user_id="user-001",
         )
-        assert req.tenant_id is None
         assert req.workflow_type == "business_case_generation"
-
-    def test_valid_request_without_user_id(self):
-        """user_id should be optional (falls back to auth context)."""
-        req = WorkflowCreateRequest(
-            workflow_type="whitespace_analysis",
-            tenant_id="tenant-001",
-        )
-        assert req.user_id is None
 
     def test_valid_request_minimal(self):
         """Only workflow_type is strictly required."""
         req = WorkflowCreateRequest(workflow_type="orchestrator")
-        assert req.tenant_id is None
-        assert req.user_id is None
         assert req.priority == "NORMAL"
 
     def test_invalid_workflow_type_rejected(self):

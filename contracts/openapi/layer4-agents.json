@@ -76,7 +76,7 @@
           "workflows"
         ],
         "summary": "Create Workflow",
-        "description": "Create and execute a new workflow - OpenAPI spec compliant.\n\nExample:\n    POST /v1/workflows\n    {\n        \"workflow_type\": \"roi_calculator\",\n        \"tenant_id\": \"tenant-001\",\n        \"user_id\": \"user-001\",\n        \"inputs\": {\n            \"prospect_id\": \"prospect-001\",\n            \"use_case_ids\": [\"uc-001\", \"uc-002\"]\n        },\n        \"priority\": \"HIGH\"\n    }\n\nReturns:\n    201 Created with workflow_instance_id and estimated duration",
+        "description": "Create and execute a new workflow - OpenAPI spec compliant.\n\nExample:\n    POST /v1/workflows\n    {\n        \"workflow_type\": \"roi_calculator\",\n        \"inputs\": {\n            \"prospect_id\": \"prospect-001\",\n            \"use_case_ids\": [\"uc-001\", \"uc-002\"]\n        },\n        \"priority\": \"HIGH\"\n    }\n\nReturns:\n    201 Created with workflow_instance_id and estimated duration",
         "operationId": "create_workflow_v1_workflows_post",
         "requestBody": {
           "required": true,
@@ -1961,7 +1961,7 @@
           "analysis"
         ],
         "summary": "Generate Workspace Intelligence",
-        "description": "Generate workspace intelligence data for a case.\n\nLightweight generation that surfaces existing Neo4j data (signals,\nhypotheses) for the account. No LLM call \u2014 just exposes graph data\nthe frontend currently can't see.",
+        "description": "Generate workspace intelligence data for a case.\n\nLightweight generation that surfaces existing Neo4j data (signals,\nhypotheses) for the account. No LLM call — just exposes graph data\nthe frontend currently can't see.",
         "operationId": "generate_workspace_intelligence_v1_cases__case_id__workspace_generate_post",
         "parameters": [
           {
@@ -3261,7 +3261,7 @@
           "agent-stream"
         ],
         "summary": "Agent Stream Chat Sse",
-        "description": "SSE streaming version of the agent chat endpoint.\n\nEmits AG-UI protocol events as server-sent events:\n  RUN_STARTED \u2192 STEP_STARTED/STEP_FINISHED \u2192 TEXT_MESSAGE_* \u2192 RUN_FINISHED",
+        "description": "SSE streaming version of the agent chat endpoint.\n\nEmits AG-UI protocol events as server-sent events:\n  RUN_STARTED → STEP_STARTED/STEP_FINISHED → TEXT_MESSAGE_* → RUN_FINISHED",
         "operationId": "agent_stream_chat_sse_v1_agent_stream_chat_stream_post",
         "requestBody": {
           "content": {
@@ -9473,7 +9473,7 @@
           "prospects"
         ],
         "summary": "Start Prospect Analysis",
-        "description": "Start prospect analysis workflow \u2014 real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
+        "description": "Start prospect analysis workflow — real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
         "operationId": "start_prospect_analysis_v1_prospects__prospect_id__start_analysis_post",
         "parameters": [
           {
@@ -10283,7 +10283,7 @@
           "api_key": {
             "type": "string",
             "title": "Api Key",
-            "description": "Full key \u2014 shown ONCE, store securely"
+            "description": "Full key — shown ONCE, store securely"
           },
           "prefix": {
             "type": "string",
@@ -10343,7 +10343,7 @@
           "created_at"
         ],
         "title": "APIKeyCreateResponse",
-        "description": "Returned once on key creation \u2014 includes the raw secret (shown only once)."
+        "description": "Returned once on key creation — includes the raw secret (shown only once)."
       },
       "APIKeyModel": {
         "properties": {
@@ -17900,7 +17900,7 @@
           "system"
         ],
         "title": "Role",
-        "description": "Business roles used across all layers.\n\nHierarchy (highest \u2192 lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
+        "description": "Business roles used across all layers.\n\nHierarchy (highest → lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
       },
       "SalesforceOAuthAuthorizeRequest": {
         "properties": {
@@ -19641,7 +19641,7 @@
           "email"
         ],
         "title": "UserModel",
-        "description": "Read-only representation of a user (returned by API \u2014 no password)."
+        "description": "Read-only representation of a user (returned by API — no password)."
       },
       "UserStatus": {
         "type": "string",
@@ -20488,30 +20488,6 @@
             ],
             "title": "Workflow Type",
             "description": "Type of workflow to run"
-          },
-          "tenant_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tenant Id",
-            "description": "Tenant identifier"
-          },
-          "user_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Id",
-            "description": "User identifier"
           },
           "inputs": {
             "$ref": "#/components/schemas/WorkflowInputs",

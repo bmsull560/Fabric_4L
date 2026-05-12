@@ -56,9 +56,28 @@ Before opening a PR with backend runtime changes:
 3. Keep service wrapper changes minimal and wiring-only.
 4. If compatibility code is touched, add a TODO with migration intent and owner.
 
+## Layer 3 API model ownership note
+
+- Canonical implementation: `value_fabric/layer3/api/models.py`.
+- Compatibility shim only: `services/layer3-knowledge/src/api/models.py` (must only re-export canonical models; no local Pydantic model implementations).
+
 ## Related documentation
 
 - [Repository Agent Rules (root)](../../AGENTS.md)
 - [Source Tree Canonicalization](../source-tree-canonicalization.md)
 - [Service Routing and API Version Matrix](./service-routing-and-api-version-matrix.md)
 - [Quickstart](../getting-started/quickstart.md)
+
+## Architecture sentinel map maintenance
+
+`tests/arch/test_canonical_module_sentinels.py` intentionally tracks a small, high-impact
+set of canonical module pairs.
+
+When adding a new sentinel:
+
+1. Prefer modules that are architectural choke points (for example shared API models or boundary schemas).
+2. Add one `canonical_path` + `compatibility_path` pair to `SENTINELS`.
+3. Keep compatibility module behavior shim-only (re-export/delegate); do not add local classes/functions there.
+4. If a compatibility module temporarily needs local logic, document the migration exception in the test file with owner and removal date before merging.
+
+Avoid adding low-value or highly volatile modules to keep this guardrail low-noise.

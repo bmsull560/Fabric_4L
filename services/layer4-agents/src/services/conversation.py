@@ -52,6 +52,10 @@ class ConversationService__guardrailResult(TypedDictModel):
 
 logger = logging.getLogger(__name__)
 
+
+class ConversationTenantValidationError(ValueError):
+    """Raised when a required tenant identifier is missing or blank."""
+
 # Semantic-contract validators are provided by packages/platform-contract.
 # Layer 4 services can run in isolation during local development, so the
 # import is intentionally best-effort and remains warning-only unless
@@ -285,7 +289,7 @@ class ConversationService:
         account_name: str = "this account",
         account_tier: str | None = None,
         entity_context: dict[str, Any] | None = None,
-        tenant_id: str = "unknown",
+        tenant_id: str,
         trace_id: str | None = None,
     ):
         """Async generator that yields AG-UI events as the pipeline progresses.
@@ -300,6 +304,7 @@ class ConversationService:
           {type: "RUN_FINISHED", ...}
           {type: "RUN_ERROR", ...}
         """
+        tenant_id = self._require_tenant_id(tenant_id)
         trace_id = trace_id or str(uuid.uuid4())
         workflow_id = str(uuid.uuid4())
         run_id = f"run-{trace_id[:8]}"
@@ -444,7 +449,7 @@ class ConversationService:
         account_name: str = "this account",
         account_tier: str | None = None,
         entity_context: dict[str, Any] | None = None,
-        tenant_id: str = "unknown",
+        tenant_id: str,
         trace_id: str | None = None,
     ) -> dict[str, Any]:
         """Process a user message through the full ValuePilot pipeline.
@@ -452,6 +457,7 @@ class ConversationService:
         Returns:
             Dict with 'content' and 'metadata' matching the AgentStreamResponse contract.
         """
+        tenant_id = self._require_tenant_id(tenant_id)
         trace_id = trace_id or str(uuid.uuid4())
         workflow_id = str(uuid.uuid4())
         audit_event_id = f"audit_{uuid.uuid4().hex[:12]}"
@@ -634,9 +640,10 @@ class ConversationService:
         account_id: str | None,
         entity_context: dict[str, Any],
         gate_context: dict[str, Any],
-        tenant_id: str = "default",
+        tenant_id: str,
     ) -> dict[str, Any]:
         """Gather relevant context using ConversationAgent, ContextGatheringService, or minimal fallback."""
+        tenant_id = self._require_tenant_id(tenant_id)
         # Strategy 1: GATE ConversationAgent
         if self.conversation_agent and account_id:
             try:
@@ -732,6 +739,7 @@ class ConversationService:
         tenant_id: str,
     ) -> dict[str, Any] | None:
         """Execute a mutation tool if intent matches and registry is available."""
+        tenant_id = self._require_tenant_id(tenant_id)
         if not self.tool_registry:
             return None
 
@@ -781,7 +789,7 @@ class ConversationService:
         workflow_result: dict[str, Any] | None,
         account_name: str,
         gate_context: dict[str, Any],
-        tenant_id: str = "default",
+        tenant_id: str,
         entities: dict[str, Any] | None = None,
     ) -> str:
         """Generate the response content.
@@ -792,6 +800,7 @@ class ConversationService:
         3. C1 proxy with enriched system prompt if C1 enabled
         4. Context-aware heuristic response (no LLM)
         """
+        tenant_id = self._require_tenant_id(tenant_id)
         # Strategy 0: Mutation tool execution
         tool_result = None
         if intent in MUTATION_INTENTS:
@@ -858,6 +867,12 @@ class ConversationService:
             account_name=account_name,
         )
         return self._append_workflow_notice(content, workflow_result)
+
+    def _require_tenant_id(self, tenant_id: str) -> str:
+        normalized = tenant_id.strip() if isinstance(tenant_id, str) else ""
+        if not normalized:
+            raise ConversationTenantValidationError("tenant_id is required and must not be blank")
+        return normalized
 
     async def _generate_via_c1(
         self,

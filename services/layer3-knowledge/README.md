@@ -183,3 +183,15 @@ Deprecated API endpoints emit warning headers:
 - `X-Deprecated-Since`, `X-Target-Removal-Date`, `X-Deprecation-Owner`
 
 See [API Reference - Deprecation Policy](../../docs/API_REFERENCE.md#deprecation-policy) for full details.
+
+### Graph Field Deprecation Transition (v2.4 target)
+
+Layer 3 graph response models currently include both canonical and legacy alias fields during the deprecation window:
+- GraphNode canonical: `label`, `type`, `confidence`
+- GraphNode legacy aliases: `name`, `entity_type`, `confidence_score`
+- GraphEdge canonical: `type`
+- GraphEdge legacy alias: `relationship_type`
+
+Target removal is **v2.4 / 2026-07-01**. Monitor runtime counters before removal:
+`graph_node_request_legacy_fields`, `graph_node_response_legacy_fields`, `graph_edge_request_legacy_fields`, `graph_edge_response_legacy_fields`.
+See `docs/DEPRECATIONS.md#graph-legacy-field-removal-checklist` for mandatory cutover steps.

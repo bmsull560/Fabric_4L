@@ -303,7 +303,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     trace_id = get_request_trace_id(request)
 
     # Log the full exception for debugging
-    logger.exception(f"Unhandled exception (trace_id={trace_id}): {exc}")
+    logger.exception("Unhandled exception", extra={"trace_id": trace_id, "correlation_id": trace_id, "error": str(exc)})
 
     # Always return sanitized message in production
     if is_production():

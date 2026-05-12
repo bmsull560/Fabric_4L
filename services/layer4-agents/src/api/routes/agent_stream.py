@@ -254,7 +254,7 @@ async def agent_stream_chat(
         else request_trace_id
     )
 
-    tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
+    tenant_id = str(ctx.tenant_id)
 
     # Build message list for context
     messages = [{"role": m.role, "content": m.content} for m in payload.messages]
@@ -365,7 +365,7 @@ async def agent_stream_chat_sse(
         else request_trace_id
     )
 
-    tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
+    tenant_id = str(ctx.tenant_id)
     messages = [{"role": m.role, "content": m.content} for m in payload.messages]
 
     # Build context gatherer and tool registry

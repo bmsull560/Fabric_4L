@@ -13,6 +13,13 @@ from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCyph
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
+from .types import (
+    EntityContextResult,
+    ExpandedContextResult,
+    SerializedRelationship,
+    TraverseValueTreeResult,
+    ValueTreePath,
+)
 from ..db.driver import get_driver
 from ..schema.constraints import get_entity_types, get_relationship_types
 from .vector_store import VectorStore
@@ -136,7 +143,7 @@ def _serialize_entity(entity: dict[str, Any]) -> dict[str, Any]:
     return serialized
 
 
-def _serialize_relationship(rel: Any, include_hops: bool = False, hops: int = 0) -> dict[str, Any]:
+def _serialize_relationship(rel: Any, include_hops: bool = False, hops: int = 0) -> SerializedRelationship:
     """Serialize a Neo4j relationship with alias fields.
 
     Centralizes relationship serialization to ensure consistent alias field
@@ -287,7 +294,7 @@ class GraphRAGEngine:
         tenant_id: str,
         hops: int = 2,
         relationship_types: list[str] | None = None,
-    ) -> dict[str, Any]:
+    ) -> EntityContextResult:
         """Retrieve N-hop neighborhood around an entity with tenant filtering.
 
         Args:
@@ -369,7 +376,7 @@ class GraphRAGEngine:
         start_entity_id: str,
         tenant_id: str,
         direction: str = "both",  # up, down, both
-    ) -> dict[str, Any]:
+    ) -> TraverseValueTreeResult:
         """Traverse the 4-layer value tree from a starting entity with tenant filtering.
 
         Args:
@@ -436,7 +443,8 @@ class GraphRAGEngine:
                 for rel in rels:
                     relationships.append(_serialize_relationship(rel))
 
-                paths.append({"nodes": nodes, "relationships": relationships})
+                path: ValueTreePath = {"nodes": nodes, "relationships": relationships}
+                paths.append(path)
 
             return GraphRAGEngine_traverse_value_treeResult.model_validate({
                 "start_entity_id": start_entity_id,
@@ -581,7 +589,7 @@ class GraphRAGEngine:
         max_hops: int,
         min_confidence: float,
         tenant_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> ExpandedContextResult:
         """Expand context via graph traversal from seed entities."""
         driver = await self._get_driver()
         max_hops = _validate_hops(max_hops, max_hops=5)

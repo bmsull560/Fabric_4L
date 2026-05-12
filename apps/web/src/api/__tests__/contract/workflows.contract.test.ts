@@ -31,8 +31,6 @@ const WorkflowCreateRequestSchema = z.object({
     'business_case_generation',
     'orchestrator',
   ]),
-  tenant_id: z.string().min(1).optional(),
-  user_id: z.string().min(1).optional(),
   inputs: z
     .object({
       prospect_id: z.string().optional(),
@@ -68,8 +66,6 @@ describe('Contract: POST /v1/workflows', () => {
   it('accepts a minimal valid create request', () => {
     const req = {
       workflow_type: 'roi_calculator',
-      tenant_id: 'tenant-001',
-      user_id: 'user-001',
     };
     assertSchema(WorkflowCreateRequestSchema, req, 'WorkflowCreateRequest');
   });
@@ -77,8 +73,6 @@ describe('Contract: POST /v1/workflows', () => {
   it('accepts a full create request with inputs and priority', () => {
     const req = {
       workflow_type: 'whitespace_analysis',
-      tenant_id: 'tenant-001',
-      user_id: 'user-001',
       inputs: {
         prospect_id: 'prospect-abc',
         prospect_company: 'Acme Corp',
@@ -93,12 +87,12 @@ describe('Contract: POST /v1/workflows', () => {
   it('rejects unknown workflow_type', () => {
     assertSchemaRejects(
       WorkflowCreateRequestSchema,
-      { workflow_type: 'unknown_type', tenant_id: 't', user_id: 'u' },
+      { workflow_type: 'unknown_type' },
       'WorkflowCreateRequest with invalid type'
     );
   });
 
-  it('accepts minimal request without tenant_id and user_id', () => {
+  it('accepts minimal request using auth-context identity', () => {
     assertSchema(
       WorkflowCreateRequestSchema,
       { workflow_type: 'roi_calculator' },
