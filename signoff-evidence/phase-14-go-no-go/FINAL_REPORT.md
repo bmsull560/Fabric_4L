@@ -54,7 +54,7 @@ Key locations:
 | # | Phase | Item | Severity | Status | Description |
 |---|-------|------|----------|--------|-------------|
 | 1 | 1 | `value_fabric/` active code | CRITICAL | **BLOCKED** | `DEPRECATED.md` created, but 1,627+ external references remain. `services/layer2-extraction/` is mostly shims to `value_fabric.layer2`. `services/layer1-ingestion/tests/` has extensive direct imports. Multiple scripts and routes still depend on it. Full migration required before deletion. |
-| 2 | 1 | `.env.example` placeholders | HIGH | **ACCEPTED RISK** | Still contains `CHANGE_ME` and `sk-placeholder-do-not-use`. Non-blocking for staging. Must be fixed before production secrets rotation. |
+| 2 | 1 | `.env.example` placeholders | HIGH | **RESOLVED** | All placeholder secrets replaced with empty strings. Comments preserved for guidance. |
 | 3 | 1 | K8s overlays missing | HIGH | **RESOLVED** | `k8s/overlays/production/kustomization.yaml` and `k8s/overlays/staging/kustomization.yaml` created with patches. |
 | 4 | ALL | Unresolved merge conflicts | CRITICAL | **RESOLVED** | All 51 merge conflict markers resolved across 10 files. `compat_aliases.py`, `checkpoints.py`, `conftest.py`, and workflow/docs files cleaned. |
 | 5 | 4 | TypeScript API type drift | HIGH | **RESOLVED** | `src/api/statuses.ts` now uses local string literal types. `graph.mapper.ts` and `useGraphQuery.ts` use `unknown` for missing `EntityContextResponse`. |

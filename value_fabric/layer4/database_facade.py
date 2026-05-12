@@ -25,7 +25,7 @@ try:
     if str(_SERVICE_ROOT) not in sys.path:
         sys.path.insert(0, str(_SERVICE_ROOT))
     _CANONICAL = importlib.import_module("src.database")
-except Exception as exc:  # pragma: no cover - exercised in constrained CI envs
+except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover
     _CANONICAL_IMPORT_ERROR = exc
 
 if _CANONICAL is not None:
@@ -120,8 +120,8 @@ else:
                 request_id=context.request_id,
                 details=details.model_dump(exclude_none=True),
             )
-        except Exception as e:  # pragma: no cover
-            logger.debug("Tenant context audit emission failed (non-critical): %s", e)
+        except (AttributeError, TypeError) as exc:  # pragma: no cover
+            logger.debug("Tenant context audit emission failed (non-critical): %s", exc)
 
     async def get_db_from_context(*args, **kwargs):
         """Fail closed when the canonical tenant-enforced DB dependency is unavailable."""

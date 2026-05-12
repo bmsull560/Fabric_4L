@@ -6,6 +6,7 @@ from app.core.database import db
 from app.core.tenant_context import tenant_required
 from app.models.schemas import BusinessCase
 from app.services.gate_service import all_gates_pass, check_gates, get_gate_summary
+from app.services.export_service import generate_export
 
 router = APIRouter(prefix="/accounts/{account_id}", tags=["Value Case"])
 
@@ -51,6 +52,7 @@ async def get_account_gates(account_id: str, tenant_id: str = Depends(tenant_req
 async def export_value_case(
     account_id: str,
     value_case_id: str,
+    format: str = "pdf",
     tenant_id: str = Depends(tenant_required),
 ):
     gates = check_gates(account_id, tenant_id)
@@ -68,4 +70,5 @@ async def export_value_case(
     case = db.business_cases.get(value_case_id, tenant_id=tenant_id)
     if not case or case.account_id != account_id:
         raise HTTPException(status_code=404, detail="Value case not found")
-    return {"status": "ready", "value_case_id": value_case_id, "gates_passed": True}
+    result = generate_export(account_id, value_case_id, tenant_id, format)  # type: ignore[arg-type]
+    return result

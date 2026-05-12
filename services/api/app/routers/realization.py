@@ -1,0 +1,82 @@
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.core.database import db
+from app.core.tenant_context import tenant_required
+
+router = APIRouter(prefix="/accounts/{account_id}", tags=["Realization"])
+
+
+@router.post("/realization-plans")
+async def create_realization_plan(
+    account_id: str,
+    plan: dict[str, Any],
+    tenant_id: str = Depends(tenant_required),
+):
+    plan["account_id"] = account_id
+    plan["tenant_id"] = tenant_id
+    plan["status"] = "active"
+    db.roi_calculations.insert(plan["id"], plan)
+    return plan
+
+
+@router.get("/realization-plans")
+async def list_realization_plans(
+    account_id: str,
+    tenant_id: str = Depends(tenant_required),
+):
+    return db.roi_calculations.list(
+        tenant_id=tenant_id,
+        filter_fn=lambda r: r.account_id == account_id,
+    )
+
+
+@router.patch("/realization-plans/{plan_id}/actuals")
+async def update_actuals(
+    account_id: str,
+    plan_id: str,
+    fields: dict[str, Any],
+    tenant_id: str = Depends(tenant_required),
+):
+    plan = db.roi_calculations.get(plan_id, tenant_id=tenant_id)
+    if not plan or plan.account_id != account_id:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    updated = db.roi_calculations.update(plan_id, tenant_id=tenant_id, **fields)
+    return updated
+
+
+@router.get("/realization-plans/{plan_id}/variance")
+async def get_variance(
+    account_id: str,
+    plan_id: str,
+    tenant_id: str = Depends(tenant_required),
+):
+    plan = db.roi_calculations.get(plan_id, tenant_id=tenant_id)
+    if not plan or plan.account_id != account_id:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return {
+        "plan_id": plan_id,
+        "projected": getattr(plan, "total_benefit", 0),
+        "actual": getattr(plan, "actual_benefit", 0),
+        "variance": getattr(plan, "total_benefit", 0) - getattr(plan, "actual_benefit", 0),
+    }
+
+
+@router.get("/realization-plans/{plan_id}/recommendations")
+async def get_recommendations(
+    account_id: str,
+    plan_id: str,
+    tenant_id: str = Depends(tenant_required),
+):
+    plan = db.roi_calculations.get(plan_id, tenant_id=tenant_id)
+    if not plan or plan.account_id != account_id:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return {
+        "plan_id": plan_id,
+        "recommendations": [
+            "Review underperforming metrics quarterly",
+            "Expand to adjacent use cases",
+            "Schedule renewal narrative review",
+        ],
+    }

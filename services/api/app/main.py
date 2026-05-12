@@ -20,8 +20,10 @@ from app.routers import (
     governance,
     hypotheses,
     intelligence,
+    realization,
     reviews,
     value_cases,
+    versioning,
 )
 from app.services.seed_data import seed_all
 
@@ -56,6 +58,8 @@ app.include_router(value_cases.router, prefix="/v1")
 app.include_router(context_engine.router, prefix="/v1")
 app.include_router(governance.router, prefix="/v1")
 app.include_router(reviews.router, prefix="/v1")
+app.include_router(versioning.router, prefix="/v1")
+app.include_router(realization.router, prefix="/v1")
 app.include_router(agents.router, prefix="/v1")
 
 app.middleware("http")(metrics_middleware)

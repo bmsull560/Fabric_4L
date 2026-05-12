@@ -125,9 +125,9 @@ async def _emit_tenant_context_set_audit(
             request_id=context.request_id,
             details=details.model_dump(exclude_none=True),
         )
-    except Exception as e:
+    except (AttributeError, TypeError) as exc:
         # P0: Log debug only - don't fail the request
-        logger.debug("Tenant context audit emission failed (non-critical): %s", e)
+        logger.debug("Tenant context audit emission failed (non-critical): %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -285,9 +285,9 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
                 fail_safe_mode=FAIL_SAFE_MODE,
                 reserved_keywords=RESERVED_TENANT_KEYWORDS,
             )
-        except Exception as e:
+        except (ValueError, TypeError) as exc:
             _tenant_validation_metrics["validation_failures"] += 1
-            raise e
+            raise exc
 
     # Fallback to local implementation
     if tenant_id is None:
