@@ -1,9 +1,8 @@
-"""Allowed service-local exception for Layer 3 service wrapper.
+"""Layer 3 compatibility shim for API models.
 
-Owner: layer3-knowledge
-Removal/migration target: 2026-09-30
-Reason: Service-wrapper-only logic permitted by runtime path governance.
+This module intentionally re-exports the canonical Layer 3 API models from
+``value_fabric.layer3.api.models`` and must not contain service-local business
+logic.
 """
-
 
 from value_fabric.layer3.api.models import *  # noqa: F401,F403

@@ -230,7 +230,6 @@ class TestBaseToolContractCompliance:
 class TestCalculationToolsContract:
     """Test calculation tools return structured results."""
 
-    @pytest.mark.skip(reason="Pre-existing formula validation issue: tool rejects variable names")
     @pytest.mark.asyncio
     async def test_evaluate_formula_returns_tool_result(self):
         """Test EvaluateFormulaTool returns ToolResult."""
@@ -259,6 +258,33 @@ class TestCalculationToolsContract:
         # The tool returns EvaluateFormulaOutput with error field set
         if result.status == "success":
             assert "Missing variables" in result.data.get("error", "")
+
+    @pytest.mark.asyncio
+    async def test_evaluate_formula_missing_variables_error_contract(self):
+        """Regression: missing variables must return stable structured error payload."""
+        tool = EvaluateFormulaTool()
+        result = await tool.run({
+            "formula": "x + y + z",
+            "variables": {"x": 10, "y": 20},
+        })
+
+        assert isinstance(result, ToolResult)
+        assert result.status == "success"
+        assert result.data["success"] is False
+        assert "Missing variables" in result.data["error"]
+
+    @pytest.mark.asyncio
+    async def test_evaluate_formula_invalid_variable_name_validation_contract(self):
+        """Regression: invalid formula characters should preserve validation error contract."""
+        tool = EvaluateFormulaTool()
+        result = await tool.run({
+            "formula": "x + $y",
+            "variables": {"x": 10, "y": 20},
+        })
+
+        assert isinstance(result, ToolResult)
+        assert result.status == "error"
+        assert result.error["code"] == "INPUT_VALIDATION_ERROR"
 
     @pytest.mark.asyncio
     async def test_calculate_roi_returns_tool_result(self):

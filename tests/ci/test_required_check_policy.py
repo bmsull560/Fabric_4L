@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_required_check_policy_metadata_in_sync() -> None:
+    result = subprocess.run(
+        ["python", "scripts/ci/check_required_check_policy.py"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout

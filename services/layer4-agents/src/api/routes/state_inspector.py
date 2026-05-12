@@ -19,6 +19,8 @@ except ImportError:
     dateutil_parser = None
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_authenticated
 from pydantic import BaseModel, Field
 
 from ...engine.executor import OrchestrationController
@@ -336,7 +338,9 @@ async def inspect_output_data(
     tags=["state-inspector"],
 )
 async def analyze_errors(
-    workflow_id: str, executor: OrchestrationController = Depends(get_executor)
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> ErrorAnalysisResponse:
     """Analyze workflow errors with categorization.
 

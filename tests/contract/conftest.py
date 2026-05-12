@@ -12,16 +12,20 @@ Note:
     respx-based mocked fixtures. Install test dependencies: pip install -r tests/requirements.txt
 """
 
+import importlib.util
 import os
+import sys
+import types
 import urllib.request
 import urllib.error
+from collections.abc import Mapping
 
 import pytest
 from httpx import AsyncClient
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """Auto-mark every contract-suite item ``no_parallel``.
+    """Classify contract tests and keep schemathesis-sensitive subsets serial.
 
     Schemathesis-driven contract tests crash under pytest-xdist with
     ``AttributeError: 'WorkerController' object has no attribute 'workeroutput'``.
@@ -30,6 +34,52 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     """
     for item in items:
         item.add_marker(pytest.mark.no_parallel)
+        if "runtime_contract" in item.keywords:
+            item.add_marker(pytest.mark.service_required)
+        else:
+            item.add_marker(pytest.mark.contract_static)
+
+
+def _install_neo4j_import_shim() -> None:
+    """Provide a minimal neo4j module shim for static contract collection.
+
+    Some static contract tests import Layer 3 model modules, which transitively import
+    ``value_fabric.layer3``. In lightweight CI jobs we intentionally avoid installing
+    driver dependencies; this shim keeps import-time type references resolvable.
+    """
+    if importlib.util.find_spec("neo4j") is not None:
+        return
+
+    module = types.ModuleType("neo4j")
+    module.AsyncDriver = object
+    module.AsyncGraphDatabase = object
+    module.GraphDatabase = object
+    exceptions_module = types.ModuleType("neo4j.exceptions")
+    for exc_name in (
+        "ConfigurationError",
+        "Neo4jError",
+        "ServiceUnavailable",
+        "TransientError",
+        "ClientError",
+        "DatabaseError",
+    ):
+        setattr(exceptions_module, exc_name, type(exc_name, (Exception,), {}))
+    def _missing_exc(name: str):
+        exc = type(name, (Exception,), {})
+        setattr(exceptions_module, name, exc)
+        return exc
+    exceptions_module.__getattr__ = _missing_exc  # type: ignore[attr-defined]
+    time_module = types.ModuleType("neo4j.time")
+    time_module.Date = object
+    time_module.DateTime = object
+    module.exceptions = exceptions_module
+    module.time = time_module
+    sys.modules.setdefault("neo4j", module)
+    sys.modules.setdefault("neo4j.exceptions", exceptions_module)
+    sys.modules.setdefault("neo4j.time", time_module)
+
+
+_install_neo4j_import_shim()
 
 
 # Default API endpoints for local development
@@ -47,19 +97,56 @@ def _get_env_url(env_var: str, default: str) -> str:
     url = os.getenv(env_var, default)
     return url.rstrip("/")
 
-@pytest.fixture(scope="session", autouse=True)
-def check_services_availability():
-    """Check if required services are running, otherwise skip tests.
-    Prevents massive traceback dumps when backend infrastructure is missing.
-    """
+<<<<<<< ours
+@pytest.fixture(autouse=True)
+def check_services_availability(request: pytest.FixtureRequest):
+    """Gate only live-service contract tests when infrastructure is unavailable."""
+    if "service_required" not in request.keywords:
+        return
     if os.getenv("CONTRACT_TEST_MODE") == "mock":
         return
+=======
 
-    # We only check health endpoints if this is an environment where we expect real APIs.
+def _is_truthy(value: str | None) -> bool:
+    """Return True when an environment flag is set to a truthy value."""
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_contract_test_strict_mode(env: Mapping[str, str] | None = None) -> bool:
+    """Determine whether missing services should fail contract tests.
+
+    Strict mode is enabled when any of these are true:
+      - CONTRACT_TEST_ENFORCE is truthy (explicit CI contract)
+      - CONTRACT_TEST_STRICT is truthy (backward-compatible alias)
+      - CI is truthy
+      - GITHUB_ACTIONS is truthy
+    """
+    source = env if env is not None else os.environ
+    return any(
+        _is_truthy(source.get(flag))
+        for flag in ("CONTRACT_TEST_ENFORCE", "CONTRACT_TEST_STRICT", "CI", "GITHUB_ACTIONS")
+    )
+
+
+def _evaluate_services_availability(env: Mapping[str, str] | None = None) -> tuple[bool, list[str], bool]:
+    """Check required service health endpoints and return evaluation result.
+
+    Returns a tuple of:
+      - mock_mode (whether live service checks should be bypassed)
+      - missing_services (unhealthy/unreachable service health URLs)
+      - strict_mode (whether missing services should fail closed)
+    """
+    source = env if env is not None else os.environ
+    if source.get("CONTRACT_TEST_MODE", "").lower() == "mock":
+        return True, [], _is_contract_test_strict_mode(source)
+>>>>>>> theirs
+
     urls_to_check = [
         f"{_get_env_url('LAYER3_API_URL', DEFAULT_LAYER3_URL)}/health",
         f"{_get_env_url('LAYER4_API_URL', DEFAULT_LAYER4_URL)}/health",
-        f"{_get_env_url('LAYER5_API_URL', DEFAULT_LAYER5_URL)}/api/v1/health"
+        f"{_get_env_url('LAYER5_API_URL', DEFAULT_LAYER5_URL)}/api/v1/health",
     ]
 
     missing_services = []
@@ -72,11 +159,28 @@ def check_services_availability():
         except (urllib.error.URLError, ConnectionError):
             missing_services.append(url)
 
+    return False, missing_services, _is_contract_test_strict_mode(source)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def check_services_availability():
+    """Check if required services are running, otherwise skip tests.
+    Prevents massive traceback dumps when backend infrastructure is missing.
+    """
+    mock_mode, missing_services, strict_mode = _evaluate_services_availability()
+    if mock_mode:
+        return
+
     if missing_services:
-        if os.getenv("CONTRACT_TEST_STRICT") == "1":
-            pytest.fail(f"CONTRACT_TEST_STRICT=1 but required services are unavailable. Missing: {missing_services}")
-        else:
-            pytest.skip(f"Required contract services are unavailable. Skipping tests instead of failing. Missing: {missing_services}")
+        if strict_mode:
+            pytest.fail(
+                "Contract test strict mode is enabled (CI/CONTRACT_TEST_ENFORCE/CONTRACT_TEST_STRICT) "
+                f"and required services are unavailable. Missing: {missing_services}"
+            )
+        pytest.skip(
+            "Required contract services are unavailable in local/non-strict mode. "
+            f"Missing: {missing_services}"
+        )
 
 
 @pytest.fixture

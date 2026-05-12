@@ -1,0 +1,40 @@
+{
+  "rules": [
+    {
+      "id": "no-throw-in-tools",
+      "layer": "layer4",
+      "glob": "services/layer4-agents/src/**/*.py",
+      "patterns": ["raise ValueError", "raise ToolError", "raise Exception"]
+    },
+    {
+      "id": "no-json-loads-agent-output-layer4",
+      "layer": "layer4",
+      "glob": "services/layer4-agents/src/**/*.py",
+      "patterns": ["json.loads("]
+    },
+    {
+      "id": "no-json-loads-agent-output-layer3",
+      "layer": "layer3",
+      "glob": "services/layer3-knowledge/src/**/*.py",
+      "patterns": ["json.loads("]
+    },
+    {
+      "id": "no-json-loads-agent-output-layer2",
+      "layer": "layer2",
+      "glob": "services/layer2-extraction/src/**/*.py",
+      "patterns": ["json.loads("]
+    },
+    {
+      "id": "no-imperative-navigation",
+      "layer": "frontend",
+      "glob": "apps/web/src/**/*.{ts,tsx}",
+      "patterns": ["navigate(", "router.push("]
+    },
+    {
+      "id": "no-url-concatenation",
+      "layer": "frontend",
+      "glob": "apps/web/src/**/*.{ts,tsx}",
+      "patterns": ["window.location", "+ '/' +", "`/${"]
+    }
+  ]
+}

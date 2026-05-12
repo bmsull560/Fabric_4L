@@ -477,7 +477,7 @@
           "workflows"
         ],
         "summary": "Resume Workflow",
-        "description": "Resume a paused or interrupted workflow from its last checkpoint.\n\nThis endpoint enables human-in-the-loop workflows by allowing execution\nto pause for user input/decisions, then resume from the exact point\nwhere it stopped.\n\nThe workflow state is loaded from Postgres checkpoint storage, and\nexecution continues from the last completed node.\n\nExample:\n    POST /v1/workflows/wf-123/resume\n    {\n        \"user_id\": \"user-001\",\n        \"resume_data\": {\"approved\": true, \"notes\": \"Proceed with ROI calc\"}\n    }\n\nReturns:\n    200 OK - Workflow resumed and running (or completed if fast)\n    404 Not Found - Workflow not found or no checkpoint exists\n    400 Bad Request - Workflow not in resumable state (completed/failed/cancelled)\n    503 Service Unavailable - Checkpointing not configured",
+        "description": "Resume a paused or interrupted workflow from its last checkpoint.\n\nThis endpoint enables human-in-the-loop workflows by allowing execution\nto pause for user input/decisions, then resume from the exact point\nwhere it stopped.\n\nThe workflow state is loaded from Postgres checkpoint storage, and\nexecution continues from the last completed node.\n\nExample:\n    POST /v1/workflows/wf-123/resume\n    {\n        \"resume_data\": {\"approved\": true, \"notes\": \"Proceed with ROI calc\"}\n    }\n\nReturns:\n    200 OK - Workflow resumed and running (or completed if fast)\n    404 Not Found - Workflow not found or no checkpoint exists\n    400 Bad Request - Workflow not in resumable state (completed/failed/cancelled)\n    503 Service Unavailable - Checkpointing not configured",
         "operationId": "resume_workflow_v1_workflows__workflow_id__resume_post",
         "parameters": [
           {
@@ -1961,7 +1961,7 @@
           "analysis"
         ],
         "summary": "Generate Workspace Intelligence",
-        "description": "Generate workspace intelligence data for a case.\n\nLightweight generation that surfaces existing Neo4j data (signals,\nhypotheses) for the account. No LLM call — just exposes graph data\nthe frontend currently can't see.",
+        "description": "Generate workspace intelligence data for a case.\n\nLightweight generation that surfaces existing Neo4j data (signals,\nhypotheses) for the account. No LLM call \u2014 just exposes graph data\nthe frontend currently can't see.",
         "operationId": "generate_workspace_intelligence_v1_cases__case_id__workspace_generate_post",
         "parameters": [
           {
@@ -3261,7 +3261,7 @@
           "agent-stream"
         ],
         "summary": "Agent Stream Chat Sse",
-        "description": "SSE streaming version of the agent chat endpoint.\n\nEmits AG-UI protocol events as server-sent events:\n  RUN_STARTED → STEP_STARTED/STEP_FINISHED → TEXT_MESSAGE_* → RUN_FINISHED",
+        "description": "SSE streaming version of the agent chat endpoint.\n\nEmits AG-UI protocol events as server-sent events:\n  RUN_STARTED \u2192 STEP_STARTED/STEP_FINISHED \u2192 TEXT_MESSAGE_* \u2192 RUN_FINISHED",
         "operationId": "agent_stream_chat_sse_v1_agent_stream_chat_stream_post",
         "requestBody": {
           "content": {
@@ -3727,7 +3727,7 @@
           "checkpoints"
         ],
         "summary": "Resume From Checkpoint",
-        "description": "Resume workflow from a specific checkpoint.\n\nRewinds execution to a previous point and continues from there.\nOptionally modify state before resuming or skip specific nodes.\n\nExample:\n    POST /v1/workflows/wf-123/resume-from-checkpoint\n    {\n        \"checkpoint_id\": \"chk-002\",\n        \"user_id\": \"user-001\",\n        \"resume_data\": {\"approved\": true},\n        \"skip_nodes\": [\"validation_node\"]\n    }",
+        "description": "Resume workflow from a specific checkpoint.\n\nRewinds execution to a previous point and continues from there.\nOptionally modify state before resuming or skip specific nodes.\n\nExample:\n    POST /v1/workflows/wf-123/resume-from-checkpoint\n    {\n        \"checkpoint_id\": \"chk-002\",\n        \"resume_data\": {\"approved\": true},\n        \"skip_nodes\": [\"validation_node\"]\n    }",
         "operationId": "resume_from_checkpoint_v1_workflows__workflow_id__resume_from_checkpoint_post",
         "parameters": [
           {
@@ -9473,7 +9473,7 @@
           "prospects"
         ],
         "summary": "Start Prospect Analysis",
-        "description": "Start prospect analysis workflow — real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
+        "description": "Start prospect analysis workflow \u2014 real backend implementation.\n\nThis endpoint replaces the mock \"Continue to Intelligence\" navigation:\n1. Validates tenant context (fails closed if missing)\n2. Creates/updates prospect record with setup data\n3. Triggers intelligence workflow via orchestration layer\n4. Returns explicit status (never hardcoded demo data)\n\nEnrichment/CRM/buyer role data explicitly reports availability:\n- UNAVAILABLE: Service not wired/accessible\n- PENDING: Async enrichment queued\n- DEGRADED: Partial data available with caveats\n- COMPLETE/MATCHED: Real data confirmed\n\nArgs:\n    prospect_id: Prospect identifier (UUID or external ID)\n    request: Setup data and workflow configuration\n    tenant_id: Validated tenant from auth context\n    ctx: Request context for audit logging\n    db: Database session for persistence\n\nReturns:\n    StartAnalysisResponse with real status and next route state\n\nRaises:\n    HTTPException 401: Missing/invalid tenant context\n    HTTPException 404: Prospect not found and creation failed\n    HTTPException 503: Workflow executor unavailable",
         "operationId": "start_prospect_analysis_v1_prospects__prospect_id__start_analysis_post",
         "parameters": [
           {
@@ -10283,7 +10283,7 @@
           "api_key": {
             "type": "string",
             "title": "Api Key",
-            "description": "Full key — shown ONCE, store securely"
+            "description": "Full key \u2014 shown ONCE, store securely"
           },
           "prefix": {
             "type": "string",
@@ -10343,7 +10343,7 @@
           "created_at"
         ],
         "title": "APIKeyCreateResponse",
-        "description": "Returned once on key creation — includes the raw secret (shown only once)."
+        "description": "Returned once on key creation \u2014 includes the raw secret (shown only once)."
       },
       "APIKeyModel": {
         "properties": {
@@ -17722,11 +17722,6 @@
             "title": "Checkpoint Id",
             "description": "Checkpoint to resume from"
           },
-          "user_id": {
-            "type": "string",
-            "title": "User Id",
-            "description": "User initiating resume"
-          },
           "resume_data": {
             "anyOf": [
               {
@@ -17758,11 +17753,11 @@
         },
         "type": "object",
         "required": [
-          "checkpoint_id",
-          "user_id"
+          "checkpoint_id"
         ],
         "title": "ResumeFromCheckpointRequest",
-        "description": "Request to resume from a specific checkpoint."
+        "description": "Request to resume from a specific checkpoint.",
+        "additionalProperties": false
       },
       "ResumeFromCheckpointResponse": {
         "properties": {
@@ -17900,7 +17895,7 @@
           "system"
         ],
         "title": "Role",
-        "description": "Business roles used across all layers.\n\nHierarchy (highest → lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
+        "description": "Business roles used across all layers.\n\nHierarchy (highest \u2192 lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
       },
       "SalesforceOAuthAuthorizeRequest": {
         "properties": {
@@ -19641,7 +19636,7 @@
           "email"
         ],
         "title": "UserModel",
-        "description": "Read-only representation of a user (returned by API — no password)."
+        "description": "Read-only representation of a user (returned by API \u2014 no password)."
       },
       "UserStatus": {
         "type": "string",

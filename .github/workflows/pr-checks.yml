@@ -1102,6 +1102,16 @@ jobs:
       - name: Run contract and architecture tests
         run: make contract-tests
 
+      - name: Assert contract suite collection is clean
+        run: |
+          set -euo pipefail
+          python -m pytest tests/contract --collect-only -q -m contract_static -n 0 2>&1 | tee contract-static-collect.log
+          python -m pytest tests/contract --collect-only -q -m service_required -n 0 2>&1 | tee contract-service-collect.log
+          if rg -n "ERROR collecting|ImportError while importing test module|ModuleNotFoundError" contract-static-collect.log contract-service-collect.log; then
+            echo "Contract test collection errors detected."
+            exit 1
+          fi
+
       - name: Run frontend OpenAPI/Zod drift check
         run: |
           pnpm --dir apps/web install --frozen-lockfile
@@ -1253,7 +1263,7 @@ jobs:
           cache: 'pip'
 
       - name: Install Schemathesis
-        run: pip install schemathesis
+        run: pip install "schemathesis==3.39.16" "pytest-xdist==3.5.0"
 
       - name: Run Schemathesis on L1 OpenAPI (static validation)
         run: |

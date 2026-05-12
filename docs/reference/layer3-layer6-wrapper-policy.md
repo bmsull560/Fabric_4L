@@ -32,6 +32,7 @@ The check fails when configured mirrored file pairs diverge.
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
 
 ## Allowed wrapper-only deviations
 
@@ -76,4 +77,9 @@ For every active milestone, keep both `report.md` and `checklist.md` under `mile
 =======
 >>>>>>> theirs
 =======
+>>>>>>> theirs
+=======
+
+
+See also: `docs/reference/layer6-drift-audit-artifact-index.md` for current audit evidence and milestone artifact requirements.
 >>>>>>> theirs

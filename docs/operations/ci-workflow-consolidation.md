@@ -25,3 +25,5 @@ This inventory defines the current cleanup path for overlapping GitHub Actions w
 - Do not rename required workflow or job names until branch protection has been updated.
 - Remove duplicated checks only from the non-canonical workflow after the canonical workflow has a passing remote run.
 - Keep security and contract gates visible; do not hide failures by moving them to optional workflows.
+- Mandatory gate assets are fail-closed: `scripts/ci/structural_preflight.py`, `scripts/ci/python_contract_lint.py`, root `Makefile` gate targets, and `.github/workflows/` must exist or release-policy tests fail immediately (no skip fallback).
+- Optional checks may remain soft/conditional, but required governance artifacts must never silently pass when missing. See `tests/release/test_contract_gate_policy.py`.

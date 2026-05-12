@@ -219,6 +219,8 @@ class TenantRateLimiter:
         effective_tier = tenant_tier or tier
         if effective_tier is None:
             raise ValueError("tenant_tier is required for tenant-scoped rate limiting")
+        if tenant_id is None:
+            raise ValueError("tenant_id is required for tenant-scoped rate limiting")
 
         # Get effective limit config (tenant tier + route policy)
         base_config = self._get_limit_config(tenant_id, effective_tier)
@@ -558,4 +560,3 @@ class SlidingWindowAdapter:
             reset_epoch=reset_epoch,
             retry_after=retry_after,
         )
-

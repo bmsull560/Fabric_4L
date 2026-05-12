@@ -115,6 +115,7 @@ class EvaluateFormulaTool(BaseTool):
 
     # Pattern to find {variable} placeholders
     VARIABLE_PATTERN = re.compile(r"\{([^}]+)\}")
+    IDENTIFIER_PATTERN = re.compile(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b")
 
     async def execute(self, input_data: EvaluateFormulaInput) -> EvaluateFormulaOutput:
         """Execute formula evaluation."""
@@ -123,19 +124,21 @@ class EvaluateFormulaTool(BaseTool):
             formula = input_data.formula
             variables = input_data.variables
 
-            # Find all variable placeholders
-            var_matches = self.VARIABLE_PATTERN.findall(formula)
+            # Find variables from both {placeholder} format and canonical identifier format (x + y)
+            placeholder_names = {name.strip() for name in self.VARIABLE_PATTERN.findall(formula)}
+            identifier_names = set(self.IDENTIFIER_PATTERN.findall(formula))
+            referenced_vars = placeholder_names | identifier_names
 
-            # Build substitution mapping
-            eval_vars = {}
-            missing = []
+            eval_vars = {name: value for name, value in variables.items() if name in referenced_vars}
+            missing = sorted(name for name in referenced_vars if name not in variables)
 
-            for var_name in var_matches:
-                clean_name = var_name.strip()
-                if clean_name in variables:
-                    eval_vars[clean_name] = variables[clean_name]
-                else:
-                    missing.append(clean_name)
+            if missing:
+                return EvaluateFormulaOutput(
+                    result=None,
+                    substituted_formula=formula,
+                    success=False,
+                    error=f"Missing variables: {missing}",
+                )
 
             # Substitute values into formula
             substituted = formula

@@ -168,7 +168,7 @@ class EvaluateFormulaInput(BaseModel):
     @field_validator("formula")
     @classmethod
     def validate_formula_chars(cls, v: str) -> str:
-        allowed = set("0123456789+-*/().{}_ ")
+        allowed = set("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_+-*/().{} ")
         invalid = set(v) - allowed
         if invalid:
             raise ValueError(f"Invalid characters in formula: {invalid}")

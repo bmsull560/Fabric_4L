@@ -56,3 +56,30 @@ This makes missing local/CI coverage explicit.
 2. `docker compose up -d postgres redis neo4j`
 3. `make verify`
 4. (If applicable) `make evals`
+
+
+## Contract test environment contract (CI vs local)
+
+`tests/contract/conftest.py` enforces service-availability behavior using explicit environment flags:
+
+- `CONTRACT_TEST_MODE=mock` → bypasses live service health checks (explicit mocked path).
+- Strict/fail-closed mode is enabled when any of these are truthy: `CI`, `GITHUB_ACTIONS`, `CONTRACT_TEST_ENFORCE`, or `CONTRACT_TEST_STRICT`.
+- Local default (none of the strict flags set) remains developer-friendly: missing Layer 3/4/5 services cause contract tests to skip instead of fail.
+
+### Required CI contract-test job settings
+
+For CI jobs that expect live services, set:
+
+```bash
+CI=true
+CONTRACT_TEST_ENFORCE=1
+```
+
+For CI jobs that intentionally run mocked contract tests, set:
+
+```bash
+CI=true
+CONTRACT_TEST_MODE=mock
+```
+
+This keeps mocked behavior explicit and auditable in workflow configuration rather than relying on implicit defaults.

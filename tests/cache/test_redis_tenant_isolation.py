@@ -27,7 +27,7 @@ import redis.asyncio as redis
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.rate_limiting.tenant_rate_limiter import TenantRateLimiter, TenantTier
 
-from tests.cache.conftest import make_redis_mock
+from tests.cache.conftest import DeterministicFakeRedis, make_redis_mock
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -120,6 +120,43 @@ class TestRateLimitKeyIsolation:
         # Tenant B's first request should succeed
         assert result.allowed is True
         assert result.remaining > 0
+
+    @pytest.mark.asyncio
+    async def test_deterministic_counter_state_remains_tenant_scoped(self, deterministic_fake_redis: DeterministicFakeRedis):
+        """Counter state must stay isolated per tenant key when requests interleave."""
+        tenant_a = uuid4()
+        tenant_b = uuid4()
+        limiter = TenantRateLimiter(redis_client=deterministic_fake_redis)
+
+        for _ in range(3):
+            result_a = await limiter.check_rate_limit(
+                tenant_id=tenant_a,
+                endpoint="/api/test",
+                tier=TenantTier.SHARED,
+            )
+            assert result_a.allowed is True, "Tenant A should not be blocked during initial deterministic counter increments."
+
+        result_b = await limiter.check_rate_limit(
+            tenant_id=tenant_b,
+            endpoint="/api/test",
+            tier=TenantTier.SHARED,
+        )
+
+        assert result_b.allowed is True, "Tenant B should remain allowed despite Tenant A prior requests."
+        assert result_b.remaining == 119, "Tenant B remaining quota should match first request against shared-tier minute+burst limit."
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_rejects_missing_tenant_context_with_explicit_error(self):
+        """Missing tenant context must fail fast to prevent unsafe unscoped counters."""
+        mock_redis = make_redis_mock()
+        limiter = TenantRateLimiter(redis_client=mock_redis)
+
+        with pytest.raises(ValueError, match="tenant_id is required for tenant-scoped rate limiting"):
+            await limiter.check_rate_limit(
+                tenant_id=None,  # type: ignore[arg-type]
+                endpoint="/api/test",
+                tier=TenantTier.SHARED,
+            )
     
     @pytest.mark.asyncio
     async def test_rate_limit_reset_is_tenant_scoped(self):

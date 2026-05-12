@@ -215,8 +215,14 @@ test-e2e-full: ## Run full E2E suite: seed → contracts → journeys → reset
 	@echo "✅  Full E2E suite complete"
 
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
-	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
-	$(PYTEST) tests/contract/ -v --tb=short
+	@echo "→ Auditing contract test collection (static subset)..."
+	$(PYTEST) tests/contract/ --collect-only -q -m contract_static -n 0
+	@echo "→ Auditing contract test collection (service-required subset)..."
+	$(PYTEST) tests/contract/ --collect-only -q -m service_required -n 0
+	@echo "→ Running contract-static tests (deterministic, no live services)..."
+	$(PYTEST) tests/contract/ -v --tb=short -m contract_static -n 0
+	@echo "→ Running service-required contract tests (live services or explicit mock mode)..."
+	$(PYTEST) tests/contract/ -v --tb=short -m service_required -n 0
 	pnpm --dir packages/platform-contract run contract:test
 	@echo "→ Running architecture tests (tenant isolation guards)..."
 	$(PYTEST) tests/arch/ -v --tb=short

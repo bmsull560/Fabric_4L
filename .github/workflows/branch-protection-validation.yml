@@ -20,6 +20,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+<<<<<<< ours
           REQUIRED_CHECKS=(
             "mandatory-security-regression"
             "contract-compliance"
@@ -31,31 +32,62 @@ jobs:
             "make verify"
           )
 
-          BRANCH="main"
           REPO="${{ github.repository }}"
+          BRANCHES=("main")
 
-          # Query GitHub API for branch protection
-          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$REPO/branches/$BRANCH/protection")
-
-          # Install jq for JSON parsing if not available
           if ! command -v jq &> /dev/null; then
             sudo apt-get update && sudo apt-get install -y jq
           fi
 
-          MISSING=()
-          for check in "${REQUIRED_CHECKS[@]}"; do
-            if ! echo "$RESPONSE" | jq -e ".required_status_checks.checks[].name == \"$check\"" &> /dev/null; then
-              MISSING+=("$check")
-            fi
-          done
+          while IFS= read -r release_branch; do
+            BRANCHES+=("$release_branch")
+          done < <(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$REPO/branches?per_page=100" \
+            | jq -r '.[].name | select(startswith("release/"))')
 
-          if [ ${#MISSING[@]} -ne 0 ]; then
-            echo "::error::Missing required status checks in branch protection:"
-            for check in "${MISSING[@]}"; do
-              echo "  - $check"
-            done
-            exit 1
+          if [ "${#BRANCHES[@]}" -eq 1 ]; then
+            echo "::warning::No release/* branches found; validating main only."
           fi
 
-          echo "✅ All required status checks are enforced in branch protection"
+          for BRANCH in "${BRANCHES[@]}"; do
+            RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$REPO/branches/$BRANCH/protection")
+
+            MISSING=()
+            for check in "${REQUIRED_CHECKS[@]}"; do
+              if ! echo "$RESPONSE" | jq -e ".required_status_checks.checks[].name == \"$check\"" &> /dev/null; then
+                MISSING+=("$check")
+              fi
+            done
+
+            if ! echo "$RESPONSE" | jq -e '.required_status_checks.strict == true' > /dev/null; then
+              MISSING+=("required_status_checks.strict=true")
+            fi
+
+            if ! echo "$RESPONSE" | jq -e '.required_status_checks.contexts | length > 0' > /dev/null; then
+              MISSING+=("required_status_checks.contexts non-empty")
+            fi
+
+            if [ ${#MISSING[@]} -ne 0 ]; then
+              echo "::error::Branch protection gaps on $BRANCH:"
+              for check in "${MISSING[@]}"; do
+                echo "  - $check"
+              done
+              exit 1
+            fi
+
+            echo "✅ Branch protection checks verified for $BRANCH"
+          done
+=======
+          BRANCH="main"
+          REPO="${{ github.repository }}"
+          RESPONSE_FILE=$(mktemp)
+
+          curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$REPO/branches/$BRANCH/protection" \
+            -o "$RESPONSE_FILE"
+
+          python scripts/ci/validate_branch_protection_checks.py \
+            --config config/ci/required-status-checks.json \
+            --api-response-file "$RESPONSE_FILE"
+>>>>>>> theirs

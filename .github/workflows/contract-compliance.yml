@@ -262,6 +262,9 @@ jobs:
       - name: Deprecation usage baseline gate
         run: python scripts/ci/check_deprecation_baseline.py
 
+      - name: No-net-new contract violations (touched modules)
+        run: python scripts/ci/enforce_no_new_contract_violations.py
+
       - name: Run Duplicate Source Tree Strict Gate
         run: python scripts/ci/check_duplicate_source_trees.py --strict
         # NO continue-on-error: This is a BLOCKING contract gate

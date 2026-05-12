@@ -173,6 +173,20 @@ class TestKyvernoPolicies:
         policy = k8s_policy_dir / "kyverno-verify-signatures.yaml"
         assert policy.exists(), "kyverno-verify-signatures.yaml must exist"
 
+
+    def test_kyverno_require_digest_policy_exists(self, k8s_policy_dir: Path) -> None:
+        """Verify Kyverno digest enforcement policy exists."""
+        policy = k8s_policy_dir / "kyverno-require-image-digests.yaml"
+        assert policy.exists(), "kyverno-require-image-digests.yaml must exist"
+
+    def test_digest_policy_targets_production_namespaces(self, k8s_policy_dir: Path) -> None:
+        """Verify digest policy only enforces on production namespaces."""
+        policy = k8s_policy_dir / "kyverno-require-image-digests.yaml"
+        content = policy.read_text(encoding="utf-8")
+        assert "value-fabric-prod" in content
+        assert "value-fabric-production" in content
+        assert "@sha256:" in content
+
     def test_slsa_policy_valid_yaml(self, k8s_policy_dir: Path) -> None:
         """Verify SLSA policy is valid YAML."""
         policy = k8s_policy_dir / "kyverno-slsa-provenance.yaml"

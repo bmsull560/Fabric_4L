@@ -552,47 +552,49 @@ async def lifespan(app: FastAPI):
 
 
 # Initialize FastAPI app
+APP_DESCRIPTION = """
+## Layer 3: Knowledge Graph & Semantic Layer API
+
+The Value Fabric Knowledge Graph API provides intelligent semantic search,
+graph-based retrieval, and analytics capabilities for enterprise AI workflows.
+
+### Key Features
+- **GraphRAG Retrieval**: Context-aware graph-based question answering
+- **Hybrid Search**: Combined vector, keyword, and graph traversal search
+- **Entity Analytics**: Community detection, centrality analysis, and similarity metrics
+- **Schema Management**: Dynamic Neo4j schema initialization and monitoring
+- **Real-time Ingestion**: RDF/OWL data ingestion with provenance tracking
+
+### Architecture
+- **Database**: Neo4j 5.x for graph storage and relationships
+- **Vector Store**: Pinecone for semantic similarity search
+- **Embeddings**: OpenAI text-embedding-3-large (768 dimensions)
+- **Analytics**: NetworkX for graph algorithms and community detection
+
+### Authentication & Security
+- Rate limiting (configurable per endpoint)
+- Input validation and sanitization
+- Request tracking with unique IDs
+- Comprehensive security headers
+
+### Getting Started
+1. Explore the `/health` endpoint to verify service status
+2. Check `/v1/schema/status` to ensure database schema is ready
+3. Try `/v1/search` for basic entity discovery
+4. Use `/v1/graphrag` for complex question answering
+
+### Rate Limits
+- Default: 100 requests/minute, 200 burst
+- Health endpoints: 300 requests/minute
+- Search endpoints: 200 requests/minute
+- Schema operations: 10-60 requests/minute
+
+Check response headers `X-RateLimit-*` for current limits.
+"""
+
 app = FastAPI(
     title="Value Fabric - Knowledge Graph & Semantic Layer",
-    description="""
-    ## Layer 3: Knowledge Graph & Semantic Layer API
-
-    The Value Fabric Knowledge Graph API provides intelligent semantic search,
-    graph-based retrieval, and analytics capabilities for enterprise AI workflows.
-
-    ### Key Features
-    - **GraphRAG Retrieval**: Context-aware graph-based question answering
-    - **Hybrid Search**: Combined vector, keyword, and graph traversal search
-    - **Entity Analytics**: Community detection, centrality analysis, and similarity metrics
-    - **Schema Management**: Dynamic Neo4j schema initialization and monitoring
-    - **Real-time Ingestion**: RDF/OWL data ingestion with provenance tracking
-
-    ### Architecture
-    - **Database**: Neo4j 5.x for graph storage and relationships
-    - **Vector Store**: Pinecone for semantic similarity search
-    - **Embeddings**: OpenAI text-embedding-3-large (768 dimensions)
-    - **Analytics**: NetworkX for graph algorithms and community detection
-
-    ### Authentication & Security
-    - Rate limiting (configurable per endpoint)
-    - Input validation and sanitization
-    - Request tracking with unique IDs
-    - Comprehensive security headers
-
-    ### Getting Started
-    1. Explore the `/health` endpoint to verify service status
-    2. Check `/v1/schema/status` to ensure database schema is ready
-    3. Try `/v1/search` for basic entity discovery
-    4. Use `/v1/graphrag` for complex question answering
-
-    ### Rate Limits
-    - Default: 100 requests/minute, 200 burst
-    - Health endpoints: 300 requests/minute
-    - Search endpoints: 200 requests/minute
-    - Schema operations: 10-60 requests/minute
-
-    Check response headers `X-RateLimit-*` for current limits.
-    """,
+    description=APP_DESCRIPTION,
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",

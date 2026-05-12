@@ -15,21 +15,38 @@ import yaml
 from value_fabric.shared.audit.models import PolicyDecisionRecord
 
 
+def _required_artifact_missing_message(path: Path, artifact_role: str) -> str:
+    """Return a consistent fail-closed message for missing mandatory gate assets."""
+    return (
+        f"Required governance artifact missing: {path.as_posix()} "
+        f"({artifact_role}). Release gate policy is fail-closed for mandatory assets."
+    )
+
+
+def _assert_required_artifact_exists(path: Path, artifact_role: str) -> None:
+    """Fail closed when required release-governance assets are absent."""
+    assert path.exists(), _required_artifact_missing_message(path, artifact_role)
+
+
 class TestContractGatePolicy:
     """Enforce: Required contract gates exist; blocking gates don't use continue-on-error."""
 
     def test_structural_preflight_exists(self):
-        """Structural preflight script must exist and be executable."""
+        """Required governance artifact: structural preflight must fail closed if absent."""
         script = Path("scripts/ci/structural_preflight.py")
-        if not script.exists():
-            pytest.skip("structural_preflight.py not found - install to enforce")
+        _assert_required_artifact_exists(
+            script,
+            "mandatory CI structural preflight script",
+        )
         assert script.stat().st_size > 0, "structural_preflight.py is empty"
 
     def test_python_contract_lint_exists(self):
-        """Python contract lint script must exist."""
+        """Required governance artifact: python contract lint must fail closed if absent."""
         script = Path("scripts/ci/python_contract_lint.py")
-        if not script.exists():
-            pytest.skip("python_contract_lint.py not found - install to enforce")
+        _assert_required_artifact_exists(
+            script,
+            "mandatory CI contract lint script",
+        )
         assert script.stat().st_size > 0, "python_contract_lint.py is empty"
 
     def test_ci_workflow_blocking_gates_no_continue_on_error(self):
@@ -39,8 +56,10 @@ class TestContractGatePolicy:
         Blocking gates must fail the build on violation.
         """
         workflows_dir = Path(".github/workflows")
-        if not workflows_dir.exists():
-            pytest.skip("No .github/workflows directory")
+        _assert_required_artifact_exists(
+            workflows_dir,
+            "mandatory GitHub Actions workflow directory for blocking gates",
+        )
 
         violations = []
         for workflow_file in workflows_dir.glob("*.yml"):
@@ -67,10 +86,12 @@ class TestContractGatePolicy:
             )
 
     def test_required_makefile_targets_exist(self):
-        """Required Makefile targets for gates must exist."""
+        """Required governance artifact: Makefile gate targets must fail closed if absent."""
         makefile = Path("Makefile")
-        if not makefile.exists():
-            pytest.skip("No Makefile found")
+        _assert_required_artifact_exists(
+            makefile,
+            "mandatory root Makefile exposing release/security/contract gate targets",
+        )
 
         content = makefile.read_text(encoding="utf-8")
 
@@ -86,6 +107,21 @@ class TestContractGatePolicy:
 
         if missing:
             pytest.fail(f"Required Makefile targets missing: {missing}")
+
+    @pytest.mark.parametrize(
+        ("path_str", "artifact_role"),
+        [
+            ("scripts/ci/structural_preflight.py", "mandatory CI structural preflight script"),
+            ("scripts/ci/python_contract_lint.py", "mandatory CI contract lint script"),
+            (".github/workflows", "mandatory GitHub Actions workflow directory for blocking gates"),
+            ("Makefile", "mandatory root Makefile exposing release/security/contract gate targets"),
+        ],
+    )
+    def test_required_gate_helper_fails_closed_for_missing_artifacts(self, tmp_path: Path, path_str: str, artifact_role: str):
+        """Regression: required-gate helper must fail closed and emit standardized triage text."""
+        missing_path = tmp_path / path_str
+        with pytest.raises(AssertionError, match=r"^Required governance artifact missing: "):
+            _assert_required_artifact_exists(missing_path, artifact_role)
 
     def test_mandatory_security_regression_gate_is_non_optional(self):
         """Sprint 2 mandatory security checks must be wired into gate-security.

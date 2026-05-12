@@ -11,8 +11,18 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
+<<<<<<< ours
+<<<<<<< ours
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_authenticated
+=======
+from value_fabric.shared.error_handling.middleware import get_request_id
+>>>>>>> theirs
+=======
+from value_fabric.shared.error_handling.middleware import get_request_id
+>>>>>>> theirs
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...engine.executor import OrchestrationController
@@ -39,6 +49,9 @@ class _get_checkpoint_dataResult(TypedDictModel):
 
 logger = logging.getLogger(__name__)
 checkpoint_router = APIRouter()
+
+class CheckpointQueryError(RuntimeError):
+    """Raised when checkpoint storage cannot be queried safely."""
 
 
 # ============================================================================
@@ -102,11 +115,12 @@ class ResumeFromCheckpointRequest(BaseModel):
     """Request to resume from a specific checkpoint."""
 
     checkpoint_id: str = Field(..., description="Checkpoint to resume from")
-    user_id: str = Field(..., description="User initiating resume")
     resume_data: dict[str, Any] | None = Field(
         default_factory=dict, description="Optional modifications to state before resume"
     )
     skip_nodes: list[str] | None = Field(None, description="Node IDs to skip on resume")
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class ResumeFromCheckpointResponse(BaseModel):
@@ -139,12 +153,15 @@ class StateSnapshotResponse(BaseModel):
     "/workflows/{workflow_id}/checkpoints",
     response_model=CheckpointListResponse,
     tags=["checkpoints"],
+    responses={403: {"description": "Workflow out of tenant scope"}, 404: {"description": "Workflow not found"}},
 )
 async def list_checkpoints(
     workflow_id: str,
     limit: int = Query(50, ge=1, le=100, description="Maximum checkpoints to return"),
     include_state: bool = Query(False, description="Include full state in summary"),
+    request: Request | None = None,
     executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> CheckpointListResponse:
     """Get checkpoint timeline for a workflow.
 
@@ -180,9 +197,25 @@ async def list_checkpoints(
             status_code=503, detail="Checkpointing not configured - cannot retrieve checkpoints"
         )
 
+    request_id = get_request_id(request) if request is not None else None
     try:
+<<<<<<< ours
+<<<<<<< ours
         # Query LangGraph's Postgres saver for checkpoints
-        checkpoints = await _query_checkpoints(executor.checkpoint_saver, workflow_id, limit)
+        await _require_workflow_tenant_access(
+            executor=executor, workflow_id=workflow_id, tenant_id=_ctx.tenant_id
+        )
+        checkpoints = await _query_checkpoints(
+            executor.checkpoint_saver, workflow_id, _ctx.tenant_id, limit
+=======
+        checkpoints = await _query_checkpoints(
+            executor.checkpoint_saver, workflow_id, limit, request_id=request_id
+>>>>>>> theirs
+=======
+        checkpoints = await _query_checkpoints(
+            executor.checkpoint_saver, workflow_id, limit, request_id=request_id
+>>>>>>> theirs
+        )
 
         return CheckpointListResponse(
             workflow_id=workflow_id,
@@ -190,19 +223,33 @@ async def list_checkpoints(
             total_count=len(checkpoints),
             current_checkpoint_id=checkpoints[-1].checkpoint_id if checkpoints else None,
         )
-
-    except Exception as e:
-        logger.error(f"Error listing checkpoints for {workflow_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve checkpoints: {str(e)}")
+    except CheckpointQueryError:
+        logger.exception(
+            "Failed to retrieve checkpoints",
+            extra={"workflow_id": workflow_id, "thread_id": workflow_id, "request_id": request_id},
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "CHECKPOINT_QUERY_FAILED",
+                "message": "Failed to retrieve checkpoints",
+                "workflow_id": workflow_id,
+                "request_id": request_id,
+            },
+        )
 
 
 @checkpoint_router.get(
     "/workflows/{workflow_id}/checkpoints/{checkpoint_id}/state",
     response_model=StateSnapshotResponse,
     tags=["checkpoints"],
+    responses={403: {"description": "Workflow out of tenant scope"}, 404: {"description": "Workflow/checkpoint not found"}},
 )
 async def get_checkpoint_state(
-    workflow_id: str, checkpoint_id: str, executor: OrchestrationController = Depends(get_executor)
+    workflow_id: str,
+    checkpoint_id: str,
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> StateSnapshotResponse:
     """Get full state snapshot at a specific checkpoint.
 
@@ -216,8 +263,11 @@ async def get_checkpoint_state(
         raise HTTPException(status_code=503, detail="Checkpointing not configured")
 
     try:
+        await _require_workflow_tenant_access(
+            executor=executor, workflow_id=workflow_id, tenant_id=_ctx.tenant_id
+        )
         state_data = await _get_checkpoint_data(
-            executor.checkpoint_saver, workflow_id, checkpoint_id
+            executor.checkpoint_saver, workflow_id, checkpoint_id, _ctx.tenant_id
         )
 
         if not state_data:
@@ -248,11 +298,13 @@ async def get_checkpoint_state(
     "/workflows/{workflow_id}/checkpoints/diff",
     response_model=StateDiffResponse,
     tags=["checkpoints"],
+    responses={403: {"description": "Workflow out of tenant scope"}, 404: {"description": "Workflow/checkpoint not found"}},
 )
 async def compare_checkpoints(
     workflow_id: str,
     request: StateDiffRequest,
     executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> StateDiffResponse:
     """Compare state between two checkpoints.
 
@@ -286,12 +338,15 @@ async def compare_checkpoints(
         raise HTTPException(status_code=503, detail="Checkpointing not configured")
 
     try:
+        await _require_workflow_tenant_access(
+            executor=executor, workflow_id=workflow_id, tenant_id=_ctx.tenant_id
+        )
         # Get both checkpoint states
         state_a = await _get_checkpoint_data(
-            executor.checkpoint_saver, workflow_id, request.checkpoint_a_id
+            executor.checkpoint_saver, workflow_id, request.checkpoint_a_id, _ctx.tenant_id
         )
         state_b = await _get_checkpoint_data(
-            executor.checkpoint_saver, workflow_id, request.checkpoint_b_id
+            executor.checkpoint_saver, workflow_id, request.checkpoint_b_id, _ctx.tenant_id
         )
 
         if not state_a or not state_b:
@@ -331,11 +386,17 @@ async def compare_checkpoints(
     "/workflows/{workflow_id}/resume-from-checkpoint",
     response_model=ResumeFromCheckpointResponse,
     tags=["checkpoints"],
+    responses={403: {"description": "Workflow out of tenant scope"}, 404: {"description": "Workflow/checkpoint not found"}},
 )
 async def resume_from_checkpoint(
     workflow_id: str,
     request: ResumeFromCheckpointRequest,
     executor: OrchestrationController = Depends(get_executor),
+<<<<<<< ours
+    _ctx: RequestContext = Depends(require_authenticated),
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> theirs
 ) -> ResumeFromCheckpointResponse:
     """Resume workflow from a specific checkpoint.
 
@@ -346,7 +407,6 @@ async def resume_from_checkpoint(
         POST /v1/workflows/wf-123/resume-from-checkpoint
         {
             "checkpoint_id": "chk-002",
-            "user_id": "user-001",
             "resume_data": {"approved": true},
             "skip_nodes": ["validation_node"]
         }
@@ -357,9 +417,12 @@ async def resume_from_checkpoint(
         )
 
     try:
+        await _require_workflow_tenant_access(
+            executor=executor, workflow_id=workflow_id, tenant_id=_ctx.tenant_id
+        )
         # Get the checkpoint data
         checkpoint_data = await _get_checkpoint_data(
-            executor.checkpoint_saver, workflow_id, request.checkpoint_id
+            executor.checkpoint_saver, workflow_id, request.checkpoint_id, _ctx.tenant_id
         )
 
         if not checkpoint_data:
@@ -367,11 +430,13 @@ async def resume_from_checkpoint(
                 status_code=404, detail=f"Checkpoint {request.checkpoint_id} not found"
             )
 
-        # Resume workflow with checkpoint state
+        actor_user_id = str(context.user_id) if context.user_id is not None else "anonymous"
+
+        # Resume workflow with checkpoint state and server-resolved actor identity
         result = await executor.resume_from_checkpoint(
             workflow_id=workflow_id,
             checkpoint_id=request.checkpoint_id,
-            user_id=request.user_id,
+            user_id=actor_user_id,
             resume_data=request.resume_data,
             skip_nodes=request.skip_nodes,
         )
@@ -397,7 +462,15 @@ async def resume_from_checkpoint(
 
 
 async def _query_checkpoints(
-    checkpoint_saver, thread_id: str, limit: int = 50
+<<<<<<< ours
+<<<<<<< ours
+    checkpoint_saver, thread_id: str, tenant_id: str, limit: int = 50
+=======
+    checkpoint_saver, thread_id: str, limit: int = 50, *, request_id: str | None = None
+>>>>>>> theirs
+=======
+    checkpoint_saver, thread_id: str, limit: int = 50, *, request_id: str | None = None
+>>>>>>> theirs
 ) -> list[CheckpointInfo]:
     """Query checkpoints from LangGraph Postgres saver.
 
@@ -413,12 +486,12 @@ async def _query_checkpoints(
 
         # Validate connection type to prevent SQL injection
         if conn is None:
-            logger.warning("Checkpoint saver has no database connection")
-            return []
+            raise CheckpointQueryError("Checkpoint saver has no database connection")
 
         if not hasattr(conn, "fetch"):
-            logger.error("Checkpoint saver connection doesn't support fetch operation")
-            return []
+            raise CheckpointQueryError(
+                "Checkpoint saver connection doesn't support fetch operation"
+            )
 
         if conn:
             # Query the checkpoint table
@@ -430,10 +503,12 @@ async def _query_checkpoints(
                        created_at
                 FROM checkpoints 
                 WHERE thread_id = $1
+                  AND checkpoint->'channel_values'->>'tenant_id' = $2
                 ORDER BY created_at ASC
-                LIMIT $2
+                LIMIT $3
                 """,
                 thread_id,
+                tenant_id,
                 limit,
             )
 
@@ -458,16 +533,20 @@ async def _query_checkpoints(
                     )
                 )
 
+    except CheckpointQueryError:
+        raise
     except Exception as e:
-        logger.error(f"Error querying checkpoints: {e}")
-        # Fallback: return empty list - actual implementation would handle this better
-        pass
+        logger.exception(
+            "Unexpected checkpoint query failure",
+            extra={"thread_id": thread_id, "workflow_id": thread_id, "request_id": request_id},
+        )
+        raise CheckpointQueryError("Unexpected checkpoint query failure") from e
 
     return checkpoints
 
 
 async def _get_checkpoint_data(
-    checkpoint_saver, thread_id: str, checkpoint_id: str
+    checkpoint_saver, thread_id: str, checkpoint_id: str, tenant_id: str
 ) -> dict[str, Any] | None:
     """Retrieve full checkpoint data."""
     try:
@@ -489,10 +568,13 @@ async def _get_checkpoint_data(
                        checkpoint->'channel_values' as state_data,
                        created_at
                 FROM checkpoints 
-                WHERE thread_id = $1 AND checkpoint_id = $2
+                WHERE thread_id = $1
+                  AND checkpoint_id = $2
+                  AND checkpoint->'channel_values'->>'tenant_id' = $3
                 """,
                 thread_id,
                 checkpoint_id,
+                tenant_id,
             )
 
             if row:
@@ -589,3 +671,19 @@ def _truncate_value(value: Any, max_length: int = 100) -> Any:
         if len(str_repr) > max_length:
             return f"<{type(value).__name__} length={len(value)}>"
     return value
+async def _require_workflow_tenant_access(
+    *,
+    executor: OrchestrationController,
+    workflow_id: str,
+    tenant_id: str,
+) -> None:
+    """Fail-closed tenant gate for workflow-scoped checkpoint operations."""
+    status = await executor.get_workflow_status(workflow_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+    workflow_tenant = status.get("tenant_id")
+    if not workflow_tenant or str(workflow_tenant) != str(tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )

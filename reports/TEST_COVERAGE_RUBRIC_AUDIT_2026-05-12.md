@@ -404,6 +404,30 @@ Changed import to `from src.api.main import app` to use absolute service-local m
 
 Both gaps are now resolved. L5/L6 measured `--cov` runs should now be unblocked (no import errors, no collection errors). Structural Dim-1 scores can now be replaced with actual measured coverage numbers.
 
+### Measured coverage results (2026-05-12)
+
+**L6 (layer6-benchmarks):** 73% line coverage (626 stmts, 172 miss)
+- 42 tests passed, 4 failed (3 KeyError: 'detail' in 503 error handling, 1 route registration assertion)
+- Coverage by module:
+  - `api/routes/benchmarks.py`: 100%
+  - `api/main.py`: 66% (missing error handling paths)
+  - `database.py`: 23% (low coverage - needs work)
+  - `repositories/benchmark_repository.py`: 73%
+  - `config.py`: 74%
+
+**L5 (layer5-ground-truth):** Blocked by missing `aiosqlite` dependency in test environment
+- 52 tests passed, 15 failed, 96 errors (all ModuleNotFoundError: No module named 'aiosqlite')
+- Cannot generate measured coverage until dependency is installed
+
+### Updated L6 Dim-1 score
+
+Previous structural Dim-1: 2/5 (test-to-source ratio ~2:1, execution blocked)
+New measured Dim-1: 4/5 (73% line coverage, ≥60% threshold for score 4)
+
+L6 grade impact: F → D (estimated, pending full rubric recalculation)
+
 ### Next steps
 
-Retry L5 and L6 measured `--cov` runs to generate actual coverage numbers and update the rubric from structural Dim-1 to measured Dim-1.
+1. Install `aiosqlite` in L5 test environment to unblock measured coverage
+2. Recalculate full rubric with L6 measured Dim-1 (4/5) and L5 measured Dim-1 (when available)
+3. Fix L6 test failures (KeyError: 'detail', route registration) to improve pass rate

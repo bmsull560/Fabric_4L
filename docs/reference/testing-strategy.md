@@ -70,6 +70,26 @@ This document defines the comprehensive testing strategy for the Value Fabric pl
 | Response Models | `tests/contract/` | pydantic | All responses |
 | Tool Manifests | `tests/contract/` | JSON Schema | All skills |
 
+#### Contract invocation matrix (CI + local deterministic mode)
+
+| Subset | Marker | Requires live services | Command |
+|---|---|---|---|
+| Static contract checks | `contract_static` | No | `pytest tests/contract -m contract_static -n 0 -v --tb=short` |
+| Service-required contract checks | `service_required` | Yes (or `CONTRACT_TEST_MODE=mock`) | `pytest tests/contract -m service_required -n 0 -v --tb=short` |
+| Collection-only static gate | `contract_static` | No | `pytest tests/contract --collect-only -m contract_static -n 0 -q` |
+| Collection-only service gate | `service_required` | No (collection only) | `pytest tests/contract --collect-only -m service_required -n 0 -q` |
+| Schemathesis OpenAPI property checks | N/A (CLI) | No (spec-driven) | `st check contracts/openapi/layer{1,2,3,4}-*.json --hypothesis-seed 42` |
+
+**Pinned prerequisites**
+- `pytest-xdist==3.5.0`
+- `schemathesis==3.39.16`
+
+**Service prerequisites for `service_required`**
+- `LAYER3_API_URL` (default `http://localhost:8003`)
+- `LAYER4_API_URL` (default `http://localhost:8004`)
+- `LAYER5_API_URL` (default `http://localhost:8005`)
+- Health endpoints must be reachable unless `CONTRACT_TEST_MODE=mock`.
+
 ### 4. E2E Tests (10%)
 
 | Journey | Location | Tool | Browsers |
