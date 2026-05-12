@@ -11,13 +11,15 @@ import { StatCard, ProgressBar } from "@/components/blocks";
 import { SectionCard } from "@/components/blocks/SectionCard";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
-import { useValueCase } from "@/hooks/useCalculators";
+import { useValueCase, type ValueCaseResponse } from "@/hooks/useCalculators";
 
 export default function ValueCase() {
   const { prospect, generatedCaseId } = useWorkflowStore();
   const { data: valueCase, isLoading, error } = useValueCase(generatedCaseId);
   
-  const results = valueCase?.scenarios?.[1]?.breakdown || [];
+  type ValueCaseResultItem = ValueCaseResponse["scenarios"][number]["breakdown"][number];
+
+  const results: ValueCaseResultItem[] = valueCase?.scenarios?.[1]?.breakdown ?? [];
   const total = results.reduce((s, r) => s + r.value, 0);
   const companyName = prospect?.companyName ?? "Meridian Automotive";
   const caseId = generatedCaseId ?? "VC-2026-0417";
@@ -74,7 +76,7 @@ export default function ValueCase() {
             ) : valueCase ? (
               <SectionCard title={`Value Case Results — ${companyName}`} description="Generated from calculator scenarios">
                 <div className="space-y-3">
-                  {results.map((r: any, i: number) => (
+                  {results.map((r: ValueCaseResultItem, i: number) => (
                     <div key={i} className="flex items-center gap-4 p-4 bg-muted/20 rounded-lg">
                       <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
                         <span className="text-sm font-bold text-primary-foreground">{i + 1}</span>

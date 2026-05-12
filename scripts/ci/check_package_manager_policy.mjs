@@ -5,6 +5,7 @@ import { execSync } from 'node:child_process';
 
 const LOCKFILE_PATTERN = /(\/(?:package-lock\.json|yarn\.lock)$|^(?:package-lock\.json|yarn\.lock)$|\/(?:pnpm-lock\.yaml|uv\.lock)$|^(?:pnpm-lock\.yaml|uv\.lock)$)/;
 const ALLOWED_LOCKFILE_PATHS = new Set([
+  // Canonical monorepo lockfiles (production paths only)
   'pnpm-lock.yaml',
   'apps/web/pnpm-lock.yaml',
   'services/layer1-ingestion/uv.lock',
@@ -75,8 +76,14 @@ if (webPkg.scripts?.preinstall !== 'node ./scripts/enforce-package-manager.cjs')
 }
 
 const changedLockfiles = getChangedFiles().filter((path) => LOCKFILE_PATTERN.test(path));
+const ALLOWED_NPM_YARN_LOCKFILE_PATHS = new Set([
+  // Prototype workspace intentionally kept outside canonical pnpm workspace.
+  // This lockfile is allowed so prototype experiments can be reproduced without
+  // impacting production package-manager policy for apps/web, packages/*, services/*.
+  'prototypes/ui-prototype/app/package-lock.json',
+]);
 const blockedNpmOrYarn = changedLockfiles.filter(
-  (path) => path.endsWith('package-lock.json') || path.endsWith('yarn.lock'),
+  (path) => (path.endsWith('package-lock.json') || path.endsWith('yarn.lock')) && !ALLOWED_NPM_YARN_LOCKFILE_PATHS.has(path),
 );
 if (blockedNpmOrYarn.length > 0) {
   fail(`npm/yarn lockfiles are not allowed in changesets: ${blockedNpmOrYarn.join(', ')}`);

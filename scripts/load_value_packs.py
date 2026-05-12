@@ -182,14 +182,12 @@ def load_pack_to_api(pack_id: str, pack_path: Path, api_url: str, dry_run: bool 
             "variables": len(variables),
         }
     
-    # TODO: Implement actual API calls
-    # For now, just return the transformed data
-    print(f"[NOT IMPLEMENTED] API integration pending")
-    
+    print("[BLOCKED] Non-production tooling: live API writes are intentionally disabled.")
     return {
-        "status": "success",
-        "formulas_loaded": len(formulas),
-        "variables_loaded": len(variables),
+        "status": "error",
+        "errors": [
+            "Live API loading is disabled for this non-production operator tool. Use --dry-run/--validate only."
+        ],
     }
 
 
@@ -214,6 +212,10 @@ def main():
 
     if os.getenv("RELEASE_PIPELINE", "").lower() in {"1", "true", "yes"}:
         print("Error: Script blocked in release pipeline environments (RELEASE_PIPELINE=true).")
+        sys.exit(2)
+
+    if os.getenv("CI", "").lower() in {"1", "true", "yes"}:
+        print("Error: Script blocked in CI environments (CI=true).")
         sys.exit(2)
     
     # Load manifest

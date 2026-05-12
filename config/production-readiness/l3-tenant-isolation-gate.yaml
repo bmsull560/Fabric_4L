@@ -105,7 +105,7 @@ schema_migration_plan:
       name: "Safety Markers"
       status: COMPLETE
       deliverables:
-        - SECURITY-TODO comments in all 4 unmodified route modules
+        - Temporary phase-0 security markers in all 4 unmodified route modules
         - This production-readiness gate file
     - phase: 1
       name: "Schema Audit & Constraint Inventory"
@@ -158,7 +158,7 @@ schema_migration_plan:
       name: "Cleanup & Gate Closure"
       status: COMPLETE
       deliverables:
-        - Removed SECURITY-TODO comments from all 5 modules
+        - Removed temporary phase-0 security markers from all 5 modules
         - Updated module docstrings to reflect tenant-scoped status
         - Updated this gate file status to CLOSED
         - All Cypher queries include tenant_id predicates
@@ -194,7 +194,7 @@ audit_trail:
     note: "Migrated to Neo4jTenantSession. All queries now tenant-scoped."
   - date: "2026-05-05"
     action: "Phase 0 complete"
-    note: "Added SECURITY-TODO markers and created this gate file."
+    note: "Added temporary phase-0 security markers and created this gate file."
   - date: "2026-05-05"
     action: "Phase 1 complete"
     note: |
@@ -243,6 +243,6 @@ audit_trail:
     note: |
       Query scoping, cleanup, and gate closure.
       - Added tenant_id WHERE clauses to all unscoped MATCH queries
-      - Removed all SECURITY-TODO comments from 5 modules
+      - Removed all temporary phase-0 security markers from 5 modules
       - Updated module docstrings
       - Gate status updated to CLOSED

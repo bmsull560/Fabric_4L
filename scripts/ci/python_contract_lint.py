@@ -133,6 +133,17 @@ SCAN_GLOBS = (
     "packages/shared/src/value_fabric/shared/**/*.py",
     "tests/**/*.py",
 )
+RELEASE_SCOPED_PREFIXES = (
+    "services/",
+    "value_fabric/",
+    "packages/shared/src/value_fabric/shared/",
+    "k8s/",
+    "config/production-readiness/",
+)
+SECURITY_CRITICAL_TODO_PATTERN = re.compile(
+    r"\b(?:TODO|FIXME)\b[^\n#]*\b(?:auth|authentication|authorization|tenant|rbac|acl|oidc)\b|\bSECURITY-TODO\b",
+    re.IGNORECASE,
+)
 
 DEPRECATED_DB_DEP_ALLOWLIST = {
     "services/layer4-agents/src/database.py",
@@ -181,6 +192,22 @@ def check_file_with_regex(file_path: Path, content: str) -> list[ContractFinding
     findings: list[ContractFinding] = []
 
     for line_number, line in enumerate(content.splitlines(), start=1):
+        normalized_path = file_path.as_posix()
+        if normalized_path.startswith(RELEASE_SCOPED_PREFIXES) and SECURITY_CRITICAL_TODO_PATTERN.search(line):
+            findings.append(
+                ContractFinding(
+                    contract_id="security_todo",
+                    severity="critical",
+                    path=str(file_path),
+                    line=line_number,
+                    column=0,
+                    message="Unresolved security-critical TODO/FIXME marker in release-scoped path",
+                    preferred_pattern="Replace marker with ticket ID, owner team, and target milestone",
+                    snippet=line.strip()[:100],
+                )
+            )
+            continue
+
         code_part = line.split("#", 1)[0]
         if not code_part and not line.lstrip().startswith(('#', '"', "'")):
             continue

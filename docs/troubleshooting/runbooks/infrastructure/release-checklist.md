@@ -12,6 +12,8 @@ Use this checklist for staging and production release approvals.
 - [ ] Run `make verify` and confirm pass. [VERIFY:DOC-DEPLOY-001]
 - [ ] For agent/skill changes, run `make evals` and confirm pass.
 - [ ] Run smoke tests (`scripts/smoke/production_smoke.py`) against the target environment.
+- [ ] Run `pytest tests/release/test_observability_deployment_readiness.py` and confirm PASS (release gate for Task 46/47 evidence).
+- [ ] Verify `docs/readiness/observability-deployment-readiness.md` contains only `✅ PASS` rows with ISO dates and concrete artifact paths.
 - [ ] Confirm CloudNativePG CRD exists: `kubectl get crd clusters.postgresql.cnpg.io`.
 - [ ] Confirm Spotahome Redis Operator CRD exists: `kubectl get crd redisfailovers.databases.spotahome.com`.
 - [ ] Confirm production Neo4j URI is Vault-managed Aura: `neo4j+s://...`, never `bolt://neo4j:7687`.

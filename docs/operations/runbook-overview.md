@@ -297,12 +297,12 @@ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 | Role | Contact Alias | Primary On-Call Routing | Backup On-Call Routing | Escalation |
 |------|---------------|-------------------------|------------------------|------------|
 | On-Call Engineer | `@vf-eng-oncall` | PagerDuty service `pagerduty-critical` | Slack `#vf-alerts-critical` | Engineering Lead |
-| Engineering Lead | `@vf-eng-leadership` | Slack `#engineering-leads` | PagerDuty schedule `engineering-lead-secondary` | VP Engineering |
-| Security Lead | `@vf-security-lead` | PagerDuty service `pagerduty-critical` (security incidents) | Slack `#vf-alerts-critical` + `#security` | CISO |
-| SRE Lead | `@vf-sre-leadership` | Alertmanager receiver `pagerduty-critical` + Slack `#vf-alerts-critical` | PagerDuty schedule `sre-secondary` | VP Engineering |
+| Engineering Lead | `@vf-eng-leadership` (`eng-leadership@value-fabric.com`) | PagerDuty service `pagerduty-critical` (platform-engineering escalation path) | PagerDuty schedule `engineering-lead-secondary` + Slack `#engineering-leads` | VP Engineering |
+| Security Lead | `@vf-security-lead` (`security-leadership@value-fabric.com`) | Alertmanager team route `team:security` → receiver `pagerduty-critical` | PagerDuty schedule `security-secondary` + Slack `#security` | CISO |
+| SRE Lead | `@vf-sre-leadership` (`sre-leadership@value-fabric.com`) | Alertmanager severity route `severity:critical` → receiver `pagerduty-critical` | PagerDuty schedule `sre-secondary` + Slack `#vf-alerts-critical` | VP Engineering |
 | Incident Commander | `@vf-incident-command` | Slack `#incident-response` | PagerDuty schedule `incident-commander-backup` | CEO (SEV-0 only) |
 
-> Routing alignment: The primary and backup channels above are intentionally aligned with `monitoring/alertmanager/alertmanager.yml` (`pagerduty-critical`, `#vf-alerts-critical`) and production Alertmanager routes in `monitoring/alertmanager/alertmanager-production.yml`.
+> Routing alignment: The primary and backup channels above are intentionally aligned with the active Alertmanager route trees in `monitoring/alertmanager/alertmanager.yml` and `monitoring/alertmanager/alertmanager-production.yml` (`pagerduty-critical`, `#vf-alerts-critical`) plus team/severity routing definitions in `monitoring/alertmanager/alertmanager-enhanced.yml` (`team:security`, `severity:critical`).
 
 ### Runbook Ownership and Review Cadence
 

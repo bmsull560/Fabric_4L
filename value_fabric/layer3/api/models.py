@@ -985,6 +985,13 @@ GraphNodeAliasMap: dict[str, str] = {
     "type": "entity_type",
     "confidence": "confidence_score",
 }
+GRAPH_FIELD_ALIAS_WARNING_VERSION = "v2.4"
+GRAPH_FIELD_ALIAS_REMOVAL_VERSION = "v2.5"
+
+
+def include_legacy_graph_aliases(api_version: str = "v2.3") -> bool:
+    """Return True while legacy graph aliases are still part of the contract."""
+    return api_version < GRAPH_FIELD_ALIAS_REMOVAL_VERSION
 
 
 class GraphNode(BaseModel):
@@ -1058,7 +1065,10 @@ class GraphNode(BaseModel):
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override to include computed alias fields in serialization."""
+        api_version = kwargs.pop("api_version", "v2.3")
         data = super().model_dump(**kwargs)
+        if not include_legacy_graph_aliases(api_version):
+            return data
         # Dynamically add alias fields using the mapping
         for alias in GraphNodeAliasMap:
             data[alias] = getattr(self, alias)
@@ -1088,8 +1098,10 @@ GraphEdgeAliasMap: dict[str, str] = {
 class GraphEdge(BaseModel):
     """Edge/relationship in the knowledge graph.
 
-    NOTE: Provides backward-compatible alias 'relationship_type' for 'type'.
-    TODO: Deprecate 'type' field once consumers migrate.
+    Versioned policy:
+    - v2.3 and earlier: emit canonical 'type' plus deprecated alias 'relationship_type'.
+    - v2.4 warning window: alias remains deprecated and monitored.
+    - v2.5 and later: remove 'relationship_type' alias and keep only 'type'.
     """
 
     source: str = Field(..., description="Source node ID")
@@ -1117,7 +1129,10 @@ class GraphEdge(BaseModel):
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override to include computed alias fields in serialization."""
+        api_version = kwargs.pop("api_version", "v2.3")
         data = super().model_dump(**kwargs)
+        if not include_legacy_graph_aliases(api_version):
+            return data
         # Dynamically add alias fields using the mapping
         for alias, source in GraphEdgeAliasMap.items():
             data[alias] = getattr(self, alias)

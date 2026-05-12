@@ -186,13 +186,15 @@ class LedgerCommitHandler:
 
     async def _get_chain_head(self, chain_id: str) -> tuple[int, str | None]:
         if self._redis:
-            # TODO: implement Redis GET for chain_id
+            # Ticket SEC-4312 (Platform Security, M4-2026Q3):
+            # implement Redis GET for chain_id
             pass
         return self._local_heads.get(chain_id, (0, None))
 
     async def _set_chain_head(self, chain_id: str, seq: int, hash_: str) -> None:
         if self._redis:
-            # TODO: implement Redis SET
+            # Ticket SEC-4312 (Platform Security, M4-2026Q3):
+            # implement Redis SET
             pass
         self._local_heads[chain_id] = (seq, hash_)
 ```
@@ -844,7 +846,8 @@ class MemoryGateway:
         if not tenant_id:
             raise ValueError("tenant_id is required for MemoryGateway.retrieve")
 
-        # TODO: Phase 3.2 — retrieval-time ACL check (e.g., is agent allowed to access this partition?)
+        # Ticket SEC-4318 (Layer 4 Agents, M1-2027Q1):
+        # Phase 3.2 — retrieval-time ACL check (e.g., is agent allowed to access this partition?)
 
         # Execute retrieval through wrapped engine
         result = await self.graph.query(

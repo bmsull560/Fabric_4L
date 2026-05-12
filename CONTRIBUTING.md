@@ -63,6 +63,13 @@ pnpm run check:default-scope
 
 This sanity check fails if CI would pick up excluded directories through default workspace tooling.
 
+### Lockfile expectations by directory class
+
+- **Canonical runtime/workspace directories** (`apps/web`, `packages/*`, `services/*`): use pnpm/uv only. Commit `pnpm-lock.yaml`/approved `uv.lock` files and do **not** add `package-lock.json` or `yarn.lock`.
+- **Prototype/archive directories** (for example `prototypes/`, `archive/`): npm/yarn lockfiles are allowed only when explicitly justified. Current approved exception: `prototypes/ui-prototype/app/package-lock.json`, retained to preserve reproducible prototype setup outside the canonical pnpm workspace.
+
+Any new exception must be added with rationale to `scripts/ci/check_package_manager_policy.mjs` and documented here in `CONTRIBUTING.md`.
+
 ---
 
 ## Repository root file policy

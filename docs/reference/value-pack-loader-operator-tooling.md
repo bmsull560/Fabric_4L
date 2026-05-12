@@ -16,10 +16,14 @@
 - `RELEASE_PIPELINE`:
   - If set to `1`, `true`, or `yes`, script exits with code `2`.
   - This blocks use in release pipeline contexts.
+- `CI`:
+  - If set to `1`, `true`, or `yes`, script exits with code `2`.
+  - This prevents accidental execution in CI/release automation.
 
 ### Authentication / tenant scope
-- This script currently performs validation + transform flows and does **not** perform authenticated API writes.
-- Because there is no authenticated tenant context in this script, it must not be used for production data mutation paths.
+- This script performs validation + transform flows only; live API writes are intentionally disabled.
+- No auth token or tenant context is accepted by this script.
+- Any invocation without `--dry-run`/`--validate` returns a structured error and does not mutate data.
 
 ### Outputs
 - Prints per-pack validation/transform status to stdout.

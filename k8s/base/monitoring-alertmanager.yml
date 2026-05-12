@@ -16,7 +16,7 @@ data:
 
     # Routing tree: critical -> PagerDuty + Slack; warning -> Slack; formula -> dedicated channel
     route:
-      receiver: 'default-null'
+      receiver: 'slack-default'
       group_by: ['alertname', 'severity', 'namespace']
       group_wait: 30s
       group_interval: 5m
@@ -42,6 +42,11 @@ data:
           receiver: 'pagerduty-critical'
           continue: true
           repeat_interval: 15m
+        - match:
+            severity: critical
+          receiver: 'slack-critical'
+          repeat_interval: 15m
+
 
         # Warning alerts: Slack only
         - match:
@@ -133,6 +138,18 @@ data:
             send_resolved: true
             title: ':clipboard: Formula Approval Required'
             text: 'Formula requires approval. Check the app for pending approvals.'
+
+
+      # Webhook fallback compatibility receivers
+      - name: 'default'
+        webhook_configs:
+          - url_file: '/etc/alertmanager/secrets/default_webhook_url'
+            send_resolved: true
+
+      - name: 'critical'
+        webhook_configs:
+          - url_file: '/etc/alertmanager/secrets/critical_webhook_url'
+            send_resolved: true
 
     # Inhibition rules: prevent notification storms
     inhibit_rules:

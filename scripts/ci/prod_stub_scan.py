@@ -12,6 +12,7 @@ human-readable justification.
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -132,11 +133,9 @@ SKIP_DIRS = {
 # File extensions to scan
 
 # Security-critical TODO/FIXME markers are forbidden in release-scoped paths.
-SECURITY_CRITICAL_TODO_PATTERNS: tuple[str, ...] = (
-    "TODO(auth)",
-    "TODO(tenant)",
-    "FIXME(auth)",
-    "FIXME(tenant)",
+SECURITY_CRITICAL_TODO_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b(?:TODO|FIXME)\b[^\n#]*\b(?:auth|authentication|authorization|tenant|rbac|acl|oidc)\b", re.IGNORECASE),
+    re.compile(r"\bSECURITY-TODO\b", re.IGNORECASE),
 )
 
 RELEASE_SCOPED_PREFIXES: tuple[str, ...] = (
@@ -235,8 +234,7 @@ def main() -> int:
         for line_no, line in enumerate(lines, start=1):
             rel_posix = fpath.relative_to(repo_root).as_posix()
             if rel_posix.startswith(RELEASE_SCOPED_PREFIXES):
-                line_upper = line.upper()
-                if any(token.upper() in line_upper for token in SECURITY_CRITICAL_TODO_PATTERNS):
+                if any(pattern.search(line) for pattern in SECURITY_CRITICAL_TODO_PATTERNS):
                     key = _allowlist_key(fpath, repo_root, line_no)
                     if key not in ALLOWLIST:
                         violations.append((fpath.relative_to(repo_root), line_no, "security-critical TODO/FIXME", line.strip()))

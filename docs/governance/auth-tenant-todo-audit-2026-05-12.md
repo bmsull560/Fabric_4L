@@ -4,11 +4,14 @@
 
 | Source | Item | Classification | Disposition |
 |---|---|---|---|
-| `docs/operations/tenant-management-phase-2-provisioning.md` | Webhook idempotency TODO for `X-Webhook-ID` persistence check. | pending-with-ticket | Replaced inline TODO with `SEC-4271`, owner **Platform Identity**, target milestone **M4-2026Q3**. |
-| `config/production-readiness/l3-tenant-isolation-gate.yaml` | Historical references to `SECURITY-TODO` markers during phase rollout. | implemented-and-needs-doc-update | Kept as audit history only; normalized active module status fields to `COMPLETE`, `tenant_scoped: true`, and `security_todo_count: 0`. |
-| `config/production-readiness/l3-tenant-isolation-gate.yaml` | Stale “INCOMPLETE / pending phase 6” module text under a closed gate. | obsolete | Removed stale pending wording and aligned gate content to closed/complete state. |
+| `docs/operations/tenant-management-phase-2-provisioning.md` | Webhook idempotency follow-up for `X-Webhook-ID` persistence verification. | pending-with-ticket | Tracked as **SEC-4271**. Owner: **Platform Identity**. Target milestone: **M4-2026Q3**. |
+| `docs/gate-alignment/implementation-plan-phases-1-3.md` | Redis-backed audit ledger chain-head persistence (`GET`/`SET`) placeholders. | pending-with-ticket | Replaced inline TODOs with **SEC-4312**. Owner: **Platform Security**. Target milestone: **M4-2026Q3**. |
+| `docs/gate-alignment/implementation-plan-phases-1-3.md` | Retrieval-time ACL enforcement gap in phase 3.2 narrative. | pending-with-ticket | Replaced inline TODO with **SEC-4318**. Owner: **Layer 4 Agents**. Target milestone: **M1-2027Q1**. |
+| `config/production-readiness/l3-tenant-isolation-gate.yaml` | Historical phase-0 marker references under a closed gate. | implemented-and-needs-doc-update | Normalized phrasing to historical “temporary phase-0 security markers” and removed stale TODO terminology from active gate config. |
+| `config/production-readiness/l3-tenant-isolation-gate.yaml` | Closed gate still carried obsolete “pending phase” language in module notes. | obsolete | Removed stale pending wording and aligned module/gate status text to closed/complete state. |
 
 ## Notes
 
-- No additional auth/tenant `TODO`/`FIXME` markers were found in `docs/governance/`, `docs/operations/`, `docs/launch/`, `docs/audit/`, or `config/production-readiness/` after this cleanup sweep.
-- CI policy now fails on unresolved security-critical TODO/FIXME markers in release-scoped paths.
+- Sweep scope: `docs/governance/`, `docs/operations/`, `docs/gate-alignment/`, `docs/launch/`, `docs/audit/`, and `config/production-readiness/`.
+- Production-readiness gate config now references only active or historical-complete items (no unresolved security TODO markers).
+- CI policy now blocks unresolved security-critical auth/tenant TODO/FIXME markers in release-scoped paths.

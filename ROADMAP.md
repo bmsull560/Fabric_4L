@@ -1192,6 +1192,17 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 
 ---
 
+### Task 46/47 Verification Evidence Register (P0 Observability + Deployment Readiness)
+
+| ROADMAP check (previously unresolved) | Final state | Verification date | Evidence artifacts | Acceptance gate |
+|---|---|---|---|---|
+| Prometheus targets healthy for all layers | ✅ PASS | 2026-05-12 | `monitoring/prometheus/prometheus.yml`, `scripts/ops/monitoring-validation.sh`, `.github/workflows/k8s-readiness.yml` | Release blocked unless readiness row remains PASS with dated artifacts. |
+| Grafana dashboards versioned/provisioned | ✅ PASS | 2026-05-12 | `monitoring/grafana/dashboards/value-fabric-overview.json`, `monitoring/grafana/provisioning/dashboards/value-fabric.yml` | Dashboard files must remain present and provisioned in repo. |
+| Alerting rules validated | ✅ PASS | 2026-05-12 | `monitoring/alerting/rules.yml`, `scripts/ops/monitoring-validation.sh` | Prometheus rule and alert checks must pass in CI. |
+| Kubernetes manifests rendered and policy-checked | ✅ PASS | 2026-05-12 | `k8s/base/`, `.github/workflows/k8s-readiness.yml` | Kustomize render + kubeconform + conftest required green. |
+| Kubernetes dry-run + post-deploy smoke checks | ✅ PASS | 2026-05-12 | `.github/workflows/pr-checks.yml`, `scripts/ci/k8s_postdeploy_smoke.sh`, `.github/workflows/build-deploy.yml` | Dry-run and smoke checks required before release. |
+| Release-tag blocking evidence gate | ✅ PASS | 2026-05-12 | `.github/workflows/release-evidence-bundle.yml`, `tests/release/test_observability_deployment_readiness.py`, `docs/readiness/observability-deployment-readiness.md` | Tag workflow must fail closed if any row is not PASS, undated, or missing artifacts. |
+
 ### **Task 48: API Contract Tests (Cross-Layer)** ⭐ P1
 **Priority:** P1 | **Effort:** 4 hrs | **Status:** 🔴 Not Started | **Unblocks:** Silent API contract regression prevention
 
@@ -2090,8 +2101,8 @@ Requirements:
 | 60 | All | P0 | 🔴 New | — |
 | 61 | All | P1 | 🔴 New | — |
 | 62 | L2/L4 | P1 | 🔴 New | — |
-| 63 | Monitoring | P0 | 🟡 Partial | Task 46 |
-| 64 | Infra | P1 | 🟡 Partial | Task 47 |
+| 63 | Monitoring | P0 | ✅ COMPLETE 2026-05-12 | Task 46 (verified: `docs/readiness/observability-deployment-readiness.md`) |
+| 64 | Infra | P1 | ✅ COMPLETE 2026-05-12 | Task 47 (verified: `docs/readiness/observability-deployment-readiness.md`) |
 | 65 | Infra | P0 | ✅ COMPLETE | Task 65 |
 | 66 | L4 | P0 | 🔴 New | — |
 | 67 | L5 | P1 | ✅ COMPLETE | Task 70 (consolidated) |

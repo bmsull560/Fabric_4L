@@ -165,7 +165,7 @@ kubectl apply -f layer5-ground-truth.yml
 kubectl apply -f layer6-benchmarks.yml
 
 # 7. Deploy monitoring stack
-kubectl apply -f monitoring-alertmanager.yml
+kubectl apply -f k8s/base/monitoring-alertmanager.yml
 kubectl apply -f monitoring-prometheus.yml
 
 # Verify all services
@@ -212,7 +212,7 @@ Prometheus metrics available at `/metrics` on all services.
 
 Monitoring manifests:
 
-- `monitoring-alertmanager.yml` - Alertmanager with Slack + PagerDuty routing
+- `base/monitoring-alertmanager.yml` - Canonical Alertmanager manifest used by overlays
 - `monitoring-prometheus.yml` - Prometheus server with alerting rules
 
 ### Alertmanager Configuration
@@ -238,7 +238,7 @@ Alertmanager is configured with multi-channel routing:
 kubectl apply -f k8s/external-secrets/alertmanager-secrets.yaml
 
 # 2. Deploy Alertmanager
-kubectl apply -f k8s/monitoring-alertmanager.yml
+kubectl apply -k k8s/envs/prod
 
 # 3. Verify deployment
 kubectl wait --for=condition=ready pod -l app=alertmanager -n value-fabric --timeout=60s

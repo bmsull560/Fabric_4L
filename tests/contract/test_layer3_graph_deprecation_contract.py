@@ -1,4 +1,5 @@
 from value_fabric.layer3.api.models import (
+    GRAPH_FIELD_ALIAS_REMOVAL_VERSION,
     GraphEdge,
     GraphNode,
     get_deprecated_field_usage_counters,
@@ -24,6 +25,19 @@ def test_graph_edge_contract_includes_legacy_and_canonical_fields() -> None:
 
     assert payload["type"] == "RELATES_TO"
     assert payload["relationship_type"] == "RELATES_TO"
+
+
+def test_graph_aliases_removed_at_version_boundary() -> None:
+    node = GraphNode(id="n1", name="Node", entity_type="Capability", confidence_score=0.9)
+    edge = GraphEdge(source="n1", target="n2", type="RELATES_TO")
+
+    node_payload = node.model_dump(api_version=GRAPH_FIELD_ALIAS_REMOVAL_VERSION)
+    edge_payload = edge.model_dump(api_version=GRAPH_FIELD_ALIAS_REMOVAL_VERSION)
+
+    assert "label" not in node_payload
+    assert "type" not in node_payload
+    assert "confidence" not in node_payload
+    assert "relationship_type" not in edge_payload
 
 
 def test_deprecated_field_usage_counters_increment_for_request_and_response() -> None:
