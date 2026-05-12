@@ -52,6 +52,32 @@ def test_launch_readiness_workflow_uses_expected_stage_inputs() -> None:
     assert "environment: staging" in content
 
 
+def test_pnpm_is_setup_before_setup_node_pnpm_cache() -> None:
+    workflow = _workflow()
+    violations: list[str] = []
+
+    for job_name, job in workflow["jobs"].items():
+        pnpm_setup_seen = False
+        for step in job.get("steps", []):
+            if not isinstance(step, dict):
+                continue
+
+            uses = str(step.get("uses", ""))
+            if uses.startswith("pnpm/action-setup@"):
+                pnpm_setup_seen = True
+
+            with_config = step.get("with") or {}
+            if (
+                uses.startswith("actions/setup-node@")
+                and isinstance(with_config, dict)
+                and with_config.get("cache") == "pnpm"
+                and not pnpm_setup_seen
+            ):
+                violations.append(job_name)
+
+    assert not violations, "setup-node pnpm cache appears before pnpm setup in: " + ", ".join(violations)
+
+
 def test_launch_pipeline_does_not_reference_generated_bytecode() -> None:
     content = WORKFLOW.read_text(encoding="utf-8")
     script_text = (REPO_ROOT / "scripts" / "ci" / "generate_launch_evidence_bundle.py").read_text(encoding="utf-8")
