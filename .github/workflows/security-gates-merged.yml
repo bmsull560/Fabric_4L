@@ -68,7 +68,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-secrets.sarif'
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-secrets.sarif'
 
@@ -114,7 +114,7 @@ jobs:
           output: 'trivy-${{ matrix.layer }}.sarif'
           severity: 'CRITICAL,HIGH'
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-${{ matrix.layer }}.sarif'
 

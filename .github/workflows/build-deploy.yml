@@ -184,6 +184,7 @@ jobs:
 
       # P1-23 FIX: Security scan with Trivy before pushing
       - name: Scan image with Trivy
+        id: scan-image
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ github.sha }}
@@ -193,8 +194,8 @@ jobs:
           exit-code: '1'  # Fail on CRITICAL/HIGH vulnerabilities
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() && steps.scan-image.outcome != 'skipped'
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-${{ matrix.layer }}'
