@@ -80,7 +80,6 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
 
 # Copy application code
 COPY src/ ./src/
-COPY ../../value_fabric/ ./value_fabric/
 COPY alembic.ini .
 COPY migrations/ ./migrations/
 
