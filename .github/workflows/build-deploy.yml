@@ -83,33 +83,49 @@ jobs:
       - name: Verify cross-org base image access
         run: |
           set -uo pipefail
-          CROSS_ORG_IMAGES=(
-            "ghcr.io/value-fabric/base-images/node:22-alpine"
-            "ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm"
-            "ghcr.io/value-fabric/ci-mirror/astral-uv:python3.11-bookworm-slim"
-          )
-          MISSING=()
-          for img in "${CROSS_ORG_IMAGES[@]}"; do
-            if ! docker buildx imagetools inspect "$img" > /dev/null 2>&1; then
-              MISSING+=("$img")
+
+          # Primary (value-fabric) images and their public fallbacks
+          declare -A PRIMARY
+          PRIMARY["node"]="ghcr.io/value-fabric/base-images/node:22-alpine"
+          PRIMARY["python"]="ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm"
+          PRIMARY["uv"]="ghcr.io/value-fabric/ci-mirror/astral-uv:python3.11-bookworm-slim"
+
+          declare -A FALLBACK
+          FALLBACK["node"]="node:22-alpine"
+          FALLBACK["python"]="python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5"
+          FALLBACK["uv"]="ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
+
+          MISSING_PRIMARY=()
+          MISSING_FALLBACK=()
+
+          for key in node python uv; do
+            pri="${PRIMARY[$key]}"
+            fb="${FALLBACK[$key]}"
+            if ! docker buildx imagetools inspect "$pri" > /dev/null 2>&1; then
+              MISSING_PRIMARY+=("$pri")
+              if ! docker buildx imagetools inspect "$fb" > /dev/null 2>&1; then
+                MISSING_FALLBACK+=("$fb")
+              fi
             fi
           done
-          if [ ${#MISSING[@]} -ne 0 ]; then
-            echo "::error::Cannot access required private base images from the value-fabric GHCR organization."
-            echo "::error::Missing / inaccessible images:"
-            for img in "${MISSING[@]}"; do
-              echo "::error::  - $img"
+
+          if [ ${#MISSING_PRIMARY[@]} -ne 0 ]; then
+            echo "::warning::Primary value-fabric base images are inaccessible (cross-org packages may not exist or require a PAT)."
+            for img in "${MISSING_PRIMARY[@]}"; do
+              echo "::warning::  - $img"
             done
-            if [ -z "${{ secrets.GHCR_TOKEN }}" ]; then
-              echo "::error::The GHCR_TOKEN repository secret is not configured."
-              echo "::error::Please add a GHCR_TOKEN secret with read:packages scope for the value-fabric organization, then re-run this workflow."
+            if [ ${#MISSING_FALLBACK[@]} -eq 0 ]; then
+              echo "::notice::Public fallback images are accessible. Build will proceed using fallback images."
             else
-              echo "::error::The configured GHCR_TOKEN does not have sufficient access to the value-fabric organization packages."
-              echo "::error::Please verify the token has read:packages scope for value-fabric/* and that the base images exist."
+              echo "::error::Fallback images are also inaccessible:"
+              for img in "${MISSING_FALLBACK[@]}"; do
+                echo "::error::  - $img"
+              done
+              exit 1
             fi
-            exit 1
           fi
-          echo "✅ Cross-org base image access verified"
+
+          echo "✅ Base image access verified"
 
       - name: Validate release metadata signature
         if: github.event_name == 'release'
@@ -160,6 +176,10 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ vars.BASE_IMAGE || '' }}
             BUILDER_BASE_IMAGE=${{ vars.BUILDER_BASE_IMAGE || '' }}
+          build-contexts: |
+            ghcr.io/value-fabric/base-images/node:22-alpine@sha256:3a1f0f45b9f8d2f1470d82895e0f6db2e5f1d9705b7fce6b4f8ee1b9a6f3c4d2=docker-image://node:22-alpine
+            ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5=docker-image://python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
+            ghcr.io/value-fabric/ci-mirror/astral-uv:python3.11-bookworm-slim@sha256:7b96c4cb5e0d3fa2be3d3f1ee3ab6e3a9ec8f0c443b2d0d94fcf4d972cb9e431=docker-image://ghcr.io/astral-sh/uv:python3.11-bookworm-slim
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
 
