@@ -3,6 +3,8 @@
 Defines typed state schemas for all workflow types in Layer 4.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Any

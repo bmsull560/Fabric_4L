@@ -1,5 +1,7 @@
 """ROI Calculator workflow implementation."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel

@@ -3,6 +3,8 @@
 Neo4j-backed implementation of variable definitions and resolution.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from typing import Any
 

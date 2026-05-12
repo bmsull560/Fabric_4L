@@ -5,6 +5,8 @@ Provides CRUD operations for CRM provider configurations (Salesforce, HubSpot).
 All credentials are encrypted at rest and never returned in API responses.
 """
 
+from __future__ import annotations
+
 import base64
 import hashlib
 import hmac

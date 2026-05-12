@@ -4,6 +4,8 @@ Verifies that tools return structured ToolResult instead of raising exceptions.
 Location: services/layer4-agents/tests/ to use correct conftest.py paths.
 """
 
+from __future__ import annotations
+
 import pytest
 from pydantic import BaseModel
 

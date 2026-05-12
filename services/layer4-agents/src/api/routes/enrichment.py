@@ -13,6 +13,8 @@ Account lookups are tenant-scoped to prevent IDOR (V-003).
 Batch endpoint ignores body tenant_id and uses auth context (V-004).
 """
 
+from __future__ import annotations
+
 from typing import Any
 from uuid import UUID
 

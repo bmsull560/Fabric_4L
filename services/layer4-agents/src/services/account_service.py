@@ -4,6 +4,8 @@ Account service layer for CRM account operations.
 Business logic and data access for the accounts surface.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any

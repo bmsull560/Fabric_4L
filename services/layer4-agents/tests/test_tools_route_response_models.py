@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from value_fabric.layer4.contracts.tool_dto import ToolCategoryListResponse, ToolSchemaResponse
 
 

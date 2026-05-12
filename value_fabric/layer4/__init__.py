@@ -5,6 +5,8 @@ This shim appends that directory to ``__path__`` so that
 ``import value_fabric.layer4.engine`` resolves to the canonical tree.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 _repo_root: Path = Path(__file__).resolve().parent.parent.parent

@@ -4,6 +4,8 @@ Handles high-throughput usage event ingestion with idempotency,
 tenant validation, and Stripe MeterEvents integration for usage-based billing.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import uuid

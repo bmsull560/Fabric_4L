@@ -5,6 +5,8 @@ Tests the pure-Python logic (_cast_value, _apply_rule) that requires no Neo4j
 connection, and integration-level behaviour with a mocked AsyncDriver.
 """
 
+from __future__ import annotations
+
 import json
 from datetime import UTC, datetime
 from decimal import Decimal

@@ -5,6 +5,8 @@ Stores encrypted credentials and sync configuration for Salesforce and HubSpot.
 Credentials are encrypted at rest using AES-256 via the encryption service.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import UTC, datetime
 from enum import Enum as PyEnum

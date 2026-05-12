@@ -1,6 +1,8 @@
 """Pytest configuration for Layer 4 Agents tests.
 """
 
+from __future__ import annotations
+
 import sys
 import os
 from pathlib import Path

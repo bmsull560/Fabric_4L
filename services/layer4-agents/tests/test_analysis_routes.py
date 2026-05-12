@@ -1,5 +1,7 @@
 """Targeted tests for analysis routes executor integration."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Any

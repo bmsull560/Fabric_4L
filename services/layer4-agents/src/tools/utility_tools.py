@@ -1,5 +1,7 @@
 """Utility tools for validation, formatting, and common operations."""
 
+from __future__ import annotations
+
 from ..models.tool_schemas import (
     FormatCurrencyInput,
     FormatCurrencyOutput,

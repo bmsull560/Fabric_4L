@@ -3,6 +3,8 @@
 API-level async tests via httpx.AsyncClient that validate public contract/status behavior.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock

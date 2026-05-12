@@ -1,5 +1,7 @@
 """WebSocket support for real-time workflow streaming."""
 
+from __future__ import annotations
+
 from .manager import WorkflowWebSocketManager, get_ws_manager
 from .routes import websocket_router
 

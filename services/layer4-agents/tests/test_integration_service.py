@@ -4,6 +4,8 @@ Unit tests for Integration Service refinements.
 Tests validation logic, edge cases, and error handling.
 """
 
+from __future__ import annotations
+
 import pytest
 from value_fabric.layer4.models.account import CRMProvider
 from value_fabric.layer4.services.encryption_service import DEFAULT_KEY_ID, EncryptionService

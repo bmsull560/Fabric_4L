@@ -3,6 +3,8 @@
 Pydantic models defining the interface for all 24 tools in the registry.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any, Literal
 

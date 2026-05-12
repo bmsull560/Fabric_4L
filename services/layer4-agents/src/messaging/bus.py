@@ -7,6 +7,8 @@ Provides pub/sub messaging with support for:
 - Subscription management
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from abc import ABC, abstractmethod

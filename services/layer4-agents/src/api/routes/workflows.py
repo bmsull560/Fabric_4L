@@ -7,6 +7,8 @@ Implements the workflow API as specified in value_fabric_backend_logic_specifica
 - DELETE /api/v1/workflows/{instance_id} - Cancel workflow
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging

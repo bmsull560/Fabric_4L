@@ -1,5 +1,7 @@
 """Tests for L4 messaging types, bus, and router."""
 
+from __future__ import annotations
+
 import asyncio
 from datetime import UTC, datetime, timedelta
 

@@ -4,6 +4,8 @@ Provides pub/sub-style event broadcasting to connected clients with
 connection resilience, last-event-ID replay, and workflow-scoped channels.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import uuid

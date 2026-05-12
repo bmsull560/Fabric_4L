@@ -7,6 +7,8 @@ Provides clean extension points for:
 - Variable Registry resolution
 """
 
+from __future__ import annotations
+
 from .benchmark_client import (
     BenchmarkDataset,
     ComparisonRequest,

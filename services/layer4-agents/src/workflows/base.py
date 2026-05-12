@@ -4,6 +4,8 @@ Provides the foundation for all workflow implementations with checkpointing,
 state management, and node execution.
 """
 
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable

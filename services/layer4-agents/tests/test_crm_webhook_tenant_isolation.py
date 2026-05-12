@@ -10,6 +10,8 @@ NOTE: These tests require the full Python environment (langgraph, psycopg,
 shared.crypto, etc.). Marked as integration tests — skip in lightweight CI.
 """
 
+from __future__ import annotations
+
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 

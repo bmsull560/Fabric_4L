@@ -8,6 +8,8 @@ Covers P0 security requirements:
 - Database failures don't expose secrets or corrupt state
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4

@@ -5,6 +5,8 @@ Handles periodic syncing of accounts from Salesforce and HubSpot,
 with rate limiting, deduplication, and error handling.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os

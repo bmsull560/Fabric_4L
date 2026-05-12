@@ -6,6 +6,8 @@ Implements the task scheduling requirements from the specification:
 - Backpressure with max_concurrent_tasks limit
 """
 
+from __future__ import annotations
+
 import asyncio
 import heapq
 import logging

@@ -5,6 +5,8 @@ Handles CRUD operations for integrations with credential encryption,
 validation, and audit logging. Supports Salesforce and HubSpot.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging

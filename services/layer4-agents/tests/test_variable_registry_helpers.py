@@ -6,6 +6,8 @@ Covers (no Neo4j required):
 - _apply_rule: range, regex, enum, unknown rule type
 """
 
+from __future__ import annotations
+
 import json
 from datetime import datetime
 from decimal import Decimal

@@ -3,6 +3,8 @@
 Tests health status tracking, badge generation, and callback mechanisms.
 """
 
+from __future__ import annotations
+
 import asyncio
 
 import pytest

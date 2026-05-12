@@ -1,5 +1,7 @@
 """Tenant governance API package."""
 
+from __future__ import annotations
+
 from .routes.admin import router as admin_router
 from .routes.api_keys import router as api_keys_router
 from .routes.provisioning import router as provisioning_router

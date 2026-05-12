@@ -10,6 +10,8 @@ Provides real-time health status for:
 Emits events when health status changes for UI badge updates.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections.abc import Callable

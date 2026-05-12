@@ -1,5 +1,7 @@
 """Canonical governance workflow objects/endpoints for L4/L5 traceability."""
 
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Literal

@@ -1,5 +1,7 @@
 """Document export tool for generating PDFs from business cases."""
 
+from __future__ import annotations
+
 import logging
 from datetime import datetime
 from io import BytesIO

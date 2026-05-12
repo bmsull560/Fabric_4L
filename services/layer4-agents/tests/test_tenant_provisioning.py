@@ -9,6 +9,8 @@ Verifies automated tenant lifecycle management with:
 - Rollback on failure
 """
 
+from __future__ import annotations
+
 import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch

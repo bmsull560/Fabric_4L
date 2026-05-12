@@ -9,6 +9,8 @@ Tests the accounts-first CRM integration API contract:
 - GET /v1/accounts/sync-status (provider sync status)
 """
 
+from __future__ import annotations
+
 import pytest
 
 pytestmark = [

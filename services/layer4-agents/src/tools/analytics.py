@@ -2,6 +2,8 @@
 Analytics tools with tenant isolation.
 """
 
+from __future__ import annotations
+
 import logging
 
 from value_fabric.shared.identity.context import RequestContext, require_context

@@ -3,6 +3,8 @@
 Provides tenant context management and request isolation.
 """
 
+from __future__ import annotations
+
 from .context import TenantContext, get_current_tenant, set_current_tenant
 from .middleware import TenantMiddleware
 

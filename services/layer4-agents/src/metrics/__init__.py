@@ -1,5 +1,7 @@
 """Metrics package initialization for Layer 4."""
 
+from __future__ import annotations
+
 from .prometheus_metrics import (
     MetricsConfig,
     MetricsMiddleware,

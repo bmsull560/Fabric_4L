@@ -4,6 +4,8 @@ Provides hybrid integration where L4 ContextExtractionAgent
 calls L2 APIs for financial document processing.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from typing import Any

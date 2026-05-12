@@ -7,6 +7,8 @@ SECURITY: All endpoints use get_db_from_context for RLS tenant isolation
           and require_authenticated for mandatory auth enforcement.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import UTC, datetime
 from uuid import UUID

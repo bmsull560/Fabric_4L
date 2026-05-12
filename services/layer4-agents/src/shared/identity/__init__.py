@@ -1,5 +1,7 @@
 """Identity and authentication shared components."""
 
+from __future__ import annotations
+
 from .oidc import (
     OIDCClaims,
     OIDCClient,

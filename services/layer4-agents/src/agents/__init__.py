@@ -15,6 +15,8 @@ Backward-compatible aliases for deprecated names are re-exported
 from taxonomy.py.  See DEPRECATION_MAP.md for migration timeline.
 """
 
+from __future__ import annotations
+
 from .base import AgentCapability, AgentState, BaseAgent
 from .signal_detection import SignalDetectionAgent
 from .taxonomy import (

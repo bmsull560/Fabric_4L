@@ -4,6 +4,8 @@ P0-29: Pydantic-settings with validation for required secrets.
 Fails fast on startup if required configuration is missing or invalid.
 """
 
+from __future__ import annotations
+
 import importlib
 import secrets
 

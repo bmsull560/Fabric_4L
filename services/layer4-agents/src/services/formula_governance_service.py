@@ -3,6 +3,8 @@
 Neo4j-backed implementation of formula versioning and governance lifecycle.
 """
 
+from __future__ import annotations
+
 import re
 import uuid
 from datetime import UTC, datetime

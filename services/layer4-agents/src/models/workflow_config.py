@@ -3,6 +3,8 @@
 Defines node configurations, edges, and conditional routing for workflows.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 

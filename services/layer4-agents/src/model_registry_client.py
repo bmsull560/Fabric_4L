@@ -5,6 +5,8 @@ Provides audit logging for registry fallback scenarios to ensure
 degraded mode operations are visible and traceable.
 """
 
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 from typing import Any

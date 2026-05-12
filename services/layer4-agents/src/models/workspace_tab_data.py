@@ -4,6 +4,8 @@ Stores JSON-blob tab data per case, enabling workspace tabs to persist
 and retrieve state without requiring a full AI generation pipeline.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Index, String, Text

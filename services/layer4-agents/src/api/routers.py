@@ -1,5 +1,7 @@
 """Router registration for Layer 4 API."""
 
+from __future__ import annotations
+
 import logging
 
 from fastapi import FastAPI

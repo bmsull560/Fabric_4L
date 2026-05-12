@@ -3,6 +3,8 @@
 Provides pub/sub messaging, message routing, and inter-agent communication.
 """
 
+from __future__ import annotations
+
 from .bus import InMemoryMessageBus, MessageBus, RedisMessageBus
 from .router import MessageRouter
 from .signal_events import (

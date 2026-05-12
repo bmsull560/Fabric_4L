@@ -4,6 +4,8 @@ Provides WebSocket endpoint for subscribing to workflow events with
 automatic reconnection support and event replay.
 """
 
+from __future__ import annotations
+
 import logging
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect

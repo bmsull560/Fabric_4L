@@ -4,6 +4,8 @@ Provides clean extension point for Layer 6 Benchmark Service integration.
 Uses REST API contracts for cross-service operations.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal

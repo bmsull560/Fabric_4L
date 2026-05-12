@@ -1,5 +1,7 @@
 """Calculation tools for formulas, ROI, benchmarks, and sensitivity analysis."""
 
+from __future__ import annotations
+
 import ast
 import operator
 import re

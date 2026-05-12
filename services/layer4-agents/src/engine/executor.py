@@ -10,6 +10,8 @@ Provides comprehensive workflow orchestration with:
 This implements the OrchestrationController agent type from the specification.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import sys

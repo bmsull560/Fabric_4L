@@ -1,5 +1,7 @@
 """Middleware composition for Layer 4 API."""
 
+from __future__ import annotations
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

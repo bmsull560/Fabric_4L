@@ -10,6 +10,8 @@ This package contains 25+ tools organized into 7 categories:
 - Competitive (1): Competitive intelligence and alternative analysis
 """
 
+from __future__ import annotations
+
 from .calculation_tools import (
     CalculateROITool,
     CompareBenchmarksTool,

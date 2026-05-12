@@ -11,6 +11,8 @@ Key scenarios:
 - Thread-based checkpoint isolation
 """
 
+from __future__ import annotations
+
 from typing import Annotated, Any, TypedDict
 
 import pytest

@@ -3,6 +3,8 @@
 Provides thread-safe tenant context storage and retrieval.
 """
 
+from __future__ import annotations
+
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any

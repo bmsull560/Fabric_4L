@@ -8,6 +8,8 @@ Provides admin endpoints for tenant lifecycle management:
 - GET /v1/tenants - List all tenants (super-admin only)
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 from uuid import UUID

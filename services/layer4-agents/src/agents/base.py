@@ -4,6 +4,8 @@ Provides the foundation for all 9 canonical agent types in the Value Fabric
 Layer 4 system.  See taxonomy.py for the full roster.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os

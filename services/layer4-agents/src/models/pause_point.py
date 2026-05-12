@@ -4,6 +4,8 @@ Defines typed pause point schemas that enable contextual user interactions
 when workflows require human input or approval.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any

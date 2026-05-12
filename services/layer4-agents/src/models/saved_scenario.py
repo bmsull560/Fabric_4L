@@ -1,5 +1,7 @@
 """Persisted interactive business-case scenarios."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 
 from sqlalchemy import JSON, DateTime, Index, String

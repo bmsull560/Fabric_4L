@@ -1,5 +1,7 @@
 """Tests for L4 provenance models and in-memory store."""
 
+from __future__ import annotations
+
 import sys
 from datetime import UTC, datetime
 from pathlib import Path

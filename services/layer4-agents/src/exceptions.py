@@ -5,6 +5,8 @@ P1-42: ConcurrencyLimitExceeded - Max concurrent workflow limit
 """
 
 
+from __future__ import annotations
+
 class WorkflowTimeoutError(TimeoutError):
     """Raised when a workflow exceeds its global timeout.
 

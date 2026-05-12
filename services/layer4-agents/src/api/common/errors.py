@@ -1,5 +1,7 @@
 """Shared error helpers for API routes."""
 
+from __future__ import annotations
+
 import logging
 
 from fastapi import HTTPException

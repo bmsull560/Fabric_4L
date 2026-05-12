@@ -5,6 +5,8 @@ Canonical runtime algorithm:
 - Fernet tokens backed by AES-128-CBC + HMAC-SHA256 authentication.
 """
 
+from __future__ import annotations
+
 import asyncio
 import base64
 import logging
@@ -42,7 +44,7 @@ class EncryptionService:
 
     # In production, retrieve from KMS/Vault
     _MASTER_KEY: bytes | None = None
-    _key_cache: OrderedDict[str, Fernet] = OrderedDict()
+    _key_cache: Ordereddict[str, Fernet] = OrderedDict()
 
     @classmethod
     def _get_cache_lock(cls) -> asyncio.Lock:

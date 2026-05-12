@@ -3,6 +3,8 @@
 Provides centralized tool registration, discovery, and execution.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os

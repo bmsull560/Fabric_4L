@@ -1,11 +1,13 @@
 """State manager for workflow state persistence using Redis."""
 
+from __future__ import annotations
+
 import json
 import logging
 import re
 from collections import OrderedDict
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -46,7 +48,7 @@ class StateManager:
     def __init__(
         self,
         redis_client=None,
-        ws_manager: Optional["WorkflowWebSocketManager"] = None,
+        ws_manager: "WorkflowWebSocketManager" | None = None,
         max_memory_entries: int = DEFAULT_MAX_MEMORY_ENTRIES,
     ):
         """Initialize state manager.
@@ -58,7 +60,7 @@ class StateManager:
         """
         self.redis = redis_client
         # P0-26: LRU cache with maxlen to prevent unbounded growth
-        self._memory_store: OrderedDict[str, dict] = OrderedDict()
+        self._memory_store: Ordereddict[str, dict] = OrderedDict()
         self._max_memory_entries = max_memory_entries
         self._ws_manager: WorkflowWebSocketManager | None = ws_manager
 

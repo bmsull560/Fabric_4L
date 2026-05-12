@@ -3,6 +3,8 @@
 Defines available plans, their entitlements, and usage limits for overage detection.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum as PyEnum
 from typing import Any

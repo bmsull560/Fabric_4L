@@ -5,6 +5,8 @@ Handles push notifications when accounts are created/updated in CRM,
 triggering immediate sync to keep Account records fresh.
 """
 
+from __future__ import annotations
+
 import hashlib
 import hmac
 import json

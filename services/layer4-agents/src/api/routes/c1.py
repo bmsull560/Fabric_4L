@@ -6,6 +6,8 @@ and business-case context; this route forwards them to the Thesys embed
 endpoint and relays the SSE response back to the browser.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os

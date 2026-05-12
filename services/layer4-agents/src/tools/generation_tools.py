@@ -1,5 +1,7 @@
 """Generation tools for documents, sections, charts, and tables."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from io import BytesIO

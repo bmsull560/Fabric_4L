@@ -8,6 +8,8 @@ Verifies:
 - Authorization and validation
 """
 
+from __future__ import annotations
+
 import pytest
 
 import email_validator  # noqa: F401 — mandatory dep; install via layer4-agents[dev] (email-validator)

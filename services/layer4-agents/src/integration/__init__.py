@@ -4,6 +4,8 @@ Provides hybrid integration approach where L4 agents orchestrate
 L1 (Ingestion), L2 (Extraction), and L3 (Knowledge Graph) via API calls.
 """
 
+from __future__ import annotations
+
 from .layer1_client import Layer1IngestionClient
 from .layer2_client import Layer2ExtractionClient
 from .layer3_client import Layer3Client, Layer3ClientError

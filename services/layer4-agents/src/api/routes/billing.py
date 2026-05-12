@@ -5,6 +5,8 @@ entitlement checks, and usage-based billing. Includes high-throughput
 usage event ingestion with idempotency and tenant isolation.
 """
 
+from __future__ import annotations
+
 import ipaddress
 import logging
 import os

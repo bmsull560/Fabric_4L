@@ -7,6 +7,8 @@ It is kept temporarily so existing imports continue to work during the
 migration. New code should use GovernanceMiddleware directly.
 """
 
+from __future__ import annotations
+
 import logging
 
 from value_fabric.shared.identity.middleware import (

@@ -4,6 +4,8 @@ Handles customer management, subscription lifecycle, and entitlement checks.
 Minimal scope: subscription status, customer portal, plan enforcement.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from datetime import UTC, datetime

@@ -13,6 +13,8 @@ Endpoints:
   GET    /v1/ground-truth/maturity-ladder           -> L5 GET /maturity-ladder
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 from uuid import UUID

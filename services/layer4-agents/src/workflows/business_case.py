@@ -1,5 +1,7 @@
 """Business Case Generator workflow implementation."""
 
+from __future__ import annotations
+
 import logging
 import os
 import re

@@ -4,6 +4,8 @@ Provides hybrid integration where L4 ContextExtractionAgent
 calls L1 APIs for document processing.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os

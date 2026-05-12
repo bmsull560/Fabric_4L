@@ -6,6 +6,8 @@ Provides routing logic for:
 - Workflow-aware message routing
 """
 
+from __future__ import annotations
+
 import logging
 import random
 from typing import Any

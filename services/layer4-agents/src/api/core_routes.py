@@ -1,5 +1,7 @@
 """Core Layer 4 API endpoints registered by the app factory."""
 
+from __future__ import annotations
+
 import time
 from datetime import datetime, timezone
 from typing import Any

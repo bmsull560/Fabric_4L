@@ -1,5 +1,7 @@
 """Analysis API routes for quick ROI and whitespace calculations."""
 
+from __future__ import annotations
+
 import json
 import logging
 import re

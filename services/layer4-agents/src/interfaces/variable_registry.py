@@ -4,6 +4,8 @@ Centralized variable definitions with source binding and provenance.
 Internal service interface first; API where needed for external binding.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime

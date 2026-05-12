@@ -3,6 +3,8 @@
 Neo4j-backed implementation of the Value Pack domain service.
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 from datetime import UTC, datetime

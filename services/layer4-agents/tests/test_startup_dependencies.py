@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from value_fabric.layer4.startup_dependencies import verify_startup_dependencies

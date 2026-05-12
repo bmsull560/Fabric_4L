@@ -16,6 +16,8 @@ Architecture:
 - L3 graph    = downstream projection (deferred — orchestrator writes to L4 only)
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any

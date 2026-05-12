@@ -5,6 +5,8 @@ high-cardinality label explosion which can cause Prometheus OOM.
 Endpoint paths are normalized to strip IDs and prevent unbounded cardinality.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 import time

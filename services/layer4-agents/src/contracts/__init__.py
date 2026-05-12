@@ -17,6 +17,8 @@ Import from here:
     )
 """
 
+from __future__ import annotations
+
 from .artifacts import (
     # Constants
     CONFIDENCE_HIGH_THRESHOLD,

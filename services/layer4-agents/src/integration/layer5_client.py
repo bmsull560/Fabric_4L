@@ -11,6 +11,8 @@ exceptions and returns a structured error dict rather than raising, so
 a Layer 5 outage never blocks a business case generation.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from typing import Any

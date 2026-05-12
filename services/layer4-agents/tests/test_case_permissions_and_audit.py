@@ -1,5 +1,7 @@
 """Security and audit tests for case routes."""
 
+from __future__ import annotations
+
 from typing import Any
 from types import SimpleNamespace
 from uuid import UUID, uuid4

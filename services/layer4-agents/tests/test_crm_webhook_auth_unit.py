@@ -12,6 +12,8 @@ Covers:
 - HMAC signature mismatch (defense-in-depth)
 """
 
+from __future__ import annotations
+
 import hashlib
 import hmac
 import json

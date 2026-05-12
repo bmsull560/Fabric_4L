@@ -4,6 +4,8 @@ Checks current usage against plan limits and returns warnings/errors.
 Supports both soft limits (warnings) and hard limits (rejections).
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta

@@ -9,6 +9,8 @@ Covers:
 - Webhook handlers for Salesforce and HubSpot
 """
 
+from __future__ import annotations
+
 from typing import Any
 import os
 from unittest.mock import AsyncMock, MagicMock, patch

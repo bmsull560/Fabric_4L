@@ -4,6 +4,8 @@ Tests the pause/resume lifecycle for human-in-the-loop workflows.
 Verifies state persistence across interruptions and container restarts.
 """
 
+from __future__ import annotations
+
 import os
 from datetime import datetime
 from typing import Any

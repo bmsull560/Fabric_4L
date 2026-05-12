@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+import datetime as _datetime_module
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any

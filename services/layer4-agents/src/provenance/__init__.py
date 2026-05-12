@@ -7,6 +7,8 @@ Provides provenance tracking and audit trails as specified:
 - Decision trace construction
 """
 
+from __future__ import annotations
+
 from .models import (
     PROVActivity,
     PROVAgent,

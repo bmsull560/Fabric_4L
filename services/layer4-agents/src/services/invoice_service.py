@@ -4,6 +4,8 @@ Handles invoice generation, retrieval, payment tracking, and charge records.
 Integrates with Stripe for invoice synchronization and payment processing.
 """
 
+from __future__ import annotations
+
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta

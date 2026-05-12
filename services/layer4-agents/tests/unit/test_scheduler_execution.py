@@ -1,5 +1,7 @@
 """Regression tests for real scheduler task dispatch."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 
 import pytest
