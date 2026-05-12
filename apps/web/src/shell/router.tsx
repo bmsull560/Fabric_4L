@@ -216,14 +216,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "/context/command-center",
-        element: (
-          <ProtectedRoute>
-            <CommandCenter />
-          </ProtectedRoute>
-        ),
-      },
-      {
         path: "/accounts",
         element: (
           <ProtectedRoute>

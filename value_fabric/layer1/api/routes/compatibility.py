@@ -6,19 +6,41 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from value_fabric.shared.identity import RequestContext, Role, require_authenticated, require_role
+from value_fabric.shared.observability.logging import get_logger
 
 
 router = APIRouter()
+logger = get_logger(__name__)
 _INGESTION_SOURCE_COMPAT_STORE: dict[str, dict[str, Any]] = {}
+_DEPRECATION_REMOVAL_DATE = "2026-07-15"
+
+
+def _record_compatibility_usage(*, endpoint: str, tenant_id: str, user_id: str) -> None:
+    logger.warning(
+        "layer1_compatibility_route_accessed",
+        endpoint=endpoint,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        removal_date=_DEPRECATION_REMOVAL_DATE,
+    )
+
+
+def _add_deprecation_headers(response: Response) -> None:
+    response.headers["Deprecation"] = "true"
+    response.headers["Sunset"] = _DEPRECATION_REMOVAL_DATE
+    response.headers["Link"] = '</api/v1/ingestion>; rel="successor-version"'
 
 
 @router.post("/v1/ingest", tags=["Compatibility"])
 async def short_ingest_compatibility_boundary(
-    _ctx: RequestContext = Depends(require_authenticated),
+    response: Response,
+    ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, str]:
+    _add_deprecation_headers(response)
+    _record_compatibility_usage(endpoint="/v1/ingest", tenant_id=str(ctx.tenant_id), user_id=str(ctx.user_id))
     raise HTTPException(
         status_code=410,
         detail="Use the canonical /api/v1/ingestion endpoints for Layer 1 ingestion operations.",
@@ -28,8 +50,11 @@ async def short_ingest_compatibility_boundary(
 @router.post("/api/v1/ingestion/sources", tags=["Compatibility"], status_code=201)
 async def create_ingestion_source_compatibility_boundary(
     request: Request,
+    response: Response,
     ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
+    _add_deprecation_headers(response)
+    _record_compatibility_usage(endpoint="/api/v1/ingestion/sources", tenant_id=str(ctx.tenant_id), user_id=str(ctx.user_id))
     try:
         payload = await request.json()
     except Exception as exc:
@@ -51,8 +76,15 @@ async def create_ingestion_source_compatibility_boundary(
 @router.get("/api/v1/ingestion/sources/{source_id}", tags=["Compatibility"])
 async def get_ingestion_source_compatibility_boundary(
     source_id: str,
-    _ctx: RequestContext = Depends(require_authenticated),
+    response: Response,
+    ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
+    _add_deprecation_headers(response)
+    _record_compatibility_usage(
+        endpoint="/api/v1/ingestion/sources/{source_id}",
+        tenant_id=str(ctx.tenant_id),
+        user_id=str(ctx.user_id),
+    )
     record = _INGESTION_SOURCE_COMPAT_STORE.get(source_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Source not found")
