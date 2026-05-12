@@ -41,6 +41,9 @@ jobs:
           uv pip install -r tests/requirements-test.txt --system
 
       - name: Run mandatory test profile
+        env:
+          PYTHONPATH: ${{ github.workspace }}/packages/shared/src:${{ github.workspace }}
+          DATABASE_URL: sqlite:///:memory:
         run: |
           # MANDATORY: unit + contract + security tests
           # These fail (never skip) if dependencies are missing
@@ -148,6 +151,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run mandatory security regression gate
+        env:
+          DATABASE_URL: sqlite:///:memory:
         run: |
           bash scripts/ci/mandatory_security_regression_gate.sh
 

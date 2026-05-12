@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # Layer 2: Extraction Service - Deterministic build with uv
-FROM ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
+ARG BASE_IMAGE=ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
+FROM ${BASE_IMAGE}
 
 # Security: Run as non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
@@ -19,8 +20,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 WORKDIR /app
 
 # Copy dependency files
-COPY services/layer2-extraction/pyproject.toml .
-COPY services/layer2-extraction/uv.lock .
+COPY pyproject.toml .
+COPY uv.lock .
 
 # Install dependencies using uv (deterministic from lock file)
 RUN uv sync --frozen --no-install-project

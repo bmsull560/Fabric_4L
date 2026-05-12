@@ -263,7 +263,7 @@ log_evidence_start
 trap 'log_evidence_complete $?' EXIT
 
 run_step "Standalone API production-safety, durable persistence, and fail-closed provider checks" \
-  bash -c "cd services/api && TESTING=true ENVIRONMENT=testing DEBUG=false SEED_DEMO_DATA=false python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/standalone_api_security.xml' app/tests/test_auth_enforcement.py app/tests/test_production_safety.py app/tests/test_i03_durable_persistence_and_llm.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/standalone_api_security.xml'"
+  bash -c "cd services/api && TESTING=true ENVIRONMENT=testing DEBUG=false SEED_DEMO_DATA=false DATABASE_URL='${DATABASE_URL:-sqlite:///:memory:}' python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/standalone_api_security.xml' app/tests/test_auth_enforcement.py app/tests/test_production_safety.py app/tests/test_i03_durable_persistence_and_llm.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/standalone_api_security.xml'"
 log_suite_result "I-02/I-03 API Production Safety" "pytest app/tests/test_auth_enforcement.py test_production_safety.py test_i03_durable_persistence_and_llm.py" "Yes" "PASS" "${ARTIFACT_DIR}/standalone_api_security.xml"
 
 run_step "Tenant-boundary and auth/security regression checks" \
