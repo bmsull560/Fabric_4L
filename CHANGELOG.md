@@ -7,6 +7,36 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.0] — 2026-05-12
+
+### Deployment Target
+- Environment: production
+- Namespace: fabric-4l-prod
+- Registry: ghcr.io/value-fabric
+
+### Infrastructure
+- Kubernetes manifests validated via `kubectl kustomize`
+- Production overlay: 3,175 lines of rendered manifests
+- HPA, PDB, NetworkPolicies, and monitoring configured
+- ExternalSecrets configured for secret management
+
+### Services
+| Service | Replicas | Layer |
+|---------|----------|-------|
+| layer1-ingestion | 3 | L1 |
+| layer2-extraction | 3 | L2 |
+| layer3-knowledge | 3 | L3 |
+| layer4-agents | 3 | L4 |
+| layer5-ground-truth | 2 | L5 |
+| layer6-benchmarks | 2 | L6 |
+| frontend (web) | 2 | UI |
+
+### Fixes
+- Fixed K8s overlay patches: corrected container name (`frontend` → `web`)
+- Fixed K8s overlay patches: corrected ConfigMap name (`global-config` → `value-fabric-config`)
+- Fixed K8s overlay patches: added missing namespace metadata
+- Aligned all version sources to 1.0.0
+
 ## [Unreleased]
 
 ### Added
