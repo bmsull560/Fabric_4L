@@ -74,11 +74,42 @@ jobs:
         uses: sigstore/cosign-installer@v3.8.1
 
       - name: Log in to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.GHCR_USERNAME || github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Verify cross-org base image access
+        run: |
+          set -uo pipefail
+          CROSS_ORG_IMAGES=(
+            "ghcr.io/value-fabric/base-images/node:22-alpine"
+            "ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm"
+            "ghcr.io/value-fabric/ci-mirror/astral-uv:python3.11-bookworm-slim"
+          )
+          MISSING=()
+          for img in "${CROSS_ORG_IMAGES[@]}"; do
+            if ! docker buildx imagetools inspect "$img" > /dev/null 2>&1; then
+              MISSING+=("$img")
+            fi
+          done
+          if [ ${#MISSING[@]} -ne 0 ]; then
+            echo "::error::Cannot access required private base images from the value-fabric GHCR organization."
+            echo "::error::Missing / inaccessible images:"
+            for img in "${MISSING[@]}"; do
+              echo "::error::  - $img"
+            done
+            if [ -z "${{ secrets.GHCR_TOKEN }}" ]; then
+              echo "::error::The GHCR_TOKEN repository secret is not configured."
+              echo "::error::Please add a GHCR_TOKEN secret with read:packages scope for the value-fabric organization, then re-run this workflow."
+            else
+              echo "::error::The configured GHCR_TOKEN does not have sufficient access to the value-fabric organization packages."
+              echo "::error::Please verify the token has read:packages scope for value-fabric/* and that the base images exist."
+            fi
+            exit 1
+          fi
+          echo "✅ Cross-org base image access verified"
 
       - name: Validate release metadata signature
         if: github.event_name == 'release'
@@ -238,11 +269,11 @@ jobs:
         uses: sigstore/cosign-installer@v3.8.1
 
       - name: Log in to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.GHCR_USERNAME || github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Verify signatures and provenance attestations
         env:
@@ -307,11 +338,11 @@ jobs:
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
 
       - name: Log in to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.GHCR_USERNAME || github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Run smoke test
         run: |
