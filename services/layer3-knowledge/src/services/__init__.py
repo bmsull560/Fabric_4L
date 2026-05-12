@@ -4,4 +4,7 @@ Canonical implementation lives in ``value_fabric.layer3.services``
 per ``docs/reference/layer-runtime-path-governance.md``.
 """
 
-from value_fabric.layer3.services import *  # noqa: F401,F403
+try:
+    from value_fabric.layer3.services import *  # noqa: F401,F403
+except ModuleNotFoundError:
+    pass

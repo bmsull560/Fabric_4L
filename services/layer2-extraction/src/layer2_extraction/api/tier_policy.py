@@ -26,7 +26,6 @@ class ExtractionOperation(str, Enum):
     ADMIN_RETRY_ALL = "admin_retry_all"
 
 
-# Tier permission matrix
 _TIER_PERMISSIONS: dict[AccessTier, set[ExtractionOperation]] = {
     AccessTier.STANDARD: {
         ExtractionOperation.VIEW_JOB_STATUS,
@@ -45,8 +44,6 @@ _TIER_PERMISSIONS: dict[AccessTier, set[ExtractionOperation]] = {
     AccessTier.ADMIN: set(ExtractionOperation),
 }
 
-
-# Route to tier mapping
 _ROUTE_TIER_MAP: dict[str, AccessTier] = {
     "/jobs/status": AccessTier.STANDARD,
     "/jobs/123/results": AccessTier.STANDARD,

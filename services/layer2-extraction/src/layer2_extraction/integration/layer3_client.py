@@ -8,8 +8,6 @@ from pydantic import BaseModel, ConfigDict
 
 
 class IngestionResponse(BaseModel):
-    """Response from Layer 3 ingestion."""
-
     model_config = ConfigDict(extra="forbid")
 
     success: bool
@@ -21,8 +19,6 @@ class IngestionResponse(BaseModel):
 
 
 class IngestionStatus(BaseModel):
-    """Status of an ongoing ingestion."""
-
     model_config = ConfigDict(extra="forbid")
 
     ingestion_id: str
@@ -41,7 +37,6 @@ class Layer3KnowledgeClient:
         self._api_key = api_key
 
     async def health_check(self) -> bool:
-        """Check if Layer 3 is healthy."""
         try:
             import httpx
             async with httpx.AsyncClient() as client:
@@ -57,7 +52,6 @@ class Layer3KnowledgeClient:
         source_url: str,
         extraction_job_id: str,
     ) -> IngestionResponse:
-        """Ingest RDF data into Layer 3."""
         try:
             import httpx
             async with httpx.AsyncClient() as client:
@@ -81,7 +75,6 @@ class Layer3KnowledgeClient:
             )
 
     async def get_ingestion_status(self, ingestion_id: str) -> IngestionStatus:
-        """Get status of an ingestion."""
         try:
             import httpx
             async with httpx.AsyncClient() as client:
@@ -99,5 +92,4 @@ class Layer3KnowledgeClient:
             )
 
     async def close(self) -> None:
-        """Close any open connections."""
         pass

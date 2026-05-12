@@ -1,0 +1,315 @@
+Deleted files with equivalents in services/: 126
+  HAVE_EQ: value_fabric/layer2/__init__.py -> services/layer2-extraction/src/__init__.py
+  HAVE_EQ: value_fabric/layer3/__init__.py -> services/layer3-knowledge/src/__init__.py
+  HAVE_EQ: value_fabric/layer3/agents/__init__.py -> services/layer3-knowledge/src/agents/__init__.py
+  HAVE_EQ: value_fabric/layer3/agents/base.py -> services/layer3-knowledge/src/agents/base.py
+  HAVE_EQ: value_fabric/layer3/agents/narrative_synthesis.py -> services/layer3-knowledge/src/agents/narrative_synthesis.py
+  HAVE_EQ: value_fabric/layer3/agents/provenance_tracking.py -> services/layer3-knowledge/src/agents/provenance_tracking.py
+  HAVE_EQ: value_fabric/layer3/agents/roi_calculation.py -> services/layer3-knowledge/src/agents/roi_calculation.py
+  HAVE_EQ: value_fabric/layer3/agents/scenario_engine.py -> services/layer3-knowledge/src/agents/scenario_engine.py
+  HAVE_EQ: value_fabric/layer3/agents/value_tree_projection.py -> services/layer3-knowledge/src/agents/value_tree_projection.py
+  HAVE_EQ: value_fabric/layer3/agents/whitespace_analysis.py -> services/layer3-knowledge/src/agents/whitespace_analysis.py
+  HAVE_EQ: value_fabric/layer3/analytics/__init__.py -> services/layer3-knowledge/src/analytics/__init__.py
+  HAVE_EQ: value_fabric/layer3/analytics/centrality.py -> services/layer3-knowledge/src/analytics/centrality.py
+  HAVE_EQ: value_fabric/layer3/analytics/communities.py -> services/layer3-knowledge/src/analytics/communities.py
+  HAVE_EQ: value_fabric/layer3/analytics/manager.py -> services/layer3-knowledge/src/analytics/manager.py
+  HAVE_EQ: value_fabric/layer3/analytics/similarity.py -> services/layer3-knowledge/src/analytics/similarity.py
+  HAVE_EQ: value_fabric/layer3/api/__init__.py -> services/layer3-knowledge/src/api/__init__.py
+  HAVE_EQ: value_fabric/layer3/api/app_monolith.py -> services/layer3-knowledge/src/api/app_monolith.py
+  HAVE_EQ: value_fabric/layer3/api/cache.py -> services/layer3-knowledge/src/api/cache.py
+  HAVE_EQ: value_fabric/layer3/api/dependencies.py -> services/layer3-knowledge/src/api/dependencies.py
+  HAVE_EQ: value_fabric/layer3/api/dependencies_tenant.py -> services/layer3-knowledge/src/api/dependencies_tenant.py
+  HAVE_EQ: value_fabric/layer3/api/dependencies_tenant_secured.py -> services/layer3-knowledge/src/api/dependencies_tenant_secured.py
+  HAVE_EQ: value_fabric/layer3/api/exception_mapping.py -> services/layer3-knowledge/src/api/exception_mapping.py
+  HAVE_EQ: value_fabric/layer3/api/exceptions.py -> services/layer3-knowledge/src/api/exceptions.py
+  HAVE_EQ: value_fabric/layer3/api/main.py -> services/layer3-knowledge/src/api/main.py
+  HAVE_EQ: value_fabric/layer3/api/metrics_state.py -> services/layer3-knowledge/src/api/metrics_state.py
+  HAVE_EQ: value_fabric/layer3/api/models.py -> services/layer3-knowledge/src/api/models.py
+  HAVE_EQ: value_fabric/layer3/api/rate_limiter.py -> services/layer3-knowledge/src/api/rate_limiter.py
+  HAVE_EQ: value_fabric/layer3/api/routes/__init__.py -> services/layer3-knowledge/src/api/routes/__init__.py
+  HAVE_EQ: value_fabric/layer3/api/routes/_utils.py -> services/layer3-knowledge/src/api/routes/_utils.py
+  HAVE_EQ: value_fabric/layer3/api/routes/benchmarks.py -> services/layer3-knowledge/src/api/routes/benchmarks.py
+  HAVE_EQ: value_fabric/layer3/api/routes/calculators.py -> services/layer3-knowledge/src/api/routes/calculators.py
+  HAVE_EQ: value_fabric/layer3/api/routes/compat_aliases.py -> services/layer3-knowledge/src/api/routes/compat_aliases.py
+  HAVE_EQ: value_fabric/layer3/api/routes/competitive_intel.py -> services/layer3-knowledge/src/api/routes/competitive_intel.py
+  HAVE_EQ: value_fabric/layer3/api/routes/entities.py -> services/layer3-knowledge/src/api/routes/entities.py
+  HAVE_EQ: value_fabric/layer3/api/routes/entity_compat.py -> services/layer3-knowledge/src/api/routes/entity_compat.py
+  HAVE_EQ: value_fabric/layer3/api/routes/evidence.py -> services/layer3-knowledge/src/api/routes/evidence.py
+  HAVE_EQ: value_fabric/layer3/api/routes/formula_governance.py -> services/layer3-knowledge/src/api/routes/formula_governance.py
+  HAVE_EQ: value_fabric/layer3/api/routes/formulas.py -> services/layer3-knowledge/src/api/routes/formulas.py
+  HAVE_EQ: value_fabric/layer3/api/routes/models.py -> services/layer3-knowledge/src/api/routes/models.py
+  HAVE_EQ: value_fabric/layer3/api/routes/models_router.py -> services/layer3-knowledge/src/api/routes/models_router.py
+  HAVE_EQ: value_fabric/layer3/api/routes/pack_loader.py -> services/layer3-knowledge/src/api/routes/pack_loader.py
+  HAVE_EQ: value_fabric/layer3/api/routes/products.py -> services/layer3-knowledge/src/api/routes/products.py
+  HAVE_EQ: value_fabric/layer3/api/routes/provenance_audit.py -> services/layer3-knowledge/src/api/routes/provenance_audit.py
+  HAVE_EQ: value_fabric/layer3/api/routes/query_search.py -> services/layer3-knowledge/src/api/routes/query_search.py
+  HAVE_EQ: value_fabric/layer3/api/routes/roi_calculator.py -> services/layer3-knowledge/src/api/routes/roi_calculator.py
+  HAVE_EQ: value_fabric/layer3/api/routes/system.py -> services/layer3-knowledge/src/api/routes/system.py
+  HAVE_EQ: value_fabric/layer3/api/routes/tenant_resolution.py -> services/layer3-knowledge/src/api/routes/tenant_resolution.py
+  HAVE_EQ: value_fabric/layer3/api/routes/value_packs.py -> services/layer3-knowledge/src/api/routes/value_packs.py
+  HAVE_EQ: value_fabric/layer3/api/routes/value_trees.py -> services/layer3-knowledge/src/api/routes/value_trees.py
+  HAVE_EQ: value_fabric/layer3/api/routes/variables.py -> services/layer3-knowledge/src/api/routes/variables.py
+  HAVE_EQ: value_fabric/layer3/api/services/tenant_resolution.py -> services/layer3-knowledge/src/api/services/tenant_resolution.py
+  HAVE_EQ: value_fabric/layer3/api/shared_bootstrap.py -> services/layer3-knowledge/src/api/shared_bootstrap.py
+  HAVE_EQ: value_fabric/layer3/api/telemetry.py -> services/layer3-knowledge/src/api/telemetry.py
+  HAVE_EQ: value_fabric/layer3/api/versioning.py -> services/layer3-knowledge/src/api/versioning.py
+  HAVE_EQ: value_fabric/layer3/auth/__init__.py -> services/layer3-knowledge/src/auth/__init__.py
+  HAVE_EQ: value_fabric/layer3/auth/api_keys.py -> services/layer3-knowledge/src/auth/api_keys.py
+  HAVE_EQ: value_fabric/layer3/auth/middleware.py -> services/layer3-knowledge/src/auth/middleware.py
+  HAVE_EQ: value_fabric/layer3/backup/__init__.py -> services/layer3-knowledge/src/backup/__init__.py
+  HAVE_EQ: value_fabric/layer3/backup/backup_manager.py -> services/layer3-knowledge/src/backup/backup_manager.py
+  HAVE_EQ: value_fabric/layer3/backup/interfaces.py -> services/layer3-knowledge/src/backup/interfaces.py
+  HAVE_EQ: value_fabric/layer3/cache/__init__.py -> services/layer3-knowledge/src/cache/__init__.py
+  HAVE_EQ: value_fabric/layer3/cache/aiocache_adapter.py -> services/layer3-knowledge/src/cache/aiocache_adapter.py
+  HAVE_EQ: value_fabric/layer3/cache/factory.py -> services/layer3-knowledge/src/cache/factory.py
+  HAVE_EQ: value_fabric/layer3/cache/ports.py -> services/layer3-knowledge/src/cache/ports.py
+  HAVE_EQ: value_fabric/layer3/cache/redis_cache.py -> services/layer3-knowledge/src/cache/redis_cache.py
+  HAVE_EQ: value_fabric/layer3/cache/shadow.py -> services/layer3-knowledge/src/cache/shadow.py
+  HAVE_EQ: value_fabric/layer3/config.py -> services/layer3-knowledge/src/config.py
+  HAVE_EQ: value_fabric/layer3/config/__init__.py -> services/layer3-knowledge/src/config/__init__.py
+  HAVE_EQ: value_fabric/layer3/config/manager.py -> services/layer3-knowledge/src/config/manager.py
+  HAVE_EQ: value_fabric/layer3/config/settings.py -> services/layer3-knowledge/src/config/settings.py
+  HAVE_EQ: value_fabric/layer3/db/__init__.py -> services/layer3-knowledge/src/db/__init__.py
+  HAVE_EQ: value_fabric/layer3/db/cypher_execution_helper.py -> services/layer3-knowledge/src/db/cypher_execution_helper.py
+  HAVE_EQ: value_fabric/layer3/db/driver.py -> services/layer3-knowledge/src/db/driver.py
+  HAVE_EQ: value_fabric/layer3/db/query_execution.py -> services/layer3-knowledge/src/db/query_execution.py
+  HAVE_EQ: value_fabric/layer3/db/tenant_queries.py -> services/layer3-knowledge/src/db/tenant_queries.py
+  HAVE_EQ: value_fabric/layer3/docs/__init__.py -> services/layer3-knowledge/src/docs/__init__.py
+  HAVE_EQ: value_fabric/layer3/docs/api_documentation.py -> services/layer3-knowledge/src/docs/api_documentation.py
+  HAVE_EQ: value_fabric/layer3/gateway/__init__.py -> services/layer3-knowledge/src/gateway/__init__.py
+  HAVE_EQ: value_fabric/layer3/gateway/api_gateway.py -> services/layer3-knowledge/src/gateway/api_gateway.py
+  HAVE_EQ: value_fabric/layer3/ingestion/__init__.py -> services/layer3-knowledge/src/ingestion/__init__.py
+  HAVE_EQ: value_fabric/layer3/ingestion/neo4j_loader.py -> services/layer3-knowledge/src/ingestion/neo4j_loader.py
+  HAVE_EQ: value_fabric/layer3/ingestion/sync_manager.py -> services/layer3-knowledge/src/ingestion/sync_manager.py
+  HAVE_EQ: value_fabric/layer3/ingestion/validators.py -> services/layer3-knowledge/src/ingestion/validators.py
+  HAVE_EQ: value_fabric/layer3/load_balancing/__init__.py -> services/layer3-knowledge/src/load_balancing/__init__.py
+  HAVE_EQ: value_fabric/layer3/load_balancing/manager.py -> services/layer3-knowledge/src/load_balancing/manager.py
+  HAVE_EQ: value_fabric/layer3/logging_config.py -> services/layer3-knowledge/src/logging_config.py
+  HAVE_EQ: value_fabric/layer3/metrics/__init__.py -> services/layer3-knowledge/src/metrics/__init__.py
+  HAVE_EQ: value_fabric/layer3/metrics/prometheus_metrics.py -> services/layer3-knowledge/src/metrics/prometheus_metrics.py
+  HAVE_EQ: value_fabric/layer3/migrations/028_l3_tenant_standardization.py -> services/layer3-knowledge/src/migrations/028_l3_tenant_standardization.py
+  HAVE_EQ: value_fabric/layer3/migrations/029_backfill_sync_metadata_tenant.py -> services/layer3-knowledge/src/migrations/029_backfill_sync_metadata_tenant.py
+  HAVE_EQ: value_fabric/layer3/migrations/create_composite_tenant_indexes.py -> services/layer3-knowledge/src/migrations/create_composite_tenant_indexes.py
+  HAVE_EQ: value_fabric/layer3/migrations/migrate_tenant_ids.py -> services/layer3-knowledge/src/migrations/migrate_tenant_ids.py
+  HAVE_EQ: value_fabric/layer3/models/valuepack.py -> services/layer3-knowledge/src/models/valuepack.py
+  HAVE_EQ: value_fabric/layer3/performance/__init__.py -> services/layer3-knowledge/src/performance/__init__.py
+  HAVE_EQ: value_fabric/layer3/performance/cache.py -> services/layer3-knowledge/src/performance/cache.py
+  HAVE_EQ: value_fabric/layer3/rate_limiting/__init__.py -> services/layer3-knowledge/src/rate_limiting/__init__.py
+  HAVE_EQ: value_fabric/layer3/rate_limiting/manager.py -> services/layer3-knowledge/src/rate_limiting/manager.py
+  HAVE_EQ: value_fabric/layer3/rate_limiting/types.py -> services/layer3-knowledge/src/rate_limiting/types.py
+  HAVE_EQ: value_fabric/layer3/retrieval/__init__.py -> services/layer3-knowledge/src/retrieval/__init__.py
+  HAVE_EQ: value_fabric/layer3/retrieval/graph_rag.py -> services/layer3-knowledge/src/retrieval/graph_rag.py
+  HAVE_EQ: value_fabric/layer3/retrieval/hybrid_search.py -> services/layer3-knowledge/src/retrieval/hybrid_search.py
+  HAVE_EQ: value_fabric/layer3/retrieval/types.py -> services/layer3-knowledge/src/retrieval/types.py
+  HAVE_EQ: value_fabric/layer3/retrieval/vector_store.py -> services/layer3-knowledge/src/retrieval/vector_store.py
+  HAVE_EQ: value_fabric/layer3/schema/__init__.py -> services/layer3-knowledge/src/schema/__init__.py
+  HAVE_EQ: value_fabric/layer3/schema/constraints.py -> services/layer3-knowledge/src/schema/constraints.py
+  HAVE_EQ: value_fabric/layer3/schema/initializer.py -> services/layer3-knowledge/src/schema/initializer.py
+  HAVE_EQ: value_fabric/layer3/security/__init__.py -> services/layer3-knowledge/src/security/__init__.py
+  HAVE_EQ: value_fabric/layer3/security/monitor.py -> services/layer3-knowledge/src/security/monitor.py
+  HAVE_EQ: value_fabric/layer3/security/query_validator.py -> services/layer3-knowledge/src/security/query_validator.py
+  HAVE_EQ: value_fabric/layer3/services/__init__.py -> services/layer3-knowledge/src/services/__init__.py
+  HAVE_EQ: value_fabric/layer3/services/case_study_service.py -> services/layer3-knowledge/src/services/case_study_service.py
+  HAVE_EQ: value_fabric/layer3/services/compat_metrics.py -> services/layer3-knowledge/src/services/compat_metrics.py
+  HAVE_EQ: value_fabric/layer3/services/competitive_intel_service.py -> services/layer3-knowledge/src/services/competitive_intel_service.py
+  HAVE_EQ: value_fabric/layer3/services/cypher_scope_guard.py -> services/layer3-knowledge/src/services/cypher_scope_guard.py
+  HAVE_EQ: value_fabric/layer3/services/evidence_search.py -> services/layer3-knowledge/src/services/evidence_search.py
+  HAVE_EQ: value_fabric/layer3/services/product_service.py -> services/layer3-knowledge/src/services/product_service.py
+  HAVE_EQ: value_fabric/layer3/services/roi_calculator_service.py -> services/layer3-knowledge/src/services/roi_calculator_service.py
+  HAVE_EQ: value_fabric/layer3/services/signal_persistence.py -> services/layer3-knowledge/src/services/signal_persistence.py
+  HAVE_EQ: value_fabric/layer3/services/signal_quantification.py -> services/layer3-knowledge/src/services/signal_quantification.py
+  HAVE_EQ: value_fabric/layer3/tracing/__init__.py -> services/layer3-knowledge/src/tracing/__init__.py
+  HAVE_EQ: value_fabric/layer3/tracing/middleware.py -> services/layer3-knowledge/src/tracing/middleware.py
+  HAVE_EQ: value_fabric/layer3/tracing/tracer.py -> services/layer3-knowledge/src/tracing/tracer.py
+  HAVE_EQ: value_fabric/layer3_knowledge/__init__.py -> services/layer3-knowledge/src/__init__.py
+  HAVE_EQ: value_fabric/layer4/__init__.py -> services/layer4-agents/src/__init__.py
+  HAVE_EQ: value_fabric/layer4/database.py -> services/layer4-agents/src/database.py
+  HAVE_EQ: value_fabric/layer5/__init__.py -> services/layer5-ground-truth/src/__init__.py
+
+Deleted files with NO equivalents in services/: 186
+  NO_EQ: value_fabric/__init__.py
+  NO_EQ: value_fabric/layer1/__init__.py
+  NO_EQ: value_fabric/layer1/crawler/__init__.py
+  NO_EQ: value_fabric/layer1/crawler/decision_store.py
+  NO_EQ: value_fabric/layer1/crawler/httpx_crawler.py
+  NO_EQ: value_fabric/layer1/crawler/smart_router.py
+  NO_EQ: value_fabric/layer1_ingestion/__init__.py
+  NO_EQ: value_fabric/layer1_ingestion/src/__init__.py
+  NO_EQ: value_fabric/layer2/alignment/__init__.py
+  NO_EQ: value_fabric/layer2/alignment/semantic_aligner.py
+  NO_EQ: value_fabric/layer2/api/__init__.py
+  NO_EQ: value_fabric/layer2/api/app_factory.py
+  NO_EQ: value_fabric/layer2/api/deps.py
+  NO_EQ: value_fabric/layer2/api/lifespan.py
+  NO_EQ: value_fabric/layer2/api/main.py
+  NO_EQ: value_fabric/layer2/api/routes/__init__.py
+  NO_EQ: value_fabric/layer2/api/routes/audit.py
+  NO_EQ: value_fabric/layer2/api/routes/extraction.py
+  NO_EQ: value_fabric/layer2/api/routes/health.py
+  NO_EQ: value_fabric/layer2/api/routes/jobs.py
+  NO_EQ: value_fabric/layer2/api/routes/ontology.py
+  NO_EQ: value_fabric/layer2/api/routes/system.py
+  NO_EQ: value_fabric/layer2/api/service.py
+  NO_EQ: value_fabric/layer2/api/tier_policy.py
+  NO_EQ: value_fabric/layer2/api/websocket/__init__.py
+  NO_EQ: value_fabric/layer2/api/websocket/manager.py
+  NO_EQ: value_fabric/layer2/api/websocket/routes.py
+  NO_EQ: value_fabric/layer2/coreference/__init__.py
+  NO_EQ: value_fabric/layer2/coreference/coreference_resolver.py
+  NO_EQ: value_fabric/layer2/db/__init__.py
+  NO_EQ: value_fabric/layer2/db/config.py
+  NO_EQ: value_fabric/layer2/db/connection.py
+  NO_EQ: value_fabric/layer2/extraction/__init__.py
+  NO_EQ: value_fabric/layer2/extraction/chunker.py
+  NO_EQ: value_fabric/layer2/extraction/deduplicator.py
+  NO_EQ: value_fabric/layer2/extraction/llm_extractor.py
+  NO_EQ: value_fabric/layer2/extraction/prompt_loader.py
+  NO_EQ: value_fabric/layer2/extraction/prompts/__init__.py
+  NO_EQ: value_fabric/layer2/integration/__init__.py
+  NO_EQ: value_fabric/layer2/integration/interfaces.py
+  NO_EQ: value_fabric/layer2/integration/job_store.py
+  NO_EQ: value_fabric/layer2/integration/layer3_client.py
+  NO_EQ: value_fabric/layer2/integration/model_registry_client.py
+  NO_EQ: value_fabric/layer2/integration/pending_ingestion_store.py
+  NO_EQ: value_fabric/layer2/metrics/__init__.py
+  NO_EQ: value_fabric/layer2/metrics/prometheus_metrics.py
+  NO_EQ: value_fabric/layer2/models/__init__.py
+  NO_EQ: value_fabric/layer2/models/extraction_api.py
+  NO_EQ: value_fabric/layer2/models/extraction_cost.py
+  NO_EQ: value_fabric/layer2/models/extraction_response.py
+  NO_EQ: value_fabric/layer2/models/ontology.py
+  NO_EQ: value_fabric/layer2/models/operational_signal_extraction.py
+  NO_EQ: value_fabric/layer2/models/relationships.py
+  NO_EQ: value_fabric/layer2/output/__init__.py
+  NO_EQ: value_fabric/layer2/output/provenance.py
+  NO_EQ: value_fabric/layer2/output/rdf_generator.py
+  NO_EQ: value_fabric/layer2/repositories/__init__.py
+  NO_EQ: value_fabric/layer2/repositories/ontology_schema_repository.py
+  NO_EQ: value_fabric/layer2/seed/__init__.py
+  NO_EQ: value_fabric/layer2/seed/ontology_seed.py
+  NO_EQ: value_fabric/layer2/shared/__init__.py
+  NO_EQ: value_fabric/layer2/shared/llm_client.py
+  NO_EQ: value_fabric/layer2/shared_bootstrap.py
+  NO_EQ: value_fabric/layer2/startup/__init__.py
+  NO_EQ: value_fabric/layer2/startup/dependency_verifier.py
+  NO_EQ: value_fabric/layer2/startup_dependencies.py
+  NO_EQ: value_fabric/layer2/validation/__init__.py
+  NO_EQ: value_fabric/layer2/validation/entailment_validator.py
+  NO_EQ: value_fabric/layer3/api/app_factory.py
+  NO_EQ: value_fabric/layer3/api/compat_wiring.py
+  NO_EQ: value_fabric/layer3/api/middleware_setup.py
+  NO_EQ: value_fabric/layer3/api/router_groups.py
+  NO_EQ: value_fabric/layer3_knowledge/src/__init__.py
+  NO_EQ: value_fabric/layer4/database_facade.py
+  NO_EQ: value_fabric/layer4/observability.py
+  NO_EQ: value_fabric/layer4/tests/test_observability_schema.py
+  NO_EQ: value_fabric/layer5/api/__init__.py
+  NO_EQ: value_fabric/layer5/api/auth.py
+  NO_EQ: value_fabric/layer5/api/main.py
+  NO_EQ: value_fabric/layer5/api/model_registry_routes.py
+  NO_EQ: value_fabric/layer5/api/router.py
+  NO_EQ: value_fabric/layer5/api/schemas.py
+  NO_EQ: value_fabric/layer5/api/tenant_context.py
+  NO_EQ: value_fabric/layer5/cache.py
+  NO_EQ: value_fabric/layer5/config.py
+  NO_EQ: value_fabric/layer5/database.py
+  NO_EQ: value_fabric/layer5/integration/__init__.py
+  NO_EQ: value_fabric/layer5/integration/layer3_client.py
+  NO_EQ: value_fabric/layer5/migrations/__init__.py
+  NO_EQ: value_fabric/layer5/migrations/env.py
+  NO_EQ: value_fabric/layer5/migrations/versions/002_add_rls_policies.py
+  NO_EQ: value_fabric/layer5/migrations/versions/003_add_model_registry.py
+  NO_EQ: value_fabric/layer5/migrations/versions/004_rename_org_to_tenant.py
+  NO_EQ: value_fabric/layer5/migrations/versions/005_add_rls_to_model_registry.py
+  NO_EQ: value_fabric/layer5/migrations/versions/006_fix_rls_org_to_tenant.py
+  NO_EQ: value_fabric/layer5/migrations/versions/20240101_0000_a1b2c3d4e5f6_initial_ground_truth_schema.py
+  NO_EQ: value_fabric/layer5/models/__init__.py
+  NO_EQ: value_fabric/layer5/models/model_registry.py
+  NO_EQ: value_fabric/layer5/models/truth_object.py
+  NO_EQ: value_fabric/layer5/runtime_mode.py
+  NO_EQ: value_fabric/layer5/services/__init__.py
+  NO_EQ: value_fabric/layer5/services/freshness_monitor.py
+  NO_EQ: value_fabric/layer5/services/state_machine.py
+  NO_EQ: value_fabric/layer5/services/truth_service.py
+  NO_EQ: value_fabric/layer5/shared_bootstrap.py
+  NO_EQ: value_fabric/layer6/__init__.py
+  NO_EQ: value_fabric/layer6/api/__init__.py
+  NO_EQ: value_fabric/layer6/api/deps.py
+  NO_EQ: value_fabric/layer6/api/main.py
+  NO_EQ: value_fabric/layer6/api/routes/__init__.py
+  NO_EQ: value_fabric/layer6/api/routes/benchmarks.py
+  NO_EQ: value_fabric/layer6/api/routes/system.py
+  NO_EQ: value_fabric/layer6/api/schemas.py
+  NO_EQ: value_fabric/layer6/config.py
+  NO_EQ: value_fabric/layer6/database.py
+  NO_EQ: value_fabric/layer6/metrics/__init__.py
+  NO_EQ: value_fabric/layer6/metrics/prometheus_metrics.py
+  NO_EQ: value_fabric/layer6/models/__init__.py
+  NO_EQ: value_fabric/layer6/models/benchmark_dataset.py
+  NO_EQ: value_fabric/layer6/repositories/benchmark_repository.py
+  NO_EQ: value_fabric/layer6/shared_bootstrap.py
+  NO_EQ: value_fabric/shared/__init__.py
+  NO_EQ: value_fabric/shared/audit/__init__.py
+  NO_EQ: value_fabric/shared/audit/emitter.py
+  NO_EQ: value_fabric/shared/audit/models.py
+  NO_EQ: value_fabric/shared/boundaries/__init__.py
+  NO_EQ: value_fabric/shared/boundaries/tenant_boundary.py
+  NO_EQ: value_fabric/shared/contracts/__init__.py
+  NO_EQ: value_fabric/shared/contracts/layer3_statuses.py
+  NO_EQ: value_fabric/shared/crypto/__init__.py
+  NO_EQ: value_fabric/shared/crypto/canonical.py
+  NO_EQ: value_fabric/shared/error_handling/__init__.py
+  NO_EQ: value_fabric/shared/error_handling/exceptions.py
+  NO_EQ: value_fabric/shared/error_handling/handlers.py
+  NO_EQ: value_fabric/shared/error_handling/middleware.py
+  NO_EQ: value_fabric/shared/error_handling/models.py
+  NO_EQ: value_fabric/shared/fastapi_framework/__init__.py
+  NO_EQ: value_fabric/shared/fastapi_framework/app.py
+  NO_EQ: value_fabric/shared/fastapi_framework/middleware.py
+  NO_EQ: value_fabric/shared/fastapi_framework/routes.py
+  NO_EQ: value_fabric/shared/fastapi_framework/telemetry.py
+  NO_EQ: value_fabric/shared/identity/__init__.py
+  NO_EQ: value_fabric/shared/identity/api_key_stub.py
+  NO_EQ: value_fabric/shared/identity/authoritative_rate_limiter.py
+  NO_EQ: value_fabric/shared/identity/context.py
+  NO_EQ: value_fabric/shared/identity/dependencies.py
+  NO_EQ: value_fabric/shared/identity/fallback_telemetry.py
+  NO_EQ: value_fabric/shared/identity/feature_flags.py
+  NO_EQ: value_fabric/shared/identity/hashing.py
+  NO_EQ: value_fabric/shared/identity/isolation.py
+  NO_EQ: value_fabric/shared/identity/jwt.py
+  NO_EQ: value_fabric/shared/identity/middleware.py
+  NO_EQ: value_fabric/shared/identity/middleware_sync.py
+  NO_EQ: value_fabric/shared/identity/models.py
+  NO_EQ: value_fabric/shared/identity/oidc.py
+  NO_EQ: value_fabric/shared/identity/oidc_config.py
+  NO_EQ: value_fabric/shared/identity/permissions.py
+  NO_EQ: value_fabric/shared/identity/protocols.py
+  NO_EQ: value_fabric/shared/identity/rate_limiter.py
+  NO_EQ: value_fabric/shared/identity/rate_limiting.py
+  NO_EQ: value_fabric/shared/identity/vault_check.py
+  NO_EQ: value_fabric/shared/models/__init__.py
+  NO_EQ: value_fabric/shared/models/typed_dict.py
+  NO_EQ: value_fabric/shared/observability/__init__.py
+  NO_EQ: value_fabric/shared/observability/correlation.py
+  NO_EQ: value_fabric/shared/observability/logging.py
+  NO_EQ: value_fabric/shared/observability/metrics_access.py
+  NO_EQ: value_fabric/shared/observability/path_normalization.py
+  NO_EQ: value_fabric/shared/observability/probes.py
+  NO_EQ: value_fabric/shared/observability/trace_context.py
+  NO_EQ: value_fabric/shared/rate_limiting/__init__.py
+  NO_EQ: value_fabric/shared/rate_limiting/tenant_rate_limiter.py
+  NO_EQ: value_fabric/shared/secrets/__init__.py
+  NO_EQ: value_fabric/shared/secrets/audit_logger.py
+  NO_EQ: value_fabric/shared/secrets/infisical.py
+  NO_EQ: value_fabric/shared/secrets/infisical_client.py
+  NO_EQ: value_fabric/shared/secrets/reload.py
+  NO_EQ: value_fabric/shared/secrets/test_watcher.py
+  NO_EQ: value_fabric/shared/secrets/watcher.py
+  NO_EQ: value_fabric/shared/security/__init__.py
+  NO_EQ: value_fabric/shared/security/config.py
+  NO_EQ: value_fabric/shared/security/dil_auth.py
+  NO_EQ: value_fabric/shared/security/middleware.py
+  NO_EQ: value_fabric/shared/security/neo4j.py
+  NO_EQ: value_fabric/shared/security/redaction.py
+  NO_EQ: value_fabric/shared/testability.py

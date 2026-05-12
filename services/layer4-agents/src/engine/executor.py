@@ -44,7 +44,7 @@ from .execution_validation import ensure_controller_accepts_execution
 from .execution_dispatch import build_workflow_task
 from .execution_persistence import mark_workflow_running, persist_workflow_failure
 from .execution_checkpointing import persist_interruption_if_needed
-from value_fabric.layer4.observability import Layer4EventContext, Layer4LifecycleLogger
+from observability import Layer4EventContext, Layer4LifecycleLogger
 
 sys.modules["src.engine.executor"] = sys.modules[__name__]
 sys.modules["value_fabric.layer4.engine.executor"] = sys.modules[__name__]

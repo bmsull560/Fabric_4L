@@ -1,6 +1,6 @@
 """Layer 2 API routes package."""
 
-from value_fabric.layer2.api.routes.extraction import (
+from layer2_extraction.api.routes.extraction import (
     EntityProvenance,
     EntitySourceSpan,
     ExtractedEntity,

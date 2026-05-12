@@ -63,4 +63,9 @@ class InMemoryJobStore:
 
 def build_job_store() -> InMemoryJobStore:
     """Factory for job store based on environment."""
+    env = os.environ.get("ENVIRONMENT", os.environ.get("APP_ENV", "development")).lower()
+    if env in ("production", "staging"):
+        redis_url = os.environ.get("REDIS_URL")
+        if not redis_url:
+            raise RuntimeError("REDIS_URL is required in production/staging for job store")
     return InMemoryJobStore()

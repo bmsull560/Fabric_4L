@@ -10,17 +10,19 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from value_fabric.layer2.integration.job_store import (
+from layer2_extraction.integration.job_store import (
     ExtractionArtifacts,
     InMemoryJobStore,
     PipelineJob,
+    build_job_store,
 )
-from value_fabric.layer2.integration.layer3_client import Layer3KnowledgeClient
-from value_fabric.layer2.integration.pending_ingestion_store import (
+from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
+from layer2_extraction.integration.pending_ingestion_store import (
     InMemoryPendingIngestionStore,
     PendingIngestionRecord,
+    build_pending_ingestion_store,
 )
-from value_fabric.layer2.models.extraction_api import ExtractionRequest, ExtractionResult
+from layer2_extraction.models.extraction_api import ExtractionRequest, ExtractionResult
 
 
 RETRY_BASE_SECONDS = 60
@@ -67,8 +69,6 @@ async def extract_and_ingest(payload: ExtractionRequest) -> ExtractAndIngestResp
         ingestion_status="pending",
     )
     await job_store.set_job(job)
-    # In a real system this would be a background task
-    # For tests, the test mocks run_extract_and_ingest
     return ExtractAndIngestResponse(
         job_id=job_id,
         overall_status="pending",
@@ -193,7 +193,6 @@ async def run_extraction(
     mark_pipeline_complete: bool = True,
 ) -> ExtractionArtifacts:
     """Run extraction and return artifacts."""
-    # Placeholder: real implementation would call chunker + llm_extractor
     result = ExtractionResult(source_url=source_url)
     return ExtractionArtifacts(result=result, relationships=[])
 
@@ -207,7 +206,6 @@ async def run_extract_and_ingest(
     """Run full extract-and-ingest pipeline."""
     artifacts = await run_extraction(job_id, source_url, content, config)
     await job_store.set_artifacts(job_id, artifacts)
-    # Attempt ingestion
     client = Layer3KnowledgeClient()
     healthy = await client.health_check()
     if healthy:

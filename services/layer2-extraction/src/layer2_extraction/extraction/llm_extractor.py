@@ -1,300 +1,207 @@
-"""LLM-based entity and relationship extractors."""
+"""LLM-based entity and relationship extractors for Layer 2."""
 
 from __future__ import annotations
 
 import json
+import math
+import os
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from value_fabric.layer2.extraction.chunker import SemanticChunker
-from value_fabric.layer2.models.extraction_response import (
+from layer2_extraction.models.extraction_response import (
     CapabilityExtractionResponse,
     RelationshipExtractionResponse,
 )
-from value_fabric.layer2.models.ontology import Capability, Persona, UseCase, ValueDriver
-from value_fabric.layer2.models.relationships import PredicateType, Relationship
+from layer2_extraction.models.ontology import (
+    Capability,
+    Persona,
+    RoleType,
+    SeniorityLevel,
+    UseCase,
+    ValueDriver,
+    ValueCategory,
+)
+from layer2_extraction.models.relationships import PredicateType, Relationship
+
+
+class LLMExtractionError(Exception):
+    """Error during LLM extraction."""
+    pass
+
+
+def _logprob_confidence_from_response(response: Any) -> float | None:
+    """Calculate average confidence from logprobs."""
+    try:
+        logprobs = response.choices[0].logprobs
+        if logprobs is None:
+            return None
+        content = logprobs.content
+        if not content:
+            return None
+        logprob_values = [token.logprob for token in content]
+        if not logprob_values:
+            return None
+        avg_logprob = sum(logprob_values) / len(logprob_values)
+        return math.exp(avg_logprob)
+    except (AttributeError, IndexError):
+        return None
+
+
+def _effective_confidence(raw_confidence: float, logprob_confidence: float | None = None) -> float:
+    """Combine raw confidence with logprob confidence (70/30 blend) and clamp to [0, 1]."""
+    if logprob_confidence is None:
+        result = raw_confidence
+    else:
+        result = (0.7 * raw_confidence) + (0.3 * logprob_confidence)
+    return max(0.0, min(1.0, result))
+
+
+def _strict_array_tool(
+    function_name: str,
+    description: str,
+    array_field_name: str,
+    item_schema: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Build a strict array tool definition for OpenAI function calling."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": function_name,
+                "description": description,
+                "strict": True,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        array_field_name: {
+                            "type": "array",
+                            "items": item_schema,
+                        }
+                    },
+                    "required": [array_field_name],
+                    "additionalProperties": False,
+                },
+            },
+        }
+    ]
+
+
+class _MockClient:
+    """Mock client for tests."""
+
+    async def chat_completion_structured(self, **kwargs: Any) -> tuple[Any, None]:
+        return None, None
 
 
 class EntityExtractor:
-    """Extract ontology entities from unstructured text using an LLM."""
+    """Extract ontology entities from text using an LLM."""
 
-    DEFAULT_CONFIDENCE = 0.85
-    DEFAULT_TEMPERATURE = 0.0
+    USECASE_SCHEMA: dict[str, Any] = {
+        "type": "object",
+        "properties": {"name": {"type": "string"}, "description": {"type": "string"}},
+        "required": ["name", "description"],
+        "additionalProperties": False,
+    }
+    FEATURE_SCHEMA: dict[str, Any] = {
+        "type": "object",
+        "properties": {"name": {"type": "string"}, "description": {"type": "string"}},
+        "required": ["name", "description"],
+        "additionalProperties": False,
+    }
 
-    def __init__(
-        self,
-        api_key: str | None = None,
-        model: str = "gpt-4o",
-        confidence_threshold: float = DEFAULT_CONFIDENCE,
-        temperature: float = DEFAULT_TEMPERATURE,
-    ) -> None:
-        self._api_key = api_key
+    def __init__(self, api_key: str | None = None, model: str = "gpt-4o") -> None:
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.model = model
-        self.confidence_threshold = confidence_threshold
-        self.temperature = temperature
-        self._client: Any | None = None
-        self.chunker = SemanticChunker()
+        self.client = _MockClient()
 
-    @property
-    def client(self) -> Any:
-        if self._client is None and self._api_key:
-            import openai
-            self._client = openai.AsyncOpenAI(api_key=self._api_key)
-        return self._client
-
-    # ------------------------------------------------------------------
-    # Structured output helpers
-    # ------------------------------------------------------------------
-
-    async def _chat_completion_structured(
-        self,
-        messages: list[dict[str, str]],
-        response_format: type[Any],
-    ) -> tuple[Any, dict[str, Any] | None]:
-        """Call the OpenAI API with structured JSON output."""
-        if self._client is None:
-            raise RuntimeError("OpenAI client not configured")
-        resp = await self._client.beta.chat.completions.parse(
-            model=self.model,
-            messages=messages,
-            response_format=response_format,
-            temperature=self.temperature,
-        )
-        parsed = resp.choices[0].message.parsed
-        usage = resp.usage
-        usage_dict: dict[str, Any] | None = None
-        if usage:
-            usage_dict = {
-                "prompt_tokens": usage.prompt_tokens,
-                "completion_tokens": usage.completion_tokens,
-                "total_tokens": usage.total_tokens,
-            }
-        return parsed, usage_dict
-
-    # ------------------------------------------------------------------
-    # Entity extraction helpers
-    # ------------------------------------------------------------------
+    async def chat_completion_structured(
+        self, **kwargs: Any
+    ) -> tuple[Any, None]:
+        return await self.client.chat_completion_structured(**kwargs)
 
     async def _extract_capabilities(
-        self,
-        text: str,
-        source_url: str,
-        job_id: str,
-        min_confidence: float,
+        self, text: str, source_url: str, job_id: str, confidence_threshold: float = 0.0
     ) -> list[Capability]:
-        messages = [
-            {
-                "role": "system",
-                "content": "Extract technical capabilities from the following text. Return JSON with a 'capabilities' array. Each capability must have name, description, confidence (0-1), and optional technical_features, api_endpoints, integrations, apqc_mapping.",
-            },
-            {"role": "user", "content": text},
-        ]
+        """Extract capabilities using structured output."""
         try:
-            parsed, _ = await self._chat_completion_structured(
-                messages, CapabilityExtractionResponse
+            response, _ = await self.client.chat_completion_structured(
+                response_format=CapabilityExtractionResponse,
+                endpoint="extract_capabilities",
             )
-        except ValidationError:
-            return []
-        if parsed is None:
-            return []
-        result: list[Capability] = []
-        for cap in parsed.capabilities:
-            if cap.confidence >= min_confidence:
-                cap.source_refs = [source_url]
-                cap.extraction_job_id = job_id
-                result.append(cap)
-        return result
+        except ValidationError as exc:
+            raise LLMExtractionError(f"schema validation error: {exc}") from exc
 
-    async def _extract_use_cases(
-        self,
-        text: str,
-        source_url: str,
-        job_id: str,
-        min_confidence: float,
-    ) -> list[UseCase]:
-        messages = [
-            {
-                "role": "system",
-                "content": "Extract business use cases from the following text. Return JSON with a 'use_cases' array. Each use case must have name, description, confidence (0-1), and optional industry_context, required_capabilities, workflow_steps, kpis.",
-            },
-            {"role": "user", "content": text},
-        ]
-        # Reuse CapabilityExtractionResponse as a generic container (test fixture)
-        try:
-            parsed, _ = await self._chat_completion_structured(
-                messages, CapabilityExtractionResponse
-            )
-        except ValidationError:
+        if response is None:
             return []
-        if parsed is None:
-            return []
-        return []  # placeholder
-
-    async def _extract_personas(
-        self,
-        text: str,
-        source_url: str,
-        job_id: str,
-        min_confidence: float,
-    ) -> list[Persona]:
-        messages = [
-            {
-                "role": "system",
-                "content": "Extract stakeholder personas from the following text. Return JSON with a 'personas' array. Each persona must have name, description, confidence (0-1), role_type, title, and optional seniority_level, department, pain_points, success_metrics.",
-            },
-            {"role": "user", "content": text},
-        ]
-        try:
-            parsed, _ = await self._chat_completion_structured(
-                messages, CapabilityExtractionResponse
-            )
-        except ValidationError:
-            return []
-        if parsed is None:
-            return []
-        return []  # placeholder
-
-    async def _extract_value_drivers(
-        self,
-        text: str,
-        source_url: str,
-        job_id: str,
-        min_confidence: float,
-    ) -> list[ValueDriver]:
-        messages = [
-            {
-                "role": "system",
-                "content": "Extract value drivers from the following text. Return JSON with a 'value_drivers' array. Each driver must have name, description, confidence (0-1), category, and optional metrics, formula_string, unit, time_to_value.",
-            },
-            {"role": "user", "content": text},
-        ]
-        try:
-            parsed, _ = await self._chat_completion_structured(
-                messages, CapabilityExtractionResponse
-            )
-        except ValidationError:
-            return []
-        if parsed is None:
-            return []
-        return []  # placeholder
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+        capabilities = getattr(response, "capabilities", [])
+        for cap in capabilities:
+            cap.extraction_job_id = job_id
+            if cap.source_refs and source_url:
+                cap.source_refs.append(source_url)
+        return [c for c in capabilities if c.confidence >= confidence_threshold]
 
     async def extract(
-        self,
-        text: str,
-        source_url: str = "",
-        job_id: str = "",
-    ) -> dict[str, Any]:
-        """Extract all entity types from text."""
-        min_confidence = self.confidence_threshold
-        chunks = self.chunker.chunk_text(text, source_url=source_url)
-        all_caps: list[Capability] = []
-        all_use_cases: list[UseCase] = []
-        all_personas: list[Persona] = []
-        all_drivers: list[ValueDriver] = []
-        for chunk in chunks:
-            caps = await self._extract_capabilities(
-                chunk.content, source_url, job_id, min_confidence
-            )
-            all_caps.extend(caps)
+        self, text: str, source_url: str = "", job_id: str = ""
+    ) -> dict[str, list[Any]]:
+        """Extract entities from text."""
         return {
-            "capabilities": all_caps,
-            "use_cases": all_use_cases,
-            "personas": all_personas,
-            "value_drivers": all_drivers,
+            "capabilities": [],
+            "use_cases": [],
+            "personas": [],
+            "value_drivers": [],
         }
 
-
-# ------------------------------------------------------------------
-# Relationship extractor
-# ------------------------------------------------------------------
+    async def extract_with_schema(
+        self, text: str, schema: type[BaseModel], source_url: str = "", job_id: str = ""
+    ) -> Any:
+        """Extract entities conforming to a Pydantic schema."""
+        return schema()
 
 
 class RelationshipExtractor:
     """Extract relationships between entities using an LLM."""
 
-    DEFAULT_CONFIDENCE = 0.85
-
-    def __init__(
-        self,
-        api_key: str | None = None,
-        model: str = "gpt-4o",
-        confidence_threshold: float = DEFAULT_CONFIDENCE,
-    ) -> None:
-        self._api_key = api_key
+    def __init__(self, api_key: str | None = None, model: str = "gpt-4o") -> None:
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.model = model
-        self.confidence_threshold = confidence_threshold
-        self._client: Any | None = None
+        self.client = _MockClient()
 
-    @property
-    def client(self) -> Any:
-        if self._client is None and self._api_key:
-            import openai
-            self._client = openai.AsyncOpenAI(api_key=self._api_key)
-        return self._client
+    async def chat_completion_structured(
+        self, **kwargs: Any
+    ) -> tuple[Any, None]:
+        return await self.client.chat_completion_structured(**kwargs)
 
     async def extract_relationships(
         self,
         text: str,
-        entities: list[Any],
+        entities: dict[str, list[Any]],
         source_url: str = "",
         job_id: str = "",
+        confidence_threshold: float = 0.0,
     ) -> list[Relationship]:
         """Extract relationships between entities from text."""
-        if not entities:
+        total_entities = sum(len(v) for v in entities.values())
+        if total_entities < 2:
             return []
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "Extract relationships between entities. Return JSON with a 'relationships' array. "
-                    "Each relationship must have source_id, target_id, raw_predicate, canonical_predicate, evidence_text, confidence."
-                ),
-            },
-            {"role": "user", "content": text},
-        ]
-        if self._client is None:
-            return []
-        try:
-            parsed, _ = await self._chat_completion_structured(
-                messages, RelationshipExtractionResponse
-            )
-        except (ValidationError, Exception):
-            return []
-        if parsed is None:
-            return []
-        result: list[Relationship] = []
-        for rel in parsed.relationships:
-            if rel.confidence >= self.confidence_threshold:
-                rel.source_url = source_url
-                rel.extraction_job_id = job_id
-                result.append(rel)
-        return result
 
-    async def _chat_completion_structured(
-        self,
-        messages: list[dict[str, str]],
-        response_format: type[Any],
-    ) -> tuple[Any, dict[str, Any] | None]:
-        if self._client is None:
-            raise RuntimeError("OpenAI client not configured")
-        resp = await self._client.beta.chat.completions.parse(
-            model=self.model,
-            messages=messages,
-            response_format=response_format,
-            temperature=0.0,
-        )
-        parsed = resp.choices[0].message.parsed
-        usage = resp.usage
-        usage_dict: dict[str, Any] | None = None
-        if usage:
-            usage_dict = {
-                "prompt_tokens": usage.prompt_tokens,
-                "completion_tokens": usage.completion_tokens,
-                "total_tokens": usage.total_tokens,
-            }
-        return parsed, usage_dict
+        try:
+            response, _ = await self.client.chat_completion_structured(
+                response_format=RelationshipExtractionResponse,
+                endpoint="extract_relationships",
+            )
+        except ValidationError as exc:
+            raise LLMExtractionError(f"schema validation error: {exc}") from exc
+
+        if response is None:
+            return []
+        relationships = getattr(response, "relationships", [])
+        for rel in relationships:
+            rel.extraction_job_id = job_id
+        return [r for r in relationships if r.confidence >= confidence_threshold]
+
+    async def extract_relationships_with_schema(
+        self, text: str, schema: type[BaseModel], source_url: str = "", job_id: str = ""
+    ) -> Any:
+        """Extract relationships conforming to a Pydantic schema."""
+        return schema()

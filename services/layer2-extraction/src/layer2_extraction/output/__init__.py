@@ -1,6 +1,6 @@
 """Layer 2 output package."""
 
-from value_fabric.layer2.output.provenance import (
+from layer2_extraction.output.provenance import (
     ExtractionActivity,
     ExtractionActivityStatus,
     ExtractionStep,

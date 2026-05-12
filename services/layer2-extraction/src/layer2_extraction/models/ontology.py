@@ -8,17 +8,10 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
-
-# ---------------------------------------------------------------------------
-# Enums
-# ---------------------------------------------------------------------------
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RoleType(str, Enum):
-    """Stakeholder role types in the buying process."""
-
     ECONOMIC_BUYER = "economic_buyer"
     CHAMPION = "champion"
     OPERATIONAL_USER = "operational_user"
@@ -27,8 +20,6 @@ class RoleType(str, Enum):
 
 
 class SeniorityLevel(str, Enum):
-    """Organizational hierarchy levels."""
-
     EXECUTIVE_SPONSOR = "executive_sponsor"
     C_SUITE = "c_suite"
     VP = "vp"
@@ -39,13 +30,10 @@ class SeniorityLevel(str, Enum):
 
 
 class ValueCategory(str, Enum):
-    """Value driver categories."""
-
     CAPITAL_EFFICIENCY = "capital_efficiency"
     COST_REDUCTION = "cost_reduction"
     RISK_MITIGATION = "risk_mitigation"
     REVENUE_ENHANCEMENT = "revenue_enhancement"
-    # Legacy values for backward compatibility
     REVENUE = "revenue"
     COST = "cost"
     RISK = "risk"
@@ -53,16 +41,12 @@ class ValueCategory(str, Enum):
 
 
 class EnablementType(str, Enum):
-    """Capability enablement types."""
-
     REQUIRED = "required"
     ENHANCES = "enhances"
     OPTIONAL = "optional"
 
 
 class BenefitType(str, Enum):
-    """Benefit types."""
-
     TIME_SAVINGS = "time_savings"
     ERROR_REDUCTION = "error_reduction"
     VISIBILITY = "visibility"
@@ -70,34 +54,22 @@ class BenefitType(str, Enum):
 
 
 class DriverType(str, Enum):
-    """Value driver types."""
-
     PRIMARY = "primary"
     SECONDARY = "secondary"
     TERTIARY = "tertiary"
 
 
 class ImpactLevel(str, Enum):
-    """Impact levels with legacy support."""
-
     TRANSFORMATIONAL = "transformational"
     SIGNIFICANT = "significant"
     MODERATE = "moderate"
     MINOR = "minor"
-    # Legacy values
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
 
 
-# ---------------------------------------------------------------------------
-# Base entity
-# ---------------------------------------------------------------------------
-
-
 class OntologyEntity(BaseModel):
-    """Base class for all ontology entities."""
-
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -122,14 +94,7 @@ class OntologyEntity(BaseModel):
         return v.strip()
 
 
-# ---------------------------------------------------------------------------
-# Entity types
-# ---------------------------------------------------------------------------
-
-
 class Capability(OntologyEntity):
-    """Technical capability with APQC mapping."""
-
     technical_features: list[str] = Field(default_factory=list)
     api_endpoints: list[str] = Field(default_factory=list)
     integrations: list[str] = Field(default_factory=list)
@@ -137,8 +102,6 @@ class Capability(OntologyEntity):
 
 
 class Feature(OntologyEntity):
-    """Product feature."""
-
     implementation_status: str = Field(default="planned")
     parent_capability_id: str | None = None
 
@@ -152,8 +115,6 @@ class Feature(OntologyEntity):
 
 
 class Persona(OntologyEntity):
-    """Stakeholder persona."""
-
     role_type: RoleType
     seniority_level: SeniorityLevel = Field(default=SeniorityLevel.UNKNOWN)
     title: str
@@ -163,8 +124,6 @@ class Persona(OntologyEntity):
 
 
 class UseCase(OntologyEntity):
-    """Business use case."""
-
     industry_context: list[str] = Field(default_factory=list)
     required_capabilities: list[str] = Field(default_factory=list)
     workflow_steps: list[str] = Field(default_factory=list)
@@ -172,8 +131,6 @@ class UseCase(OntologyEntity):
 
 
 class ValueDriver(OntologyEntity):
-    """Quantifiable business outcome."""
-
     category: ValueCategory
     metrics: list[str] = Field(default_factory=list)
     formula_string: str | None = None
@@ -185,15 +142,12 @@ class ValueDriver(OntologyEntity):
     def _validate_formula(cls, v: str | None) -> str | None:
         if v is None:
             return v
-        # Allow: alphanumerics, underscores, braces for variables, basic operators
         if not re.match(r"^[\w\s\+\-\*\/\(\)\{\}\.\,\%]+$", v):
             raise ValueError("Formula contains illegal characters")
         return v
 
 
 class APQCProcess(BaseModel):
-    """APQC PCF reference process."""
-
     model_config = ConfigDict(extra="forbid")
 
     pcf_id: str

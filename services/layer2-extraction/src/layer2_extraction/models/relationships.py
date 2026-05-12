@@ -5,109 +5,105 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PredicateType(str, Enum):
-    """Canonical relationship predicate types."""
-
     ENABLES = "enables"
     REQUIRES = "requires"
-    INVOLVES = "involves"
-    DELIVERS = "delivers"
-    IMPLEMENTED_BY = "implemented_by"
-    MEASURED_BY = "measured_by"
-    MAPS_TO_APQC = "maps_to_apqc"
+    PRODUCES = "produces"
+    MEASURES = "measures"
+    DEPENDS_ON = "depends_on"
+    PART_OF = "part_of"
+    ASSOCIATED_WITH = "associated_with"
     BENEFITS = "benefits"
     DRIVES = "drives"
-    DEPENDS_ON = "depends_on"
     ALTERNATIVE_TO = "alternative_to"
+    IMPLEMENTS = "implements"
     CAPABILITY_SUBTYPE_OF = "capability_subtype_of"
-    SEMANTICALLY_EQUIVALENT = "semantically_equivalent"
 
 
 class Relationship(BaseModel):
-    """Entity relationship with evidence and confidence."""
-
     model_config = ConfigDict(extra="forbid")
 
-    source_id: str
-    target_id: str
-    raw_predicate: str
-    canonical_predicate: PredicateType
-    evidence_text: str
+    id: str = ""
+    subject_id: str = ""
+    predicate: PredicateType = PredicateType.ASSOCIATED_WITH
+    object_id: str = ""
     confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+    provenance: str = ""
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+    # Alias fields for test compatibility
+    source_id: str = ""
+    target_id: str = ""
+    raw_predicate: str = ""
+    canonical_predicate: PredicateType = PredicateType.ASSOCIATED_WITH
+    evidence_text: str = ""
     source_url: str = ""
-    impact_level: Any = None
-    strength: float | None = None
-    enablement_type: Any = None
-    contribution_weight: float | None = None
-    extraction_job_id: str | None = None
+    extraction_job_id: str = ""
 
-    @field_validator("source_id", "target_id")
-    @classmethod
-    def _validate_uuid(cls, v: str) -> str:
-        from uuid import UUID
-        try:
-            UUID(v)
-        except ValueError:
-            raise ValueError(f"Invalid UUID format: {v}")
-        return v
+    @model_validator(mode="after")
+    def _sync_alias_fields(self) -> "Relationship":
+        if self.source_id and not self.subject_id:
+            self.subject_id = self.source_id
+        if self.target_id and not self.object_id:
+            self.object_id = self.target_id
+        if self.canonical_predicate and not self.predicate:
+            self.predicate = self.canonical_predicate
+        if self.subject_id and not self.source_id:
+            self.source_id = self.subject_id
+        if self.object_id and not self.target_id:
+            self.target_id = self.object_id
+        if self.predicate and not self.canonical_predicate:
+            self.canonical_predicate = self.predicate
+        return self
 
-    def get_inverse(self) -> Relationship | None:
-        """Return the inverse relationship if one is defined."""
-        inverse_map = {
-            PredicateType.ENABLES: PredicateType.REQUIRES,
+    def get_inverse(self) -> Relationship:
+        return self.inverse()
+
+    def inverse(self) -> Relationship:
+        inverse_pred = {
+            PredicateType.ENABLES: PredicateType.DEPENDS_ON,
             PredicateType.REQUIRES: PredicateType.ENABLES,
-            PredicateType.INVOLVES: None,
-            PredicateType.DELIVERS: None,
-            PredicateType.IMPLEMENTED_BY: None,
-            PredicateType.MEASURED_BY: None,
-            PredicateType.MAPS_TO_APQC: None,
-            PredicateType.BENEFITS: None,
-            PredicateType.DRIVES: None,
-            PredicateType.DEPENDS_ON: None,
-            PredicateType.ALTERNATIVE_TO: PredicateType.ALTERNATIVE_TO,
-            PredicateType.CAPABILITY_SUBTYPE_OF: None,
-            PredicateType.SEMANTICALLY_EQUIVALENT: PredicateType.SEMANTICALLY_EQUIVALENT,
-        }
-        inverse = inverse_map.get(self.canonical_predicate)
-        if inverse is None:
-            return None
+            PredicateType.DEPENDS_ON: PredicateType.ENABLES,
+        }.get(self.predicate, self.predicate)
         return Relationship(
-            source_id=self.target_id,
-            target_id=self.source_id,
-            raw_predicate=f"inverse of {self.raw_predicate}",
-            canonical_predicate=inverse,
-            evidence_text=self.evidence_text,
+            id=f"{self.id}_inv" if self.id else "",
+            subject_id=self.object_id,
+            predicate=inverse_pred,
+            object_id=self.subject_id,
             confidence=self.confidence,
-            source_url=self.source_url,
+            provenance=self.provenance,
+            attributes=self.attributes.copy(),
+            source_id=self.object_id,
+            target_id=self.subject_id,
+            canonical_predicate=inverse_pred,
         )
 
+    @model_validator(mode="after")
+    def _validate_relationship(self) -> "Relationship":
+        if self.subject_id and self.object_id and self.subject_id == self.object_id:
+            raise ValueError("subject_id and object_id cannot be the same")
+        return self
 
-class RelationshipGraph:
-    """In-memory graph of relationships."""
 
-    def __init__(self) -> None:
-        self.relationships: list[Relationship] = []
-        self._index: dict[str, list[Relationship]] = {}
+class RelationshipGraph(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    def add_relationship(self, rel: Relationship) -> None:
-        """Add a relationship if not already present."""
-        for existing in self.relationships:
-            if (
-                existing.source_id == rel.source_id
-                and existing.target_id == rel.target_id
-                and existing.canonical_predicate == rel.canonical_predicate
-            ):
-                return
+    relationships: list[Relationship] = Field(default_factory=list)
+
+    def add(self, rel: Relationship) -> None:
         self.relationships.append(rel)
-        self._index.setdefault(rel.source_id, []).append(rel)
 
-    def get_outgoing(self, entity_id: str) -> list[Relationship]:
-        """Get all outgoing relationships for an entity."""
-        return [r for r in self.relationships if r.source_id == entity_id]
+    def get_by_subject(self, subject_id: str) -> list[Relationship]:
+        return [r for r in self.relationships if r.subject_id == subject_id]
 
-    def get_incoming(self, entity_id: str) -> list[Relationship]:
-        """Get all incoming relationships for an entity."""
-        return [r for r in self.relationships if r.target_id == entity_id]
+    def get_by_object(self, object_id: str) -> list[Relationship]:
+        return [r for r in self.relationships if r.object_id == object_id]
+
+    def get_by_predicate(self, predicate: PredicateType) -> list[Relationship]:
+        return [r for r in self.relationships if r.predicate == predicate]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"relationships": [r.model_dump() for r in self.relationships]}

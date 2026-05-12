@@ -36,3 +36,16 @@ async def get_evidence(evidence_id: str, tenant_id: str = Depends(tenant_require
     if not ev:
         raise HTTPException(status_code=404, detail="Evidence not found")
     return ev
+
+
+@router.post("/evidence/{evidence_id}/pii-scan")
+async def scan_evidence_pii(
+    account_id: str,
+    evidence_id: str,
+    tenant_id: str = Depends(tenant_required),
+):
+    ev = db.evidence.get(evidence_id, tenant_id=tenant_id)
+    if not ev or ev.account_id != account_id:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    text = ev.excerpt or ev.title or ""
+    return pii_summary(text)

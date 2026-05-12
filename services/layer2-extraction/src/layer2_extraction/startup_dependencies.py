@@ -1,3 +1,16 @@
-"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/startup_dependencies.py`."""
+"""Layer 2 startup dependencies module."""
 
-from value_fabric.layer2.startup_dependencies import *  # noqa: F401,F403
+from __future__ import annotations
+
+from layer2_extraction.startup.dependency_verifier import (
+    DependencyRule,
+    verify_startup_dependencies as _verify_startup_dependencies,
+)
+
+
+def verify_startup_dependencies(environment: str = "development") -> None:
+    """Verify Layer 2 startup dependencies."""
+    rules = [
+        DependencyRule("redis", required_in_prod=True, remediation="pip install redis"),
+    ]
+    _verify_startup_dependencies(rules, environment=environment)

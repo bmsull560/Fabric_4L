@@ -1,24 +1,21 @@
-"""Extraction response models for structured LLM output."""
+"""Extraction response models for Layer 2."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from typing import Any
 
-from value_fabric.layer2.models.ontology import Capability, UseCase, Persona, ValueDriver
-from value_fabric.layer2.models.relationships import Relationship
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CapabilityExtractionResponse(BaseModel):
-    """Structured response for capability extraction."""
-
     model_config = ConfigDict(extra="forbid")
 
-    capabilities: list[Capability] = []
+    capabilities: list[Any] = Field(default_factory=list)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class RelationshipExtractionResponse(BaseModel):
-    """Structured response for relationship extraction."""
-
     model_config = ConfigDict(extra="forbid")
 
-    relationships: list[Relationship] = []
+    relationships: list[Any] = Field(default_factory=list)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)

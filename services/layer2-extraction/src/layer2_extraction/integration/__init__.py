@@ -1,17 +1,17 @@
 """Layer 2 integration package."""
 
-from value_fabric.layer2.integration.job_store import (
+from layer2_extraction.integration.job_store import (
     ExtractionArtifacts,
     InMemoryJobStore,
     PipelineJob,
     build_job_store,
 )
-from value_fabric.layer2.integration.layer3_client import (
+from layer2_extraction.integration.layer3_client import (
     IngestionResponse,
     IngestionStatus,
     Layer3KnowledgeClient,
 )
-from value_fabric.layer2.integration.pending_ingestion_store import (
+from layer2_extraction.integration.pending_ingestion_store import (
     InMemoryPendingIngestionStore,
     PendingIngestionRecord,
     PendingIngestionStore,

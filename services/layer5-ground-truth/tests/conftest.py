@@ -10,6 +10,8 @@ Fixture hierarchy:
   client (function-scoped) →  httpx.AsyncClient wrapping the FastAPI app
 """
 
+from __future__ import annotations
+
 import os
 import uuid
 from collections.abc import AsyncGenerator
