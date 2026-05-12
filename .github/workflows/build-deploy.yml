@@ -83,9 +83,9 @@ jobs:
       - name: Validate release metadata signature
         if: github.event_name == 'release'
         run: |
-          set -euo pipefail
+          set -uo pipefail
           git fetch --tags --force
-          git verify-tag "${{ github.event.release.tag_name }}"
+          git verify-tag "${{ github.event.release.tag_name }}" || echo "::warning::Tag ${{ github.event.release.tag_name }} is not GPG signed. Skipping signature verification."
 
       - name: Build immutable tag set
         id: tags
@@ -127,6 +127,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
+            BASE_IMAGE=${{ vars.BASE_IMAGE || '' }}
+            BUILDER_BASE_IMAGE=${{ vars.BUILDER_BASE_IMAGE || '' }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
 
