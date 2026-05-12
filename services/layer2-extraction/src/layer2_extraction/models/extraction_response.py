@@ -1,3 +1,24 @@
-"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/models/extraction_response.py`."""
+"""Extraction response models for structured LLM output."""
 
-from value_fabric.layer2.models.extraction_response import *  # noqa: F401,F403
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict
+
+from value_fabric.layer2.models.ontology import Capability, UseCase, Persona, ValueDriver
+from value_fabric.layer2.models.relationships import Relationship
+
+
+class CapabilityExtractionResponse(BaseModel):
+    """Structured response for capability extraction."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    capabilities: list[Capability] = []
+
+
+class RelationshipExtractionResponse(BaseModel):
+    """Structured response for relationship extraction."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    relationships: list[Relationship] = []

@@ -8,14 +8,23 @@ Usage:
 Generates benchmark report with speedup metrics and routing accuracy.
 """
 
+from __future__ import annotations
+
 import argparse
 import asyncio
 import json
 import statistics
+import sys
 import time
 from dataclasses import dataclass
-from typing import Optional
-from uuid import uuid4
+from pathlib import Path
+from typing import Any
+
+# Allow ``from src.crawler...`` and ``value_fabric...`` imports when the script
+# is run directly.
+_SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(_SCRIPT_DIR.parent))          # services/layer1-ingestion
+sys.path.insert(0, str(_SCRIPT_DIR.parents[2]))      # repo root (value_fabric)
 
 from src.crawler.smart_router import SmartRouter, RouteType
 from src.crawler.httpx_crawler import HttpxCrawler
@@ -35,13 +44,15 @@ class BenchmarkResult:
     url: str
     route_chosen: str
     router_reason: str
-    fast_time_ms: Optional[float]
-    browser_time_ms: Optional[float]
+    fast_time_ms: float | None
+    browser_time_ms: float | None
     fallback_occurred: bool
-    quality_passed: Optional[bool]
+    quality_passed: bool | None
 
 
-SAMPLE_URLS = [
+DEFAULT_BROWSER_TIME_MS: float = 3500.0
+
+SAMPLE_URLS: list[tuple[str, str]] = [
     ("https://httpbin.org/html", "static"),
     ("https://httpbin.org/json", "api"),
 ]
@@ -81,13 +92,13 @@ async def benchmark_url(
             result = await crawler.fetch(url)
             fast_time = (time.monotonic() - start) * 1000
 
-        # Simulate fallback browser timing (3-5s typical)
-        browser_time = 3500
+        # Simulate fallback browser timing (3-5 s typical)
+        browser_time = DEFAULT_BROWSER_TIME_MS
         fallback_occurred = True
         quality_passed = False
 
     else:  # BROWSER
-        browser_time = 3500
+        browser_time = DEFAULT_BROWSER_TIME_MS
         quality_passed = None
 
     return BenchmarkResult(
@@ -101,7 +112,7 @@ async def benchmark_url(
     )
 
 
-def generate_report(results: list[BenchmarkResult]) -> dict:
+def generate_report(results: list[BenchmarkResult]) -> dict[str, Any]:
     """Generate structured benchmark report."""
 
     # Calculate metrics
@@ -112,8 +123,7 @@ def generate_report(results: list[BenchmarkResult]) -> dict:
     # Speedup for pure fast paths
     if fast_results:
         avg_fast = statistics.mean(r.fast_time_ms for r in fast_results)
-        estimated_browser = 3500  # Typical browser time
-        speedup = estimated_browser / avg_fast
+        speedup = DEFAULT_BROWSER_TIME_MS / avg_fast
     else:
         speedup = 0
 
@@ -151,7 +161,7 @@ def generate_report(results: list[BenchmarkResult]) -> dict:
     })
 
 
-async def main():
+async def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark Smart Router")
     parser.add_argument("--urls", help="File with URLs to test (one per line)")
     parser.add_argument("--sample", action="store_true", help="Use sample URLs")
@@ -163,10 +173,10 @@ async def main():
     if args.sample:
         urls = SAMPLE_URLS
     elif args.urls:
-        with open(args.urls) as f:
+        with open(args.urls, encoding="utf-8") as f:
             urls = [(line.strip(), "unknown") for line in f if line.strip()]
     else:
-        print("Error: Provide --urls or --sample")
+        print("Error: Provide --urls or --sample", file=sys.stderr)
         return 1
 
     # Run benchmarks
@@ -178,8 +188,8 @@ async def main():
         try:
             result = await benchmark_url(url, url_type, args.iterations)
             results.append(result)
-        except Exception as e:
-            print(f"    Error: {e}")
+        except (OSError, RuntimeError) as exc:
+            print(f"    Error benchmarking {url}: {exc}", file=sys.stderr)
 
     # Generate report
     report = generate_report(results)
@@ -193,10 +203,14 @@ async def main():
     print(f"Fallbacks: {report['summary']['fallback_count']}")
     print(f"Fallback rate: {report['summary']['fallback_rate']:.1%}")
     print(f"Speedup vs browser: {report['summary']['speedup_vs_browser']:.1f}x")
-    print(f"Avg fast path time: {report['summary']['avg_fast_time_ms']:.0f}ms")
+    avg_fast = report["summary"]["avg_fast_time_ms"]
+    if avg_fast is not None:
+        print(f"Avg fast path time: {avg_fast:.0f}ms")
+    else:
+        print("Avg fast path time: N/A")
 
     if args.output:
-        with open(args.output, "w") as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
         print(f"\nFull report written to: {args.output}")
 

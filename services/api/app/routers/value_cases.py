@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.database import db
 from app.core.tenant_context import tenant_required
 from app.models.schemas import BusinessCase
+from app.services.gate_service import all_gates_pass, check_gates, get_gate_summary
 
 router = APIRouter(prefix="/accounts/{account_id}", tags=["Value Case"])
 
@@ -39,3 +40,32 @@ async def update_value_case(
     if not bc:
         raise HTTPException(status_code=404, detail="Value case not found")
     return bc
+
+
+@router.get("/gates")
+async def get_account_gates(account_id: str, tenant_id: str = Depends(tenant_required)):
+    return get_gate_summary(account_id, tenant_id)
+
+
+@router.post("/value-case/{value_case_id}/export")
+async def export_value_case(
+    account_id: str,
+    value_case_id: str,
+    tenant_id: str = Depends(tenant_required),
+):
+    gates = check_gates(account_id, tenant_id)
+    open_gates = [g for g in gates if not g.passed()]
+    if open_gates:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "message": "Export blocked: required gates are not closed",
+                "open_gates": [
+                    {"type": g.gate_type, "reason": g.reason} for g in open_gates
+                ],
+            },
+        )
+    case = db.business_cases.get(value_case_id, tenant_id=tenant_id)
+    if not case or case.account_id != account_id:
+        raise HTTPException(status_code=404, detail="Value case not found")
+    return {"status": "ready", "value_case_id": value_case_id, "gates_passed": True}

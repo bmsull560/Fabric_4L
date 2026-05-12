@@ -1,8 +1,13 @@
 """Pytest configuration for Layer 1 Ingestion tests."""
 
+from __future__ import annotations
+
+import importlib.util
 import os
 import sys
+import types
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import MagicMock
 
 # Stub optional heavy deps before any imports that transitively require them
@@ -11,10 +16,8 @@ try:
 except ImportError:
     pass
 
-import types
-import importlib.util
 
-def _make_pkg(name):
+def _make_pkg(name: str) -> ModuleType:
     m = types.ModuleType(name)
     m.__path__ = []
     spec = importlib.util.spec_from_loader(name, loader=None)

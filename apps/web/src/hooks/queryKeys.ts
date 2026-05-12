@@ -419,6 +419,20 @@ export const QK = {
       ["intelligence", "deal-readiness", accountId] as const,
     pipeline: () => ["intelligence", "pipeline"] as const,
   },
+
+  // Gates & Reviews
+  gates: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
+    all: ["gates"] as const,
+    account: (accountId: string) => ["gates", "account", accountId] as const,
+  },
+
+  reviews: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
+    all: ["reviews"] as const,
+    list: (accountId: string) => ["reviews", "list", accountId] as const,
+    detail: (reviewId: string) => ["reviews", "detail", reviewId] as const,
+  },
 } as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

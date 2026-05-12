@@ -1,5 +1,7 @@
 """Test configuration and fixtures for Value Fabric Layer 3 API."""
 
+from __future__ import annotations
+
 import json
 import os
 import sys

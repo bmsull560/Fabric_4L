@@ -109,6 +109,7 @@ const GovernanceEvidencePage = lazy(() => import("@/pages/GovernanceEvidence"));
 const GovernanceCompliancePage = lazy(() => import("@/pages/GovernanceCompliance"));
 const GovernanceAuditLogPage = lazy(() => import("@/pages/GovernanceAuditLog"));
 const GovernanceChangeHistoryPage = lazy(() => import("@/pages/GovernanceChangeHistory"));
+const ReviewQueuePage = lazy(() => import("@/pages/ReviewQueuePage"));
 const BenchmarkPoliciesPage = lazy(() => import("@/pages/admin/BenchmarkPolicies"));
 const HealthMonitorPage = lazy(() => import("@/pages/admin/HealthMonitor"));
 
@@ -522,6 +523,7 @@ export const router = createBrowserRouter([
       { path: "/governance/audit/log", element: <ProtectedRoute requiredTier="admin"><GovernanceAuditLogPage /></ProtectedRoute> },
       { path: "/governance/audit/changes", element: <ProtectedRoute requiredTier="admin"><GovernanceChangeHistoryPage /></ProtectedRoute> },
       { path: "/governance/health", element: <ProtectedRoute requiredTier="admin"><HealthMonitorPage /></ProtectedRoute> },
+      { path: "/governance/reviews/:accountId", element: <ProtectedRoute><ReviewQueuePage /></ProtectedRoute> },
 
       // ═══════════════════════════════════════════════════════════════
       // WORKFLOW

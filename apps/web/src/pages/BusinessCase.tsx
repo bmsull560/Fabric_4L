@@ -7,6 +7,7 @@ import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircl
 import { useParams, useSearchParams } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GateStatusBanner } from "@/components/GateStatusBanner";
 import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
 
@@ -199,6 +200,8 @@ export default function BusinessCase() {
           </>
         }
       />
+
+      {accountRouteId && <GateStatusBanner accountId={accountRouteId} />}
 
       {/* Export error */}
       {exportMutation.error && (

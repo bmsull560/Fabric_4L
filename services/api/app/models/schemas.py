@@ -335,6 +335,30 @@ class GovernanceGate(BaseModel):
     checked_at: str | None = None
 
 
+class ReviewComment(BaseModel):
+    id: str
+    review_id: str
+    tenant_id: str
+    author_id: str
+    text: str
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+
+class ReviewRequest(BaseModel):
+    id: str
+    account_id: str
+    tenant_id: str
+    requester_id: str
+    reviewer_id: str | None = None
+    status: Literal["pending", "approved", "rejected", "changes_requested"] = "pending"
+    scope: Literal["value_model", "business_case", "formula", "evidence"] = "business_case"
+    target_id: str | None = None
+    comments: list[ReviewComment] = Field(default_factory=list)
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    resolved_at: str | None = None
+
+
 # ============================================================================
 # Agents
 # ============================================================================

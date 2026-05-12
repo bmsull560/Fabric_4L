@@ -31,7 +31,9 @@ from app.models.schemas import (
     Formula,
     GovernanceGate,
     GroundTruthObject,
+    ReviewComment,
     ReviewDecision,
+    ReviewRequest,
     ROICalculation,
     Scenario,
     Signal,
@@ -279,6 +281,8 @@ class InMemoryDatabase:
         self.agent_runs = InMemoryTable("agent_runs", "tenant_id")
         self.tool_results = InMemoryTable("tool_results", "tenant_id")
         self.review_decisions = InMemoryTable("review_decisions", "tenant_id")
+        self.review_requests = InMemoryTable("review_requests", "tenant_id")
+        self.review_comments = InMemoryTable("review_comments", "tenant_id")
         self.audit_logs = InMemoryTable("audit_logs", "tenant_id")
         self.value_packs = InMemoryTable("value_packs", "tenant_id")
         self.governance_gates = InMemoryTable("governance_gates", "tenant_id")
@@ -314,6 +318,8 @@ class SQLiteDatabase:
         self.agent_runs = self._table("agent_runs", AgentRun, "tenant_id")
         self.tool_results = self._table("tool_results", ToolResult, "tenant_id")
         self.review_decisions = self._table("review_decisions", ReviewDecision, "tenant_id")
+        self.review_requests = self._table("review_requests", ReviewRequest, "tenant_id")
+        self.review_comments = self._table("review_comments", ReviewComment, "tenant_id")
         self.audit_logs = self._table("audit_logs", AuditLogEvent, "tenant_id")
         self.value_packs = self._table("value_packs", ValuePack, "tenant_id")
         self.governance_gates = self._table("governance_gates", GovernanceGate, "tenant_id")

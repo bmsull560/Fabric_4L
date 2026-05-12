@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import argparse
 import sys
+from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
 
-EXPECTED = {
+EXPECTED: dict[str, str] = {
     "services/layer3-knowledge/src/backup/backup_manager.py": (
         '"""Compatibility forwarder for Layer 3 backup manager.\n\n'
         'Canonical implementation lives in ``value_fabric.layer3.backup.backup_manager``.\n"""\n\n'
@@ -22,14 +22,30 @@ EXPECTED = {
 }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Fail CI if Layer 3 backup compatibility shims drift from canonical forwarders."
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path(__file__).resolve().parents[3],
+        help="Repository root directory (default: auto-detected)",
+    )
+    args = parser.parse_args(argv)
+
+    repo_root: Path = args.repo_root
     drifted: list[str] = []
     for rel_path, expected in EXPECTED.items():
-        file_path = REPO_ROOT / rel_path
+        file_path = repo_root / rel_path
         if not file_path.exists():
             drifted.append(f"MISSING: {rel_path}")
             continue
-        actual = file_path.read_text(encoding="utf-8")
+        try:
+            actual = file_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            drifted.append(f"READ_ERROR: {rel_path} ({exc})")
+            continue
         if actual != expected:
             drifted.append(f"DRIFT: {rel_path}")
 
