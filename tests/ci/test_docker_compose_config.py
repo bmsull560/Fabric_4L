@@ -247,6 +247,43 @@ services:
     assert failures == []
 
 
+def test_live_compose_rejects_fail_open_runtime_secrets():
+    module = load_module()
+    tmp_path = repo_tmp_path("live-fail-open")
+    compose = write_file(
+        tmp_path / module.LIVE_COMPOSE_FILE,
+        """
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD", "true"]
+  minio-init:
+    image: minio/mc:latest
+    entrypoint: mc config host add myminio http://minio:9000 minioadmin minioadmin
+  api:
+    image: alpine:3.20
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-live-local-secret-do-not-use-in-production-minimum-32-chars}
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/app
+      NEO4J_PASSWORD: devpassword
+    healthcheck:
+      test: ["CMD", "true"]
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+    messages = [failure.message for failure in failures]
+
+    assert "live compose must not use trust database authentication" in messages
+    assert "live compose must not hardcode MinIO default credentials" in messages
+    assert "live compose must not provide fallback JWT secrets" in messages
+    assert "live compose database URLs must not hardcode postgres credentials" in messages
+    assert "live compose must not hardcode Neo4j development credentials" in messages
+
+
 def test_full_compose_rejects_unguarded_embedded_required_secret_reference():
     module = load_module()
     tmp_path = repo_tmp_path("full-unguarded-embedded-secret")

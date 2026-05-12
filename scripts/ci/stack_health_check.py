@@ -18,13 +18,13 @@ import urllib.request
 from datetime import UTC, datetime
 from typing import Any
 
-DEFAULT_ENDPOINTS: dict[str, str] = {
-    "layer1": "http://localhost:8001/health",
-    "layer2": "http://localhost:8002/health",
-    "layer3": "http://localhost:8003/health",
-    "layer4": "http://localhost:8004/health",
-    "layer5": "http://localhost:8005/api/v1/health",
-    "layer6": "http://localhost:8006/health",
+DEFAULT_ENDPOINTS: dict[str, tuple[str, ...]] = {
+    "layer1": ("http://localhost:8001/health",),
+    "layer2": ("http://localhost:8002/ready", "http://localhost:8002/health"),
+    "layer3": ("http://localhost:8003/health",),
+    "layer4": ("http://localhost:8004/health",),
+    "layer5": ("http://localhost:8005/api/v1/health", "http://localhost:8005/health"),
+    "layer6": ("http://localhost:8006/ready", "http://localhost:8006/health"),
 }
 
 
@@ -50,8 +50,21 @@ def _probe(url: str, timeout: int = 10) -> dict[str, Any]:
         }
 
 
+def _probe_any(urls: tuple[str, ...], timeout: int = 10) -> dict[str, Any]:
+    errors: list[dict[str, Any]] = []
+    for url in urls:
+        result = _probe(url, timeout=timeout)
+        result["url"] = url
+        if result["ok"]:
+            return result
+        errors.append(result)
+    last = errors[-1] if errors else {"ok": False, "status": None, "latency_ms": 0, "error": "no endpoints"}
+    last["attempted_urls"] = list(urls)
+    return last
+
+
 def check_all(
-    endpoints: dict[str, str],
+    endpoints: dict[str, tuple[str, ...]],
     *,
     overall_timeout: int = 300,
     per_service_timeout: int = 10,
@@ -65,7 +78,7 @@ def check_all(
         all_ok = True
         for name, url in endpoints.items():
             if not results[name].get("ok"):
-                results[name] = _probe(url, timeout=per_service_timeout)
+                results[name] = _probe_any(url, timeout=per_service_timeout)
             if not results[name]["ok"]:
                 all_ok = False
         if all_ok:

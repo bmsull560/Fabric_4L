@@ -35,3 +35,9 @@ async def metrics_endpoint(request: Request):
     if isinstance(result, Response):
         return result
     return result
+
+
+@router.get("/ready")
+async def readiness_check() -> dict[str, str]:
+    """Standard readiness contract for orchestration and probes."""
+    return {"status": "ready"}

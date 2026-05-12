@@ -507,6 +507,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/validation/seed/auth-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Validation Auth Context
+         * @description Seed deterministic auth context for backend-integrated validation.
+         *
+         *     This endpoint is non-production only and persists no raw secrets. It is
+         *     designed to make local/CI backend-integrated tests reproducible while
+         *     keeping runtime secrets sourced exclusively from environment or a secret
+         *     manager.
+         */
+        post: operations["seed_validation_auth_context_v1_validation_seed_auth_context_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validation/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue Validation Session
+         * @description Issue a non-production browser session for backend-integrated Playwright validation.
+         *
+         *     The endpoint is deliberately gated by the same service-authenticated,
+         *     privileged, non-production boundary as deterministic seed data. It uses the
+         *     canonical JWT and CSRF cookie mechanics, and returns only non-secret UI
+         *     metadata.
+         */
+        post: operations["issue_validation_session_v1_validation_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/analysis/roi": {
         parameters: {
             query?: never;
@@ -594,6 +644,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/cases/{case_id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate Business Case
+         * @description Regenerate a business case with latest inputs and preserve revision lineage.
+         */
+        post: operations["regenerate_business_case_v1_cases__case_id__regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/cases/{case_id}": {
         parameters: {
             query?: never;
@@ -608,6 +678,26 @@ export interface paths {
         get: operations["get_business_case_v1_cases__case_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validation/seed/business-case-lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Business Case Lifecycle
+         * @description Seed deterministic business-case lifecycle state for non-production E2E validation.
+         */
+        post: operations["seed_business_case_lifecycle_v1_validation_seed_business_case_lifecycle_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -681,6 +771,23 @@ export interface paths {
          * @description Delete a saved scenario only within the authenticated tenant scope.
          */
         delete: operations["delete_saved_scenario_v1_cases__case_id__scenarios__scenario_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/cases/{case_id}/workspace/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workspace Evidence */
+        get: operations["get_workspace_evidence_v1_cases__case_id__workspace_evidence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1023,6 +1130,118 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tasks
+         * @description List tenant-scoped tasks with optional account and status filters.
+         */
+        get: operations["list_tasks_v1_tasks_get"];
+        put?: never;
+        /**
+         * Create Task
+         * @description Create a tenant-scoped task that remains available after page reload.
+         */
+        post: operations["create_task_v1_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Task
+         * @description Update mutable task fields for the authenticated tenant only.
+         */
+        patch: operations["update_task_v1_tasks__task_id__patch"];
+        trace?: never;
+    };
+    "/v1/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Comments
+         * @description List tenant-scoped comments with optional subject/account filters.
+         */
+        get: operations["list_comments_v1_comments_get"];
+        put?: never;
+        /**
+         * Create Comment
+         * @description Create a tenant-scoped comment that remains available after page reload.
+         */
+        post: operations["create_comment_v1_comments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notifications
+         * @description List tenant-scoped in-app notifications.
+         */
+        get: operations["list_notifications_v1_notifications_get"];
+        put?: never;
+        /**
+         * Create Notification
+         * @description Create a tenant-scoped notification for validation and explicit workflow events.
+         */
+        post: operations["create_notification_v1_notifications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Mark Notification Read
+         * @description Mark a tenant-scoped notification as read.
+         */
+        patch: operations["mark_notification_read_v1_notifications__notification_id__read_patch"];
         trace?: never;
     };
     "/v1/agent-stream/chat": {
@@ -4183,6 +4402,10 @@ export interface components {
              */
             activeTab: string;
             account?: components["schemas"]["AgentStreamAccountContext"] | null;
+            /** Contextenvelope */
+            contextEnvelope?: {
+                [key: string]: unknown;
+            } | null;
             /** Entitycontext */
             entityContext?: {
                 [key: string]: unknown;
@@ -4422,6 +4645,29 @@ export interface components {
             context?: components["schemas"]["RequestContext"] | null;
         };
         /**
+         * BusinessCaseLifecycleSeedRequest
+         * @description Non-production deterministic lifecycle seed payload for backend E2E validation.
+         */
+        BusinessCaseLifecycleSeedRequest: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /**
+             * Draft Case Id
+             * @default case-draft-001
+             */
+            draft_case_id: string;
+            /**
+             * Approved Case Id
+             * @default case-e2e-approved-001
+             */
+            approved_case_id: string;
+            /** Approved Case Aliases */
+            approved_case_aliases?: string[];
+        };
+        /**
          * BusinessCaseRequest
          * @description Business case generation request.
          */
@@ -4527,6 +4773,14 @@ export interface components {
             };
             /** Case Metadata */
             case_metadata?: {
+                [key: string]: unknown;
+            };
+            /** Revision History */
+            revision_history?: {
+                [key: string]: unknown;
+            }[];
+            /** Diff Summary */
+            diff_summary?: {
                 [key: string]: unknown;
             };
         };
@@ -4667,6 +4921,32 @@ export interface components {
              * @description Most recent checkpoint ID
              */
             current_checkpoint_id?: string | null;
+        };
+        /** CommentListResponse */
+        CommentListResponse: {
+            /** Items */
+            items: components["schemas"]["CommentRecord"][];
+            /** Total */
+            total: number;
+        };
+        /** CommentRecord */
+        CommentRecord: {
+            /** Id */
+            id: string;
+            /** Account Id */
+            account_id?: string | null;
+            /** Subject Type */
+            subject_type: string;
+            /** Subject Id */
+            subject_id: string;
+            /** Body */
+            body: string;
+            /** Author */
+            author: string;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
         };
         /**
          * CompanyKnowledgeProfileCreateRequest
@@ -4993,6 +5273,45 @@ export interface components {
             status: string;
             /** Created At */
             created_at: string;
+        };
+        /** CreateCommentRequest */
+        CreateCommentRequest: {
+            /** Account Id */
+            account_id?: string | null;
+            /** Subject Type */
+            subject_type: string;
+            /** Subject Id */
+            subject_id: string;
+            /** Body */
+            body: string;
+        };
+        /** CreateNotificationRequest */
+        CreateNotificationRequest: {
+            /** Account Id */
+            account_id?: string | null;
+            /** Subject Id */
+            subject_id?: string | null;
+            /** Subject Type */
+            subject_type?: string | null;
+            /** Type */
+            type: string;
+            /** Title */
+            title: string;
+            /** Message */
+            message: string;
+        };
+        /** CreateTaskRequest */
+        CreateTaskRequest: {
+            /** Title */
+            title: string;
+            /** Account Id */
+            account_id?: string | null;
+            /** Assignee */
+            assignee?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Stage */
+            stage?: string | null;
         };
         /**
          * CrmMatchResult
@@ -6058,6 +6377,41 @@ export interface components {
             /** Success Rate */
             success_rate: number;
         };
+        /** NotificationListResponse */
+        NotificationListResponse: {
+            /** Items */
+            items: components["schemas"]["NotificationRecord"][];
+            /** Total */
+            total: number;
+            /** Unread Count */
+            unread_count: number;
+        };
+        /** NotificationRecord */
+        NotificationRecord: {
+            /** Id */
+            id: string;
+            /** Account Id */
+            account_id?: string | null;
+            /** Subject Id */
+            subject_id?: string | null;
+            /** Subject Type */
+            subject_type?: string | null;
+            /** Type */
+            type: string;
+            /** Title */
+            title: string;
+            /** Message */
+            message: string;
+            /**
+             * Read
+             * @default false
+             */
+            read: boolean;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
         /**
          * OnboardingStatusResponse
          * @description Aggregated onboarding progress for a tenant.
@@ -6562,6 +6916,40 @@ export interface components {
              * @default balanced
              */
             strategy: string;
+        };
+        /**
+         * RegenerateBusinessCaseRequest
+         * @description Regenerate request with lineage to an existing case.
+         */
+        RegenerateBusinessCaseRequest: {
+            /**
+             * Account Id
+             * Format: uuid
+             * @description Account UUID identifier
+             */
+            account_id: string;
+            /** Opportunity Id */
+            opportunity_id?: string | null;
+            /** Sections */
+            sections?: string[];
+            /**
+             * Output Format
+             * @description Output format (pdf, docx, html)
+             * @default pdf
+             */
+            output_format: string;
+            /**
+             * Custom Inputs
+             * @description Optional custom inputs, including truth_requirements and organization_id
+             */
+            custom_inputs?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Previous Case Id
+             * @description Existing case id being regenerated
+             */
+            previous_case_id: string;
         };
         /**
          * RegisterTenantResponse
@@ -7228,6 +7616,39 @@ export interface components {
             /** Queued At */
             queued_at?: string | null;
         };
+        /** TaskListResponse */
+        TaskListResponse: {
+            /** Items */
+            items: components["schemas"]["TaskRecord"][];
+            /** Total */
+            total: number;
+        };
+        /** TaskRecord */
+        TaskRecord: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Account Id */
+            account_id?: string | null;
+            /** Assignee */
+            assignee?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Stage */
+            stage?: string | null;
+            /** @default open */
+            status: components["schemas"]["TaskStatus"];
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * TaskStatus
+         * @enum {string}
+         */
+        TaskStatus: "open" | "in_progress" | "completed";
         /** TenantContextResponse */
         TenantContextResponse: {
             tenant: components["schemas"]["TenantSummary"];
@@ -7490,6 +7911,16 @@ export interface components {
             /** Requires Auth */
             requires_auth: boolean;
         };
+        /** UpdateTaskRequest */
+        UpdateTaskRequest: {
+            status?: components["schemas"]["TaskStatus"] | null;
+            /** Assignee */
+            assignee?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Stage */
+            stage?: string | null;
+        };
         /**
          * UsageMetricsResponse
          * @description Usage metrics response.
@@ -7630,6 +8061,37 @@ export interface components {
             /** Notes */
             notes?: string | null;
         };
+        /**
+         * ValidationAuthContextSeedRequest
+         * @description Non-production deterministic auth-context seed payload.
+         *
+         *     The payload intentionally accepts only non-secret metadata and optional
+         *     pre-hashed API key material. Raw secrets are rejected by ``extra=forbid``.
+         */
+        ValidationAuthContextSeedRequest: {
+            /** Tenant Id */
+            tenant_id?: string | null;
+            /**
+             * Tenant Slug
+             * @default tenant-e2e-001
+             */
+            tenant_slug: string;
+            /**
+             * Tenant Name
+             * @default E2E Validation Tenant
+             */
+            tenant_name: string;
+            /**
+             * Service Account Id
+             * @default svc-playwright-backend-validation
+             */
+            service_account_id: string;
+            api_key?: components["schemas"]["ValidationSeededApiKey"] | null;
+            /** Account Mappings */
+            account_mappings?: {
+                [key: string]: string;
+            }[];
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -7642,6 +8104,65 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * ValidationSeededApiKey
+         * @description Pre-hashed API key metadata for deterministic non-production validation.
+         */
+        ValidationSeededApiKey: {
+            /** Key Id */
+            key_id: string;
+            /**
+             * Name
+             * @default E2E backend-integrated validation service key
+             */
+            name: string;
+            /** Key Hash */
+            key_hash: string;
+            /** Prefix */
+            prefix: string;
+            /**
+             * Role
+             * @default system
+             */
+            role: string;
+            /** Permissions */
+            permissions?: string[];
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ValidationSessionRequest
+         * @description Non-production browser session payload for backend-integrated Playwright validation.
+         */
+        ValidationSessionRequest: {
+            /**
+             * User Id
+             * @default e2e-admin-user
+             */
+            user_id: string;
+            /**
+             * Email
+             * @default e2e@valuefabric.test
+             */
+            email: string;
+            /**
+             * Role
+             * @default admin
+             */
+            role: string;
+            /**
+             * Tenant Slug
+             * @default e2e-test
+             */
+            tenant_slug: string;
+            /**
+             * Expires In Seconds
+             * @default 3600
+             */
+            expires_in_seconds: number;
         };
         /**
          * ValueExtractionRecordListResponse
@@ -8204,6 +8725,55 @@ export interface components {
             scheduler_status?: string | null;
             progress_meta?: components["schemas"]["WorkflowProgressSchema"] | null;
         };
+        /** WorkspaceEvidenceItem */
+        WorkspaceEvidenceItem: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @default evidence
+             */
+            type: string;
+            /**
+             * Source
+             * @default Unknown
+             */
+            source: string;
+            /**
+             * Matchscore
+             * @default 0
+             */
+            matchScore: number;
+            /**
+             * Verification
+             * @default unverified
+             */
+            verification: string;
+            /** Linkedsignals */
+            linkedSignals?: string[];
+            /**
+             * Excerpt
+             * @default
+             */
+            excerpt: string;
+            /** Decision Status */
+            decision_status?: string | null;
+            /** Attached Driver Id */
+            attached_driver_id?: string | null;
+            /** Provenance Id */
+            provenance_id?: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** Decision Note */
+            decision_note?: string | null;
+        };
+        /** WorkspaceEvidenceResponse */
+        WorkspaceEvidenceResponse: {
+            /** Evidence */
+            evidence?: components["schemas"]["WorkspaceEvidenceItem"][];
+        };
         /** convert_hypothesisResult */
         convert_hypothesisResult: {
             /** Hypothesis Id */
@@ -8477,6 +9047,8 @@ export interface operations {
                 status?: string | null;
                 /** @description Filter by workflow type (e.g. business_case) */
                 type?: string | null;
+                /** @description Include terminal workflows in the list response */
+                include_completed?: boolean;
             };
             header?: never;
             path?: never;
@@ -9058,6 +9630,76 @@ export interface operations {
             };
         };
     };
+    seed_validation_auth_context_v1_validation_seed_auth_context_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationAuthContextSeedRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_validation_session_v1_validation_session_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     quick_roi_analysis_v1_analysis_roi_post: {
         parameters: {
             query?: never;
@@ -9188,6 +9830,41 @@ export interface operations {
             };
         };
     };
+    regenerate_business_case_v1_cases__case_id__regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegenerateBusinessCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessCaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_business_case_v1_cases__case_id__get: {
         parameters: {
             query?: never;
@@ -9206,6 +9883,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BusinessCaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seed_business_case_lifecycle_v1_validation_seed_business_case_lifecycle_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusinessCaseLifecycleSeedRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -9370,6 +10082,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workspace_evidence_v1_cases__case_id__workspace_evidence_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceEvidenceResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -9921,6 +10664,268 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvidenceDecisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_v1_tasks_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+                status?: components["schemas"]["TaskStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_v1_tasks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_task_v1_tasks__task_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_comments_v1_comments_get: {
+        parameters: {
+            query?: {
+                subject_type?: string | null;
+                subject_id?: string | null;
+                account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_comment_v1_comments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notifications_v1_notifications_get: {
+        parameters: {
+            query?: {
+                read?: boolean | null;
+                account_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_notification_v1_notifications_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNotificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_notification_read_v1_notifications__notification_id__read_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationRecord"];
                 };
             };
             /** @description Validation Error */
@@ -11552,10 +12557,13 @@ export interface operations {
     auth_refresh_auth_oidc_refresh_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
             path?: never;
             cookie?: {
                 vf_session?: string | null;
+                vf_csrf_token?: string | null;
             };
         };
         requestBody?: never;
@@ -11585,9 +12593,13 @@ export interface operations {
     auth_logout_auth_oidc_logout_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-CSRF-Token"?: string | null;
+            };
             path?: never;
-            cookie?: never;
+            cookie?: {
+                vf_csrf_token?: string | null;
+            };
         };
         requestBody?: never;
         responses: {
@@ -11600,6 +12612,15 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

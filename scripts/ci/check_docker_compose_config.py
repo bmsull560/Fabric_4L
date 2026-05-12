@@ -88,6 +88,18 @@ FULL_COMPOSE_REQUIRED_ENV_KEYS = {
     "SERVICE_AUTH_SECRET",
 }
 
+LIVE_COMPOSE_FILE = "docker-compose.live.yml"
+
+LIVE_COMPOSE_FORBIDDEN_TEXT = {
+    "POSTGRES_HOST_AUTH_METHOD: trust": "live compose must not use trust database authentication",
+    "minioadmin": "live compose must not hardcode MinIO default credentials",
+    "live-local-secret-do-not-use-in-production": "live compose must not provide fallback JWT secrets",
+    "live-local-service-auth-secret-do-not-use-in-production": "live compose must not provide fallback service auth secrets",
+    "live-local-api-key-hmac-secret-do-not-use-in-production": "live compose must not provide fallback API key HMAC secrets",
+    "postgres:postgres@": "live compose database URLs must not hardcode postgres credentials",
+    "devpassword": "live compose must not hardcode Neo4j development credentials",
+}
+
 PLACEHOLDER_SECRET_PATTERNS = (
     "do-not-use-in-production",
     "non_deployable",
@@ -482,6 +494,18 @@ def validate_full_compose_hardening(
     return failures
 
 
+def validate_live_compose_security(compose_file: Path) -> list[ComposeFailure]:
+    if compose_file.name != LIVE_COMPOSE_FILE:
+        return []
+
+    text = compose_file.read_text(encoding="utf-8")
+    failures: list[ComposeFailure] = []
+    for forbidden, message in LIVE_COMPOSE_FORBIDDEN_TEXT.items():
+        if forbidden in text:
+            failures.append(ComposeFailure(compose_file.name, "", message))
+    return failures
+
+
 def validate_compose_contract(compose_file: Path, repo_root: Path = REPO_ROOT) -> list[ComposeFailure]:
     data = load_compose(compose_file)
     declared_volumes = set((data.get("volumes") or {}).keys())
@@ -489,6 +513,7 @@ def validate_compose_contract(compose_file: Path, repo_root: Path = REPO_ROOT) -
 
     services = data["services"]
     failures.extend(validate_full_compose_hardening(compose_file, services))
+    failures.extend(validate_live_compose_security(compose_file))
     for service_name, service in services.items():
         if not isinstance(service, dict):
             failures.append(

@@ -515,6 +515,47 @@
         }
       }
     },
+    "/api/v1/ingestion/validation/seed/job": {
+      "post": {
+        "summary": "Seed Validation Ingestion Job",
+        "description": "Seed deterministic Layer 1 job evidence for backend-integrated validation.\n\nThis endpoint is non-production only, service-auth gated, and writes\ntenant-scoped Layer 1 records through the canonical persistence models.\nIt exists to prove the live frontend can read real Layer 1 job state\nwithout requiring external crawling or mocks during Playwright validation.",
+        "operationId": "seed_validation_ingestion_job_api_v1_ingestion_validation_seed_job_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidationIngestionJobSeedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Seed Validation Ingestion Job Api V1 Ingestion Validation Seed Job Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ingestion/targets": {
       "get": {
         "summary": "List Targets",
@@ -4697,6 +4738,11 @@
             "format": "uuid",
             "title": "Target Id"
           },
+          "configuration": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Configuration"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -4743,6 +4789,7 @@
         "required": [
           "id",
           "target_id",
+          "configuration",
           "status",
           "priority",
           "progress_percent_complete",
@@ -6219,6 +6266,34 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ValidationIngestionJobSeedRequest": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "minLength": 3,
+            "title": "Domain",
+            "default": "meridian-auto.com"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus",
+            "default": "COMPLETED"
+          }
+        },
+        "type": "object",
+        "title": "ValidationIngestionJobSeedRequest",
+        "description": "Non-production deterministic ingestion evidence for backend-integrated Playwright."
       },
       "ValidationWarning": {
         "properties": {

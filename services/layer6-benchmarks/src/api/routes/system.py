@@ -25,3 +25,9 @@ async def health_check(request: Request):
     from .. import main as handlers
     payload = await handlers.health_check(request)
     return _with_readiness(dict(payload), "layer6-benchmarks")
+
+
+@router.get("/ready", response_model=None)
+async def readiness_check() -> dict[str, str]:
+    """Standard readiness contract for orchestration and probes."""
+    return {"status": "ready"}

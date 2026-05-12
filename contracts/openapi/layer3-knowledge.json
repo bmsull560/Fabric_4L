@@ -11489,6 +11489,18 @@
             "title": "Status",
             "description": "Overall service status"
           },
+          "service": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Service",
+            "description": "Service name"
+          },
+          "readiness": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Readiness",
+            "description": "Readiness envelope"
+          },
           "version": {
             "type": "string",
             "maxLength": 20,
@@ -11536,6 +11548,8 @@
         "type": "object",
         "required": [
           "status",
+          "service",
+          "readiness",
           "version",
           "uptime_seconds",
           "dependencies",

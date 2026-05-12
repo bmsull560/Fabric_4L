@@ -71,6 +71,14 @@ async def test_health_check(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_ready_check(client: AsyncClient):
+    """Test readiness endpoint standard contract."""
+    response = await client.get("/ready")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready"}
+
+
+@pytest.mark.asyncio
 async def test_list_datasets(client: AsyncClient):
     """Test listing datasets."""
     response = await client.get("/v1/benchmarks/datasets")
