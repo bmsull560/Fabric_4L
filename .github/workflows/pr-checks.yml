@@ -1506,7 +1506,7 @@ jobs:
         uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3
 
       - name: Build image (no push)
-        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671 # v5
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v5
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
