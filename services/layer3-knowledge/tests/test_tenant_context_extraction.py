@@ -5,21 +5,12 @@ from FastAPI request objects for multi-tenant security.
 """
 
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 # Import the helper under test
-from value_fabric.layer3.api.app_monolith import _extract_tenant_id, NEO4J_TENANT_AVAILABLE
-
-
-@pytest.fixture(autouse=True)
-def _ensure_neo4j_tenant_available():
-    """Patch NEO4J_TENANT_AVAILABLE so tests run without optional neo4j dependency."""
-    with patch(
-        "value_fabric.layer3.api.app_monolith.NEO4J_TENANT_AVAILABLE", True
-    ):
-        yield
+from value_fabric.layer3.api.app_monolith import _extract_tenant_id
 
 
 class TestExtractTenantId:
@@ -107,10 +98,6 @@ class TestExtractTenantId:
         # Assert
         assert result == "tenant-123-abc"
 
-    @pytest.mark.skipif(
-        not NEO4J_TENANT_AVAILABLE,
-        reason="Neo4j tenant dependencies not available"
-    )
     def test_integration_with_real_request_context(self):
         """Integration test with actual RequestContext from shared.identity."""
         try:
@@ -156,3 +143,15 @@ class TestExtractTenantIdDeterminism:
         assert all(r == results[0] for r in results)
         assert results[0] == str(tenant_uuid)
 
+
+
+def test_extract_ignores_module_availability_flag(monkeypatch):
+    """Extraction remains context-only when optional tenant module is unavailable."""
+    monkeypatch.setattr("value_fabric.layer3.api.app_monolith.NEO4J_TENANT_AVAILABLE", False)
+    mock_context = MagicMock()
+    mock_context.tenant_id = "tenant-module-off"
+
+    mock_request = MagicMock()
+    mock_request.state.governance_context = mock_context
+
+    assert _extract_tenant_id(mock_request) == "tenant-module-off"

@@ -3,6 +3,8 @@
 
 > Runtime path governance: net-new layer logic must go to canonical runtime packages in `value_fabric/layer*/`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
 
+> Tenant enforcement reference: for authenticated-context-as-source-of-truth and body tenant mismatch rejection, see [`docs/reference/tenant-context-enforcement-pattern.md`](../../docs/reference/tenant-context-enforcement-pattern.md).
+
 Layer 3 of the Value Fabric platform consumes RDF/OWL triples from Layer 2 and provides a queryable knowledge graph with GraphRAG retrieval capabilities.
 
 ## Architecture

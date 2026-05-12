@@ -341,7 +341,7 @@ The Layer 3 Graph API (`/v1/graph/*`, `/v1/entity/*`) returns node and edge data
 | `type`         | `entity_type`     | Entity classification (e.g., "Capability", "UseCase") |
 | `confidence`   | `confidence_score`| Confidence value (0.0 - 1.0) |
 
-All Graph API responses include **both** the legacy field and the alias field with identical values. Clients may use either field name.
+Graph responses may include compatibility aliases during the migration window, but canonical fields should be treated as source of truth.
 
 **Example:**
 ```json
@@ -358,7 +358,7 @@ All Graph API responses include **both** the legacy field and the alias field wi
 
 #### Edge Fields (GraphEdge / GraphRelationship)
 
-| Internal Field | Alias (Preferred) | Description |
+| Canonical Field (Preferred) | Deprecated Alias | Description |
 | -------------- | ----------------- | ----------- |
 | `type`         | `relationship_type` | Relationship classification (e.g., "ENABLES", "DRIVES") |
 
@@ -377,8 +377,12 @@ All Graph API responses include **both** the legacy field and the alias field wi
 
 - **Serialization**: Pydantic models output both fields via custom `model_dump()` overrides.
 - **Validation**: Incoming requests may use either field name; the API normalizes internally.
-- **Deprecation**: Legacy fields (`label`, `type`, `confidence`) are not deprecated and will continue to be supported.
-- **Recommendation**: New clients should use the alias fields (`name`, `entity_type`, `confidence_score`) for clarity.
+- **Deprecation**: Compatibility aliases are deprecated and scheduled for removal in **v2.4 (2026-07-01)**:
+  - Node aliases: `label`, `type`, `confidence`
+  - Edge alias: `relationship_type`
+- **Recommendation**: New clients should read/write only canonical fields:
+  - Node: `name`, `entity_type`, `confidence_score`
+  - Edge: `type`
 
 ---
 

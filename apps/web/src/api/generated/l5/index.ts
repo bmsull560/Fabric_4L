@@ -519,10 +519,21 @@ export interface components {
          * @enum {string}
          */
         DisputeReason: "conflicting_sources" | "stale_data" | "methodology_flaw" | "out_of_scope" | "superseded" | "other";
-        /** HTTPValidationError */
+        /**
+         * HTTPValidationError
+         * @description Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients.
+         */
         HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Machine-readable error code */
+            code: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
+            /** @description Optional sanitized error details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * HealthResponse
@@ -1519,6 +1530,19 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ErrorResponse */
+        ErrorResponse: {
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Machine-readable error code */
+            code: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
+            /** @description Optional sanitized error details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
         };
     };
     responses: never;

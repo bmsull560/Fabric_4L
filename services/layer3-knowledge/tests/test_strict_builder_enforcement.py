@@ -32,6 +32,8 @@ from value_fabric.shared.identity.isolation import (
     TenantLabelPolicy,
     TenantScopedCypher,
 )
+from value_fabric.layer3.api.dependencies_tenant import Neo4jTenantSession
+from unittest.mock import AsyncMock
 
 
 def _settings_stub() -> SimpleNamespace:
@@ -258,6 +260,29 @@ def test_custom_tenant_query_requires_explicit_tenant_parameter_and_predicate() 
     assert scoped.scope is QueryScope.TENANT
     assert scoped.params["_tenant_id"] == "tenant-a"
     assert scoped.params["limit"] == 10
+
+
+@pytest.mark.asyncio
+async def test_tenant_session_rejects_raw_cypher_for_tenant_owned_labels() -> None:
+    """Tenant-owned labels must be executed through ScopedQuery metadata."""
+
+    session = AsyncMock()
+    tenant_session = Neo4jTenantSession(session=session, tenant_id="tenant-a", is_bypass=False)
+
+    with pytest.raises(ValueError, match="Raw Cypher touching tenant-owned labels is not allowed"):
+        await tenant_session.run("MATCH (n:Entity {tenant_id: $tenant_id}) RETURN n", {"tenant_id": "tenant-a"})
+
+
+@pytest.mark.asyncio
+async def test_tenant_tx_rejects_raw_cypher_for_tenant_owned_labels() -> None:
+    """Transaction wrapper must enforce ScopedQuery for tenant labels too."""
+
+    session = AsyncMock()
+    tenant_session = Neo4jTenantSession(session=session, tenant_id="tenant-a", is_bypass=False)
+    tx = tenant_session._create_tenant_tx(AsyncMock())
+
+    with pytest.raises(ValueError, match="Raw Cypher touching tenant-owned labels is not allowed"):
+        await tx.run("MATCH (n:Capability {tenant_id: $tenant_id}) RETURN n", {"tenant_id": "tenant-a"})
     assert scoped.operation == "capability_to_use_case"
     assert scoped.labels == ("Capability", "UseCase")
 

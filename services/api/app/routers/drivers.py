@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import db
+from app.core.tenant_enforcement import enforce_authenticated_tenant
 from app.core.tenant_context import tenant_required
 from app.models.schemas import ValueDriver
 
@@ -31,6 +32,12 @@ async def get_value_tree(account_id: str, tenant_id: str = Depends(tenant_requir
 async def generate_driver(
     account_id: str, driver: ValueDriver, tenant_id: str = Depends(tenant_required)
 ):
+    enforce_authenticated_tenant(
+        body_tenant_id=driver.tenant_id,
+        authenticated_tenant_id=tenant_id,
+        route="/v1/accounts/{account_id}/drivers/generate",
+        operation="generate_driver",
+    )
     driver.account_id = account_id
     driver.tenant_id = tenant_id
     db.drivers.insert(driver.id, driver)

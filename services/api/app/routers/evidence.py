@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import db
+from app.core.tenant_enforcement import enforce_authenticated_tenant
 from app.core.tenant_context import tenant_required
 from app.models.schemas import Evidence
 
@@ -16,6 +17,12 @@ async def list_evidence(account_id: str, tenant_id: str = Depends(tenant_require
 async def match_evidence(
     account_id: str, evidence: Evidence, tenant_id: str = Depends(tenant_required)
 ):
+    enforce_authenticated_tenant(
+        body_tenant_id=evidence.tenant_id,
+        authenticated_tenant_id=tenant_id,
+        route="/v1/accounts/{account_id}/evidence/match",
+        operation="match_evidence",
+    )
     evidence.account_id = account_id
     evidence.tenant_id = tenant_id
     db.evidence.insert(evidence.id, evidence)

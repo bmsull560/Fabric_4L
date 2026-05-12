@@ -38,3 +38,15 @@ Rollback is required when any of the following occurs in production:
 2. **Feature rollback:** Frontend Platform owner disables feature flag / route entry.
 3. **Data rollback:** Layer4 owner reverts journey payload contract change.
 4. **Sign-off to re-enable:** Product + Engineering manager + SRE.
+
+## Intelligence Workspace deferred tab rollout flags
+
+The following tabs are intentionally excluded from production navigation until the owning teams complete full production states (loading, empty, error, success) and acceptance:
+
+| Tab ID | Rollout flag | Default in production | Owner |
+|---|---|---|---|
+| `ontology-match` | `VITE_ENABLE_IW_ONTOLOGY_MATCH_TAB` | `false` | Intelligence Workspace / Layer 4 Agents |
+| `alternatives` | `VITE_ENABLE_IW_ALTERNATIVES_TAB` | `false` | Intelligence Workspace / Product Strategy |
+| `solution-cost` | `VITE_ENABLE_IW_SOLUTION_COST_TAB` | `false` | Intelligence Workspace / Value Modeling |
+
+Release managers must keep all three flags disabled in production until explicit sign-off from the listed owner.

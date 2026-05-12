@@ -1,4 +1,4 @@
-"""FastAPI application for Layer 3: Knowledge Graph & Semantic Layer.
+"""Compatibility wrapper for value_fabric.layer3.api.app_monolith."""
 
 Migration ledger:
 - moved groups: operational system routes (/health,/metrics) and query/search implementations to api/routes modules.
@@ -20,6 +20,7 @@ from typing import Any, Literal
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError as PydanticValidationError
 
 # psutil with fallback for minimal environments
 try:
@@ -48,6 +49,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger, setup_logging
 from value_fabric.shared.identity import RequestContext, require_authenticated
+from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 from value_fabric.shared.fastapi_framework import (
     RouterMount,
     add_governance_middleware,
@@ -59,6 +61,12 @@ from value_fabric.shared.fastapi_framework import (
 from value_fabric.shared.security import validate_production_safety
 from value_fabric.shared.observability import configure_observability
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.error_handling.exceptions import (
+    ServiceUnavailableError as SharedServiceUnavailableError,
+    ValidationError as SharedValidationError,
+    ValueFabricException as SharedValueFabricException,
+)
+from value_fabric.shared.error_handling.models import ErrorCode
 
 from .dependencies import (
     AppState,
@@ -102,38 +110,54 @@ except ImportError:
 
 
 def _extract_tenant_id(request: Request | None) -> str | None:
-    """Extract tenant_id from request context for multi-tenant security.
-    
-    Sprint 5: Centralized helper to eliminate code duplication across endpoints.
-    Returns None if tenant context is unavailable or NEO4J_TENANT_AVAILABLE is False.
-    
-    Args:
-        request: FastAPI Request object with optional state.governance_context
-        
-    Returns:
-        Normalized tenant_id string or None
-    """
-    if not request or not NEO4J_TENANT_AVAILABLE:
+    """Extract tenant_id from authenticated governance context."""
+    if not request:
         return None
     ctx = getattr(request.state, "governance_context", None)
-    if ctx and ctx.tenant_id:
+    if ctx and getattr(ctx, "tenant_id", None):
         return str(ctx.tenant_id)
     return None
 
+def _require_tenant_id_from_context(
+    request: Request | None,
+    *,
+    missing_tenant_detail: str,
+) -> str:
+    """Fail-closed tenant guard for tenant-scoped endpoints."""
+    if not request:
+        raise HTTPException(status_code=401, detail="Authentication context is required")
 
-def _resolve_ingest_tenant_id(header_tenant_id: str | None, body_tenant_id: str | None) -> str:
-    """Resolve Layer 2 ingestion tenant scope without fail-open defaults."""
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx is None:
+        raise HTTPException(status_code=401, detail="Authentication context is required")
+
+    tenant_id = _extract_tenant_id(request)
+    if not tenant_id:
+        raise HTTPException(status_code=400, detail=missing_tenant_detail)
+
+    return tenant_id
+
+
+def _resolve_ingest_tenant_id(
+    authenticated_tenant_id: str,
+    header_tenant_id: str | None,
+    body_tenant_id: str | None,
+) -> str:
+    """Resolve Layer 2 ingestion tenant scope from authenticated context."""
+    normalized_authenticated = authenticated_tenant_id.strip()
     normalized_header = header_tenant_id.strip() if header_tenant_id else ""
     normalized_body = body_tenant_id.strip() if body_tenant_id else ""
 
-    if normalized_header and normalized_body and normalized_header != normalized_body:
-        raise HTTPException(status_code=403, detail="Tenant header does not match request tenant_id")
-    tenant_id = normalized_header or normalized_body
-    if not tenant_id:
-        raise HTTPException(status_code=400, detail="tenant_id is required for RDF ingestion")
-    return tenant_id
-from value_fabric.shared.identity.vault_check import is_vault_healthy
+    if normalized_header and normalized_header != normalized_authenticated:
+        raise HTTPException(status_code=403, detail="X-Tenant-ID header does not match authenticated tenant context")
 
+    if normalized_body and normalized_body != normalized_authenticated:
+        raise HTTPException(status_code=403, detail="Request tenant_id does not match authenticated tenant context")
+
+    return normalized_authenticated
+
+
+from value_fabric.shared.identity.vault_check import is_vault_healthy
 from .exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -1539,10 +1563,11 @@ async def get_schema_statistics(
 async def ingest_rdf(
     request: IngestRequest,
     sync_manager=Depends(get_sync_manager),
+    authenticated_tenant_id: str = Depends(get_verified_tenant_id),
     x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
 ):
     """Ingest RDF data from Layer 2 extraction pipeline."""
-    tenant_id = _resolve_ingest_tenant_id(x_tenant_id, request.tenant_id)
+    tenant_id = _resolve_ingest_tenant_id(authenticated_tenant_id, x_tenant_id, request.tenant_id)
 
     try:
         stats = await sync_manager.sync_extraction_result(
@@ -1573,9 +1598,27 @@ async def ingest_rdf(
             "duration_seconds": stats.get("duration_seconds"),
             "error": stats.get("error"),
         })
-    except Exception as e:
-        logger.error(f"Ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail="Ingestion failed. Please try again later.")
+    except (ValueError, TypeError, PydanticValidationError) as exc:
+        logger.warning("Ingestion validation failed: %s", exc)
+        raise SharedValidationError(
+            message="Invalid ingestion payload",
+            details={"endpoint": "/v1/ingest"},
+        ) from exc
+    except TimeoutError as exc:
+        logger.warning("Ingestion timed out: %s", exc)
+        raise SharedValueFabricException(
+            message="Ingestion request timed out",
+            error_code=ErrorCode.TIMEOUT_ERROR,
+            status_code=504,
+            details={"endpoint": "/v1/ingest"},
+        ) from exc
+    except (ConnectionError, OSError) as exc:
+        logger.error("Ingestion dependency unavailable: %s", exc)
+        raise SharedServiceUnavailableError(
+            message="Ingestion backend unavailable",
+            service="layer3.sync_manager",
+            details={"endpoint": "/v1/ingest"},
+        ) from exc
 
 
 @app.get("/v1/ingest/status/{source_id}", response_model=SyncStatusResponse)
@@ -1837,7 +1880,10 @@ async def batch_entity_operations(
     created_entities = []
 
     # Sprint 5: Extract tenant context for multi-tenant security
-    tenant_id = _extract_tenant_id(fastapi_request)
+    tenant_id = _require_tenant_id_from_context(
+        fastapi_request,
+        missing_tenant_detail="tenant_id is required for batch entity operations",
+    )
 
     try:
         for i, operation in enumerate(request.operations):
@@ -2360,7 +2406,10 @@ async def get_provenance(
         raise HTTPException(status_code=400, detail="entity_id is required")
 
     # Sprint 5: Extract tenant context for multi-tenant security
-    tenant_id = _extract_tenant_id(request)
+    tenant_id = _require_tenant_id_from_context(
+        request,
+        missing_tenant_detail="tenant_id is required for provenance access",
+    )
 
     # Sanitize entity_id to prevent injection
     entity_id = entity_id.strip()
@@ -2375,13 +2424,6 @@ async def get_provenance(
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
-        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
-        if not tenant_id:
-            raise HTTPException(
-                status_code=400,
-                detail="tenant_id is required for provenance access"
-            )
-        
         # Get entity details with mandatory tenant filtering
         entity_query = """
         MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
@@ -2720,14 +2762,10 @@ async def get_full_graph(
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
         # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _extract_tenant_id(request)
-
-        # Require tenant_id for multi-tenant security
-        if not tenant_id:
-            raise HTTPException(
-                status_code=400,
-                detail="tenant_id is required for graph access"
-            )
+        tenant_id = _require_tenant_id_from_context(
+            request,
+            missing_tenant_detail="tenant_id is required for graph access",
+        )
 
         # Query for nodes with limit and tenant filter
         nodes_query = """
@@ -2808,11 +2846,27 @@ async def get_full_graph(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to retrieve graph: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve graph: {str(e)}"
-        )
+    except (ValueError, TypeError, PydanticValidationError) as exc:
+        logger.warning("Graph query validation failed: %s", exc)
+        raise SharedValidationError(
+            message="Invalid graph query parameters",
+            details={"endpoint": "/v1/graph"},
+        ) from exc
+    except TimeoutError as exc:
+        logger.warning("Graph query timed out: %s", exc)
+        raise SharedValueFabricException(
+            message="Graph query timed out",
+            error_code=ErrorCode.TIMEOUT_ERROR,
+            status_code=504,
+            details={"endpoint": "/v1/graph"},
+        ) from exc
+    except (ConnectionError, OSError) as exc:
+        logger.error("Graph dependency unavailable: %s", exc)
+        raise SharedServiceUnavailableError(
+            message="Graph backend unavailable",
+            service="neo4j",
+            details={"endpoint": "/v1/graph"},
+        ) from exc
 
 
 @app.get(
@@ -2874,18 +2928,14 @@ async def get_entity_subgraph(
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
         # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _extract_tenant_id(request)
+        tenant_id = _require_tenant_id_from_context(
+            request,
+            missing_tenant_detail="tenant_id is required for value tree access",
+        )
 
         # Clamp depth
         depth = max(1, min(depth, 5))
 
-        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
-        if not tenant_id:
-            raise HTTPException(
-                status_code=400,
-                detail="tenant_id is required for value tree access"
-            )
-        
         # Query for root entity with mandatory tenant filtering
         root_query = """
         MATCH (n {id: $entity_id, tenant_id: $tenant_id})
@@ -2980,11 +3030,27 @@ async def get_entity_subgraph(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to retrieve subgraph for {entity_id}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve subgraph: {str(e)}"
-        )
+    except (ValueError, TypeError, PydanticValidationError) as exc:
+        logger.warning("Subgraph validation failed for %s: %s", entity_id, exc)
+        raise SharedValidationError(
+            message="Invalid subgraph request",
+            details={"endpoint": "/entities/{entity_id}/subgraph"},
+        ) from exc
+    except TimeoutError as exc:
+        logger.warning("Subgraph query timed out for %s: %s", entity_id, exc)
+        raise SharedValueFabricException(
+            message="Subgraph query timed out",
+            error_code=ErrorCode.TIMEOUT_ERROR,
+            status_code=504,
+            details={"endpoint": "/entities/{entity_id}/subgraph"},
+        ) from exc
+    except (ConnectionError, OSError) as exc:
+        logger.error("Subgraph dependency unavailable for %s: %s", entity_id, exc)
+        raise SharedServiceUnavailableError(
+            message="Subgraph backend unavailable",
+            service="neo4j",
+            details={"endpoint": "/entities/{entity_id}/subgraph"},
+        ) from exc
 
 
 @app.get(
@@ -3055,14 +3121,10 @@ async def get_query_subgraph(
         root_id = center_entity_id or ""
 
         # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _extract_tenant_id(request)
-        
-        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
-        if not tenant_id:
-            raise HTTPException(
-                status_code=400,
-                detail="tenant_id is required for graph explorer access"
-            )
+        tenant_id = _require_tenant_id_from_context(
+            request,
+            missing_tenant_detail="tenant_id is required for graph explorer access",
+        )
 
         if center_entity_id:
             # Center mode: expand N hops from specific entity with mandatory tenant filtering
@@ -3250,11 +3312,27 @@ async def get_query_subgraph(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Failed to retrieve subgraph: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to retrieve subgraph: {str(e)}"
-        )
+    except (ValueError, TypeError, PydanticValidationError) as exc:
+        logger.warning("Query subgraph validation failed: %s", exc)
+        raise SharedValidationError(
+            message="Invalid query subgraph request",
+            details={"endpoint": "/v1/graph/subgraph"},
+        ) from exc
+    except TimeoutError as exc:
+        logger.warning("Query subgraph timed out: %s", exc)
+        raise SharedValueFabricException(
+            message="Subgraph retrieval timed out",
+            error_code=ErrorCode.TIMEOUT_ERROR,
+            status_code=504,
+            details={"endpoint": "/v1/graph/subgraph"},
+        ) from exc
+    except (ConnectionError, OSError) as exc:
+        logger.error("Query subgraph dependency unavailable: %s", exc)
+        raise SharedServiceUnavailableError(
+            message="Subgraph dependency unavailable",
+            service="neo4j",
+            details={"endpoint": "/v1/graph/subgraph"},
+        ) from exc
 
 
 if __name__ == "__main__":
@@ -3268,3 +3346,5 @@ if __name__ == "__main__":
         workers=settings.api_workers,
         log_level=settings.log_level.lower(),
     )
+
+                                      

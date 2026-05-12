@@ -4,17 +4,11 @@ These tests verify that all read endpoints enforce tenant_id filtering
 to prevent cross-tenant data exposure.
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
+from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
 from value_fabric.layer3.api.app_monolith import _extract_tenant_id, get_full_graph
 from value_fabric.layer3.api.routes.entities import list_entities
 
-
-@pytest.fixture(autouse=True)
-def _ensure_neo4j_tenant_available():
-    """Patch NEO4J_TENANT_AVAILABLE so tests run without optional neo4j dependency."""
-    with patch("value_fabric.layer3.api.app_monolith.NEO4J_TENANT_AVAILABLE", True):
-        yield
 
 
 class TestTenantIsolation:
@@ -90,8 +84,8 @@ class TestTenantIsolation:
                 request=None,
             )
 
-        assert exc_info.value.status_code == 400
-        assert "tenant_id is required" in exc_info.value.detail
+        assert exc_info.value.status_code == 401
+        assert "Authentication context is required" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_list_entities_includes_tenant_in_where_clause(
@@ -178,6 +172,37 @@ class TestTenantIsolation:
                 assert (
                     "tenant_id" in str(query) or (params and "tenant_id" in params)
                 ), f"Query missing tenant_id filter: {query}"
+
+
+    @pytest.mark.asyncio
+    async def test_get_full_graph_fails_closed_when_context_absent(self):
+        """Module-unavailable scenario must fail closed when auth context is missing."""
+        mock_state = MagicMock()
+        mock_state.neo4j_driver = AsyncMock()
+
+        request = MagicMock()
+        request.state = MagicMock()
+        request.state.governance_context = None
+
+        with patch("value_fabric.layer3.api.app_monolith.NEO4J_TENANT_AVAILABLE", False):
+            with pytest.raises(HTTPException) as exc_info:
+                await get_full_graph(limit=1000, app_state=mock_state, request=request)
+
+        assert exc_info.value.status_code == 401
+        assert "Authentication context is required" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_get_full_graph_fails_closed_when_request_absent_and_module_unavailable(self):
+        """Module-unavailable scenario must reject missing request context."""
+        mock_state = MagicMock()
+        mock_state.neo4j_driver = AsyncMock()
+
+        with patch("value_fabric.layer3.api.app_monolith.NEO4J_TENANT_AVAILABLE", False):
+            with pytest.raises(HTTPException) as exc_info:
+                await get_full_graph(limit=1000, app_state=mock_state, request=None)
+
+        assert exc_info.value.status_code == 401
+        assert "Authentication context is required" in exc_info.value.detail
 
     def test_cross_tenant_access_blocked_in_list_entities(self):
         """Tenant A cannot see Tenant B's entities via list_entities."""

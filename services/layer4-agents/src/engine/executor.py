@@ -40,6 +40,10 @@ from ..tools.registry import ToolRegistry
 from ..workflows import create_workflow
 from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from .state_manager import StateManager
+from .execution_validation import ensure_controller_accepts_execution
+from .execution_dispatch import build_workflow_task
+from .execution_persistence import mark_workflow_running, persist_workflow_failure
+from .execution_checkpointing import persist_interruption_if_needed
 
 sys.modules["src.engine.executor"] = sys.modules[__name__]
 sys.modules["value_fabric.layer4.engine.executor"] = sys.modules[__name__]
@@ -330,8 +334,10 @@ class OrchestrationController:
             ConcurrencyLimitExceeded: If max concurrent workflows reached (P1-42)
             WorkflowTimeoutError: If workflow exceeds global timeout (P1-25)
         """
-        if self._shutdown:
-            raise WorkflowExecutionError("OrchestrationController is shutting down")
+        ensure_controller_accepts_execution(
+            is_shutdown=self._shutdown,
+            error_cls=WorkflowExecutionError,
+        )
 
         if self.checkpoint_saver is None:
             import os
@@ -373,32 +379,16 @@ class OrchestrationController:
         initial_state.started_at = datetime.now(UTC)
         await self.state_manager.save_state(workflow_id, initial_state)
 
-        task = ScheduledTask(
+        task = build_workflow_task(
             priority=priority.value,
-            scheduled_time=datetime.now(UTC),
-            task_id=f"wf-{workflow_id}",
-            workflow_instance_id=workflow_id,
-            capability="workflow_execution",
-            agent_type="OrchestrationController",
-            context={
-                "tenant_id": tenant_id,
-                "user_id": user_id,
-                "workflow_type": workflow_type,
-            },
-            parameters={
-                "workflow": workflow,
-                "initial_state": initial_state,
-                "workflow_id": workflow_id,
-                "checkpoint_interval": checkpoint_interval,
-                "handler": self._run_workflow_task,
-            },
+            workflow_id=workflow_id,
             tenant_id=tenant_id,
-            tenant_context={
-                "tenant_id": tenant_id,
-                "user_id": user_id,
-                "workflow_type": workflow_type,
-                "auth_source": "workflow_execution",
-            },
+            user_id=user_id,
+            workflow_type=workflow_type,
+            workflow=workflow,
+            initial_state=initial_state,
+            checkpoint_interval=checkpoint_interval,
+            handler=self._run_workflow_task,
         )
 
         await self.scheduler.schedule_task(task)
@@ -1068,9 +1058,11 @@ class OrchestrationController:
                 f"Workflow task {task.task_id} missing workflow or initial_state"
             )
 
-        initial_state.status = WorkflowStatus.RUNNING
-        initial_state.started_at = initial_state.started_at or datetime.now(UTC)
-        await self.state_manager.save_state(workflow_id, initial_state)
+        await mark_workflow_running(
+            state_manager=self.state_manager,
+            workflow_id=workflow_id,
+            initial_state=initial_state,
+        )
         self._active_workflows[workflow_id] = asyncio.current_task()
 
         try:
@@ -1078,24 +1070,21 @@ class OrchestrationController:
             await self.state_manager.save_state(workflow_id, result)
             return result
         except asyncio.CancelledError:
+            await persist_interruption_if_needed(
+                state_manager=self.state_manager,
+                workflow_id=workflow_id,
+            )
             paused = await self.state_manager.load_state(workflow_id)
-            if paused and paused.status == WorkflowStatus.PAUSED:
+            if paused and paused.status in {WorkflowStatus.PAUSED, WorkflowStatus.INTERRUPTED}:
                 raise
-            if paused and paused.status == WorkflowStatus.INTERRUPTED:
-                raise
-
-            if paused:
-                paused.status = WorkflowStatus.INTERRUPTED
-                paused.metadata["interrupted_at"] = datetime.now(UTC).isoformat()
-                paused.metadata["interruption_reason"] = "task cancellation"
-                await self.state_manager.save_state(workflow_id, paused)
             raise
         except (RuntimeError, ValueError, TimeoutError) as exc:
-            failed = await self.state_manager.load_state(workflow_id) or initial_state
-            failed.status = WorkflowStatus.FAILED
-            failed.completed_at = datetime.now(UTC)
-            failed.errors.append(str(exc))
-            await self.state_manager.save_state(workflow_id, failed)
+            await persist_workflow_failure(
+                state_manager=self.state_manager,
+                workflow_id=workflow_id,
+                initial_state=initial_state,
+                exc=exc,
+            )
             raise
         finally:
             self._active_workflows.pop(workflow_id, None)

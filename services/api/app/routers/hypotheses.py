@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import db
+from app.core.tenant_enforcement import enforce_authenticated_tenant
 from app.core.tenant_context import tenant_required
 from app.models.schemas import ValueHypothesis
 
@@ -18,6 +19,12 @@ async def list_hypotheses(account_id: str, tenant_id: str = Depends(tenant_requi
 async def generate_hypothesis(
     account_id: str, hypothesis: ValueHypothesis, tenant_id: str = Depends(tenant_required)
 ):
+    enforce_authenticated_tenant(
+        body_tenant_id=hypothesis.tenant_id,
+        authenticated_tenant_id=tenant_id,
+        route="/v1/accounts/{account_id}/hypotheses/generate",
+        operation="generate_hypothesis",
+    )
     hypothesis.account_id = account_id
     hypothesis.tenant_id = tenant_id
     db.hypotheses.insert(hypothesis.id, hypothesis)

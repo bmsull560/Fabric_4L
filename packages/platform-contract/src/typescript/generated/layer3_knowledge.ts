@@ -4400,17 +4400,20 @@ export interface components {
             id: string;
             /**
              * Label
-             * @description Display label (legacy: use 'name')
+             * @deprecated
+             * @description Deprecated alias of name; removal planned after v1.4
              */
-            label: string;
+            label?: string;
             /**
              * Type
-             * @description Node type (legacy: use 'entity_type')
+             * @deprecated
+             * @description Deprecated alias of entity_type; removal planned after v1.4
              */
-            type: string;
+            type?: string;
             /**
              * Confidence
-             * @description Confidence score (legacy: use 'confidence_score')
+             * @deprecated
+             * @description Deprecated alias of confidence_score; removal planned after v1.4
              * @default 0.8
              */
             confidence: number;
@@ -4421,6 +4424,15 @@ export interface components {
             properties?: {
                 [key: string]: unknown;
             };
+            /** @description Display label */
+            name: string;
+            /** @description Node type */
+            entity_type: string;
+            /**
+             * @description Confidence score
+             * @default 0.8
+             */
+            confidence_score: number;
         };
         /**
          * GraphNodeWithLayout
@@ -9131,6 +9143,13 @@ export interface operations {
                     "application/json": components["schemas"]["VariableSummary"][];
                 };
             };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -9164,6 +9183,13 @@ export interface operations {
                     "application/json": components["schemas"]["VariableDetail"];
                 };
             };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -9194,6 +9220,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VariableDetail"];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9230,6 +9263,13 @@ export interface operations {
                     "application/json": components["schemas"]["VariableDetail"];
                 };
             };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -9264,6 +9304,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResolveResponse"];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9300,6 +9347,13 @@ export interface operations {
                     "application/json": components["schemas"]["ValidateResponse"];
                 };
             };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -9329,6 +9383,13 @@ export interface operations {
                     "application/json": components["schemas"]["VariableStatsResponse"];
                 };
             };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     list_source_bindings_v1_variables_bindings_get: {
@@ -9348,6 +9409,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SourceBindingResponse"][];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import db
+from app.core.tenant_enforcement import enforce_authenticated_tenant
 from app.core.tenant_context import tenant_required
 from app.models.schemas import Signal, Stakeholder
 
@@ -17,6 +18,12 @@ async def list_signals(account_id: str, tenant_id: str = Depends(tenant_required
 async def extract_signal(
     account_id: str, signal: Signal, tenant_id: str = Depends(tenant_required)
 ):
+    enforce_authenticated_tenant(
+        body_tenant_id=signal.tenant_id,
+        authenticated_tenant_id=tenant_id,
+        route="/v1/accounts/{account_id}/signals/extract",
+        operation="extract_signal",
+    )
     signal.account_id = account_id
     signal.tenant_id = tenant_id
     db.signals.insert(signal.id, signal)

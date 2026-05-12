@@ -75,18 +75,20 @@ export const ExtractionStatusSchema = z.object({
 export const GraphNodeSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  label: z.string().min(1),
-  type: z.string().min(1),
+  entity_type: z.string().min(1),
+  label: z.string().min(1).optional(),
+  type: z.string().min(1).optional(),
+  confidence: z.number().min(0).max(1).optional(),
   properties: z.record(z.string(), z.unknown()).optional(),
   confidence_score: z.number().min(0).max(1).optional(),
-  segment: z.string().optional(),
-  version: z.string().optional(),
 });
 
 export const GraphEdgeSchema = z.object({
   source: z.string().min(1),
   target: z.string().min(1),
-  relationship: z.string().min(1),
+  type: z.string().min(1),
+  relationship_type: z.string().min(1).optional(),
+  weight: z.number().nullable().optional(),
   properties: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -560,11 +562,11 @@ export const fixtures = {
   graphNode: (): z.infer<typeof GraphNodeSchema> => ({
     id: 'node-001',
     name: 'Cloud Migration',
+    entity_type: 'capability',
     label: 'Cloud Migration',
     type: 'capability',
     confidence_score: 0.95,
-    segment: 'cloud',
-    version: '1.0',
+    confidence: 0.95,
   }),
 
   packSummary: (): z.infer<typeof PackSummarySchema> => ({

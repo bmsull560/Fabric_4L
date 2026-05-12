@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readiness Check
+         * @description Standard readiness contract for orchestration and probes.
+         */
+        get: operations["readiness_check_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/extract/signals": {
         parameters: {
             query?: never;
@@ -91,6 +111,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/extract/results/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Extraction Results
+         * @description Get extracted entities for a specific extraction job.
+         *
+         *     Args:
+         *         job_id: Extraction job identifier
+         *         request: HTTP request for tenant context
+         *
+         *     Returns:
+         *         ExtractionEntitiesResponse with extracted entities
+         *
+         *     Raises:
+         *         HTTPException 404: Job not found for tenant
+         *         HTTPException 409: Extraction not complete
+         */
+        get: operations["get_extraction_results_v1_extract_results__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/extract/{job_id}/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Extraction Entities
+         * @description Backward-compatible alias for extraction results route.
+         */
+        get: operations["get_extraction_entities_v1_extract__job_id__entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/extract/status/{job_id}": {
         parameters: {
             query?: never;
@@ -134,6 +205,23 @@ export interface paths {
         };
         /** Stream Job Events */
         get: operations["stream_job_events_v1_extract_jobs__job_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics Endpoint */
+        get: operations["metrics_endpoint_metrics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -531,6 +619,42 @@ export interface components {
             /** Parent Type Id */
             parent_type_id?: string | null;
         };
+        /** EntityProvenance */
+        EntityProvenance: {
+            /**
+             * Extraction Job Id
+             * @description Extraction job identifier
+             */
+            extraction_job_id: string;
+            /**
+             * Source Url
+             * @description Source URL if applicable
+             */
+            source_url?: string | null;
+            /**
+             * Trace Id
+             * @description Trace identifier for observability
+             */
+            trace_id?: string | null;
+        };
+        /** EntitySourceSpan */
+        EntitySourceSpan: {
+            /**
+             * Document Id
+             * @description Document identifier
+             */
+            document_id: string;
+            /**
+             * Start
+             * @description Start position in document
+             */
+            start: number;
+            /**
+             * End
+             * @description End position in document
+             */
+            end: number;
+        };
         /**
          * ExtractAndIngestResponse
          * @description Response for combined extract-and-ingest endpoint.
@@ -584,6 +708,49 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** ExtractedEntity */
+        ExtractedEntity: {
+            /** Entity Id */
+            entity_id: string;
+            /** Type */
+            type: string;
+            /** Name */
+            name: string;
+            /** Confidence */
+            confidence: number;
+            source_span?: components["schemas"]["EntitySourceSpan"] | null;
+            provenance?: components["schemas"]["EntityProvenance"] | null;
+            /** Attributes */
+            attributes?: {
+                [key: string]: unknown;
+            };
+        };
+        /** ExtractionResultSummary */
+        ExtractionResultSummary: {
+            /** Job Id */
+            job_id: string;
+            /** Total Entities */
+            total_entities: number;
+            /** Returned Entities */
+            returned_entities: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total Pages */
+            total_pages: number;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "summary" | "full";
+        };
+        /** ExtractionResultsResponse */
+        ExtractionResultsResponse: {
+            summary: components["schemas"]["ExtractionResultSummary"];
+            /** Entities */
+            entities?: components["schemas"]["ExtractedEntity"][];
+        };
         /**
          * ExtractionStatusResponse
          * @description Status of a combined extraction + ingestion pipeline job.
@@ -615,10 +782,21 @@ export interface components {
             /** Completed At */
             completed_at: string | null;
         };
-        /** HTTPValidationError */
+        /**
+         * HTTPValidationError
+         * @description Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients.
+         */
         HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Machine-readable error code */
+            code: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
+            /** @description Optional sanitized error details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** ImportSchemaRequest */
         ImportSchemaRequest: {
@@ -1068,6 +1246,19 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** ErrorResponse */
+        ErrorResponse: {
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Machine-readable error code */
+            code: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
+            /** @description Optional sanitized error details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -1093,6 +1284,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    readiness_check_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };
@@ -1201,6 +1414,76 @@ export interface operations {
             };
         };
     };
+    get_extraction_results_v1_extract_results__job_id__get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                mode?: string;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionResultsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_extraction_entities_v1_extract__job_id__entities_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+                mode?: string;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionResultsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_extraction_status_v1_extract_status__job_id__get: {
         parameters: {
             query?: never;
@@ -1292,6 +1575,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metrics_endpoint_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

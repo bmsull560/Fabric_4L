@@ -19,6 +19,8 @@ import { useExtractionResults, useExtractedEntities } from "@/hooks/useExtractio
 import { useJobStream } from "@/hooks/useJobStream";
 import { StatusBadge } from "@/components/WfPrimitives";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { usePauseAllExtractions } from "@/hooks/usePauseAllExtractions";
+import { toast } from "sonner";
 
 const log = createFeatureLogger('ExtractionEngine');
 
@@ -69,6 +71,7 @@ export default function ExtractionEngine() {
 
   // Mutations
   const runExtraction = useRunExtraction();
+  const pauseAllExtractions = usePauseAllExtractions();
 
   // Queries for active job
   const { data: jobResults, isLoading: resultsLoading } = useExtractionResults(activeJobId);
@@ -123,9 +126,15 @@ export default function ExtractionEngine() {
     }
   };
 
-  // Handle pause all (stub - no backend support yet)
-  const handlePauseAll = () => {
-    log.warn('Pause All not yet implemented in backend');
+  const pauseAllEnabled = import.meta.env.VITE_ENABLE_EXTRACTION_PAUSE_ALL === 'true';
+
+  const handlePauseAll = async () => {
+    try {
+      const response = await pauseAllExtractions.mutateAsync();
+      toast.success(response.message || 'Running extraction jobs paused');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to pause extraction jobs');
+    }
   };
 
   // Loading state
@@ -151,9 +160,11 @@ export default function ExtractionEngine() {
         subtitle="Configure and monitor document extraction pipelines"
         actions={
           <div className="flex items-center gap-2">
-            <Btn variant="ghost" onClick={handlePauseAll} disabled={!isRunning}>
-              <Pause size={14} /> Pause All
-            </Btn>
+            {pauseAllEnabled && (
+              <Btn variant="ghost" onClick={handlePauseAll} disabled={!isRunning || pauseAllExtractions.isPending}>
+                {pauseAllExtractions.isPending ? <><Loader2 size={14} className="animate-spin" /> Pausing...</> : <><Pause size={14} /> Pause All</>}
+              </Btn>
+            )}
             <Btn 
               variant="primary" 
               onClick={handleRunExtraction}

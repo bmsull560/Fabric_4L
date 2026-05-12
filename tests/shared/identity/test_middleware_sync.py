@@ -1,66 +1,88 @@
-"""Tests for middleware_sync module - regression tests for code review fixes."""
+"""Tests for synchronous identity middleware contract behavior."""
+
+from types import SimpleNamespace
+from uuid import UUID, uuid4
 
 import pytest
-from uuid import UUID
-from unittest.mock import patch
+from fastapi import HTTPException
 
+from value_fabric.shared.identity.context import AUTH_SOURCE_API_KEY, AUTH_SOURCE_SERVICE_ACCOUNT, RequestContext
 from value_fabric.shared.identity.middleware_sync import (
-    SyncRequestContext,
     GovernanceMiddlewareSync,
-    AUTH_SOURCE_SERVICE_ACCOUNT,
+    SyncRequestContext,
+    get_request_context_sync,
 )
 
 
-class TestSyncRequestContext:
-    """Test SyncRequestContext creation with proper types."""
+def _make_request(governance_context: RequestContext | None = None):
+    state = SimpleNamespace()
+    if governance_context is not None:
+        state.governance_context = governance_context
+    return SimpleNamespace(state=state)
 
+
+class TestSyncRequestContext:
     def test_service_auth_context_has_none_user_id(self):
-        """Regression test: Issue #2 - user_id type mismatch."""
         tenant_id = UUID("12345678-1234-5678-1234-567812345678")
-        ctx = SyncRequestContext(
-            tenant_id=tenant_id,
-            user_id=None,  # Should be None, not "service" string
-            roles=["system"],
-            auth_source=AUTH_SOURCE_SERVICE_ACCOUNT,
-        )
+        ctx = SyncRequestContext(tenant_id=tenant_id, user_id=None, roles=["system"], auth_source=AUTH_SOURCE_SERVICE_ACCOUNT)
         assert ctx.user_id is None
         assert ctx.tenant_id == tenant_id
         assert ctx.auth_source == AUTH_SOURCE_SERVICE_ACCOUNT
 
-    def test_service_auth_source_is_valid_constant(self):
-        """Verify AUTH_SOURCE_SERVICE_ACCOUNT is a valid auth source."""
-        ctx = SyncRequestContext(
-            tenant_id=UUID("12345678-1234-5678-1234-567812345678"),
-            user_id=None,
-            roles=["system"],
-            auth_source=AUTH_SOURCE_SERVICE_ACCOUNT,
-        )
-        assert ctx.is_auth_source_valid() is True
-
-    def test_invalid_auth_source_is_rejected(self):
-        """Verify invalid auth_source strings are rejected."""
-        ctx = SyncRequestContext(
-            tenant_id=UUID("12345678-1234-5678-1234-567812345678"),
-            user_id=None,
-            auth_source="invalid_header_string",
-        )
-        assert ctx.is_auth_source_valid() is False
-
 
 class TestGovernanceMiddlewareSync:
-    """Test middleware creates valid contexts."""
+    def test_service_auth_creates_valid_context(self, monkeypatch):
+        monkeypatch.setenv("SERVICE_AUTH_SECRET", "test-secret")
+        middleware = GovernanceMiddlewareSync(None)
+        ctx = middleware._resolve_identity_sync(
+            x_tenant_header="12345678-1234-5678-1234-567812345678",
+            x_service_auth="test-secret",
+        )
+        assert ctx is not None
+        assert ctx.user_id is None
+        assert ctx.auth_source == AUTH_SOURCE_SERVICE_ACCOUNT
+        assert "system" in ctx.roles
 
-    def test_service_auth_creates_valid_context(self):
-        """Test X-Tenant-ID with valid service secret creates service account context."""
-        with patch.dict("os.environ", {"SERVICE_AUTH_SECRET": "test-secret"}):
-            middleware = GovernanceMiddlewareSync(None)
-            
-            ctx = middleware._resolve_identity_sync(
-                x_tenant_header="12345678-1234-5678-1234-567812345678",
-                x_service_auth="test-secret",
+    def test_hostile_forged_x_organization_id_rejected(self):
+        tenant_id = str(uuid4())
+        forged_org = str(uuid4())
+        req = _make_request(
+            RequestContext(
+                tenant_id=tenant_id,
+                user_id=str(uuid4()),
+                roles=["tenant_admin"],
+                permissions=frozenset(),
+                source="jwt_claim",
+                auth_source="jwt_claim",
+                request_id="req-123",
             )
-            
-            assert ctx is not None, "Service auth should succeed with valid secret"
-            assert ctx.user_id is None, "Service context should have None user_id"
-            assert ctx.auth_source == AUTH_SOURCE_SERVICE_ACCOUNT
-            assert "system" in ctx.roles
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            get_request_context_sync(req, x_organization_id=forged_org)
+
+        assert exc.value.status_code == 403
+        assert "does not match authenticated tenant" in str(exc.value.detail)
+
+    def test_matching_x_organization_id_allowed_with_authenticated_context(self):
+        tenant_id = str(uuid4())
+        req = _make_request(
+            RequestContext(tenant_id=tenant_id, roles=["tenant_admin"], source="jwt_claim", auth_source="jwt_claim", request_id="req-abc")
+        )
+        ctx = get_request_context_sync(req, x_organization_id=tenant_id)
+        assert str(ctx.tenant_id) == tenant_id
+        assert ctx.request_id == "req-abc"
+
+    def test_api_key_context_carries_audit_fields(self):
+        middleware = GovernanceMiddlewareSync(None, api_key_resolver=lambda _: {
+            "tenant_id": str(uuid4()),
+            "user_id": str(uuid4()),
+            "key_id": "key-123",
+            "role": "tenant_admin",
+            "request_id": "req-key-1",
+        })
+        ctx = middleware._resolve_identity_sync(api_key_header="vf_abc")
+        assert ctx is not None
+        assert ctx.auth_source == AUTH_SOURCE_API_KEY
+        assert ctx.request_id == "req-key-1"
+        assert ctx.user_id is not None

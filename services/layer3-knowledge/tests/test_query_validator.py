@@ -405,6 +405,17 @@ class TestQueryValidatorEdgeCases:
         with pytest.raises(UnscopedQueryError):
             validator.validate_structural_tenant_scope(query)
 
+    def test_tenant_token_text_without_per_alias_constraint_is_rejected(self, validator):
+        """Having tenant token text is insufficient when one alias is unscoped."""
+        query = """
+            MATCH (a:Entity)
+            MATCH (b:Capability)
+            WHERE a.tenant_id = $tenant_id
+            RETURN a, b
+        """
+        with pytest.raises(UnscopedQueryError, match="alias 'b' is not tenant-scoped"):
+            validator.validate_structural_tenant_scope(query)
+
     def test_delete_with_alias_missing_tenant_fails_structural_validation(self, validator):
         query = """
             MATCH (victim:Entity)

@@ -1,21 +1,25 @@
-"""Models API routes for Layer 3.
+"""Compatibility wrapper for value_fabric.layer3.api.routes.models."""
 
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+from value_fabric.layer3.api.routes.models import *  # noqa: F401,F403
+=======
 Provides endpoints for Value Model CRUD and management.
 
 All Cypher queries are tenant-scoped via `create_neo4j_tenant_session`.
 """
 
-import base64
-import json
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_tenant_context
 
 from ..dependencies_tenant import create_neo4j_tenant_session
-from ..exception_mapping import map_exception_to_http_error
 from ..exceptions import DatabaseError, ValidationError
 from ...logging_config import get_logger
 
@@ -44,8 +48,6 @@ VALID_FOLDERS = {FOLDER_ALL, FOLDER_MY_MODELS, FOLDER_SHARED, FOLDER_FAVORITES}
 VALID_SORT_FIELDS = {"name", "updated_at", "created_at"}
 VALID_SORT_DIRS = {"asc", "desc"}
 
-# JWT Bearer token prefix length ("Bearer " = 7 characters)
-BEARER_PREFIX_LENGTH = 7
 
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -95,16 +97,6 @@ class ModelCreateRequest(BaseModel):
         return v
 
 
-class TenantContextPayload(BaseModel):
-    """Canonical tenant context pilot for model registry routes."""
-
-    tenant_id: str
-    user_id: str
-    source: str = "authorization_bearer"
-    auth_method: str = "jwt"
-    trace_id: str | None = None
-
-
 class ModelListResponse(BaseModel):
     """Paginated list of models with metadata."""
     models: list[ModelSummary] = Field(..., description="Model summaries")
@@ -143,106 +135,6 @@ class DeleteResponse(BaseModel):
 # ───────────────────────────────────────────────────────────────────────────────
 
 
-def _decode_jwt_payload(token: str) -> dict:
-    """Decode JWT payload without signature verification.
-    
-    This extracts the user ID from the token payload. In production,
-    full signature verification should be added.
-    """
-    try:
-        # JWT format: header.payload.signature
-        parts = token.split(".")
-        if len(parts) != 3:
-            raise ValueError("Invalid JWT format")
-        
-        # Base64url decode the payload
-        payload_b64 = parts[1]
-        # Add padding if needed
-        padding = 4 - len(payload_b64) % 4
-        if padding != 4:
-            payload_b64 += "=" * padding
-        # Replace URL-safe characters
-        payload_b64 = payload_b64.replace("-", "+").replace("_", "/")
-        
-        payload_json = base64.b64decode(payload_b64)
-        return json.loads(payload_json)
-    except Exception as e:
-        raise ValueError(f"Failed to decode JWT: {e}")
-
-
-def _get_current_user(request: Request) -> str:
-    """Extract user ID from JWT Bearer token.
-    
-    Returns the 'sub' claim from the JWT payload as the user identifier.
-    Raises HTTPException 401 if token is missing or invalid.
-    
-    Pre-production note: This decodes the JWT payload without signature
-    verification. Full JWT validation should be added before production.
-    """
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="Missing or invalid Authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    token = auth_header[BEARER_PREFIX_LENGTH:]  # Remove "Bearer " prefix
-    
-    try:
-        payload = _decode_jwt_payload(token)
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid token: missing subject claim",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        return user_id
-    except ValueError as exc:
-        context = {"tenant": "unknown", "endpoint": "/models", "operation": "get_current_user"}
-        raise map_exception_to_http_error(ValidationError("Invalid token", details={"reason": str(exc)}), context=context)
-
-
-def _get_current_tenant(request: Request) -> str:
-    """Extract tenant ID from the canonical model-registry tenant context."""
-    return _get_tenant_context(request).tenant_id
-
-
-def _get_tenant_context(request: Request) -> TenantContextPayload:
-    """Resolve tenant context for the model registry without fail-open defaults."""
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="Missing or invalid Authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    token = auth_header[BEARER_PREFIX_LENGTH:]
-    
-    try:
-        payload = _decode_jwt_payload(token)
-    except Exception as exc:
-        context = {"tenant": "unknown", "endpoint": "/models", "operation": "get_tenant_context"}
-        raise map_exception_to_http_error(ValidationError("Invalid token", details={"reason": str(exc)}), context=context)
-
-    tenant_id = str(payload.get("tenant_id") or "").strip()
-    user_id = str(payload.get("sub") or "").strip()
-    if not tenant_id:
-        raise HTTPException(status_code=401, detail="Invalid token: missing tenant_id claim")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token: missing subject claim")
-
-    header_tenant = request.headers.get("x-tenant-id")
-    if header_tenant and header_tenant.strip() != tenant_id:
-        raise HTTPException(status_code=403, detail="X-Tenant-ID does not match authenticated tenant")
-
-    return TenantContextPayload(
-        tenant_id=tenant_id,
-        user_id=user_id,
-        trace_id=request.headers.get("x-request-id"),
-    )
 
 
 def _model_node_to_summary(record: dict[str, Any]) -> ModelSummary:
@@ -310,7 +202,7 @@ async def _ensure_constraints(neo4j: Any) -> None:
     },
 )
 async def list_models(
-    request: Request,
+    ctx: RequestContext = Depends(require_tenant_context),
     search: str | None = Query(None, description="Search in name, description, tags"),
     folder: str = Query(FOLDER_ALL, description="Filter by folder"),
     industry: str | None = Query(None, description="Filter by industry"),
@@ -321,11 +213,11 @@ async def list_models(
     offset: int = Query(0, ge=0, description="Results to skip"),
 ) -> ModelListResponse:
     """List value models with filtering and pagination."""
-    current_tenant = _get_current_tenant(request)
+    current_tenant = str(ctx.tenant_id)
     
     async with await create_neo4j_tenant_session(current_tenant) as neo4j:
         await _ensure_constraints(neo4j)
-        current_user = _get_current_user(request)
+        current_user = str(ctx.user_id or "")
         
         # Validate parameters
         if folder not in VALID_FOLDERS:
@@ -434,11 +326,11 @@ async def list_models(
     description="Returns folder counts for the sidebar navigation.",
 )
 async def get_folder_counts(
-    request: Request,
+    ctx: RequestContext = Depends(require_tenant_context),
 ) -> FoldersResponse:
     """Get folder counts for sidebar navigation."""
-    current_user = _get_current_user(request)
-    current_tenant = _get_current_tenant(request)
+    current_user = str(ctx.user_id or "")
+    current_tenant = str(ctx.tenant_id)
     
     async with await create_neo4j_tenant_session(current_tenant) as neo4j:
         await _ensure_constraints(neo4j)
@@ -491,10 +383,10 @@ async def get_folder_counts(
 )
 async def get_model_detail(
     model_id: str,
-    request: Request,
+    ctx: RequestContext = Depends(require_tenant_context),
 ) -> ModelDetail:
     """Get detailed information about a specific model."""
-    current_tenant = _get_current_tenant(request)
+    current_tenant = str(ctx.tenant_id)
     
     query = """
     MATCH (m:ValueModel {model_id: $model_id})
@@ -543,12 +435,12 @@ async def get_model_detail(
     },
 )
 async def create_model(
-    request: Request,
     data: ModelCreateRequest,
+    ctx: RequestContext = Depends(require_tenant_context),
 ) -> CreateResponse:
     """Create a new value model."""
-    current_user = _get_current_user(request)
-    current_tenant = _get_current_tenant(request)
+    current_user = str(ctx.user_id or "")
+    current_tenant = str(ctx.tenant_id)
     model_id = f"mdl_{datetime.now(UTC).strftime('%Y%m%d%H%M%S%f')[:-3]}"
     
     now = datetime.now(UTC).isoformat()
@@ -615,12 +507,12 @@ responses={
 },
 )
 async def delete_model(
-    request: Request,
     model_id: str,
+    ctx: RequestContext = Depends(require_tenant_context),
 ) -> DeleteResponse:
     """Delete a value model (owner only)."""
-    current_user = _get_current_user(request)
-    current_tenant = _get_current_tenant(request)
+    current_user = str(ctx.user_id or "")
+    current_tenant = str(ctx.tenant_id)
     
     async with await create_neo4j_tenant_session(current_tenant) as neo4j:
         # Check ownership
@@ -655,3 +547,10 @@ async def delete_model(
         except Exception as e:
             logger.error(f"Failed to delete model: {e}")
             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+>>>>>>> theirs
+=======
+from value_fabric.layer3.api.routes.models import *  # noqa: F401,F403
+>>>>>>> theirs
+=======
+from value_fabric.layer3.api.routes.models import *  # noqa: F401,F403
+>>>>>>> theirs

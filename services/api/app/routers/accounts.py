@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import db
+from app.core.tenant_enforcement import enforce_authenticated_tenant
 from app.core.tenant_context import tenant_required
 from app.models.schemas import Account
 
@@ -16,6 +17,12 @@ async def list_accounts(tenant_id: str = Depends(tenant_required)):
 
 @router.post("", response_model=Account, status_code=201)
 async def create_account(account: Account, tenant_id: str = Depends(tenant_required)):
+    enforce_authenticated_tenant(
+        body_tenant_id=account.tenant_id,
+        authenticated_tenant_id=tenant_id,
+        route="/v1/accounts",
+        operation="create_account",
+    )
     account.tenant_id = tenant_id
     db.accounts.insert(account.id, account)
     return account

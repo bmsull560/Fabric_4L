@@ -39,6 +39,21 @@ import {
   assertSchemaRejects,
 } from './_helpers';
 
+const DOCUMENTED_DIVERGENCES = [
+  {
+    id: 'truth-object-confidence-range',
+    classification: 'intentional_temporary',
+    reason: 'Frontend enforces confidence range [0,1] ahead of OpenAPI tightening.',
+    tracker: 'docs/DEPRECATIONS.md',
+  },
+  {
+    id: 'workflow-status-enum-tightening',
+    classification: 'intentional_temporary',
+    reason: 'Frontend uses enum guard while OpenAPI status is still broad string.',
+    tracker: 'docs/DEPRECATIONS.md',
+  },
+] as const;
+
 // ---------------------------------------------------------------------------
 // Drift detection — every tracked schema must accept its canonical fixture
 // ---------------------------------------------------------------------------
@@ -257,6 +272,14 @@ describe('OpenAPI drift: L5 Ground Truth', () => {
 // ---------------------------------------------------------------------------
 
 describe('OpenAPI drift: negative-path consistency', () => {
+  it('all intentional divergences are explicitly documented', () => {
+    expect(DOCUMENTED_DIVERGENCES.length).toBe(2);
+    for (const divergence of DOCUMENTED_DIVERGENCES) {
+      expect(divergence.classification).toBe('intentional_temporary');
+      expect(divergence.tracker).toBeTruthy();
+    }
+  });
+
   it('Zod rejects invalid UUID where OpenAPI also rejects it', () => {
     const bad = { ...fixtures.tenant(), id: 'not-a-uuid' };
     assertSchemaRejects(TenantModelSchema, bad, 'TenantModel bad UUID');

@@ -7,6 +7,77 @@
  */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Basic Health Check
+         * @description Perform a basic health check of the service and its dependencies.
+         *
+         *         This endpoint checks:
+         *         - Neo4j database connectivity
+         *         - Overall service status
+         *         - Basic system metrics
+         *         - Schema validation status
+         *
+         *         Returns a simplified health status suitable for load balancers and monitoring systems.
+         *
+         *         **Response Headers:**
+         *         - `X-RateLimit-*`: Current rate limiting information
+         *         - `X-API-Version`: API version used
+         *         - `X-Supported-Versions`: Supported API versions
+         *
+         *         **Status Codes:**
+         *         - `200`: Service is healthy
+         *         - `503`: Service or dependencies are unhealthy
+         */
+        get: operations["health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ready */
+        get: operations["ready_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/value-trees/{entity_id}": {
         parameters: {
             query?: never;
@@ -766,7 +837,7 @@ export interface paths {
          * Get Model Folder Counts
          * @description Returns folder counts for the sidebar navigation.
          */
-        get: operations["get_model_folders_v1_models_folders_get"];
+        get: operations["get_folder_counts_v1_models_folders_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1228,6 +1299,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/evidence/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List evidence links for a driver
+         * @description Return all Evidence nodes linked to a given ValueDriver.
+         */
+        get: operations["list_evidence_links_v1_evidence_links_get"];
+        put?: never;
+        /**
+         * Link evidence to a value driver
+         * @description Create a graph relationship between Evidence and ValueDriver.
+         *
+         *     Establishes `HAS_EVIDENCE` from ValueDriver to Evidence node,
+         *     enabling value traceability from driver tree back to proof points.
+         */
+        post: operations["link_evidence_to_driver_v1_evidence_links_post"];
+        /**
+         * Unlink evidence from a value driver
+         * @description Remove the graph relationship between Evidence and ValueDriver.
+         */
+        delete: operations["unlink_evidence_from_driver_v1_evidence_links_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/competitive/competitors": {
         parameters: {
             query?: never;
@@ -1592,7 +1694,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/health": {
+    "/v1/roi/benchmarks/policies/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Benchmark Policies
+         * @description Seed default benchmark policies if none exist. Idempotent.
+         */
+        post: operations["seed_benchmark_policies_v1_roi_benchmarks_policies_seed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/v1/calculators/levers": {
         parameters: {
             query?: never;
             header?: never;
@@ -1600,28 +1722,57 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Basic Health Check
-         * @description Perform a basic health check of the service and its dependencies.
+         * Get Value Levers
+         * @description Get value lever configuration for value calculations.
          *
-         *         This endpoint checks:
-         *         - Neo4j database connectivity
-         *         - Overall service status
-         *         - Basic system metrics
-         *         - Schema validation status
-         *
-         *         Returns a simplified health status suitable for load balancers and monitoring systems.
-         *
-         *         **Response Headers:**
-         *         - `X-RateLimit-*`: Current rate limiting information
-         *         - `X-API-Version`: API version used
-         *         - `X-Supported-Versions`: Supported API versions
-         *
-         *         **Status Codes:**
-         *         - `200`: Service is healthy
-         *         - `503`: Service or dependencies are unhealthy
+         *     Returns tenant-scoped lever configurations filtered by industry/company size.
          */
-        get: operations["health_check_health_get"];
+        get: operations["get_value_levers_v1_v1_calculators_levers_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/v1/calculators/value-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Value Case
+         * @description Create a new value case with scenarios and calculations.
+         */
+        post: operations["create_value_case_v1_v1_calculators_value_cases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/v1/calculators/value-cases/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Value Case
+         * @description Get a value case by ID.
+         */
+        get: operations["get_value_case_v1_v1_calculators_value_cases__case_id__get"];
+        /**
+         * Update Value Case
+         * @description Update an existing value case.
+         */
+        put: operations["update_value_case_v1_v1_calculators_value_cases__case_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1659,6 +1810,114 @@ export interface paths {
         get: operations["detailed_health_check_health_detailed_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/graphrag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Graph Rag Legacy Alias */
+        post: operations["graph_rag_legacy_alias_v1_graphrag_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/query/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Graph Rag Query Aliases */
+        post: operations["graph_rag_query_aliases_v1_query_graph_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Graph Rag Query Aliases */
+        post: operations["graph_rag_query_aliases_v1_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/query/graph/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Graph Rag Query Stream Alias */
+        post: operations["graph_rag_query_stream_alias_v1_query_graph_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hybrid Search Aliases
+         * @deprecated
+         */
+        post: operations["hybrid_search_aliases_v1_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/search/hybrid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hybrid Search Aliases
+         * @deprecated
+         */
+        post: operations["hybrid_search_aliases_v1_search_hybrid_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1795,319 +2054,6 @@ export interface paths {
          * @description Delete all data from a source.
          */
         delete: operations["delete_source_v1_ingest__source_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/graphrag": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Graph Rag Legacy Alias
-         * @description Execute a GraphRAG query - backward-compatible alias for /v1/query/graph.
-         *
-         *     This endpoint exists for backward compatibility with existing clients and tests.
-         *     New implementations should use `/v1/query/graph` (preferred) or `/v1/query`.
-         */
-        post: operations["graph_rag_legacy_alias_v1_graphrag_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/query": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Graph Rag Query
-         * @description Execute a GraphRAG query with multi-hop traversal.
-         *
-         *     Uses request deduplication to prevent redundant computation for
-         *     identical concurrent queries. Results are cached for 60 seconds.
-         *
-         *     Notes:
-         *     - Preferred route: `/v1/query/graph`
-         *     - Legacy route retained: `/v1/query` (deprecate later)
-         *     - Backward-compatible alias: `/v1/graphrag`
-         */
-        post: operations["graph_rag_query_v1_query_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/query/graph": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Graph Rag Query
-         * @description Execute a GraphRAG query with multi-hop traversal.
-         *
-         *     Uses request deduplication to prevent redundant computation for
-         *     identical concurrent queries. Results are cached for 60 seconds.
-         *
-         *     Notes:
-         *     - Preferred route: `/v1/query/graph`
-         *     - Legacy route retained: `/v1/query` (deprecate later)
-         *     - Backward-compatible alias: `/v1/graphrag`
-         */
-        post: operations["graph_rag_query_v1_query_graph_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/query/graph/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Graph Rag Query Stream
-         * @description Execute a streaming GraphRAG query with progressive results.
-         *
-         *     Uses Server-Sent Events (SSE) to stream results as they are discovered:
-         *     - start: Query initialization
-         *     - seed_entity: Initial matching entities found
-         *     - context_node: Entities discovered during graph traversal
-         *     - context_edge: Relationships discovered
-         *     - progress: Periodic progress updates
-         *     - result: Final aggregated result
-         *     - complete: Stream completion
-         *
-         *     Example usage with curl:
-         *         curl -N -H "Accept: text/event-stream"              -X POST http://localhost:8000/v1/query/graph/stream              -H "Content-Type: application/json"              -d '{"query": "What capabilities enable automated invoice processing?"}'
-         */
-        post: operations["graph_rag_query_stream_v1_query_graph_stream_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Hybrid Search
-         * @deprecated
-         * @description DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.
-         *
-         *     This endpoint is deprecated in favor of the canonical entity browser API.
-         *     Sunset date: 2026-05-18 (30 days from deprecation).
-         *
-         *     Legacy behavior: Execute hybrid search combining BM25, vector, and graph signals.
-         *     Uses request deduplication to prevent redundant computation.
-         *
-         *     Migration guide:
-         *     - For entity listing: Use GET /v1/entities with filter parameters
-         *     - For text search: Use search_text query param on /v1/entities
-         *     - For type filtering: Use entity_types query param on /v1/entities
-         */
-        post: operations["hybrid_search_v1_search_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/search/hybrid": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Deprecated: Use GET /v1/entities for entity listing
-         * @deprecated
-         * @description DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.
-         *
-         *     This endpoint is deprecated in favor of the canonical entity browser API.
-         *     Sunset date: 2026-05-18 (30 days from deprecation).
-         *
-         *     Legacy behavior: Execute hybrid search combining BM25, vector, and graph signals.
-         *     Uses request deduplication to prevent redundant computation.
-         *
-         *     Migration guide:
-         *     - For entity listing: Use GET /v1/entities with filter parameters
-         *     - For text search: Use search_text query param on /v1/entities
-         *     - For type filtering: Use entity_types query param on /v1/entities
-         */
-        post: operations["hybrid_search_v1_search_hybrid_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/entity/{entity_id}/context": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Entity Context
-         * @description Get neighborhood context around an entity.
-         *
-         *     Supports field selection (?fields=id,name,type) to reduce payload size,
-         *     and cursor-based pagination (?cursor=xyz&limit=50) for large neighborhoods.
-         */
-        get: operations["get_entity_context_v1_entity__entity_id__context_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/entity/traverse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Traverse Value Tree
-         * @description Traverse the 4-layer value tree from an entity.
-         */
-        post: operations["traverse_value_tree_v1_entity_traverse_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/entities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Entities
-         * @description List entities with server-backed filtering and sorting.
-         *
-         *     This endpoint provides a canonical entity summary contract optimized for
-         *     browser table views. It supports filtering by domain, status, type, and
-         *     confidence—eliminating the need for client-side filtering of large datasets.
-         *
-         *     **Query Parameters:**
-         *     - `search_text`: Full-text search across entity names and descriptions
-         *     - `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)
-         *     - `domains`: Filter by business domain (e.g., Finance, Healthcare)
-         *     - `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)
-         *     - `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)
-         *     - `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)
-         *     - `sort_order`: Sort direction (asc, desc)
-         *     - `limit`/`offset`: Pagination control
-         *
-         *     **Response:** Returns EntityListResponse with canonical EntitySummary objects.
-         */
-        get: operations["list_entities_v1_entities_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/entities/{entity_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Entity Detail
-         * @description Get full entity detail for inspection/drawer views.
-         *
-         *     Returns the canonical EntityDetail shape with all fields from EntitySummary
-         *     plus extended data: relationships, provenance, validation state, and raw properties.
-         *
-         *     **Path Parameters:**
-         *     - `entity_id`: Canonical entity identifier
-         *
-         *     **Query Parameters:**
-         *     - `include_provenance`: Whether to include audit trail (default: true)
-         *     - `include_relationships`: Whether to include related entities (default: true)
-         *
-         *     **Response:** Returns EntityDetail with full canonical contract.
-         */
-        get: operations["get_entity_detail_v1_entities__entity_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/entities/query": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Query Entities
-         * @description Advanced entity filtering with complex criteria.
-         *
-         *     Supports complex filter combinations not easily expressed in query parameters.
-         *     Uses the same underlying logic as GET /v1/entities but with a request body.
-         *
-         *     **Request Body:** EntityFilterRequest with full filter specification
-         *
-         *     **Response:** Returns EntityListResponse with canonical EntitySummary objects.
-         */
-        post: operations["query_entities_v1_entities_query_post"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2871,49 +2817,14 @@ export interface components {
             /** Scope */
             scope?: ("tenant" | "pack" | "formula") | null;
         };
-        /** Body_activate_formula_v1_formulas__formula_id__activate_post */
-        Body_activate_formula_v1_formulas__formula_id__activate_post: {
-            request: components["schemas"]["ActivateRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
         /** Body_apply_pack_v1_packs__pack_id__apply_post */
         Body_apply_pack_v1_packs__pack_id__apply_post: {
             request: components["schemas"]["PackExecuteRequest"];
             settings?: components["schemas"]["Settings"] | null;
         };
-        /** Body_approve_formula_v1_formulas__formula_id__approve_post */
-        Body_approve_formula_v1_formulas__formula_id__approve_post: {
-            request: components["schemas"]["ApproveRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_create_formula_v1_formulas_post */
-        Body_create_formula_v1_formulas_post: {
-            request: components["schemas"]["CreateFormulaRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_create_formula_version_v1_formulas__formula_id__versions_post */
-        Body_create_formula_version_v1_formulas__formula_id__versions_post: {
-            request: components["schemas"]["CreateVersionRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_create_model_v1_models_post */
-        Body_create_model_v1_models_post: {
-            data: components["schemas"]["ModelCreateRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
         /** Body_create_pack_v1_packs_post */
         Body_create_pack_v1_packs_post: {
             request: components["schemas"]["PackCreateRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_create_variable_v1_variables_post */
-        Body_create_variable_v1_variables_post: {
-            request: components["schemas"]["VariableCreateRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_deprecate_formula_v1_formulas__formula_id__deprecate_post */
-        Body_deprecate_formula_v1_formulas__formula_id__deprecate_post: {
-            request: components["schemas"]["DeprecateRequest"];
             settings?: components["schemas"]["Settings"] | null;
         };
         /** Body_execute_pack_v1_packs__pack_id__execute_post */
@@ -2926,39 +2837,9 @@ export interface components {
             request: components["schemas"]["PackForkRequest"];
             settings?: components["schemas"]["Settings"] | null;
         };
-        /** Body_resolve_variable_v1_variables__variable_id__resolve_post */
-        Body_resolve_variable_v1_variables__variable_id__resolve_post: {
-            request: components["schemas"]["ResolveRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_submit_for_review_v1_formulas__formula_id__submit_post */
-        Body_submit_for_review_v1_formulas__formula_id__submit_post: {
-            request: components["schemas"]["SubmitForReviewRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put */
-        Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put: {
-            update: components["schemas"]["BenchmarkPolicyUpdate"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_update_formula_v1_formulas__formula_id__patch */
-        Body_update_formula_v1_formulas__formula_id__patch: {
-            request: components["schemas"]["UpdateFormulaRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
         /** Body_update_pack_v1_packs__pack_id__put */
         Body_update_pack_v1_packs__pack_id__put: {
             request: components["schemas"]["PackUpdateRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_update_variable_v1_variables__variable_id__put */
-        Body_update_variable_v1_variables__variable_id__put: {
-            request: components["schemas"]["VariableUpdateRequest"];
-            settings?: components["schemas"]["Settings"] | null;
-        };
-        /** Body_validate_value_v1_variables__variable_id__validate_post */
-        Body_validate_value_v1_variables__variable_id__validate_post: {
-            request: components["schemas"]["ValidateRequest"];
             settings?: components["schemas"]["Settings"] | null;
         };
         /** BulkImportRequest */
@@ -3790,34 +3671,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** EntityContextResponse */
-        EntityContextResponse: {
-            /** Entity Id */
-            entity_id: string;
-            /** Center */
-            center: {
-                [key: string]: unknown;
-            };
-            /** Neighbors */
-            neighbors: {
-                [key: string]: unknown;
-            }[];
-            /** Relationships */
-            relationships: {
-                [key: string]: unknown;
-            }[];
-            /** Entity Count */
-            entity_count: number;
-            /** Relationship Count */
-            relationship_count: number;
-            /**
-             * Pagination
-             * @description Pagination info: {has_more, next_cursor, returned_count}
-             */
-            pagination?: {
-                [key: string]: unknown;
-            } | null;
-        };
         /**
          * EntityDetail
          * @description Canonical entity detail for inspection/drawer views.
@@ -4187,6 +4040,30 @@ export interface components {
          * @enum {integer}
          */
         EvidenceLevel: 1 | 2 | 3 | 4 | 5;
+        /** EvidenceLinkRequest */
+        EvidenceLinkRequest: {
+            /**
+             * Evidence Id
+             * @description Evidence (case study) identifier
+             */
+            evidence_id: string;
+            /**
+             * Driver Id
+             * @description Value driver identifier
+             */
+            driver_id: string;
+        };
+        /** EvidenceLinkResponse */
+        EvidenceLinkResponse: {
+            /** Evidence Id */
+            evidence_id: string;
+            /** Driver Id */
+            driver_id: string;
+            /** Linked */
+            linked: boolean;
+            /** Linked At */
+            linked_at: string;
+        };
         /**
          * FeatureCreateRequest
          * @description Request body for adding a feature to a product.
@@ -4525,17 +4402,20 @@ export interface components {
             id: string;
             /**
              * Label
-             * @description Display label (legacy: use 'name')
+             * @deprecated
+             * @description Deprecated alias of name; removal planned after v1.4
              */
-            label: string;
+            label?: string;
             /**
              * Type
-             * @description Node type (legacy: use 'entity_type')
+             * @deprecated
+             * @description Deprecated alias of entity_type; removal planned after v1.4
              */
-            type: string;
+            type?: string;
             /**
              * Confidence
-             * @description Confidence score (legacy: use 'confidence_score')
+             * @deprecated
+             * @description Deprecated alias of confidence_score; removal planned after v1.4
              * @default 0.8
              */
             confidence: number;
@@ -4546,6 +4426,15 @@ export interface components {
             properties?: {
                 [key: string]: unknown;
             };
+            /** @description Display label */
+            name: string;
+            /** @description Node type */
+            entity_type: string;
+            /**
+             * @description Confidence score
+             * @default 0.8
+             */
+            confidence_score: number;
         };
         /**
          * GraphNodeWithLayout
@@ -4761,6 +4650,18 @@ export interface components {
              */
             status: "healthy" | "unhealthy" | "degraded";
             /**
+             * Service
+             * @description Service name
+             */
+            service: string;
+            /**
+             * Readiness
+             * @description Readiness envelope
+             */
+            readiness: {
+                [key: string]: unknown;
+            };
+            /**
              * Version
              * @description API version
              */
@@ -4880,6 +4781,24 @@ export interface components {
              * @description Processing warnings
              */
             warnings?: string[];
+        };
+        /** LeverConfigRequest */
+        LeverConfigRequest: {
+            /** Industry */
+            industry?: string | null;
+            /** Company Size */
+            company_size?: string | null;
+            /** Product Line */
+            product_line?: string | null;
+        };
+        /** LeverConfigResponse */
+        LeverConfigResponse: {
+            /** Levers */
+            levers: components["schemas"]["ValueLever"][];
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ModelCreateRequest
@@ -5962,6 +5881,13 @@ export interface components {
              * @description Variable adjustments to apply
              */
             adjustments: components["schemas"]["VariableAdjustmentInput"][];
+            /**
+             * Base Case Data
+             * @description Optional base case data (total_value, implementation_cost, etc.). If provided, bypasses repository lookup.
+             */
+            base_case_data?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * ScenarioResponse
@@ -6837,6 +6763,48 @@ export interface components {
             /** Error Message */
             error_message: string;
         };
+        /** ValueCaseRequest */
+        ValueCaseRequest: {
+            /** Account Id */
+            account_id: string;
+            /** Prospect Id */
+            prospect_id?: string | null;
+            /** Levers */
+            levers: {
+                [key: string]: unknown;
+            }[];
+            /** Scenarios */
+            scenarios: {
+                [key: string]: unknown;
+            }[];
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
+        };
+        /** ValueCaseResponse */
+        ValueCaseResponse: {
+            /** Case Id */
+            case_id: string;
+            /** Account Id */
+            account_id: string;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /** Levers */
+            levers: {
+                [key: string]: unknown;
+            }[];
+            /** Scenarios */
+            scenarios: {
+                [key: string]: unknown;
+            }[];
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * ValueDriver
          * @description A primary value driver that moves money for this industry.
@@ -6884,6 +6852,27 @@ export interface components {
              * @default 1
              */
             weight: number;
+        };
+        /** ValueLever */
+        ValueLever: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Base Value */
+            base_value: number;
+            /** Min Value */
+            min_value: number;
+            /** Max Value */
+            max_value: number;
+            /** Unit */
+            unit: string;
+            /** Annual Impact */
+            annual_impact: number;
+            /** Confidence */
+            confidence: number;
+            /** Category */
+            category: string;
         };
         /**
          * ValuePackComparisonRequest
@@ -7677,6 +7666,169 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service is healthy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "healthy",
+                     *       "version": "1.0.0",
+                     *       "timestamp": "2024-01-01T12:00:00.000Z",
+                     *       "uptime_seconds": 3600,
+                     *       "dependencies": [
+                     *         {
+                     *           "name": "neo4j",
+                     *           "status": "healthy",
+                     *           "response_time_ms": 15.5,
+                     *           "details": {
+                     *             "uri": "bolt://localhost:7687",
+                     *             "database": "neo4j"
+                     *           }
+                     *         }
+                     *       ],
+                     *       "metrics": {
+                     *         "uptime_seconds": 3600,
+                     *         "memory_usage_mb": 1024.5,
+                     *         "cpu_percent": 25,
+                     *         "active_connections": 10,
+                     *         "total_requests": 1500,
+                     *         "error_rate_percent": 0.1
+                     *       },
+                     *       "neo4j": {
+                     *         "status": "healthy",
+                     *         "database": "neo4j",
+                     *         "uri": "bolt://localhost:7687"
+                     *       },
+                     *       "schema_status": {
+                     *         "constraints": {
+                     *           "expected": 10,
+                     *           "found": 10,
+                     *           "missing": []
+                     *         },
+                     *         "indexes": {
+                     *           "expected": 15,
+                     *           "found": 15,
+                     *           "missing": []
+                     *         },
+                     *         "valid": true
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Service or dependencies are unhealthy */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "status": "unhealthy",
+                     *       "version": "1.0.0",
+                     *       "timestamp": "2024-01-01T12:00:00.000Z",
+                     *       "uptime_seconds": 3600,
+                     *       "dependencies": [
+                     *         {
+                     *           "name": "neo4j",
+                     *           "status": "unhealthy",
+                     *           "error": "Connection timeout",
+                     *           "details": {
+                     *             "uri": "bolt://localhost:7687",
+                     *             "database": "neo4j"
+                     *           }
+                     *         }
+                     *       ],
+                     *       "metrics": {
+                     *         "uptime_seconds": 3600,
+                     *         "memory_usage_mb": 1024.5,
+                     *         "cpu_percent": 25,
+                     *         "active_connections": 0,
+                     *         "total_requests": 1500,
+                     *         "error_rate_percent": 5.2
+                     *       },
+                     *       "neo4j": {
+                     *         "status": "unhealthy",
+                     *         "database": "neo4j",
+                     *         "uri": "bolt://localhost:7687",
+                     *         "error": "Connection timeout"
+                     *       },
+                     *       "schema_status": {
+                     *         "constraints": {
+                     *           "expected": 10,
+                     *           "found": 8,
+                     *           "missing": [
+                     *             "constraint_1",
+                     *             "constraint_2"
+                     *           ]
+                     *         },
+                     *         "indexes": {
+                     *           "expected": 15,
+                     *           "found": 15,
+                     *           "missing": []
+                     *         },
+                     *         "valid": false
+                     *       }
+                     *     }
+                     */
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    ready_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    metrics_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     get_value_tree_v1_value_trees__entity_id__get: {
         parameters: {
             query?: {
@@ -7920,7 +8072,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_create_formula_v1_formulas_post"];
+                "application/json": components["schemas"]["CreateFormulaRequest"];
             };
         };
         responses: {
@@ -7984,11 +8136,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8023,7 +8171,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_update_formula_v1_formulas__formula_id__patch"];
+                "application/json": components["schemas"]["UpdateFormulaRequest"];
             };
         };
         responses: {
@@ -8645,11 +8793,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8658,15 +8802,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApprovalQueueItem"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -8683,11 +8818,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8720,7 +8851,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_create_formula_version_v1_formulas__formula_id__versions_post"];
+                "application/json": components["schemas"]["CreateVersionRequest"];
             };
         };
         responses: {
@@ -8753,11 +8884,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8790,7 +8917,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_submit_for_review_v1_formulas__formula_id__submit_post"];
+                "application/json": components["schemas"]["SubmitForReviewRequest"];
             };
         };
         responses: {
@@ -8825,7 +8952,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_approve_formula_v1_formulas__formula_id__approve_post"];
+                "application/json": components["schemas"]["ApproveRequest"];
             };
         };
         responses: {
@@ -8860,7 +8987,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_activate_formula_v1_formulas__formula_id__activate_post"];
+                "application/json": components["schemas"]["ActivateRequest"];
             };
         };
         responses: {
@@ -8895,7 +9022,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_deprecate_formula_v1_formulas__formula_id__deprecate_post"];
+                "application/json": components["schemas"]["DeprecateRequest"];
             };
         };
         responses: {
@@ -8931,11 +9058,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -8969,11 +9092,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -9015,11 +9134,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -9029,6 +9144,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VariableSummary"][];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9050,7 +9172,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_create_variable_v1_variables_post"];
+                "application/json": components["schemas"]["VariableCreateRequest"];
             };
         };
         responses: {
@@ -9062,6 +9184,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VariableDetail"];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9083,11 +9212,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -9097,6 +9222,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VariableDetail"];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9120,7 +9252,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_update_variable_v1_variables__variable_id__put"];
+                "application/json": components["schemas"]["VariableUpdateRequest"];
             };
         };
         responses: {
@@ -9132,6 +9264,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VariableDetail"];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9155,7 +9294,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_resolve_variable_v1_variables__variable_id__resolve_post"];
+                "application/json": components["schemas"]["ResolveRequest"];
             };
         };
         responses: {
@@ -9167,6 +9306,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResolveResponse"];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9190,7 +9336,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_validate_value_v1_variables__variable_id__validate_post"];
+                "application/json": components["schemas"]["ValidateRequest"];
             };
         };
         responses: {
@@ -9202,6 +9348,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ValidateResponse"];
                 };
+            };
+            /** @description Missing tenant context */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -9221,11 +9374,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -9236,14 +9385,12 @@ export interface operations {
                     "application/json": components["schemas"]["VariableStatsResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Missing tenant context */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -9254,11 +9401,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -9269,14 +9412,12 @@ export interface operations {
                     "application/json": components["schemas"]["SourceBindingResponse"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            /** @description Missing tenant context */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -9304,11 +9445,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Models retrieved successfully */
             200: {
@@ -9353,7 +9490,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_create_model_v1_models_post"];
+                "application/json": components["schemas"]["ModelCreateRequest"];
             };
         };
         responses: {
@@ -9366,13 +9503,6 @@ export interface operations {
                     "application/json": components["schemas"]["CreateResponse"];
                 };
             };
-            /** @description Invalid request data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -9382,27 +9512,16 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description Database error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    get_model_folders_v1_models_folders_get: {
+    get_folder_counts_v1_models_folders_get: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -9411,15 +9530,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FoldersResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -9433,11 +9543,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Model retrieved successfully */
             200: {
@@ -9482,11 +9588,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Model deleted successfully */
             200: {
@@ -10343,6 +10445,109 @@ export interface operations {
             };
         };
     };
+    list_evidence_links_v1_evidence_links_get: {
+        parameters: {
+            query: {
+                /** @description Value driver identifier */
+                driver_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_evidence_to_driver_v1_evidence_links_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceLinkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlink_evidence_from_driver_v1_evidence_links_delete: {
+        parameters: {
+            query: {
+                /** @description Evidence identifier */
+                evidence_id: string;
+                /** @description Value driver identifier */
+                driver_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_competitors_v1_competitive_competitors_get: {
         parameters: {
             query?: {
@@ -10937,11 +11142,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -10970,11 +11171,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -10983,15 +11180,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BenchmarkPolicy"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11005,11 +11193,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["Settings"] | null;
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -11042,7 +11226,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Body_update_benchmark_policy_v1_roi_benchmarks_policies__policy_id__put"];
+                "application/json": components["schemas"]["BenchmarkPolicyUpdate"];
             };
         };
         responses: {
@@ -11066,7 +11250,7 @@ export interface operations {
             };
         };
     };
-    health_check_health_get: {
+    seed_benchmark_policies_v1_roi_benchmarks_policies_seed_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11075,116 +11259,145 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Service is healthy */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "status": "healthy",
-                     *       "version": "1.0.0",
-                     *       "timestamp": "2024-01-01T12:00:00.000Z",
-                     *       "uptime_seconds": 3600,
-                     *       "dependencies": [
-                     *         {
-                     *           "name": "neo4j",
-                     *           "status": "healthy",
-                     *           "response_time_ms": 15.5,
-                     *           "details": {
-                     *             "uri": "bolt://localhost:7687",
-                     *             "database": "neo4j"
-                     *           }
-                     *         }
-                     *       ],
-                     *       "metrics": {
-                     *         "uptime_seconds": 3600,
-                     *         "memory_usage_mb": 1024.5,
-                     *         "cpu_percent": 25,
-                     *         "active_connections": 10,
-                     *         "total_requests": 1500,
-                     *         "error_rate_percent": 0.1
-                     *       },
-                     *       "neo4j": {
-                     *         "status": "healthy",
-                     *         "database": "neo4j",
-                     *         "uri": "bolt://localhost:7687"
-                     *       },
-                     *       "schema_status": {
-                     *         "constraints": {
-                     *           "expected": 10,
-                     *           "found": 10,
-                     *           "missing": []
-                     *         },
-                     *         "indexes": {
-                     *           "expected": 15,
-                     *           "found": 15,
-                     *           "missing": []
-                     *         },
-                     *         "valid": true
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["HealthResponse"];
+                    "application/json": components["schemas"]["BenchmarkPolicy"][];
                 };
             };
-            /** @description Service or dependencies are unhealthy */
-            503: {
+        };
+    };
+    get_value_levers_v1_v1_calculators_levers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeverConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "status": "unhealthy",
-                     *       "version": "1.0.0",
-                     *       "timestamp": "2024-01-01T12:00:00.000Z",
-                     *       "uptime_seconds": 3600,
-                     *       "dependencies": [
-                     *         {
-                     *           "name": "neo4j",
-                     *           "status": "unhealthy",
-                     *           "error": "Connection timeout",
-                     *           "details": {
-                     *             "uri": "bolt://localhost:7687",
-                     *             "database": "neo4j"
-                     *           }
-                     *         }
-                     *       ],
-                     *       "metrics": {
-                     *         "uptime_seconds": 3600,
-                     *         "memory_usage_mb": 1024.5,
-                     *         "cpu_percent": 25,
-                     *         "active_connections": 0,
-                     *         "total_requests": 1500,
-                     *         "error_rate_percent": 5.2
-                     *       },
-                     *       "neo4j": {
-                     *         "status": "unhealthy",
-                     *         "database": "neo4j",
-                     *         "uri": "bolt://localhost:7687",
-                     *         "error": "Connection timeout"
-                     *       },
-                     *       "schema_status": {
-                     *         "constraints": {
-                     *           "expected": 10,
-                     *           "found": 8,
-                     *           "missing": [
-                     *             "constraint_1",
-                     *             "constraint_2"
-                     *           ]
-                     *         },
-                     *         "indexes": {
-                     *           "expected": 15,
-                     *           "found": 15,
-                     *           "missing": []
-                     *         },
-                     *         "valid": false
-                     *       }
-                     *     }
-                     */
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["LeverConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_value_case_v1_v1_calculators_value_cases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValueCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValueCaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_value_case_v1_v1_calculators_value_cases__case_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValueCaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_value_case_v1_v1_calculators_value_cases__case_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValueCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValueCaseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11274,6 +11487,204 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["DetailedHealthResponse"];
+                };
+            };
+        };
+    };
+    graph_rag_legacy_alias_v1_graphrag_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraphRAGQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphRAGResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    graph_rag_query_aliases_v1_query_graph_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraphRAGQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphRAGResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    graph_rag_query_aliases_v1_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraphRAGQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphRAGResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    graph_rag_query_stream_alias_v1_query_graph_stream_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GraphRAGQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hybrid_search_aliases_v1_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hybrid_search_aliases_v1_search_hybrid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -11448,399 +11859,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    graph_rag_legacy_alias_v1_graphrag_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GraphRAGQuery"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GraphRAGResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    graph_rag_query_v1_query_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GraphRAGQuery"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GraphRAGResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    graph_rag_query_v1_query_graph_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GraphRAGQuery"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GraphRAGResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    graph_rag_query_stream_v1_query_graph_stream_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GraphRAGQuery"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    hybrid_search_v1_search_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SearchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    hybrid_search_v1_search_hybrid_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SearchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_entity_context_v1_entity__entity_id__context_get: {
-        parameters: {
-            query?: {
-                hops?: number;
-                /** @description Comma-separated fields to include (e.g., 'id,name,type') */
-                fields?: string | null;
-                /** @description Pagination cursor for neighbors */
-                cursor?: string | null;
-                /** @description Max neighbors to return */
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                entity_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": string[] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EntityContextResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    traverse_value_tree_v1_entity_traverse_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValueTreeTraversal"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["layer3_knowledge__api__models__ValueTreeResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_entities_v1_entities_get: {
-        parameters: {
-            query?: {
-                /** @description Search across name and description */
-                search_text?: string | null;
-                /** @description Filter by entity types */
-                entity_types?: string[] | null;
-                /** @description Filter by domains */
-                domains?: string[] | null;
-                /** @description Filter by status: validated, pending, draft, deprecated */
-                statuses?: string[] | null;
-                /** @description Minimum confidence */
-                min_confidence?: number | null;
-                /** @description Maximum confidence */
-                max_confidence?: number | null;
-                /** @description Max results to return */
-                limit?: number;
-                /** @description Results to skip */
-                offset?: number;
-                /** @description Field to sort by: name, updated_at, confidence, entity_type, status */
-                sort_by?: string;
-                /** @description Sort direction: asc or desc */
-                sort_order?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EntityListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_entity_detail_v1_entities__entity_id__get: {
-        parameters: {
-            query?: {
-                /** @description Include provenance chain */
-                include_provenance?: boolean;
-                /** @description Include related entities */
-                include_relationships?: boolean;
-            };
-            header?: never;
-            path: {
-                entity_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EntityDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    query_entities_v1_entities_query_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EntityFilterRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EntityListResponse"];
                 };
             };
             /** @description Validation Error */

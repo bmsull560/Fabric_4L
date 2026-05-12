@@ -283,3 +283,58 @@ class TestL3AppMiddlewareRegistration:
         )
         assert resp.headers.get("X-Request-ID") == "l3-test-id-42"
 
+
+class TestL3RouteErrorMappings:
+    """Integration coverage for high-traffic route exception mappings."""
+
+    def test_ingest_timeout_maps_to_timeout_error(self, test_client, mock_app_state):
+        mock_app_state.sync_manager.sync_extraction_result.side_effect = TimeoutError("upstream timeout")
+        resp = test_client.post(
+            "/v1/ingest",
+            json={
+                "source_id": "src-1",
+                "extraction_job_id": "job-1",
+                "content_hash": "hash-1",
+                "rdf_data": "<rdf></rdf>",
+                "tenant_id": "tenant-1",
+            },
+            headers={"X-Tenant-ID": "tenant-1"},
+        )
+        body = resp.json()
+        assert resp.status_code == 504
+        assert body["code"] == "TIMEOUT_ERROR"
+
+    def test_ingest_dependency_unavailable_maps_to_service_unavailable(self, test_client, mock_app_state):
+        mock_app_state.sync_manager.sync_extraction_result.side_effect = ConnectionError("downstream unavailable")
+        resp = test_client.post(
+            "/v1/ingest",
+            json={
+                "source_id": "src-2",
+                "extraction_job_id": "job-2",
+                "content_hash": "hash-2",
+                "rdf_data": "<rdf></rdf>",
+                "tenant_id": "tenant-1",
+            },
+            headers={"X-Tenant-ID": "tenant-1"},
+        )
+        body = resp.json()
+        assert resp.status_code == 503
+        assert body["code"] == "SERVICE_UNAVAILABLE"
+
+    def test_graph_validation_maps_to_validation_error(self, test_client, mock_app_state):
+        mock_app_state.neo4j_driver.execute_query.side_effect = ValueError("bad graph query input")
+        resp = test_client.get("/v1/graph", headers={"X-Tenant-ID": "tenant-1"})
+        body = resp.json()
+        assert resp.status_code == 422
+        assert body["code"] == "VALIDATION_ERROR"
+
+    def test_query_subgraph_dependency_unavailable_maps_to_service_unavailable(self, test_client, mock_app_state):
+        mock_app_state.neo4j_driver.execute_query.side_effect = OSError("neo4j offline")
+        resp = test_client.get(
+            "/v1/graph/subgraph",
+            params={"center_entity_id": "cap-1"},
+            headers={"X-Tenant-ID": "tenant-1"},
+        )
+        body = resp.json()
+        assert resp.status_code == 503
+        assert body["code"] == "SERVICE_UNAVAILABLE"

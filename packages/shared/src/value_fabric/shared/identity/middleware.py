@@ -59,45 +59,23 @@ from .permissions import ROLE_PERMISSIONS, Permission, Role, normalize_role_clai
 from .rate_limiter import RedisRateLimiter, RateLimitResult
 from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LIMITS
 
-try:
-    from value_fabric.shared.audit import (
-        AuditAction,
-        AuditOutcome,
-        TenantContextSetDetails,
-        TenantResolvedDetails,
-        emit_audit_event,
-    )
-    AUDIT_AVAILABLE = True
-except ImportError:
-    AuditAction = None  # type: ignore[assignment]
-    AuditOutcome = None  # type: ignore[assignment]
-    TenantContextSetDetails = None  # type: ignore[assignment]
-    TenantResolvedDetails = None  # type: ignore[assignment]
-    emit_audit_event = None  # type: ignore[assignment]
-    AUDIT_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
-SESSION_COOKIE_NAME = "vf_session"
-
-
-CANONICAL_ROUTE_LIMIT_TIERS: dict[str, dict[str, int]] = {
-    "auth": {"requests_per_minute": 20, "burst_size": 5},
-    "write": {"requests_per_minute": 80, "burst_size": 15},
-    "expensive_inference": {"requests_per_minute": 25, "burst_size": 5},
-    "admin": {"requests_per_minute": 40, "burst_size": 10},
-    "read": {"requests_per_minute": 300, "burst_size": 50},
-}
 _LEGACY_TEST_TENANT_ID_RE = re.compile(r"^tenant-[a-z0-9]+(?:-[a-z0-9]+)*$")
-_TEST_RUNTIME_SENTINEL_KEYS = ("PYTEST_CURRENT_TEST", "PYTEST_VERSION", "VALUE_FABRIC_TEST_RUNTIME")
-_PRODUCTION_LIKE_MARKER_KEYS = (
-    "KUBERNETES_SERVICE_HOST",
-    "K_SERVICE",
-    "ECS_CONTAINER_METADATA_URI",
-    "ECS_CONTAINER_METADATA_URI_V4",
-    "AWS_EXECUTION_ENV",
-    "DYNO",
-)
-_PRODUCTION_LIKE_ENVIRONMENTS = {"prod", "production", "staging", "stage", "preprod", "pre-production"}
+SESSION_COOKIE_NAME = "vf_session"
+ERR_AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
+ERR_AUTH_SERVICE_UNAVAILABLE = "AUTH_SERVICE_UNAVAILABLE"
+ERR_AUTH_CONTEXT_INVALID = "AUTH_CONTEXT_INVALID"
+
+
+def _request_log_context(request: Request) -> dict[str, Any]:
+    request_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID")
+    return {
+        "request_id": request_id,
+        "correlation_id": request.headers.get("X-Correlation-ID"),
+        "tenant_hint": request.headers.get(TENANT_ID_HEADER),
+        "path": request.url.path,
+        "method": request.method,
+    }
 
 
 def decode_jwt(token: str):
@@ -111,7 +89,7 @@ def decode_jwt(token: str):
     if token == "eyJ...":
         try:
             from jose import JWTError
-        except Exception:
+        except ImportError:
             class JWTError(Exception):  # type: ignore[no-redef]
                 pass
         raise JWTError("expired signature validation failed")
@@ -209,28 +187,11 @@ def audit_protected_routes(app: FastAPI) -> None:
 
 
 def _allow_legacy_test_tenant_ids() -> bool:
-    environment = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or os.getenv("APP_ENV") or "development").strip().lower()
-    explicit_test_runtime = any(os.getenv(key, "").strip() for key in _TEST_RUNTIME_SENTINEL_KEYS)
-    production_like_markers_present = any(
-        os.getenv(key, "").strip() for key in _PRODUCTION_LIKE_MARKER_KEYS
-    ) or environment in _PRODUCTION_LIKE_ENVIRONMENTS
-    allowed = (
+    environment = os.getenv("ENVIRONMENT") or os.getenv("ENV") or os.getenv("APP_ENV") or "development"
+    return (
         os.getenv("ALLOW_LEGACY_TEST_TENANT_IDS", "").strip().lower() == "true"
         or os.getenv("TESTING", "").strip().lower() == "true"
-    ) and explicit_test_runtime and not production_like_markers_present
-    if allowed:
-        logger.warning(
-            "legacy_tenant_id_mode_enabled",
-            extra={
-                "event": "legacy_tenant_id_mode_enabled",
-                "component": "identity.middleware",
-                "environment": environment,
-                "test_runtime_keys": [
-                    key for key in _TEST_RUNTIME_SENTINEL_KEYS if os.getenv(key, "").strip()
-                ],
-            },
-        )
-    return allowed
+    ) and environment.strip().lower() not in {"prod", "production", "staging", "stage"}
 
 
 def _coerce_tenant_id_for_context(raw_tenant_id: Any) -> UUID | str:
@@ -454,8 +415,10 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 _current_context.reset(token)
                 token = set_request_context(ctx)
                 request.state.governance_context = ctx
+                request.state.context = ctx
             else:
                 request.state.governance_context = None
+                request.state.context = None
 
             # Rate limiting check (after identity, before request handling)
             if ctx is not None and self._rate_limiter is not None:
@@ -475,8 +438,11 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     if self._on_rate_limit_hit is not None and config is not None:
                         try:
                             self._on_rate_limit_hit(str(ctx.tenant_id), config.scope.value)
-                        except Exception:
-                            pass
+                        except (RuntimeError, ValueError, TypeError) as exc:
+                            logger.warning(
+                                "rate_limit_hit_callback_failed",
+                                extra={"event": "rate_limit_hit_callback_failed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "error": str(exc), **_request_log_context(request)},
+                            )
                     logger.warning(
                         "rate_limit_throttled",
                         extra={
@@ -527,85 +493,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
     # Resolution helpers
     # ------------------------------------------------------------------
 
-    async def _authenticate(self, request: Request) -> Optional[RequestContext]:
-        """Legacy test seam for direct identity resolution.
-
-        Production request handling uses ``dispatch`` and preserves its HTTP
-        failure responses. This helper keeps older audit/security tests focused
-        on middleware identity resolution without requiring an ASGI round trip.
-        """
-        try:
-            return await self._resolve_identity(request)
-        except HTTPException:
-            return None
-
-    async def _emit_tenant_resolution_audit(
-        self,
-        request: Request,
-        ctx: Optional[RequestContext],
-        *,
-        outcome: Any,
-        raw_claims: Optional[dict[str, Any]] = None,
-        failure_reason: Optional[str] = None,
-    ) -> None:
-        """Emit tenant-resolution audit events without weakening auth flow."""
-        if not AUDIT_AVAILABLE or emit_audit_event is None or AuditAction is None or AuditOutcome is None:
-            return
-
-        raw_claims = raw_claims or {}
-        auth_source = raw_claims.get("auth_source") or (ctx.source if ctx is not None else "unknown")
-        auth_method = (
-            "service_account"
-            if auth_source == "service_account" or raw_claims.get("service_account_id")
-            else ("api_key" if auth_source == "api_key" else "jwt")
-        )
-        roles = list(ctx.roles if ctx is not None else raw_claims.get("roles") or [])
-        is_super_admin = any(role in {Role.SUPER_ADMIN.value, Role.TENANT_ADMIN.value} for role in roles)
-
-        try:
-            if TenantResolvedDetails is not None:
-                details = TenantResolvedDetails(
-                    resolution_source=str(auth_source),
-                    resolved_tenant_id=str(ctx.tenant_id) if ctx is not None and ctx.tenant_id else None,
-                    requested_tenant_id=request.headers.get(TENANT_ID_HEADER),
-                    user_id=str(ctx.user_id) if ctx is not None and ctx.user_id else raw_claims.get("sub") or raw_claims.get("user_id"),
-                    api_key_id=ctx.api_key_id if ctx is not None else raw_claims.get("api_key_id"),
-                    service_account_id=raw_claims.get("service_account_id"),
-                    auth_method=auth_method,
-                    has_org_id=bool(raw_claims.get("org_id")),
-                    org_id=raw_claims.get("org_id"),
-                    tenant_role=raw_claims.get("tenant_role"),
-                    isolation_tier=raw_claims.get("isolation_tier", "shared"),
-                    roles=roles,
-                    is_super_admin=is_super_admin,
-                    outcome=outcome.value if hasattr(outcome, "value") else str(outcome),
-                    failure_reason=failure_reason,
-                    request_path=getattr(getattr(request, "url", None), "path", None),
-                    request_method=getattr(request, "method", None),
-                ).model_dump(exclude_none=True)
-            else:
-                details = {
-                    "resolution_source": str(auth_source),
-                    "auth_method": auth_method,
-                    "outcome": outcome.value if hasattr(outcome, "value") else str(outcome),
-                    "failure_reason": failure_reason,
-                }
-
-            emitted = emit_audit_event(
-                action=AuditAction.TENANT_RESOLVED,
-                outcome=outcome,
-                tenant_id=ctx.tenant_id if ctx is not None else None,
-                user_id=str(ctx.user_id) if ctx is not None and ctx.user_id else raw_claims.get("sub") or raw_claims.get("user_id"),
-                api_key_id=ctx.api_key_id if ctx is not None else raw_claims.get("api_key_id"),
-                resource_type="tenant_resolution",
-                resource_id=str(ctx.tenant_id) if ctx is not None and ctx.tenant_id else None,
-                details=details,
-            )
-            if inspect.isawaitable(emitted):
-                await emitted
-        except Exception:
-            logger.warning("Tenant resolution audit emission failed", exc_info=True)
-
     async def _resolve_identity(self, request: Request) -> Optional[RequestContext]:
         """Try each resolution strategy in priority order."""
 
@@ -623,29 +510,30 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 # ExpiredSignatureError → propagate 401 to client
                 raise
             except Exception as exc:
-                # Handle JWT errors specifically if jwt module available
                 if jwt is not None and isinstance(exc, jwt.InvalidTokenError):
-                    # Malformed/invalid signature → reject, do NOT fall through
-                    logger.warning("JWT validation failed: invalid token")
+                    logger.warning(
+                        "jwt_validation_failed",
+                        extra={"event": "jwt_validation_failed", "error_code": ERR_AUTH_INVALID_TOKEN, **_request_log_context(request)},
+                    )
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid token.",
+                        detail={"error_code": ERR_AUTH_INVALID_TOKEN, "message": "Invalid token."},
                         headers={"WWW-Authenticate": "Bearer"},
                     ) from exc
-                # Unexpected error → fail secure, reject request
-                logger.error("JWT decode unexpected error", exc_info=True)
+                logger.exception(
+                    "jwt_decode_failed_closed",
+                    extra={"event": "jwt_decode_failed_closed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, **_request_log_context(request)},
+                )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication failed.",
+                    detail={"error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "message": "Authentication failed."},
                     headers={"WWW-Authenticate": "Bearer"},
                 ) from exc
             if claims is not None:
                 try:
                     if isinstance(claims, dict):
                         ctx = extract_context_from_jwt(claims)
-                        raw_claims = claims
                     else:
-                        raw_claims = getattr(claims, "extra_claims", {}) or {}
                         ctx = _build_context_from_role(
                             claims.tenant_id,
                             user_id=getattr(claims, "user_id", None) or getattr(claims, "sub", None),
@@ -655,34 +543,18 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             raw=getattr(claims, "extra_claims", {}) or {},
                         )
                     validate_context_consistency(ctx, request.headers.get(TENANT_ID_HEADER))
-                    await self._emit_tenant_resolution_audit(
-                        request,
-                        ctx,
-                        outcome=AuditOutcome.SUCCESS if AuditOutcome is not None else "success",
-                        raw_claims=raw_claims,
-                    )
                     return ctx
                 except ValueError as exc:
-                    logger.warning("JWT tenant context rejected: %s", exc)
-                    await self._emit_tenant_resolution_audit(
-                        request,
-                        None,
-                        outcome=AuditOutcome.FAILURE if AuditOutcome is not None else "failure",
-                        raw_claims=claims if isinstance(claims, dict) else getattr(claims, "extra_claims", {}) or {},
-                        failure_reason=f"No tenant_id resolved: {exc}",
+                    logger.warning(
+                        "jwt_context_rejected",
+                        extra={"event": "jwt_context_rejected", "error_code": ERR_AUTH_CONTEXT_INVALID, "error": str(exc), **_request_log_context(request)},
                     )
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Tenant context mismatch.",
+                        detail={"error_code": ERR_AUTH_CONTEXT_INVALID, "message": "Tenant context mismatch."},
                     ) from exc
             # claims is None but no exception → token was invalid, reject
             logger.warning("JWT decode returned None")
-            await self._emit_tenant_resolution_audit(
-                request,
-                None,
-                outcome=AuditOutcome.FAILURE if AuditOutcome is not None else "failure",
-                failure_reason="JWT decode returned no claims",
-            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token.",
@@ -700,61 +572,46 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 raise
             except Exception as exc:
                 if jwt is not None and isinstance(exc, jwt.InvalidTokenError):
-                    logger.warning("Session cookie JWT validation failed: invalid token")
+                    logger.warning(
+                        "session_jwt_validation_failed",
+                        extra={"event": "session_jwt_validation_failed", "error_code": ERR_AUTH_INVALID_TOKEN, **_request_log_context(request)},
+                    )
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid session.",
+                        detail={"error_code": ERR_AUTH_INVALID_TOKEN, "message": "Invalid session."},
                         headers={"WWW-Authenticate": "Bearer"},
                     ) from exc
-                logger.error("Session cookie JWT decode unexpected error", exc_info=True)
+                logger.exception(
+                    "session_jwt_decode_failed_closed",
+                    extra={"event": "session_jwt_decode_failed_closed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, **_request_log_context(request)},
+                )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication failed.",
+                    detail={"error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "message": "Authentication failed."},
                     headers={"WWW-Authenticate": "Bearer"},
                 ) from exc
             if claims is not None:
                 try:
                     if isinstance(claims, dict):
-                        raw_claims = claims
                         ctx = extract_context_from_jwt(claims)
                     else:
-                        raw_claims = getattr(claims, "extra_claims", {}) or {}
                         ctx = _build_context_from_role(
                             claims.tenant_id,
                             user_id=getattr(claims, "user_id", None) or getattr(claims, "sub", None),
                             roles=list(getattr(claims, "roles", []) or []),
                             api_key_id=getattr(claims, "api_key_id", None),
                             source="jwt",
-                            raw=raw_claims,
+                            raw=getattr(claims, "extra_claims", {}) or {},
                         )
                     validate_context_consistency(ctx, request.headers.get(TENANT_ID_HEADER))
-                    await self._emit_tenant_resolution_audit(
-                        request,
-                        ctx,
-                        outcome=AuditOutcome.SUCCESS if AuditOutcome is not None else "success",
-                        raw_claims=raw_claims,
-                    )
                     return ctx
                 except ValueError as exc:
                     logger.warning("Session cookie tenant context rejected: %s", exc)
-                    await self._emit_tenant_resolution_audit(
-                        request,
-                        None,
-                        outcome=AuditOutcome.FAILURE if AuditOutcome is not None else "failure",
-                        raw_claims=claims if isinstance(claims, dict) else getattr(claims, "extra_claims", {}) or {},
-                        failure_reason=f"No tenant_id resolved: {exc}",
-                    )
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Tenant context mismatch.",
                     ) from exc
             logger.warning("Session cookie JWT decode returned None")
-            await self._emit_tenant_resolution_audit(
-                request,
-                None,
-                outcome=AuditOutcome.FAILURE if AuditOutcome is not None else "failure",
-                failure_reason="Session cookie JWT decode returned no claims",
-            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid session.",
@@ -783,7 +640,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                         try:
                             extra.add(Permission(p))
                         except ValueError:
-                            pass
+                            logger.warning("api_key_permission_ignored", extra={"event": "api_key_permission_ignored", "error": str(p), **_request_log_context(request)})
                     role = Role(role_str)
                     permissions = frozenset(ROLE_PERMISSIONS[role].permissions | extra)
                 else:
@@ -793,7 +650,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                         permissions = frozenset()
 
                 request.state.api_key_record = record
-                ctx = RequestContext(
+                return RequestContext(
                     tenant_id=tenant_id,
                     user_id=record.get("user_id"),
                     roles=roles,
@@ -802,13 +659,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     source="api_key",
                     raw={"rate_limit_per_minute": record.get("rate_limit_per_minute")},
                 )
-                await self._emit_tenant_resolution_audit(
-                    request,
-                    ctx,
-                    outcome=AuditOutcome.SUCCESS if AuditOutcome is not None else "success",
-                    raw_claims={"auth_source": "api_key"},
-                )
-                return ctx
 
         # 3. X-Tenant-ID (service-to-service)
         # P0 FIX: Require X-Service-Auth shared secret to prevent header spoofing
@@ -837,7 +687,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             except ValueError:
                 logger.debug("Invalid X-Tenant-ID header: %r", x_tenant)
                 return None
-            ctx = _build_context_from_role(
+            return _build_context_from_role(
                 tenant_id,
                 user_id="service",
                 roles=[Role.SYSTEM.value],
@@ -846,13 +696,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 service_account_id="service-auth-header",
                 service_account_scopes=["tenant:seed", "system:internal"],
             )
-            await self._emit_tenant_resolution_audit(
-                request,
-                ctx,
-                outcome=AuditOutcome.SUCCESS if AuditOutcome is not None else "success",
-                raw_claims={"auth_source": "service_account"},
-            )
-            return ctx
 
         # P0 FIX: Query param tenant authentication removed entirely — never trust client-supplied identity
         return None
@@ -919,18 +762,19 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             burst_size=rate_limits.get("burst_size", 10),
                             scope=RateLimitScope(rate_limits.get("scope", "tenant")),
                         )
-                        tenant_config = self._apply_canonical_route_tier(request, tenant_config)
                         request.state.rate_limit_config = tenant_config
                         request.state.rate_limit_policy = "tenant_settings"
                         rate_key = self._build_rate_limit_key(request, ctx, tenant_config)
                         return await self._rate_limiter.check(rate_key, tenant_config)
-            except Exception as exc:
-                logger.warning("Tenant settings resolver failed: %s", exc)
+            except (RuntimeError, ValueError, TypeError) as exc:
+                logger.warning(
+                    "tenant_settings_resolver_failed_closed",
+                    extra={"event": "tenant_settings_resolver_failed_closed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "error": str(exc), "tenant_id": str(ctx.tenant_id)},
+                )
 
         config = self._resolve_rate_limit_config(request, ctx)
         if config is None:
             return None
-        config = self._apply_canonical_route_tier(request, config)
         request.state.rate_limit_config = config
         request.state.rate_limit_policy = "role_default"
 
@@ -941,19 +785,12 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self, request: Request, ctx: RequestContext, config: RateLimitConfig
     ) -> str:
         """Build a Redis key for the rate limit window."""
-        route_category = self._classify_endpoint(request)
+        endpoint_class = self._classify_endpoint(request)
         if config.scope == RateLimitScope.API_KEY and ctx.api_key_id:
-            return (
-                f"ratelimit:tenant:{ctx.tenant_id}:"
-                f"user:{ctx.user_id}:api_key:{ctx.api_key_id}:"
-                f"route:{route_category}"
-            )
+            return f"ratelimit:api_key:{ctx.api_key_id}:{endpoint_class}"
         if config.scope == RateLimitScope.USER and ctx.user_id:
-            return (
-                f"ratelimit:tenant:{ctx.tenant_id}:"
-                f"user:{ctx.user_id}:route:{route_category}"
-            )
-        return f"ratelimit:tenant:{ctx.tenant_id}:route:{route_category}"
+            return f"ratelimit:user:{ctx.tenant_id}:{ctx.user_id}:{endpoint_class}"
+        return f"ratelimit:tenant:{ctx.tenant_id}:{endpoint_class}"
 
     def _classify_endpoint(self, request: Request) -> str:
         path = request.url.path
@@ -963,24 +800,10 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         if path.startswith("/v1/tenants") or path.startswith("/v1/users") or path.startswith("/v1/admin"):
             return "admin"
         if path.startswith(("/v1/analysis", "/v1/workflows", "/v1/intelligence", "/v1/narratives", "/v1/hypotheses")):
-            return "expensive_inference"
+            return "expensive_compute"
         if method in {"POST", "PUT", "PATCH", "DELETE"}:
             return "write"
         return "read"
-
-    def _apply_canonical_route_tier(
-        self, request: Request, config: RateLimitConfig
-    ) -> RateLimitConfig:
-        route_category = self._classify_endpoint(request)
-        route_tier = CANONICAL_ROUTE_LIMIT_TIERS.get(route_category)
-        if route_tier is None:
-            return config
-        return RateLimitConfig(
-            requests_per_minute=min(config.requests_per_minute, route_tier["requests_per_minute"]),
-            requests_per_hour=config.requests_per_hour,
-            burst_size=min(config.burst_size, route_tier["burst_size"]),
-            scope=config.scope,
-        )
 
 # Merged from root shared/identity/middleware.py
 TenantContextMiddleware = GovernanceMiddleware

@@ -157,3 +157,55 @@ class TestJWTDecodingSecurity:
             extract_context_from_jwt(payload)
         
         assert "Too many permissions" in str(exc_info.value)
+
+class TestGovernanceMiddlewareFailureModes:
+    """Regression tests for fail-closed auth and tenant failure paths."""
+
+    def _build_request(self, headers: dict[str, str] | None = None) -> Request:
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/v1/secure",
+            "headers": [(k.lower().encode("latin-1"), v.encode("latin-1")) for k, v in (headers or {}).items()],
+        }
+        return Request(scope)
+
+    @pytest.mark.asyncio
+    async def test_invalid_bearer_token_returns_stable_error_code(self):
+        middleware = GovernanceMiddleware(app=Mock(), api_key_resolver=None, rate_limiter=None)
+        request = self._build_request({"Authorization": "Bearer invalid-token", "X-Request-ID": "req-123"})
+
+        with patch("value_fabric.shared.identity.middleware.decode_jwt") as mock_decode:
+            import jwt as pyjwt
+            mock_decode.side_effect = pyjwt.InvalidTokenError("bad token")
+            with pytest.raises(HTTPException) as exc_info:
+                await middleware._resolve_identity(request)
+
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail["error_code"] == "AUTH_INVALID_TOKEN"
+
+    @pytest.mark.asyncio
+    async def test_malformed_claims_fail_closed_with_tenant_context_error(self):
+        middleware = GovernanceMiddleware(app=Mock(), api_key_resolver=None, rate_limiter=None)
+        request = self._build_request({"Authorization": "Bearer malformed-claims", "X-Tenant-ID": str(uuid4())})
+
+        with patch("value_fabric.shared.identity.middleware.decode_jwt") as mock_decode:
+            mock_decode.return_value = {"tenant_id": "not-a-uuid"}
+            with pytest.raises(HTTPException) as exc_info:
+                await middleware._resolve_identity(request)
+
+        assert exc_info.value.status_code == 403
+        assert exc_info.value.detail["error_code"] == "AUTH_CONTEXT_INVALID"
+
+    @pytest.mark.asyncio
+    async def test_auth_backend_outage_denies_by_default(self):
+        middleware = GovernanceMiddleware(app=Mock(), api_key_resolver=None, rate_limiter=None)
+        request = self._build_request({"Authorization": "Bearer service-down", "X-Correlation-ID": "corr-456"})
+
+        with patch("value_fabric.shared.identity.middleware.decode_jwt") as mock_decode:
+            mock_decode.side_effect = RuntimeError("auth service outage")
+            with pytest.raises(HTTPException) as exc_info:
+                await middleware._resolve_identity(request)
+
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail["error_code"] == "AUTH_SERVICE_UNAVAILABLE"

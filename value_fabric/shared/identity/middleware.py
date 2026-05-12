@@ -62,6 +62,20 @@ from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LI
 logger = logging.getLogger(__name__)
 _LEGACY_TEST_TENANT_ID_RE = re.compile(r"^tenant-[a-z0-9]+(?:-[a-z0-9]+)*$")
 SESSION_COOKIE_NAME = "vf_session"
+ERR_AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
+ERR_AUTH_SERVICE_UNAVAILABLE = "AUTH_SERVICE_UNAVAILABLE"
+ERR_AUTH_CONTEXT_INVALID = "AUTH_CONTEXT_INVALID"
+
+
+def _request_log_context(request: Request) -> dict[str, Any]:
+    request_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID")
+    return {
+        "request_id": request_id,
+        "correlation_id": request.headers.get("X-Correlation-ID"),
+        "tenant_hint": request.headers.get(TENANT_ID_HEADER),
+        "path": request.url.path,
+        "method": request.method,
+    }
 
 
 def decode_jwt(token: str):
@@ -75,7 +89,7 @@ def decode_jwt(token: str):
     if token == "eyJ...":
         try:
             from jose import JWTError
-        except Exception:
+        except ImportError:
             class JWTError(Exception):  # type: ignore[no-redef]
                 pass
         raise JWTError("expired signature validation failed")
@@ -424,8 +438,11 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     if self._on_rate_limit_hit is not None and config is not None:
                         try:
                             self._on_rate_limit_hit(str(ctx.tenant_id), config.scope.value)
-                        except Exception:
-                            pass
+                        except (RuntimeError, ValueError, TypeError) as exc:
+                            logger.warning(
+                                "rate_limit_hit_callback_failed",
+                                extra={"event": "rate_limit_hit_callback_failed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "error": str(exc), **_request_log_context(request)},
+                            )
                     logger.warning(
                         "rate_limit_throttled",
                         extra={
@@ -493,20 +510,23 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 # ExpiredSignatureError → propagate 401 to client
                 raise
             except Exception as exc:
-                # Handle JWT errors specifically if jwt module available
                 if jwt is not None and isinstance(exc, jwt.InvalidTokenError):
-                    # Malformed/invalid signature → reject, do NOT fall through
-                    logger.warning("JWT validation failed: invalid token")
+                    logger.warning(
+                        "jwt_validation_failed",
+                        extra={"event": "jwt_validation_failed", "error_code": ERR_AUTH_INVALID_TOKEN, **_request_log_context(request)},
+                    )
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid token.",
+                        detail={"error_code": ERR_AUTH_INVALID_TOKEN, "message": "Invalid token."},
                         headers={"WWW-Authenticate": "Bearer"},
                     ) from exc
-                # Unexpected error → fail secure, reject request
-                logger.error("JWT decode unexpected error", exc_info=True)
+                logger.exception(
+                    "jwt_decode_failed_closed",
+                    extra={"event": "jwt_decode_failed_closed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, **_request_log_context(request)},
+                )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication failed.",
+                    detail={"error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "message": "Authentication failed."},
                     headers={"WWW-Authenticate": "Bearer"},
                 ) from exc
             if claims is not None:
@@ -525,10 +545,13 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     validate_context_consistency(ctx, request.headers.get(TENANT_ID_HEADER))
                     return ctx
                 except ValueError as exc:
-                    logger.warning("JWT tenant context rejected: %s", exc)
+                    logger.warning(
+                        "jwt_context_rejected",
+                        extra={"event": "jwt_context_rejected", "error_code": ERR_AUTH_CONTEXT_INVALID, "error": str(exc), **_request_log_context(request)},
+                    )
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Tenant context mismatch.",
+                        detail={"error_code": ERR_AUTH_CONTEXT_INVALID, "message": "Tenant context mismatch."},
                     ) from exc
             # claims is None but no exception → token was invalid, reject
             logger.warning("JWT decode returned None")
@@ -549,16 +572,22 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 raise
             except Exception as exc:
                 if jwt is not None and isinstance(exc, jwt.InvalidTokenError):
-                    logger.warning("Session cookie JWT validation failed: invalid token")
+                    logger.warning(
+                        "session_jwt_validation_failed",
+                        extra={"event": "session_jwt_validation_failed", "error_code": ERR_AUTH_INVALID_TOKEN, **_request_log_context(request)},
+                    )
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid session.",
+                        detail={"error_code": ERR_AUTH_INVALID_TOKEN, "message": "Invalid session."},
                         headers={"WWW-Authenticate": "Bearer"},
                     ) from exc
-                logger.error("Session cookie JWT decode unexpected error", exc_info=True)
+                logger.exception(
+                    "session_jwt_decode_failed_closed",
+                    extra={"event": "session_jwt_decode_failed_closed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, **_request_log_context(request)},
+                )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication failed.",
+                    detail={"error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "message": "Authentication failed."},
                     headers={"WWW-Authenticate": "Bearer"},
                 ) from exc
             if claims is not None:
@@ -611,7 +640,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                         try:
                             extra.add(Permission(p))
                         except ValueError:
-                            pass
+                            logger.warning("api_key_permission_ignored", extra={"event": "api_key_permission_ignored", "error": str(p), **_request_log_context(request)})
                     role = Role(role_str)
                     permissions = frozenset(ROLE_PERMISSIONS[role].permissions | extra)
                 else:
@@ -737,8 +766,11 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                         request.state.rate_limit_policy = "tenant_settings"
                         rate_key = self._build_rate_limit_key(request, ctx, tenant_config)
                         return await self._rate_limiter.check(rate_key, tenant_config)
-            except Exception as exc:
-                logger.warning("Tenant settings resolver failed: %s", exc)
+            except (RuntimeError, ValueError, TypeError) as exc:
+                logger.warning(
+                    "tenant_settings_resolver_failed_closed",
+                    extra={"event": "tenant_settings_resolver_failed_closed", "error_code": ERR_AUTH_SERVICE_UNAVAILABLE, "error": str(exc), "tenant_id": str(ctx.tenant_id)},
+                )
 
         config = self._resolve_rate_limit_config(request, ctx)
         if config is None:

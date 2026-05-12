@@ -1,5 +1,7 @@
-"""Pydantic models for Layer 3 API."""
+"""Compatibility wrapper for value_fabric.layer3.api.models."""
 
+<<<<<<< ours
+<<<<<<< ours
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
@@ -113,7 +115,7 @@ class IngestRequest(BaseModel):
         None, min_length=32, max_length=128, description="SHA-256 hash for change detection", examples=["a1b2c3d4e5f6..."]
     )
     tenant_id: str | None = Field(
-        None, min_length=1, max_length=255, description="Tenant ID for data isolation (extracted from X-Tenant-ID header if not provided)", examples=["tenant-abc123"]
+        None, min_length=1, max_length=255, description="Optional tenant hint for compatibility; authenticated tenant context is authoritative and any provided value must match it", examples=["tenant-abc123"]
     )
 
     @field_validator("content_hash")
@@ -981,76 +983,86 @@ class BatchAnalyticsResponse(BaseModel):
 # Graph Models
 # Mapping of alias field names to their source property names
 GraphNodeAliasMap: dict[str, str] = {
-    "name": "label",
-    "entity_type": "type",
-    "confidence_score": "confidence",
+    "label": "name",
+    "type": "entity_type",
+    "confidence": "confidence_score",
 }
 
 
 class GraphNode(BaseModel):
     """Node in the knowledge graph.
 
-    NOTE: This model provides backward-compatible field aliases for frontend contract stability:
-    - 'name' is an alias for 'label' (frontend expects 'name')
-    - 'entity_type' is an alias for 'type' (frontend expects 'entity_type')
-    - 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')
-
-    The legacy fields (label, type, confidence) are preserved for backward compatibility.
-    TODO: Deprecate legacy fields once all consumers migrate to new field names.
+    Canonical fields are name/entity_type/confidence_score.
+    Legacy aliases label/type/confidence are emitted for one deprecation window.
     """
 
     id: str = Field(..., description="Unique node identifier")
-    label: str = Field(..., description="Display label (legacy: use 'name')")
-    type: str = Field(..., description="Node type (legacy: use 'entity_type')")
-    confidence: float = Field(
-        default=0.8, ge=0.0, le=1.0, description="Confidence score (legacy: use 'confidence_score')"
+    name: str = Field(..., description="Display label")
+    entity_type: str = Field(..., description="Node type")
+    confidence_score: float = Field(
+        default=0.8, ge=0.0, le=1.0, description="Confidence score"
     )
     properties: dict[str, Any] = Field(
         default_factory=dict, description="Additional node properties"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_and_validate_legacy_aliases(cls, data: Any) -> Any:
+        """Allow legacy aliases only when canonical fields are absent or equal."""
+        if not isinstance(data, dict):
+            return data
+        for alias, canonical in GraphNodeAliasMap.items():
+            if canonical in data and alias in data and data[canonical] != data[alias]:
+                raise ValueError(
+                    f"Conflicting GraphNode fields: '{canonical}' and deprecated '{alias}' must match"
+                )
+            if canonical not in data and alias in data:
+                data[canonical] = data[alias]
+        return data
 
     # ═════════════════════════════════════════════════════════════════════════
     # Backward-compatible alias fields for frontend contract alignment
     # ═════════════════════════════════════════════════════════════════════════
 
     @property
-    def name(self) -> str:
-        """Frontend-compatible alias for 'label'."""
+    def label(self) -> str:
+        """Deprecated alias for 'name'."""
         import warnings
         warnings.warn(
-            "GraphNode.name is deprecated; use GraphNode.label instead",
+            "GraphNode.label is deprecated; use GraphNode.name instead",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.label
+        return self.name
 
     @property
-    def entity_type(self) -> str:
-        """Frontend-compatible alias for 'type'."""
+    def type(self) -> str:
+        """Deprecated alias for 'entity_type'."""
         import warnings
         warnings.warn(
-            "GraphNode.entity_type is deprecated; use GraphNode.type instead",
+            "GraphNode.type is deprecated; use GraphNode.entity_type instead",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.type
+        return self.entity_type
 
     @property
-    def confidence_score(self) -> float:
-        """Frontend-compatible alias for 'confidence'."""
+    def confidence(self) -> float:
+        """Deprecated alias for 'confidence_score'."""
         import warnings
         warnings.warn(
-            "GraphNode.confidence_score is deprecated; use GraphNode.confidence instead",
+            "GraphNode.confidence is deprecated; use GraphNode.confidence_score instead",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.confidence
+        return self.confidence_score
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override to include computed alias fields in serialization."""
         data = super().model_dump(**kwargs)
         # Dynamically add alias fields using the mapping
-        for alias, source in GraphNodeAliasMap.items():
+        for alias in GraphNodeAliasMap:
             data[alias] = getattr(self, alias)
         return data
 
@@ -1144,3 +1156,10 @@ class SubgraphResponse(BaseModel):
     edges: list[GraphEdge] = Field(..., description="Edges between returned nodes")
     depth: int = Field(..., ge=1, le=5, description="Traversal depth used")
     stats: GraphStats = Field(..., description="Subgraph statistics")
+
+=======
+from value_fabric.layer3.api.models import *  # noqa: F401,F403
+>>>>>>> theirs
+=======
+from value_fabric.layer3.api.models import *  # noqa: F401,F403
+>>>>>>> theirs

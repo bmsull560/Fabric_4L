@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
-from .conftest import TENANT_ALPHA, auth_headers
+from .conftest import TENANT_ALPHA, TENANT_BETA, auth_headers
 
 HEADERS = auth_headers(TENANT_ALPHA)
 
@@ -51,3 +51,22 @@ def test_unauthenticated_returns_401():
     with TestClient(app) as client:
         response = client.get("/v1/accounts")
         assert response.status_code == 401
+
+
+def test_create_account_rejects_body_tenant_mismatch():
+    with TestClient(app) as client:
+        payload = {"id": "acc-test-mismatch", "name": "Mismatch", "industry": "Software", "tenant_id": TENANT_BETA}
+        response = client.post("/v1/accounts", json=payload, headers=HEADERS)
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "TENANT_CONTEXT_MISMATCH"
+
+
+def test_tenant_a_cannot_read_tenant_b_account():
+    with TestClient(app) as client:
+        beta_headers = auth_headers(TENANT_BETA)
+        payload = {"id": "acc-test-beta-only", "name": "Beta", "industry": "Software", "tenant_id": TENANT_BETA}
+        create_response = client.post("/v1/accounts", json=payload, headers=beta_headers)
+        assert create_response.status_code == 201
+
+        read_response = client.get("/v1/accounts/acc-test-beta-only", headers=HEADERS)
+        assert read_response.status_code == 404

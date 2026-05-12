@@ -176,17 +176,17 @@ describe('Contract: GET /v1/value-trees/{entity_id}/paths', () => {
 // ── Subgraph / entity shapes ──────────────────────────────────────────────────
 
 describe('Contract: subgraph and entity shapes', () => {
-  it('graph node has required id, name, type', () => {
+  it('graph node has required id, name, entity_type', () => {
     const node = assertSchema(GraphNodeSchema, fixtures.graphNode(), 'GraphNode');
     expect(node.id).toBeTruthy();
     expect(node.name).toBeTruthy();
-    expect(node.type).toBeTruthy();
+    expect(node.entity_type).toBeTruthy();
   });
 
-  it('graph edge has source, target, relationship', () => {
+  it('graph edge has source, target, type', () => {
     assertSchema(
       GraphEdgeSchema,
-      { source: 'node-001', target: 'node-002', relationship: 'ENABLES' },
+      { source: 'node-001', target: 'node-002', type: 'ENABLES' },
       'GraphEdge'
     );
   });
@@ -209,7 +209,7 @@ describe('Contract: subgraph and entity shapes', () => {
   it('confidence_score is optional on graph nodes', () => {
     assertSchema(
       GraphNodeSchema,
-      { id: 'n1', name: 'Test', label: 'Test', type: 'capability' },
+      { id: 'n1', name: 'Test', entity_type: 'capability', label: 'Test', type: 'capability' },
       'GraphNode (no confidence_score)'
     );
   });
@@ -224,7 +224,7 @@ describe('Contract: graph tenant context', () => {
     });
     const node = assertSchema(
       TenantScopedGraphNodeSchema,
-      { id: 'node-001', name: 'Cloud Migration', label: 'Cloud Migration', type: 'capability', tenant_id: '550e8400-e29b-41d4-a716-446655440000' },
+      { id: 'node-001', name: 'Cloud Migration', entity_type: 'capability', label: 'Cloud Migration', type: 'capability', tenant_id: '550e8400-e29b-41d4-a716-446655440000' },
       'TenantScopedGraphNode'
     );
     expect(node.tenant_id).toBe('550e8400-e29b-41d4-a716-446655440000');

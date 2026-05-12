@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.database import db
+from app.core.tenant_enforcement import enforce_authenticated_tenant
 from app.core.tenant_context import tenant_required
 from app.models.schemas import ROICalculation, Scenario
 from app.services.roi_service import calculate_roi
@@ -19,6 +20,12 @@ async def list_scenarios(account_id: str, tenant_id: str = Depends(tenant_requir
 async def create_scenario(
     account_id: str, scenario: Scenario, tenant_id: str = Depends(tenant_required)
 ):
+    enforce_authenticated_tenant(
+        body_tenant_id=scenario.tenant_id,
+        authenticated_tenant_id=tenant_id,
+        route="/v1/accounts/{account_id}/scenarios",
+        operation="create_scenario",
+    )
     scenario.account_id = account_id
     scenario.tenant_id = tenant_id
     db.scenarios.insert(scenario.id, scenario)

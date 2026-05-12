@@ -7,6 +7,60 @@
  */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Legacy Health Check
+         * @description Legacy-compatible health check with dependency status.
+         */
+        get: operations["legacy_health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ready */
+        get: operations["ready_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ingest": {
         parameters: {
             query?: never;
@@ -188,6 +242,31 @@ export interface paths {
         get: operations["admin_read_security_boundary_api_admin_users_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/validation/seed/job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Validation Ingestion Job
+         * @description Seed deterministic Layer 1 job evidence for backend-integrated validation.
+         *
+         *     This endpoint is non-production only, service-auth gated, and writes
+         *     tenant-scoped Layer 1 records through the canonical persistence models.
+         *     It exists to prove the live frontend can read real Layer 1 job state
+         *     without requiring external crawling or mocks during Playwright validation.
+         */
+        post: operations["seed_validation_ingestion_job_api_v1_ingestion_validation_seed_job_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -482,6 +561,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/jobs/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch Operation
+         * @description Execute batch operations on ingestion jobs and targets.
+         *
+         *     Supports three operations:
+         *     - execute: Trigger crawl jobs for multiple targets
+         *     - cancel: Cancel multiple running/queued jobs
+         *     - retry: Retry multiple failed jobs
+         *
+         *     Returns per-item results with success/failure status.
+         */
+        post: operations["batch_operation_api_v1_ingestion_jobs_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/content/raw/{content_id}": {
         parameters: {
             query?: never;
@@ -662,26 +768,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Legacy Health Check
-         * @description Legacy-compatible health check with dependency status.
-         */
-        get: operations["legacy_health_check_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -701,6 +787,92 @@ export interface components {
          * @enum {string}
          */
         AuthenticationType: "NONE" | "BEARER" | "API_KEY" | "BASIC" | "OAUTH2";
+        /**
+         * BatchOperationItemResult
+         * @description Result of a single item in a batch operation.
+         */
+        BatchOperationItemResult: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Target or job ID
+             */
+            id: string;
+            /**
+             * Status
+             * @description Operation status: succeeded, failed, or skipped
+             */
+            status: string;
+            /**
+             * Job Id
+             * @description Resulting job ID (if applicable)
+             */
+            job_id?: string | null;
+            /**
+             * Error
+             * @description Error message if failed
+             */
+            error?: string | null;
+        };
+        /**
+         * BatchOperationRequest
+         * @description Request for batch operations on jobs and targets.
+         */
+        BatchOperationRequest: {
+            /** @description Operation to perform */
+            operation: components["schemas"]["BatchOperationType"];
+            /**
+             * Target Ids
+             * @description Target IDs for execute operation
+             */
+            target_ids?: string[];
+            /**
+             * Job Ids
+             * @description Job IDs for cancel/retry operations
+             */
+            job_ids?: string[];
+            /**
+             * Options
+             * @description Additional operation options
+             */
+            options?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * BatchOperationResponse
+         * @description Response for batch operation.
+         */
+        BatchOperationResponse: {
+            /** @description Operation performed */
+            operation: components["schemas"]["BatchOperationType"];
+            /**
+             * Requested
+             * @description Total number of items requested
+             */
+            requested: number;
+            /**
+             * Succeeded
+             * @description Number of successful operations
+             */
+            succeeded: number;
+            /**
+             * Failed
+             * @description Number of failed operations
+             */
+            failed: number;
+            /**
+             * Results
+             * @description Per-item results
+             */
+            results: components["schemas"]["BatchOperationItemResult"][];
+        };
+        /**
+         * BatchOperationType
+         * @description Types of batch operations supported.
+         * @enum {string}
+         */
+        BatchOperationType: "execute" | "cancel" | "retry";
         /**
          * BrowserConfigInput
          * @description Browser configuration for a target.
@@ -1220,6 +1392,10 @@ export interface components {
              * Format: uuid
              */
             target_id: string;
+            /** Configuration */
+            configuration: {
+                [key: string]: unknown;
+            };
             /** Status */
             status: string;
             /** Priority */
@@ -1845,6 +2021,21 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * ValidationIngestionJobSeedRequest
+         * @description Non-production deterministic ingestion evidence for backend-integrated Playwright.
+         */
+        ValidationIngestionJobSeedRequest: {
+            /**
+             * Domain
+             * @default meridian-auto.com
+             */
+            domain: string;
+            /** Url */
+            url?: string | null;
+            /** @default COMPLETED */
+            status: components["schemas"]["JobStatus"];
+        };
+        /**
          * ValidationWarning
          * @description Validation warning detail.
          */
@@ -1863,6 +2054,66 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    legacy_health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    ready_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    metrics_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     short_ingest_compatibility_boundary_v1_ingest_post: {
         parameters: {
             query?: never;
@@ -2180,6 +2431,41 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    seed_validation_ingestion_job_api_v1_ingestion_validation_seed_job_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationIngestionJobSeedRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -2836,6 +3122,43 @@ export interface operations {
             };
         };
     };
+    batch_operation_api_v1_ingestion_jobs_batch_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
+                "X-Organization-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchOperationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchOperationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_raw_content_api_v1_ingestion_content_raw__content_id__get: {
         parameters: {
             query?: {
@@ -3146,26 +3469,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    legacy_health_check_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };

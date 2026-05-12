@@ -751,11 +751,11 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          if ! git diff --quiet apps/web/src/api/generated/; then
+          if ! git diff --quiet packages/platform-contract/src/typescript/generated/ apps/web/src/api/generated/ apps/web/src/types/; then
             echo "❌ Generated API type drift detected."
             node apps/web/scripts/report-generated-type-drift.mjs
           fi
-          git diff --exit-code apps/web/src/api/generated/
+          git diff --exit-code packages/platform-contract/src/typescript/generated/ apps/web/src/api/generated/ apps/web/src/types/
 
       - name: Type check
         run: pnpm tsc --noEmit
@@ -923,6 +923,11 @@ jobs:
 
       - name: Run contract and architecture tests
         run: make contract-tests
+
+      - name: Run frontend OpenAPI/Zod drift check
+        run: |
+          pnpm --dir apps/web install --frozen-lockfile
+          pnpm --dir apps/web run test:contracts
 
       - name: Run tool contract validation
         run: |

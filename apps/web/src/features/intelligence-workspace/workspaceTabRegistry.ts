@@ -7,6 +7,29 @@
 import { lazy } from "react";
 import type { WorkspaceTabDef, WorkspaceTabId } from "./types";
 
+const isProductionBuild = import.meta.env.PROD || import.meta.env.VITE_APP_ENV === "production";
+
+const deferredIntelligenceTabs: Record<string, { flag: string; owner: string }> = {
+  "ontology-match": {
+    flag: "VITE_ENABLE_IW_ONTOLOGY_MATCH_TAB",
+    owner: "Intelligence Workspace / Layer 4 Agents",
+  },
+  alternatives: {
+    flag: "VITE_ENABLE_IW_ALTERNATIVES_TAB",
+    owner: "Intelligence Workspace / Product Strategy",
+  },
+  "solution-cost": {
+    flag: "VITE_ENABLE_IW_SOLUTION_COST_TAB",
+    owner: "Intelligence Workspace / Value Modeling",
+  },
+};
+
+function isDeferredTabEnabled(tabId: string): boolean {
+  const config = deferredIntelligenceTabs[tabId];
+  if (!config) return true;
+  return import.meta.env[config.flag] === "true";
+}
+
 // ── Lazy-loaded tab components ────────────────────────────────────────────────
 const SignalsTab = lazy(() => import("./tabs/signals/SignalsTab"));
 const StakeholdersTab = lazy(() => import("./tabs/stakeholders/StakeholdersTab"));
@@ -140,12 +163,19 @@ export const workspaceTabs: WorkspaceTabDef[] = [
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export const DEFAULT_TAB: WorkspaceTabId = "signals";
 
+export function getProductionTabDefs(): WorkspaceTabDef[] {
+  return workspaceTabs.filter((tab) => {
+    if (tab.status === "active") return true;
+    return !isProductionBuild && isDeferredTabEnabled(tab.id);
+  });
+}
+
 export function getTabDef(tabId: WorkspaceTabId): WorkspaceTabDef | undefined {
-  return workspaceTabs.find((t) => t.id === tabId);
+  return getProductionTabDefs().find((t) => t.id === tabId);
 }
 
 export function isValidTab(tabId: string | undefined): tabId is WorkspaceTabId {
-  return Boolean(tabId) && workspaceTabs.some((t) => t.id === tabId);
+  return Boolean(tabId) && getProductionTabDefs().some((t) => t.id === tabId);
 }
 
 export function getTabOrDefault(tabId: string | undefined): WorkspaceTabId {
@@ -153,5 +183,7 @@ export function getTabOrDefault(tabId: string | undefined): WorkspaceTabId {
 }
 
 export function getActiveTabDefs(): WorkspaceTabDef[] {
-  return workspaceTabs.filter((t) => t.status === "active");
+  return getProductionTabDefs();
 }
+
+export const deferredTabsRollout = deferredIntelligenceTabs;

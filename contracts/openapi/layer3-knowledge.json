@@ -11127,6 +11127,13 @@
             "type": "object",
             "title": "Properties",
             "description": "Additional edge properties"
+          },
+          "relationship_type": {
+            "type": "string",
+            "deprecated": true,
+            "description": "Deprecated alias of type. Removal target: v2.4 (2026-07-01).",
+            "x-deprecation-target-version": "v2.4",
+            "x-deprecation-target-date": "2026-07-01"
           }
         },
         "type": "object",
@@ -11148,23 +11155,29 @@
           "label": {
             "type": "string",
             "title": "Label",
-            "description": "Deprecated alias of name; removal planned after v1.4",
-            "deprecated": true
+            "description": "Deprecated alias of name. Removal target: v2.4 (2026-07-01).",
+            "deprecated": true,
+            "x-deprecation-target-version": "v2.4",
+            "x-deprecation-target-date": "2026-07-01"
           },
           "type": {
             "type": "string",
             "title": "Type",
-            "description": "Deprecated alias of entity_type; removal planned after v1.4",
-            "deprecated": true
+            "description": "Deprecated alias of entity_type. Removal target: v2.4 (2026-07-01).",
+            "deprecated": true,
+            "x-deprecation-target-version": "v2.4",
+            "x-deprecation-target-date": "2026-07-01"
           },
           "confidence": {
             "type": "number",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Confidence",
-            "description": "Deprecated alias of confidence_score; removal planned after v1.4",
+            "description": "Deprecated alias of confidence_score. Removal target: v2.4 (2026-07-01).",
             "default": 0.8,
-            "deprecated": true
+            "deprecated": true,
+            "x-deprecation-target-version": "v2.4",
+            "x-deprecation-target-date": "2026-07-01"
           },
           "properties": {
             "additionalProperties": true,
@@ -11663,7 +11676,7 @@
               }
             ],
             "title": "Tenant Id",
-            "description": "Tenant ID for data isolation (extracted from X-Tenant-ID header if not provided)",
+            "description": "Optional tenant hint for compatibility; authenticated tenant context is authoritative and any provided value must match it",
             "examples": [
               "tenant-abc123"
             ]

@@ -96,8 +96,6 @@ export interface paths {
          *         POST /v1/workflows
          *         {
          *             "workflow_type": "roi_calculator",
-         *             "tenant_id": "tenant-001",
-         *             "user_id": "user-001",
          *             "inputs": {
          *                 "prospect_id": "prospect-001",
          *                 "use_case_ids": ["uc-001", "uc-002"]
@@ -8408,16 +8406,6 @@ export interface components {
              * @enum {string}
              */
             workflow_type: "business_case_generation" | "business_case" | "roi_calculator" | "whitespace_analysis" | "orchestrator";
-            /**
-             * Tenant Id
-             * @description Tenant identifier
-             */
-            tenant_id?: string | null;
-            /**
-             * User Id
-             * @description User identifier
-             */
-            user_id?: string | null;
             /** @description Workflow inputs */
             inputs?: components["schemas"]["WorkflowInputs"];
             /**

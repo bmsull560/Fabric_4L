@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readiness Check
+         * @description Standard readiness contract for orchestration and probes.
+         */
+        get: operations["readiness_check_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/benchmarks/datasets": {
         parameters: {
             query?: never;
@@ -190,19 +210,38 @@ export interface components {
             dataset_id: string;
             /** Name */
             name: string;
+            /** Description */
+            description: string;
             /** Industry */
             industry: string;
             /** Segment */
             segment: string | null;
+            /** Geography */
+            geography: string | null;
             /** Metrics */
             metrics: string[];
+            /** Metric Count */
+            metric_count: number;
             /** Version */
             version: string;
+            /** Data Source */
+            data_source: string | null;
         };
-        /** HTTPValidationError */
+        /**
+         * HTTPValidationError
+         * @description Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients.
+         */
         HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Machine-readable error code */
+            code: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
+            /** @description Optional sanitized error details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -258,6 +297,19 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** ErrorResponse */
+        ErrorResponse: {
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Machine-readable error code */
+            code: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
+            /** @description Optional sanitized error details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -268,6 +320,33 @@ export interface components {
 export type $defs = Record<string, never>;
 export interface operations {
     health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health payload */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Service unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readiness_check_ready_get: {
         parameters: {
             query?: never;
             header?: never;
